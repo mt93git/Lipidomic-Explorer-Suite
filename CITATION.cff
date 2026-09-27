@@ -4,11 +4,11 @@ authors:
   - name: "Farese & Walther Lab"
     website: "https://www.mskcc.org/research/ski/labs/farese-walther"
   - name: "Yale Research Hub"
-title: "Global Lipidomics Explorer"
+title: "MT_Global_Lipidomic_Explorer"
 version: "12.0.0"
 date-released: 2026-09-10
-url: "https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer"
-repository-code: "https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer"
+url: "https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer"
+repository-code: "https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer"
 license: "MIT"
 abstract: "Interactive web-based software application designed for the processing, quality control, differential expression, and structural visualization of global lipidomic datasets."
 keywords:

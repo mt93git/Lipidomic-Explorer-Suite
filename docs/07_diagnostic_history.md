@@ -1,6 +1,6 @@
 # Diagnostic Procedures & Troubleshooting History
 
-This document catalogs troubleshooting procedures, known environment quirks, and diagnostic protocols for maintaining and operating **Global Lipidomics Explorer**.
+This document catalogs troubleshooting procedures, known environment quirks, and diagnostic protocols for maintaining and operating **MT_Global_Lipidomic_Explorer**.
 
 ---
 

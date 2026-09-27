@@ -1,6 +1,6 @@
-# Contributing to Global Lipidomics Explorer
+# Contributing to MT_Global_Lipidomic_Explorer
 
-Thank you for your interest in contributing to the **Global Lipidomics Explorer**! We welcome contributions from researchers, bioinformaticians, and software engineers to enhance features, improve performance, and expand multi-omics compatibility.
+Thank you for your interest in contributing to the **MT_Global_Lipidomic_Explorer**! We welcome contributions from researchers, bioinformaticians, and software engineers to enhance features, improve performance, and expand multi-omics compatibility.
 
 ---
 
@@ -13,11 +13,11 @@ All contributors and participants are expected to adhere to our [Code of Conduct
 ## 2. Getting Started
 
 1. **Fork the Repository** on GitHub:
-   `https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer`
+   `https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer`
 2. **Clone your fork locally**:
    ```bash
-   git clone https://github.com/<your-username>/Global_Lipidomics_Explorer.git
-   cd Global_Lipidomics_Explorer
+   git clone https://github.com/<your-username>/MT_Global_Lipidomic_Explorer.git
+   cd MT_Global_Lipidomic_Explorer
    ```
 3. **Bootstrap the Environment**:
    Launch R or RStudio and source the setup script to configure your local sandboxed library:

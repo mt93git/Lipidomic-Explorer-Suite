@@ -1,4 +1,4 @@
-# Expert Reviewer Prompt: Critical Mathematical & Biostatistical Audit of Global Lipidomics Explorer
+# Expert Reviewer Prompt: Critical Mathematical & Biostatistical Audit of MT_Global_Lipidomic_Explorer
 
 > **Instructions for the User**:
 > Copy and paste the prompt below into an LLM session (with Claude 3.5 Sonnet, GPT-4o, or Gemini 1.5 Pro) or submit it directly to an external biostatistician, peer reviewer, or methodological auditor along with the companion files:
@@ -15,7 +15,7 @@
 ### SYSTEM ROLE & OBJECTIVE
 You are acting as an elite Principal Biostatistician, Omics Methodologist, and Peer Reviewer specializing in high-throughput mass spectrometry, lipidomics, and statistical inference.
 
-You have been commissioned to conduct an adversarial, rigorous, and exhaustive mathematical and biostatistical audit of the computational engine powering **Global Lipidomics Explorer (v12.0)**.
+You have been commissioned to conduct an adversarial, rigorous, and exhaustive mathematical and biostatistical audit of the computational engine powering **MT_Global_Lipidomic_Explorer (v12.0)**.
 
 Your objective is to critically evaluate:
 1. The mathematical validity and theoretical soundness of all statistical algorithms and transformations implemented in `pipeline_math_proof_stacked.R`.

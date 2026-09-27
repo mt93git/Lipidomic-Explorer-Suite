@@ -1,13 +1,13 @@
-# Global Lipidomics Explorer
+# MT_Global_Lipidomic_Explorer
 
-[![CI/CD Environment Setup](https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer/actions/workflows/bootstrap_test.yml)
+[![CI/CD Environment Setup](https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer/actions/workflows/bootstrap_test.yml)
 [![R Compatibility](https://img.shields.io/badge/R-%3E%3D_4.4.0-blue.svg)](https://cloud.r-project.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 
-Global Lipidomics Explorer is an interactive web-based software application designed for the processing, quality control, analysis, and visualization of lipidomics datasets. Developed for scientific and clinical research workflows, the application helps researchers extract biological insights from abundance matrices without requiring advanced bioinformatics training.
+**MT_Global_Lipidomic_Explorer** is an interactive web-based software application designed for the processing, quality control, analysis, and visualization of lipidomics datasets. Developed for scientific and clinical research workflows, the application helps researchers extract biological insights from abundance matrices without requiring advanced bioinformatics training.
 
-![Global Lipidomics Explorer Interface](docs/images/main_dashboard.png)
+![MT_Global_Lipidomic_Explorer Interface](docs/images/main_dashboard.png)
 
 ## Key Features
 
@@ -25,8 +25,8 @@ To run the application locally on your machine, you must have R (version >= 4.4.
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer.git
-   cd Global_Lipidomics_Explorer
+   git clone https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer.git
+   cd MT_Global_Lipidomic_Explorer
    ```
 
 2. **Setup Dependencies**:
@@ -55,10 +55,10 @@ For zero-terminal execution, use the pre-configured platform wrappers in `/OS`:
 To run the platform inside an isolated container without altering your local R installation:
 ```bash
 # Build the Docker image
-docker build -t lipidomics-explorer .
+docker build -t mt-global-lipidomic-explorer .
 
 # Run the container (maps to http://localhost:3838)
-docker run -p 3838:3838 lipidomics-explorer
+docker run -p 3838:3838 mt-global-lipidomic-explorer
 ```
 Then open your web browser to `http://localhost:3838`.
 

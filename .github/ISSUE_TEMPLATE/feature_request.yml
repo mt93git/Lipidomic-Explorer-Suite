@@ -1,12 +1,12 @@
 name: Feature Request
-description: Suggest a new idea or improvement for Lipidomic Explorer
+description: Suggest a new idea or improvement for MT_Global_Lipidomic_Explorer
 title: "[FEATURE]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Have an idea to improve Lipidomic Explorer? We'd love to hear it!
+        Have an idea to improve MT_Global_Lipidomic_Explorer? We'd love to hear it!
   - type: textarea
     id: problem
     attributes:

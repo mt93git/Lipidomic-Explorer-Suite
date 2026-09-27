@@ -1,4 +1,4 @@
-# Dockerfile for testing Lipidomic Explorer bootstrapping sequence
+# Dockerfile for testing MT_Global_Lipidomic_Explorer bootstrapping sequence
 # Uses the exact same R version the user is running on Windows (R 4.4.0)
 FROM rocker/r-ver:4.4.0
 

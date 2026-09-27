@@ -1,6 +1,6 @@
-# Lipidomic Explorer User Quickstart Manual
+# MT_Global_Lipidomic_Explorer User Quickstart Manual
 
-Welcome to **Lipidomic Explorer**! This guide is designed to help clinical and laboratory researchers ingest lipidomics datasets, configure normalization, perform statistical comparisons, and interpret visualization profiles without requiring advanced bioinformatics or programming experience.
+Welcome to **MT_Global_Lipidomic_Explorer**! This guide is designed to help clinical and laboratory researchers ingest lipidomics datasets, configure normalization, perform statistical comparisons, and interpret visualization profiles without requiring advanced bioinformatics or programming experience.
 
 ---
 

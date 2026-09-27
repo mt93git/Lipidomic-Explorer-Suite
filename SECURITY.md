@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We provide security updates and patches for the following versions of **Global Lipidomics Explorer**:
+We provide security updates and patches for the following versions of **MT_Global_Lipidomic_Explorer**:
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -13,7 +13,7 @@ We provide security updates and patches for the following versions of **Global L
 
 ## Reporting a Vulnerability
 
-The Global Lipidomics Explorer team takes security seriously. If you discover a security vulnerability, we appreciate your help in disclosing it to us responsibly.
+The MT_Global_Lipidomic_Explorer team takes security seriously. If you discover a security vulnerability, we appreciate your help in disclosing it to us responsibly.
 
 ### How to Report
 Please do **not** report security vulnerabilities through public GitHub issues.

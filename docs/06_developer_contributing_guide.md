@@ -1,6 +1,6 @@
 # Developer Contributing & Architecture Guide
 
-This document outlines the codebase conventions, design patterns, testing standards, and development guidelines for engineers contributing to **Global Lipidomics Explorer**.
+This document outlines the codebase conventions, design patterns, testing standards, and development guidelines for engineers contributing to **MT_Global_Lipidomic_Explorer**.
 
 ---
 
