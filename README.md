@@ -1,11 +1,11 @@
-# MT_Global_Lipidomic_Explorer
+# MT_Global_Lipidomic_Explorer (Lipidomic Explorer Suite v12.0)
 
-[![CI/CD Environment Setup](https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer/actions/workflows/bootstrap_test.yml)
+[![CI/CD Environment Setup](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml)
 [![R Compatibility](https://img.shields.io/badge/R-%3E%3D_4.4.0-blue.svg)](https://cloud.r-project.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-
-**MT_Global_Lipidomic_Explorer** is an interactive web-based software application designed for the processing, quality control, analysis, and visualization of lipidomics datasets. Developed for scientific and clinical research workflows, the application helps researchers extract biological insights from abundance matrices without requiring advanced bioinformatics training.
+> **Interactive R/Shiny Platform for Processing, Quality Control, Differential Analysis, Pathway Enrichment (LSEA), and Structural Visualization of Global Lipidomics Datasets.**  
+> *Developed by Maxence Tricaud (Farese & Walther Lab / Yale Research Hub / Université Laval).*
 
 ![MT_Global_Lipidomic_Explorer Interface](docs/images/main_dashboard.png)
 
@@ -25,8 +25,8 @@ To run the application locally on your machine, you must have R (version >= 4.4.
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer.git
-   cd MT_Global_Lipidomic_Explorer
+   git clone https://github.com/mt93git/Lipidomic-Explorer-Suite.git
+   cd Lipidomic-Explorer-Suite
    ```
 
 2. **Setup Dependencies**:

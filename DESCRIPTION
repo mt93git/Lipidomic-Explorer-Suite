@@ -3,14 +3,14 @@ Version: 12.0.0
 Title: MT_Global_Lipidomic_Explorer: High-Throughput Lipidomic Data Interface
 Date: 2026-09-10
 Authors@R: c(
-    person("Farese & Walther Lab", role = c("aut", "cph")),
-    person("Yale Research Hub", role = "aut"),
-    person("Maintainer", email = "mtricaud.cetri@gmail.com", role = "cre")
+    person("Maxence", "Tricaud", email = "mtricaud.cetri@gmail.com", role = c("aut", "cre")),
+    person("Farese & Walther Lab", role = c("cph")),
+    person("Yale Research Hub", role = "aut")
   )
 Description: Interactive web-based software application designed for the processing, quality control, analysis, and visualization of global lipidomic datasets.
 License: MIT + file LICENSE
-URL: https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer
-BugReports: https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer/issues
+URL: https://github.com/mt93git/Lipidomic-Explorer-Suite
+BugReports: https://github.com/mt93git/Lipidomic-Explorer-Suite/issues
 Encoding: UTF-8
 Depends:
     R (>= 4.4.0)

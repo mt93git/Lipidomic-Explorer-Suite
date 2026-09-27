@@ -1,14 +1,18 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
+  - family-names: "Tricaud"
+    given-names: "Maxence"
+    affiliation: "Yale University / Université Laval"
+    email: "mtricaud.cetri@gmail.com"
   - name: "Farese & Walther Lab"
     website: "https://www.mskcc.org/research/ski/labs/farese-walther"
   - name: "Yale Research Hub"
 title: "MT_Global_Lipidomic_Explorer"
 version: "12.0.0"
 date-released: 2026-09-10
-url: "https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer"
-repository-code: "https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer"
+url: "https://github.com/mt93git/Lipidomic-Explorer-Suite"
+repository-code: "https://github.com/mt93git/Lipidomic-Explorer-Suite"
 license: "MIT"
 abstract: "Interactive web-based software application designed for the processing, quality control, differential expression, and structural visualization of global lipidomic datasets."
 keywords:
