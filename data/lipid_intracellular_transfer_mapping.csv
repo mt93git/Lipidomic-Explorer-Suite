@@ -1,0 +1,29 @@
+Carrier_Name,Human_Genes,Mouse_Genes,Transport_Mechanism,Sources
+STARD1_Mitochondrial,STARD1,Stard1,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD3_Endosomal,STARD3,Stard3,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD4_Soluble_Shuttle,STARD4,Stard4,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD5_ER_Stress,STARD5,Stard5,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD6_Testis_Specific,STARD6,Stard6,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD11_CERT_Ceramide,STARD11,Stard11,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD2_PCTP_PC,STARD2,Stard2,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD7_Mitochondrial_PC,STARD7,Stard7,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD10_PC_PE,STARD10,Stard10,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD8_12_13_RhoGAP,"STARD8, STARD12, STARD13","Stard8, Stard12, Stard13",Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD9_Kinesin,STARD9,Stard9,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+STARD14_15_Thioesterase,"STARD14, STARD15","Stard14, Stard15",Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP1_Liver,FABP1,Fabp1,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP2_Intestinal,FABP2,Fabp2,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP3_Heart_Muscle,FABP3,Fabp3,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP4_Adipocyte_Macrophage,FABP4,Fabp4,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP5_Epidermal,FABP5,Fabp5,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP6_Ileal,FABP6,Fabp6,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP7_Brain,FABP7,Fabp7,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP8_Myelin,PMP2,Pmp2,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP9_Testis,FABP9,Fabp9,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+FABP12_Retinal,FABP12,Fabp12,Non-vesicular lipid transfer protein shuttling.,"PubMed, UniProt"
+PLEKHA8_FAPP2_Glucosylceramide,PLEKHA8,Plekha8,Glucosylceramide transfer from cis-Golgi to trans-Golgi.,PMID:24040580
+PITPNA_PITPNB_PC_PI,"PITPNA, PITPNB","Pitpna, Pitpnb",Phosphatidylcholine and Phosphatidylinositol transfer supporting signaling.,PMID:19426915
+OSBPL1A_ORP1L_Endosomal,OSBPL1A,Osbpl1a,Sterol and PI4P contact-site counter-transport at ER-lysosome.,PMID:21209095
+OSBPL2_ORP2_LipidDroplet,OSBPL2,Osbpl2,Sterol/PI4P transfer at ER-droplet contact sites.,PMID:16524884
+OSBPL5_ORP5_PlasmaMembrane,OSBPL5,Osbpl5,Phosphatidylserine and PI4P transfer at ER-plasma membrane contact sites.,PMID:20040580
+OSBPL8_ORP8_PlasmaMembrane,OSBPL8,Osbpl8,Phosphatidylserine and PI4P transfer at ER-plasma membrane contact sites.,PMID:20040580

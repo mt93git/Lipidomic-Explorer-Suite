@@ -1,0 +1,72 @@
+Package: GlobalLipidomicExplorer
+Version: 12.0.0
+Title: Global Lipidomics Data Explorer and Remodeling Interface: 12.0
+Date: 2026-09-10
+Authors@R: c(
+    person("Farese & Walther Lab", role = c("aut", "cph")),
+    person("Yale Research Hub", role = "aut"),
+    person("Maintainer", email = "mtricaud.cetri@gmail.com", role = "cre")
+  )
+Description: Interactive web-based software application designed for the processing, quality control, analysis, and visualization of global lipidomic datasets.
+License: MIT + file LICENSE
+URL: https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer
+BugReports: https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer/issues
+Encoding: UTF-8
+Depends:
+    R (>= 4.4.0)
+Imports:
+    shiny (>= 1.8.0),
+    bslib (>= 0.7.0),
+    shinyjqui,
+    readxl,
+    dplyr,
+    tidyr,
+    ggplot2,
+    ggrepel,
+    DT,
+    scales,
+    colourpicker,
+    RColorBrewer,
+    stringr,
+    purrr,
+    zip,
+    jsonlite,
+    nipals,
+    htmltools,
+    htmlwidgets,
+    webshot2,
+    plotly,
+    viridisLite,
+    pheatmap,
+    tibble,
+    ggpubr,
+    tidytext,
+    patchwork,
+    data.table,
+    shinyjs,
+    remotes,
+    sortable,
+    circlize,
+    ggraph,
+    igraph,
+    tidygraph,
+    ggh4x,
+    stringdist,
+    tmvtnorm,
+    norm,
+    limma,
+    variancePartition,
+    imputeLCMD,
+    BiocParallel,
+    visNetwork,
+    readr,
+    digest,
+    R6,
+    gtable,
+    lme4,
+    nlme
+Suggests:
+    BiocManager,
+    openxlsx,
+    writexl,
+    rstudioapi

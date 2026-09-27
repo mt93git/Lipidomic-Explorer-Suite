@@ -1,0 +1,35 @@
+# R Session & History
+.Rhistory
+.RData
+.Rproj.user/
+
+# App Logs & Installation Artifacts
+install_log.txt
+*.log
+*.log.*
+data/*.log
+*.tmp
+*.bak
+
+# User Uploaded Data & Sessions
+data/user_uploads/*
+!data/user_uploads/.gitkeep
+
+# Development Scratch Folders
+scratch/
+
+# OS-specific artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Additional R files & artifacts
+.RData*
+.Ruserdata
+/*.Rcheck/
+Rplots.pdf
+launch_debug.ps1

@@ -1,0 +1,10 @@
+Transporter_Name,Human_Genes,Mouse_Genes,Physiological_Role,Sources
+ABCA1,ABCA1,Abca1,Active cellular efflux/transport of sterols and phospholipids.,"Nagata Nature Reviews 2023, PubMed"
+ABCG1,ABCG1,Abcg1,Active cellular efflux/transport of sterols and phospholipids.,"Nagata Nature Reviews 2023, PubMed"
+ABCA7,ABCA7,Abca7,Active cellular efflux/transport of sterols and phospholipids.,"Nagata Nature Reviews 2023, PubMed"
+ABCB4,ABCB4,Abcb4,Active cellular efflux/transport of sterols and phospholipids.,"Nagata Nature Reviews 2023, PubMed"
+ABCG5,ABCG5,Abcg5,Active cellular efflux/transport of sterols and phospholipids.,"Nagata Nature Reviews 2023, PubMed"
+ABCG8,ABCG8,Abcg8,Active cellular efflux/transport of sterols and phospholipids.,"Nagata Nature Reviews 2023, PubMed"
+ABCD1,ABCD1,Abcd1,Peroxisomal import of saturated and monounsaturated VLCFA-CoA.,PMID:24811193
+ABCD2,ABCD2,Abcd2,Peroxisomal import of polyunsaturated VLCFA-CoA.,PMID:24811193
+ABCD3,ABCD3,Abcd3,Peroxisomal import of branched-chain fatty acids and dicarboxylic acids.,PMID:11153573

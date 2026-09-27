@@ -1,0 +1,6 @@
+Enzyme_System,Human_Genes,Mouse_Genes,Bioactive_Lipid_Pathway,Sources
+CYP_Epoxygenases_Cardiovascular,"CYP2C8, CYP2C9, CYP2C18, CYP2C19, CYP2J2","Cyp2c37, Cyp2c29, Cyp2c38, Cyp2c39, Cyp2j6","Oxygenation of PUFAs (AA, EPA, DHA) to vasoactive/resolving mediators.","PubMed, KEGG"
+CYP_omega_Hydroxylases_Inflammatory,"CYP4A11, CYP4F2, CYP4F3, CYP4F8","Cyp4a12a, Cyp4f13, Cyp4f15, Cyp4f14","Oxygenation of PUFAs (AA, EPA, DHA) to vasoactive/resolving mediators.","PubMed, KEGG"
+CYP_LTB4_Resolution,"CYP4F2, CYP4F3","Cyp4f13, Cyp4f15","Oxygenation of PUFAs (AA, EPA, DHA) to vasoactive/resolving mediators.","PubMed, KEGG"
+LOX_Leukotriene_Synthesis,"ALOX5, ALOX5AP","Alox5, Alox5ap","Oxygenation of PUFAs (AA, EPA, DHA) to vasoactive/resolving mediators.","PubMed, KEGG"
+LOX_Lipoxin_Symmetry_Remodeling,"ALOX12, ALOX15, ALOX15B","Alox12, Alox15, Alox8","Oxygenation of PUFAs (AA, EPA, DHA) to vasoactive/resolving mediators.","PubMed, KEGG"

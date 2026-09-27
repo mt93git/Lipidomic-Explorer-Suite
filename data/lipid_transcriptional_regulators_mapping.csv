@@ -1,0 +1,4 @@
+Regulator_Axis,Human_Genes,Mouse_Genes,Transcriptional_Pathway,Sources
+SREBP_Axis,"SREBF1, SREBF2, SCAP, INSIG1, INSIG2, MBTPS1, MBTPS2","Srebf1, Srebf2, Scap, Insig1, Insig2, Mbtps1, Mbtps2",Lipid-sensing feed-forward and feed-back transcription modules.,"KEGG, Reactome"
+LXR_Axis,"NR1H2, NR1H3, RXRA, RXRB, RXRG","Nr1h2, Nr1h3, Rxra, Rxrb, Rxrg",Lipid-sensing feed-forward and feed-back transcription modules.,"KEGG, Reactome"
+PPAR_Axis,"PPARA, PPARD, PPARG","Ppara, Ppard, Pparg",Lipid-sensing feed-forward and feed-back transcription modules.,"KEGG, Reactome"

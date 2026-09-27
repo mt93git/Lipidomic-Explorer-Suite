@@ -1,0 +1,5 @@
+Adhesion_System,Human_Genes,Mouse_Genes,Membrane_Synapse_Scaffolding,Sources
+Integrins_Leukocyte_Adhesion,"ITGAM, ITGAL, ITGB2, ITGA4, ITGB1","Itgam, Itgal, Itgb2, Itga4, Itgb1","Leukocyte recruitment, tethering, rolling and synapse stability.","PubMed, UniProt"
+Selectins_Vascular_Tethering,"SELL, SELP, SELE","Sell, Selp, Sele","Leukocyte recruitment, tethering, rolling and synapse stability.","PubMed, UniProt"
+Selectin_Glycoprotein_Ligands,"SELPLG, SPN, CD44","Selplg, Spn, Cd44","Leukocyte recruitment, tethering, rolling and synapse stability.","PubMed, UniProt"
+Raft_Activation_Scaffolding,"CAV1, PDIA4, TLN1","Cav1, Pdia4, Tln1","Leukocyte recruitment, tethering, rolling and synapse stability.","PubMed, UniProt"

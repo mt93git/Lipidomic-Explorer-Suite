@@ -1,0 +1,305 @@
+Gene_Symbol,Ontological_Role
+ELOVL1,"catalyzes the elongation of saturated and monounsaturated fatty acids to C24 and C26, serving as a critical regulator of sphingolipid and ceramide biosynthesis"
+elovl1,"catalyzes the elongation of saturated and monounsaturated fatty acids to C24 and C26, serving as a critical regulator of sphingolipid and ceramide biosynthesis"
+ELOVL2,"catalyzes the elongation of C20 and C22 polyunsaturated fatty acids (PUFAs) up to C24, serving as a key regulator of docosahexaenoic acid (DHA) biosynthesis"
+elovl2,"catalyzes the elongation of C20 and C22 polyunsaturated fatty acids (PUFAs) up to C24, serving as a key regulator of docosahexaenoic acid (DHA) biosynthesis"
+ELOVL3,"catalyzes the elongation of saturated and monounsaturated fatty acids up to C24, showing tissue-specific activity in brown adipose tissue thermogenesis"
+elovl3,"catalyzes the elongation of saturated and monounsaturated fatty acids up to C24, showing tissue-specific activity in brown adipose tissue thermogenesis"
+ELOVL4,"mediates the synthesis of ultra-long-chain fatty acids (C26-C38) that serve structural roles in retina, testis, and epidermis"
+elovl4,"mediates the synthesis of ultra-long-chain fatty acids (C26-C38) that serve structural roles in retina, testis, and epidermis"
+ELOVL5,"catalyzes the elongation of C18 and C20 polyunsaturated fatty acids (PUFAs), driving downstream arachidonic acid and EPA pathways"
+elovl5,"catalyzes the elongation of C18 and C20 polyunsaturated fatty acids (PUFAs), driving downstream arachidonic acid and EPA pathways"
+ELOVL6,"catalyzes the rate-limiting elongation of C16 (palmitate) to C18 (stearate) fatty acids, regulating global lipid saturation states"
+elovl6,"catalyzes the rate-limiting elongation of C16 (palmitate) to C18 (stearate) fatty acids, regulating global lipid saturation states"
+ELOVL7,"catalyzes the elongation of C16 to C20 saturated fatty acyl-CoAs, with a substrate preference for stearoyl-CoA"
+elovl7,"catalyzes the elongation of C16 to C20 saturated fatty acyl-CoAs, with a substrate preference for stearoyl-CoA"
+SCD,catalyzes the delta-9 desaturation of palmitate (16:0) and stearate (18:0) to generate palmitoleate (16:1) and oleate (18:1)
+scd,catalyzes the delta-9 desaturation of palmitate (16:0) and stearate (18:0) to generate palmitoleate (16:1) and oleate (18:1)
+SCD1,catalyzes the rate-limiting delta-9 desaturation of saturated fatty acids to monounsaturated fatty acids (MUFAs)
+scd1,catalyzes the rate-limiting delta-9 desaturation of saturated fatty acids to monounsaturated fatty acids (MUFAs)
+SCD5,"mediates tissue-specific delta-9 desaturation of saturated fatty acids, active primarily in the brain and pancreas"
+scd5,"mediates tissue-specific delta-9 desaturation of saturated fatty acids, active primarily in the brain and pancreas"
+FADS1,catalyzes the delta-5 desaturation of DGLA and ETA to yield arachidonic acid (AA) and eicosapentaenoic acid (EPA)
+fads1,catalyzes the delta-5 desaturation of DGLA and ETA to yield arachidonic acid (AA) and eicosapentaenoic acid (EPA)
+FADS2,"catalyzes the delta-6 desaturation of linoleic and alpha-linolenic acids, initiating the synthesis of highly unsaturated fatty acids"
+fads2,"catalyzes the delta-6 desaturation of linoleic and alpha-linolenic acids, initiating the synthesis of highly unsaturated fatty acids"
+FADS3,"functions as a fatty acid desaturase, showing potential activity towards sphingolipid precursors or specialized fatty acids"
+fads3,"functions as a fatty acid desaturase, showing potential activity towards sphingolipid precursors or specialized fatty acids"
+CPT1A,"catalyzes the rate-limiting transfer of long-chain fatty acyl groups from coenzyme A to carnitine, permitting mitochondrial entry"
+cpt1a,"catalyzes the rate-limiting transfer of long-chain fatty acyl groups from coenzyme A to carnitine, permitting mitochondrial entry"
+CPT1B,catalyzes the muscle-specific rate-limiting transfer of fatty acyl groups to carnitine for mitochondrial beta-oxidation
+cpt1b,catalyzes the muscle-specific rate-limiting transfer of fatty acyl groups to carnitine for mitochondrial beta-oxidation
+CPT1C,"catalyzes fatty acyl-CoA transfer to carnitine in brain tissue, playing a regulatory role in energy homeostasis"
+cpt1c,"catalyzes fatty acyl-CoA transfer to carnitine in brain tissue, playing a regulatory role in energy homeostasis"
+CPT2,re-converts long-chain acylcarnitines back into fatty acyl-CoAs in the mitochondrial matrix for beta-oxidation
+cpt2,re-converts long-chain acylcarnitines back into fatty acyl-CoAs in the mitochondrial matrix for beta-oxidation
+CRAT,"catalyzes the reversible transfer of short-chain acyl groups between CoA and carnitine, regulating organelle acyl-CoA pools"
+crat,"catalyzes the reversible transfer of short-chain acyl groups between CoA and carnitine, regulating organelle acyl-CoA pools"
+CROT,"catalyzes the reversible transfer of medium-chain acyl groups between CoA and carnitine, facilitating peroxisomal lipid export"
+crot,"catalyzes the reversible transfer of medium-chain acyl groups between CoA and carnitine, facilitating peroxisomal lipid export"
+SLC25A20,"functions as the carnitine-acylcarnitine translocase, transporting fatty acylcarnitines across the inner mitochondrial membrane"
+slc25a20,"functions as the carnitine-acylcarnitine translocase, transporting fatty acylcarnitines across the inner mitochondrial membrane"
+HADHA,"functions as the alpha subunit of the mitochondrial trifunctional protein, catalyzing long-chain beta-oxidation steps"
+hadha,"functions as the alpha subunit of the mitochondrial trifunctional protein, catalyzing long-chain beta-oxidation steps"
+HADHB,"functions as the beta subunit of the mitochondrial trifunctional protein, mediating long-chain thiolase activity"
+hadhb,"functions as the beta subunit of the mitochondrial trifunctional protein, mediating long-chain thiolase activity"
+ACADVL,catalyzes the initial mitochondrial dehydrogenation step of very-long-chain fatty acyl-CoAs (C14-C20)
+acadvl,catalyzes the initial mitochondrial dehydrogenation step of very-long-chain fatty acyl-CoAs (C14-C20)
+ACADL,catalyzes the mitochondrial dehydrogenation of long-chain fatty acyl-CoAs
+acadl,catalyzes the mitochondrial dehydrogenation of long-chain fatty acyl-CoAs
+ACADM,catalyzes the mitochondrial dehydrogenation of medium-chain fatty acyl-CoAs (C6-C12)
+acadm,catalyzes the mitochondrial dehydrogenation of medium-chain fatty acyl-CoAs (C6-C12)
+ACADS,catalyzes the mitochondrial dehydrogenation of short-chain fatty acyl-CoAs (C4-C6)
+acads,catalyzes the mitochondrial dehydrogenation of short-chain fatty acyl-CoAs (C4-C6)
+ACADSB,catalyzes the dehydrogenation of branched-chain acyl-CoA derivatives in amino acid and branched-lipid catabolism
+acadsb,catalyzes the dehydrogenation of branched-chain acyl-CoA derivatives in amino acid and branched-lipid catabolism
+ACOX1,catalyzes the rate-limiting first step of peroxisomal beta-oxidation of straight-chain fatty acids
+acox1,catalyzes the rate-limiting first step of peroxisomal beta-oxidation of straight-chain fatty acids
+ACOX2,catalyzes the peroxisomal oxidation of branched-chain fatty acids and bile acid intermediates
+acox2,catalyzes the peroxisomal oxidation of branched-chain fatty acids and bile acid intermediates
+ACOX3,mediates the peroxisomal oxidation of branched-chain fatty acyl-CoAs
+acox3,mediates the peroxisomal oxidation of branched-chain fatty acyl-CoAs
+HSD17B4,"functions as the D-bifunctional protein, catalyzing hydration and dehydrogenation steps in peroxisomal beta-oxidation"
+hsd17b4,"functions as the D-bifunctional protein, catalyzing hydration and dehydrogenation steps in peroxisomal beta-oxidation"
+GPAM,catalyzes the initial step of glycerolipid synthesis by esterifying glycerol-3-phosphate with acyl-CoA to form lysophosphatidic acid
+gpam,catalyzes the initial step of glycerolipid synthesis by esterifying glycerol-3-phosphate with acyl-CoA to form lysophosphatidic acid
+GPAT2,"mediates mitochondrial glycerol-3-phosphate acyltransferase activity, linked to lipid synthesis and spermatogenesis"
+gpat2,"mediates mitochondrial glycerol-3-phosphate acyltransferase activity, linked to lipid synthesis and spermatogenesis"
+GPAT3,"catalyzes the esterification of glycerol-3-phosphate, localized to the endoplasmic reticulum and active in adipocytes"
+gpat3,"catalyzes the esterification of glycerol-3-phosphate, localized to the endoplasmic reticulum and active in adipocytes"
+GPAT4,"catalyzes endoplasmic reticulum glycerol-3-phosphate acyltransferase activity, regulating triacylglycerol storage"
+gpat4,"catalyzes endoplasmic reticulum glycerol-3-phosphate acyltransferase activity, regulating triacylglycerol storage"
+AGPAT1,catalyzes the conversion of lysophosphatidic acid (LPA) to phosphatidic acid (PA) by esterifying the sn-2 position
+agpat1,catalyzes the conversion of lysophosphatidic acid (LPA) to phosphatidic acid (PA) by esterifying the sn-2 position
+AGPAT2,"catalyzes sn-2 acyl transfer to form phosphatidic acid, critical for adipose tissue development and lipid storage"
+agpat2,"catalyzes sn-2 acyl transfer to form phosphatidic acid, critical for adipose tissue development and lipid storage"
+AGPAT3,"catalyzes sn-2 acylation of lysophosphatidic acid, showing specificity for polyunsaturated fatty acyl-CoAs"
+agpat3,"catalyzes sn-2 acylation of lysophosphatidic acid, showing specificity for polyunsaturated fatty acyl-CoAs"
+AGPAT4,"catalyzes the synthesis of phosphatidic acid, localized to the ER and highly active in brain tissue"
+agpat4,"catalyzes the synthesis of phosphatidic acid, localized to the ER and highly active in brain tissue"
+AGPAT5,mediates 1-acylglycerol-3-phosphate acyltransferase activity in the endoplasmic reticulum
+agpat5,mediates 1-acylglycerol-3-phosphate acyltransferase activity in the endoplasmic reticulum
+LPIN1,"functions as a phosphatidic acid phosphatase, converting phosphatidic acid to diacylglycerol (DAG) to drive glycerolipid synthesis"
+lpin1,"functions as a phosphatidic acid phosphatase, converting phosphatidic acid to diacylglycerol (DAG) to drive glycerolipid synthesis"
+LPIN2,"mediates phosphatidic acid dephosphorylation, regulating cellular diacylglycerol and triacylglycerol balance"
+lpin2,"mediates phosphatidic acid dephosphorylation, regulating cellular diacylglycerol and triacylglycerol balance"
+LPIN3,"catalyzes phosphatidic acid dephosphorylation, working cooperatively with Lipin-1 and Lipin-2"
+lpin3,"catalyzes phosphatidic acid dephosphorylation, working cooperatively with Lipin-1 and Lipin-2"
+DGAT1,catalyzes the final rate-limiting step of triacylglycerol synthesis by covalently linking acyl-CoA to diacylglycerol
+dgat1,catalyzes the final rate-limiting step of triacylglycerol synthesis by covalently linking acyl-CoA to diacylglycerol
+DGAT2,"catalyzes the covalent linkage of acyl-CoA to diacylglycerol to form triacylglycerol, working in distinct ER microdomains"
+dgat2,"catalyzes the covalent linkage of acyl-CoA to diacylglycerol to form triacylglycerol, working in distinct ER microdomains"
+PNPLA2,catalyzes the initial rate-limiting step of triacylglycerol hydrolysis to diacylglycerol in lipid droplets
+pnpla2,catalyzes the initial rate-limiting step of triacylglycerol hydrolysis to diacylglycerol in lipid droplets
+LIPE,"functions as hormone-sensitive lipase, active in the hydrolysis of diacylglycerols and cholesteryl esters in adipose tissue"
+lipe,"functions as hormone-sensitive lipase, active in the hydrolysis of diacylglycerols and cholesteryl esters in adipose tissue"
+MGLL,catalyzes the hydrolysis of monoacylglycerols to release free fatty acids and glycerol
+mgll,catalyzes the hydrolysis of monoacylglycerols to release free fatty acids and glycerol
+DGKA,"phosphorylates diacylglycerol to phosphatidic acid, shutting down DAG-mediated signaling and driving phospholipid synthesis"
+dgka,"phosphorylates diacylglycerol to phosphatidic acid, shutting down DAG-mediated signaling and driving phospholipid synthesis"
+DGKB,"phosphorylates diacylglycerol to phosphatidic acid, highly expressed in brain tissue to regulate signaling"
+dgkb,"phosphorylates diacylglycerol to phosphatidic acid, highly expressed in brain tissue to regulate signaling"
+DGKD,"phosphorylates diacylglycerol to phosphatidic acid, acting as a regulator of PKC signaling pathways"
+dgkd,"phosphorylates diacylglycerol to phosphatidic acid, acting as a regulator of PKC signaling pathways"
+DGKE,"selectively phosphorylates arachidonic-acid-containing diacylglycerols, initiating the phosphatidylinositol recycling pathway"
+dgke,"selectively phosphorylates arachidonic-acid-containing diacylglycerols, initiating the phosphatidylinositol recycling pathway"
+DGKH,"phosphorylates diacylglycerol to phosphatidic acid, regulating Ras-MAPK pathways and phospholipid synthesis"
+dgkh,"phosphorylates diacylglycerol to phosphatidic acid, regulating Ras-MAPK pathways and phospholipid synthesis"
+DGKI,"phosphorylates diacylglycerol to phosphatidic acid, modulating synaptic DAG and signaling dynamics"
+dgki,"phosphorylates diacylglycerol to phosphatidic acid, modulating synaptic DAG and signaling dynamics"
+DGKK,"phosphorylates diacylglycerol, playing a specialized regulatory role in reproductive and signaling systems"
+dgkk,"phosphorylates diacylglycerol, playing a specialized regulatory role in reproductive and signaling systems"
+DGKQ,"phosphorylates diacylglycerol to phosphatidic acid, acting downstream of cell surface receptors"
+dgkq,"phosphorylates diacylglycerol to phosphatidic acid, acting downstream of cell surface receptors"
+PLCG1,"cleaves phosphatidylinositol 4,5-bisphosphate (PIP2) to generate diacylglycerol (DAG) and IP3 second messengers"
+plcg1,"cleaves phosphatidylinositol 4,5-bisphosphate (PIP2) to generate diacylglycerol (DAG) and IP3 second messengers"
+PLCG2,"cleaves PIP2 to generate diacylglycerol and IP3, crucial for immune receptor signaling"
+plcg2,"cleaves PIP2 to generate diacylglycerol and IP3, crucial for immune receptor signaling"
+PLCD1,catalyzes the hydrolysis of PIP2 to generate diacylglycerol and IP3 in response to intracellular calcium elevations
+plcd1,catalyzes the hydrolysis of PIP2 to generate diacylglycerol and IP3 in response to intracellular calcium elevations
+PLCD3,"catalyzes PIP2 hydrolysis to generate diacylglycerol, regulating cell adhesion and migration"
+plcd3,"catalyzes PIP2 hydrolysis to generate diacylglycerol, regulating cell adhesion and migration"
+PLCD4,"catalyzes PIP2 hydrolysis, showing upregulation in proliferating cells and during fertilization"
+plcd4,"catalyzes PIP2 hydrolysis, showing upregulation in proliferating cells and during fertilization"
+PLCE1,"mediates PIP2 hydrolysis to generate diacylglycerol, linked to phospholipase C and small GTPase signaling"
+plce1,"mediates PIP2 hydrolysis to generate diacylglycerol, linked to phospholipase C and small GTPase signaling"
+PLCB1,cleaves PIP2 to generate diacylglycerol and IP3 downstream of G-protein coupled receptors
+plcb1,cleaves PIP2 to generate diacylglycerol and IP3 downstream of G-protein coupled receptors
+PLCB2,cleaves PIP2 downstream of chemoattractant and chemokine G-protein receptors
+plcb2,cleaves PIP2 downstream of chemoattractant and chemokine G-protein receptors
+PLCB3,"cleaves PIP2 to generate diacylglycerol, regulating vascular and sensory G-protein signaling"
+plcb3,"cleaves PIP2 to generate diacylglycerol, regulating vascular and sensory G-protein signaling"
+PLCB4,"cleaves PIP2 in neuronal tissues, critical for cerebellar function and sensory processing"
+plcb4,"cleaves PIP2 in neuronal tissues, critical for cerebellar function and sensory processing"
+CHPT1,catalyzes the final step in de novo phosphatidylcholine synthesis by transferring phosphocholine from CDP-choline to DAG
+chpt1,catalyzes the final step in de novo phosphatidylcholine synthesis by transferring phosphocholine from CDP-choline to DAG
+CEPT1,catalyzes the synthesis of both phosphatidylcholine (PC) and phosphatidylethanolamine (PE) from CDP-choline/CDP-ethanolamine
+cept1,catalyzes the synthesis of both phosphatidylcholine (PC) and phosphatidylethanolamine (PE) from CDP-choline/CDP-ethanolamine
+PCYT1A,"catalyzes the rate-limiting activation of phosphocholine to CDP-choline, regulating de novo PC synthesis"
+pcyt1a,"catalyzes the rate-limiting activation of phosphocholine to CDP-choline, regulating de novo PC synthesis"
+PCYT1B,"catalyzes phosphocholine activation to CDP-choline, providing tissue-specific regulation of PC biosynthesis"
+pcyt1b,"catalyzes phosphocholine activation to CDP-choline, providing tissue-specific regulation of PC biosynthesis"
+PEMT,catalyzes the three-step methylation of phosphatidylethanolamine to phosphatidylcholine in the liver
+pemt,catalyzes the three-step methylation of phosphatidylethanolamine to phosphatidylcholine in the liver
+PCYT2,"catalyzes the rate-limiting activation of phosphoethanolamine to CDP-ethanolamine, driving de novo PE synthesis"
+pcyt2,"catalyzes the rate-limiting activation of phosphoethanolamine to CDP-ethanolamine, driving de novo PE synthesis"
+PISD,catalyzes the decarboxylation of phosphatidylserine to phosphatidylethanolamine in the inner mitochondrial membrane
+pisd,catalyzes the decarboxylation of phosphatidylserine to phosphatidylethanolamine in the inner mitochondrial membrane
+PTDSS1,catalyzes the exchange of choline for serine in phosphatidylcholine to form phosphatidylserine
+ptdss1,catalyzes the exchange of choline for serine in phosphatidylcholine to form phosphatidylserine
+PTDSS2,catalyzes the exchange of ethanolamine for serine in phosphatidylethanolamine to form phosphatidylserine
+ptdss2,catalyzes the exchange of ethanolamine for serine in phosphatidylethanolamine to form phosphatidylserine
+CDIPT,catalyzes the synthesis of phosphatidylinositol from CDP-diacylglycerol and myo-inositol
+cdipt,catalyzes the synthesis of phosphatidylinositol from CDP-diacylglycerol and myo-inositol
+CDS1,"catalyzes the conversion of phosphatidic acid to CDP-diacylglycerol, a precursor for PI, PG, and cardiolipin"
+cds1,"catalyzes the conversion of phosphatidic acid to CDP-diacylglycerol, a precursor for PI, PG, and cardiolipin"
+CDS2,"catalyzes CDP-diacylglycerol synthesis, showing high selectivity for arachidonate-containing phosphatidic acid"
+cds2,"catalyzes CDP-diacylglycerol synthesis, showing high selectivity for arachidonate-containing phosphatidic acid"
+CRLS1,catalyzes the condensation of CDP-diacylglycerol and phosphatidylglycerol to form cardiolipin in mitochondria
+crls1,catalyzes the condensation of CDP-diacylglycerol and phosphatidylglycerol to form cardiolipin in mitochondria
+TAZ,"functions as a phospholipid-lysophospholipid transacylase, remodeling cardiolipin to its mature tetralinoleoyl form"
+taz,"functions as a phospholipid-lysophospholipid transacylase, remodeling cardiolipin to its mature tetralinoleoyl form"
+PGS1,catalyzes the first step of cardiolipin synthesis by transferring a phosphatidyl group to glycerol-3-phosphate
+pgs1,catalyzes the first step of cardiolipin synthesis by transferring a phosphatidyl group to glycerol-3-phosphate
+PTPMT1,"dephosphorylates phosphatidylglycerophosphate to phosphatidylglycerol, a critical step in cardiolipin synthesis"
+ptpmt1,"dephosphorylates phosphatidylglycerophosphate to phosphatidylglycerol, a critical step in cardiolipin synthesis"
+TAMM41,catalyzes the synthesis of CDP-diacylglycerol from phosphatidic acid in the inner mitochondrial membrane
+tamm41,catalyzes the synthesis of CDP-diacylglycerol from phosphatidic acid in the inner mitochondrial membrane
+PLD1,"hydrolyzes phosphatidylcholine to yield phosphatidic acid (PA) and free choline, regulating vesicle trafficking"
+pld1,"hydrolyzes phosphatidylcholine to yield phosphatidic acid (PA) and free choline, regulating vesicle trafficking"
+PLD2,"hydrolyzes phosphatidylcholine to yield phosphatidic acid at the plasma membrane, modulating endocytosis"
+pld2,"hydrolyzes phosphatidylcholine to yield phosphatidic acid at the plasma membrane, modulating endocytosis"
+PLD6,"hydrolyzes cardiolipin to phosphatidic acid at the mitochondrial outer membrane, regulating mitochondrial fusion"
+pld6,"hydrolyzes cardiolipin to phosphatidic acid at the mitochondrial outer membrane, regulating mitochondrial fusion"
+LPCAT1,"re-acylates lysophosphatidylcholine (LPC) to phosphatidylcholine (PC), with preference for saturated acyl-CoAs in lung surfactant"
+lpcat1,"re-acylates lysophosphatidylcholine (LPC) to phosphatidylcholine (PC), with preference for saturated acyl-CoAs in lung surfactant"
+LPCAT2,"re-acylates LPC to PC, active in inflammatory cells and showing regulation by calcium/phosphorylation"
+lpcat2,"re-acylates LPC to PC, active in inflammatory cells and showing regulation by calcium/phosphorylation"
+LPCAT3,"re-acylates lysophosphatidylcholine with polyunsaturated fatty acids (arachidonic/linoleic acid) to form PC, PE, and PI"
+lpcat3,"re-acylates lysophosphatidylcholine with polyunsaturated fatty acids (arachidonic/linoleic acid) to form PC, PE, and PI"
+LPCAT4,"re-acylates lysophosphatidylcholine, with substrate preference for oleoyl-CoA"
+lpcat4,"re-acylates lysophosphatidylcholine, with substrate preference for oleoyl-CoA"
+LCLAT1,"re-acylates lysocardiolipin to form cardiolipin, showing activity in cardiolipin remodeling and cellular aging"
+lclat1,"re-acylates lysocardiolipin to form cardiolipin, showing activity in cardiolipin remodeling and cellular aging"
+ALCAT1,"catalyzes the acylation of monolysocardiolipin and dilysocardiolipin, regulating mitochondrial membrane composition"
+alcat1,"catalyzes the acylation of monolysocardiolipin and dilysocardiolipin, regulating mitochondrial membrane composition"
+LPGAT1,"re-acylates lysophosphatidylglycerol to phosphatidylglycerol, crucial for cellular PG composition"
+lpgat1,"re-acylates lysophosphatidylglycerol to phosphatidylglycerol, crucial for cellular PG composition"
+MBOAT1,re-acylates lysophosphatidylethanolamine (LPE) with monounsaturated fatty acids
+mboat1,re-acylates lysophosphatidylethanolamine (LPE) with monounsaturated fatty acids
+MBOAT2,re-acylates LPE and LPC with monounsaturated and saturated fatty acids
+mboat2,re-acylates LPE and LPC with monounsaturated and saturated fatty acids
+MBOAT7,"specifically re-acylates lysophosphatidylinositol (LPI) with arachidonic acid, regulating arachidonate levels in PI"
+mboat7,"specifically re-acylates lysophosphatidylinositol (LPI) with arachidonic acid, regulating arachidonate levels in PI"
+PLA2G4A,"specifically hydrolyzes arachidonic acid from the sn-2 position of phospholipids, initiating eicosanoid cascades"
+pla2g4a,"specifically hydrolyzes arachidonic acid from the sn-2 position of phospholipids, initiating eicosanoid cascades"
+PLA2G4C,catalyzes the calcium-independent hydrolysis of acyl groups from the sn-2 position of phospholipids
+pla2g4c,catalyzes the calcium-independent hydrolysis of acyl groups from the sn-2 position of phospholipids
+PLA2G6,"catalyzes calcium-independent phospholipid hydrolysis at the sn-2 position, active in membrane remodeling and apoptosis"
+pla2g6,"catalyzes calcium-independent phospholipid hydrolysis at the sn-2 position, active in membrane remodeling and apoptosis"
+LYPLA1,"functions as a lysophospholipase, hydrolyzing fatty acids from lysophospholipids and acting as an acyl-protein thioesterase"
+lypla1,"functions as a lysophospholipase, hydrolyzing fatty acids from lysophospholipids and acting as an acyl-protein thioesterase"
+LYPLA2,"functions as a lysophospholipase, regulating cellular levels of lysophospholipids and protein de-palmitoylation"
+lypla2,"functions as a lysophospholipase, regulating cellular levels of lysophospholipids and protein de-palmitoylation"
+SPTLC1,catalyzes the first rate-limiting step of de novo sphingolipid synthesis by condensing L-serine and palmitoyl-CoA
+sptlc1,catalyzes the first rate-limiting step of de novo sphingolipid synthesis by condensing L-serine and palmitoyl-CoA
+SPTLC2,"catalyzes de novo sphingolipid synthesis, serving as the catalytic subunit of serine palmitoyltransferase"
+sptlc2,"catalyzes de novo sphingolipid synthesis, serving as the catalytic subunit of serine palmitoyltransferase"
+SPTLC3,"catalyzes de novo sphingolipid synthesis, showing preference for shorter fatty acyl-CoA substrates (C14)"
+sptlc3,"catalyzes de novo sphingolipid synthesis, showing preference for shorter fatty acyl-CoA substrates (C14)"
+KDSR,catalyzes the reduction of 3-ketodihydrosphingosine to dihydrosphingosine in de novo sphingolipid synthesis
+kdsr,catalyzes the reduction of 3-ketodihydrosphingosine to dihydrosphingosine in de novo sphingolipid synthesis
+DEGS1,"catalyzes the rate-limiting conversion of dihydroceramide to ceramide by introducing a 4,5-trans-double bond"
+degs1,"catalyzes the rate-limiting conversion of dihydroceramide to ceramide by introducing a 4,5-trans-double bond"
+DEGS2,"catalyzes the conversion of dihydroceramide to ceramide, and exhibits bifunctional sphingolipid delta-4 desaturase activity"
+degs2,"catalyzes the conversion of dihydroceramide to ceramide, and exhibits bifunctional sphingolipid delta-4 desaturase activity"
+CERS1,"catalyzes the synthesis of ceramides containing C18 fatty acids, highly expressed in brain and skeletal muscle"
+cers1,"catalyzes the synthesis of ceramides containing C18 fatty acids, highly expressed in brain and skeletal muscle"
+CERS2,catalyzes the synthesis of ceramides containing very-long-chain fatty acids (C22-C24)
+cers2,catalyzes the synthesis of ceramides containing very-long-chain fatty acids (C22-C24)
+CERS3,"catalyzes the synthesis of ceramides containing ultra-long-chain fatty acids (C26-C32), critical for skin barrier function"
+cers3,"catalyzes the synthesis of ceramides containing ultra-long-chain fatty acids (C26-C32), critical for skin barrier function"
+CERS4,catalyzes the synthesis of ceramides containing C18 and C20 fatty acids
+cers4,catalyzes the synthesis of ceramides containing C18 and C20 fatty acids
+CERS5,catalyzes the de novo synthesis of ceramides containing C16 fatty acids
+cers5,catalyzes the de novo synthesis of ceramides containing C16 fatty acids
+CERS6,catalyzes the de novo synthesis of ceramides containing C14 and C16 fatty acids
+cers6,catalyzes the de novo synthesis of ceramides containing C14 and C16 fatty acids
+SGMS1,"transfers phosphocholine from phosphatidylcholine to ceramide, generating sphingomyelin and diacylglycerol in the Golgi"
+sgms1,"transfers phosphocholine from phosphatidylcholine to ceramide, generating sphingomyelin and diacylglycerol in the Golgi"
+SGMS2,"transfers phosphocholine to ceramide at the plasma membrane, regulating membrane sphingomyelin levels"
+sgms2,"transfers phosphocholine to ceramide at the plasma membrane, regulating membrane sphingomyelin levels"
+UGCG,"catalyzes the transfer of glucose to ceramide, initiating the biosynthesis of glucosylceramide and complex gangliosides"
+ugcg,"catalyzes the transfer of glucose to ceramide, initiating the biosynthesis of glucosylceramide and complex gangliosides"
+B4GALT5,"catalyzes the synthesis of lactosylceramide, a key intermediate in the biosynthesis of complex glycosphingolipids"
+b4galt5,"catalyzes the synthesis of lactosylceramide, a key intermediate in the biosynthesis of complex glycosphingolipids"
+B4GALT6,catalyzes the synthesis of lactosylceramide from glucosylceramide in the brain
+b4galt6,catalyzes the synthesis of lactosylceramide from glucosylceramide in the brain
+SMPD1,"functions as acid sphingomyelinase, hydrolyzing sphingomyelin to ceramide and phosphocholine in lysosomal compartments"
+smpd1,"functions as acid sphingomyelinase, hydrolyzing sphingomyelin to ceramide and phosphocholine in lysosomal compartments"
+SMPD2,"functions as neutral sphingomyelinase, hydrolyzing sphingomyelin at the plasma membrane to generate ceramide signaling molecules"
+smpd2,"functions as neutral sphingomyelinase, hydrolyzing sphingomyelin at the plasma membrane to generate ceramide signaling molecules"
+SMPD3,"functions as neutral sphingomyelinase 2, regulating ceramide generation in response to cellular stress and during development"
+smpd3,"functions as neutral sphingomyelinase 2, regulating ceramide generation in response to cellular stress and during development"
+SMPD4,"functions as neutral sphingomyelinase 3, active in the endoplasmic reticulum and Golgi membranes"
+smpd4,"functions as neutral sphingomyelinase 3, active in the endoplasmic reticulum and Golgi membranes"
+ASAH1,"functions as acid ceramidase, hydrolyzing ceramides to sphingosine and free fatty acids within lysosomes"
+asah1,"functions as acid ceramidase, hydrolyzing ceramides to sphingosine and free fatty acids within lysosomes"
+ASAH2,"functions as neutral ceramidase at the plasma membrane, regulating extracellular sphingosine levels"
+asah2,"functions as neutral ceramidase at the plasma membrane, regulating extracellular sphingosine levels"
+ACER1,"functions as alkaline ceramidase 1, regulating skin ceramide levels and differentiation"
+acer1,"functions as alkaline ceramidase 1, regulating skin ceramide levels and differentiation"
+ACER2,"functions as alkaline ceramidase 2, active in the Golgi and regulated by p53 in response to DNA damage"
+acer2,"functions as alkaline ceramidase 2, active in the Golgi and regulated by p53 in response to DNA damage"
+ACER3,"functions as alkaline ceramidase 3, showing substrate specificity for unsaturated long-chain ceramides"
+acer3,"functions as alkaline ceramidase 3, showing substrate specificity for unsaturated long-chain ceramides"
+GBA,"functions as lysosomal beta-glucocerebrosidase, hydrolyzing glucosylceramide to ceramide and glucose"
+gba,"functions as lysosomal beta-glucocerebrosidase, hydrolyzing glucosylceramide to ceramide and glucose"
+GBA2,"functions as non-lysosomal glucosylceramidase, active at the endoplasmic reticulum and nuclear membrane"
+gba2,"functions as non-lysosomal glucosylceramidase, active at the endoplasmic reticulum and nuclear membrane"
+CERK,"phosphorylates ceramide to form ceramide-1-phosphate, a key regulator of cell survival and inflammatory signaling"
+cerk,"phosphorylates ceramide to form ceramide-1-phosphate, a key regulator of cell survival and inflammatory signaling"
+GNPAT,catalyzes the first step of ether lipid synthesis by esterifying dihydroxyacetone phosphate in peroxisomes
+gnpat,catalyzes the first step of ether lipid synthesis by esterifying dihydroxyacetone phosphate in peroxisomes
+AGPS,catalyzes the second step of ether lipid synthesis by exchanging the acyl group of acyl-DHAP for a fatty alcohol
+agps,catalyzes the second step of ether lipid synthesis by exchanging the acyl group of acyl-DHAP for a fatty alcohol
+ABHD6,"functions as a monoacylglycerol lipase, regulating signal transduction by hydrolyzing 2-arachidonoylglycerol"
+abhd6,"functions as a monoacylglycerol lipase, regulating signal transduction by hydrolyzing 2-arachidonoylglycerol"
+ABHD12,"functions as a lysophospholipase, hydrolyzing lysophosphatidylserine to modulate neuroinflammatory pathways"
+abhd12,"functions as a lysophospholipase, hydrolyzing lysophosphatidylserine to modulate neuroinflammatory pathways"
+LIPA,"functions as lysosomal acid lipase, hydrolyzing cholesteryl esters and triacylglycerols internalized by receptor-mediated endocytosis"
+lipa,"functions as lysosomal acid lipase, hydrolyzing cholesteryl esters and triacylglycerols internalized by receptor-mediated endocytosis"
+NCEH1,"functions as neutral cholesterol ester hydrolase, converting cholesteryl esters to free cholesterol"
+nceh1,"functions as neutral cholesterol ester hydrolase, converting cholesteryl esters to free cholesterol"
+SOAT1,catalyzes the esterification of free cholesterol with fatty acids to form cholesteryl esters for intracellular storage
+soat1,catalyzes the esterification of free cholesterol with fatty acids to form cholesteryl esters for intracellular storage
+SOAT2,"catalyzes cholesterol esterification in hepatocytes and enterocytes, driving lipoprotein secretion"
+soat2,"catalyzes cholesterol esterification in hepatocytes and enterocytes, driving lipoprotein secretion"
+ENPP2,"functions as autotaxin, a lysophospholipase D that cleaves lysophosphatidylcholine to generate lysophosphatidic acid"
+enpp2,"functions as autotaxin, a lysophospholipase D that cleaves lysophosphatidylcholine to generate lysophosphatidic acid"
+ACSS1,catalyzes the activation of acetate to acetyl-CoA in the mitochondrial matrix for energy production
+acss1,catalyzes the activation of acetate to acetyl-CoA in the mitochondrial matrix for energy production
+ACSS2,catalyzes the activation of acetate to acetyl-CoA in the cytosol for lipogenesis and histone acetylation
+acss2,catalyzes the activation of acetate to acetyl-CoA in the cytosol for lipogenesis and histone acetylation
+FAR1,"catalyzes the reduction of fatty acyl-CoAs to fatty alcohols in peroxisomes, driving ether lipid synthesis"
+far1,"catalyzes the reduction of fatty acyl-CoAs to fatty alcohols in peroxisomes, driving ether lipid synthesis"
+FAR2,"catalyzes the reduction of fatty acyl-CoAs to fatty alcohols, showing high specificity for saturated substrates"
+far2,"catalyzes the reduction of fatty acyl-CoAs to fatty alcohols, showing high specificity for saturated substrates"
+FASN,catalyzes the de novo synthesis of palmitate (16:0) from acetyl-CoA and malonyl-CoA
+fasn,catalyzes the de novo synthesis of palmitate (16:0) from acetyl-CoA and malonyl-CoA
+LCAT,"catalyzes the transfer of sn-2 fatty acids from PC to free cholesterol, generating cholesteryl esters on HDL particles"
+lcat,"catalyzes the transfer of sn-2 fatty acids from PC to free cholesterol, generating cholesteryl esters on HDL particles"
+MCAT,functions as malonyl-CoA-acyl carrier protein transacylase in mitochondrial fatty acid synthesis
+mcat,functions as malonyl-CoA-acyl carrier protein transacylase in mitochondrial fatty acid synthesis
+PIK3CA,"catalyzes the phosphorylation of phosphatidylinositol to generate PIP3, driving Akt pathway signaling"
+pik3ca,"catalyzes the phosphorylation of phosphatidylinositol to generate PIP3, driving Akt pathway signaling"
+PIP5K1A,"phosphorylates phosphatidylinositol 4-phosphate to generate PIP2, driving vesicle trafficking and signaling"
+pip5k1a,"phosphorylates phosphatidylinositol 4-phosphate to generate PIP2, driving vesicle trafficking and signaling"
+PLA1A,hydrolyzes fatty acids from the sn-1 position of phosphatidylserine and lysophosphatidylserine
+pla1a,hydrolyzes fatty acids from the sn-1 position of phosphatidylserine and lysophosphatidylserine
+SCP2,"functions as sterol carrier protein 2, mediating the intracellular transfer of sterols and branched-chain fatty acids"
+scp2,"functions as sterol carrier protein 2, mediating the intracellular transfer of sterols and branched-chain fatty acids"
+SELENOI,catalyzes the transfer of phosphoethanolamine from CDP-ethanolamine to DAG to form PE via the Kennedy pathway
+selenoi,catalyzes the transfer of phosphoethanolamine from CDP-ethanolamine to DAG to form PE via the Kennedy pathway
+TMEM189,"functions as the plasmanylethanolamine desaturase, introducing the double bond to synthesize plasmalogen ether lipids"
+tmem189,"functions as the plasmanylethanolamine desaturase, introducing the double bond to synthesize plasmalogen ether lipids"

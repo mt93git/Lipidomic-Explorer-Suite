@@ -1,0 +1,19 @@
+# Auto-detect text files and perform LF normalization on checkout
+* text=auto
+
+# Enforce Unix LF line endings for shell scripts and R code
+*.sh text eol=lf
+*.command text eol=lf
+*.R text eol=lf
+*.r text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Enforce Windows CRLF line endings for batch scripts
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Linguist generated files
+app_compiled.R linguist-generated=true
+app_compiled.txt linguist-generated=true

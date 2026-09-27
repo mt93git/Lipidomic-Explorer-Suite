@@ -1,0 +1,49 @@
+name: Bug Report
+description: File a bug report to help us improve Lipidomic Explorer
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill out the form below.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the problem...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior (ideally with a sample dataset from `demo_data/`).
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Upload dataset '...'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: System & Environment Information
+      description: OS version, R version, browser, etc.
+      placeholder: |
+        - OS: Windows 11 / macOS Sequoia
+        - R Version: R 4.4.0
+        - Browser: Chrome 120.0
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Verification Checks
+      options:
+        - label: I have verified this bug occurs on a clean session.
+          required: true
+        - label: I have checked that my R version is >= 4.4.0.
+          required: true

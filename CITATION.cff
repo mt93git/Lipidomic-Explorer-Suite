@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - name: "Farese & Walther Lab"
+    website: "https://www.mskcc.org/research/ski/labs/farese-walther"
+  - name: "Yale Research Hub"
+title: "Global Lipidomics Explorer"
+version: "12.0.0"
+date-released: 2026-09-10
+url: "https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer"
+repository-code: "https://github.com/Farese-Walther-Lab/Global_Lipidomics_Explorer"
+license: "MIT"
+abstract: "Interactive web-based software application designed for the processing, quality control, differential expression, and structural visualization of global lipidomic datasets."
+keywords:
+  - "lipidomics"
+  - "bioinformatics"
+  - "r-shiny"
+  - "metabolomics"
+  - "mass-spectrometry"
+  - "ferroptosis"

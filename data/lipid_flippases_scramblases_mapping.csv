@@ -1,0 +1,34 @@
+Family,Human_Gene,Mouse_Gene,Localization,Activity_Substrates,Phenotypes,Refs
+P4-ATPases,ATP8A1,Atp8a1,Endosomes,PtdSer,Recessive biallelic mutations in humans: inefficient memory; PtdSer exposure on hippocampal cells,248
+P4-ATPases,ATP8A2,Atp8a2,Endosomes; Outer segment of photoreceptors,PtdSer,"Recessive biallelic mutations in humans: chorea, cerebellar ataxia and mental retardation; chromatolysis, axonal degeneration and optic atrophy; mice with recessive mutation (wabbler-lethal) die within 130 days",249–251
+P4-ATPases,ATP8B1,Atp8b1,Plasma membrane,"PtdSer, PtdCho","Recessive biallelic mutations in humans: cholestasis and hearing loss; increased sensitivity of canalicular membranes to bile acid, degeneration of cochlear hair cells","252,253"
+P4-ATPases,ATP8B2,Atp8b2,Plasma membrane,PtdCho,NR,
+P4-ATPases,ATP8B3,Atp8b3,NR,NR,NR,
+P4-ATPases,ATP8B4,Atp8b4,Plasma membrane,NR,NR,
+P4-ATPases,ATP9A,Atp9a,Endosomes,NR,Recessive biallelic mutations in humans: intellectual disability and microcephaly,"254,255"
+P4-ATPases,ATP9B,Atp9b,Golgi,NR,NR,
+P4-ATPases,ATP10A (also known as ATP10C),Atp10a (also known as Atp10c),Plasma membrane,PtdCho,"Recessive biallelic mutations in humans: neurobehavioural abnormality; Obesity, insulin resistance","256,257"
+P4-ATPases,ATP10B,Atp10b,"Endosomes, lysosomes","PtdCho, GluCer",NR,"32,258"
+P4-ATPases,ATP10D,Atp10d,Plasma membrane,GluCer,C57BL/6 mouse strain carries the nonsense mutation: susceptible to diabetes exposed to high-fat diet,"259,260"
+P4-ATPases,ATP11A,Atp11a,Plasma membrane,"PtdSer, PtdEtn","Dominant heterozygous mutation in humans: developmental delays, neurological deterioration and hearing loss; Knockout mice: embryonic lethal due to poor development of syncytiotrophoblasts","102,180,215"
+P4-ATPases,ATP11B,Atp11b,Endosomes,"PtdSer, PtdEtn",NR,
+P4-ATPases,ATP11C,Atp11c,Plasma membrane,"PtdSer, PtdEtn","Recessive biallelic mutations in humans: anaemia; Knockout mice: B cell lymphopenia, cholestasis","37,205,208,209"
+TMEM16 scramblases,TMEM16A (also known as anoctamin 1),Tmem16a (also known as anoctamin 1),Plasma membrane,Inactive,NR,
+TMEM16 scramblases,TMEM16B,Tmem16b,Plasma membrane,Inactive,NR,
+TMEM16 scramblases,TMEM16C,Tmem16c,Plasma membrane,Active (Ca²⁺),Dominant heterozygous mutation in humans: dystonia; Recessive biallelic mutations in humans: febrile seizure; Knockout rat: dysregulated Ca²⁺ homeostasis,"217,218,261"
+TMEM16 scramblases,TMEM16D,Tmem16d,Plasma membrane,Active (Ca²⁺),NR,
+TMEM16 scramblases,TMEM16E,Tmem16e,ER,Active (Ca²⁺),Dominant heterozygous mutation in humans: gnathodiaphyseal dysplasia; Recessive biallelic mutations in humans: muscle dystrophy caused by dysregulated Ca²⁺ homeostasis in myotubes,71
+TMEM16 scramblases,TMEM16F,Tmem16f,Plasma membrane,Active (Ca²⁺),Recessive biallelic mutations in humans and mice: bleeding disorder caused by inefficient PtdSer exposure in platelets,"44,226–228"
+TMEM16 scramblases,TMEM16G,Tmem16g,Plasma membrane: cell contact site,Active (Ca²⁺),Low expression associated with human prostate cancer (function as a tumour suppressor?),232
+TMEM16 scramblases,TMEM16H,Tmem16h,ER,NR,NR,
+TMEM16 scramblases,TMEM16J,Tmem16j,Plasma membrane,Active (Ca²⁺),High expression associated with human colorectal and pancreatic cancer (function as a tumour promoter?),"262,263"
+TMEM16 scramblases,TMEM16K,Tmem16k,Contact site between ER and endosomes,Active (Ca²⁺),Recessive biallelic mutations in humans: spinocerebellar ataxia; Recessive mutations in mice: defective endosomal sorting,"73,264"
+XKR scramblases,XK,Xk,Plasma membrane,"Active, with VPS13A (ATP)",Recessive biallelic mutations of XK or VPS13A in humans: neuroacanthocytosis; Xk- or Vps13a-knockout mice: thinner myelin sheet,"124,238,239"
+XKR scramblases,XKR2,Xkr2,ER,NR,NR,
+XKR scramblases,XKR3,Xkr3,Plasma membrane,NR,NR,
+XKR scramblases,XKR4,Xkr4,Plasma membrane,Active (caspase),NR,
+XKR scramblases,XKR5,Xkr5,Plasma membrane,NR,NR,
+XKR scramblases,XKR6,Xkr6,Plasma membrane,NR,NR,
+XKR scramblases,XKR7,Xkr7,Plasma membrane,NR,NR,
+XKR scramblases,XKR8,Xkr8,Plasma membrane,"Active, with Basigin (caspase)","Knockout mice: SLE-type autoimmune disease, male infertility; splenomegaly and glomerulonephritis","78,240"
+XKR scramblases,XKR9,Xkr9,Plasma membrane,Active (caspase),NR,
