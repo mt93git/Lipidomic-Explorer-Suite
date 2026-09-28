@@ -403,7 +403,7 @@ ui <- page_navbar(
           p("This app intend to allow to facilitate the analysis of lipidomics data"),
           hr(),
           h5("Author"),
-          p("Maxence Tricaud - Libreros Lab"),
+          p("Maxence Tricaud"),
           p(icon("envelope"), tags$a(href="mailto:mtricaud.cetri@gmail.com", "mtricaud.cetri@gmail.com")),
           p(
             tags$img(src = "https://info.orcid.org/wp-content/uploads/2019/11/orcid_16x16.png", style="width:16px; height:16px;"),
