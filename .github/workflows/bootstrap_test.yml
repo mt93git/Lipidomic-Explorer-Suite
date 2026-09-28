@@ -22,7 +22,7 @@ jobs:
 
     - name: Install Essential Test Dependencies
       run: |
-        install.packages(c("shiny", "testthat"), repos = "https://cloud.r-project.org")
+        install.packages(c("shiny", "testthat"))
       shell: Rscript {0}
 
     - name: Run Recursive Syntax Audit (45 R Scripts)
