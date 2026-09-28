@@ -1,6 +1,6 @@
 # MT_Global_Lipidomic_Explorer (Lipidomic Explorer Suite v12.0)
 
-[![CI/CD Environment Setup](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml)
+[![CI/CD Tests](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml)
 [![R Compatibility](https://img.shields.io/badge/R-%3E%3D_4.4.0-blue.svg)](https://cloud.r-project.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

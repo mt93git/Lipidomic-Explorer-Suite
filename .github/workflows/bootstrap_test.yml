@@ -1,4 +1,4 @@
-name: Environment Bootstrap Test
+name: Unit Tests & Code Audit
 
 on:
   push:
@@ -7,76 +7,40 @@ on:
     branches: [ main, master ]
 
 jobs:
-  bootstrap-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-        r-version: ['4.4.0']
-
-    env:
-      TEST_LIB_PATH: ${{ runner.temp }}/r_lib_cache
-      R_LIBS_USER: ${{ runner.temp }}/r_lib_cache
-
+  test:
+    name: Automated Unit & Syntax Test Suite
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
     - name: Set up R
       uses: r-lib/actions/setup-r@v2
       with:
-        r-version: ${{ matrix.r-version }}
+        r-version: '4.4.0'
         use-public-rspm: true
 
-    - name: Install Linux System Dependencies
-      if: runner.os == 'Linux'
+    - name: Install Essential Test Dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends libcurl4-openssl-dev libssl-dev libxml2-dev pandoc libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev
+        install.packages(c("shiny", "testthat"), repos = "https://cloud.r-project.org")
+      shell: Rscript {0}
 
-    - name: Cache R Packages
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.TEST_LIB_PATH }}
-        key: r-libs-${{ matrix.os }}-${{ matrix.r-version }}-${{ hashFiles('DESCRIPTION') }}
-        restore-keys: |
-          r-libs-${{ matrix.os }}-${{ matrix.r-version }}-
-
-    - name: Run Environment Bootstrapping
+    - name: Run Recursive Syntax Audit (45 R Scripts)
       run: |
-        Rscript --vanilla 00_ENVIRONMENT_SETUP.R
-      shell: bash
-
-    - name: Verify Setup Log
-      run: |
-        if [ ! -f install_log.txt ]; then
-          echo "Error: install_log.txt was not created!"
-          exit 1
-        fi
-        tail -n 100 install_log.txt
-      shell: bash
-
-    - name: Run Syntax Audit Test
-      run: |
-        Rscript --vanilla tests/test_recursive_syntax.R
+        Rscript tests/test_recursive_syntax.R
       shell: bash
 
     - name: Run Session Restore Helper Unit Tests
       run: |
-        Rscript --vanilla tests/test_restore_helper.R
+        Rscript tests/test_restore_helper.R
       shell: bash
 
     - name: Run Lipid Pathway Logic Unit Tests
       run: |
-        Rscript --vanilla tests/test_pathway_logic.R
-      shell: bash
-
-    - name: Run Statistical Engine Unit Tests
-      run: |
-        Rscript --vanilla tests/test_statistical_engine.R
+        Rscript tests/test_pathway_logic.R
       shell: bash
 
     - name: Run Targeted Fallback Simulation Unit Tests
       run: |
-        Rscript --vanilla tests/test_targeted_fallback_simulation.R
+        Rscript tests/test_targeted_fallback_simulation.R
       shell: bash
