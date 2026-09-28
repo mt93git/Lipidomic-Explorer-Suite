@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **Interactive R/Shiny Platform for Processing, Quality Control, Differential Analysis, Pathway Enrichment (LSEA), and Structural Visualization of Global Lipidomics Datasets.**  
-> *Developed by Maxence Tricaud (Farese & Walther Lab / Yale Research Hub / Université Laval).*
+> *Developed by Maxence Tricaud.*
 
 ![MT_Global_Lipidomic_Explorer Interface](docs/images/main_dashboard.png)
 

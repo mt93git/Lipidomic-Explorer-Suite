@@ -13,7 +13,7 @@ All contributors and participants are expected to adhere to our [Code of Conduct
 ## 2. Getting Started
 
 1. **Fork the Repository** on GitHub:
-   `https://github.com/Farese-Walther-Lab/MT_Global_Lipidomic_Explorer`
+   `https://github.com/mt93git/Lipidomic-Explorer-Suite`
 2. **Clone your fork locally**:
    ```bash
    git clone https://github.com/<your-username>/MT_Global_Lipidomic_Explorer.git

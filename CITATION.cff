@@ -3,11 +3,7 @@ message: "If you use this software, please cite it as below."
 authors:
   - family-names: "Tricaud"
     given-names: "Maxence"
-    affiliation: "Yale University / Université Laval"
     email: "mtricaud.cetri@gmail.com"
-  - name: "Farese & Walther Lab"
-    website: "https://www.mskcc.org/research/ski/labs/farese-walther"
-  - name: "Yale Research Hub"
 title: "MT_Global_Lipidomic_Explorer"
 version: "12.0.0"
 date-released: 2026-09-10
