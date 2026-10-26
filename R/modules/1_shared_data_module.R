@@ -198,6 +198,7 @@ shared_data_ui <- function(id) {
               )
             ),
             tags$div(
+              id = "dock_compared_analysis_block",
               class = "dock-group-block mb-2",
               tags$div(class = "dock-group-label", icon("code-compare"), " Compared Analysis"),
               radioButtons(
@@ -730,18 +731,30 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     # (Demo loading observers removed - buttons not active in UI)
     
-    observe({
-      req(names(rv$uploads))
-      lapply(names(rv$uploads), function(filename) {
-        safe_id <- make.names(filename)
-        observeEvent(input[[paste0("remove_", safe_id)]], {
-          current_uploads <- rv$uploads
-          current_uploads[[filename]] <- NULL
-          rv$uploads <- current_uploads
-          metadata_restored(FALSE)
-        })
-      })
-    })
+    remove_single_upload <- function(filename) {
+      req(filename)
+      cat(sprintf("\n[LIPIDOMIC EXPLORER] Removing uploaded file: '%s'\n", filename))
+      current_uploads <- rv$uploads
+      current_uploads[[filename]] <- NULL
+      rv$uploads <- current_uploads
+      
+      # Invalidate metadata confirmation & freshness
+      rv$lipidomics_confirmed <- FALSE
+      analysis_is_fresh(FALSE)
+      metadata_restored(FALSE)
+      uniqueCols(NULL)
+      randomSampleExample(NULL)
+      parsedMetadataStructure(NULL)
+      editableMetadata(NULL)
+      
+      # Reset DOM file input on client side so re-uploading the same or new file triggers seamlessly
+      session$sendCustomMessage("resetFileInput", list(id = session$ns("files")))
+      flush.console()
+    }
+
+    observeEvent(input$remove_uploaded_file, {
+      remove_single_upload(input$remove_uploaded_file)
+    }, ignoreInit = TRUE)
     
     output$loaded_files_display <- renderUI({
       files <- names(rv$uploads)
@@ -760,10 +773,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               title = filename,
               filename
             ),
-            actionButton(session$ns(paste0("remove_", safe_id)), icon("times"), 
-                         class = "btn-sm btn-link text-danger p-0", 
-                         style = "text-decoration: none; font-size: 0.75rem; min-width: 18px; line-height: 1;",
-                         title = "Remove this file")
+            tags$button(
+              type = "button",
+              id = session$ns(paste0("remove_", safe_id)),
+              class = "btn-sm btn-link text-danger p-0 btn-remove-file", 
+              style = "text-decoration: none; font-size: 0.75rem; min-width: 18px; line-height: 1; border: none; background: transparent; cursor: pointer;",
+              title = "Remove this file",
+              onclick = sprintf("Shiny.setInputValue('%s', %s, {priority: 'event'});",
+                                session$ns("remove_uploaded_file"),
+                                jsonlite::toJSON(filename, auto_unbox = TRUE)),
+              icon("times")
+            )
           )
         })
       )
@@ -1051,7 +1071,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     # Reactive value for PCA settings to prevent circular reactivity loops
     pca_settings_val <- reactiveVal(list(
       mergeReplicates = TRUE,
-      pcaMode = "class",
+      pcaMode = "omics",
       maxPCs = 3,
       dropMisc = TRUE
     ))
@@ -1060,7 +1080,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       if (is.null(settings)) return()
       new_val <- list(
         mergeReplicates = isTRUE(settings$mergeReplicates),
-        pcaMode = settings$pcaMode %||% "class",
+        pcaMode = settings$pcaMode %||% "omics",
         maxPCs = settings$maxPCs %||% 3,
         dropMisc = isTRUE(settings$dropMisc)
       )
@@ -1160,6 +1180,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           data_subset <- impute_zeros_per_file(data_subset, cols_in_file)
         }
       }
+      rownames(data_subset) <- NULL
       mat_subset <- data_subset %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
       
       t_imp_start <- Sys.time()
@@ -1417,6 +1438,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       if (isTRUE(targeted_mode_active()) && length(targeted_lipids_list()) > 0) {
         lipid_col <- if ("Lipid_Name" %in% names(df)) "Lipid_Name" else names(df)[1]
         df <- df[df[[lipid_col]] %in% targeted_lipids_list(), , drop = FALSE]
+        rownames(df) <- NULL
       }
       return(df)
     })
@@ -1930,14 +1952,14 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         )
       } else {
         tags$code(
-          style = "font-size: 1.25rem; font-weight: bold; color: #007bff;",
+          style = "font-size: 1.35rem; font-weight: bold; color: #007bff;",
           ex
         )
       }
       
       div(
-        class = "alert alert-secondary py-2 px-3 small my-2 text-center",
-        p(class = "mb-1 text-muted", "Sample example from the loaded dataset:"),
+        class = "alert alert-secondary py-2 px-3 my-2 text-center",
+        p(class = "mb-1 text-muted", style = "font-size: 1rem;", "Sample example from the loaded dataset:"),
         content
       )
     })
@@ -2247,7 +2269,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
            style = "display: inline-flex; align-items: center; margin-right: 20px; margin-bottom: 10px;",
            checkboxInput(
              session$ns(paste0("schema_has_tp_", comp_name)),
-             label = tags$span(style = "color: #d97706; font-weight: bold; font-size: 0.95rem;", sprintf("%s (%s) embeds a TimePoint ?", label, val)),
+             label = tags$span(style = "color: #d97706; font-weight: bold; font-size: 1.1rem;", sprintf("%s (%s) embeds a TimePoint ?", label, val)),
              value = isolate(input[[paste0("schema_has_tp_", comp_name)]]) %||% get_restored_input(paste0("schema_has_tp_", comp_name), FALSE)
            )
          )
@@ -2259,7 +2281,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
        div(
         class = "mt-3 pt-3 border-top",
         h6(
-          style = "color: #4e79a7; font-weight: bold; margin-bottom: 8px; display: inline-flex; align-items: center;", 
+          style = "color: #4e79a7; font-weight: bold; font-size: 1.15rem; margin-bottom: 8px; display: inline-flex; align-items: center;", 
           tags$span(
             "Embedded TimePoint Configuration", 
             bslib::tooltip(
@@ -2268,7 +2290,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             )
           )
         ),
-        p(class = "text-muted small mb-2", "If one of the standardized parts embeds a timepoint (e.g. 12C in Allergic_12C_M5), check it below:"),
+        p(class = "text-muted mb-2", style = "font-size: 1rem;", "If one of the standardized parts embeds a timepoint (e.g. 12C in Allergic_12C_M5), check it below:"),
         div(class = "d-flex flex-wrap", inputs)
       )
     })
@@ -2354,6 +2376,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         )
       )
     })
+    outputOptions(output, "sample_preview_header", suspendWhenHidden = FALSE)
+    outputOptions(output, "sample_structure_preview", suspendWhenHidden = FALSE)
+    outputOptions(output, "highlight_mapping_panel", suspendWhenHidden = FALSE)
+    outputOptions(output, "schema_config_ui", suspendWhenHidden = FALSE)
+    outputOptions(output, "standard_embedded_tp_ui", suspendWhenHidden = FALSE)
+    outputOptions(output, "visual_connection_flow", suspendWhenHidden = FALSE)
     
     output$timepoint_condition_association_ui <- renderUI({
       req(parsedResults())
@@ -2440,6 +2468,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         )
       )
     })
+    outputOptions(output, "timepoint_condition_association_ui", suspendWhenHidden = FALSE)
     
     # Sync observer for TimePoint-Group1 mapping
     observe({
@@ -2606,8 +2635,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     # Reset standard align selection when back_to_step0 link is clicked
     observeEvent(input$back_to_step0, {
+      req(!is.null(input$back_to_step0) && input$back_to_step0 > 0)
       updateRadioButtons(session, "nomenclature_standard_align", selected = "Yes")
-    })
+    }, ignoreInit = TRUE)
     
     # Handle adding the selected text mapping rule
     observeEvent(input$add_selected_text_mapping, {
@@ -2675,15 +2705,20 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       if (isolate(just_restored())) return()
       if (isolate(metadata_restored())) return()
       
+      raw_data <- isolate(rawData())
+      req(raw_data$data)
+      cols <- setdiff(names(raw_data$data), "Lipid_Name")
+      req(length(cols) > 0)
+      
+      prev_cols <- isolate(uniqueCols())
+      if (is.null(prev_cols) || !identical(sort(unique(cols)), sort(unique(prev_cols)))) {
+        rv$lipidomics_confirmed <- FALSE
+      }
       already_confirmed <- isTRUE(isolate(rv$lipidomics_confirmed))
       if (!already_confirmed) {
         rv$lipidomics_confirmed <- FALSE
       }
       rv$selected_mapping_tab <- "Lipidomics"
-      raw_data <- isolate(rawData())
-      req(raw_data$data)
-      cols <- setdiff(names(raw_data$data), "Lipid_Name")
-      req(length(cols) > 0)
       
       cat(sprintf("\n[LIPIDOMIC EXPLORER] rawData updated (%d samples). Initializing metadata structures...\n", length(cols)))
       
@@ -2772,9 +2807,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           actionButton(
             session$ns("authorizeMetadata"),
             "Confirm",
-            class = "btn-success px-4 fw-bold",
-            `data-bs-dismiss` = "modal",
-            `data-dismiss` = "modal"
+            class = "btn-success px-4 fw-bold"
           )
         ),
         div(
@@ -2839,23 +2872,16 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                   class = "card mb-4 border-primary bg-light",
                   div(
                     class = "card-body py-3",
-                    h5(class = "card-title text-primary fw-bold mb-2", "Step 0: Nomenclature Alignment Check"),
-                    p(class = "card-text small mb-3",
-                      "To align downstream statistical models, loaded must follows conventional annotation ordering and separation by '_' delimiters. Examples include:",
-                      tags$ul(class = "mb-2",
-                        tags$li(tags$code("KO_Neutrophil_R1")),
-                        tags$li(tags$code("Control_Plasma_M2"))
-                      )
-                    ),
+                    h5(class = "card-title text-primary fw-bold mb-3", style = "font-size: 1.25rem;", "Step 0: Nomenclature Alignment Check"),
                     div(
                       id = session$ns("standard_format_example_ui"),
                       class = "shiny-html-output",
                       div(
-                        class = "alert alert-secondary py-2 px-3 small my-2 text-center",
-                        p(class = "mb-1 text-muted", "Sample example from the loaded dataset:"),
+                        class = "alert alert-secondary py-2 px-3 my-2 text-center",
+                        p(class = "mb-1 text-muted", style = "font-size: 1rem;", "Sample example from the loaded dataset:"),
                         if (!is.null(sample_example) && nzchar(sample_example)) {
                           tags$code(
-                            style = "font-size: 1.25rem; font-weight: bold; color: #007bff;",
+                            style = "font-size: 1.35rem; font-weight: bold; color: #007bff;",
                             sample_example
                           )
                         } else {
@@ -2866,11 +2892,26 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                         }
                       )
                     ),
+                    p(class = "card-text mb-2", style = "font-size: 1.02rem; line-height: 1.5; color: #b02a37; font-weight: 500;",
+                      "To align downstream statistical models, loaded must follows conventional annotation ordering and separation by '_' delimiters."
+                    ),
+                    div(
+                      class = "mb-2",
+                      p(style = "font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; color: #212529;",
+                        "Are the sample names formatted according to one of these sequences?"
+                      ),
+                      p(class = "text-muted mb-1", style = "font-size: 0.90rem;", "Examples include:"),
+                      tags$ul(class = "mb-2", style = "font-size: 0.92rem;",
+                        tags$li(tags$code(style = "font-size: 0.95rem; font-weight: 600;", "KO_Neutrophil_R1")),
+                        tags$li(tags$code(style = "font-size: 0.95rem; font-weight: 600;", "Control_Plasma_M2"))
+                      )
+                    ),
                     radioButtons(
                       session$ns("nomenclature_standard_align"),
-                      label = "Are the sample names formatted according to one of these sequences?",
+                      label = NULL,
                       choices = c("Yes" = "Yes", "No" = "No"),
-                      selected = "Yes"
+                      selected = if (!is.null(isolate(input$nomenclature_standard_align)) && isolate(input$nomenclature_standard_align) %in% c("Yes", "No")) isolate(input$nomenclature_standard_align) else "Yes",
+                      inline = TRUE
                     ),
                     uiOutput(session$ns("standard_embedded_tp_ui"))
                   )
@@ -2942,10 +2983,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       removeModal()
       rv$lipidomics_confirmed <- TRUE
       metadata_trigger(isolate(metadata_trigger()) + 1)
-      analysis_is_fresh(TRUE)
-      run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
-      showNotification("Metadata mapping confirmed! Pipeline execution launched.", type = "message", duration = 4)
-      session$sendCustomMessage("pipelineExecutionActive", list(status = "running"))
+      analysis_is_fresh(FALSE)
+      showNotification("Metadata mapping confirmed! Click 'Run Analysis' in Pipeline Execution to proceed.", type = "message", duration = 4)
+      session$sendCustomMessage("metadataConfirmed", list())
       
       tryCatch({
         meta <- allParsedMetadata()
@@ -3742,6 +3782,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       mat <- data_processed()
       if (is.null(mat) || ncol(mat) < 3) return(NULL) # Lipid_Name + 2 columns
       
+      rownames(mat) <- NULL
       mat_num <- mat %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
       meta <- allParsedMetadata() %>% dplyr::filter(FullName %in% colnames(mat_num))
       if (is.null(meta) || nrow(meta) == 0) return(NULL)
@@ -3911,8 +3952,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                     format(t_pca_start, "%H:%M:%OS3"), pca_mode), file = stderr())
                     
         if (pca_mode == "omics") {
+          rownames(df_input) <- NULL
           mat_pca <- df_input %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
-          mat_pca_t <- t(mat_pca)
+          # Log2 transformation for mass-spectrometry variance stabilization
+          mat_pca_log <- log2(pmax(mat_pca, 0) + 1)
+          mat_pca_t <- t(mat_pca_log)
           near_zero_var <- which(apply(mat_pca_t, 2, var, na.rm = TRUE) < 1e-10)
           if (length(near_zero_var) > 0) {
             mat_pca_t <- mat_pca_t[, -near_zero_var, drop = FALSE]
@@ -3920,7 +3964,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           if (ncol(mat_pca_t) <= 1) {
             stop("Not enough variable lipids for PCA (requires >=2 variable lipids).")
           }
-          pca_res <- prcomp(mat_pca_t, scale. = TRUE)
+          pca_res <- stats::prcomp(mat_pca_t, center = TRUE, scale. = TRUE)
           
           max_pcs <- pca_opts$maxPCs %||% 3
           ncomp <- min(max_pcs, ncol(pca_res$x))
@@ -4207,12 +4251,19 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         for (name in names(res_list)) {
           for (lvl in names(res_list[[name]])) {
             key <- gsub("\\s|&", "_", lvl)
-            if (!is.null(custom_shapes[[key]])) {
-              res_list[[name]][[lvl]] <- custom_shapes[[key]]
-            } else if (!is.null(custom_shapes[[lvl]])) {
-              res_list[[name]][[lvl]] <- custom_shapes[[lvl]]
+            val <- if (!is.null(custom_shapes[[key]])) custom_shapes[[key]] else custom_shapes[[lvl]]
+            if (!is.null(val)) {
+              num_val <- suppressWarnings(as.numeric(val))
+              if (!is.na(num_val)) {
+                res_list[[name]][[lvl]] <- num_val
+              }
             }
           }
+          res_list[[name]] <- stats::setNames(as.numeric(res_list[[name]]), names(res_list[[name]]))
+        }
+      } else {
+        for (name in names(res_list)) {
+          res_list[[name]] <- stats::setNames(as.numeric(res_list[[name]]), names(res_list[[name]]))
         }
       }
       

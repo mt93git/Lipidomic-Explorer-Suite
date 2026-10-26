@@ -1189,6 +1189,12 @@ render_de_not_run_banner <- function(shared_data) {
     p_type <- de_sett$p_value_type %||% "adjusted"
     is_adj <- (p_type == "adjusted" || p_type == "p_adj_bh")
     p_label <- if (is_adj) "FDR adjusted p-value" else "raw p-value"
+    contrast <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+    contrast_txt <- if (!is.null(contrast) && !is.null(contrast$ref) && !is.null(contrast$comp)) {
+      paste0("Active Comparison: ", paste(contrast$comp, collapse = "+"), " vs ", paste(contrast$ref, collapse = "+"), "  \u2022  ")
+    } else {
+      ""
+    }
     
     return(
       div(
@@ -1205,11 +1211,11 @@ render_de_not_run_banner <- function(shared_data) {
             div(
               tags$h6(
                 style = "font-weight: 700; color: #92400e; margin: 0 0 2px 0; font-size: 0.98rem;", 
-                "No Statistically Significant Features Found"
+                if (is_adj) "No Statistically Significant Features Found (FDR Adjusted)" else "No Statistically Significant Features Found (Raw P-Value)"
               ),
               tags$span(
                 style = "color: #b45309; font-size: 13px; font-weight: 500;", 
-                paste0("Current cutoffs: ", p_label, " < ", p_thresh, ", |Log2FC| >= ", lfc_thresh)
+                paste0(contrast_txt, "Current cutoffs: ", p_label, " < ", p_thresh, ", |Log2FC| >= ", lfc_thresh)
               )
             )
           ),
@@ -1237,7 +1243,7 @@ render_de_not_run_banner <- function(shared_data) {
               onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
               `data-action` = "point-de-menu",
               style = "font-weight: 600; padding: 6px 14px; border-radius: 6px; white-space: nowrap;",
-              icon("sliders"), " Modify Cutoffs"
+              icon("code-compare"), " Compared Analysis & Cutoffs"
             )
           )
         ),
@@ -1250,14 +1256,23 @@ render_de_not_run_banner <- function(shared_data) {
             tags$a(href = "#", onclick = "openOutliersDetectionTab(); return false;", style = "color: #2563eb; font-weight: 600; text-decoration: underline;", "Outliers Detection"),
             "."
           ),
-          tags$p(
-            style = "margin-bottom: 0;",
-            "Alternatively, you may explore shifting to ",
-            tags$a(href = "#", onclick = "switchToRawPValue(); return false;", style = "color: #b45309; font-weight: 600; text-decoration: underline;", "Raw (uncorrected) p-values"),
-            " or relaxing thresholds in ",
-            tags$a(href = "#", onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;", `data-action` = "point-de-menu", style = "color: #b45309; font-weight: 600; text-decoration: underline;", "3. Differential Expression sidebar"),
-            ". Please note that a lack of significance may also simply reflect authentic biological uniformity between the selected cohorts."
-          )
+          if (is_adj) {
+            tags$p(
+              style = "margin-bottom: 0;",
+              "Alternatively, you may explore shifting to ",
+              tags$a(href = "#", onclick = "switchToRawPValue(); return false;", style = "color: #b45309; font-weight: 600; text-decoration: underline;", "Raw (uncorrected) p-values"),
+              " or relaxing effect size thresholds in ",
+              tags$a(href = "#", onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;", `data-action` = "point-de-menu", style = "color: #b45309; font-weight: 600; text-decoration: underline;", "Compared Analysis & Cutoffs"),
+              ". Please note that a lack of significance may also simply reflect authentic biological uniformity between the selected cohorts."
+            )
+          } else {
+            tags$p(
+              style = "margin-bottom: 0;",
+              "Analysis is already operating under uncorrected raw p-values. You may relax the p-value threshold (e.g., to 0.10) or lower the |Log2FC| cutoff in ",
+              tags$a(href = "#", onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;", `data-action` = "point-de-menu", style = "color: #b45309; font-weight: 600; text-decoration: underline;", "Compared Analysis & Cutoffs"),
+              ". Note that the absence of significant lipids under uncorrected p-values confirms authentic biological uniformity between the compared cohorts."
+            )
+          }
         )
       )
     )

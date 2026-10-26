@@ -102,8 +102,8 @@ safe_brewer_pal <- function(n, name) {
 #' @param shape_choices Named vector of shape choices
 make_shape_map <- function(groups, shape_choices) {
   unique_groups <- sort(unique(groups)) %>% na.omit()
-  if (length(unique_groups) == 0) return(character(0))
-  shapes <- rep(unname(shape_choices), length.out = length(unique_groups))
+  if (length(unique_groups) == 0) return(stats::setNames(numeric(0), character(0)))
+  shapes <- as.numeric(rep(unname(shape_choices), length.out = length(unique_groups)))
   names(shapes) <- unique_groups
   shapes
 }

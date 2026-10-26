@@ -45,6 +45,62 @@
         border-right: 1px solid #eee;
       }
       
+      /* Composition Module Responsive Canvas Expansion */
+      .composition-card-tabs .shiny-plot-output {
+        resize: none !important;
+        width: 100% !important;
+        border: none !important;
+        overflow: visible !important;
+      }
+      .composition-card-tabs .shiny-plot-output img {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: fill !important;
+        display: block !important;
+      }
+
+      /* Longitudinal Module Responsive Canvas & Anti-Duplicate Resize Anchor */
+      .longitudinal-plot-container .shiny-plot-output,
+      .longitudinal-plot-frame .shiny-plot-output {
+        resize: none !important;
+        width: 100% !important;
+        border: none !important;
+        overflow: visible !important;
+      }
+      .longitudinal-plot-container .shiny-plot-output img,
+      .longitudinal-plot-frame .shiny-plot-output img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin: 0 auto !important;
+      }
+      .composition-card-tabs .card {
+        width: 100% !important;
+        border-radius: 8px !important;
+        overflow: visible !important;
+      }
+      .composition-card-tabs .card-body {
+        width: 100% !important;
+        overflow: visible !important;
+        padding-bottom: 8px !important;
+      }
+      .composition-card-tabs .tab-content,
+      .composition-card-tabs .tab-pane {
+        width: 100% !important;
+        overflow: visible !important;
+      }
+      .composition-donut-viewport {
+        width: 100% !important;
+        overflow: auto !important;
+        scrollbar-width: thin;
+        scrollbar-color: #94a3b8 #f1f5f9;
+        border-radius: 6px;
+        background-color: #ffffff;
+        box-sizing: border-box;
+      }
+      
       /* Modern Horizontal Splitter styling for jqui_resizable 's' handle */
       .ui-resizable-s {
         bottom: 0px !important;
@@ -747,26 +803,26 @@
         transition: all 0.3s ease !important;
       }
 
-      /* Active / Primed state on Run Analysis button when data is loaded via browse selection */
+      /* Active / Primed state on Run Analysis button when metadata is confirmed */
       @keyframes runAnalysisPrimedPulse {
         0% {
-          box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.65), 0 2px 4px rgba(37, 99, 235, 0.15);
+          box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.65), 0 2px 4px rgba(234, 88, 12, 0.15);
           transform: translateY(0);
         }
         50% {
-          box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.20), 0 4px 10px rgba(37, 99, 235, 0.30);
+          box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.20), 0 4px 10px rgba(249, 115, 22, 0.30);
           transform: translateY(-1px);
         }
         100% {
-          box-shadow: 0 0 0 0 rgba(37, 99, 235, 0), 0 2px 4px rgba(37, 99, 235, 0.15);
+          box-shadow: 0 0 0 0 rgba(234, 88, 12, 0), 0 2px 4px rgba(234, 88, 12, 0.15);
           transform: translateY(0);
         }
       }
 
       .btn-run-analysis.btn-run-analysis-primed {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(29, 78, 216, 0.28)) !important;
-        border-color: #2563eb !important;
-        color: #1d4ed8 !important;
+        background: linear-gradient(135deg, rgba(234, 88, 12, 0.14), rgba(249, 115, 22, 0.20)) !important;
+        border-color: rgba(234, 88, 12, 0.7) !important;
+        color: #c2410c !important;
         font-weight: 700 !important;
         animation: runAnalysisPrimedPulse 1.8s ease-in-out infinite !important;
       }
@@ -890,12 +946,14 @@
 
       /* ==========================================================================
          Unified Download Button Theme (Matching Neutral CSV / btn-outline-secondary)
-         PDF & CSV share identical backgrounds, borders, and typography.
-         Only the icon is colored: Acrobat Red (PDF) and Excel Green (CSV).
+         PDF, PNG & CSV share identical backgrounds, borders, and typography.
+         Only the icon is colored: Acrobat Red (PDF), Modern Indigo (PNG), and Excel Green (CSV).
          ========================================================================== */
       .btn-download-pdf,
+      .btn-download-png,
       .btn-download-csv,
       .btn-pdf,
+      .btn-png,
       .btn-csv,
       a.shiny-download-link:not(.btn-download-post-na):not(.btn-export-session):not(.btn-download-layout-json):not(.btn-imputed-choice),
       button.shiny-download-link:not(.btn-download-post-na):not(.btn-export-session):not(.btn-download-layout-json):not(.btn-imputed-choice) {
@@ -914,8 +972,10 @@
         gap: 5px !important;
       }
       .btn-download-pdf:hover, .btn-download-pdf:focus,
+      .btn-download-png:hover, .btn-download-png:focus,
       .btn-download-csv:hover, .btn-download-csv:focus,
       .btn-pdf:hover, .btn-pdf:focus,
+      .btn-png:hover, .btn-png:focus,
       .btn-csv:hover, .btn-csv:focus,
       a.shiny-download-link:not(.btn-download-post-na):not(.btn-export-session):not(.btn-download-layout-json):not(.btn-imputed-choice):hover,
       a.shiny-download-link:not(.btn-download-post-na):not(.btn-export-session):not(.btn-download-layout-json):not(.btn-imputed-choice):focus,
@@ -929,8 +989,10 @@
         text-decoration: none !important;
       }
       .btn-download-pdf:active,
+      .btn-download-png:active,
       .btn-download-csv:active,
       .btn-pdf:active,
+      .btn-png:active,
       .btn-csv:active,
       a.shiny-download-link:not(.btn-download-post-na):not(.btn-export-session):not(.btn-download-layout-json):not(.btn-imputed-choice):active,
       button.shiny-download-link:not(.btn-download-post-na):not(.btn-export-session):not(.btn-download-layout-json):not(.btn-imputed-choice):active {
@@ -1041,6 +1103,28 @@
       a.shiny-download-link[id*='Zip']:hover i,
       a.shiny-download-link[id*='zip']:hover i {
         color: #991B1B !important;
+      }
+
+      /* PNG Icon Only: Modern Indigo */
+      .btn-download-png i,
+      .btn-download-png svg,
+      .btn-png i,
+      .btn-png svg,
+      a.shiny-download-link[id*='PNG'] i,
+      a.shiny-download-link[id*='PNG'] svg,
+      a.shiny-download-link[id*='png'] i,
+      a.shiny-download-link[id*='png'] svg {
+        color: #4f46e5 !important;
+        font-size: 11.5px !important;
+        transition: color 0.15s ease !important;
+      }
+      .btn-download-png:hover i,
+      .btn-download-png:hover svg,
+      .btn-png:hover i,
+      .btn-png:hover svg,
+      a.shiny-download-link[id*='PNG']:hover i,
+      a.shiny-download-link[id*='png']:hover i {
+        color: #3730a3 !important;
       }
 
       /* CSV Icon Only: Excel Green */
@@ -1332,24 +1416,38 @@
 
       /* 8. Show Condensed Formulas in Statistics Tab */
       [id$='-show_condensed_formulas'] {
-        background: rgba(124, 58, 237, 0.12) !important;
-        border: 1px solid rgba(124, 58, 237, 0.30) !important;
+        background: rgba(124, 58, 237, 0.09) !important;
+        border: 1px solid rgba(124, 58, 237, 0.28) !important;
         color: #6D28D9 !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.3px !important;
-        border-radius: 11px !important;
-        box-shadow: 0 1px 2px rgba(124, 58, 237, 0.08) !important;
+        font-size: 0.78rem !important;
+        font-weight: 500 !important;
+        line-height: 1.25 !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+        letter-spacing: 0.1px !important;
+        box-shadow: 0 1px 2px rgba(124, 58, 237, 0.06) !important;
         transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 5px !important;
+        text-align: center !important;
       }
       [id$='-show_condensed_formulas']:hover {
-        background: rgba(124, 58, 237, 0.20) !important;
+        background: rgba(124, 58, 237, 0.18) !important;
         border-color: rgba(124, 58, 237, 0.45) !important;
         color: #5B21B6 !important;
         transform: translateY(-1px) !important;
-        box-shadow: 0 3px 6px rgba(124, 58, 237, 0.15) !important;
+        box-shadow: 0 2px 5px rgba(124, 58, 237, 0.12) !important;
       }
       [id$='-show_condensed_formulas']:active {
         transform: scale(0.98) !important;
+      }
+      [id$='-show_condensed_formulas'] i {
+        font-size: 0.8rem !important;
+        color: #6D28D9 !important;
+        margin-right: 2px !important;
+        flex-shrink: 0 !important;
       }
 
       /* Top Navbar: Permanent, Stable Dimensions (Independent of Sidebars) */
@@ -1583,7 +1681,8 @@
         color: #2563eb !important;
       }
       .navbar-nav .nav-link.active:has(i.fa-dna),
-      .navbar-nav .nav-link.active[data-value*="Structural"] {
+      .navbar-nav .nav-link.active[data-value*="Structural"],
+      .navbar-nav .nav-link.active[data-value*="Dot Plots"] {
         border-bottom: 2.5px solid #d97706 !important;
         color: #b45309 !important;
       }
@@ -3331,7 +3430,7 @@ aside#main_sidebar > .sidebar-content,
   min-height: 0 !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  padding: 10px 10px 60px 10px !important;
+  padding: 0 10px 60px 10px !important;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   box-sizing: border-box !important;
@@ -3966,16 +4065,19 @@ body.modal-open .bslib-sidebar-layout > .collapse-toggle {
 .dock-segmented-switcher {
   display: flex !important;
   flex-direction: column !important;
-  background: #f8fafc !important;
-  padding: 5px !important;
-  border-radius: 9px !important;
-  margin: -6px 26px 12px -4px !important;
-  border: 1px solid #e2e8f0 !important;
-  gap: 4px !important;
+  background: #ffffff !important;
+  padding: 8px 8px !important;
+  margin: 0 -10px 12px -10px !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-radius: 0 !important;
+  gap: 5px !important;
   position: sticky !important;
   top: 0 !important;
-  z-index: 10 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  z-index: 100 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* Base button styling: each button spans full width horizontally in stacked mode */
@@ -3985,16 +4087,18 @@ body.modal-open .bslib-sidebar-layout > .collapse-toggle {
   align-items: center !important;
   justify-content: flex-start !important;
   gap: 8px !important;
-  padding: 6px 11px !important;
-  font-size: 0.73rem !important;
+  padding: 7px 24px 7px 11px !important;
+  font-size: 0.74rem !important;
   font-weight: 600 !important;
-  border-radius: 6px !important;
-  border: 1px solid transparent !important;
+  border-radius: 7px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
   cursor: pointer !important;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
   white-space: nowrap !important;
   line-height: 1.25 !important;
   text-align: left !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 .dock-segment-btn span {
@@ -4015,82 +4119,85 @@ body.modal-open .bslib-sidebar-layout > .collapse-toggle {
 
 /* 1. Pipeline (Cobalt Blue: Data Ingestion & Execution) */
 .dock-segment-btn[data-dock-target="pipeline"] {
-  background: rgba(37, 99, 235, 0.08) !important;
+  background: #ffffff !important;
   color: #1e40af !important;
-  border: 1px solid rgba(37, 99, 235, 0.22) !important;
+  border: 1px solid rgba(37, 99, 235, 0.25) !important;
 }
 .dock-segment-btn[data-dock-target="pipeline"] i {
   color: #2563eb !important;
 }
 .dock-segment-btn[data-dock-target="pipeline"]:hover {
-  background: rgba(37, 99, 235, 0.14) !important;
-  border-color: rgba(37, 99, 235, 0.38) !important;
+  background: #f8fafc !important;
+  border-color: #2563eb !important;
   color: #1d4ed8 !important;
 }
 .dock-segment-btn[data-dock-target="pipeline"].active {
-  background: rgba(37, 99, 235, 0.20) !important;
+  background: #ffffff !important;
   color: #1d4ed8 !important;
   font-weight: 700 !important;
   border: 1.5px solid #2563eb !important;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15) !important;
+  border-left: 5px solid #2563eb !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.16) !important;
 }
 
 /* 2. Cohorts & Filters (Bio-Teal: Patient Stratification & Group Logic) */
 .dock-segment-btn[data-dock-target="cohorts"] {
-  background: rgba(15, 118, 110, 0.08) !important;
+  background: #ffffff !important;
   color: #0f766e !important;
-  border: 1px solid rgba(15, 118, 110, 0.22) !important;
+  border: 1px solid rgba(15, 118, 110, 0.25) !important;
 }
 .dock-segment-btn[data-dock-target="cohorts"] i {
   color: #0f766e !important;
 }
 .dock-segment-btn[data-dock-target="cohorts"]:hover {
-  background: rgba(15, 118, 110, 0.14) !important;
-  border-color: rgba(15, 118, 110, 0.38) !important;
+  background: #f8fafc !important;
+  border-color: #0f766e !important;
   color: #0d5a54 !important;
 }
 .dock-segment-btn[data-dock-target="cohorts"].active {
-  background: rgba(15, 118, 110, 0.20) !important;
+  background: #ffffff !important;
   color: #0d5a54 !important;
   font-weight: 700 !important;
   border: 1.5px solid #0f766e !important;
-  box-shadow: 0 1px 3px rgba(15, 118, 110, 0.15) !important;
+  border-left: 5px solid #0f766e !important;
+  box-shadow: 0 2px 6px rgba(15, 118, 110, 0.16) !important;
 }
 
 /* 3. Plot Controls (Amber Ochre: Graphic Engine & Visualization Tweaks) */
 .dock-segment-btn[data-dock-target="plot_controls"] {
-  background: rgba(217, 119, 6, 0.08) !important;
+  background: #ffffff !important;
   color: #92400e !important;
-  border: 1px solid rgba(217, 119, 6, 0.22) !important;
+  border: 1px solid rgba(217, 119, 6, 0.25) !important;
 }
 .dock-segment-btn[data-dock-target="plot_controls"] i {
   color: #d97706 !important;
 }
 .dock-segment-btn[data-dock-target="plot_controls"]:hover {
-  background: rgba(217, 119, 6, 0.14) !important;
-  border-color: rgba(217, 119, 6, 0.38) !important;
+  background: #f8fafc !important;
+  border-color: #d97706 !important;
   color: #78350f !important;
 }
 .dock-segment-btn[data-dock-target="plot_controls"].active {
-  background: rgba(217, 119, 6, 0.20) !important;
+  background: #ffffff !important;
   color: #78350f !important;
   font-weight: 700 !important;
   border: 1.5px solid #d97706 !important;
-  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.15) !important;
+  border-left: 5px solid #d97706 !important;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.16) !important;
 }
 
 /* Active indicator accent bar for stacked mode */
 .dock-segmented-switcher.is-stacked .dock-segment-btn[data-dock-target="pipeline"].active,
 .dock-segmented-switcher:not(.row-layout) .dock-segment-btn[data-dock-target="pipeline"].active {
-  border-left: 4px solid #1d4ed8 !important;
+  border-left: 5px solid #1d4ed8 !important;
 }
 .dock-segmented-switcher.is-stacked .dock-segment-btn[data-dock-target="cohorts"].active,
 .dock-segmented-switcher:not(.row-layout) .dock-segment-btn[data-dock-target="cohorts"].active {
-  border-left: 4px solid #0f766e !important;
+  border-left: 5px solid #0f766e !important;
 }
 .dock-segmented-switcher.is-stacked .dock-segment-btn[data-dock-target="plot_controls"].active,
 .dock-segmented-switcher:not(.row-layout) .dock-segment-btn[data-dock-target="plot_controls"].active {
-  border-left: 4px solid #b45309 !important;
+  border-left: 5px solid #b45309 !important;
 }
 
 /* Wide Mode: When dock is >= 380px, allow side-by-side row layout */
@@ -4285,10 +4392,11 @@ body.modal-open .bslib-sidebar-layout > .collapse-toggle {
   font-weight: 700 !important;
 }
 
-/* In-Plot Export Action Tools (Camera Studio, PDF, CSV) */
+/* In-Plot Export Action Tools (Camera Studio, PDF, PNG, CSV) */
 .card-header .btn-outline-primary,
 .card-header .btn-outline-secondary,
 .btn-download-pdf,
+.btn-download-png,
 .btn-download-csv,
 button:has(> .fa-camera-retro) {
   border: 1px solid #cbd5e1 !important;
@@ -4304,6 +4412,7 @@ button:has(> .fa-camera-retro) {
 .card-header .btn-outline-primary i,
 .card-header .btn-outline-secondary i,
 .btn-download-pdf i,
+.btn-download-png i,
 .btn-download-csv i,
 button:has(> .fa-camera-retro) i {
   color: #64748b !important;
@@ -4312,6 +4421,7 @@ button:has(> .fa-camera-retro) i {
 .card-header .btn-outline-primary:hover,
 .card-header .btn-outline-secondary:hover,
 .btn-download-pdf:hover,
+.btn-download-png:hover,
 .btn-download-csv:hover,
 button:has(> .fa-camera-retro):hover {
   background-color: #f1f5f9 !important;
@@ -4663,12 +4773,18 @@ select.de-inline-select:not(.selectized) {
 .tertiary-horizontal-subsubnavbar {
   background: #f8fafc !important;
   border-bottom: 1px solid #e2e8f0 !important;
-  display: flex !important;
+  display: flex;
   flex-direction: column !important;
   padding: 0 16px 6px 16px !important;
   z-index: 1040 !important;
   position: relative !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+}
+
+.tertiary-horizontal-subsubnavbar.d-none,
+.tertiary-horizontal-subsubnavbar[style*="display: none"],
+.tertiary-horizontal-subsubnavbar[style*="display:none"] {
+  display: none !important;
 }
 
 .subsubnavbar-container {
@@ -7490,7 +7606,8 @@ ul#structural_tab-prop_subtab_view,
   flex-wrap: wrap;
 }
 
-.dock-pill-btn {
+.dock-pill-btn,
+.filter-pill-btn {
   font-size: 0.78rem;
   font-weight: 600;
   padding: 4px 10px;
@@ -7501,13 +7618,15 @@ ul#structural_tab-prop_subtab_view,
   color: #475569;
 }
 
-.dock-pill-btn:hover {
+.dock-pill-btn:hover,
+.filter-pill-btn:hover {
   background: #f1f5f9;
   color: #1e293b;
   border-color: #94a3b8;
 }
 
-.dock-pill-btn.active {
+.dock-pill-btn.active,
+.filter-pill-btn.active {
   background-color: #2563eb !important;
   color: #ffffff !important;
   border-color: #2563eb !important;
@@ -7522,6 +7641,141 @@ ul#structural_tab-prop_subtab_view,
 .tour-close-btn:hover {
   opacity: 1;
   transform: rotate(90deg);
+}
+
+/* ==========================================================================
+   MINIMIZED EXPANDABLE ONBOARDING TAB (BOTTOM-RIGHT)
+   ========================================================================== */
+.tour-minimized-tab {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  z-index: 10040;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(203, 213, 225, 0.95);
+  border-radius: 30px;
+  padding: 4px 6px 4px 10px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  animation: tourTabPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  user-select: none;
+}
+
+@keyframes tourTabPopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tour-minimized-tab:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+  box-shadow: 0 14px 30px -6px rgba(37, 99, 235, 0.22), 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.tour-minimized-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.tour-minimized-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  border-radius: 20px;
+}
+
+.tour-minimized-icon-pulse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.82rem;
+  animation: tourCompassGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes tourCompassGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.15);
+  }
+}
+
+.tour-minimized-label {
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.tour-minimized-step-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tour-minimized-chevron {
+  font-size: 0.70rem;
+  color: #64748b;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.tour-minimized-tab:hover .tour-minimized-chevron {
+  transform: translateY(-1.5px);
+  color: #2563eb;
+}
+
+.tour-minimized-dismiss {
+  background: transparent;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.tour-minimized-dismiss:hover {
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 /* Spotlight halo effect on active tour targets (continuous elegant breathing) */
@@ -7595,66 +7849,52 @@ ul#structural_tab-prop_subtab_view,
 
 @keyframes harmoniousFrameBlink {
   0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0), 0 0 0 0 rgba(56, 189, 248, 0);
-    outline: 3px solid transparent;
-    outline-offset: 4px;
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0), 0 0 0 0 rgba(249, 115, 22, 0);
+    outline: 2.5px solid transparent;
+    outline-offset: 3px;
     border-color: #cbd5e1;
     background-color: #f8fafc;
   }
-  12% {
-    box-shadow: 0 0 0 3px #2563eb, 0 0 0 8px rgba(37, 99, 235, 0.55), 0 0 28px rgba(56, 189, 248, 0.75), 0 0 45px rgba(147, 197, 253, 0.5);
-    outline: 3px solid #2563eb;
-    outline-offset: 4px;
-    border-color: #2563eb;
-    background-color: #eff6ff;
+  16% {
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.7), 0 0 16px rgba(249, 115, 22, 0.5), 0 0 28px rgba(249, 115, 22, 0.25);
+    outline: 2.5px solid rgba(234, 88, 12, 0.7);
+    outline-offset: 3px;
+    border-color: rgba(234, 88, 12, 0.7);
+    background-color: rgba(249, 115, 22, 0.08);
   }
-  24% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0), 0 0 0 0 rgba(56, 189, 248, 0);
-    outline: 3px solid transparent;
-    outline-offset: 4px;
+  33% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0), 0 0 0 0 rgba(249, 115, 22, 0);
+    outline: 2.5px solid transparent;
+    outline-offset: 3px;
     border-color: #cbd5e1;
     background-color: #f8fafc;
-  }
-  38% {
-    box-shadow: 0 0 0 3px #2563eb, 0 0 0 8px rgba(37, 99, 235, 0.55), 0 0 28px rgba(56, 189, 248, 0.75), 0 0 45px rgba(147, 197, 253, 0.5);
-    outline: 3px solid #2563eb;
-    outline-offset: 4px;
-    border-color: #2563eb;
-    background-color: #eff6ff;
   }
   50% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0), 0 0 0 0 rgba(56, 189, 248, 0);
-    outline: 3px solid transparent;
-    outline-offset: 4px;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.7), 0 0 16px rgba(249, 115, 22, 0.5), 0 0 28px rgba(249, 115, 22, 0.25);
+    outline: 2.5px solid rgba(234, 88, 12, 0.7);
+    outline-offset: 3px;
+    border-color: rgba(234, 88, 12, 0.7);
+    background-color: rgba(249, 115, 22, 0.08);
+  }
+  67% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0), 0 0 0 0 rgba(249, 115, 22, 0);
+    outline: 2.5px solid transparent;
+    outline-offset: 3px;
     border-color: #cbd5e1;
     background-color: #f8fafc;
   }
-  64% {
-    box-shadow: 0 0 0 3px #2563eb, 0 0 0 7px rgba(37, 99, 235, 0.45), 0 0 22px rgba(56, 189, 248, 0.6), 0 0 35px rgba(147, 197, 253, 0.35);
-    outline: 3px solid #2563eb;
-    outline-offset: 4px;
-    border-color: #2563eb;
-    background-color: #eff6ff;
-  }
-  78% {
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
-    outline: 2px solid rgba(37, 99, 235, 0.25);
-    outline-offset: 4px;
-    border-color: #94a3b8;
-    background-color: #f8fafc;
-  }
-  90% {
-    box-shadow: 0 0 0 2.5px #2563eb, 0 0 0 6px rgba(37, 99, 235, 0.35), 0 0 18px rgba(56, 189, 248, 0.45);
-    outline: 2.5px solid #2563eb;
-    outline-offset: 4px;
-    border-color: #2563eb;
-    background-color: #eff6ff;
+  83% {
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.7), 0 0 16px rgba(249, 115, 22, 0.5), 0 0 28px rgba(249, 115, 22, 0.25);
+    outline: 2.5px solid rgba(234, 88, 12, 0.7);
+    outline-offset: 3px;
+    border-color: rgba(234, 88, 12, 0.7);
+    background-color: rgba(249, 115, 22, 0.08);
   }
   100% {
-    box-shadow: 0 0 0 2.5px #2563eb, 0 0 0 4px rgba(37, 99, 235, 0.25), 0 0 12px rgba(56, 189, 248, 0.25);
-    outline: 2.5px solid #2563eb;
-    outline-offset: 4px;
-    border-color: #2563eb;
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0), 0 0 0 0 rgba(249, 115, 22, 0);
+    outline: 2.5px solid transparent;
+    outline-offset: 3px;
+    border-color: #cbd5e1;
     background-color: #f8fafc;
   }
 }
@@ -7664,10 +7904,11 @@ ul#structural_tab-prop_subtab_view,
 .dock-section.harmonious-frame-blink,
 .accordion-item.harmonious-frame-blink,
 .tour-spotlight-active.harmonious-frame-blink {
-  animation: harmoniousFrameBlink 2.6s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+  animation: harmoniousFrameBlink 2.7s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   border-radius: 8px !important;
   position: relative !important;
   z-index: 10050 !important;
+  transition: all 0.25s ease !important;
 }
 
 /* Modal stacking context elevation to guarantee modals sit on the absolute premier plan (above all docks, tooltips, HUDs) */

@@ -144,7 +144,7 @@ staircase_sort <- function(full_anno_df, mat_in, secondary_sort_mode = "grey",
       sort_df <- data.frame(original_index = sub_idx)
       
    # Failsafe ensuring grouping factor isn't dropped
-      grouping_cols <- intersect(real_cols, c("subclass", "lipid_class", "hyperclass"))
+      grouping_cols <- intersect(real_cols, c("subclass", "lipid_class", "hyperclass", "Lipid_Name"))
       if (length(grouping_cols) == 0 && "subclass" %in% names(sub_anno)) {
           grouping_cols <- "subclass"
           real_cols <- unique(c("subclass", real_cols))
@@ -461,6 +461,7 @@ generateHeatmapObject <- function(mat, title,
           disp_name <- switch(col, 
              "subclass" = "Lipid Main Class",
              "hyperclass" = "Lipid Category",
+             "Lipid_Name" = "Single Lipid",
              col
           )
           df_list[[disp_name]] <- anno_ord[[col]]
@@ -486,14 +487,27 @@ generateHeatmapObject <- function(mat, title,
      } else {
         bm <- CLASS_MAP_COLORS
         unique_cls <- unique(row_ann_df[[cls_target]])
-        if (any(grepl("→", unique_cls))) {
+        if (any(grepl("\u2192", unique_cls))) {
            names(bm) <- get_short_class_name(names(bm))
         } else if (any(unique_cls %in% get_full_class_name(names(bm)))) {
            names(bm) <- get_full_class_name(names(bm))
         }
         bm
      }
-     ann_colors[[cls_target]] <- base_cols
+     represented_cls <- unique(as.character(row_ann_df[[cls_target]]))
+     represented_cls <- represented_cls[!is.na(represented_cls) & represented_cls != ""]
+     if (length(represented_cls) > 0) {
+        matched_cols <- base_cols[names(base_cols) %in% represented_cls]
+        missing_cls <- setdiff(represented_cls, names(matched_cols))
+        if (length(missing_cls) > 0) {
+           fallback_pal <- scales::hue_pal()(length(missing_cls))
+           names(fallback_pal) <- missing_cls
+           matched_cols <- c(matched_cols, fallback_pal)
+        }
+        ann_colors[[cls_target]] <- matched_cols
+     } else {
+        ann_colors[[cls_target]] <- base_cols
+     }
   }
   
  # Add Lipid Category Colors if present
@@ -504,15 +518,61 @@ generateHeatmapObject <- function(mat, title,
      } else {
         bm <- if(exists("HYPERCLASS_MAP_COLORS")) HYPERCLASS_MAP_COLORS else CLASS_MAP_COLORS
         unique_orig <- unique(row_ann_df[[cat_target]])
-        if (any(grepl("→", unique_orig))) {
+        if (any(grepl("\u2192", unique_orig))) {
            names(bm) <- get_short_class_name(names(bm))
         } else if (any(unique_orig %in% get_full_class_name(names(bm)))) {
            names(bm) <- get_full_class_name(names(bm))
         }
         bm
      }
-     
-     ann_colors[[cat_target]] <- origin_cols
+     represented_cat <- unique(as.character(row_ann_df[[cat_target]]))
+     represented_cat <- represented_cat[!is.na(represented_cat) & represented_cat != ""]
+     if (length(represented_cat) > 0) {
+        matched_cols <- origin_cols[names(origin_cols) %in% represented_cat]
+        missing_cat <- setdiff(represented_cat, names(matched_cols))
+        if (length(missing_cat) > 0) {
+           fallback_pal <- scales::hue_pal()(length(missing_cat))
+           names(fallback_pal) <- missing_cat
+           matched_cols <- c(matched_cols, fallback_pal)
+        }
+        ann_colors[[cat_target]] <- matched_cols
+     } else {
+        ann_colors[[cat_target]] <- origin_cols
+     }
+  }
+
+ # Add Single Lipid Colors if present
+  single_target <- intersect(c("Single Lipid", "Lipid_Name"), names(row_ann_df))[1]
+  if(!is.na(single_target)) {
+     s_cols <- if(!is.null(species_colors)) {
+        species_colors
+     } else {
+        unique_l <- unique(row_ann_df[[single_target]])
+        n_l <- length(unique_l)
+        pal_colors <- if (n_l <= 8) {
+          RColorBrewer::brewer.pal(max(3, n_l), "Set2")[1:n_l]
+        } else if (n_l <= 12) {
+          RColorBrewer::brewer.pal(max(3, n_l), "Set3")[1:n_l]
+        } else {
+          scales::hue_pal()(n_l)
+        }
+        names(pal_colors) <- unique_l
+        pal_colors
+     }
+     represented_lipids <- unique(as.character(row_ann_df[[single_target]]))
+     represented_lipids <- represented_lipids[!is.na(represented_lipids) & represented_lipids != ""]
+     if (length(represented_lipids) > 0) {
+        matched_cols <- s_cols[names(s_cols) %in% represented_lipids]
+        missing_lipids <- setdiff(represented_lipids, names(matched_cols))
+        if (length(missing_lipids) > 0) {
+           fallback_pal <- scales::hue_pal()(length(missing_lipids))
+           names(fallback_pal) <- missing_lipids
+           matched_cols <- c(matched_cols, fallback_pal)
+        }
+        ann_colors[[single_target]] <- matched_cols
+     } else {
+        ann_colors[[single_target]] <- s_cols
+     }
   }
   
   if (!is.null(cell_annotation)) {
@@ -624,7 +684,7 @@ generateHeatmapObject <- function(mat, title,
     }
   }
   
-  list(ht = ht, data = mat_ord)
+  list(ht = ht, data = mat_ord, ann_colors = ann_colors)
 }
 
 # ==============================================================================
@@ -648,6 +708,30 @@ buildBarPlot <- function(mat, titleText,
 ) {
   validate(need(is.matrix(mat) && nrow(mat) > 0 && ncol(mat) > 0, "No data for bar chart."))
   req(annotation_data)
+  
+  clean_unspecified_labels <- function(x) {
+    if (is.null(x)) return(x)
+    is_f <- is.factor(x)
+    levs <- if (is_f) levels(x) else unique(as.character(x))
+    clean_levs <- gsub("Unspecified", "", levs)
+    clean_levs <- gsub("_+", "_", clean_levs)
+    clean_levs <- gsub("^_|_$", "", clean_levs)
+    clean_levs[clean_levs == ""] <- "Sample"
+    if (is_f) {
+      factor(clean_levs[as.integer(x)], levels = unique(clean_levs))
+    } else {
+      clean_levs[match(as.character(x), levs)]
+    }
+  }
+
+  if (!is.null(sample_grouping)) {
+    orig_names <- names(sample_grouping)
+    sample_grouping <- clean_unspecified_labels(sample_grouping)
+    names(sample_grouping) <- orig_names
+  }
+  if (!is.null(sample_colors)) {
+    names(sample_colors) <- clean_unspecified_labels(names(sample_colors))
+  }
   
  # Prepare Long Format Data
   dfm <- as.data.frame(mat) %>% tibble::rownames_to_column("Lipid_Name") %>%
@@ -793,11 +877,16 @@ buildBarPlot <- function(mat, titleText,
  # Step 3: Prepare Axes based on Orientation
   if (orientation == "sample_x") {
     plot_df <- plot_df %>% dplyr::rename(xVal = SampleCol, fillVal = ClassGroup)
+    plot_df$xVal <- clean_unspecified_labels(plot_df$xVal)
+    if (!is.null(error_df) && "xVal" %in% names(error_df)) {
+      error_df$xVal <- clean_unspecified_labels(error_df$xVal)
+    }
     if(!is.factor(plot_df$xVal)) {
        plot_df$xVal <- factor(plot_df$xVal, levels = unique(plot_df$xVal)) 
     }
   } else {
     plot_df <- plot_df %>% dplyr::rename(xVal = ClassGroup, fillVal = SampleCol)
+    plot_df$fillVal <- clean_unspecified_labels(plot_df$fillVal)
     if(!is.factor(plot_df$xVal)) {
        plot_df$xVal <- factor(plot_df$xVal, levels = unique(plot_df$xVal)) 
     }
@@ -823,7 +912,24 @@ buildBarPlot <- function(mat, titleText,
   }
   
  # Plotting
-  ggplot_title <- gsub("\n", "<br>", titleText)
+  # Split into main title and subtitle if newline or contrast present, or wrap if long
+  plot_main_title <- NULL
+  plot_sub_title <- NULL
+  if (!is.null(titleText) && nzchar(titleText)) {
+    if (grepl("\n", titleText)) {
+      parts <- strsplit(titleText, "\n")[[1]]
+      plot_main_title <- parts[1]
+      plot_sub_title <- paste(parts[-1], collapse = " ")
+    } else {
+      plot_main_title <- titleText
+    }
+    if (!is.null(plot_main_title) && nchar(plot_main_title) > 42) {
+      plot_main_title <- stringr::str_wrap(plot_main_title, width = 45)
+    }
+    if (!is.null(plot_sub_title) && nchar(plot_sub_title) > 50) {
+      plot_sub_title <- stringr::str_wrap(plot_sub_title, width = 55)
+    }
+  }
   ylab_text <- switch(value_mode, 
                       "Absolute (intensity)"="Summed Intensity", 
                       "Absolute (%)"="Relative Intensity (%)", 
@@ -838,7 +944,7 @@ buildBarPlot <- function(mat, titleText,
        } else {
           base_map <- if(exists("HYPERCLASS_MAP_COLORS")) HYPERCLASS_MAP_COLORS else CLASS_MAP_COLORS
           unique_vals <- unique(plot_df$fillVal)
-          if (any(grepl("→", unique_vals))) {
+          if (any(grepl("\u2192", unique_vals))) {
              names(base_map) <- get_short_class_name(names(base_map))
           } else if (any(unique_vals %in% get_full_class_name(names(base_map)))) {
              names(base_map) <- get_full_class_name(names(base_map))
@@ -859,7 +965,7 @@ buildBarPlot <- function(mat, titleText,
        } else {
           base_map <- CLASS_MAP_COLORS
           unique_vals <- unique(plot_df$fillVal)
-          if (any(grepl("→", unique_vals))) {
+          if (any(grepl("\u2192", unique_vals))) {
              names(base_map) <- get_short_class_name(names(base_map))
           } else if (any(unique_vals %in% get_full_class_name(names(base_map)))) {
              names(base_map) <- get_full_class_name(names(base_map))
@@ -888,12 +994,30 @@ buildBarPlot <- function(mat, titleText,
   p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = xVal, y = Value, fill = fillVal)) + 
     ggplot2::geom_bar(stat = "identity", position = "stack") +
     ggplot2::scale_fill_manual(values = fillMap, name = NULL, na.value = "grey50") +
-    ggplot2::labs(title = NULL, subtitle = NULL, x = NULL, y = ylab_text) +
+    ggplot2::labs(title = plot_main_title, subtitle = plot_sub_title, x = NULL, y = ylab_text) +
     ggplot2::theme_minimal(base_size = 14) +
-    ggplot2::theme(panel.grid = ggplot2::element_blank(), 
-                   axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust=1), 
-                   plot.title = ggplot2::element_text(hjust = 0, size=14, lineheight = 1.2)) +
-    ggplot2::ggtitle(ggplot_title)
+    ggplot2::theme(
+      panel.grid = ggplot2::element_blank(), 
+      axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1, size = 11), 
+      plot.title = ggplot2::element_text(hjust = 0, size = 13.5, face = "bold", lineheight = 1.15, margin = ggplot2::margin(b = 4)),
+      plot.subtitle = ggplot2::element_text(hjust = 0, size = 11.5, color = "#475569", margin = ggplot2::margin(b = 8)),
+      plot.margin = ggplot2::margin(t = 12, r = 16, b = 35, l = 12, unit = "pt")
+    )
+    
+  n_classes <- length(fillMap)
+  legend_ncols <- if (n_classes > 15) 2 else 1
+  p <- p + ggplot2::guides(fill = ggplot2::guide_legend(
+    ncol = legend_ncols,
+    byrow = TRUE,
+    keywidth = ggplot2::unit(0.85, "lines"),
+    keyheight = ggplot2::unit(0.85, "lines")
+  )) +
+  ggplot2::theme(
+    legend.text = ggplot2::element_text(size = 9.5),
+    legend.title = ggplot2::element_blank(),
+    legend.spacing.x = ggplot2::unit(0.2, "cm"),
+    legend.spacing.y = ggplot2::unit(0.12, "cm")
+  )
     
  # Add Error Bars if requested
   if (isTRUE(compute_error_bars) && isTRUE(aggregate_by_group)) {
@@ -932,6 +1056,30 @@ buildDonutPlot <- function(mat, titleText,
                            min_pct = 0.0) {
   validate(need(is.matrix(mat) && nrow(mat) > 0 && ncol(mat) > 0, "No data for donut plot."))
   req(annotation_data)
+  
+  clean_unspecified_labels <- function(x) {
+    if (is.null(x)) return(x)
+    is_f <- is.factor(x)
+    levs <- if (is_f) levels(x) else unique(as.character(x))
+    clean_levs <- gsub("Unspecified", "", levs)
+    clean_levs <- gsub("_+", "_", clean_levs)
+    clean_levs <- gsub("^_|_$", "", clean_levs)
+    clean_levs[clean_levs == ""] <- "Sample"
+    if (is_f) {
+      factor(clean_levs[as.integer(x)], levels = unique(clean_levs))
+    } else {
+      clean_levs[match(as.character(x), levs)]
+    }
+  }
+
+  if (!is.null(sample_grouping)) {
+    orig_names <- names(sample_grouping)
+    sample_grouping <- clean_unspecified_labels(sample_grouping)
+    names(sample_grouping) <- orig_names
+  }
+  if (!is.null(sample_colors)) {
+    names(sample_colors) <- clean_unspecified_labels(names(sample_colors))
+  }
   
   # Prepare Long Format Data
   dfm <- as.data.frame(mat) %>% tibble::rownames_to_column("Lipid_Name") %>%
@@ -1003,6 +1151,12 @@ buildDonutPlot <- function(mat, titleText,
       plot_df <- df_class_sample %>%
         dplyr::rename(FacetVar = SampleCol, SliceGroup = ClassGroup)
     }
+  }
+  
+  if (orientation == "class_x") {
+    plot_df$SliceGroup <- clean_unspecified_labels(plot_df$SliceGroup)
+  } else {
+    plot_df$FacetVar <- clean_unspecified_labels(plot_df$FacetVar)
   }
   
   # Calculate cumulative sum coordinates for donut slices

@@ -131,6 +131,18 @@
                 }
               }
             });
+
+            window.Shiny.addCustomMessageHandler('updateFilteredHeatmapTabTitle', function(msg) {
+              if (typeof window.updateFilteredHeatmapTabTitle === 'function') {
+                window.updateFilteredHeatmapTabTitle(msg ? msg.contrast : '');
+              }
+            });
+
+            window.Shiny.addCustomMessageHandler('purgeOrphanedModals', function(msg) {
+              if (typeof window.purgeOrphanedModals === 'function') {
+                window.purgeOrphanedModals();
+              }
+            });
           } catch(e) {}
         }
       }
@@ -163,6 +175,20 @@
         }
       };
 
+      // Clean up orphaned or zombie Shiny modals (modals detached outside of #shiny-modal-wrapper)
+      window.purgeOrphanedModals = function() {
+        var staleModals = document.querySelectorAll('body > [id="shiny-modal"], body > .modal:not(#welcome-modal):not(#shiny-modal)');
+        if (staleModals.length > 0) {
+          staleModals.forEach(function(m) {
+            if ($(m).closest('#shiny-modal-wrapper').length > 0) return;
+            if (window.Shiny && typeof window.Shiny.unbindAll === 'function') {
+              try { window.Shiny.unbindAll(m); } catch(e) {}
+            }
+            m.remove();
+          });
+        }
+      };
+
       // Open Metadata Mapping Modal Programmatically
       window.triggerOpenMetadataMapping = function(e) {
         if (e) {
@@ -170,8 +196,11 @@
           if (typeof e.stopPropagation === 'function') e.stopPropagation();
         }
 
-        // Immediately dismiss and destroy all tooltips
+        // Immediately dismiss tooltips and purge detached orphan modals
         window.dismissAllTooltips();
+        if (typeof window.purgeOrphanedModals === 'function') {
+          window.purgeOrphanedModals();
+        }
 
         var btn = document.getElementById('data_hub-openMetadataMappingBtn') ||
                   document.querySelector('.btn-metadata-mapping');
@@ -204,9 +233,63 @@
         }
       });
 
-      // When any modal shows or hides, dismiss all tooltips
-      $(document).on('show.bs.modal shown.bs.modal hide.bs.modal hidden.bs.modal', function() {
+      // When any modal shows or hides, dismiss tooltips
+      $(document).on('show.bs.modal hide.bs.modal', function() {
         window.dismissAllTooltips();
+      });
+
+      // When modal is shown, ensure its outputs and inputs are properly bound
+      $(document).on('shown.bs.modal', function(e) {
+        window.dismissAllTooltips();
+        var modal = document.getElementById('shiny-modal');
+        if (modal && window.Shiny && typeof window.Shiny.bindAll === 'function') {
+          try { window.Shiny.bindAll(modal); } catch(err) {}
+        }
+      });
+
+      $(document).on('hidden.bs.modal', function(e) {
+        window.dismissAllTooltips();
+        var target = e.target;
+        if (target && (target.id === 'shiny-modal' || $(target).hasClass('modal'))) {
+          if (target.parentElement && target.parentElement !== document.getElementById('shiny-modal-wrapper')) {
+            if (window.Shiny && typeof window.Shiny.unbindAll === 'function') {
+              try { window.Shiny.unbindAll(target); } catch(err) {}
+            }
+            target.remove();
+          }
+        }
+        if (typeof window.purgeOrphanedModals === 'function') {
+          window.purgeOrphanedModals();
+        }
+        if (!$('.modal.show, #shiny-modal:visible').length) {
+          $('.modal-backdrop').remove();
+          $('body').removeClass('modal-open').css('overflow', '');
+        }
+      });
+
+      // Delegated event listener ensuring instant Shiny input sync and re-binding when selecting 'No'/'Yes'
+      $(document).on('change click', 'input[name$="nomenclature_standard_align"]', function() {
+        var val = $(this).val();
+        if (window.Shiny && typeof window.Shiny.setInputValue === 'function') {
+          window.Shiny.setInputValue('data_hub-nomenclature_standard_align', val, {priority: 'event'});
+        }
+        setTimeout(function() {
+          var modal = document.getElementById('shiny-modal');
+          if (modal && window.Shiny && typeof window.Shiny.bindAll === 'function') {
+            try { window.Shiny.bindAll(modal); } catch(err) {}
+          }
+        }, 50);
+      });
+
+      $(document).on('click', '.shiny-input-radiogroup[id$="nomenclature_standard_align"] label', function() {
+        var $input = $(this).find('input[type="radio"]');
+        if ($input.length) {
+          var val = $input.val();
+          $input.prop('checked', true).trigger('change');
+          if (window.Shiny && typeof window.Shiny.setInputValue === 'function') {
+            window.Shiny.setInputValue('data_hub-nomenclature_standard_align', val, {priority: 'event'});
+          }
+        }
       });
 
       // Interactive tooltip hover retention: allow cursor to move from icon into tooltip to click links
@@ -516,7 +599,10 @@
             }
 
             // Target the actual cohort selection textboxes
-            var $targetItem = $('#data_hub-deReferenceGroupUI');
+            var $targetItem = $('#dock_compared_analysis_block');
+            if (!$targetItem.length || !$targetItem.is(':visible')) {
+              $targetItem = $('#data_hub-deReferenceGroupUI');
+            }
             if (!$targetItem.length || !$targetItem.is(':visible')) {
               $targetItem = $deItem.find('.dock-group-block').filter(function() {
                 return $(this).text().indexOf('Compared Analysis') !== -1 || $(this).text().indexOf('Contrast Definition') !== -1;
@@ -538,6 +624,7 @@
             var applyPulse = function() {
               var elementsToPulse = [$deItem[0]];
               var pointedSelectors = [
+                '#dock_compared_analysis_block',
                 '#data_hub-deReferenceGroupUI',
                 '#data_hub-deComparisonGroupUI',
                 '#data_hub-deInteractionGroupUI'
@@ -1130,80 +1217,127 @@
       });
       
       // Dynamic Plot Compression and Expansion for jqui_resizable containers
-      $(document).on('resize', function(e) {
-         var target = $(e.target);
+      function adjustResizableContainer(target) {
+         if (!target || !target.length) return;
+         if (target.hasClass('shiny-plot-output')) {
+             target.find('img').css({
+                 'width': '100%',
+                 'height': '100%'
+             });
+             return;
+         }
 
-         if (target.hasClass('ui-resizable')) {
-             // If target is directly a shiny-plot-output, allow jQuery UI to set width & height directly
-             if (target.hasClass('shiny-plot-output')) {
-                 target.find('img').css({
-                     'width': '100%',
-                     'height': '100%'
-                 });
+         var targetOffset = target.offset();
+         var targetInnerH = target.innerHeight() || target.height();
+         if (!targetInnerH || targetInnerH <= 0) return;
+
+         // Resize donut scrollable viewports if present
+         var donutViewports = target.find('.composition-donut-viewport:visible');
+         donutViewports.each(function() {
+             var vp = $(this);
+             var vpOffset = vp.offset();
+             var topOff = (vpOffset && targetOffset) ? Math.max(0, vpOffset.top - targetOffset.top) : 180;
+             var spBelow = 0;
+             vp.nextAll(':visible').each(function() { spBelow += $(this).outerHeight(true) || 0; });
+             var $cb = vp.closest('.card-body');
+             if ($cb.length) spBelow += parseInt($cb.css('padding-bottom')) || 16;
+             var $cd = vp.closest('.card');
+             if ($cd.length) spBelow += parseInt($cd.css('margin-bottom')) || 0;
+             spBelow += parseInt(target.css('padding-bottom')) || 12;
+             spBelow += 18;
+             var newVpH = Math.max(200, Math.min(3200, Math.round(targetInnerH - (topOff + spBelow))));
+             vp.css('height', newVpH + 'px');
+         });
+
+         // Identify candidate plots to resize within container
+         var plots = target.find('.shiny-plot-output:visible');
+         if (plots.length === 0) {
+             plots = target.find('.shiny-plot-output');
+         }
+
+         plots.each(function() {
+             var plot = $(this);
+             
+             // Ensure inner plot images scale smoothly in real time during drag
+             plot.find('img').css({
+                 'width': '100%',
+                 'height': '100%',
+                 'max-width': '100%',
+                 'max-height': '100%',
+                 'object-fit': 'fill'
+             });
+             
+             // If the plot is hosted inside a dedicated scrollable viewport, preserve its server-driven intrinsic height for scrolling
+             if (plot.closest('.prop-plot-scroll-viewport').length > 0 || plot.closest('.composition-donut-viewport').length > 0) {
+                 plot.css('width', '100%');
                  return;
              }
 
-             var isDedicatedContainer = (target.attr('id') && target.attr('id').indexOf('container') !== -1);
-             var plots = target.find('.shiny-plot-output');
-             plots.each(function() {
-                 var plot = $(this);
-                 
-                 // Ensure inner plot images scale smoothly in real time during drag
-                 plot.find('img').css({
-                     'width': '100%',
-                     'height': '100%',
-                     'max-width': '100%',
-                     'max-height': '100%',
-                     'object-fit': 'contain'
-                 });
-                 
-                 // If the plot is hosted inside a dedicated scrollable viewport, preserve its server-driven intrinsic height for scrolling
-                 if (plot.closest('.prop-plot-scroll-viewport').length > 0) {
-                     plot.css('width', '100%');
-                     return;
-                 }
-                 
-                 // Initialize intrinsic geometries robustly
-                 if (!plot.data('orig-plot-h')) {
-                     var inlineH = plot[0].style.height;
-                     var parsedH = parseInt(inlineH);
-                     if (isNaN(parsedH) || parsedH <= 0) parsedH = plot.height();
-                     
-                     plot.data('orig-plot-h', parsedH);
-                     
-                     // Calculate the chrome (headers, footers, padding) height
-                     var chromeH = target.height() - plot.height();
-                     if (isDedicatedContainer) {
-                         chromeH = Math.max(0, Math.min(60, chromeH));
-                     } else if (chromeH < 0 || chromeH > 400) {
-                         chromeH = 150; // Standard fallback for navset_card_tab chrome
-                     }
-                     plot.data('chrome-h', chromeH);
-                 }
-                 
-                 var origPlotH = plot.data('orig-plot-h');
-                 var chromeH = plot.data('chrome-h');
-                 
-                 if (origPlotH) {
-                     var newPlotH = target.height() - chromeH;
-                     
-                     // Constrain compressing to a visible minimum and reasonable maximum
-                     if (newPlotH < 150) {
-                         newPlotH = 150;
-                     } else if (newPlotH > 3200) {
-                         newPlotH = 3200;
-                     }
-                     
-                     plot.css('height', newPlotH + 'px');
-                     plot.css('width', '100%');
-                 }
+             // Calculate the true dynamic top offset from top of container to top of plot canvas
+             var plotOffset = plot.offset();
+             var topOffset = (plotOffset && targetOffset) ? Math.max(0, plotOffset.top - targetOffset.top) : 0;
+             
+             // Calculate space required below the plot (captions, card margins/paddings, container padding, handle clearance)
+             var spaceBelow = 0;
+             plot.nextAll(':visible').each(function() {
+                 spaceBelow += $(this).outerHeight(true) || 0;
              });
+             var $cardBody = plot.closest('.card-body');
+             if ($cardBody.length) {
+                 spaceBelow += parseInt($cardBody.css('padding-bottom')) || 16;
+             }
+             var $card = plot.closest('.card');
+             if ($card.length) {
+                 spaceBelow += parseInt($card.css('margin-bottom')) || 0;
+             }
+             spaceBelow += parseInt(target.css('padding-bottom')) || 12;
+             spaceBelow += 18; // clearance for resize anchor handle
+
+             var totalChrome = topOffset + spaceBelow;
+             if (topOffset <= 0 || isNaN(totalChrome) || totalChrome < 50) {
+                 totalChrome = plot.data('last-chrome-h') || target.data('last-chrome-h') || 240;
+             } else {
+                 plot.data('last-chrome-h', totalChrome);
+                 target.data('last-chrome-h', totalChrome);
+             }
+
+             var newPlotH = Math.round(targetInnerH - totalChrome);
+             
+             // Constrain compressing to a visible minimum and reasonable maximum
+             if (newPlotH < 180) {
+                 newPlotH = 180;
+             } else if (newPlotH > 3200) {
+                 newPlotH = 3200;
+             }
+             
+             plot.css('height', newPlotH + 'px');
+             plot.css('width', '100%');
+         });
+      }
+
+      // Dynamic Plot Compression and Expansion for jqui_resizable containers
+      $(document).on('resize', function(e) {
+         var target = $(e.target);
+         if (target.hasClass('ui-resizable')) {
+             adjustResizableContainer(target);
          }
       });
 
        // Notify Shiny upon resize completion so it draws crisp resolution at new dimensions
        var resizeStopTimer = null;
        $(document).on('resizestop', function(e) {
+          var target = $(e.target);
+          target.find('.shiny-plot-output').each(function() {
+             var p = $(this);
+             var id = p.attr('id');
+             if (id && window.Shiny && window.Shiny.setInputValue) {
+                 var w = p.width();
+                 var h = p.height();
+                 if (w > 0 && h > 0) {
+                     window.Shiny.setInputValue(id + '_size', { width: Math.round(w), height: Math.round(h) });
+                 }
+             }
+          });
           clearTimeout(resizeStopTimer);
           resizeStopTimer = setTimeout(function() {
              window.dispatchEvent(new Event('resize'));
@@ -1219,9 +1353,16 @@
           var txt = (el.textContent || el.innerText || '').toUpperCase();
           var id = (el.id || '').toUpperCase();
           var isPdf = txt.indexOf('PDF') !== -1 || id.indexOf('PDF') !== -1;
+          var isPng = txt.indexOf('PNG') !== -1 || id.indexOf('PNG') !== -1;
           var isCsv = txt.indexOf('CSV') !== -1 || txt.indexOf('DATA') !== -1 || id.indexOf('CSV') !== -1 || id.indexOf('TABLE') !== -1;
           if (isPdf) {
             if (!el.classList.contains('btn-download-pdf')) el.classList.add('btn-download-pdf');
+            if (el.classList.contains('btn-outline-primary')) {
+              el.classList.remove('btn-outline-primary');
+              el.classList.add('btn-outline-secondary');
+            }
+          } else if (isPng) {
+            if (!el.classList.contains('btn-download-png')) el.classList.add('btn-download-png');
             if (el.classList.contains('btn-outline-primary')) {
               el.classList.remove('btn-outline-primary');
               el.classList.add('btn-outline-secondary');
@@ -1268,6 +1409,9 @@
               }
             });
           }
+          $('.ui-resizable').each(function() {
+            adjustResizableContainer($(this));
+          });
           window.dispatchEvent(new Event('resize'));
           $(window).trigger('resize');
         });
@@ -1288,7 +1432,7 @@
           }
 
           var isPropPlot = (plot.id && (plot.id.indexOf('propPlot') !== -1 || plot.id.indexOf('diffAcyl') !== -1)) || !!plot.closest('.prop-card-tabs, .diff-acyl-container');
-          var isStructural = !isPropPlot && ((plot.id && plot.id.indexOf('structural_tab') !== -1) || !!plot.closest('#structural_tab, [data-value="Structural"]'));
+          var isStructural = !isPropPlot && ((plot.id && plot.id.indexOf('structural_tab') !== -1) || !!plot.closest('#structural_tab, [data-value="Structural"], [data-value="Dot Plots"]'));
           var isLongitudinal = (plot.id && plot.id.indexOf('longitudinal_tab') !== -1) || !!plot.closest('#longitudinal_tab, [data-value="Longitudinal"]');
           var isViolin = !isStructural && ((plot.id && plot.id.indexOf('logratio_tab') !== -1) || !!plot.closest('#logratio_tab, [data-value="Violin Plots"]'));
           var isFla = (plot.id && plot.id.indexOf('fla_tab') !== -1) || !!plot.closest('#fla_tab, [data-value="Functional Ratios"]');
@@ -1314,13 +1458,24 @@
           var refItems = document.querySelectorAll('#data_hub-deReferenceGroupUI .selectize-input .item');
           var compItems = document.querySelectorAll('#data_hub-deComparisonGroupUI .selectize-input .item');
           var hasDeBanner = tabPane ? !!tabPane.querySelector('.de-not-run-banner') : false;
+          var hasNoSigBanner = tabPane ? !!tabPane.querySelector('.de-no-sig-banner') : false;
           var isAwaitingDE = isDEPlot && (hasDeBanner || refItems.length === 0 || compItems.length === 0);
+          var isNoSigDE = isDEPlot && !isAwaitingDE && hasNoSigBanner;
+
+          var isRawP = false;
+          if (isNoSigDE) {
+            var rawRadio = document.querySelector('input[name="data_hub-pValueType"][value="raw"]');
+            if (rawRadio && rawRadio.checked) isRawP = true;
+            var checkedRadio = document.querySelector('input[name="data_hub-pValueType"]:checked');
+            if (checkedRadio && checkedRadio.value === 'raw') isRawP = true;
+          }
 
           var overlayType = 'default';
           if (isStructural) overlayType = 'structural';
           else if (isLongitudinal) overlayType = 'longitudinal';
           else if (isAwaitingBaseline) overlayType = 'baseline';
           else if (isAwaitingDE) overlayType = 'de';
+          else if (isNoSigDE) overlayType = 'no_sig_' + (isRawP ? 'raw' : 'adj');
 
           // Strictly enforce: AT MOST ONE overlay per plot output! Prevent duplicate stacking loops
           if (existingOverlays.length > 0) {
@@ -1342,9 +1497,6 @@
                   '<div class=\"d-flex gap-2 justify-content-center flex-wrap\">' +
                     '<button type=\"button\" class=\"btn btn-primary btn-run-structural-analysis\">' +
                       '<i class=\"fa-solid fa-play me-1\"></i> Initiate Structural Analysis' +
-                    '</button>' +
-                    '<button type=\"button\" class=\"btn btn-outline-primary btn-point-structural-launcher\">' +
-                      '<i class=\"fa-solid fa-crosshairs me-1\"></i> Point to Button' +
                     '</button>' +
                   '</div>';
               } else if (isLongitudinal) {
@@ -1378,6 +1530,28 @@
                     '<button type="button" class="btn btn-warning text-dark btn-point-de-menu" data-action="point-de-menu">' +
                       '<i class="fa-solid fa-sliders me-1"></i> Show in menu' +
                     '</button>' +
+                  '</div>';
+              } else if (isNoSigDE) {
+                var noSigTabTitle = isFilteredHeatmap ? 'Filtered Heatmap' : (isFilteredComp ? 'Filtered Composition' : (isVolcano ? 'Volcano Plot' : (isLsea ? 'LSEA' : (isStructuralGrid ? 'Structural Grid' : 'Differential Expression Analysis'))));
+                var actionButtons = '';
+                if (!isRawP) {
+                  actionButtons += '<button type="button" class="btn btn-warning text-dark me-2" onclick="switchToRawPValue()">' +
+                    '<i class="fa-solid fa-bolt me-1"></i> Shift to Raw P-Value' +
+                  '</button>';
+                }
+                actionButtons += '<button type="button" class="btn btn-outline-secondary btn-point-de-menu" data-action="point-de-menu">' +
+                  '<i class="fa-solid fa-sliders me-1"></i> Compared Analysis & Cutoffs' +
+                '</button>';
+
+                var subtitleText = isRawP ?
+                  ('No lipids passed statistical significance and |Log2FC| thresholds under uncorrected raw p-values for ' + noSigTabTitle + '. You may relax the cutoffs in the Compared Analysis menu or view unfiltered profiles.') :
+                  ('No lipids passed FDR significance and |Log2FC| thresholds for ' + noSigTabTitle + '. You can explore uncorrected raw p-values or adjust cutoffs in the Compared Analysis menu.');
+
+                overlay.innerHTML = 
+                  '<div class="empty-plot-title">🔍  No Statistically Significant Lipids Found' + (isRawP ? ' (Raw P-Value)' : '') + '</div>' +
+                  '<div class="empty-plot-subtitle">' + subtitleText + '</div>' +
+                  '<div class="d-flex gap-2 justify-content-center flex-wrap mt-2">' +
+                    actionButtons +
                   '</div>';
               } else {
                 overlay.innerHTML = 
@@ -1870,12 +2044,12 @@
           icon: "fa-dna",
           subtabs: [
             {
-              label: "Structural",
-              icon: "fa-dna",
-              target: "Structural",
+              label: "Dot Plots",
+              icon: "fa-chart-scatter",
+              target: "Dot Plots",
               subsubtabs: [
                 { label: "Structural Analysis Dot Plots", icon: "fa-chart-scatter", target: "Structural Analysis Dot Plots" },
-                { label: "Violin Plots", icon: "fa-scale-unbalanced", target: "Violin Plots" },
+                { label: "Violin View (Structural Parameters)", icon: "fa-scale-unbalanced", target: "Violin View (Structural Parameters)" },
                 { label: "Correlation Networks", icon: "fa-circle-nodes", target: "Correlation Networks" }
               ]
             },
@@ -1939,7 +2113,7 @@
         "1. Data & Overview": "App Info",
         "2. Quality Control": "Quality Check",
         "3. Quantitative": "Heatmap",
-        "4. Structural": "Structural",
+        "4. Structural": "Dot Plots",
         "5. Targeted Analysis": "Functional Ratios",
         "6. Reference & Methods": "Math Proof"
       };
@@ -1947,6 +2121,7 @@
       var activeSubsubMap = {
         "Heatmap": "Unfiltered Heatmap",
         "Composition": "Unfiltered (All)",
+        "Dot Plots": "Structural Analysis Dot Plots",
         "Structural": "Structural Analysis Dot Plots",
         "Main Class & Acyl Chain Proportions": "Stacked Proportions",
         "Structural Grid": "Single Class View",
@@ -2074,21 +2249,26 @@
         }
 
         if (!currentSubtabEntry || !currentSubtabEntry.subsubtabs || currentSubtabEntry.subsubtabs.length === 0) {
-          $subsubnav.hide();
+          $subsubnav.hide().addClass('d-none');
           $subsubnav.find('.dendrogram-canvas').empty();
+          $subsubnav.find('.subsubnavbar-pills-list').empty();
           return;
         }
 
-        $subsubnav.show();
+        $subsubnav.show().removeClass('d-none');
         var currentSST = activeSubsubTarget || activeSubsubMap[activeSubtabTarget] || currentSubtabEntry.subsubtabs[0].target;
         activeSubsubMap[activeSubtabTarget] = currentSST;
 
         var pillsHtml = '';
         currentSubtabEntry.subsubtabs.forEach(function(sst) {
           var isActive = (sst.target === currentSST);
+          var pillLabel = sst.label;
+          if (sst.target === "Filtered Heatmap" && window.activeFilteredHeatmapContrast) {
+            pillLabel = "Filtered Heatmap" + window.activeFilteredHeatmapContrast;
+          }
           pillsHtml += '<button type="button" class="subsubtab-pill ' + (isActive ? 'active' : '') + '" data-subtab="' + activeSubtabTarget + '" data-target="' + sst.target + '">' +
             '<i class="fas ' + sst.icon + '"></i>' +
-            '<span>' + sst.label + '</span>' +
+            '<span>' + pillLabel + '</span>' +
           '</button>';
         });
 
@@ -2098,6 +2278,46 @@
         setTimeout(updateDendrogramCanvas, 50);
       }
       window.renderTertiarySubsubnavbar = renderTertiarySubsubnavbar;
+
+      window.activeFilteredHeatmapContrast = '';
+
+      window.updateFilteredHeatmapTabTitle = function(contrastStr) {
+        window.activeFilteredHeatmapContrast = contrastStr || '';
+        var fullTitle = 'Filtered Heatmap' + (window.activeFilteredHeatmapContrast || '');
+
+        // 1. Update in-place in tertiary subsubtab bar if present
+        var $pillSpan = $('#tertiary_subsubtab_bar .subsubtab-pill[data-target="Filtered Heatmap"] span');
+        if ($pillSpan.length) {
+          $pillSpan.text(fullTitle);
+        }
+
+        // 2. Update NAV_STRUCTURE definition so re-renders retain the comparison
+        if (typeof NAV_STRUCTURE !== 'undefined') {
+          NAV_STRUCTURE.forEach(function(entry) {
+            if (entry.subtabs) {
+              entry.subtabs.forEach(function(st) {
+                if (st.subsubtabs) {
+                  st.subsubtabs.forEach(function(sst) {
+                    if (sst.target === 'Filtered Heatmap') {
+                      sst.label = fullTitle;
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+
+        // 3. Update Shiny navset tab if present
+        var $shinyTab = $('#heatmap_barchart_tab-heatmap_tabs a[data-value="Filtered Heatmap"]');
+        if ($shinyTab.length) {
+          $shinyTab.text(fullTitle);
+        }
+
+        if (typeof updateDendrogramCanvas === 'function') {
+          setTimeout(updateDendrogramCanvas, 50);
+        }
+      };
 
       function renderSecondarySubnavbar(hypertabName, activeSubtabTarget) {
         var entry = NAV_STRUCTURE.find(function(n) {
@@ -2362,13 +2582,17 @@
 
         // 4. Open accordion matching accordionTitle if specified
         if (accordionTitle) {
+          var cleanTitle = accordionTitle.replace(/^[0-9]+\.\s*/, '').trim().toLowerCase();
+          var rawTitle = accordionTitle.trim().toLowerCase();
           var $panel = dockTab ? $('#dock_panel_' + dockTab) : $('.dock-panel.active, #main_sidebar');
           var $matchedButtons = $panel.find('.accordion-button').filter(function() {
-            return $(this).text().trim().toLowerCase().indexOf(accordionTitle.toLowerCase()) !== -1;
+            var txt = $(this).text().trim().toLowerCase();
+            return txt.indexOf(rawTitle) !== -1 || txt.indexOf(cleanTitle) !== -1 || rawTitle.indexOf(txt) !== -1;
           });
           if (!$matchedButtons.length) {
             $matchedButtons = $panel.find('.accordion-header').filter(function() {
-              return $(this).text().trim().toLowerCase().indexOf(accordionTitle.toLowerCase()) !== -1;
+              var txt = $(this).text().trim().toLowerCase();
+              return txt.indexOf(rawTitle) !== -1 || txt.indexOf(cleanTitle) !== -1 || rawTitle.indexOf(txt) !== -1;
             }).find('.accordion-button');
           }
           $matchedButtons.each(function() {
@@ -2410,6 +2634,14 @@
               var $chk = $('#qc_pca_tab-useShapes, [id$="-useShapes"], #useShapes');
               if ($chk.length && !$chk.prop('checked')) {
                 $chk.trigger('click');
+              }
+            }
+
+            // Special check for colorGrouping: also pair with label content for unified sample color/label focus
+            if (selector && selector.indexOf('colorGrouping') !== -1) {
+              var $extraLabel = $('#qc_pca_tab-labelParts, [id$="-labelParts"]');
+              if ($extraLabel.length) {
+                $el = $el.add($extraLabel);
               }
             }
 
@@ -2682,6 +2914,35 @@
         }
       };
 
+      function isDifferentialAnalysisTab(target) {
+        if (!target) return false;
+        var diffTabs = [
+          'Filtered Heatmap',
+          'Volcano Plot',
+          'Volcano',
+          'LSEA',
+          'Filtered',
+          'Differential Acyl Chain Expression',
+          'differential_view'
+        ];
+        return diffTabs.indexOf(target) !== -1;
+      }
+
+      function updateDockForTargetTab(target) {
+        if (typeof window.dockActivePlotControls === 'function') {
+          window.dockActivePlotControls(target);
+        }
+        if (isDifferentialAnalysisTab(target)) {
+          if (typeof window.pointToDifferentialExpressionMenu === 'function') {
+            window.pointToDifferentialExpressionMenu();
+          } else if (typeof window.activateDockTab === 'function') {
+            window.activateDockTab('cohorts');
+          }
+        } else if (typeof window.activateDockTab === 'function') {
+          window.activateDockTab('plot_controls');
+        }
+      }
+
       function initSecondaryHorizontalSubnavbar() {
         var $navbar = $('nav.navbar');
         if ($navbar.length === 0) return;
@@ -2747,13 +3008,8 @@
               $targetLink[0].click();
             }
 
-            // Unified Dock: Dock active plot controls and switch dock to [Plot Controls]
-            if (typeof window.dockActivePlotControls === 'function') {
-              window.dockActivePlotControls(target);
-            }
-            if (typeof window.activateDockTab === 'function') {
-              window.activateDockTab('plot_controls');
-            }
+            // Unified Dock: Dock active plot controls and route to appropriate dock tab
+            updateDockForTargetTab(target);
           }
         });
 
@@ -2791,13 +3047,8 @@
             $targetLink[0].click();
           }
 
-          // Unified Dock: Dock active plot controls and switch dock to [Plot Controls]
-          if (typeof window.dockActivePlotControls === 'function') {
-            window.dockActivePlotControls(target);
-          }
-          if (typeof window.activateDockTab === 'function') {
-            window.activateDockTab('plot_controls');
-          }
+          // Unified Dock: Dock active plot controls and route to appropriate dock tab
+          updateDockForTargetTab(target);
         });
 
         // Click on a subsubtab pill in the 3rd horizontal line
@@ -2821,8 +3072,30 @@
             lookupTarget = (target === 'Differential Acyl Chain Expression' || target === 'differential_view') ? 'differential_view' : 'proportions_view';
           }
 
-          // Trigger underlying Bootstrap tab switch
-          var $tabLink = $('[data-bs-toggle="tab"][data-value="' + lookupTarget + '"], [data-toggle="tab"][data-value="' + lookupTarget + '"], [data-bs-target][data-value="' + lookupTarget + '"], [data-bs-toggle="tab"][data-value="' + target + '"], [data-toggle="tab"][data-value="' + target + '"]');
+          // Scope tab link lookup to parent subtab container first to prevent global collision
+          var $tabLink = $();
+          if (parentSubtab === 'Structural' || parentSubtab === 'Dot Plots') {
+            var $structContainer = $('#structural_tab-structural_subtabs');
+            if ($structContainer.length) {
+              $tabLink = $structContainer.find('[data-bs-toggle="tab"], [data-toggle="tab"], button.nav-link, a.nav-link').filter(function() {
+                var v = $(this).attr('data-value') || $(this).text().trim();
+                return v === target || v === lookupTarget;
+              });
+            }
+          } else if (parentSubtab === 'Heatmap') {
+            var $hmContainer = $('#heatmap_barchart_tab-heatmap_tabs');
+            if ($hmContainer.length) {
+              $tabLink = $hmContainer.find('[data-bs-toggle="tab"], [data-toggle="tab"], button.nav-link, a.nav-link').filter(function() {
+                var v = $(this).attr('data-value') || $(this).text().trim();
+                return v === target || v === lookupTarget;
+              });
+            }
+          }
+
+          // Global fallback if not matched in scoped container
+          if (!$tabLink.length) {
+            $tabLink = $('[data-bs-toggle="tab"][data-value="' + lookupTarget + '"], [data-toggle="tab"][data-value="' + lookupTarget + '"], [data-bs-target][data-value="' + lookupTarget + '"], [data-bs-toggle="tab"][data-value="' + target + '"], [data-toggle="tab"][data-value="' + target + '"]');
+          }
           if (!$tabLink.length) {
             $('[data-bs-toggle="tab"], [data-toggle="tab"], button.nav-link, a.nav-link').each(function() {
               var t = $(this).text().trim();
@@ -2850,7 +3123,7 @@
             window.Shiny.setInputValue('qc_pca_tab-main_tabs', target);
           } else if (parentSubtab === 'Composition' && window.Shiny && typeof window.Shiny.setInputValue === 'function') {
             window.Shiny.setInputValue('barchart-barchart_tabs', target);
-          } else if (parentSubtab === 'Structural' && window.Shiny && typeof window.Shiny.setInputValue === 'function') {
+          } else if ((parentSubtab === 'Structural' || parentSubtab === 'Dot Plots') && window.Shiny && typeof window.Shiny.setInputValue === 'function') {
             window.Shiny.setInputValue('structural_tab-structural_subtabs', target);
           } else if (parentSubtab === 'Main Class & Acyl Chain Proportions') {
             var propVal = (target === 'Differential Acyl Chain Expression' || target === 'differential_view') ? 'differential_view' : 'proportions_view';
@@ -2879,6 +3152,7 @@
             }
           }
 
+          updateDockForTargetTab(target);
           updateDendrogramCanvas();
         });
 
@@ -2907,6 +3181,7 @@
               }
             });
             setTimeout(applyDockCategoryTints, 30);
+            updateDockForTargetTab(target);
             return;
           } else if (target === 'proportions_view' || target === 'Stacked Proportions') {
             $('#docked_active_plot_controls .prop-diff-controls').hide();
@@ -2924,6 +3199,7 @@
               }
             });
             setTimeout(applyDockCategoryTints, 30);
+            updateDockForTargetTab(target);
             return;
           }
 
@@ -2945,9 +3221,7 @@
               });
 
               renderSecondarySubnavbar(entry.hypertab, target);
-              if (typeof window.dockActivePlotControls === 'function') {
-                window.dockActivePlotControls(target);
-              }
+              updateDockForTargetTab(target);
               break;
             }
           }
@@ -2957,6 +3231,7 @@
             if ($(this).attr('data-target') === target) {
               $('#tertiary_subsubtab_bar .subsubtab-pill').removeClass('active');
               $(this).addClass('active');
+              updateDockForTargetTab(target);
               updateDendrogramCanvas();
               return false;
             }

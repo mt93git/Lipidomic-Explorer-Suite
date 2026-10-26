@@ -73,7 +73,7 @@ barchart_ui <- function(id) {
         actionButton(ns("show_stats_detail"), tags$span("Show Statistic Detail", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #1D4ED8; cursor: pointer;"), "Calculates the statistical details underlying the results and displays them in the Statistics Console.")), 
                      icon = icon("arrow-right-long"), class = "btn-info btn-show-stats w-100 mt-3")
       ),
-      jqui_resizable(div(style = "min-height: 400px; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow: hidden;",
+      jqui_resizable(div(id = ns("barchart_resizable_container"), class = "composition-card-tabs", style = "min-height: 520px; padding-bottom: 14px; margin-bottom: 15px; position: relative; overflow: hidden;",
         render_tab_intro_card(
           title = "Composition",
           subtitle = "This module visualizes the absolute and relative composition of the lipidome across different categories:",
@@ -135,7 +135,8 @@ barchart_ui <- function(id) {
                     "Unfiltered Composition - Barplot",
                     tags$div(
                       downloadButton(ns("downloadBarCSV_Unfiltered"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
-                      downloadButton(ns("downloadBarPDF_Unfiltered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
+                      downloadButton(ns("downloadBarPDF_Unfiltered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf"),
+                      downloadButton(ns("downloadBarPNG_Unfiltered"), "PNG", class="btn-sm btn-outline-secondary py-0 btn-download-png", style="margin-left: 5px;")
                     )
                   ),
                   card_body(
@@ -153,7 +154,8 @@ barchart_ui <- function(id) {
                     "Unfiltered Composition - Donutplot",
                     tags$div(
                       downloadButton(ns("downloadDonutCSV_Unfiltered"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
-                      downloadButton(ns("downloadDonutPDF_Unfiltered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
+                      downloadButton(ns("downloadDonutPDF_Unfiltered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf"),
+                      downloadButton(ns("downloadDonutPNG_Unfiltered"), "PNG", class="btn-sm btn-outline-secondary py-0 btn-download-png", style="margin-left: 5px;")
                     )
                   ),
                   card_body(
@@ -179,9 +181,9 @@ barchart_ui <- function(id) {
               tags$button(
                 type = "button",
                 class = "btn-quick-access",
-                onclick = "window.pointToElement('#data_hub-deReferenceGroups', 'cohorts', 'Differential Expression', event);",
-                title = "Configure Differential Expression comparison and reference cohorts in left dock",
-                icon("scale-balanced"), "DE Cohorts & Settings"
+                onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+                title = "Configure Compared Analysis (Mode, Reference, Comparison) in left dock",
+                icon("code-compare"), tags$strong("Compared Analysis")
               ),
               tags$button(
                 type = "button",
@@ -212,10 +214,15 @@ barchart_ui <- function(id) {
                 card(
                   card_header(
                     class = "d-flex justify-content-between align-items-center",
-                    "Filtered Composition - Barplot",
+                    tags$div(
+                      class = "d-flex align-items-center gap-2",
+                      uiOutput(ns("filtered_barplot_header_title"), inline = TRUE),
+                      uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+                    ),
                     tags$div(
                       downloadButton(ns("downloadBarCSV_Filtered"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
-                      downloadButton(ns("downloadBarPDF_Filtered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
+                      downloadButton(ns("downloadBarPDF_Filtered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf"),
+                      downloadButton(ns("downloadBarPNG_Filtered"), "PNG", class="btn-sm btn-outline-secondary py-0 btn-download-png", style="margin-left: 5px;")
                     )
                   ),
                   card_body(
@@ -231,10 +238,15 @@ barchart_ui <- function(id) {
                 card(
                   card_header(
                     class = "d-flex justify-content-between align-items-center",
-                    "Filtered Composition - Donutplot",
+                    tags$div(
+                      class = "d-flex align-items-center gap-2",
+                      uiOutput(ns("filtered_donutplot_header_title"), inline = TRUE),
+                      uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+                    ),
                     tags$div(
                       downloadButton(ns("downloadDonutCSV_Filtered"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
-                      downloadButton(ns("downloadDonutPDF_Filtered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
+                      downloadButton(ns("downloadDonutPDF_Filtered"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf"),
+                      downloadButton(ns("downloadDonutPNG_Filtered"), "PNG", class="btn-sm btn-outline-secondary py-0 btn-download-png", style="margin-left: 5px;")
                     )
                   ),
                   card_body(
@@ -248,7 +260,7 @@ barchart_ui <- function(id) {
             )
           )
         )
-      ), options = list(handles = "s, se")),
+      ), options = list(handles = "s, se", minHeight = 520, minWidth = 500)),
       accordion(
         open = FALSE,
         accordion_panel("Advanced Aesthetics & Ordering", icon = icon("layer-group"),
@@ -263,6 +275,20 @@ barchart_server <- function(id, shared_data, global_color_map) {
   moduleServer(id, function(input, output, session) {
     barchart_fallback_active <- reactiveVal(FALSE)
     filtered_barchart_fallback_active <- reactiveVal(FALSE)
+    
+    plot_dims <- reactiveValues(
+      unfiltered_bar = list(width = 1000, height = 600),
+      filtered_bar = list(width = 1000, height = 600),
+      unfiltered_donut = list(width = 1000, height = 600),
+      filtered_donut = list(width = 1000, height = 600),
+      container = list(width = 1000, height = 600)
+    )
+    
+    observeEvent(input$barPlotUnfiltered_size, { plot_dims$unfiltered_bar <- input$barPlotUnfiltered_size })
+    observeEvent(input$barPlotFiltered_size, { plot_dims$filtered_bar <- input$barPlotFiltered_size })
+    observeEvent(input$donutPlotUnfiltered_size, { plot_dims$unfiltered_donut <- input$donutPlotUnfiltered_size })
+    observeEvent(input$donutPlotFiltered_size, { plot_dims$filtered_donut <- input$donutPlotFiltered_size })
+    observeEvent(input$barchart_resizable_container_size, { plot_dims$container <- input$barchart_resizable_container_size })
     
   # --- Restrict Value Mode Selection Reactively for Donut Plot ---
     observe({
@@ -304,8 +330,13 @@ barchart_server <- function(id, shared_data, global_color_map) {
 
   # --- Dynamic UI ---
     output$barGroupModeUI <- renderUI({
-       choices <- c("Lipid Main Class" = "Sub-class", "Lipid Category" = "Hyperclass")
-       default_sel <- "Sub-class"
+       is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+       choices <- if (is_targeted) {
+         c("Lipid Main Class" = "Sub-class", "Lipid Category" = "Hyperclass", "Single Lipid" = "Lipid_Name")
+       } else {
+         c("Lipid Main Class" = "Sub-class", "Lipid Category" = "Hyperclass")
+       }
+       default_sel <- if (is_targeted) "Lipid_Name" else "Sub-class"
        
        # Recover previous selection if valid
        curr_sel <- isolate(input$barGroupMode)
@@ -316,6 +347,22 @@ barchart_server <- function(id, shared_data, global_color_map) {
        radioButtons(session$ns("barGroupMode"), "Group By:", 
                     choices = choices, selected = default_sel, inline = TRUE)
     })
+
+    observeEvent(shared_data$targeted_mode_active(), {
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+      choices <- if (is_targeted) {
+        c("Lipid Main Class" = "Sub-class", "Lipid Category" = "Hyperclass", "Single Lipid" = "Lipid_Name")
+      } else {
+        c("Lipid Main Class" = "Sub-class", "Lipid Category" = "Hyperclass")
+      }
+      new_sel <- if (is_targeted) {
+        "Lipid_Name"
+      } else {
+        curr <- input$barGroupMode
+        if (!is.null(curr) && curr %in% choices) curr else "Sub-class"
+      }
+      updateRadioButtons(session, "barGroupMode", choices = choices, selected = new_sel, inline = TRUE)
+    }, ignoreInit = TRUE)
     
   # --- Grouping Mode Helper ---
     is_agg <- reactive({
@@ -326,20 +373,33 @@ barchart_server <- function(id, shared_data, global_color_map) {
     dynamic_metadata <- reactive({
        df <- shared_data$data_processed()
        req(df)
-       meta <- shared_data$all_metadata() %>% dplyr::filter(FullName %in% setdiff(names(df), "Lipid_Name"))
+       raw_meta <- shared_data$all_metadata()
+       meta <- raw_meta %>% dplyr::filter(FullName %in% setdiff(names(df), "Lipid_Name"))
        
-       available_cols <- intersect(names(meta), c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint"))
+       candidate_cols <- intersect(names(meta), c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint"))
+       valid_cols <- sapply(candidate_cols, function(col) {
+         vals <- raw_meta[[col]]
+         vals <- vals[!is.na(vals) & vals != "" & vals != "Unspecified"]
+         return(length(vals) > 0)
+       })
+       available_cols <- candidate_cols[valid_cols]
+       if (length(available_cols) == 0) available_cols <- candidate_cols
+       
        h_order <- input$hierarchy_order %||% available_cols
+       h_order <- intersect(h_order, available_cols)
+       if (length(h_order) == 0) h_order <- available_cols
        
        if (is_agg()) h_order <- setdiff(h_order, c("Replicate", "PatientNumber"))
        if (length(h_order) == 0) h_order <- available_cols[1] # fallback
        
        for (col in h_order) {
           manual_val_order <- input[[paste0("order_", col)]]
-          if (!is.null(manual_val_order) && length(manual_val_order) == length(unique(meta[[col]]))) {
+          clean_unique <- unique(meta[[col]])
+          clean_unique <- clean_unique[!is.na(clean_unique) & clean_unique != "" & clean_unique != "Unspecified"]
+          if (!is.null(manual_val_order) && length(manual_val_order) == length(clean_unique)) {
              meta[[col]] <- factor(meta[[col]], levels = manual_val_order)
           } else {
-             meta[[col]] <- factor(meta[[col]], levels = unique(meta[[col]]))
+             meta[[col]] <- factor(meta[[col]], levels = clean_unique)
           }
        }
        
@@ -350,7 +410,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
          for (col in h_order) {
            val <- row[[col]]
            val_str <- if (!is.na(val)) as.character(val) else ""
-           if (nzchar(val_str)) {
+           if (nzchar(val_str) && val_str != "Unspecified") {
              if (col == "PatientNumber") {
                res <- if (nzchar(res)) paste0(res, "/", val_str) else val_str
              } else {
@@ -361,22 +421,41 @@ barchart_server <- function(id, shared_data, global_color_map) {
          res
        }
 
+       clean_unspecified_labels <- function(x) {
+         if (is.null(x)) return(x)
+         x_clean <- gsub("Unspecified", "", as.character(x))
+         x_clean <- gsub("_+", "_", x_clean)
+         x_clean <- gsub("^_|_$", "", x_clean)
+         x_clean[x_clean == ""] <- "Sample"
+         x_clean
+       }
+
        if (is_agg()) {
-           meta$Group <- apply(meta[, h_order, drop=FALSE], 1, paste, collapse="_")
+           meta$Group <- apply(meta[, h_order, drop=FALSE], 1, function(r) {
+             r_clean <- r[!is.na(r) & r != "" & r != "Unspecified"]
+             if (length(r_clean) == 0) "Group" else paste(r_clean, collapse = "_")
+           })
            custom_labels <- sapply(seq_len(nrow(meta)), function(i) {
              build_custom_display_name(meta[i, ], h_order)
            })
            meta$Display_Name <- ifelse(nzchar(custom_labels), custom_labels, meta$Group)
        } else {
            group_cols <- setdiff(h_order, c("Replicate", "PatientNumber"))
-           if(length(group_cols)==0) group_cols <- h_order
-           meta$Group <- apply(meta[, group_cols, drop=FALSE], 1, paste, collapse="_")
+           if (length(group_cols) == 0) group_cols <- h_order
+           meta$Group <- apply(meta[, group_cols, drop=FALSE], 1, function(r) {
+             r_clean <- r[!is.na(r) & r != "" & r != "Unspecified"]
+             if (length(r_clean) == 0) "Group" else paste(r_clean, collapse = "_")
+           })
            
            custom_labels <- sapply(seq_len(nrow(meta)), function(i) {
              build_custom_display_name(meta[i, ], h_order)
            })
-           meta$Display_Name <- make.unique(ifelse(nzchar(custom_labels), custom_labels, as.character(meta$FullName)))
+           raw_fallback <- clean_unspecified_labels(as.character(meta$FullName))
+           meta$Display_Name <- make.unique(ifelse(nzchar(custom_labels), custom_labels, raw_fallback))
        }
+       
+       meta$Display_Name <- clean_unspecified_labels(meta$Display_Name)
+       meta$Group <- clean_unspecified_labels(meta$Group)
        
        meta
     })
@@ -384,11 +463,21 @@ barchart_server <- function(id, shared_data, global_color_map) {
     output$dragDropOrderingUI <- renderUI({
        df <- shared_data$data_processed()
        req(df)
-       meta <- shared_data$all_metadata() %>% dplyr::filter(FullName %in% setdiff(names(df), "Lipid_Name"))
-       available_cols <- intersect(names(meta), c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint"))
+       raw_meta <- shared_data$all_metadata()
+       meta <- raw_meta %>% dplyr::filter(FullName %in% setdiff(names(df), "Lipid_Name"))
+       candidate_cols <- intersect(names(meta), c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint"))
+       valid_cols <- sapply(candidate_cols, function(col) {
+         vals <- raw_meta[[col]]
+         vals <- vals[!is.na(vals) & vals != "" & vals != "Unspecified"]
+         return(length(vals) > 0)
+       })
+       available_cols <- candidate_cols[valid_cols]
+       if (length(available_cols) == 0) available_cols <- candidate_cols
        if (is_agg()) available_cols <- setdiff(available_cols, c("Replicate", "PatientNumber"))
        
        saved_hierarchy <- shared_data$get_restored_input(session$ns("hierarchy_order"), available_cols)
+       saved_hierarchy <- intersect(saved_hierarchy, available_cols)
+       if (length(saved_hierarchy) == 0) saved_hierarchy <- available_cols
        
        tagList(
          h6("1. Define Naming Hierarchy"),
@@ -411,8 +500,10 @@ barchart_server <- function(id, shared_data, global_color_map) {
        
        lapply(h_order, function(h_col) {
          unique_vals <- unique(meta[[h_col]])
-         unique_vals <- unique_vals[!is.na(unique_vals)]
+         unique_vals <- unique_vals[!is.na(unique_vals) & unique_vals != "" & unique_vals != "Unspecified"]
          saved_vals <- shared_data$get_restored_input(session$ns(paste0("order_", h_col)), unique_vals)
+         saved_vals <- intersect(saved_vals, unique_vals)
+         if (length(saved_vals) == 0) saved_vals <- unique_vals
          sortable::rank_list(
            text = paste("Order:", get_metadata_group_label(h_col, meta)),
            labels = saved_vals,
@@ -572,10 +663,12 @@ barchart_server <- function(id, shared_data, global_color_map) {
       
       # Translate class colors
       class_cols <- switch(input$barGroupMode, "Lipid_Name" = shared_data$species_color_map(), "Hyperclass" = shared_data$origin_color_map(), shared_data$class_color_map())
-      if (input$classLabelFormat == "full") {
-        names(class_cols) <- get_full_class_name(names(class_cols))
-      } else {
-        names(class_cols) <- get_short_class_name(names(class_cols))
+      if (input$barGroupMode != "Lipid_Name") {
+        if (input$classLabelFormat == "full") {
+          names(class_cols) <- get_full_class_name(names(class_cols))
+        } else {
+          names(class_cols) <- get_short_class_name(names(class_cols))
+        }
       }
       
       title <- paste0("Unfiltered Composition (", input$barValueMode, ")")
@@ -603,7 +696,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
         anno_bar <- shared_data$annotationData()
         active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
         group_by <- input$barGroupMode %||% "Sub-class"
-        groupVar <- if (group_by == "Hyperclass") "hyperclass" else "subclass"
+        groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
         n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
       } else {
         n <- if (is_agg() && !is.null(barGroupingMap())) {
@@ -623,7 +716,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       total_w <- base_w * zoom
       total_h <- base_h * zoom
       
-      div(style = "width: 100%; height: 600px; overflow: auto;",
+      div(class = "composition-donut-viewport", style = "width: 100%; height: 600px; overflow: auto;",
         plotOutput(session$ns("donutPlotUnfiltered"), width = paste0(total_w, "px"), height = paste0(total_h, "px"))
       )
     })
@@ -646,10 +739,12 @@ barchart_server <- function(id, shared_data, global_color_map) {
       
       # Translate class colors
       class_cols <- switch(input$barGroupMode, "Lipid_Name" = shared_data$species_color_map(), "Hyperclass" = shared_data$origin_color_map(), shared_data$class_color_map())
-      if (input$classLabelFormat == "full") {
-        names(class_cols) <- get_full_class_name(names(class_cols))
-      } else {
-        names(class_cols) <- get_short_class_name(names(class_cols))
+      if (input$barGroupMode != "Lipid_Name") {
+        if (input$classLabelFormat == "full") {
+          names(class_cols) <- get_full_class_name(names(class_cols))
+        } else {
+          names(class_cols) <- get_short_class_name(names(class_cols))
+        }
       }
       
       # Calculate dynamic ncols
@@ -774,6 +869,41 @@ barchart_server <- function(id, shared_data, global_color_map) {
     })
     output$de_not_run_banner_filtered <- renderUI({ render_de_not_run_banner(shared_data) })
     output$de_not_run_banner_filtered_donut <- renderUI({ render_de_not_run_banner(shared_data) })
+
+    output$active_contrast_badge_ui <- renderUI({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      req(ci, ci$ref, ci$comp)
+      ref_str <- paste(ci$ref, collapse = "+")
+      comp_str <- paste(ci$comp, collapse = "+")
+      tags$button(
+        type = "button",
+        class = "btn btn-xs btn-outline-primary py-0 px-2 rounded-pill shadow-none ms-1",
+        style = "font-size: 0.78rem; font-weight: 600; background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8;",
+        onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+        title = "Click to configure Reference vs Comparison cohorts in Compared Analysis dock panel",
+        icon("code-compare", class = "me-1"), paste0(comp_str, " vs ", ref_str)
+      )
+    })
+
+    output$filtered_barplot_header_title <- renderUI({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_suffix <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+      tags$strong(paste0("Filtered Composition - Barplot", contrast_suffix))
+    })
+
+    output$filtered_donutplot_header_title <- renderUI({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_suffix <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+      tags$strong(paste0("Filtered Composition - Donutplot", contrast_suffix))
+    })
     
     output$barPlotFiltered <- renderPlot({
       if (is.null(shared_data$de_results())) {
@@ -796,13 +926,25 @@ barchart_server <- function(id, shared_data, global_color_map) {
       
       # Translate class colors
       class_cols <- switch(input$barGroupMode, "Lipid_Name" = shared_data$species_color_map(), "Hyperclass" = shared_data$origin_color_map(), shared_data$class_color_map())
-      if (input$classLabelFormat == "full") {
-        names(class_cols) <- get_full_class_name(names(class_cols))
-      } else {
-        names(class_cols) <- get_short_class_name(names(class_cols))
+      if (input$barGroupMode != "Lipid_Name") {
+        if (input$classLabelFormat == "full") {
+          names(class_cols) <- get_full_class_name(names(class_cols))
+        } else {
+          names(class_cols) <- get_short_class_name(names(class_cols))
+        }
       }
       
-      title <- paste0("Filtered Composition (", input$barValueMode, ")")
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_str <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"))
+      } else {
+        ""
+      }
+      title <- if (nzchar(contrast_str)) {
+        paste0("Filtered Composition (", input$barValueMode, ")\n", contrast_str)
+      } else {
+        paste0("Filtered Composition (", input$barValueMode, ")")
+      }
       buildBarPlot(mat, title, 
                               annotation_data = anno_bar,
                               group_mode = input$barGroupMode,
@@ -827,7 +969,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
         anno_bar <- shared_data$annotationData()
         active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
         group_by <- input$barGroupMode %||% "Sub-class"
-        groupVar <- if (group_by == "Hyperclass") "hyperclass" else "subclass"
+        groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
         n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
       } else {
         n <- if (is_agg() && !is.null(barGroupingMap())) {
@@ -847,7 +989,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       total_w <- base_w * zoom
       total_h <- base_h * zoom
       
-      div(style = "width: 100%; height: 600px; overflow: auto;",
+      div(class = "composition-donut-viewport", style = "width: 100%; height: 600px; overflow: auto;",
         plotOutput(session$ns("donutPlotFiltered"), width = paste0(total_w, "px"), height = paste0(total_h, "px"))
       )
     })
@@ -873,35 +1015,41 @@ barchart_server <- function(id, shared_data, global_color_map) {
       
       # Translate class colors
       class_cols <- switch(input$barGroupMode, "Lipid_Name" = shared_data$species_color_map(), "Hyperclass" = shared_data$origin_color_map(), shared_data$class_color_map())
-      if (input$classLabelFormat == "full") {
-        names(class_cols) <- get_full_class_name(names(class_cols))
-      } else {
-        names(class_cols) <- get_short_class_name(names(class_cols))
+      if (input$barGroupMode != "Lipid_Name") {
+        if (input$classLabelFormat == "full") {
+          names(class_cols) <- get_full_class_name(names(class_cols))
+        } else {
+          names(class_cols) <- get_short_class_name(names(class_cols))
+        }
       }
       
       # Calculate dynamic ncols
       if (input$barOrientation == "class_x") {
         active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
-        group_by <- input$barGroupMode %% "Sub-class"
-        groupVar <- if (group_by == "Hyperclass") "hyperclass" else "subclass"
+        group_by <- input$barGroupMode %||% "Sub-class"
+        groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
         n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
       } else {
-        n <- if (is_agg && !is.null(barGroupingMap())) {
+        n <- if (is_agg_val && !is.null(barGroupingMap())) {
           length(unique(barGroupingMap()))
         } else {
           ncol(mat)
         }
       }
       if (is.na(n) || n <= 0) n <- 1
-      ncols <- min(4, n)
-      
-      title <- paste0("Filtered Composition (Donut Plot)")
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_suffix <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+      title <- paste0("Filtered Composition", contrast_suffix, " (Donut Plot)")
       buildDonutPlot(mat, title,
                      annotation_data = anno_bar,
                      group_mode = input$barGroupMode,
                      value_mode = input$barValueMode,
                      sample_grouping = barGroupingMap(),
-                     aggregate_by_group = is_agg,
+                     aggregate_by_group = is_agg_val,
                      class_colors = class_cols,
                      show_stats = isTRUE(input$showDonutStats),
                      orientation = input$barOrientation,
@@ -923,10 +1071,12 @@ barchart_server <- function(id, shared_data, global_color_map) {
                "Hyperclass" = shared_data$origin_color_map(),
                shared_data$class_color_map()
           )
-          if (input$classLabelFormat == "full") {
-            names(current_color_map) <- get_full_class_name(names(current_color_map))
-          } else {
-            names(current_color_map) <- get_short_class_name(names(current_color_map))
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
           }
           
           # Translate annotation_data
@@ -942,8 +1092,8 @@ barchart_server <- function(id, shared_data, global_color_map) {
           # Calculate dynamic ncols
           if (input$barOrientation == "class_x") {
             active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
-            group_by <- input$barGroupMode %% "Sub-class"
-            groupVar <- if (group_by == "Hyperclass") "hyperclass" else "subclass"
+            group_by <- input$barGroupMode %||% "Sub-class"
+            groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
             n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
           } else {
             n <- if (is_agg_val && !is.null(barGroupingMap())) {
@@ -967,8 +1117,8 @@ barchart_server <- function(id, shared_data, global_color_map) {
                               sample_colors = barSampleColors(),
                               ncols = ncols)
                               
-          w <- session$clientData[[paste0("output_", session$ns("donutPlotUnfiltered"), "_width")]] %||% 1000
-          h <- session$clientData[[paste0("output_", session$ns("donutPlotUnfiltered"), "_height")]] %||% 800
+          w <- plot_dims$unfiltered_donut$width %||% input$donutPlotUnfiltered_size$width %||% session$clientData[[paste0("output_", session$ns("donutPlotUnfiltered"), "_width")]] %||% 1000
+          h <- plot_dims$unfiltered_donut$height %||% input$donutPlotUnfiltered_size$height %||% session$clientData[[paste0("output_", session$ns("donutPlotUnfiltered"), "_height")]] %||% 800
           
           ggplot2::ggsave(file, plot=p, device="pdf", width=w/72, height=h/72, limitsize=FALSE)
         }, error = function(e) {
@@ -979,6 +1129,76 @@ barchart_server <- function(id, shared_data, global_color_map) {
         })
       },
       contentType = "application/pdf"
+    )
+    
+    output$downloadDonutPNG_Unfiltered <- downloadHandler(
+      filename = function() { getDownloadFilename(tabName = "Donut_Unfiltered", extension = "png", repMode = "Agg") },
+      content = function(file) {
+        tryCatch({
+          mat <- unfilteredData()
+          is_agg_val <- is_agg()
+          
+          current_color_map <- switch(input$barGroupMode,
+               "Lipid_Name" = shared_data$species_color_map(),
+               "Hyperclass" = shared_data$origin_color_map(),
+               shared_data$class_color_map()
+          )
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
+          }
+          
+          anno_bar <- shared_data$annotationData()
+          if (input$classLabelFormat == "full") {
+            anno_bar$subclass <- get_full_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_full_class_name(anno_bar$hyperclass)
+          } else {
+            anno_bar$subclass <- get_short_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_short_class_name(anno_bar$hyperclass)
+          }
+          
+          if (input$barOrientation == "class_x") {
+            active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
+            group_by <- input$barGroupMode %||% "Sub-class"
+            groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
+            n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
+          } else {
+            n <- if (is_agg_val && !is.null(barGroupingMap())) {
+              length(unique(barGroupingMap()))
+            } else {
+              ncol(mat)
+            }
+          }
+          if (is.na(n) || n <= 0) n <- 1
+          ncols <- min(4, n)
+          
+          p <- buildDonutPlot(mat, "Unfiltered Composition (Donut Plot)",
+                              annotation_data = anno_bar,
+                              group_mode = input$barGroupMode,
+                              value_mode = input$barValueMode,
+                              sample_grouping = barGroupingMap(),
+                              aggregate_by_group = is_agg_val,
+                              class_colors = current_color_map,
+                              show_stats = isTRUE(input$showDonutStats),
+                              orientation = input$barOrientation,
+                              sample_colors = barSampleColors(),
+                              ncols = ncols)
+                              
+          w <- plot_dims$unfiltered_donut$width %||% input$donutPlotUnfiltered_size$width %||% session$clientData[[paste0("output_", session$ns("donutPlotUnfiltered"), "_width")]] %||% 1000
+          h <- plot_dims$unfiltered_donut$height %||% input$donutPlotUnfiltered_size$height %||% session$clientData[[paste0("output_", session$ns("donutPlotUnfiltered"), "_height")]] %||% 800
+          
+          ggplot2::ggsave(file, plot=p, device="png", width=w/72, height=h/72, dpi=300, limitsize=FALSE)
+        }, error = function(e) {
+          png(file, width=800, height=600)
+          plot(0, 0, type="n", axes=FALSE, xlab="", ylab="")
+          text(0, 0, paste("ERROR in Donut PNG generation:\n", e$message), col="red", cex=0.8)
+          dev.off()
+        })
+      },
+      contentType = "image/png"
     )
     
     output$downloadDonutCSV_Unfiltered <- downloadHandler(
@@ -1000,7 +1220,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
               dplyr::ungroup()
           }
           
-          groupVar <- if (input$barGroupMode == "Hyperclass") "hyperclass" else "subclass"
+          groupVar <- if (input$barGroupMode == "Hyperclass") "hyperclass" else if (input$barGroupMode == "Lipid_Name") "Lipid_Name" else "subclass"
           dfm <- dfm %>% dplyr::rename(ClassGroup = dplyr::all_of(groupVar))
           
           df_class_sample <- dfm %>% 
@@ -1073,10 +1293,12 @@ barchart_server <- function(id, shared_data, global_color_map) {
                "Hyperclass" = shared_data$origin_color_map(),
                shared_data$class_color_map()
           )
-          if (input$classLabelFormat == "full") {
-            names(current_color_map) <- get_full_class_name(names(current_color_map))
-          } else {
-            names(current_color_map) <- get_short_class_name(names(current_color_map))
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
           }
           
           # Translate annotation_data
@@ -1102,14 +1324,8 @@ barchart_server <- function(id, shared_data, global_color_map) {
                                        error_bar_type = input$errorBarType %||% "total",
                                        error_bar_stats_mode = input$errorBarStatsMode %||% "sem",
                                        color_error_bars_by_class = isTRUE(input$colorErrorBarsByClass))
-          w <- session$clientData[[paste0("output_", session$ns("barPlotUnfiltered"), "_width")]] %||% 1000
-          h <- session$clientData[[paste0("output_", session$ns("barPlotUnfiltered"), "_height")]] %||% 800
-          
-     # Override with exact shinyjqui resize dimensions if available
-          if(!is.null(input$barPlotUnfiltered_size)) {
-              w <- input$barPlotUnfiltered_size$width
-              h <- input$barPlotUnfiltered_size$height
-          }
+          w <- plot_dims$unfiltered_bar$width %||% input$barPlotUnfiltered_size$width %||% session$clientData[[paste0("output_", session$ns("barPlotUnfiltered"), "_width")]] %||% 1000
+          h <- plot_dims$unfiltered_bar$height %||% input$barPlotUnfiltered_size$height %||% session$clientData[[paste0("output_", session$ns("barPlotUnfiltered"), "_height")]] %||% 600
           
           ggplot2::ggsave(file, plot=p, device="pdf", width=w/72, height=h/72, limitsize=FALSE)
         }, error = function(e) {
@@ -1120,6 +1336,63 @@ barchart_server <- function(id, shared_data, global_color_map) {
         })
       },
       contentType = "application/pdf"
+    )
+    
+    output$downloadBarPNG_Unfiltered <- downloadHandler(
+      filename = function() { getDownloadFilename(tabName = "Barchart_Unfiltered", extension = "png", repMode = "Agg") },
+      content = function(file) {
+        tryCatch({
+          mat <- unfilteredData()
+          is_agg <- is_agg()
+          
+          current_color_map <- switch(input$barGroupMode,
+               "Lipid_Name" = shared_data$species_color_map(),
+               "Hyperclass" = shared_data$origin_color_map(),
+               shared_data$class_color_map()
+          )
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
+          }
+          
+          anno_bar <- shared_data$annotationData()
+          if (input$classLabelFormat == "full") {
+            anno_bar$subclass <- get_full_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_full_class_name(anno_bar$hyperclass)
+          } else {
+            anno_bar$subclass <- get_short_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_short_class_name(anno_bar$hyperclass)
+          }
+          
+          p <- buildBarPlot(mat, paste0("Unfiltered Composition (", input$barValueMode, ")"), 
+                            annotation_data = anno_bar,
+                            group_mode = input$barGroupMode,
+                            value_mode = input$barValueMode,
+                            orientation = input$barOrientation,
+                            sample_grouping = barGroupingMap(),
+                            aggregate_by_group = is_agg,
+                            compute_error_bars = isTRUE(input$showErrorBars),
+                            sample_colors = barSampleColors(),
+                            class_colors = current_color_map,
+                            error_bar_type = input$errorBarType %||% "total",
+                            error_bar_stats_mode = input$errorBarStatsMode %||% "sem",
+                            color_error_bars_by_class = isTRUE(input$colorErrorBarsByClass))
+                            
+          w <- plot_dims$unfiltered_bar$width %||% input$barPlotUnfiltered_size$width %||% session$clientData[[paste0("output_", session$ns("barPlotUnfiltered"), "_width")]] %||% 1000
+          h <- plot_dims$unfiltered_bar$height %||% input$barPlotUnfiltered_size$height %||% session$clientData[[paste0("output_", session$ns("barPlotUnfiltered"), "_height")]] %||% 600
+          
+          ggplot2::ggsave(file, plot=p, device="png", width=w/72, height=h/72, dpi=300, limitsize=FALSE)
+        }, error = function(e) {
+          png(file, width=800, height=600)
+          plot(0, 0, type="n", axes=FALSE, xlab="", ylab="")
+          text(0, 0, paste("ERROR in Barchart PNG generation:\n", e$message), col="red", cex=0.8)
+          dev.off()
+        })
+      },
+      contentType = "image/png"
     )
     
      output$downloadBarCSV_Unfiltered <- downloadHandler(
@@ -1146,10 +1419,12 @@ barchart_server <- function(id, shared_data, global_color_map) {
                "Hyperclass" = shared_data$origin_color_map(),
                shared_data$class_color_map()
           )
-          if (input$classLabelFormat == "full") {
-            names(current_color_map) <- get_full_class_name(names(current_color_map))
-          } else {
-            names(current_color_map) <- get_short_class_name(names(current_color_map))
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
           }
           
           # Translate annotation_data
@@ -1162,27 +1437,33 @@ barchart_server <- function(id, shared_data, global_color_map) {
             anno_bar$hyperclass <- get_short_class_name(anno_bar$hyperclass)
           }
           
-          p <- buildBarPlot(mat, paste0("Filtered Composition"), 
-                                       annotation_data = anno_bar,
-                                       group_mode = input$barGroupMode,
-                                       value_mode = input$barValueMode,
-                                       orientation = input$barOrientation,
-                                       sample_grouping = barGroupingMap(),
-                                       aggregate_by_group = is_agg,
-                                       compute_error_bars = isTRUE(input$showErrorBars),
-                                       sample_colors = barSampleColors(),
-                                       class_colors = current_color_map,
-                                       error_bar_type = input$errorBarType %||% "total",
-                                       error_bar_stats_mode = input$errorBarStatsMode %||% "sem",
-                                       color_error_bars_by_class = isTRUE(input$colorErrorBarsByClass))
-          w <- session$clientData[[paste0("output_", session$ns("barPlotFiltered"), "_width")]] %||% 1000
-          h <- session$clientData[[paste0("output_", session$ns("barPlotFiltered"), "_height")]] %||% 800
-          
-     # Override with exact shinyjqui resize dimensions if available
-          if(!is.null(input$barPlotFiltered_size)) {
-              w <- input$barPlotFiltered_size$width
-              h <- input$barPlotFiltered_size$height
+          ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+          contrast_str <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+            paste0(paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"))
+          } else {
+            ""
           }
+          title <- if (nzchar(contrast_str)) {
+            paste0("Filtered Composition (", input$barValueMode, ")\n", contrast_str)
+          } else {
+            paste0("Filtered Composition (", input$barValueMode, ")")
+          }
+          p <- buildBarPlot(mat, title, 
+                            annotation_data = anno_bar,
+                            group_mode = input$barGroupMode,
+                            value_mode = input$barValueMode,
+                            orientation = input$barOrientation,
+                            sample_grouping = barGroupingMap(),
+                            aggregate_by_group = is_agg,
+                            compute_error_bars = isTRUE(input$showErrorBars),
+                            sample_colors = barSampleColors(),
+                            class_colors = current_color_map,
+                            error_bar_type = input$errorBarType %||% "total",
+                            error_bar_stats_mode = input$errorBarStatsMode %||% "sem",
+                            color_error_bars_by_class = isTRUE(input$colorErrorBarsByClass))
+                            
+          w <- plot_dims$filtered_bar$width %||% input$barPlotFiltered_size$width %||% session$clientData[[paste0("output_", session$ns("barPlotFiltered"), "_width")]] %||% 1000
+          h <- plot_dims$filtered_bar$height %||% input$barPlotFiltered_size$height %||% session$clientData[[paste0("output_", session$ns("barPlotFiltered"), "_height")]] %||% 600
           
           ggplot2::ggsave(file, plot=p, device="pdf", width=w/72, height=h/72, limitsize=FALSE)
         }, error = function(e) {
@@ -1193,6 +1474,74 @@ barchart_server <- function(id, shared_data, global_color_map) {
         })
       },
       contentType = "application/pdf"
+    )
+    
+    output$downloadBarPNG_Filtered <- downloadHandler(
+      filename = function() { getDownloadFilename(tabName = "Barchart_Filtered", extension = "png", repMode = "Agg") },
+      content = function(file) {
+        tryCatch({
+          mat <- filteredBarData()
+          is_agg <- is_agg()
+          
+          current_color_map <- switch(input$barGroupMode,
+               "Lipid_Name" = shared_data$species_color_map(),
+               "Hyperclass" = shared_data$origin_color_map(),
+               shared_data$class_color_map()
+          )
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
+          }
+          
+          anno_bar <- shared_data$annotationData()
+          if (input$classLabelFormat == "full") {
+            anno_bar$subclass <- get_full_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_full_class_name(anno_bar$hyperclass)
+          } else {
+            anno_bar$subclass <- get_short_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_short_class_name(anno_bar$hyperclass)
+          }
+          
+          ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+          contrast_str <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+            paste0(paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"))
+          } else {
+            ""
+          }
+          title <- if (nzchar(contrast_str)) {
+            paste0("Filtered Composition (", input$barValueMode, ")\n", contrast_str)
+          } else {
+            paste0("Filtered Composition (", input$barValueMode, ")")
+          }
+          p <- buildBarPlot(mat, title, 
+                            annotation_data = anno_bar,
+                            group_mode = input$barGroupMode,
+                            value_mode = input$barValueMode,
+                            orientation = input$barOrientation,
+                            sample_grouping = barGroupingMap(),
+                            aggregate_by_group = is_agg,
+                            compute_error_bars = isTRUE(input$showErrorBars),
+                            sample_colors = barSampleColors(),
+                            class_colors = current_color_map,
+                            error_bar_type = input$errorBarType %||% "total",
+                            error_bar_stats_mode = input$errorBarStatsMode %||% "sem",
+                            color_error_bars_by_class = isTRUE(input$colorErrorBarsByClass))
+                            
+          w <- plot_dims$filtered_bar$width %||% input$barPlotFiltered_size$width %||% session$clientData[[paste0("output_", session$ns("barPlotFiltered"), "_width")]] %||% 1000
+          h <- plot_dims$filtered_bar$height %||% input$barPlotFiltered_size$height %||% session$clientData[[paste0("output_", session$ns("barPlotFiltered"), "_height")]] %||% 600
+          
+          ggplot2::ggsave(file, plot=p, device="png", width=w/72, height=h/72, dpi=300, limitsize=FALSE)
+        }, error = function(e) {
+          png(file, width=800, height=600)
+          plot(0, 0, type="n", axes=FALSE, xlab="", ylab="")
+          text(0, 0, paste("ERROR in Barchart PNG generation:\n", e$message), col="red", cex=0.8)
+          dev.off()
+        })
+      },
+      contentType = "image/png"
     )
     
      output$downloadBarCSV_Filtered <- downloadHandler(
@@ -1217,10 +1566,12 @@ barchart_server <- function(id, shared_data, global_color_map) {
                "Hyperclass" = shared_data$origin_color_map(),
                shared_data$class_color_map()
           )
-          if (input$classLabelFormat == "full") {
-            names(current_color_map) <- get_full_class_name(names(current_color_map))
-          } else {
-            names(current_color_map) <- get_short_class_name(names(current_color_map))
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
           }
           
           # Translate annotation_data
@@ -1236,8 +1587,8 @@ barchart_server <- function(id, shared_data, global_color_map) {
           # Calculate dynamic ncols
           if (input$barOrientation == "class_x") {
             active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
-            group_by <- input$barGroupMode %% "Sub-class"
-            groupVar <- if (group_by == "Hyperclass") "hyperclass" else "subclass"
+            group_by <- input$barGroupMode %||% "Sub-class"
+            groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
             n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
           } else {
             n <- if (is_agg && !is.null(barGroupingMap())) {
@@ -1249,7 +1600,13 @@ barchart_server <- function(id, shared_data, global_color_map) {
           if (is.na(n) || n <= 0) n <- 1
           ncols <- min(4, n)
           
-          p <- buildDonutPlot(mat, "Filtered Composition (Donut Plot)",
+          ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+          contrast_suffix <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+            paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+          } else {
+            ""
+          }
+          p <- buildDonutPlot(mat, paste0("Filtered Composition", contrast_suffix, " (Donut Plot)"),
                               annotation_data = anno_bar,
                               group_mode = input$barGroupMode,
                               value_mode = input$barValueMode,
@@ -1262,8 +1619,8 @@ barchart_server <- function(id, shared_data, global_color_map) {
                               ncols = ncols,
                               min_pct = 0)
                               
-          w <- session$clientData[[paste0("output_", session$ns("donutPlotFiltered"), "_width")]] %||% 1000
-          h <- session$clientData[[paste0("output_", session$ns("donutPlotFiltered"), "_height")]] %||% 800
+          w <- plot_dims$filtered_donut$width %||% input$donutPlotFiltered_size$width %||% session$clientData[[paste0("output_", session$ns("donutPlotFiltered"), "_width")]] %||% 1000
+          h <- plot_dims$filtered_donut$height %||% input$donutPlotFiltered_size$height %||% session$clientData[[paste0("output_", session$ns("donutPlotFiltered"), "_height")]] %||% 800
           
           ggplot2::ggsave(file, plot=p, device="pdf", width=w/72, height=h/72, limitsize=FALSE)
         }, error = function(e) {
@@ -1274,6 +1631,83 @@ barchart_server <- function(id, shared_data, global_color_map) {
         })
       },
       contentType = "application/pdf"
+    )
+    
+    output$downloadDonutPNG_Filtered <- downloadHandler(
+      filename = function() { getDownloadFilename(tabName = "Donut_Filtered", extension = "png", repMode = "Agg") },
+      content = function(file) {
+        tryCatch({
+          mat <- filteredBarData()
+          is_agg <- is_agg()
+          
+          current_color_map <- switch(input$barGroupMode,
+               "Lipid_Name" = shared_data$species_color_map(),
+               "Hyperclass" = shared_data$origin_color_map(),
+               shared_data$class_color_map()
+          )
+          if (input$barGroupMode != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+              names(current_color_map) <- get_full_class_name(names(current_color_map))
+            } else {
+              names(current_color_map) <- get_short_class_name(names(current_color_map))
+            }
+          }
+          
+          anno_bar <- shared_data$annotationData()
+          if (input$classLabelFormat == "full") {
+            anno_bar$subclass <- get_full_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_full_class_name(anno_bar$hyperclass)
+          } else {
+            anno_bar$subclass <- get_short_class_name(anno_bar$subclass)
+            anno_bar$hyperclass <- get_short_class_name(anno_bar$hyperclass)
+          }
+          
+          if (input$barOrientation == "class_x") {
+            active_lipids <- intersect(rownames(mat), anno_bar$Lipid_Name)
+            group_by <- input$barGroupMode %||% "Sub-class"
+            groupVar <- if (group_by == "Hyperclass") "hyperclass" else if (group_by == "Lipid_Name") "Lipid_Name" else "subclass"
+            n <- length(unique(anno_bar[[groupVar]][anno_bar$Lipid_Name %in% active_lipids]))
+          } else {
+            n <- if (is_agg && !is.null(barGroupingMap())) {
+              length(unique(barGroupingMap()))
+            } else {
+              ncol(mat)
+            }
+          }
+          if (is.na(n) || n <= 0) n <- 1
+          ncols <- min(4, n)
+          
+          ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+          contrast_suffix <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+            paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+          } else {
+            ""
+          }
+          p <- buildDonutPlot(mat, paste0("Filtered Composition", contrast_suffix, " (Donut Plot)"),
+                              annotation_data = anno_bar,
+                              group_mode = input$barGroupMode,
+                              value_mode = input$barValueMode,
+                              sample_grouping = barGroupingMap(),
+                              aggregate_by_group = is_agg,
+                              class_colors = current_color_map,
+                              show_stats = isTRUE(input$showDonutStats),
+                              orientation = input$barOrientation,
+                              sample_colors = barSampleColors(),
+                              ncols = ncols,
+                              min_pct = 0)
+                              
+          w <- plot_dims$filtered_donut$width %||% input$donutPlotFiltered_size$width %||% session$clientData[[paste0("output_", session$ns("donutPlotFiltered"), "_width")]] %||% 1000
+          h <- plot_dims$filtered_donut$height %||% input$donutPlotFiltered_size$height %||% session$clientData[[paste0("output_", session$ns("donutPlotFiltered"), "_height")]] %||% 800
+          
+          ggplot2::ggsave(file, plot=p, device="png", width=w/72, height=h/72, dpi=300, limitsize=FALSE)
+        }, error = function(e) {
+          png(file, width=800, height=600)
+          plot(0, 0, type="n", axes=FALSE, xlab="", ylab="")
+          text(0, 0, paste("ERROR in Donut PNG generation:\n", e$message), col="red", cex=0.8)
+          dev.off()
+        })
+      },
+      contentType = "image/png"
     )
     
     output$downloadDonutCSV_Filtered <- downloadHandler(
@@ -1295,7 +1729,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
               dplyr::ungroup()
           }
           
-          groupVar <- if (input$barGroupMode == "Hyperclass") "hyperclass" else "subclass"
+          groupVar <- if (input$barGroupMode == "Hyperclass") "hyperclass" else if (input$barGroupMode == "Lipid_Name") "Lipid_Name" else "subclass"
           dfm <- dfm %>% dplyr::rename(ClassGroup = dplyr::all_of(groupVar))
           
           df_class_sample <- dfm %>% 
@@ -1584,6 +2018,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       group_label <- switch(group_mode,
         "Sub-class" = "Lipid Main Class",
         "Hyperclass" = "Lipid Category",
+        "Lipid_Name" = "Single Lipid",
         group_mode
       )
       
@@ -1647,7 +2082,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
           dplyr::left_join(dplyr::select(anno_bar, Lipid_Name, subclass, hyperclass), by = "Lipid_Name") %>%
           tidyr::pivot_longer(cols = dplyr::all_of(colnames(mat)), names_to = "SampleCol", values_to = "Intensity")
         
-        groupVar <- if (group_mode == "Hyperclass") "hyperclass" else "subclass"
+        groupVar <- if (group_mode == "Hyperclass") "hyperclass" else if (group_mode == "Lipid_Name") "Lipid_Name" else "subclass"
         dfm <- dfm %>% dplyr::rename(ClassGroup = dplyr::all_of(groupVar))
         
         df_class_sample <- dfm %>% 

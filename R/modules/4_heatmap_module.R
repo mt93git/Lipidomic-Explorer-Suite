@@ -48,8 +48,8 @@ heatmap_ui <- function(id) {
               conditionalPanel(
                 condition = "input.condenseRows == true || input.condenseRowsSD == true",
                 ns = ns,
-                actionButton(ns("show_condensed_formulas"), "Show Condensed Class Formulas in the Statistics Tab", 
-                             icon = icon("circle-info"), class = "btn-secondary w-100 mt-2")
+                actionButton(ns("show_condensed_formulas"), "Show Condensed Class Formulas in Statistics Tab", 
+                             icon = icon("circle-info"), class = "btn-secondary btn-sm w-100 mt-1 mb-1")
               ),
               hr(),
               uiOutput(ns("heatmapDisplayColumnSelectorUI")),
@@ -231,6 +231,17 @@ heatmap_server <- function(id, shared_data) {
     observeEvent(input$filteredHeatmapPlot_size, { plot_dims$filtered <- input$filteredHeatmapPlot_size })
     observeEvent(input$filteredHeatmapSDPlot_size, { plot_dims$filtered_sd <- input$filteredHeatmapSDPlot_size })
     
+    # Observer to dynamically update the Filtered Heatmap horizontal tab title with the active comparison
+    observe({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_str <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+      session$sendCustomMessage("updateFilteredHeatmapTabTitle", list(contrast = contrast_str))
+    })
+
     # Observer to persist Cell Annotation values
     observe({
       df <- shared_data$data_processed()
@@ -289,14 +300,23 @@ heatmap_server <- function(id, shared_data) {
        }
     })
     
-    observeEvent(shared_data$analysisMode(), {
+    observe({
        mode <- shared_data$analysisMode()
        if(is.null(mode)) return()
        
-        updateRadioButtons(session, "staircaseGroup", 
-                           label = "Row Grouping & Annotation:",
-                           choices = c("Lipid Main Class" = "subclass", "Lipid Category" = "hyperclass"),
-                           selected = input$staircaseGroup %||% "subclass")
+       choices <- if (mode == "Global Lipidomics") {
+         c("Lipid Main Class" = "subclass", "Lipid Category" = "hyperclass")
+       } else {
+         c("Lipid Main Class" = "subclass", "Immune Role / Macro" = "hyperclass")
+       }
+       
+       curr <- isolate(input$staircaseGroup)
+       new_sel <- if (!is.null(curr) && curr %in% choices) curr else "subclass"
+       
+       updateRadioButtons(session, "staircaseGroup", 
+                          label = "Row Grouping & Annotation:",
+                          choices = choices,
+                          selected = new_sel)
     })
     
     # Auto-toggle Show Numbers when Condense Rows (Class Standard Deviation) is toggled
@@ -1167,7 +1187,9 @@ heatmap_server <- function(id, shared_data) {
          return()
        }
        
-       if (input$classLabelFormat == "full") {
+       if (condense_col == "Lipid_Name") {
+         anno_sub$Group_Label <- as.character(anno_sub$Lipid_Name)
+       } else if (input$classLabelFormat == "full") {
          anno_sub$Group_Label <- get_full_class_name(anno_sub[[condense_col]])
        } else {
          anno_sub$Group_Label <- get_short_class_name(anno_sub[[condense_col]])
@@ -1425,11 +1447,14 @@ heatmap_server <- function(id, shared_data) {
       })
       
       if(grepl("aggregate", input$repMode %||% "replicate", ignore.case = TRUE)) {
-         df <- group_map %>% dplyr::select(Group, Cell) %>% tibble::column_to_rownames("Group")
+         df <- group_map %>% dplyr::select(Group, Cell)
+         rownames(df) <- NULL
+         df <- df %>% tibble::column_to_rownames("Group")
          colors <- stats::setNames(group_map$Color, group_map$Cell)
          list(df = df, colors = colors)
       } else {
          df_long <- meta %>% dplyr::left_join(group_map, by="Group") %>% dplyr::select(FullName, Cell)
+         rownames(df_long) <- NULL
          df <- df_long %>% tibble::column_to_rownames("FullName")
          colors <- stats::setNames(group_map$Color, group_map$Cell)
          list(df = df, colors = colors)
@@ -1489,8 +1514,20 @@ heatmap_server <- function(id, shared_data) {
           res
         }
 
+        clean_unspecified_labels <- function(x) {
+          if (is.null(x)) return(x)
+          x_clean <- gsub("Unspecified", "", as.character(x))
+          x_clean <- gsub("_+", "_", x_clean)
+          x_clean <- gsub("^_|_$", "", x_clean)
+          x_clean[x_clean == ""] <- "Sample"
+          x_clean
+        }
+
         if (grepl("aggregate", input$repMode %||% "aggregate_class")) {
-            meta$Group <- apply(meta[, h_order, drop=FALSE], 1, paste, collapse="_")
+            meta$Group <- apply(meta[, h_order, drop=FALSE], 1, function(r) {
+              r_clean <- r[!is.na(r) & r != "" & r != "Unspecified"]
+              if (length(r_clean) == 0) "Group" else paste(r_clean, collapse = "_")
+            })
             custom_labels <- sapply(seq_len(nrow(meta)), function(i) {
               build_custom_display_name(meta[i, ], h_order)
             })
@@ -1498,16 +1535,23 @@ heatmap_server <- function(id, shared_data) {
         } else {
             group_cols <- setdiff(h_order, c("Replicate", "PatientNumber"))
             if(length(group_cols)==0) group_cols <- h_order
-            meta$Group <- apply(meta[, group_cols, drop=FALSE], 1, paste, collapse="_")
+            meta$Group <- apply(meta[, group_cols, drop=FALSE], 1, function(r) {
+              r_clean <- r[!is.na(r) & r != "" & r != "Unspecified"]
+              if (length(r_clean) == 0) "Group" else paste(r_clean, collapse = "_")
+            })
             
             custom_labels <- sapply(seq_len(nrow(meta)), function(i) {
               build_custom_display_name(meta[i, ], h_order)
             })
-            meta$Display_Name <- make.unique(ifelse(nzchar(custom_labels), custom_labels, as.character(meta$FullName)))
+            raw_fallback <- clean_unspecified_labels(as.character(meta$FullName))
+            meta$Display_Name <- make.unique(ifelse(nzchar(custom_labels), custom_labels, raw_fallback))
         }
+        
+        meta$Display_Name <- clean_unspecified_labels(meta$Display_Name)
+        meta$Group <- clean_unspecified_labels(meta$Group)
        
-       meta
-    })
+        meta
+     })
      output$dragDropOrderingUI <- renderUI({
         tab_sel <- input$heatmap_tabs %||% "Unfiltered Heatmap"
         
@@ -1625,6 +1669,14 @@ heatmap_server <- function(id, shared_data) {
        } else if (sort_mode == "hyperclass") {
           unique_vals <- sort(unique(anno$hyperclass))
           label_txt <- "Order Lipid Categories (Top to Bottom):"
+       } else if (sort_mode == "Lipid_Name") {
+          targeted_list <- shared_data$targeted_lipids_list()
+          if (isTRUE(shared_data$targeted_mode_active()) && length(targeted_list) > 0) {
+             unique_vals <- intersect(targeted_list, anno$Lipid_Name)
+          } else {
+             unique_vals <- sort(unique(anno$Lipid_Name))
+          }
+          label_txt <- "Order Single Lipids (Top to Bottom):"
        } else {
           return(NULL)
        }
@@ -1693,6 +1745,7 @@ heatmap_server <- function(id, shared_data) {
       if(!is.null(filtered_ids)) {
         df <- df %>% dplyr::filter(Lipid_Name %in% filtered_ids)
       }
+      rownames(df) <- NULL
       mat <- df %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
       
       meta <- dynamic_metadata()
@@ -1809,13 +1862,15 @@ heatmap_server <- function(id, shared_data) {
             row_order_source <- NULL
             if (isTRUE(input$customizeRowOrder %||% rv_ordering$customize_row_enabled) && !is.null(input$custom_row_order %||% rv_ordering$custom_row)) {
                row_order_source <- input$custom_row_order %||% rv_ordering$custom_row
-               if (input$classLabelFormat == "full") {
-                  row_order_source <- get_full_class_name(row_order_source)
-               } else {
-                  row_order_source <- get_short_class_name(row_order_source)
+               if (condense_col != "Lipid_Name") {
+                  if (input$classLabelFormat == "full") {
+                     row_order_source <- get_full_class_name(row_order_source)
+                  } else {
+                     row_order_source <- get_short_class_name(row_order_source)
+                  }
                }
             } else {
-               row_order_source <- if (condense_col == "subclass") names(current_class_colors) else names(current_origin_colors)
+               row_order_source <- if (condense_col == "subclass") names(current_class_colors) else if (condense_col == "hyperclass") names(current_origin_colors) else names(shared_data$species_color_map())
             }
             
             if (!is.null(row_order_source)) {
@@ -1827,7 +1882,7 @@ heatmap_server <- function(id, shared_data) {
             }
             
             anno_uniq <- anno %>%
-               dplyr::select(dplyr::all_of(c("subclass", "hyperclass"))) %>%
+               dplyr::select(dplyr::all_of(unique(c("subclass", "hyperclass", condense_col)))) %>%
                dplyr::distinct() %>%
                dplyr::filter(!is.na(!!rlang::sym(condense_col)), !!rlang::sym(condense_col) != "") %>%
                dplyr::group_by(!!rlang::sym(condense_col)) %>%
@@ -1938,6 +1993,7 @@ heatmap_server <- function(id, shared_data) {
                dplyr::filter(!is.na(Group), Group %in% colnames(mat_display))
             
             if (nrow(df_anno) > 0) {
+               rownames(df_anno) <- NULL
                df_anno <- df_anno %>% tibble::column_to_rownames("Group")
                common_cols <- intersect(colnames(mat_display), rownames(df_anno))
                cell_anno$df <- df_anno[common_cols, , drop=FALSE]
@@ -1948,7 +2004,7 @@ heatmap_server <- function(id, shared_data) {
       }
 
       title_text <- if (isTRUE(input$condenseRows)) {
-        condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else "Categories"
+        condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Categories" else "Lipids"
         sprintf("Unfiltered Heatmap - Class Average (%d %s)", nrow(mat_display), condense_lbl)
       } else {
         sprintf("Unfiltered Heatmap (%d Lipids)", nrow(mat_display))
@@ -1967,6 +2023,7 @@ heatmap_server <- function(id, shared_data) {
                             colors_sequential = c(input$seq_low, input$seq_high),
                             class_colors = current_class_colors,
                             origin_colors = current_origin_colors, # Pass dynamic origin colors
+                            species_colors = shared_data$species_color_map(),
                             annotation_cols = sort_cols_param) # Pass grouping variable vector
                             
       validate(need(!is.null(heatmap_res), "Heatmap rendering failed internally. Check R console for logs."))
@@ -2064,13 +2121,15 @@ heatmap_server <- function(id, shared_data) {
             row_order_source <- NULL
             if (isTRUE(input$customizeRowOrder %||% rv_ordering$customize_row_enabled) && !is.null(input$custom_row_order %||% rv_ordering$custom_row)) {
                row_order_source <- input$custom_row_order %||% rv_ordering$custom_row
-               if (input$classLabelFormat == "full") {
-                  row_order_source <- get_full_class_name(row_order_source)
-               } else {
-                  row_order_source <- get_short_class_name(row_order_source)
+               if (condense_col != "Lipid_Name") {
+                  if (input$classLabelFormat == "full") {
+                     row_order_source <- get_full_class_name(row_order_source)
+                  } else {
+                     row_order_source <- get_short_class_name(row_order_source)
+                  }
                }
             } else {
-               row_order_source <- if (condense_col == "subclass") names(current_class_colors) else names(current_origin_colors)
+               row_order_source <- if (condense_col == "subclass") names(current_class_colors) else if (condense_col == "hyperclass") names(current_origin_colors) else names(shared_data$species_color_map())
             }
             
             if (!is.null(row_order_source)) {
@@ -2082,7 +2141,7 @@ heatmap_server <- function(id, shared_data) {
             }
             
             anno_uniq <- anno %>%
-               dplyr::select(dplyr::all_of(c("subclass", "hyperclass"))) %>%
+               dplyr::select(dplyr::all_of(unique(c("subclass", "hyperclass", condense_col)))) %>%
                dplyr::distinct() %>%
                dplyr::filter(!is.na(!!rlang::sym(condense_col)), !!rlang::sym(condense_col) != "") %>%
                dplyr::group_by(!!rlang::sym(condense_col)) %>%
@@ -2190,6 +2249,7 @@ heatmap_server <- function(id, shared_data) {
                dplyr::filter(!is.na(Group), Group %in% colnames(mat_display))
             
             if (nrow(df_anno) > 0) {
+               rownames(df_anno) <- NULL
                df_anno <- df_anno %>% tibble::column_to_rownames("Group")
                common_cols <- intersect(colnames(mat_display), rownames(df_anno))
                cell_anno$df <- df_anno[common_cols, , drop=FALSE]
@@ -2204,7 +2264,7 @@ heatmap_server <- function(id, shared_data) {
       curr_pval <- if (!is.null(curr_settings$p_threshold)) curr_settings$p_threshold else 0.05
 
       title_text <- if (isTRUE(input$condenseRows)) {
-        condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else "Categories"
+        condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Categories" else "Lipids"
         sprintf("Filtered Heatmap - Class Average (%d %s | |L2FC| \u2265 %s, P < %s)", nrow(mat_display), condense_lbl, curr_l2fc, curr_pval)
       } else {
         sprintf("Filtered Heatmap (%d Lipids | |L2FC| \u2265 %s, P < %s)", nrow(mat_display), curr_l2fc, curr_pval)
@@ -2223,6 +2283,7 @@ heatmap_server <- function(id, shared_data) {
                             colors_sequential = c(input$seq_low, input$seq_high),
                             class_colors = current_class_colors,
                             origin_colors = current_origin_colors,
+                            species_colors = shared_data$species_color_map(),
                             annotation_cols = sort_cols_param)
                             
       validate(need(!is.null(heatmap_res), "Heatmap rendering failed internally. Check R console for logs."))
@@ -2301,13 +2362,15 @@ heatmap_server <- function(id, shared_data) {
       row_order_source <- NULL
       if (isTRUE(input$customizeRowOrder %||% rv_ordering$customize_row_enabled) && !is.null(input$custom_row_order %||% rv_ordering$custom_row)) {
          row_order_source <- input$custom_row_order %||% rv_ordering$custom_row
-         if (input$classLabelFormat == "full") {
-            row_order_source <- get_full_class_name(row_order_source)
-         } else {
-            row_order_source <- get_short_class_name(row_order_source)
+         if (condense_col != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+               row_order_source <- get_full_class_name(row_order_source)
+            } else {
+               row_order_source <- get_short_class_name(row_order_source)
+            }
          }
       } else {
-         row_order_source <- if (condense_col == "subclass") names(current_class_colors) else names(current_origin_colors)
+         row_order_source <- if (condense_col == "subclass") names(current_class_colors) else if (condense_col == "hyperclass") names(current_origin_colors) else names(shared_data$species_color_map())
       }
       
       if (!is.null(row_order_source)) {
@@ -2319,7 +2382,7 @@ heatmap_server <- function(id, shared_data) {
       }
       
       anno_uniq <- anno %>%
-         dplyr::select(dplyr::all_of(c("subclass", "hyperclass"))) %>%
+         dplyr::select(dplyr::all_of(unique(c("subclass", "hyperclass", condense_col)))) %>%
          dplyr::distinct() %>%
          dplyr::filter(!is.na(!!rlang::sym(condense_col)), !!rlang::sym(condense_col) != "") %>%
          dplyr::group_by(!!rlang::sym(condense_col)) %>%
@@ -2371,6 +2434,7 @@ heatmap_server <- function(id, shared_data) {
                dplyr::filter(!is.na(Group), Group %in% colnames(mat_display))
             
             if (nrow(df_anno) > 0) {
+               rownames(df_anno) <- NULL
                df_anno <- df_anno %>% tibble::column_to_rownames("Group")
                common_cols <- intersect(colnames(mat_display), rownames(df_anno))
                cell_anno$df <- df_anno[common_cols, , drop=FALSE]
@@ -2380,7 +2444,7 @@ heatmap_server <- function(id, shared_data) {
          }
       }
       
-      condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else "Categories"
+      condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Categories" else "Lipids"
       title_text <- sprintf("Unfiltered Heatmap - Class Standard Deviation (%d %s)", nrow(mat_display), condense_lbl)
       heatmap_res <- generateHeatmapObject(mat_display, title_text,  
                             mat_for_sorting = NULL,
@@ -2395,6 +2459,7 @@ heatmap_server <- function(id, shared_data) {
                             colors_sequential = c(input$seq_low, input$seq_high),
                             class_colors = current_class_colors,
                             origin_colors = current_origin_colors,
+                            species_colors = shared_data$species_color_map(),
                             annotation_cols = sort_cols_param)
                             
       validate(need(!is.null(heatmap_res), "SD Heatmap rendering failed internally."))
@@ -2476,13 +2541,15 @@ heatmap_server <- function(id, shared_data) {
       row_order_source <- NULL
       if (isTRUE(input$customizeRowOrder %||% rv_ordering$customize_row_enabled) && !is.null(input$custom_row_order %||% rv_ordering$custom_row)) {
          row_order_source <- input$custom_row_order %||% rv_ordering$custom_row
-         if (input$classLabelFormat == "full") {
-            row_order_source <- get_full_class_name(row_order_source)
-         } else {
-            row_order_source <- get_short_class_name(row_order_source)
+         if (condense_col != "Lipid_Name") {
+            if (input$classLabelFormat == "full") {
+               row_order_source <- get_full_class_name(row_order_source)
+            } else {
+               row_order_source <- get_short_class_name(row_order_source)
+            }
          }
       } else {
-         row_order_source <- if (condense_col == "subclass") names(current_class_colors) else names(current_origin_colors)
+         row_order_source <- if (condense_col == "subclass") names(current_class_colors) else if (condense_col == "hyperclass") names(current_origin_colors) else names(shared_data$species_color_map())
       }
       
       if (!is.null(row_order_source)) {
@@ -2494,7 +2561,7 @@ heatmap_server <- function(id, shared_data) {
       }
       
       anno_uniq <- anno %>%
-         dplyr::select(dplyr::all_of(c("subclass", "hyperclass"))) %>%
+         dplyr::select(dplyr::all_of(unique(c("subclass", "hyperclass", condense_col)))) %>%
          dplyr::distinct() %>%
          dplyr::filter(!is.na(!!rlang::sym(condense_col)), !!rlang::sym(condense_col) != "") %>%
          dplyr::group_by(!!rlang::sym(condense_col)) %>%
@@ -2546,6 +2613,7 @@ heatmap_server <- function(id, shared_data) {
                dplyr::filter(!is.na(Group), Group %in% colnames(mat_display))
             
             if (nrow(df_anno) > 0) {
+               rownames(df_anno) <- NULL
                df_anno <- df_anno %>% tibble::column_to_rownames("Group")
                common_cols <- intersect(colnames(mat_display), rownames(df_anno))
                cell_anno$df <- df_anno[common_cols, , drop=FALSE]
@@ -2557,8 +2625,7 @@ heatmap_server <- function(id, shared_data) {
       
       curr_settings <- shared_data$de_settings()
       curr_l2fc <- if (!is.null(curr_settings$log2fc_threshold)) curr_settings$log2fc_threshold else 1
-      curr_pval <- if (!is.null(curr_settings$p_threshold)) curr_settings$p_threshold else 0.05
-      condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else "Categories"
+      condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Categories" else "Lipids"
       title_text <- sprintf("Filtered Heatmap - Class Standard Deviation (%d %s | |L2FC| \u2265 %s, P < %s)", nrow(mat_display), condense_lbl, curr_l2fc, curr_pval)
       heatmap_res <- generateHeatmapObject(mat_display, title_text,  
                             mat_for_sorting = NULL,
@@ -2573,6 +2640,7 @@ heatmap_server <- function(id, shared_data) {
                             colors_sequential = c(input$seq_low, input$seq_high),
                             class_colors = current_class_colors,
                             origin_colors = current_origin_colors,
+                            species_colors = shared_data$species_color_map(),
                             annotation_cols = sort_cols_param)
                             
       validate(need(!is.null(heatmap_res), "Filtered SD Heatmap rendering failed internally."))
@@ -2675,6 +2743,13 @@ heatmap_server <- function(id, shared_data) {
       show_avg <- isTRUE(input$condenseRows) || (!isTRUE(input$condenseRows) && !isTRUE(input$condenseRowsSD))
       show_sd <- isTRUE(input$condenseRowsSD)
       
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_header <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+      
       cards <- list()
       
       if (show_avg) {
@@ -2691,7 +2766,8 @@ heatmap_server <- function(id, shared_data) {
                   ),
                   tags$span(class = "threshold-badge badge bg-light text-primary-emphasis border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold",
                      uiOutput(ns("filtered_threshold_badge"), inline = TRUE)
-                  )
+                  ),
+                  uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
                ),
                tags$div(
                   class = "d-flex align-items-center gap-1",
@@ -2710,19 +2786,21 @@ heatmap_server <- function(id, shared_data) {
       }
       
       if (show_sd) {
+         sd_header_title <- "Filtered Heatmap - Class Standard Deviation"
          cards[[length(cards) + 1]] <- card(
             class = "mb-3 border-0 bg-light-subtle",
             card_header(
                class = "d-flex justify-content-between align-items-center",
                tags$div(
                   class = "d-flex align-items-center gap-2",
-                  tags$strong("Filtered Heatmap - Class Standard Deviation", style = "font-size: 1.05rem; color: #E28E2B; margin-right: 6px;"),
+                  tags$strong(sd_header_title, style = "font-size: 1.05rem; color: #E28E2B; margin-right: 6px;"),
                   tags$span(class = "badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1",
                      textOutput(ns("filtered_sd_summary_text"), inline = TRUE)
                   ),
                   tags$span(class = "threshold-badge badge bg-light text-secondary border border-secondary-subtle rounded-pill px-2.5 py-1 fw-semibold",
                      uiOutput(ns("filtered_threshold_badge"), inline = TRUE)
-                  )
+                  ),
+                  uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
                ),
                tags$div(
                   downloadButton(ns("downloadFilteredHeatmapSDCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
@@ -2751,9 +2829,9 @@ heatmap_server <- function(id, shared_data) {
         tags$button(
           type = "button",
           class = "btn-quick-access",
-          onclick = "window.pointToElement('#dock_panel_cohorts', 'cohorts', '3. Differential Expression', event);",
-          title = "Configure Differential Expression comparison cohorts in left dock",
-          icon("sliders"), "DE & Cohort Settings"
+          onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+          title = "Configure Compared Analysis (Mode, Reference, Comparison) in left dock",
+          icon("code-compare"), tags$strong("Compared Analysis")
         ),
         tags$button(
           type = "button",
@@ -2771,7 +2849,13 @@ heatmap_server <- function(id, shared_data) {
         )
       )
       
-      tagList(quick_access, cards)
+      script_tag <- tags$script(HTML(sprintf("
+        if (typeof window.updateFilteredHeatmapTabTitle === 'function') {
+          window.updateFilteredHeatmapTabTitle(%s);
+        }
+      ", jsonlite::toJSON(contrast_header, auto_unbox = TRUE))))
+      
+      tagList(quick_access, cards, script_tag)
     })
     
     output$de_not_run_banner <- renderUI({
@@ -3010,14 +3094,14 @@ heatmap_server <- function(id, shared_data) {
     output$unfiltered_sd_summary_text <- renderText({
        obj <- tryCatch(unfilteredHeatmapSDObj(), shiny.silent.error = function(e) NULL, error = function(e) NULL)
        if (is.null(obj) || is.null(obj$data)) return("Class Standard Deviation Not Active")
-       condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else "Lipid Categories"
+       condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid Categories" else "Single Lipids"
        paste("Displaying", nrow(obj$data), condense_lbl, "(Unfiltered Intra-Class Standard Deviation)")
     })
 
     output$filtered_sd_summary_text <- renderText({
        obj <- tryCatch(filteredHeatmapSDObj(), shiny.silent.error = function(e) NULL, error = function(e) NULL)
        if (is.null(obj) || is.null(obj$data)) return("Class Standard Deviation Not Active / Differential Expression Analysis Not Run")
-       condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else "Lipid Categories"
+       condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid Categories" else "Single Lipids"
        paste("Displaying", nrow(obj$data), condense_lbl, "(DE Filtered Intra-Class Standard Deviation)")
     })
     
@@ -3113,7 +3197,7 @@ heatmap_server <- function(id, shared_data) {
         mean_obj <- unfilteredHeatmapObj()
         req(sd_obj, mean_obj)
         if (is.null(sd_obj$data) || is.null(mean_obj$data)) return(NULL)
-        row_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else "Lipid_Category"
+        row_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid_Category" else "Lipid_Name"
         
         df_mean <- as.data.frame(mean_obj$data)
         colnames(df_mean) <- paste0(colnames(df_mean), "_Mean")
@@ -3159,7 +3243,7 @@ heatmap_server <- function(id, shared_data) {
         mean_obj <- filteredHeatmapObj()
         req(sd_obj, mean_obj)
         if (is.null(sd_obj$data) || is.null(mean_obj$data)) return(NULL)
-        row_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else "Lipid_Category"
+        row_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid_Category" else "Lipid_Name"
         
         df_mean <- as.data.frame(mean_obj$data)
         colnames(df_mean) <- paste0(colnames(df_mean), "_Mean")
@@ -3206,7 +3290,7 @@ heatmap_server <- function(id, shared_data) {
        l <- shared_data$global_filtered_lipids()
        if(is.null(l)) return("No Lipids Selected")
        if (isTRUE(input$condenseRows)) {
-          condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else "Lipid Categories"
+          condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid Categories" else "Single Lipids"
           anno <- shared_data$annotationData()
           if (!is.null(anno)) {
              unique_c <- unique(anno[[input$staircaseGroup %||% "subclass"]][anno$Lipid_Name %in% l])
@@ -3223,7 +3307,7 @@ heatmap_server <- function(id, shared_data) {
        if(is.null(sig)) return("Differential Expression Analysis Not Run")
        final <- intersect(l, sig)
        if (isTRUE(input$condenseRows)) {
-          condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else "Lipid Categories"
+          condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid Main Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid Categories" else "Single Lipids"
           anno <- shared_data$annotationData()
           if (!is.null(anno)) {
              unique_c <- unique(anno[[input$staircaseGroup %||% "subclass"]][anno$Lipid_Name %in% final])
@@ -3239,6 +3323,21 @@ heatmap_server <- function(id, shared_data) {
       curr_l2fc <- if (!is.null(curr_settings$log2fc_threshold)) curr_settings$log2fc_threshold else 1
       curr_pval <- if (!is.null(curr_settings$p_threshold)) curr_settings$p_threshold else 0.05
       HTML(sprintf("|L2FC| &ge; %s &middot; P &lt; %s", curr_l2fc, curr_pval))
+    })
+
+    output$active_contrast_badge_ui <- renderUI({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      req(ci, ci$ref, ci$comp)
+      ref_str <- paste(ci$ref, collapse = "+")
+      comp_str <- paste(ci$comp, collapse = "+")
+      tags$button(
+        type = "button",
+        class = "btn btn-xs btn-outline-primary py-0 px-2 rounded-pill shadow-none ms-1",
+        style = "font-size: 0.78rem; font-weight: 600; background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8;",
+        onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+        title = "Click to configure Reference vs Comparison cohorts in Compared Analysis dock panel",
+        icon("code-compare", class = "me-1"), paste0(comp_str, " vs ", ref_str)
+      )
     })
     
     output$downloadHeatmapPDF <- downloadHandler(
@@ -3286,7 +3385,7 @@ heatmap_server <- function(id, shared_data) {
         obj <- unfilteredHeatmapObj()
         req(obj)
         row_lbl <- if (isTRUE(input$condenseRows)) {
-           if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else "Lipid_Category"
+           if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid_Category" else "Lipid_Name"
         } else {
            "Lipid_Name"
         }
@@ -3382,7 +3481,7 @@ heatmap_server <- function(id, shared_data) {
         if(is.null(obj$data)) return(NULL)
         
         row_lbl <- if (isTRUE(input$condenseRows)) {
-           if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else "Lipid_Category"
+           if ((input$staircaseGroup %||% "subclass") == "subclass") "Lipid_Main_Class" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Lipid_Category" else "Lipid_Name"
         } else {
            "Lipid_Name"
         }
@@ -3510,7 +3609,7 @@ heatmap_server <- function(id, shared_data) {
         "   - Scaling Mode:         ", input$heatmapScaleMode, "\n",
         "   - Condense Rows (Class Average): ", ifelse(isTRUE(input$condenseRows), "Yes", "No"), "\n",
         "   - Condense Rows (Class Standard Deviation): ", ifelse(isTRUE(input$condenseRowsSD), "Yes", "No"), "\n",
-        "   - Row Grouping Level:   ", input$staircaseGroup, "\n",
+        "   - Row Grouping Level:   ", ifelse(identical(input$staircaseGroup, "subclass"), "Lipid Main Class", ifelse(identical(input$staircaseGroup, "hyperclass"), "Lipid Category", "Single Lipid")), "\n",
         "   - Clustered Features:   ", n_feat_u, " features\n",
         "   - Clustered Columns:    ", n_col_u, " samples/groups\n\n",
         "2. MATHEMATICAL FORMULATION & CALCULUS EXAMPLE\n",

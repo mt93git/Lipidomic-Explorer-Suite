@@ -1179,9 +1179,10 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
       
       if (isTRUE(input$useShapes) && !is.null(input$shapeGrouping) && input$shapeGrouping %in% names(df_met)) {
         shapeMap <- polar_active_shape_map()
+        shapeMap_num <- stats::setNames(as.numeric(shapeMap), names(shapeMap))
         shape_title <- if (!is.null(meta)) get_metadata_group_label(input$shapeGrouping, meta) else input$shapeGrouping
         shape_guide <- guide_legend(title.position = "top", title.hjust = 0.5, nrow = 1, byrow = TRUE)
-        p <- p + scale_shape_manual(name = shape_title, values = shapeMap, drop = FALSE) +
+        p <- p + scale_shape_manual(name = shape_title, values = shapeMap_num, drop = FALSE) +
           guides(shape = shape_guide)
       }
       

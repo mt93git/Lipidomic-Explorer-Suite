@@ -1,4 +1,4 @@
-# MT_Global_Lipidomic_Explorer (Lipidomic Explorer Suite v12.0)
+# MT_Global_Lipidomic_Explorer (Lipidomic Explorer Suite v12.1)
 
 [![CI/CD Tests](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml/badge.svg)](https://github.com/mt93git/Lipidomic-Explorer-Suite/actions/workflows/bootstrap_test.yml)
 [![R Compatibility](https://img.shields.io/badge/R-%3E%3D_4.4.0-blue.svg)](https://cloud.r-project.org/)
@@ -6,7 +6,7 @@
 
 > **Interactive R/Shiny Platform for Processing, Quality Control, Differential Analysis, Pathway Enrichment (LSEA), and Structural Visualization of Global Lipidomics Datasets.**  
 > *Developed by Maxence Tricaud.*  
-> *Note: Release v12.0 represents the validated production successor to the foundational v10.1 platform.*
+> *Note: Release v12.1 represents the validated production successor to the foundational v10.1 platform.*
 
 ![MT_Global_Lipidomic_Explorer Interface](docs/images/main_dashboard.png)
 
@@ -90,7 +90,8 @@ To test the analysis pipeline immediately:
   - [06_developer_contributing_guide.md](docs/06_developer_contributing_guide.md): Development standards, WYSIWYG plot layouts, and test procedures.
   - [07_diagnostic_history.md](docs/07_diagnostic_history.md): Technical troubleshooting logs and workarounds.
   - [08_user_manual.md](docs/08_user_manual.md): End-user quickstart guide, UI walkthroughs, and step-by-step tutorials.
-  - [AUDIT_PROMPT_CRITICAL_MATHEMATICAL_ANALYSIS.md](docs/AUDIT_PROMPT_CRITICAL_MATHEMATICAL_ANALYSIS.md): Comprehensive biostatistical reviewer audit prompt.
+  - [09_color_palettes_reference_guide.md](docs/09_color_palettes_reference_guide.md): Colorblind-safe and publication-grade palette reference guide.
+  - [MT_LipidomicExplorer_StartGuide_v2.docx](docs/MT_LipidomicExplorer_StartGuide_v2.docx): Illustrated step-by-step Word start guide.
 - `/OS`: Platform-specific configuration environments and shell scripts (Windows, macOS Intel/Apple Silicon, Linux).
 - `/data`: Built-in ontological lipid dictionaries, biosynthetic pathway links, and gene mappings.
 - `/demo_data`: Standardized sample datasets for immediate testing across analysis modes.

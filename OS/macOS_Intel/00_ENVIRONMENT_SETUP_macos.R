@@ -212,6 +212,20 @@ if (force_binary == "TRUE" || !has_compiler) {
 # 4. DEPENDENCY RESOLUTION LOOP (CRAN)
 # --------------------------------------------------------
 is_package_installed <- function(pkg, min_ver = NULL) {
+  # Special case for rstudioapi: RStudio IDE loads this into memory on startup.
+  # If present in any active library (.Library or user library), copy to sandbox or accept.
+  # This prevents RStudio from interrupting with the "Updating Loaded Packages" modal prompt.
+  if (pkg == "rstudioapi") {
+    sys_pkg <- system.file(package = "rstudioapi")
+    if (sys_pkg != "") {
+      if (system.file(package = "rstudioapi", lib.loc = lib_path) == "") {
+        tryCatch({
+          file.copy(from = sys_pkg, to = lib_path, recursive = TRUE)
+        }, error = function(e) NULL)
+      }
+      return(TRUE)
+    }
+  }
   path <- system.file(package = pkg, lib.loc = lib_path)
   if (path == "") return(FALSE)
   if (!is.null(min_ver)) {
@@ -574,7 +588,9 @@ all_required_packages <- unique(c(
 
 missing_critical <- c()
 for (pkg in all_required_packages) {
-  if (system.file(package = pkg, lib.loc = lib_path) == "") {
+  pkg_found <- (pkg == "rstudioapi" && system.file(package = pkg) != "") ||
+               (system.file(package = pkg, lib.loc = lib_path) != "")
+  if (!pkg_found) {
     missing_critical <- c(missing_critical, pkg)
   }
 }
@@ -593,7 +609,9 @@ if (length(missing_critical) > 0) {
   # Re-evaluate
   still_missing <- c()
   for (pkg in missing_critical) {
-    if (system.file(package = pkg, lib.loc = lib_path) == "") {
+    pkg_found <- (pkg == "rstudioapi" && system.file(package = pkg) != "") ||
+                 (system.file(package = pkg, lib.loc = lib_path) != "")
+    if (!pkg_found) {
       still_missing <- c(still_missing, pkg)
     }
   }

@@ -907,7 +907,7 @@ targeted_lipids_server <- function(id, shared_data) {
 # ==============================================================================
 # Targeted Mode Plot Fallback Utilities & UI Banners
 # ==============================================================================
-TARGETED_FALLBACK_MESSAGE <- "Couldn't display the plot with selected lipid; All Matrix has been used; try 'Lipid Class Filters' in 'Cohort and Filter' to get less stringent filtering"
+TARGETED_FALLBACK_MESSAGE <- "Couldn't display the plot with selected lipid; try to switch to all lipid and select class in 'Lipid Class Filters' in 'Cohort and Filter' to get less stringent filtering."
 
 notify_targeted_fallback <- function(session = shiny::getDefaultReactiveDomain(), id = "targeted_fallback") {
   shiny::showNotification(
@@ -939,12 +939,7 @@ targeted_fallback_banner_ui <- function(active = TRUE) {
       icon("circle-info", style = "color: rgba(217, 119, 6, 0.85); font-size: 0.95rem; flex-shrink: 0;"),
       tags$span(
         tags$strong(style = "color: #92400e; font-weight: 650;", "Analytical Notice: "),
-        "Couldn't display the plot with selected lipid; ",
-        tags$span(
-          style = "background: rgba(100, 116, 139, 0.12); color: #334155; border: 1px solid rgba(100, 116, 139, 0.22); border-radius: 4px; font-weight: 550; font-size: 0.76rem; padding: 1px 6px; display: inline-block; vertical-align: baseline;",
-          "All Matrix has been used"
-        ),
-        "; try ",
+        "Couldn't display the plot with selected lipid; try to switch to all lipid and select class in ",
         tags$strong(style = "color: #92400e;", "'Lipid Class Filters'"),
         " in ",
         tags$strong(style = "color: #92400e;", "'Cohort and Filter'"),
@@ -968,8 +963,8 @@ targeted_fallback_banner_ui <- function(active = TRUE) {
         ),
         onmouseover = "this.style.background='rgba(245, 158, 11, 0.28)'; this.style.borderColor='rgba(245, 158, 11, 0.5)';",
         onmouseout = "this.style.background='rgba(245, 158, 11, 0.15)'; this.style.borderColor='rgba(245, 158, 11, 0.35)';",
-        onclick = "if(window.pointToElement) { window.pointToElement('#data_hub-hyperclassSelectorUI', 'cohorts', 'Lipid Class Filters', event); }",
-        tagList(icon("filter", style = "font-size: 0.7rem;"), "Open Class Filters")
+        onclick = "var allBtn = document.querySelector('[id*=\"btn_scope_all\"]'); if(allBtn){ allBtn.click(); } if(window.pointToElement) { window.pointToElement('#data_hub-hyperclassSelectorUI', 'cohorts', 'Lipid Class Filters', event); }",
+        tagList(icon("filter", style = "font-size: 0.7rem;"), "Switch to All Lipid View and Open Class Filter")
       ),
       tags$button(
         type = "button",

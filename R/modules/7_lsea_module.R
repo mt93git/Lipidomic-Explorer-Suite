@@ -75,10 +75,39 @@ lsea_ui <- function(id) {
           ),
           collapse_id = ns("intro_collapse")
         ),
+        div(
+          class = "quick-access-strip mb-2.5",
+          tags$span(class = "quick-access-label", icon("bolt", class = "text-warning"), "Quick Access:"),
+          tags$button(
+            type = "button",
+            class = "btn-quick-access",
+            onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+            title = "Configure Compared Analysis (Mode, Reference, Comparison) in left dock",
+            icon("code-compare"), tags$strong("Compared Analysis")
+          ),
+          tags$button(
+            type = "button",
+            class = "btn-quick-access btn-quick-l2fc",
+            onclick = "window.pointToLog2FCFilter(event);",
+            title = "Jump to |Log2FC| cutoff threshold in sidebar and highlight",
+            icon("filter"), tags$strong("|Log2FC| Cutoff Filter")
+          ),
+          tags$button(
+            type = "button",
+            class = "btn-quick-access",
+            onclick = "window.pointToElement('#lsea_tab-lseaGrouping', 'plot_controls', '1. LSEA Parameters', event);",
+            title = "Configure LSEA Parameters (Grouping Level, Ranking Metric, Minimum Size)",
+            icon("layer-group"), "LSEA Parameters"
+          )
+        ),
         card(
           card_header(
             class = "d-flex justify-content-between align-items-center",
-            textOutput(ns("lsea_stats_text")),
+            tags$div(
+              class = "d-flex align-items-center gap-2",
+              tags$strong(textOutput(ns("lsea_stats_text"), inline = TRUE)),
+              uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+            ),
             tags$div(
               downloadButton(ns("downloadTable"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
               downloadButton(ns("downloadPlot"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
@@ -369,6 +398,7 @@ lsea_server <- function(id, shared_data) {
           )
       } else {
         # Data Matrix (log2-transformed to ensure mathematically correct log2 fold changes and proper statistics)
+        rownames(df_wide) <- NULL
         mat_num <- df_wide %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
         mat <- log2(mat_num)
         mat[!is.finite(mat)] <- NA
@@ -584,6 +614,10 @@ lsea_server <- function(id, shared_data) {
           )
       }
       
+      ref_s <- paste(contrast_info$ref, collapse = "+")
+      comp_s <- paste(contrast_info$comp, collapse = "+")
+      contrast_display_str <- if (nzchar(ref_s) && nzchar(comp_s)) paste0(" (", comp_s, " vs ", ref_s, ")") else paste0(" (", contrast_info$str, ")")
+
       p <- p +
         geom_text(aes(label = .data[[label_col]], hjust = ifelse(Log2FC > 0, 1.4, -0.4)), color = "black", vjust = 0.5, size = input$labelSize) +
         scale_y_reordered() +
@@ -592,7 +626,7 @@ lsea_server <- function(id, shared_data) {
         theme(legend.position = "right") +
         ggplot2::coord_cartesian(clip = "off") +
         labs(
-          title = paste(if (is_single) "Ranked Single Lipid Remodeling:" else "Ranked Lipid Class Enrichment:", contrast_info$str),
+          title = paste0(if (is_single) "Ranked Single Lipid Remodeling" else "Ranked Lipid Class Enrichment", contrast_display_str),
           y = NULL,
           x = if (is_single) "Log2 Fold Change" else "Log2 Fold Change (Aggregated by Class)"
         )
@@ -618,6 +652,21 @@ lsea_server <- function(id, shared_data) {
       generateLseaPlot() 
     })
     
+    output$active_contrast_badge_ui <- renderUI({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      req(ci, ci$ref, ci$comp)
+      ref_str <- paste(ci$ref, collapse = "+")
+      comp_str <- paste(ci$comp, collapse = "+")
+      tags$button(
+        type = "button",
+        class = "btn btn-xs btn-outline-primary py-0 px-2 rounded-pill shadow-none ms-1",
+        style = "font-size: 0.78rem; font-weight: 600; background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8;",
+        onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+        title = "Click to configure Reference vs Comparison cohorts in Compared Analysis dock panel",
+        icon("code-compare", class = "me-1"), paste0(comp_str, " vs ", ref_str)
+      )
+    })
+
     output$lsea_stats_text <- renderText({
        if (is.null(shared_data$de_results()) || is.null(shared_data$de_contrast_info())) {
          return("Differential Expression Analysis Not Run")
@@ -662,16 +711,26 @@ lsea_server <- function(id, shared_data) {
            show_count <- nrow(res_display)
            total_count <- nrow(res)
            
+           ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+           ref_s <- if (!is.null(ci)) paste(ci$ref, collapse = "+") else ""
+           comp_s <- if (!is.null(ci)) paste(ci$comp, collapse = "+") else ""
+           contrast_prefix <- if (nzchar(ref_s) && nzchar(comp_s)) paste0(" (", comp_s, " vs ", ref_s, "): ") else ": "
+           
            if (no_sig) {
-             paste0("LSEA Results: showing ", show_count, " ", unit_name, " out of ", total_count, " tested (Significance Threshold is Not Applied).")
+             paste0("LSEA Results", contrast_prefix, "showing ", show_count, " ", unit_name, " out of ", total_count, " tested (Significance Threshold is Not Applied).")
            } else {
-             paste0("LSEA Results: found ", total_count, " significant ", unit_name, " (showing top ", show_count, ").")
+             paste0("LSEA Results", contrast_prefix, "found ", total_count, " significant ", unit_name, " (showing top ", show_count, ").")
            }
        } else {
+           ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+           ref_s <- if (!is.null(ci)) paste(ci$ref, collapse = "+") else ""
+           comp_s <- if (!is.null(ci)) paste(ci$comp, collapse = "+") else ""
+           contrast_prefix <- if (nzchar(ref_s) && nzchar(comp_s)) paste0(" (", comp_s, " vs ", ref_s, "): ") else ": "
+
            if (no_sig) {
-             paste0("LSEA Results: showing ", nrow(res), " ", unit_name, " (Significance Threshold is Not Applied).")
+             paste0("LSEA Results", contrast_prefix, "showing ", nrow(res), " ", unit_name, " (Significance Threshold is Not Applied).")
            } else {
-             paste0("LSEA Results: found ", nrow(res), " significant ", unit_name, ".")
+             paste0("LSEA Results", contrast_prefix, "found ", nrow(res), " significant ", unit_name, ".")
            }
        }
     })

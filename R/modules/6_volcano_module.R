@@ -96,10 +96,39 @@ volcano_ui <- function(id) {
           ),
           collapse_id = ns("intro_collapse")
         ),
+        div(
+          class = "quick-access-strip mb-2.5",
+          tags$span(class = "quick-access-label", icon("bolt", class = "text-warning"), "Quick Access:"),
+          tags$button(
+            type = "button",
+            class = "btn-quick-access",
+            onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+            title = "Configure Compared Analysis (Mode, Reference, Comparison) in left dock",
+            icon("code-compare"), tags$strong("Compared Analysis")
+          ),
+          tags$button(
+            type = "button",
+            class = "btn-quick-access btn-quick-l2fc",
+            onclick = "window.pointToLog2FCFilter(event);",
+            title = "Jump to |Log2FC| cutoff threshold in sidebar and highlight",
+            icon("filter"), tags$strong("|Log2FC| Cutoff Filter")
+          ),
+          tags$button(
+            type = "button",
+            class = "btn-quick-access",
+            onclick = "window.pointToElement('#volcano_tab-volcanoColorMode', 'plot_controls', '1. Aesthetics', event);",
+            title = "Configure Volcano Plot Aesthetics (Color Mode, Cutoff Lines, Transparency)",
+            icon("palette"), "Plot Aesthetics"
+          )
+        ),
         card(
           card_header(
             class = "d-flex justify-content-between align-items-center",
-            textOutput(ns("volcano_stats_text")),
+            tags$div(
+              class = "d-flex align-items-center gap-2",
+              tags$strong(textOutput(ns("volcano_stats_text"), inline = TRUE)),
+              uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+            ),
             tags$div(
               actionButton(ns("openStudioVolcano"), label = NULL, icon = icon("camera-retro"), class = "btn-sm btn-outline-secondary py-0 me-1", title = "Open in Publication Export Studio"),
               downloadButton(ns("downloadTable"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
@@ -199,10 +228,17 @@ volcano_server <- function(id, shared_data) {
       p_val_label <- if(settings$p_value_type == "adjusted") "Adj. P-Value (FDR)" else "Raw P-Value"
       lfc_cut <- settings$log2fc_threshold
       
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      volcano_contrast <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+
       p <- ggplot(plot_data, aes(x = log2FC, y = negLog10P)) +
         geom_vline(xintercept = c(-lfc_cut, lfc_cut), linetype = "dotted") +
         geom_hline(yintercept = p_thresh_line, linetype = "dotted") +
-        labs(title = "Volcano Plot", x = expression(Log[2]~"Fold Change"), y = bquote(-Log[10]~.(p_val_label))) +
+        labs(title = paste0("Volcano Plot", volcano_contrast), x = expression(Log[2]~"Fold Change"), y = bquote(-Log[10]~.(p_val_label))) +
         theme_bw(base_size = input$axisTextSize) + # Use axis text size for base size
         theme(
             legend.text = element_text(size = input$legendTextSize),
@@ -423,7 +459,28 @@ volcano_server <- function(id, shared_data) {
       df <- volcanoData()
       n_up <- sum(df$Regulation == "Up", na.rm=TRUE)
       n_down <- sum(df$Regulation == "Down", na.rm=TRUE)
-      paste0("Volcano Plot (Up: ", n_up, ", Down: ", n_down, ")")
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      contrast_txt <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+        paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+      } else {
+        ""
+      }
+      paste0("Volcano Plot", contrast_txt, " [Up: ", n_up, ", Down: ", n_down, "]")
+    })
+
+    output$active_contrast_badge_ui <- renderUI({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      req(ci, ci$ref, ci$comp)
+      ref_str <- paste(ci$ref, collapse = "+")
+      comp_str <- paste(ci$comp, collapse = "+")
+      tags$button(
+        type = "button",
+        class = "btn btn-xs btn-outline-primary py-0 px-2 rounded-pill shadow-none ms-1",
+        style = "font-size: 0.78rem; font-weight: 600; background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8;",
+        onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+        title = "Click to configure Reference vs Comparison cohorts in Compared Analysis dock panel",
+        icon("code-compare", class = "me-1"), paste0(comp_str, " vs ", ref_str)
+      )
     })
     
   # --- Downloads ---

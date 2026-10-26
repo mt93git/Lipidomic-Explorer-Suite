@@ -69,19 +69,7 @@ longitudinal_ui <- function(id) {
                          choices = c("Automatic mode" = "auto",
                                      "Parametric (paired t-test)" = "parametric",
                                      "Non-Parametric (paired Wilcoxon)" = "non_parametric"),
-                         selected = "auto"),
-            selectInput(ns("patientLayout"), tags$span("Patient Layout:", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Determines if patient trajectories are plotted in separate columns or overlaid on the same plot to visualize temporal trends.")), 
-                        choices = c("Selected Subgroups Grid" = "all"),
-                        selected = "all"),
-            selectInput(ns("timecourseLayout"), tags$span("Timecourse Layout:", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Determines if patient trajectories are plotted in separate columns or overlaid on the same plot to visualize temporal trends.")),
-                        choices = c("Single Plot (All on same X)" = "single", "Separate Plot per Timecourse" = "separate"),
-                        selected = "single"),
-            radioButtons(ns("patientFilterMode"), tags$span("Patient Pairing / Filtering:", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Configures matched-sample pairing and controls how missing time points for individual patients are filtered.")),
-                         choices = c("All Dots (Show all samples)" = "all_dots",
-                                     "Paired in Same Timecourse" = "paired_tc",
-                                     "Paired in All Timecourses" = "paired_all"),
-                         selected = "all_dots"),
-            checkboxInput(ns("showSignificantOnly"), "Show ONLY significant metrics", value = FALSE)
+                         selected = "auto")
           ),
           accordion_panel("2. Cohorts & Trajectories", icon = icon("users"),
             div(
@@ -137,70 +125,130 @@ longitudinal_ui <- function(id) {
             icon("layer-group"), tags$strong("Bottom Menu: Advanced Aesthetics")
           )
         ),
+        uiOutput(ns("targeted_mode_banner")),
+        div(class = "d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 bg-light p-2.5 rounded border shadow-sm",
+          div(class = "d-flex align-items-center gap-3 flex-wrap",
+            div(style = "min-width: 200px;",
+              selectInput(ns("patientLayout"), 
+                          tags$span("Patient Layout:", 
+                                    bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
+                                                   "Determines patient cohort framing. 'Selected Subgroups Grid' partitions trajectories across active subgroup grids, or you can isolate a specific patient group.")), 
+                          choices = c("Selected Subgroups Grid" = "all"),
+                          selected = "all",
+                          width = "210px")
+            ),
+            div(
+              radioButtons(ns("timecourseLayout"), 
+                           tags$span("Timecourse Layout:", 
+                                     bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
+                                                    "Specifies whether multiple timecourse lines share a single unified X-axis or are separated into individual facet plots.")),
+                           choiceNames = list(
+                             tags$span("Single Plot (All on same X)", 
+                                       bslib::tooltip(icon("circle-info", style = "margin-left: 4px; color: #6c757d; cursor: pointer;"), 
+                                                      "Overlays all designed timecourses on the same plot with a unified temporal X-axis for direct comparison.")),
+                             tags$span("Separate Plot per Timecourse", 
+                                       bslib::tooltip(icon("circle-info", style = "margin-left: 4px; color: #6c757d; cursor: pointer;"), 
+                                                      "Splits each designed timecourse into its own dedicated facet subplot to prevent overlapping trajectories."))
+                           ),
+                           choiceValues = list("single", "separate"),
+                           selected = "single",
+                           inline = TRUE)
+            ),
+            div(
+              radioButtons(ns("patientFilterMode"), 
+                           tags$span("Patient Pairing / Filtering:", 
+                                     bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
+                                                    "Configures matched-sample pairing and controls how missing time points for individual patients are filtered.")),
+                           choiceNames = list(
+                             tags$span("All Dots (Show all samples)", 
+                                       bslib::tooltip(icon("circle-info", style = "margin-left: 4px; color: #6c757d; cursor: pointer;"), 
+                                                      "Displays all measured sample points, including patients with incomplete or missing timepoint series.")),
+                             tags$span("Paired in Same Timecourse", 
+                                       bslib::tooltip(icon("circle-info", style = "margin-left: 4px; color: #6c757d; cursor: pointer;"), 
+                                                      "Restricts display and trajectory lines to patients with complete paired samples across all timepoints in the same timecourse.")),
+                             tags$span("Paired in All Timecourses", 
+                                       bslib::tooltip(icon("circle-info", style = "margin-left: 4px; color: #6c757d; cursor: pointer;"), 
+                                                      "Strictly restricts display to patients who are fully represented across all defined timecourses and timepoints."))
+                           ),
+                           choiceValues = list("all_dots", "paired_tc", "paired_all"),
+                           selected = "all_dots",
+                           inline = TRUE)
+            ),
+            div(style = "margin-top: 20px;",
+              checkboxInput(ns("showSignificantOnly"), 
+                            tags$span("Show ONLY significant metrics", 
+                                      bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
+                                                     "Filters displayed lipid categories, classes, and structural features to retain only those showing statistically significant temporal changes (p < 0.05).")), 
+                            value = FALSE)
+            ),
+            div(style = "margin-top: 20px;",
+              checkboxInput(ns("ensembleView"), 
+                            tags$span("Ensemble View (Multi-select)", 
+                                      bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
+                                                     "Toggle between selecting items one by one and an ensemble view allowing simultaneous multi-selection in a coordinated grid.")), 
+                            value = FALSE)
+            ),
+            div(style = "min-width: 180px;",
+              sliderInput(ns("plotHeight"), 
+                          tags$span("Plot Height (px):", 
+                                    bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
+                                                   "Adjusts the vertical plot height and angle of focus for optimal inspection.")), 
+                          min = 350, max = 5000, value = 550, step = 50, width = "180px")
+            )
+          )
+        ),
         navset_card_tab(
           id = ns("longitudinal_tabs"),
         nav_panel("Lipid Categories",
-          card(
-            card_body(
-              uiOutput(ns("macroclass_selector_ui")),
-              jqui_resizable(div(style = "min-height: 400px; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow: hidden;",
-                plotOutput(ns("macroclass_plot"), height="auto")
-              )),
-              uiOutput(ns("longitudinal_stat_note_1"))
-            )
+          card_body(
+            uiOutput(ns("macroclass_selector_ui")),
+            div(class = "longitudinal-plot-container", style = "width: 100%; margin-bottom: 15px; position: relative;",
+              plotOutput(ns("macroclass_plot"), height = "auto")
+            ),
+            uiOutput(ns("longitudinal_stat_note_1"))
           )
         ),
         nav_panel("Lipid Main Classes",
-          card(
-            card_body(
-              uiOutput(ns("subclass_selector_ui")),
-              jqui_resizable(div(style = "min-height: 400px; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow: hidden;",
-                plotOutput(ns("subclass_plot"), height="auto")
-              )),
-              uiOutput(ns("longitudinal_stat_note_2"))
-            )
+          card_body(
+            uiOutput(ns("subclass_selector_ui")),
+            div(class = "longitudinal-plot-container", style = "width: 100%; margin-bottom: 15px; position: relative;",
+              plotOutput(ns("subclass_plot"), height = "auto")
+            ),
+            uiOutput(ns("longitudinal_stat_note_2"))
           )
         ),
         nav_panel("Functional Indices",
-          card(
-            card_body(
-              uiOutput(ns("index_selector_ui")),
-              jqui_resizable(div(style = "min-height: 400px; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow: hidden;",
-                plotOutput(ns("index_plot"), height="auto")
-              )),
-              uiOutput(ns("longitudinal_stat_note_3"))
-            )
+          card_body(
+            uiOutput(ns("index_selector_ui")),
+            div(class = "longitudinal-plot-container", style = "width: 100%; margin-bottom: 15px; position: relative;",
+              plotOutput(ns("index_plot"), height = "auto")
+            ),
+            uiOutput(ns("longitudinal_stat_note_3"))
           )
         ),
         nav_panel("Structural Features",
-          card(
-            card_body(
-              uiOutput(ns("struct_selector_ui")),
-              jqui_resizable(div(style = "min-height: 400px; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow: hidden;",
-                plotOutput(ns("struct_plot"), height="auto")
-              )),
-              uiOutput(ns("longitudinal_stat_note_4"))
-            )
+          card_body(
+            uiOutput(ns("struct_selector_ui")),
+            div(class = "longitudinal-plot-container", style = "width: 100%; margin-bottom: 15px; position: relative;",
+              plotOutput(ns("struct_plot"), height = "auto")
+            ),
+            uiOutput(ns("longitudinal_stat_note_4"))
           )
         ),
         nav_panel("All Metrics",
-          card(
-            card_body(
-              uiOutput(ns("allmetrics_selector_ui")),
-              uiOutput(ns("allmetrics_status")),
-              jqui_resizable(div(style = "min-height: 400px; max-height: 850px; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow-y: auto;",
-                plotOutput(ns("allmetrics_plot"), height="auto")
-              )),
-              uiOutput(ns("longitudinal_stat_note_5"))
-            )
+          card_body(
+            uiOutput(ns("allmetrics_selector_ui")),
+            uiOutput(ns("allmetrics_status")),
+            div(class = "longitudinal-plot-container", style = "width: 100%; margin-bottom: 15px; position: relative;",
+              plotOutput(ns("allmetrics_plot"), height = "auto")
+            ),
+            uiOutput(ns("longitudinal_stat_note_5"))
           )
         ),
         nav_panel("Significance Ledger",
-          card(
-            card_body(
-              p(class="text-muted small", "Paired t-test results for each metric and contrast."),
-              DT::DTOutput(ns("ledger_table"))
-            )
+          card_body(
+            p(class="text-muted small", "Paired t-test results for each metric and contrast."),
+            DT::DTOutput(ns("ledger_table"))
           )
         )
       )
@@ -269,27 +317,55 @@ longitudinal_server <- function(id, shared_data) {
     timepoint_order_prefs <- shared_data$saved_timepoint_order_prefs
     designer_cases <- shared_data$saved_designer_cases
     
-    resolve_longitudinal_cohort <- function(df) {
-      if ("Cohort" %in% names(df)) {
-        return(df$Cohort)
-      }
-      if ("TimePoint" %in% names(df)) {
-        if ("Group1" %in% names(df) && "Group2" %in% names(df)) {
-          return(paste0(df$Group1, "_", df$Group2, "_", df$TimePoint))
-        } else if ("Group1" %in% names(df)) {
-          return(paste0(df$Group1, "_", df$TimePoint))
-        } else {
-          return(df$TimePoint)
-        }
+    clean_unspecified_labels <- function(x) {
+      if (is.null(x)) return(x)
+      is_f <- is.factor(x)
+      levs <- if (is_f) levels(x) else unique(as.character(x))
+      clean_levs <- gsub("Unspecified", "", levs)
+      clean_levs <- gsub("_+", "_", clean_levs)
+      clean_levs <- gsub("^_|_$", "", clean_levs)
+      clean_levs[clean_levs == ""] <- "Cohort"
+      if (is_f) {
+        factor(clean_levs[as.integer(x)], levels = unique(clean_levs))
       } else {
-        if ("Group1" %in% names(df) && "Group2" %in% names(df)) {
-          return(paste0(df$Group1, "_", df$Group2))
-        } else if ("Group1" %in% names(df)) {
-          return(df$Group1)
-        } else {
-          return(rep("Cohort", nrow(df)))
-        }
+        clean_levs[match(as.character(x), levs)]
       }
+    }
+    
+    format_longitudinal_tick_label <- function(x) {
+      if (is.null(x)) return(x)
+      sapply(x, function(lbl) {
+        if (is.null(lbl) || is.na(lbl) || !nzchar(lbl)) return("")
+        clean_lbl <- gsub("_Exp", "", as.character(lbl))
+        clean_lbl <- clean_unspecified_labels(clean_lbl)
+        
+        if (grepl("_", clean_lbl)) {
+          parts <- strsplit(clean_lbl, "_")[[1]]
+          tp <- parts[length(parts)]
+          base <- paste(parts[-length(parts)], collapse = " ")
+          wrapped_base <- if (nchar(base) > 12) paste(strwrap(base, width = 12), collapse = "\n") else base
+          paste0(wrapped_base, "\n", tp)
+        } else {
+          paste(strwrap(clean_lbl, width = 12), collapse = "\n")
+        }
+      }, USE.NAMES = FALSE)
+    }
+    
+    resolve_longitudinal_cohort <- function(df) {
+      cohort_vals <- if ("Cohort" %in% names(df) && any(nzchar(df$Cohort)) && !all(grepl("Unspecified", df$Cohort))) {
+        clean_unspecified_labels(df$Cohort)
+      } else {
+        g1 <- if ("Group1" %in% names(df)) as.character(df$Group1) else rep("", nrow(df))
+        g2 <- if ("Group2" %in% names(df)) as.character(df$Group2) else rep("", nrow(df))
+        tp <- if ("TimePoint" %in% names(df)) as.character(df$TimePoint) else rep("", nrow(df))
+        
+        sapply(seq_len(nrow(df)), function(i) {
+          parts <- c(g1[i], g2[i], tp[i])
+          parts <- parts[!is.na(parts) & nzchar(trimws(parts)) & parts != "Unspecified"]
+          if (length(parts) == 0) "Cohort" else paste(parts, collapse = "_")
+        })
+      }
+      clean_unspecified_labels(cohort_vals)
     }
     
     available_cohorts <- reactive({
@@ -679,7 +755,7 @@ longitudinal_server <- function(id, shared_data) {
       
       req(tp_var)
       
-      if (is.null(grp_var) || grp_var == "None" || !grp_var %in% names(meta_resolved)) {
+      res <- if (is.null(grp_var) || grp_var == "None" || !grp_var %in% names(meta_resolved)) {
         meta_resolved %>%
           dplyr::select(TimePointVal = dplyr::all_of(tp_var), Cohort) %>%
           dplyr::distinct() %>%
@@ -689,6 +765,10 @@ longitudinal_server <- function(id, shared_data) {
           dplyr::select(GroupVal = dplyr::all_of(grp_var), TimePointVal = dplyr::all_of(tp_var), Cohort) %>%
           dplyr::distinct()
       }
+      res$Cohort <- clean_unspecified_labels(res$Cohort)
+      res$GroupVal <- clean_unspecified_labels(res$GroupVal)
+      res$TimePointVal <- clean_unspecified_labels(res$TimePointVal)
+      res
     })
     
     # Keep cohorts_map reactive just for compatibility if needed elsewhere
@@ -705,15 +785,34 @@ longitudinal_server <- function(id, shared_data) {
       char_fac_cols <- meta_cols[sapply(meta, function(x) is.character(x) || is.factor(x))]
       char_fac_cols <- setdiff(char_fac_cols, c("Sample_ID", "FullName", "Patient_ID", "DisplayLabel"))
       
-      default_grp <- if ("Group2" %in% char_fac_cols) "Group2" else "None"
-      default_tp <- if ("TimePoint" %in% char_fac_cols) {
+      # Determine columns with informative variation (more than 1 non-unspecified level)
+      informative_cols <- char_fac_cols[sapply(char_fac_cols, function(col) {
+        vals <- as.character(meta[[col]])
+        vals <- vals[!is.na(vals) & nzchar(trimws(vals)) & vals != "Unspecified"]
+        length(unique(vals)) > 1
+      })]
+      
+      default_tp <- if ("TimePoint" %in% informative_cols) {
         "TimePoint"
-      } else if ("Group1" %in% char_fac_cols) {
-        "Group1"
-      } else if (length(char_fac_cols) > 0) {
-        char_fac_cols[1]
+      } else if ("Timepoint" %in% informative_cols) {
+        "Timepoint"
+      } else if ("Group2" %in% informative_cols) {
+        "Group2"
+      } else if (length(informative_cols) > 0) {
+        informative_cols[length(informative_cols)]
+      } else if ("TimePoint" %in% char_fac_cols) {
+        "TimePoint"
       } else {
         ""
+      }
+      
+      default_grp <- if ("Group1" %in% informative_cols && default_tp != "Group1") {
+        "Group1"
+      } else if ("Group2" %in% informative_cols && default_tp != "Group2") {
+        "Group2"
+      } else {
+        rem_inf <- setdiff(informative_cols, default_tp)
+        if (length(rem_inf) > 0) rem_inf[1] else "None"
       }
       
       saved_grp <- shared_data$get_restored_input("longitudinal_group_var", default_grp)
@@ -859,6 +958,20 @@ longitudinal_server <- function(id, shared_data) {
       unique(checked_cohorts)
     })
     
+    # Helper to sort timepoint values (baseline/pre/start first, crisis/post/followup second)
+    sort_timepoints <- function(tp_vec) {
+      if (length(tp_vec) <= 1) return(tp_vec)
+      score <- sapply(tp_vec, function(x) {
+        s <- 100
+        if (grepl("^(SS|S|BL|Base|Pre|Start|Ctrl|Control|T0|T1$)", x, ignore.case = TRUE)) s <- s - 50
+        if (grepl("^(PC|C|Crisis|Post|Follow|End|Treat|Trt)", x, ignore.case = TRUE)) s <- s + 50
+        num <- suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+        if (!is.na(num)) s <- s + num * 0.1
+        s
+      })
+      tp_vec[order(score, tp_vec)]
+    }
+    
     # Initialize designer cases on dataset or variables change
     observe({
       if (isolate(shared_data$is_restoring())) return()
@@ -867,49 +980,177 @@ longitudinal_server <- function(id, shared_data) {
       
       tp_order <- timepoint_order_prefs()
       
-      # Extract unique base cohort names (e.g. S_SCDC, S_SCD, C_SCD) by stripping trailing _TimePoint
+      mapping_cohorts <- clean_unspecified_labels(mapping$Cohort)
+      mapping_tps <- clean_unspecified_labels(mapping$TimePointVal)
+      
+      # Extract unique base cohort names by stripping trailing _TimePoint
       base_cohorts <- unique(sapply(seq_len(nrow(mapping)), function(i) {
-        cohort <- mapping$Cohort[i]
-        tp <- mapping$TimePointVal[i]
+        cohort <- mapping_cohorts[i]
+        tp <- mapping_tps[i]
         sub(paste0("_", tp, "$"), "", cohort)
       }))
+      base_cohorts <- base_cohorts[!is.na(base_cohorts) & nzchar(base_cohorts)]
       
       defaults <- list()
       for (bc in base_cohorts) {
         # Filter mapping rows that correspond to this base cohort patient group
-        bc_rows <- mapping[sapply(seq_len(nrow(mapping)), function(i) {
-          sub(paste0("_", mapping$TimePointVal[i], "$"), "", mapping$Cohort[i]) == bc
-        }), ]
+        bc_idx <- which(sapply(seq_len(nrow(mapping)), function(i) {
+          sub(paste0("_", mapping_tps[i], "$"), "", mapping_cohorts[i]) == bc
+        }))
+        if (length(bc_idx) == 0) next
+        bc_rows <- mapping[bc_idx, , drop = FALSE]
         
-        tps <- unique(bc_rows$TimePointVal)
+        tps <- unique(clean_unspecified_labels(bc_rows$TimePointVal))
+        tps <- tps[!is.na(tps) & nzchar(tps)]
         
         if (!is.null(tp_order)) {
           sorted_tps <- intersect(tp_order, tps)
           missing_tps <- setdiff(tps, tp_order)
           tps <- c(sorted_tps, missing_tps)
         } else {
-          tps <- sort(tps)
+          tps <- sort_timepoints(tps)
         }
         
-        cohort_items <- character()
-        for (tp in tps) {
-          cohort_name <- bc_rows %>%
-            dplyr::filter(TimePointVal == tp) %>%
-            dplyr::pull(Cohort) %>%
-            .[1]
-          if (!is.na(cohort_name)) {
-            cohort_items <- c(cohort_items, cohort_name)
+        # Check if timepoints have numerical groupings like 1 and 2 (e.g. S1 & C1 vs S2 & C2)
+        has_1 <- grepl("(^|[^0-9])1$", tps) | grepl("([a-zA-Z])1(_|$)", tps)
+        has_2 <- grepl("(^|[^0-9])2$", tps) | grepl("([a-zA-Z])2(_|$)", tps)
+        
+        if (sum(has_1) >= 2 && sum(has_2) >= 2) {
+          # Naturally split into 2 timecourses (e.g. Visit 1 / TC 1 and Visit 2 / TC 2)
+          tps_1 <- tps[has_1]
+          tps_2 <- tps[has_2]
+          
+          build_items <- function(sub_tps) {
+            items <- character()
+            for (tp in sub_tps) {
+              c_name <- bc_rows %>%
+                dplyr::filter(clean_unspecified_labels(TimePointVal) == tp) %>%
+                dplyr::pull(Cohort) %>%
+                clean_unspecified_labels() %>%
+                .[1]
+              if (!is.na(c_name) && nzchar(c_name)) items <- c(items, c_name)
+            }
+            unique(items)
+          }
+          
+          it1 <- build_items(tps_1)
+          it2 <- build_items(tps_2)
+          
+          if (length(it1) >= 1) {
+            defaults[[length(defaults) + 1]] <- list(
+              id = paste0("case_", sample(100000:999999, 1)),
+              name = "Timecourse 1",
+              items = it1,
+              connected = TRUE
+            )
+          }
+          if (length(it2) >= 1) {
+            defaults[[length(defaults) + 1]] <- list(
+              id = paste0("case_", sample(100000:999999, 1)),
+              name = "Timecourse 2",
+              items = it2,
+              connected = TRUE
+            )
+          }
+        } else if (length(tps) >= 4) {
+          # 4 or more timepoints: split into two timecourses
+          half <- ceiling(length(tps) / 2)
+          tps_1 <- tps[1:half]
+          tps_2 <- tps[(half + 1):length(tps)]
+          
+          build_items <- function(sub_tps) {
+            items <- character()
+            for (tp in sub_tps) {
+              c_name <- bc_rows %>%
+                dplyr::filter(clean_unspecified_labels(TimePointVal) == tp) %>%
+                dplyr::pull(Cohort) %>%
+                clean_unspecified_labels() %>%
+                .[1]
+              if (!is.na(c_name) && nzchar(c_name)) items <- c(items, c_name)
+            }
+            unique(items)
+          }
+          
+          it1 <- build_items(tps_1)
+          it2 <- build_items(tps_2)
+          
+          if (length(it1) >= 1) {
+            defaults[[length(defaults) + 1]] <- list(
+              id = paste0("case_", sample(100000:999999, 1)),
+              name = "Timecourse 1",
+              items = it1,
+              connected = TRUE
+            )
+          }
+          if (length(it2) >= 1) {
+            defaults[[length(defaults) + 1]] <- list(
+              id = paste0("case_", sample(100000:999999, 1)),
+              name = "Timecourse 2",
+              items = it2,
+              connected = TRUE
+            )
+          }
+        } else {
+          cohort_items <- character()
+          for (tp in tps) {
+            cohort_name <- bc_rows %>%
+              dplyr::filter(clean_unspecified_labels(TimePointVal) == tp) %>%
+              dplyr::pull(Cohort) %>%
+              clean_unspecified_labels() %>%
+              .[1]
+            if (!is.na(cohort_name) && nzchar(cohort_name)) {
+              cohort_items <- c(cohort_items, cohort_name)
+            }
+          }
+          
+          if (length(cohort_items) >= 1) {
+            defaults[[length(defaults) + 1]] <- list(
+              id = paste0("case_", sample(100000:999999, 1)),
+              name = paste(bc, "Timecourse"),
+              items = unique(cohort_items),
+              connected = TRUE
+            )
           }
         }
-        
-        if (length(cohort_items) >= 1) {
-          defaults[[length(defaults) + 1]] <- list(
+      }
+      
+      # Ensure at least 2 timecourses if we only have 1 populated case with >= 2 items
+      if (length(defaults) == 1 && length(defaults[[1]]$items) >= 2) {
+        items_all <- defaults[[1]]$items
+        if (length(items_all) >= 4) {
+          half <- ceiling(length(items_all) / 2)
+          defaults[[1]]$items <- items_all[1:half]
+          defaults[[1]]$name <- "Timecourse 1"
+          defaults[[2]] <- list(
             id = paste0("case_", sample(100000:999999, 1)),
-            name = paste(bc, "Timecourse"),
-            items = cohort_items,
+            name = "Timecourse 2",
+            items = items_all[(half + 1):length(items_all)],
+            connected = TRUE
+          )
+        } else if (length(items_all) == 3) {
+          defaults[[1]]$items <- items_all[1:2]
+          defaults[[1]]$name <- "Timecourse 1"
+          defaults[[2]] <- list(
+            id = paste0("case_", sample(100000:999999, 1)),
+            name = "Timecourse 2",
+            items = items_all[2:3],
+            connected = TRUE
+          )
+        } else {
+          defaults[[1]]$name <- "Timecourse 1"
+          defaults[[2]] <- list(
+            id = paste0("case_", sample(100000:999999, 1)),
+            name = "Timecourse 2",
+            items = character(),
             connected = TRUE
           )
         }
+      } else if (length(defaults) == 0) {
+        # Fallback 2 blank timecourses
+        defaults <- list(
+          list(id = paste0("case_", sample(100000:999999, 1)), name = "Timecourse 1", items = character(), connected = TRUE),
+          list(id = paste0("case_", sample(100000:999999, 1)), name = "Timecourse 2", items = character(), connected = TRUE)
+        )
       }
       
       # We only initialize if designer_cases is currently empty
@@ -1312,7 +1553,7 @@ longitudinal_server <- function(id, shared_data) {
       })
     })
     
-    # Dynamically update the Patient Layout selector in Panel 1
+    # Dynamically update the Patient Layout selector in the top horizontal control bar
     observe({
       if (isolate(shared_data$is_restoring())) return()
       groups <- saved_patient_groups()
@@ -1905,6 +2146,87 @@ longitudinal_server <- function(id, shared_data) {
     })
     
     # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Targeted Mode Banner & Observers
+    # -------------------------------------------------------------------------
+    output$targeted_mode_banner <- renderUI({
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+      n_targeted <- length(shared_data$targeted_lipids_list())
+      
+      if (is_targeted) {
+        div(
+          class = "targeted-mode-banner mb-3 p-2.5 px-3 rounded border shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2",
+          style = "background: rgba(239, 246, 255, 0.95); border: 1.5px solid #93c5fd !important;",
+          div(
+            class = "d-flex align-items-center gap-2",
+            icon("bullseye", class = "text-primary fs-5"),
+            div(
+              tags$strong(style = "color: #1e40af;", "Single Lipid Mode is Active: "),
+              tags$span(style = "color: #1e3a8a;", sprintf("Isolating trajectories and metrics for %d selected lipid species.", n_targeted))
+            )
+          ),
+          div(
+            class = "d-flex align-items-center gap-2",
+            actionButton(
+              session$ns("btn_switch_all_lipids"),
+              tagList(icon("layer-group"), "Switch to All Lipid View"),
+              class = "btn-sm btn-outline-primary fw-semibold shadow-xs",
+              title = "Switch back to the full lipidome dataset across all categories and classes"
+            )
+          )
+        )
+      } else if (n_targeted > 0) {
+        div(
+          class = "targeted-mode-banner mb-3 p-2.5 px-3 rounded border shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2",
+          style = "background: rgba(248, 250, 252, 0.95); border: 1.5px solid #cbd5e1 !important;",
+          div(
+            class = "d-flex align-items-center gap-2",
+            icon("layer-group", class = "text-secondary fs-5"),
+            div(
+              tags$strong(style = "color: #334155;", "All Lipid View (Global Scope): "),
+              tags$span(style = "color: #475569;", sprintf("Displaying full dataset. %d targeted lipids are configured in filters.", n_targeted))
+            )
+          ),
+          div(
+            class = "d-flex align-items-center gap-2",
+            actionButton(
+              session$ns("btn_switch_targeted_mode"),
+              tagList(icon("bullseye"), "Switch to Single Lipid Mode"),
+              class = "btn-sm btn-outline-secondary fw-semibold shadow-xs",
+              title = "Switch to Single Lipid Mode to isolate your selected targeted lipids"
+            )
+          )
+        )
+      } else {
+        NULL
+      }
+    })
+
+    observeEvent(input$btn_switch_all_lipids, {
+      message("[DEBUG longitudinal] Switching to All Lipid View")
+      shared_data$set_targeted_mode(FALSE)
+    })
+    
+    observeEvent(input$btn_switch_targeted_mode, {
+      message("[DEBUG longitudinal] Switching to Single Lipid Mode")
+      shared_data$set_targeted_mode(TRUE)
+    })
+    
+    observeEvent(shared_data$targeted_mode_active(), {
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+      if (is_targeted) {
+        t_lipids <- shared_data$targeted_lipids_list()
+        df_allmetrics <- allMetricsData()
+        if (!is.null(df_allmetrics)) {
+          valid_t <- intersect(unique(df_allmetrics$Metric_Name), t_lipids)
+          if (length(valid_t) > 0) {
+            updateSelectizeInput(session, "selectedAllMetrics", choices = valid_t, selected = valid_t)
+          }
+        }
+      }
+    }, ignoreInit = TRUE)
+
+    # -------------------------------------------------------------------------
     # 4. Dropdowns UI Rendering
     # -------------------------------------------------------------------------
     output$macroclass_selector_ui <- renderUI({
@@ -1913,9 +2235,15 @@ longitudinal_server <- function(id, shared_data) {
       req(df)
       choices <- unique(df$Metric_Name)
       
-      show_sig <- input$showSignificantOnly %||% FALSE
+      show_sig <- isTRUE(input$showSignificantOnly)
       if (show_sig) {
-        choices <- intersect(choices, sig_metrics_list())
+        sig_choices <- intersect(choices, sig_metrics_list())
+        if (length(sig_choices) > 0) {
+          choices <- sig_choices
+        } else {
+          return(div(class = "alert alert-info py-2 px-3 small mb-2", 
+                     "No lipid categories meet the significance threshold (p < 0.05). Uncheck 'Show ONLY significant metrics' to display all."))
+        }
       }
       
       # Standard complete name mapping
@@ -1929,7 +2257,33 @@ longitudinal_server <- function(id, shared_data) {
       
       message("[DEBUG longitudinal] macroclass_selector_ui: choices size: ", length(choices))
       saved_val <- shared_data$get_restored_input("selectedMacroclass", choices[1])
-      selectInput(session$ns("selectedMacroclass"), "Select Lipid Category:", choices = names_map, selected = saved_val)
+      
+      if (isTRUE(input$ensembleView)) {
+        valid_sel <- intersect(saved_val, choices)
+        if (length(valid_sel) == 0) valid_sel <- choices[1:min(length(choices), 4)]
+        selectizeInput(
+          session$ns("selectedMacroclass"),
+          label = "Select Lipid Categories (Ensemble View):",
+          choices = names_map,
+          selected = valid_sel,
+          multiple = TRUE,
+          options = list(
+            placeholder = "Select one or more categories...",
+            plugins = list("remove_button"),
+            dropdownParent = "body"
+          ),
+          width = "100%"
+        )
+      } else {
+        valid_sel <- if (length(saved_val) > 0 && saved_val[1] %in% choices) saved_val[1] else choices[1]
+        selectInput(
+          session$ns("selectedMacroclass"),
+          label = "Select Lipid Category:",
+          choices = names_map,
+          selected = valid_sel,
+          width = "100%"
+        )
+      }
     })
     
     output$subclass_selector_ui <- renderUI({
@@ -1938,9 +2292,15 @@ longitudinal_server <- function(id, shared_data) {
       req(df)
       choices <- unique(df$Metric_Name)
       
-      show_sig <- input$showSignificantOnly %||% FALSE
+      show_sig <- isTRUE(input$showSignificantOnly)
       if (show_sig) {
-        choices <- intersect(choices, sig_metrics_list())
+        sig_choices <- intersect(choices, sig_metrics_list())
+        if (length(sig_choices) > 0) {
+          choices <- sig_choices
+        } else {
+          return(div(class = "alert alert-info py-2 px-3 small mb-2", 
+                     "No lipid main classes meet the significance threshold (p < 0.05). Uncheck 'Show ONLY significant metrics' to display all."))
+        }
       }
       
       names_map <- choices
@@ -1953,7 +2313,33 @@ longitudinal_server <- function(id, shared_data) {
       
       message("[DEBUG longitudinal] subclass_selector_ui: choices size: ", length(choices))
       saved_val <- shared_data$get_restored_input("selectedSubclass", choices[1])
-      selectInput(session$ns("selectedSubclass"), "Select Lipid Main Class:", choices = names_map, selected = saved_val)
+      
+      if (isTRUE(input$ensembleView)) {
+        valid_sel <- intersect(saved_val, choices)
+        if (length(valid_sel) == 0) valid_sel <- choices[1:min(length(choices), 4)]
+        selectizeInput(
+          session$ns("selectedSubclass"),
+          label = "Select Lipid Main Classes (Ensemble View):",
+          choices = names_map,
+          selected = valid_sel,
+          multiple = TRUE,
+          options = list(
+            placeholder = "Select one or more classes...",
+            plugins = list("remove_button"),
+            dropdownParent = "body"
+          ),
+          width = "100%"
+        )
+      } else {
+        valid_sel <- if (length(saved_val) > 0 && saved_val[1] %in% choices) saved_val[1] else choices[1]
+        selectInput(
+          session$ns("selectedSubclass"),
+          label = "Select Lipid Main Class:",
+          choices = names_map,
+          selected = valid_sel,
+          width = "100%"
+        )
+      }
     })
     
     output$index_selector_ui <- renderUI({
@@ -1967,14 +2353,46 @@ longitudinal_server <- function(id, shared_data) {
       req(df)
       choices <- names(df)[sapply(df, is.numeric)]
       
-      show_sig <- input$showSignificantOnly %||% FALSE
+      show_sig <- isTRUE(input$showSignificantOnly)
       if (show_sig) {
-        choices <- intersect(choices, sig_metrics_list())
+        sig_choices <- intersect(choices, sig_metrics_list())
+        if (length(sig_choices) > 0) {
+          choices <- sig_choices
+        } else {
+          return(div(class = "alert alert-info py-2 px-3 small mb-2", 
+                     "No functional indices meet the significance threshold (p < 0.05). Uncheck 'Show ONLY significant metrics' to display all."))
+        }
       }
       
       message("[DEBUG longitudinal] index_selector_ui: choices size: ", length(choices))
       saved_val <- shared_data$get_restored_input("selectedIndex", choices[1])
-      selectInput(session$ns("selectedIndex"), "Select Index:", choices = choices, selected = saved_val)
+      
+      if (isTRUE(input$ensembleView)) {
+        valid_sel <- intersect(saved_val, choices)
+        if (length(valid_sel) == 0) valid_sel <- choices[1:min(length(choices), 4)]
+        selectizeInput(
+          session$ns("selectedIndex"),
+          label = "Select Functional Indices (Ensemble View):",
+          choices = choices,
+          selected = valid_sel,
+          multiple = TRUE,
+          options = list(
+            placeholder = "Select one or more indices...",
+            plugins = list("remove_button"),
+            dropdownParent = "body"
+          ),
+          width = "100%"
+        )
+      } else {
+        valid_sel <- if (length(saved_val) > 0 && saved_val[1] %in% choices) saved_val[1] else choices[1]
+        selectInput(
+          session$ns("selectedIndex"),
+          label = "Select Index:",
+          choices = choices,
+          selected = valid_sel,
+          width = "100%"
+        )
+      }
     })
     
     output$struct_selector_ui <- renderUI({
@@ -1983,14 +2401,46 @@ longitudinal_server <- function(id, shared_data) {
       req(df)
       choices <- unique(df$Metric_Name)
       
-      show_sig <- input$showSignificantOnly %||% FALSE
+      show_sig <- isTRUE(input$showSignificantOnly)
       if (show_sig) {
-        choices <- intersect(choices, sig_metrics_list())
+        sig_choices <- intersect(choices, sig_metrics_list())
+        if (length(sig_choices) > 0) {
+          choices <- sig_choices
+        } else {
+          return(div(class = "alert alert-info py-2 px-3 small mb-2", 
+                     "No structural features meet the significance threshold (p < 0.05). Uncheck 'Show ONLY significant metrics' to display all."))
+        }
       }
       
       message("[DEBUG longitudinal] struct_selector_ui: choices size: ", length(choices))
       saved_val <- shared_data$get_restored_input("selectedStructFeature", choices[1])
-      selectInput(session$ns("selectedStructFeature"), "Select Structural Feature:", choices = choices, selected = saved_val)
+      
+      if (isTRUE(input$ensembleView)) {
+        valid_sel <- intersect(saved_val, choices)
+        if (length(valid_sel) == 0) valid_sel <- choices[1:min(length(choices), 4)]
+        selectizeInput(
+          session$ns("selectedStructFeature"),
+          label = "Select Structural Features (Ensemble View):",
+          choices = choices,
+          selected = valid_sel,
+          multiple = TRUE,
+          options = list(
+            placeholder = "Select one or more features...",
+            plugins = list("remove_button"),
+            dropdownParent = "body"
+          ),
+          width = "100%"
+        )
+      } else {
+        valid_sel <- if (length(saved_val) > 0 && saved_val[1] %in% choices) saved_val[1] else choices[1]
+        selectInput(
+          session$ns("selectedStructFeature"),
+          label = "Select Structural Feature:",
+          choices = choices,
+          selected = valid_sel,
+          width = "100%"
+        )
+      }
     })
     
     output$allmetrics_selector_ui <- renderUI({
@@ -2010,17 +2460,45 @@ longitudinal_server <- function(id, shared_data) {
       
       if (length(sig_metrics) == 0 && length(all_lipids) == 0) return(NULL)
       
-      default_selected <- sig_metrics
-      if (length(default_selected) > 20) {
-        default_selected <- default_selected[1:20]
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+      show_sig <- isTRUE(input$showSignificantOnly)
+      
+      if (is_targeted) {
+        targeted_lipids <- intersect(all_lipids, shared_data$targeted_lipids_list())
+        if (length(targeted_lipids) == 0) targeted_lipids <- all_lipids
+        
+        default_selected <- if (show_sig) {
+          sig_in_targeted <- intersect(targeted_lipids, sig_metrics)
+          if (length(sig_in_targeted) > 0) sig_in_targeted else targeted_lipids
+        } else {
+          targeted_lipids
+        }
+        avail_choices <- targeted_lipids
+      } else {
+        default_selected <- if (show_sig) {
+          sig_metrics
+        } else {
+          sig_metrics
+        }
+        if (length(default_selected) > 20) {
+          default_selected <- default_selected[1:20]
+        }
+        avail_choices <- all_lipids
       }
       
       saved_val <- shared_data$get_restored_input("selectedAllMetrics", default_selected)
+      valid_sel <- intersect(saved_val, avail_choices)
+      if (length(valid_sel) == 0) valid_sel <- default_selected
+      
       selectizeInput(
         session$ns("selectedAllMetrics"),
-        label = "Select Lipids to Display (defaults to top significant):",
-        choices = all_lipids,
-        selected = saved_val,
+        label = if (is_targeted) {
+          if (show_sig) "Selected Targeted Lipids (Filtered by Significance p < 0.05):" else "Selected Targeted Lipids to Display:"
+        } else {
+          if (show_sig) "Select Lipids to Display (Significant Only p < 0.05):" else "Select Lipids to Display (defaults to top significant):"
+        },
+        choices = avail_choices,
+        selected = valid_sel,
         multiple = TRUE,
         options = list(
           placeholder = "Search and select lipids...",
@@ -2048,8 +2526,8 @@ longitudinal_server <- function(id, shared_data) {
       pts_g2 <- data %>% dplyr::filter(Cohort == g2 & Patient_ID %in% patient_ids) %>% dplyr::pull(Patient_ID)
       common_pts <- intersect(pts_g1, pts_g2)
       
-      g1_label <- gsub("_Exp", "", g1)
-      g2_label <- gsub("_Exp", "", g2)
+      g1_label <- format_longitudinal_tick_label(g1)
+      g2_label <- format_longitudinal_tick_label(g2)
       
       if (is.null(title_text)) {
         title_text <- paste(g1_label, "vs", g2_label)
@@ -2156,10 +2634,11 @@ longitudinal_server <- function(id, shared_data) {
         theme(
           legend.position = "right",
           plot.title = element_text(size = 9, face = "bold", hjust = 0.5),
-          plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey30"),
-          axis.text = element_text(size = 8),
-          axis.title = element_text(size = 8),
-          aspect.ratio = 1.0
+          plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey30", lineheight = 1.1),
+          axis.text.x = element_text(size = 8.5, face = "bold", color = "#1e293b", lineheight = 0.85, vjust = 1, hjust = 0.5, margin = margin(t = 6, b = 4)),
+          axis.text.y = element_text(size = 8),
+          axis.title = element_text(size = 8.5),
+          plot.margin = margin(t = 8, r = 15, b = 25, l = 15)
         ) +
         labs(
           title = title_text,
@@ -2333,10 +2812,11 @@ longitudinal_server <- function(id, shared_data) {
         theme(
           legend.position = "right",
           plot.title = element_text(size = 9, face = "bold", hjust = 0.5),
-          plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey30"),
-          axis.text = element_text(size = 8),
-          axis.title = element_text(size = 8),
-          aspect.ratio = 1.0
+          plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey30", lineheight = 1.1),
+          axis.text.x = element_text(size = 8.5, face = "bold", color = "#1e293b", lineheight = 0.85, vjust = 1, hjust = 0.5, margin = margin(t = 6, b = 4)),
+          axis.text.y = element_text(size = 8),
+          axis.title = element_text(size = 8.5),
+          plot.margin = margin(t = 8, r = 15, b = 25, l = 15)
         ) +
         labs(
           title = "SS vs PC (Overlaid)",
@@ -2485,8 +2965,8 @@ longitudinal_server <- function(id, shared_data) {
           }
         }
         
-        lbl1 <- gsub("_Exp", "", first_cohort)
-        lbl2 <- gsub("_Exp", "", last_cohort)
+        lbl1 <- clean_unspecified_labels(gsub("_Exp", "", first_cohort))
+        lbl2 <- clean_unspecified_labels(gsub("_Exp", "", last_cohort))
         pval_texts <- c(pval_texts, paste0(lbl1, " vs ", lbl2, ": ", pval_text))
         
         tc_data <- tc_data %>%
@@ -2517,8 +2997,12 @@ longitudinal_server <- function(id, shared_data) {
       plot_data <- plot_data %>%
         dplyr::mutate(Cohort = factor(Cohort, levels = all_tc_cohorts))
       
-      subtitle_text <- paste(pval_texts, collapse = "; ")
-      clean_cohort_labels <- gsub("_Exp", "", all_tc_cohorts)
+      clean_pval_texts <- sapply(pval_texts, clean_unspecified_labels)
+      subtitle_text <- paste(clean_pval_texts, collapse = "; ")
+      if (nchar(subtitle_text) > 65) {
+        subtitle_text <- paste(strwrap(subtitle_text, width = 65), collapse = "\n")
+      }
+      clean_cohort_labels <- format_longitudinal_tick_label(all_tc_cohorts)
       
       display_title <- title_text
       if (!is.null(tc_index)) {
@@ -2542,7 +3026,7 @@ longitudinal_server <- function(id, shared_data) {
           max.overlaps = Inf,
           show.legend = FALSE
         ) +
-        scale_x_discrete(labels = clean_cohort_labels, expand = c(0.1, 0.1)) +
+        scale_x_discrete(labels = clean_cohort_labels, expand = c(0.12, 0.12)) +
         scale_fill_manual(values = cohort_colors_map(), guide = "none") +
         scale_color_manual(
           name = "Timecourse",
@@ -2555,11 +3039,12 @@ longitudinal_server <- function(id, shared_data) {
         theme_classic() +
         theme(
           legend.position = "right",
-          plot.title = element_text(size = 9, face = "bold", hjust = 0.5),
-          plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey30"),
-          axis.text = element_text(size = 8),
-          axis.title = element_text(size = 8),
-          aspect.ratio = 1.0
+          plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+          plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey30", lineheight = 1.1),
+          axis.text.x = element_text(size = 8.5, face = "bold", color = "#1e293b", lineheight = 0.85, vjust = 1, hjust = 0.5, margin = margin(t = 6, b = 4)),
+          axis.text.y = element_text(size = 8.5),
+          axis.title = element_text(size = 9),
+          plot.margin = margin(t = 8, r = 15, b = 25, l = 15)
         ) +
         labs(
           title = display_title,
@@ -2770,117 +3255,166 @@ longitudinal_server <- function(id, shared_data) {
     # 6. Tab Plots Rendering
     # -------------------------------------------------------------------------
     
-    get_dynamic_plot_height <- function() {
+    wrap_metric_plots <- function(data, metrics, val_col) {
+      req(metrics)
+      if (length(metrics) == 1) {
+        return(generate_grid_plot(data, metrics[1], val_col, metrics[1]))
+      }
+      layout_mode <- input$patientLayout %||% "all"
+      tc_layout <- input$timecourseLayout %||% "single"
+      top_ncol <- if (layout_mode == "all" || tc_layout == "separate") 1 else min(2, length(metrics))
+      plots <- list()
+      for (m in metrics) {
+        p_m <- generate_grid_plot(data, m, val_col, m)
+        if (!is.null(p_m)) {
+          plots[[length(plots) + 1]] <- patchwork::wrap_elements(p_m)
+        }
+      }
+      if (length(plots) == 0) return(NULL)
+      patchwork::wrap_plots(plots, ncol = top_ncol)
+    }
+
+    get_dynamic_plot_height <- function(n_items = 1) {
+      if (is.null(n_items) || is.na(n_items) || n_items < 1) n_items <- 1
+      base_h <- input$plotHeight %||% 550
+      
       design <- longitudinal_design()
-      layout_mode <- input$patientLayout
+      layout_mode <- input$patientLayout %||% "all"
       checked_groups <- design$checked_groups
       tcs <- design$designer_cases
       tc_layout <- input$timecourseLayout %||% "single"
       
-      if (length(tcs) == 0) return(350)
+      if (length(tcs) == 0) return(as.integer(base_h))
       
-      if (tc_layout == "separate") {
-        n_rows <- if (layout_mode == "all") (length(checked_groups) + 1) else 1
-        return(max(350, n_rows * 300))
+      n_rows <- if (tc_layout == "separate") {
+        if (layout_mode == "all") (length(checked_groups) + 1) else 1
       } else {
         if (layout_mode == "all") {
           n_plots <- length(checked_groups) + 1
-          n_rows <- ceiling(n_plots / 3)
-          return(max(350, n_rows * 350))
+          ceiling(n_plots / 3)
         } else {
-          return(350)
+          1
         }
       }
+      
+      h_per_metric <- if (n_rows > 1) {
+        as.integer(max(base_h, base_h * 0.5 + (n_rows * base_h * 0.45)))
+      } else {
+        as.integer(base_h)
+      }
+      
+      top_ncol <- if (layout_mode == "all" || tc_layout == "separate") 1 else min(2, n_items)
+      n_metric_rows <- ceiling(n_items / top_ncol)
+      total_h <- h_per_metric * n_metric_rows
+      return(as.integer(min(25000, max(300, total_h))))
     }
     
     macroclassPlotReactive <- reactive({
-      message("[DEBUG longitudinal] macroclassPlotReactive: selected = ", input$selectedMacroclass)
+      message("[DEBUG longitudinal] macroclassPlotReactive: selected = ", paste(input$selectedMacroclass, collapse = ", "))
       req(input$selectedMacroclass)
       df <- macroclassSumsData()
       req(df)
-      generate_grid_plot(df, input$selectedMacroclass, "Value", input$selectedMacroclass)
+      wrap_metric_plots(df, input$selectedMacroclass, "Value")
     })
     
     output$macroclass_plot <- renderPlot({
       message("[DEBUG longitudinal] renderPlot macroclass_plot")
       macroclassPlotReactive()
-    }, height = get_dynamic_plot_height)
+    }, height = function() {
+      get_dynamic_plot_height(length(input$selectedMacroclass))
+    })
     
     subclassPlotReactive <- reactive({
-      message("[DEBUG longitudinal] subclassPlotReactive: selected = ", input$selectedSubclass)
+      message("[DEBUG longitudinal] subclassPlotReactive: selected = ", paste(input$selectedSubclass, collapse = ", "))
       req(input$selectedSubclass)
       df <- subclassSumsData()
       req(df)
-      generate_grid_plot(df, input$selectedSubclass, "Value", input$selectedSubclass)
+      wrap_metric_plots(df, input$selectedSubclass, "Value")
     })
     
     output$subclass_plot <- renderPlot({
       message("[DEBUG longitudinal] renderPlot subclass_plot")
       subclassPlotReactive()
-    }, height = get_dynamic_plot_height)
+    }, height = function() {
+      get_dynamic_plot_height(length(input$selectedSubclass))
+    })
     
     indexPlotReactive <- reactive({
-      message("[DEBUG longitudinal] indexPlotReactive: selected = ", input$selectedIndex)
+      message("[DEBUG longitudinal] indexPlotReactive: selected = ", paste(input$selectedIndex, collapse = ", "))
       req(input$selectedIndex)
       df <- indicesData()
       req(df)
-      generate_grid_plot(df, input$selectedIndex, NULL, input$selectedIndex)
+      wrap_metric_plots(df, input$selectedIndex, NULL)
     })
     
     output$index_plot <- renderPlot({
       message("[DEBUG longitudinal] renderPlot index_plot")
       indexPlotReactive()
-    }, height = get_dynamic_plot_height)
+    }, height = function() {
+      get_dynamic_plot_height(length(input$selectedIndex))
+    })
     
     structPlotReactive <- reactive({
-      message("[DEBUG longitudinal] structPlotReactive: selected = ", input$selectedStructFeature)
+      message("[DEBUG longitudinal] structPlotReactive: selected = ", paste(input$selectedStructFeature, collapse = ", "))
       req(input$selectedStructFeature)
       df <- structFeaturesData()
       req(df)
-      generate_grid_plot(df, input$selectedStructFeature, "Value", input$selectedStructFeature)
+      wrap_metric_plots(df, input$selectedStructFeature, "Value")
     })
     
     output$struct_plot <- renderPlot({
       message("[DEBUG longitudinal] renderPlot struct_plot")
       structPlotReactive()
-    }, height = get_dynamic_plot_height)
+    }, height = function() {
+      get_dynamic_plot_height(length(input$selectedStructFeature))
+    })
     
     get_allmetrics_plot_height <- function() {
       df_allmetrics <- allMetricsData()
-      if (is.null(df_allmetrics)) return(350)
+      if (is.null(df_allmetrics)) return(550)
       
       ledger <- tryCatch(ledgerData(), error = function(e) NULL)
-      if (is.null(ledger)) return(350)
+      if (is.null(ledger)) return(550)
       
       selected_metrics <- input$selectedAllMetrics
       if (is.null(selected_metrics) || length(selected_metrics) == 0) {
-        sig_metrics_df <- ledger %>%
-          dplyr::filter(Metric_Category == "individual_lipids" & P_Value < 0.05) %>%
-          dplyr::arrange(P_Value)
-        selected_metrics <- unique(sig_metrics_df$Metric_Name)
+        is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+        if (is_targeted) {
+          selected_metrics <- intersect(unique(df_allmetrics$Metric_Name), shared_data$targeted_lipids_list())
+        } else {
+          sig_metrics_df <- ledger %>%
+            dplyr::filter(Metric_Category == "individual_lipids" & P_Value < 0.05) %>%
+            dplyr::arrange(P_Value)
+          selected_metrics <- unique(sig_metrics_df$Metric_Name)
+        }
       }
       
-      if (length(selected_metrics) == 0) return(350)
+      if (length(selected_metrics) == 0) return(550)
       
+      base_h <- input$plotHeight %||% 550
       design <- longitudinal_design()
-      layout_mode <- input$patientLayout
+      layout_mode <- input$patientLayout %||% "all"
       checked_groups <- design$checked_groups
       tcs <- design$designer_cases
       tc_layout <- input$timecourseLayout %||% "single"
       
-      if (length(tcs) == 0) {
-        single_height <- 350
+      n_rows <- if (length(tcs) == 0) {
+        1
       } else if (tc_layout == "separate") {
-        n_rows <- if (layout_mode == "all") (length(checked_groups) + 1) else 1
-        single_height <- max(350, n_rows * 300)
+        if (layout_mode == "all") (length(checked_groups) + 1) else 1
       } else {
         if (layout_mode == "all") {
           n_plots <- length(checked_groups) + 1
-          n_rows <- ceiling(n_plots / 3)
-          single_height <- max(350, n_rows * 350)
+          ceiling(n_plots / 3)
         } else {
-          single_height <- 350
+          1
         }
+      }
+      
+      single_height <- if (n_rows > 1) {
+        as.integer(max(base_h, base_h * 0.5 + (n_rows * base_h * 0.45)))
+      } else {
+        as.integer(base_h)
       }
       
       ncol_metric <- if (length(tcs) == 0) {
@@ -2901,10 +3435,9 @@ longitudinal_server <- function(id, shared_data) {
         1
       }
       
-      max_total_height <- 20000
+      max_total_height <- 25000
       n_top_rows_max <- max(1, floor(max_total_height / single_height))
-      max_allowed_M <- n_top_rows_max * top_ncol
-      max_allowed_M <- min(max_allowed_M, 100)
+      max_allowed_M <- min(n_top_rows_max * top_ncol, 100)
       
       if (length(selected_metrics) > max_allowed_M) {
         selected_metrics <- selected_metrics[1:max_allowed_M]
@@ -2913,7 +3446,7 @@ longitudinal_server <- function(id, shared_data) {
       M <- length(selected_metrics)
       n_top_rows <- ceiling(M / top_ncol)
       
-      return(n_top_rows * single_height)
+      return(as.integer(n_top_rows * single_height))
     }
     
     allmetricsPlotReactive <- reactive({
@@ -2931,12 +3464,36 @@ longitudinal_server <- function(id, shared_data) {
         )
       }
       
+      sig_metrics_df <- ledger %>%
+        dplyr::filter(Metric_Category == "individual_lipids" & P_Value < 0.05) %>%
+        dplyr::arrange(P_Value)
+      sig_metrics <- unique(sig_metrics_df$Metric_Name)
+      
       selected_metrics <- input$selectedAllMetrics
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+      
       if (is.null(selected_metrics) || length(selected_metrics) == 0) {
-        sig_metrics_df <- ledger %>%
-          dplyr::filter(Metric_Category == "individual_lipids" & P_Value < 0.05) %>%
-          dplyr::arrange(P_Value)
-        selected_metrics <- unique(sig_metrics_df$Metric_Name)
+        if (is_targeted) {
+          selected_metrics <- intersect(unique(df_allmetrics$Metric_Name), shared_data$targeted_lipids_list())
+        } else {
+          selected_metrics <- sig_metrics
+        }
+      }
+      
+      if (isTRUE(input$showSignificantOnly)) {
+        sig_in_sel <- intersect(selected_metrics, sig_metrics)
+        if (length(sig_in_sel) > 0) {
+          selected_metrics <- sig_in_sel
+        } else if (is_targeted) {
+          return(
+            ggplot() + 
+              theme_void() + 
+              labs(title = "None of the selected targeted lipids meet the significance threshold (p < 0.05).",
+                   subtitle = "Uncheck 'Show ONLY significant metrics' to display all targeted lipids.") +
+              theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5, color = "#92400e"),
+                    plot.subtitle = element_text(size = 10, hjust = 0.5, color = "grey50"))
+          )
+        }
       }
       
       if (length(selected_metrics) == 0) {
@@ -2948,25 +3505,30 @@ longitudinal_server <- function(id, shared_data) {
         )
       }
       
+      base_h <- input$plotHeight %||% 550
       design <- longitudinal_design()
-      layout_mode <- input$patientLayout
+      layout_mode <- input$patientLayout %||% "all"
       checked_groups <- design$checked_groups
       tcs <- design$designer_cases
       tc_layout <- input$timecourseLayout %||% "single"
       
-      if (length(tcs) == 0) {
-        single_height <- 350
+      n_rows <- if (length(tcs) == 0) {
+        1
       } else if (tc_layout == "separate") {
-        n_rows <- if (layout_mode == "all") (length(checked_groups) + 1) else 1
-        single_height <- max(350, n_rows * 300)
+        if (layout_mode == "all") (length(checked_groups) + 1) else 1
       } else {
         if (layout_mode == "all") {
           n_plots <- length(checked_groups) + 1
-          n_rows <- ceiling(n_plots / 3)
-          single_height <- max(350, n_rows * 350)
+          ceiling(n_plots / 3)
         } else {
-          single_height <- 350
+          1
         }
+      }
+      
+      single_height <- if (n_rows > 1) {
+        as.integer(max(base_h, base_h * 0.5 + (n_rows * base_h * 0.45)))
+      } else {
+        as.integer(base_h)
       }
       
       ncol_metric <- if (length(tcs) == 0) {
@@ -2987,10 +3549,9 @@ longitudinal_server <- function(id, shared_data) {
         1
       }
       
-      max_total_height <- 20000
+      max_total_height <- 25000
       n_top_rows_max <- max(1, floor(max_total_height / single_height))
-      max_allowed_M <- n_top_rows_max * top_ncol
-      max_allowed_M <- min(max_allowed_M, 100)
+      max_allowed_M <- min(n_top_rows_max * top_ncol, 100)
       
       if (length(selected_metrics) > max_allowed_M) {
         selected_metrics <- selected_metrics[1:max_allowed_M]
@@ -3037,8 +3598,24 @@ longitudinal_server <- function(id, shared_data) {
       selected_metrics <- input$selectedAllMetrics
       using_custom_selection <- !is.null(selected_metrics) && length(selected_metrics) > 0
       
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
       if (!using_custom_selection) {
-        selected_metrics <- sig_metrics
+        if (is_targeted) {
+          selected_metrics <- intersect(unique(df_allmetrics$Metric_Name), shared_data$targeted_lipids_list())
+        } else {
+          selected_metrics <- sig_metrics
+        }
+      }
+      
+      if (isTRUE(input$showSignificantOnly)) {
+        sig_in_sel <- intersect(selected_metrics, sig_metrics)
+        if (length(sig_in_sel) > 0) {
+          selected_metrics <- sig_in_sel
+        } else if (is_targeted) {
+          return(div(class = "alert alert-warning py-2 px-3 mb-3 small", 
+                     icon("triangle-exclamation", class = "me-1"),
+                     "None of the selected targeted lipids meet the significance threshold (p < 0.05). Uncheck 'Show ONLY significant metrics' to display all targeted lipids."))
+        }
       }
       
       total_sig_count <- length(selected_metrics)
@@ -3046,25 +3623,30 @@ longitudinal_server <- function(id, shared_data) {
         return(div(class = "alert alert-info py-2 px-3 mb-3", "No individual lipids selected/detected to display."))
       }
       
+      base_h <- input$plotHeight %||% 550
       design <- longitudinal_design()
-      layout_mode <- input$patientLayout
+      layout_mode <- input$patientLayout %||% "all"
       checked_groups <- design$checked_groups
       tcs <- design$designer_cases
       tc_layout <- input$timecourseLayout %||% "single"
       
-      if (length(tcs) == 0) {
-        single_height <- 350
+      n_rows <- if (length(tcs) == 0) {
+        1
       } else if (tc_layout == "separate") {
-        n_rows <- if (layout_mode == "all") (length(checked_groups) + 1) else 1
-        single_height <- max(350, n_rows * 300)
+        if (layout_mode == "all") (length(checked_groups) + 1) else 1
       } else {
         if (layout_mode == "all") {
           n_plots <- length(checked_groups) + 1
-          n_rows <- ceiling(n_plots / 3)
-          single_height <- max(350, n_rows * 350)
+          ceiling(n_plots / 3)
         } else {
-          single_height <- 350
+          1
         }
+      }
+      
+      single_height <- if (n_rows > 1) {
+        as.integer(max(base_h, base_h * 0.5 + (n_rows * base_h * 0.45)))
+      } else {
+        as.integer(base_h)
       }
       
       ncol_metric <- if (length(tcs) == 0) {
@@ -3085,12 +3667,11 @@ longitudinal_server <- function(id, shared_data) {
         1
       }
       
-      max_total_height <- 20000
+      max_total_height <- 25000
       n_top_rows_max <- max(1, floor(max_total_height / single_height))
-      max_allowed_M <- n_top_rows_max * top_ncol
-      max_allowed_M <- min(max_allowed_M, 100)
+      max_allowed_M <- min(n_top_rows_max * top_ncol, 100)
       
-      label_type <- if (using_custom_selection) "selected" else "significant"
+      label_type <- if (is_targeted) "targeted" else if (using_custom_selection) "selected" else "significant"
       
       if (total_sig_count > max_allowed_M) {
         div(class = "alert alert-warning py-2 px-3 mb-3",
@@ -3143,12 +3724,12 @@ longitudinal_server <- function(id, shared_data) {
       filename = function() {
         tab <- input$longitudinal_tabs
         m_name <- switch(tab,
-          "Lipid Categories" = input$selectedMacroclass,
-          "Macroclasses" = input$selectedMacroclass,
-          "Lipid Main Classes" = input$selectedSubclass,
-          "Subclasses" = input$selectedSubclass,
-          "Functional Indices" = input$selectedIndex,
-          "Structural Features" = input$selectedStructFeature,
+          "Lipid Categories" = paste(input$selectedMacroclass, collapse = "_"),
+          "Macroclasses" = paste(input$selectedMacroclass, collapse = "_"),
+          "Lipid Main Classes" = paste(input$selectedSubclass, collapse = "_"),
+          "Subclasses" = paste(input$selectedSubclass, collapse = "_"),
+          "Functional Indices" = paste(input$selectedIndex, collapse = "_"),
+          "Structural Features" = paste(input$selectedStructFeature, collapse = "_"),
           "All Metrics" = "all_significant_lipids",
           "plot"
         )
@@ -3298,6 +3879,18 @@ longitudinal_server <- function(id, shared_data) {
               }
             }
           }
+          selected_count <- length(switch(tab,
+            "Lipid Categories" = input$selectedMacroclass,
+            "Macroclasses" = input$selectedMacroclass,
+            "Lipid Main Classes" = input$selectedSubclass,
+            "Subclasses" = input$selectedSubclass,
+            "Functional Indices" = input$selectedIndex,
+            "Structural Features" = input$selectedStructFeature,
+            1
+          ))
+          if (selected_count > 1) {
+            h_in <- h_in * selected_count
+          }
         }
         
         ggsave(file, plot = p, device = "pdf", width = w_in, height = h_in, limitsize = FALSE)
@@ -3308,12 +3901,12 @@ longitudinal_server <- function(id, shared_data) {
       filename = function() {
         tab <- input$longitudinal_tabs
         m_name <- switch(tab,
-          "Lipid Categories" = input$selectedMacroclass,
-          "Macroclasses" = input$selectedMacroclass,
-          "Lipid Main Classes" = input$selectedSubclass,
-          "Subclasses" = input$selectedSubclass,
-          "Functional Indices" = input$selectedIndex,
-          "Structural Features" = input$selectedStructFeature,
+          "Lipid Categories" = paste(input$selectedMacroclass, collapse = "_"),
+          "Macroclasses" = paste(input$selectedMacroclass, collapse = "_"),
+          "Lipid Main Classes" = paste(input$selectedSubclass, collapse = "_"),
+          "Subclasses" = paste(input$selectedSubclass, collapse = "_"),
+          "Functional Indices" = paste(input$selectedIndex, collapse = "_"),
+          "Structural Features" = paste(input$selectedStructFeature, collapse = "_"),
           "All Metrics" = "all_significant_lipids",
           "data"
         )
@@ -3375,20 +3968,20 @@ longitudinal_server <- function(id, shared_data) {
         }
         
         if (tab %in% c("Lipid Categories", "Macroclasses")) {
-          df_metric <- macroclassSumsData() %>% dplyr::filter(Metric_Name == input$selectedMacroclass)
-          df <- filter_complete_cases(df_metric, input$selectedMacroclass)
+          df_metric <- macroclassSumsData() %>% dplyr::filter(Metric_Name %in% input$selectedMacroclass)
+          df <- filter_complete_cases(df_metric, "macroclasses")
         } else if (tab %in% c("Lipid Main Classes", "Subclasses")) {
-          df_metric <- subclassSumsData() %>% dplyr::filter(Metric_Name == input$selectedSubclass)
-          df <- filter_complete_cases(df_metric, input$selectedSubclass)
+          df_metric <- subclassSumsData() %>% dplyr::filter(Metric_Name %in% input$selectedSubclass)
+          df <- filter_complete_cases(df_metric, "subclasses")
         } else if (tab == "Functional Indices") {
           df_full <- indicesData()
           meta_cols <- c("Sample_ID", "Cohort", "Patient_ID", "Group1", "Group2", "Replicate", "PatientNumber", "TimePoint", "TimePoint_Group1", "FullName", "DisplayLabel", "Cluster")
-          cols_keep <- c(meta_cols, input$selectedIndex)
-          df_metric <- df_full[, cols_keep, drop = FALSE] %>% dplyr::filter(!is.na(.data[[input$selectedIndex]]))
-          df <- filter_complete_cases(df_metric, input$selectedIndex)
+          cols_keep <- intersect(names(df_full), c(meta_cols, input$selectedIndex))
+          df_metric <- df_full[, cols_keep, drop = FALSE]
+          df <- filter_complete_cases(df_metric, "indices")
         } else if (tab == "Structural Features") {
-          df_metric <- structFeaturesData() %>% dplyr::filter(Metric_Name == input$selectedStructFeature)
-          df <- filter_complete_cases(df_metric, input$selectedStructFeature)
+          df_metric <- structFeaturesData() %>% dplyr::filter(Metric_Name %in% input$selectedStructFeature)
+          df <- filter_complete_cases(df_metric, "structural_features")
         } else if (tab == "All Metrics") {
           selected_metrics <- input$selectedAllMetrics
           if (is.null(selected_metrics) || length(selected_metrics) == 0) {

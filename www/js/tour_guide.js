@@ -9,12 +9,12 @@
 
   var tourActive = false;
   var currentStep = 1;
-  var totalSteps = 9;
+  var totalSteps = 12;
 
   var TOUR_STEPS = [
     {
       step: 1,
-      badge: "Step 1 of 9 • Data Ingestion",
+      badge: "Step 1 of 12 • Data Ingestion",
       title: "Data Ingestion & Validation",
       icon: "fa-cloud-arrow-up",
       targetSelector: "#dock_panel_pipeline .dock-section:first-child",
@@ -24,42 +24,119 @@
       subAction: {
         text: "Point to Data Ingestion",
         action: "window.navigateToDataUpload(this)"
+      },
+      onEnter: function() {
+        if (typeof window.activateDockTab === 'function') window.activateDockTab('pipeline');
+        var dockEl = document.querySelector('.unified-sidebar-dock');
+        if (dockEl && dockEl.classList.contains('collapsed')) dockEl.classList.remove('collapsed');
       }
     },
     {
       step: 2,
-      badge: "Step 2 of 9 • Unified Dock",
-      title: "Unified Left Sidebar Dock",
+      badge: "Step 2 of 12 • Control Panels",
+      title: "Core Control Panels",
       icon: "fa-sliders-h",
       targetSelector: ".dock-segmented-switcher",
       dockTab: "pipeline",
-      desc: "The unified left sidebar dock organizes analytical controls across three functional pillars:",
+      desc: "Parameters are grouped into four focused panels: general pipeline controls, comparative cohort filtering, plot-specific parameters, and a bottom panel dedicated to cohort ordering and figure aesthetics.",
       dockPills: [
-        { id: "pipeline", label: "Pipeline", icon: "fa-play-circle", desc: "Data ingestion, metadata mapping, pipeline execution, and session export/import." },
-        { id: "cohorts", label: "Cohorts & Filters", icon: "fa-filter", desc: "Sample cohort filtering, contrast selection, lipid class filters, and global palettes." },
-        { id: "plot_controls", label: "Plot Controls", icon: "fa-sliders-h", desc: "Active plot aesthetics, statistical cutoffs, and dimension controls." }
+        { id: "pipeline", label: "Pipeline", icon: "fa-play-circle", desc: "General pipeline controls: data ingestion, metadata mapping, automated transformation pipeline, and session persistence." },
+        { id: "cohorts", label: "Cohorts & Filters", icon: "fa-filter", desc: "Comparative cohort filtering: sample cohort stratification, statistical contrasts, lipid classes, and structural chain filters." },
+        { id: "plot_controls", label: "Plot Controls", icon: "fa-sliders-h", desc: "Plot-specific parameters: analytical thresholds, statistical cutoffs, and graphic controls tailored to each active visualization." },
+        { id: "aesthetics", label: "Advanced Aesthetics", icon: "fa-layer-group", desc: "Bottom panel: fine-tune plot organization, custom cohort display order, palette overrides, point sizing, and typography." }
       ],
+      highlightNote: "Provides a structured workflow: configure global inputs, refine comparative filters, adjust plot-specific options, and polish figure aesthetics.",
       subAction: {
-        text: "Point to Dock Tabs",
+        text: "Point to Control Panels",
         action: "window.flashHarmoniousFrame('.dock-segmented-switcher')"
+      },
+      onEnter: function() {
+        if (typeof window.activateDockTab === 'function') window.activateDockTab('pipeline');
+        var dockEl = document.querySelector('.unified-sidebar-dock') || document.querySelector('aside#main_sidebar');
+        if (dockEl && dockEl.classList.contains('collapsed')) dockEl.classList.remove('collapsed');
+        window.flashHarmoniousFrame('.dock-segmented-switcher');
       }
     },
     {
       step: 3,
-      badge: "Step 3 of 9 • Analytical Navigation",
-      title: "Analytical Navigation",
-      icon: "fa-compass",
-      targetSelector: "#main_navbar",
-      desc: "Navigate across the 6 major analytical domains in the top navbar (<em>Data & Overview, Quality Control, Quantitative, Structural, Targeted Analysis, Reference & Methods</em>).",
-      highlightNote: "Each domain groups specialized visualization modules, statistical tests, and interactive inspection tools for systematic lipidomic exploration.",
+      badge: "Step 3 of 12 • Compared Analysis",
+      title: "Compared Analysis (Cohorts & Comparisons)",
+      icon: "fa-code-compare",
+      targetSelector: "#dock_compared_analysis_block",
+      dockTab: "cohorts",
+      desc: "Configure comparative statistical contrasts in the <strong>Cohorts & Filters</strong> dock. Define <strong>Direct</strong> cohort comparisons (<em>Reference</em> vs <em>Comparison</em>) or multi-factor <strong>Interaction</strong> models to evaluate group-specific lipidomic remodeling.",
+      highlightNote: "Drives all downstream differential expression filtering across Heatmaps, Composition barcharts, Volcano plots, and LSEA enrichment.",
       subAction: {
-        text: "Highlight Top Navbar",
-        action: "window.flashHarmoniousFrame('#main_navbar')"
+        text: "Point to Compared Analysis",
+        action: "window.navigateToComparedAnalysis(this)"
+      },
+      onEnter: function() {
+        window.navigateToComparedAnalysis();
       }
     },
     {
       step: 4,
-      badge: "Step 4 of 9 • Rigor & Math Proof",
+      badge: "Step 4 of 12 • Lipid Class & Chain Filters",
+      title: "Lipid Class & Structural Filtering",
+      icon: "fa-filter",
+      targetSelector: "#dock_panel_cohorts .accordion-item:contains('Lipid Class Filters')",
+      dockTab: "cohorts",
+      desc: "Focus your analysis to specific lipid categories, saturation states, or structural chain lengths across three coordinated filter engines in the left dock:",
+      filterPills: [
+        { id: "class", label: "Lipid Class Filters", icon: "fa-filter", desc: "Focus analysis to designated Hyperclasses, Sub-classes, or specialized Lipid Mediators." },
+        { id: "saturation", label: "Advanced Saturation & Chains", icon: "fa-flask", desc: "Filter by saturation states (SFA, MUFA, PUFA) and carbon chain lengths (SCFA to VLCFA)." },
+        { id: "granular", label: "Granular Chain Filters", icon: "fa-ruler", desc: "Enforce exact carbon number and double bond count constraints per acyl position." }
+      ],
+      highlightNote: "Dynamically subsets all 12 analytical modules in real time while preserving original matrix normalization.",
+      subAction: {
+        text: "Point to Lipid Class Filters",
+        action: "window.pointToLipidFilterSection('class', this)"
+      },
+      onEnter: function() {
+        window.pointToLipidFilterSection('class');
+      }
+    },
+    {
+      step: 5,
+      badge: "Step 5 of 12 • Single Lipid Mode",
+      title: "Single Lipid Analysis Mode (Targeted Isolation)",
+      icon: "fa-bullseye",
+      targetSelector: "#targeted_lipids_top_dock",
+      desc: "Isolate specific lipid species of interest directly within the top <strong>Analytical Ensemble</strong> bar. Choose individual biomarker candidates or curate targeted panels to restrict the entire exploratory suite exclusively to your selected lipids.",
+      highlightNote: "Allows instant targeted isolation and mechanistic hypothesis testing with automatic fallback safeguarding.",
+      ctaButton: {
+        text: "🎯 Open Single Lipid Selector",
+        action: "window.openSingleLipidSelector(this)"
+      },
+      onEnter: function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(function() {
+          window.flashHarmoniousFrame('#targeted_lipids_top_dock');
+        }, 180);
+      }
+    },
+    {
+      step: 6,
+      badge: "Step 6 of 12 • Analytical Navigation",
+      title: "Analytical Navigation",
+      icon: "fa-compass",
+      targetSelector: "#main_navbar",
+      desc: "Navigate across the 6 major analytical domains in the top navbar (<em>Quality Control, Quantitative, Structural, Targeted Analysis, Reference & Methods</em>).",
+      highlightNote: "Each domain groups specialized visualization modules, statistical tests, and interactive inspection tools for systematic lipidomic exploration.",
+      subAction: {
+        text: "Highlight Top Navbar",
+        action: "window.flashHarmoniousFrame('#main_navbar')"
+      },
+      onEnter: function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(function() {
+          window.flashHarmoniousFrame('#main_navbar');
+        }, 180);
+      }
+    },
+    {
+      step: 7,
+      badge: "Step 7 of 12 • Rigor & Math Proof",
       title: "Mathematical Demonstration & Audit",
       icon: "fa-square-root-variable",
       targetSelector: "#main_navbar .nav-link:contains('Reference & Methods'), a[data-value='Math Proof']",
@@ -68,11 +145,17 @@
       ctaButton: {
         text: "🔬 Open Live Math Proof",
         action: "window.navigateToMathProof(this)"
+      },
+      onEnter: function() {
+        var $mathTab = $('a[data-value="Math Proof"], a.dropdown-item:contains("Math Proof")');
+        if ($mathTab.length) {
+          window.flashHarmoniousFrame($mathTab);
+        }
       }
     },
     {
-      step: 5,
-      badge: "Step 5 of 9 • Quality Control",
+      step: 8,
+      badge: "Step 8 of 12 • Quality Control",
       title: "2. Quality Control",
       icon: "fa-shield-halved",
       targetSelector: "#main_navbar .nav-link:contains('Quality Control')",
@@ -81,11 +164,14 @@
       subAction: {
         text: "Open Quality Control",
         action: "window.navigateToNavbarTab('Quality Control', 'Quality Check', this)"
+      },
+      onEnter: function() {
+        window.navigateToNavbarTab('Quality Control', 'Quality Check');
       }
     },
     {
-      step: 6,
-      badge: "Step 6 of 9 • Quantitative",
+      step: 9,
+      badge: "Step 9 of 12 • Quantitative",
       title: "3. Quantitative Analysis",
       icon: "fa-chart-simple",
       targetSelector: "#main_navbar .nav-link:contains('Quantitative')",
@@ -94,24 +180,30 @@
       subAction: {
         text: "Open Quantitative",
         action: "window.navigateToNavbarTab('Quantitative', 'Heatmap', this)"
+      },
+      onEnter: function() {
+        window.navigateToNavbarTab('Quantitative', 'Heatmap');
       }
     },
     {
-      step: 7,
-      badge: "Step 7 of 9 • Structural",
+      step: 10,
+      badge: "Step 10 of 12 • Structural",
       title: "4. Structural Analysis",
       icon: "fa-dna",
       targetSelector: "#main_navbar .nav-link:contains('Structural')",
       desc: "Analyze molecular lipid structures across carbon chain lengths and double bond unsaturation coordinates. Inspect class and acyl chain proportions, single-class or all-class structural grids, and violin distribution densities.",
       highlightNote: "Reveals systematic elongation, desaturation, and acyl chain remodeling trends across lipid families.",
       subAction: {
-        text: "Open Structural",
-        action: "window.navigateToNavbarTab('Structural', 'Structural', this)"
+        text: "Open Structural Dot Plots",
+        action: "window.navigateToNavbarTab('Structural', 'Dot Plots', this)"
+      },
+      onEnter: function() {
+        window.navigateToNavbarTab('Structural', 'Dot Plots');
       }
     },
     {
-      step: 8,
-      badge: "Step 8 of 9 • Targeted Analysis",
+      step: 11,
+      badge: "Step 11 of 12 • Targeted Analysis",
       title: "5. Targeted Analysis",
       icon: "fa-diagram-project",
       targetSelector: "#main_navbar .nav-link:contains('Targeted Analysis')",
@@ -120,19 +212,26 @@
       subAction: {
         text: "Open Targeted Analysis",
         action: "window.navigateToNavbarTab('Targeted Analysis', 'Functional Ratios', this)"
+      },
+      onEnter: function() {
+        window.navigateToNavbarTab('Targeted Analysis', 'Functional Ratios');
       }
     },
     {
-      step: 9,
-      badge: "Step 9 of 9 • Single Lipid Mode",
-      title: "Single Lipid Mode (Targeted Isolation)",
-      icon: "fa-bullseye",
-      targetSelector: "#targeted_lipids_top_dock",
-      desc: "Isolate a specific identified lipid species or define custom sub-cohorts rather than evaluating the complete abundance matrix. Restricts all downstream statistical models, PCA projections, and structural visualizations specifically to your chosen targets.",
-      highlightNote: "Allows focused evaluation of individual biomarker candidates across experimental cohorts.",
-      ctaButton: {
-        text: "🎯 Open Single Lipid Selector",
-        action: "window.openSingleLipidSelector(this)"
+      step: 12,
+      badge: "Step 12 of 12 • Export & Reproducibility",
+      title: "Session Export & Publication Studio",
+      icon: "fa-file-export",
+      targetSelector: "#dock_panel_pipeline",
+      dockTab: "pipeline",
+      desc: "Export your complete analytical state, metadata mappings, and filtered datasets as a reproducible <code>.zip</code> session archive. Alternatively, generate journal-preset publication figures directly from each module.",
+      highlightNote: "Ensures complete scientific reproducibility, one-click session restoration, and publication-ready vector graphics generation.",
+      subAction: {
+        text: "Point to Session Export",
+        action: "window.navigateToSessionRestore(this)"
+      },
+      onEnter: function() {
+        window.navigateToSessionRestore();
       }
     }
   ];
@@ -207,6 +306,9 @@
     var $modals = $('#shiny-modal, .modal');
     if ($modals.length) {
       try { $modals.modal('hide'); } catch (e) {}
+    }
+    if (typeof window.purgeOrphanedModals === 'function') {
+      window.purgeOrphanedModals();
     }
     $('.modal-backdrop').remove();
     $('body').removeClass('modal-open').css('overflow', '');
@@ -374,27 +476,151 @@
     }, 150);
   };
 
-  window.previewDockTab = function(dockTabId) {
-    if (typeof window.activateDockTab === 'function') {
-      window.activateDockTab(dockTabId);
+    window.navigateToComparedAnalysis = function(btn) {
+    if (btn) {
+      $(btn).addClass('clicking');
+      setTimeout(function() { $(btn).removeClass('clicking'); }, 350);
     }
+    closeOpenModals();
+
+    // 1. Activate Cohorts & Filters dock tab
+    if (typeof window.activateDockTab === 'function') {
+      window.activateDockTab('cohorts');
+    }
+
+    // 2. Uncollapse dock if collapsed
     var dockEl = document.querySelector('.unified-sidebar-dock');
     if (dockEl && dockEl.classList.contains('collapsed')) {
       dockEl.classList.remove('collapsed');
     }
+
+    // 3. Expand Compared Analysis accordion item
+    var $panel = $('#dock_panel_cohorts');
+    var $acc = $panel.find('.accordion-item').filter(function() {
+      var t = $(this).text();
+      return t.indexOf('Compared Analysis') !== -1 || t.indexOf('Differential Expression') !== -1;
+    });
+    if ($acc.length) {
+      var btnEl = $acc.find('.accordion-button')[0];
+      if (btnEl && btnEl.classList.contains('collapsed')) {
+        btnEl.click();
+      }
+    }
+
+    // 4. Scroll to dock_compared_analysis_block and trigger harmonious frame pulse
+    setTimeout(function() {
+      var $target = $('#dock_compared_analysis_block');
+      if (!$target.length || !$target.is(':visible')) {
+        $target = $acc;
+      }
+      if ($target.length) {
+        $target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.flashHarmoniousFrame($target);
+      }
+    }, 180);
+  };
+
+  window.pointToLipidFilterSection = function(sectionName, btn) {
+    if (btn) {
+      $(btn).addClass('clicking');
+      setTimeout(function() { $(btn).removeClass('clicking'); }, 350);
+    }
+    closeOpenModals();
+
+    // 1. Activate Cohorts & Filters dock tab
+    if (typeof window.activateDockTab === 'function') {
+      window.activateDockTab('cohorts');
+    }
+
+    // 2. Uncollapse dock if collapsed
+    var dockEl = document.querySelector('.unified-sidebar-dock');
+    if (dockEl && dockEl.classList.contains('collapsed')) {
+      dockEl.classList.remove('collapsed');
+    }
+
+    // 3. Determine target accordion item and control
+    var titlePattern = 'Lipid Class Filters';
+    var innerSelector = '#data_hub-hyperclassSelectorUI';
+    if (sectionName === 'saturation' || sectionName === 'chains') {
+      titlePattern = 'Advanced Saturation & Chains';
+      innerSelector = '#data_hub-selectedSaturationFeatures, [id$="-selectedSaturationFeatures"]';
+    } else if (sectionName === 'granular') {
+      titlePattern = 'Granular Chain Filters';
+      innerSelector = '#data_hub-activateGranularFiltering, [id$="-activateGranularFiltering"]';
+    }
+
+    var $panel = $('#dock_panel_cohorts');
+    var $acc = $panel.find('.accordion-item').filter(function() {
+      return $(this).text().indexOf(titlePattern) !== -1;
+    });
+
+    if ($acc.length) {
+      var btnEl = $acc.find('.accordion-button')[0];
+      if (btnEl && btnEl.classList.contains('collapsed')) {
+        btnEl.click();
+      }
+    }
+
+    // 4. Scroll to section and trigger harmonious frame pulse
+    setTimeout(function() {
+      var $target = $(innerSelector);
+      if (!$target.length || !$target.is(':visible')) {
+        $target = $acc;
+      }
+      if ($target.length) {
+        $target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.flashHarmoniousFrame($target);
+      }
+    }, 180);
+  };
+
+  window.previewFilterPill = function(pillId) {
+    window.pointToLipidFilterSection(pillId);
+    $('.filter-pill-btn').removeClass('active');
+    $('#filter_pill_' + pillId).addClass('active');
+
+    var stepData = TOUR_STEPS[currentStep - 1];
+    var pills = (stepData && stepData.filterPills) ? stepData.filterPills : [];
+    var match = pills.filter(function(p) { return p.id === pillId; })[0];
+    if (match && document.getElementById('filter_pill_desc')) {
+      $('#filter_pill_desc').html('<i class="fas ' + match.icon + ' text-primary me-1"></i> <strong>' + match.label + ':</strong> ' + match.desc);
+    }
+  };
+
+  window.previewDockTab = function(dockTabId) {
+    if (dockTabId === 'aesthetics') {
+      var $bottomAesth = $('[title*="Advanced Aesthetics"], [id*="aesthetics"], .accordion-item:contains("Advanced Aesthetics")').first();
+      if ($bottomAesth.length) {
+        $bottomAesth[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.flashHarmoniousFrame($bottomAesth);
+      }
+    } else {
+      if (typeof window.activateDockTab === 'function') {
+        window.activateDockTab(dockTabId);
+      }
+      var dockEl = document.querySelector('.unified-sidebar-dock') || document.querySelector('aside#main_sidebar');
+      if (dockEl && dockEl.classList.contains('collapsed')) {
+        dockEl.classList.remove('collapsed');
+      }
+      // Flash the active dock panel harmoniously
+      var $panel = $('#dock_panel_' + dockTabId);
+      if ($panel.length) {
+        window.flashHarmoniousFrame($panel);
+      }
+    }
     $('.dock-pill-btn').removeClass('active');
     $('#dock_pill_' + dockTabId).addClass('active');
 
-    var pills = (TOUR_STEPS[1] && TOUR_STEPS[1].dockPills) ? TOUR_STEPS[1].dockPills : [];
+    var stepData = TOUR_STEPS[currentStep - 1];
+    var pills = (stepData && stepData.dockPills) ? stepData.dockPills : [];
+    if (!pills.length) {
+      for (var pIdx = 0; pIdx < TOUR_STEPS.length; pIdx++) {
+        if (TOUR_STEPS[pIdx].dockPills) { pills = TOUR_STEPS[pIdx].dockPills; break; }
+      }
+    }
     var match = pills.filter(function(p) { return p.id === dockTabId; })[0];
     if (match && document.getElementById('dock_pill_desc')) {
       $('#dock_pill_desc').html('<i class="fas ' + match.icon + ' text-primary me-1"></i> <strong>' + match.label + ':</strong> ' + match.desc);
-    }
-
-    // Flash the active dock panel harmoniously
-    var $panel = $('#dock_panel_' + dockTabId);
-    if ($panel.length) {
-      window.flashHarmoniousFrame($panel);
     }
   };
 
@@ -423,7 +649,21 @@
       } else {
         pillsHtml += '<i class="fas fa-info-circle text-primary me-1"></i> Click the tabs above to preview the left sidebar dock adapting in real time.';
       }
-      pillsHtml += '</div>';
+      pillsHtml += '</div></div>';
+    } else if (stepData.filterPills && stepData.filterPills.length) {
+      pillsHtml += '<div class="tour-hud-pills-container mt-2 mb-2">';
+      stepData.filterPills.forEach(function(pill, pIdx) {
+        var activeCls = (pIdx === 0) ? ' active' : '';
+        pillsHtml += '<button type="button" id="filter_pill_' + pill.id + '" class="btn btn-sm btn-outline-secondary filter-pill-btn' + activeCls + '" onclick="window.previewFilterPill(\'' + pill.id + '\')">';
+        pillsHtml += '<i class="fas ' + pill.icon + ' me-1"></i> ' + pill.label;
+        pillsHtml += '</button>';
+      });
+      var firstFilterPill = stepData.filterPills[0];
+      pillsHtml += '<div id="filter_pill_desc" class="small text-muted p-2 rounded bg-light border mb-2">';
+      if (firstFilterPill) {
+        pillsHtml += '<i class="fas ' + firstFilterPill.icon + ' text-primary me-1"></i> <strong>' + firstFilterPill.label + ':</strong> ' + firstFilterPill.desc;
+      }
+      pillsHtml += '</div></div>';
     }
 
     var ctaHtml = '';
@@ -461,7 +701,7 @@
       '    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small fw-semibold">' +
       '      <i class="fas ' + stepData.icon + ' me-1"></i> ' + stepData.badge +
       '    </span>' +
-      '    <button type="button" class="btn btn-sm btn-close tour-close-btn" onclick="window.exitGuidedTour()" title="Close Walkthrough" aria-label="Close"></button>' +
+      '    <button type="button" class="btn btn-sm btn-close tour-close-btn" onclick="window.minimizeGuidedTour()" title="Minimize to bottom-right tab (reopen anytime)" aria-label="Minimize"></button>' +
       '  </div>' +
       '  <h6 class="tour-hud-title fw-bold text-dark mb-2">' + stepData.title + '</h6>' +
       '  <div class="tour-hud-body text-secondary small mb-2" style="line-height: 1.55;">' +
@@ -471,8 +711,8 @@
       highlightNoteHtml +
       ctaHtml +
       '  <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">' +
-      '    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none p-0" onclick="window.exitGuidedTour()">' +
-      '      Exit Tour' +
+      '    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none p-0" onclick="window.minimizeGuidedTour()">' +
+      '      Minimize Tour' +
       '    </button>' +
       '    <div class="d-flex gap-2">' +
       '      <button type="button" class="btn btn-sm btn-outline-secondary px-3"' + prevDisabled + ' onclick="window.prevTourStep()">' +
@@ -488,10 +728,34 @@
     $hud.html(html);
   }
 
+  function renderMinimizedTab() {
+    var $tab = $('#tour_guide_minimized_tab');
+    if (!$tab.length) {
+      $('body').append('<div id="tour_guide_minimized_tab" class="tour-minimized-tab shadow-lg"></div>');
+      $tab = $('#tour_guide_minimized_tab');
+    }
+
+    var stepData = TOUR_STEPS[currentStep - 1] || TOUR_STEPS[0];
+    var badgeText = stepData.badge || ('Step ' + currentStep + ' of ' + totalSteps);
+
+    var html = '' +
+      '<button type="button" class="tour-minimized-btn" onclick="window.reopenGuidedTour()" title="Click to reopen Onboarding Guide (' + badgeText + ')">' +
+      '  <span class="tour-minimized-icon-pulse"><i class="fas fa-compass"></i></span>' +
+      '  <span class="tour-minimized-label">Onboarding Guide</span>' +
+      '  <span class="tour-minimized-step-badge">' + badgeText + '</span>' +
+      '  <i class="fas fa-chevron-up tour-minimized-chevron ms-1"></i>' +
+      '</button>' +
+      '<button type="button" class="tour-minimized-dismiss" onclick="window.dismissGuidedTourPermanently(event)" title="Dismiss Permanently" aria-label="Dismiss">' +
+      '  <i class="fas fa-times"></i>' +
+      '</button>';
+
+    $tab.html(html).show();
+  }
+
   window.goToTourStep = function(stepIndex) {
     if (stepIndex < 1) stepIndex = 1;
     if (stepIndex > totalSteps) {
-      window.exitGuidedTour();
+      window.dismissGuidedTourPermanently();
       return;
     }
     currentStep = stepIndex;
@@ -504,6 +768,11 @@
       if (dockEl && dockEl.classList.contains('collapsed')) {
         dockEl.classList.remove('collapsed');
       }
+    }
+
+    // Step-specific onEnter hook if provided
+    if (typeof stepData.onEnter === 'function') {
+      try { stepData.onEnter(); } catch (err) { console.warn('[TourGuide] onEnter error:', err); }
     }
 
     // Render HUD
@@ -521,6 +790,7 @@
 
   window.startGuidedTour = function(initialStep) {
     closeOpenModals();
+    $('#tour_guide_minimized_tab').hide();
     tourActive = true;
     window.goToTourStep(initialStep || 1);
   };
@@ -533,12 +803,37 @@
     window.goToTourStep(currentStep - 1);
   };
 
-  window.exitGuidedTour = function() {
+  window.minimizeGuidedTour = function() {
     tourActive = false;
     clearSpotlight();
     $('#tour_guide_hud').remove();
+    renderMinimizedTab();
     if (window.Shiny && typeof window.Shiny.setInputValue === 'function') {
-      Shiny.setInputValue('tour_state', { active: false, step: currentStep }, { priority: 'event' });
+      Shiny.setInputValue('tour_state', { active: false, minimized: true, step: currentStep }, { priority: 'event' });
+    }
+  };
+
+  window.exitGuidedTour = function() {
+    window.minimizeGuidedTour();
+  };
+
+  window.reopenGuidedTour = function() {
+    $('#tour_guide_minimized_tab').hide();
+    tourActive = true;
+    window.goToTourStep(currentStep || 1);
+  };
+
+  window.dismissGuidedTourPermanently = function(e) {
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
+    tourActive = false;
+    clearSpotlight();
+    $('#tour_guide_hud').remove();
+    $('#tour_guide_minimized_tab').remove();
+    if (window.Shiny && typeof window.Shiny.setInputValue === 'function') {
+      Shiny.setInputValue('tour_state', { active: false, dismissed: true, step: currentStep }, { priority: 'event' });
     }
   };
 
@@ -570,27 +865,79 @@
           $runBtn.removeClass('btn-run-analysis-running');
         }, 3500);
       });
+      Shiny.addCustomMessageHandler('metadataConfirmed', function(msg) {
+        if (typeof window.activateDockTab === 'function') {
+          window.activateDockTab('pipeline');
+        }
+        var $runBtn = $('.btn-run-analysis, #data_hub-runAnalysis');
+        $runBtn.addClass('btn-run-analysis-primed');
+
+        var $pipelineSection = $runBtn.closest('.dock-section');
+        if ($pipelineSection.length && typeof window.flashHarmoniousFrame === 'function') {
+          setTimeout(function() {
+            window.flashHarmoniousFrame($pipelineSection);
+            if ($pipelineSection[0] && typeof $pipelineSection[0].scrollIntoView === 'function') {
+              $pipelineSection[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }, 350);
+        }
+      });
+      Shiny.addCustomMessageHandler('resetFileInput', function(msg) {
+        var inputId = (msg && msg.id) ? msg.id : 'data_hub-files';
+        var $input = $('#' + inputId);
+        if (!$input.length) {
+          $input = $('input[id$="-files"]');
+        }
+        if ($input.length) {
+          $input.val('');
+          var $container = $input.closest('.data-upload-container, .shiny-input-container');
+          $container.find('input[type="text"]').val('').attr('placeholder', 'No file selected');
+          var $progress = $container.find('.progress, [id$="-files_progress"]');
+          $progress.css('visibility', 'hidden').hide();
+          $progress.find('.progress-bar').css('width', '0%').attr('aria-valuenow', 0).text('');
+          var $browseBtn = $container.find('.btn-file, .btn');
+          $browseBtn.removeClass('btn-file-loaded btn-file-connecting-pulse');
+        }
+      });
     }
   });
 
-  // Connect file selection in native browse dialog to loading button and Run Analysis activation
+  // Always clear file input value on click before open dialog so re-selecting the same file always triggers change event
+  $(document).on('click', 'input[type="file"], .btn-file', function(e) {
+    var fileInput = (this.tagName === 'INPUT') ? this : $(this).find('input[type="file"]')[0];
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  });
+
+  // When clicking any remove-file button, instantly clear the DOM file input
+  $(document).on('click', '.btn-remove-file, [id*="remove_"]', function() {
+    var $fileInput = $('input[id$="-files"]');
+    if ($fileInput.length) {
+      $fileInput.val('');
+      var $container = $fileInput.closest('.data-upload-container, .shiny-input-container');
+      $container.find('input[type="text"]').val('').attr('placeholder', 'No file selected');
+      var $progress = $container.find('.progress, [id$="-files_progress"]');
+      $progress.css('visibility', 'hidden').hide();
+      $progress.find('.progress-bar').css('width', '0%').attr('aria-valuenow', 0).text('');
+      var $browseBtn = $container.find('.btn-file, .btn');
+      $browseBtn.removeClass('btn-file-loaded btn-file-connecting-pulse');
+    }
+  });
+
+  // Connect file selection in native browse dialog to loading button feedback only
   $(document).on('change', '#data_hub-files', function() {
     if (this.files && this.files.length > 0) {
       // Highlight loading button
       var $browseBtn = $(this).closest('.data-upload-container').find('.btn-file, .btn');
       $browseBtn.removeClass('btn-file-connecting-pulse').addClass('btn-file-loaded');
       setTimeout(function() { $browseBtn.removeClass('btn-file-loaded'); }, 3500);
-
-      // Visually activate and prime the Run Analysis button
-      var $runBtn = $('.btn-run-analysis, #data_hub-runAnalysis');
-      $runBtn.addClass('btn-run-analysis-primed');
-
-      // Connect visually to the pipeline execution section
-      var $pipelineSection = $runBtn.closest('.dock-section');
-      if ($pipelineSection.length && typeof window.flashHarmoniousFrame === 'function') {
-        window.flashHarmoniousFrame($pipelineSection);
-      }
     }
+  });
+
+  // Instantly remove primed pulse when Run Analysis is clicked
+  $(document).on('click', '.btn-run-analysis, #data_hub-runAnalysis', function() {
+    $(this).removeClass('btn-run-analysis-primed');
   });
 
   window.showWelcomeModal = function() {

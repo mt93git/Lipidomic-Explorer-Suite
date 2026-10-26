@@ -15,8 +15,10 @@ data/*.log
 data/user_uploads/*
 !data/user_uploads/.gitkeep
 
-# Development Scratch Folders
+# Development Scratch & Author-Only Internal Folders (Never Push)
 scratch/
+_INTERNAL_AUTHOR_ONLY_DO_NOT_PUSH/
+NOT_PUSH_ON_GITHUB/
 
 # OS-specific artifacts
 .DS_Store

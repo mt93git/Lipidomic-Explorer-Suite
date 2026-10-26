@@ -68,11 +68,11 @@ structural_ui <- function(id) {
       div(
         class = "structural-main-scroll-viewport",
         render_tab_intro_card(
-          title = "Structural",
+          title = "Structural Dot Plots",
           subtitle = "This module analyzes lipidome changes across structural features such as carbon chain length and double bond count:",
           bullets = list(
             tags$li(tags$strong("Structural Analysis Dot Plots:"), " Compare carbon chain lengths and double bond counts across lipid classes, plotting values by regulation direction."),
-            tags$li(tags$strong("Violin Plots:"), " Inspect individual species distribution violin charts within specific lipid classes, highlighting extreme values."),
+            tags$li(tags$strong("Violin View (Structural Parameters):"), " Inspect species distribution violin charts across structural dot plot parameters (Carbons, Unsaturation, sn-1, sn-2) within specific lipid classes, highlighting extreme values."),
             tags$li(tags$strong("Correlation Networks:"), " Map structural inter-dependencies using Pearson correlation-based graph networks at main class, chain length, or species levels.")
           ),
           collapse_id = ns("intro_collapse")
@@ -88,7 +88,8 @@ structural_ui <- function(id) {
                  textOutput(ns("summary_stats_text")),
                   tags$div(
                     downloadButton(ns("downloadSummaryCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
-                    downloadButton(ns("downloadSummaryPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
+                    downloadButton(ns("downloadSummaryPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf"),
+                    downloadButton(ns("downloadSummaryPNG"), "PNG", class="btn-sm btn-outline-secondary py-0 btn-download-png", style="margin-left: 5px;")
                   )
                ),
                 card_body(
@@ -142,12 +143,16 @@ structural_ui <- function(id) {
                   uiOutput(ns("structural_stat_note"))
                 )
             ),
-            nav_panel("Violin Plots", 
+            nav_panel("Violin View (Structural Parameters)", value = "Violin View (Structural Parameters)", 
                card_header(
                  class = "d-flex justify-content-between align-items-center",
-                 "Lipid Species Identification",
                  tags$div(
-                    downloadButton(ns("downloadSpeciesPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
+                   tags$strong("Structural Parameters - Violin View"),
+                   tags$span(class = "text-muted ms-2", style = "font-size: 0.85rem; font-weight: normal;", "(Lipid Species Identification)")
+                 ),
+                 tags$div(
+                    downloadButton(ns("downloadSpeciesPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf"),
+                    downloadButton(ns("downloadSpeciesPNG"), "PNG", class="btn-sm btn-outline-secondary py-0 btn-download-png", style="margin-left: 5px;")
                  )
                ),
                card_body(
@@ -669,9 +674,9 @@ structural_proportions_ui <- function(id) {
           tags$button(
             type = "button",
             class = "btn-quick-access",
-            onclick = "window.pointToLog2FCFilter(event);",
-            title = "Jump to Compared Analysis in Data Dock",
-            icon("code-compare"), "Compared Analysis"
+            onclick = "window.pointToDifferentialExpressionMenu && window.pointToDifferentialExpressionMenu(event); return false;",
+            title = "Configure Compared Analysis (Mode, Reference, Comparison) in left dock",
+            icon("code-compare"), tags$strong("Compared Analysis")
           ),
           tags$button(
             type = "button",
@@ -2234,13 +2239,6 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
                 onclick = "window.runStructuralAnalysis && window.runStructuralAnalysis(event); return false;",
                 style = "font-weight: 600; padding: 7px 16px; border-radius: 9px; white-space: nowrap;",
                 icon("play"), " Initiate Structural Analysis"
-              ),
-              tags$button(
-                type = "button",
-                class = "btn btn-sm btn-outline-primary",
-                onclick = "window.pointToStructuralLauncher && window.pointToStructuralLauncher(event); return false;",
-                style = "font-weight: 600; padding: 7px 16px; border-radius: 9px; white-space: nowrap;",
-                icon("crosshairs"), " Point to Button"
               )
             )
           )
@@ -2508,7 +2506,9 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     # --- 5. Network Graph Plotting ---
     networkData <- reactive({
       req(shared_data$data_processed(), shared_data$annotationData())
-      mat <- shared_data$data_processed() %>% tibble::column_to_rownames("Lipid_Name")
+      df_proc <- shared_data$data_processed()
+      rownames(df_proc) <- NULL
+      mat <- df_proc %>% tibble::column_to_rownames("Lipid_Name")
       anno <- shared_data$annotationData()
       
       filtered_ids <- shared_data$global_filtered_lipids()
@@ -2678,6 +2678,37 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       contentType = "application/pdf"
     )
 
+    output$downloadSummaryPNG <- downloadHandler(
+      filename = function() { paste0("structural_summary_", format(Sys.Date(), "%Y%m%d"), ".png") },
+      content = function(file) {
+        tryCatch({
+          p <- summaryPlotReactive()
+          if(is.null(p)) stop("Summary plot is NULL")
+          w <- session$clientData[[paste0("output_", session$ns("summaryPlot"), "_width")]]
+          h <- session$clientData[[paste0("output_", session$ns("summaryPlot"), "_height")]]
+          if(!is.null(input$summaryPlot_size)) {
+              w <- input$summaryPlot_size$width
+              h <- input$summaryPlot_size$height
+          } else if(!is.null(input$summary_plot_container_size)) {
+              w <- input$summary_plot_container_size$width
+              h <- input$summary_plot_container_size$height
+          }
+          w_in <- 10
+          h_in <- 8
+          if (!is.null(w) && w > 10) w_in <- w / 72
+          if (!is.null(h) && h > 10) h_in <- h / 72
+          ggsave(file, plot = p, device = "png", width = w_in, height = h_in, dpi = 300, limitsize = FALSE)
+        }, error = function(e) {
+          png(file, width=800, height=600)
+          plot(0, 0, type="n", axes=FALSE, xlab="", ylab="")
+          text(0, 0, paste("ERROR in ggsave/summaryPlotPNG:
+", e$message), col="red", cex=0.8)
+          dev.off()
+        })
+      },
+      contentType = "image/png"
+    )
+
     output$downloadSummaryCSV <- downloadHandler(
       filename = function() { paste0("structural_summary_", format(Sys.Date(), "%Y%m%d"), ".csv") },
       content = function(file) {
@@ -2685,6 +2716,37 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         req(res)
         write.csv(res, file, row.names = FALSE)
       }
+    )
+
+    output$downloadSpeciesPNG <- downloadHandler(
+      filename = function() { paste0("structural_species_", format(Sys.Date(), "%Y%m%d"), ".png") },
+      content = function(file) {
+        tryCatch({
+          p <- speciesPlotReactive()
+          if(is.null(p)) stop("Species plot is NULL")
+          w <- session$clientData[[paste0("output_", session$ns("speciesPlotPlot"), "_width")]]
+          h <- session$clientData[[paste0("output_", session$ns("speciesPlotPlot"), "_height")]]
+          if(!is.null(input$speciesPlotPlot_size)) {
+              w <- input$speciesPlotPlot_size$width
+              h <- input$speciesPlotPlot_size$height
+          } else if(!is.null(input$species_plot_container_size)) {
+              w <- input$species_plot_container_size$width
+              h <- input$species_plot_container_size$height
+          }
+          w_in <- 12
+          h_in <- 8
+          if (!is.null(w) && w > 10) w_in <- w / 72
+          if (!is.null(h) && h > 10) h_in <- h / 72
+          ggsave(file, plot = p, device = "png", width = w_in, height = h_in, dpi = 300, limitsize = FALSE)
+        }, error = function(e) {
+          png(file, width=800, height=600)
+          plot(0, 0, type="n", axes=FALSE, xlab="", ylab="")
+          text(0, 0, paste("ERROR in Species PNG generation:
+", e$message), col="red", cex=0.8)
+          dev.off()
+        })
+      },
+      contentType = "image/png"
     )
 
     output$downloadSpeciesPDF <- downloadHandler(
@@ -2806,7 +2868,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       # Write to stats_detail_text and display modal overlay
       shared_data$stats_detail_text(msg)
       parent_sess <- if (!is.null(session$parent)) session$parent else session
-      origin_title <- if (identical(input$structural_subtabs, "Violin Plots")) "Lipid Species Identification" else "Structural Analysis"
+      origin_title <- if (identical(input$structural_subtabs, "Violin View (Structural Parameters)") || grepl("Violin", input$structural_subtabs %||% "")) "Structural Parameters - Violin View" else "Structural Dot Plots"
       show_statistics_modal(session = parent_sess, shared_data = shared_data, origin_tab_name = origin_title)
     }
 
@@ -3208,6 +3270,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       
       # Ensure clean numeric matrix with Lipid_Name as rownames
       if ("Lipid_Name" %in% names(df_proc)) {
+        rownames(df_proc) <- NULL
         mat_raw <- df_proc %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
       } else {
         mat_raw <- as.matrix(df_proc)

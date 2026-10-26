@@ -31,9 +31,6 @@ logratio_ui <- function(id) {
                      choices = c("Global (Combined Reference)", "Faceted (Intra-group Reference)"), 
                      selected = "Faceted (Intra-group Reference)"),
         
-    # 2. Baseline Group Picker
-        uiOutput(ns("baselineSelectorUI")),
-        
         hr(),
         
     # 3. Aggregation/Feature Level
@@ -78,20 +75,9 @@ logratio_ui <- function(id) {
                                  "Non-Parametric (Wilcoxon)" = "non_parametric"),
                      selected = "auto"),
         hr(),
-        sliderInput(ns("plotZoom"), "Viewport Zoom %:", min=10, max=200, value=30, step=1),
-        radioButtons(ns("scaleMode"), tags$span("Measurement Scale:", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Toggles between Log2 values (useful for relative fold changes) and linear values (useful for absolute abundances).")), 
-                     choices = c("Log2 Fold Change" = "log2fc", 
-                                 "Fold Change (Linear)" = "fc", 
-                                 "Proportion Difference" = "delta"), 
-                     selected = "log2fc"),
-        checkboxInput(ns("showBaseline"), "Show Baseline (Y=0) Line", value = FALSE),
-        
     # 4. View options
         checkboxInput(ns("showSignificantOnly"), "Show only significant features", value = FALSE),
         checkboxInput(ns("shortYAxis"), "Use Short Y-axis Title", value = TRUE),
-        radioButtons(ns("sigDisplayType"), "Significance Label Format:",
-                     choices = c("Star" = "star", "P-value" = "pvalue"),
-                     selected = "star"),
         uiOutput(ns("featureLevelUI")),
         uiOutput(ns("featurePickerUI")),
         
@@ -110,13 +96,13 @@ logratio_ui <- function(id) {
       ),
       
    # MAIN PLOT AREA
-      jqui_resizable(div(style = "min-height: 40vh; padding-bottom: 12px; margin-bottom: 15px; position: relative; overflow: hidden;",
+      div(style = "min-height: 40vh; padding-bottom: 12px; margin-bottom: 15px; position: relative;",
         render_tab_intro_card(
           title = "Violin Plots",
           subtitle = "This module visualizes the probability density and distribution of individual lipid species across different conditions:",
           bullets = list(
             tags$li(tags$strong("Distribution Probability:"), " Inspect abundance variation, dispersion, and medians for selected lipid species across sample groups."),
-            tags$li(tags$strong("Baseline Comparison:"), " Calculate and plot log2 fold changes relative to a selected control or reference group.")
+            tags$li(tags$strong("Baseline Comparison:"), " Calculate and plot log2 fold changes or absolute abundances relative to a selected reference group.")
           ),
           collapse_id = ns("intro_collapse")
         ),
@@ -135,22 +121,41 @@ logratio_ui <- function(id) {
           style = "height: 100%; min-height: 40vh;",
           card_header(
             class = "d-flex justify-content-between align-items-center",
-            uiOutput(ns("dynamicPlotTitle"), inline=TRUE),
-            tags$div(
-              downloadButton(ns("downloadCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
-              downloadButton(ns("downloadPlot"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
-            )
+            uiOutput(ns("dynamicPlotTitle"), inline=TRUE)
           ),
           card_body(
              uiOutput(ns("baseline_status_banner")),
+             div(class = "d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 bg-light p-2 rounded border",
+                 div(class = "d-flex align-items-center gap-3 flex-wrap",
+                     radioButtons(ns("scaleMode"), "Measurement Scale:", 
+                                  choices = c("Log2 Fold Change" = "log2fc", 
+                                              "Fold Change (Linear)" = "fc", 
+                                              "Proportion Difference" = "delta",
+                                              "Log2 Abundance" = "log2",
+                                              "Linear Abundance" = "linear"), 
+                                  selected = "log2fc", inline = TRUE),
+                     uiOutput(ns("baselineSelectorUI"), inline = TRUE),
+                     sliderInput(ns("plotHeight"), "Plot Height (px):", min = 300, max = 5000, value = 600, step = 50, width = "190px"),
+                     radioButtons(ns("sigDisplayType"), "Significance:",
+                                  choices = c("Stars (*)" = "star", "P-value" = "pvalue"),
+                                  selected = "star", inline = TRUE),
+                     div(style = "margin-top: 24px;",
+                         checkboxInput(ns("showBaseline"), "Baseline Line (Y=0)", value = FALSE)
+                     )
+                 ),
+                 div(class = "d-flex gap-2",
+                     downloadButton(ns("downloadPlot"), "Export PDF", class = "btn-sm btn-outline-secondary btn-download-pdf"),
+                     downloadButton(ns("downloadCSV"), "Export Data", class = "btn-sm btn-outline-secondary btn-download-csv")
+                 )
+             ),
              tags$div(
-                style = "width: 100%; height: 100%; overflow: auto; border: 1px solid #e9ecef; background: #fff; padding: 10px;",
+                style = "width: 100%; overflow: auto; border: 1px solid #e9ecef; background: #fff; padding: 10px; border-radius: 6px;",
                 uiOutput(ns("scrollable_plot_ui"))
              ),
              uiOutput(ns("violin_stat_note"))
           )
         )
-      ), options = list(handles = "s, se")),
+      ),
       
    # ADVANCED AESTHETICS RIBBON
       accordion(
@@ -197,25 +202,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
       req(shared_data$all_metadata())
       shared_data$all_metadata()
     })
-    
-    output$featureLevelUI <- renderUI({
-       am <- shared_data$analysisMode()
-              if (!is.null(am) && am == "Global Lipidomics") {
-            choices <- c("Lipid Category" = "macro", "Lipid Main Class" = "subclass")
-        } else {
-            choices <- c("Immune Role" = "macro", "Lipid Main Class" = "subclass")
-        }
-       
-       curr_sel <- isolate(input$featureLevel)
-       default_sel <- "macro"
-       if (!is.null(curr_sel) && curr_sel %in% choices) {
-           default_sel <- curr_sel
-       }
-       
-       radioButtons(session$ns("featureLevel"), "Analyze Features At:", 
-                    choices = choices, 
-                    selected = default_sel)
-    })
+
     
   # Memory Cache for Level Ordering & Grouping Tracking
     level_prefs <- reactiveValues()
@@ -341,16 +328,16 @@ logratio_server <- function(id, shared_data, global_color_map) {
            grp_cols <- input$groupingMetadata
            req(length(grp_cols) > 1)
            comb_vals <- apply(meta[, grp_cols, drop=FALSE], 1, paste, collapse = "_")
-           levels <- sort(unique(comb_vals[!is.na(comb_vals) & comb_vals != ""]))
+           levels <- as.character(sort(unique(comb_vals[!is.na(comb_vals) & comb_vals != ""])))
        } else if (target %in% colnames(meta)) {
-           levels <- sort(unique(meta[[target]]))
+           levels <- as.character(sort(unique(meta[[target]])))
        } else {
            return(NULL)
        }
        
     # Use global maps natively assigned or algorithmically bridge
        base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[target]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[target]], error = function(e) NULL)
-       if (is.null(base_map)) {
+       if (is.null(base_map) || !all(levels %in% names(base_map))) {
           pal <- RColorBrewer::brewer.pal(min(9, max(3, length(levels))), "Set1")
           if(length(levels) > length(pal)) pal <- colorRampPalette(pal)(length(levels))
           base_map <- stats::setNames(pal[1:length(levels)], levels)
@@ -363,23 +350,25 @@ logratio_server <- function(id, shared_data, global_color_map) {
           id <- paste0("cp_", safe_col, "_", safe_lvl)
           
           cur_val <- input[[id]]
-          saved_val <- shared_data$get_restored_input(ns(id), base_map[lvl])
-          def_val <- if(!is.null(cur_val)) cur_val else saved_val
+          saved_val <- shared_data$get_restored_input(ns(id), base_map[[lvl]])
+          def_val <- if(!is.null(cur_val) && nzchar(cur_val)) cur_val else (if(!is.null(base_map[[lvl]])) base_map[[lvl]] else "#4E79A7")
           
           div(style="display:inline-block; margin-right:5px; margin-bottom: 5px;",
               colourpicker::colourInput(ns(id), lvl, value = def_val, showColour="both", width="100px")
           )
        }) %>% div(class="d-flex flex-wrap", .)
     })
+    outputOptions(output, "dynamic_colors_ui", suspendWhenHidden = FALSE)
     
     output$baselineSelectorUI <- renderUI({
       selectizeInput(session$ns("selectedBaseline"), 
-                     tags$span("Reference Baseline:", 
+                     tags$span("Baseline Reference (Violin View):", 
                                bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), 
-                                              "Select one or more group levels to serve as the baseline. Violin plots will represent the Log2 Fold Change of each group relative to this baseline's average.")), 
+                                              "Select one or more group levels to serve as the baseline. Violin plots will represent fold changes, differences, or abundances relative to this baseline's average.")), 
                      choices = NULL, 
                      selected = NULL,
-                     multiple = TRUE)
+                     multiple = TRUE,
+                     width = "220px")
     })
     outputOptions(output, "baselineSelectorUI", suspendWhenHidden = FALSE)
     
@@ -519,10 +508,12 @@ logratio_server <- function(id, shared_data, global_color_map) {
         ) %>%
         dplyr::ungroup()
         
-      if (input$classLabelFormat == "full") {
-        df_anno$Base_Feature <- get_full_class_name(df_anno$Base_Feature)
-      } else {
-        df_anno$Base_Feature <- get_short_class_name(df_anno$Base_Feature)
+      if (feat_level != "individual") {
+        if (input$classLabelFormat == "full") {
+          df_anno$Base_Feature <- get_full_class_name(df_anno$Base_Feature)
+        } else {
+          df_anno$Base_Feature <- get_short_class_name(df_anno$Base_Feature)
+        }
       }
       
       df_anno <- df_anno %>%
@@ -647,7 +638,14 @@ logratio_server <- function(id, shared_data, global_color_map) {
                           FC = Proportion / Baseline_Mean_Prop,
                           Delta = Proportion - Baseline_Mean_Prop,
                           Is_Baseline = (X_Grp %in% baseline_grp)) %>%
-            dplyr::mutate(Plot_Value = if(scale_mode == "log2fc") Log2FC else if(scale_mode == "fc") FC else Delta)
+            dplyr::mutate(Plot_Value = dplyr::case_when(
+              scale_mode == "log2fc" ~ Log2FC,
+              scale_mode == "fc" ~ FC,
+              scale_mode == "delta" ~ Delta,
+              scale_mode == "log2" ~ log2(pmax(1, Class_Total)),
+              scale_mode == "linear" ~ Class_Total,
+              TRUE ~ Log2FC
+            ))
       } else {
           baseline_means <- df_prop %>%
             dplyr::filter(GroupingVal %in% baseline_grp) %>%
@@ -663,7 +661,14 @@ logratio_server <- function(id, shared_data, global_color_map) {
                           FC = Proportion / Baseline_Mean_Prop,
                           Delta = Proportion - Baseline_Mean_Prop,
                           Is_Baseline = (GroupingVal %in% baseline_grp)) %>%
-            dplyr::mutate(Plot_Value = if(scale_mode == "log2fc") Log2FC else if(scale_mode == "fc") FC else Delta)
+            dplyr::mutate(Plot_Value = dplyr::case_when(
+              scale_mode == "log2fc" ~ Log2FC,
+              scale_mode == "fc" ~ FC,
+              scale_mode == "delta" ~ Delta,
+              scale_mode == "log2" ~ log2(pmax(1, Class_Total)),
+              scale_mode == "linear" ~ Class_Total,
+              TRUE ~ Log2FC
+            ))
       }
       
 
@@ -804,12 +809,59 @@ logratio_server <- function(id, shared_data, global_color_map) {
        updateCheckboxGroupInput(session, "sel_Fatty Acyls", selected = target_lipids)
     }, ignoreInit = TRUE)
     
+    observeEvent(shared_data$targeted_mode_active(), {
+      is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+      am <- shared_data$analysisMode() %||% "Global Lipidomics"
+      lvl_choices <- if (am == "Global Lipidomics") {
+        if (is_targeted) {
+          c("Lipid Category" = "macro", "Lipid Main Class" = "subclass", "Single Lipid" = "individual")
+        } else {
+          c("Lipid Category" = "macro", "Lipid Main Class" = "subclass")
+        }
+      } else {
+        if (is_targeted) {
+          c("Immune Role / Macro" = "macro", "Lipid Main Class" = "subclass", "Single Lipid" = "individual")
+        } else {
+          c("Immune Role / Macro" = "macro", "Lipid Main Class" = "subclass")
+        }
+      }
+      if (is_targeted) {
+        updateSelectInput(session, "featureLevel", choices = lvl_choices, selected = "individual")
+        updateCheckboxGroupInput(session, "selectedFeatures_flat", selected = shared_data$targeted_lipids_list())
+      } else {
+        curr_sel <- input$featureLevel
+        new_sel <- if (!is.null(curr_sel) && curr_sel %in% lvl_choices) curr_sel else "subclass"
+        updateSelectInput(session, "featureLevel", choices = lvl_choices, selected = new_sel)
+      }
+    }, ignoreInit = TRUE)
+
   # --- 3. Feature UI ---
     
     output$featureLevelUI <- renderUI({
+        am <- shared_data$analysisMode() %||% "Global Lipidomics"
+        is_targeted <- isTRUE(shared_data$targeted_mode_active()) && length(shared_data$targeted_lipids_list()) > 0
+        lvl_choices <- if (am == "Global Lipidomics") {
+          if (is_targeted) {
+            c("Lipid Category" = "macro", "Lipid Main Class" = "subclass", "Single Lipid" = "individual")
+          } else {
+            c("Lipid Category" = "macro", "Lipid Main Class" = "subclass")
+          }
+        } else {
+          if (is_targeted) {
+            c("Immune Role / Macro" = "macro", "Lipid Main Class" = "subclass", "Single Lipid" = "individual")
+          } else {
+            c("Immune Role / Macro" = "macro", "Lipid Main Class" = "subclass")
+          }
+        }
+        curr_sel <- isolate(input$featureLevel)
+        default_sel <- if (is_targeted) {
+          if (!is.null(curr_sel) && curr_sel %in% lvl_choices) curr_sel else "individual"
+        } else {
+          if (!is.null(curr_sel) && curr_sel %in% lvl_choices) curr_sel else "subclass"
+        }
         selectInput(session$ns("featureLevel"), "Analyze Features At:", 
-                    choices = c("Lipid Category" = "macro", "Lipid Main Class" = "subclass"),
-                    selected = "subclass")
+                    choices = lvl_choices,
+                    selected = default_sel)
     })
     
     output$featurePickerUI <- renderUI({
@@ -835,6 +887,15 @@ logratio_server <- function(id, shared_data, global_color_map) {
           } else {
               sel_feats <- intersect(curr_sel, feats)
               if (length(sel_feats) == 0) sel_feats <- feats[1]
+          }
+      } else if (input$featureLevel == "individual") {
+          targeted_list <- shared_data$targeted_lipids_list()
+          if (!is.null(curr_sel) && length(intersect(curr_sel, feats)) > 0) {
+              sel_feats <- intersect(curr_sel, feats)
+          } else if (length(targeted_list) > 0 && length(intersect(targeted_list, feats)) > 0) {
+              sel_feats <- intersect(targeted_list, feats)
+          } else {
+              sel_feats <- feats[1:min(5, length(feats))]
           }
       } else {
           sel_feats <- if (!is.null(curr_sel) && length(intersect(curr_sel, feats)) > 0) intersect(curr_sel, feats) else feats
@@ -968,9 +1029,26 @@ logratio_server <- function(id, shared_data, global_color_map) {
     output$dynamicPlotTitle <- renderUI({
        scale_map <- c("log2fc" = "Log2 Fold Change Violins", 
                       "fc" = "Fold Change (Linear) Violins", 
-                      "delta" = "Proportion Difference Violins")
+                      "delta" = "Proportion Difference Violins",
+                      "log2" = "Log2 Abundance Violins",
+                      "linear" = "Linear Abundance Violins")
        selected <- input$scaleMode %||% "log2fc"
        tags$span(icon("scale-unbalanced"), paste0(" ", scale_map[[selected]]))
+    })
+    
+    prev_nrows_val <- reactiveVal(NULL)
+    observe({
+      feats <- unifiedSelectedFeatures()
+      n <- if (!is.null(feats)) length(feats) else 1
+      nrows <- max(1, ceiling(n / 3))
+      rec_h <- max(550, nrows * 450)
+      rec_h <- min(rec_h, 4500)
+      
+      prev_nr <- prev_nrows_val()
+      if (is.null(prev_nr) || prev_nr != nrows) {
+        prev_nrows_val(nrows)
+        updateSliderInput(session, "plotHeight", value = rec_h)
+      }
     })
     
     output$scrollable_plot_ui <- renderUI({
@@ -981,16 +1059,15 @@ logratio_server <- function(id, shared_data, global_color_map) {
         return(plotOutput(session$ns("logratioPlot"), width = "100%", height = "500px"))
       }
       
-      ncols <- min(3, n)
-      nrows <- ceiling(n / 3)
+      nrows <- max(1, ceiling(n / 3))
+      calc_h <- max(500, nrows * 450)
+      cur_h <- input$plotHeight
+      final_h <- if (is.null(cur_h) || cur_h == 0) calc_h else cur_h
       
-      zoom <- input$plotZoom %||% 100
-      zoom <- zoom / 100
-      
-   # 6x5 inches -> approx 600x500 pixels per facet
-      total_w <- max(800, ncols * 600) * zoom
-      total_h <- max(500, nrows * 500) * zoom
-      plotOutput(session$ns("logratioPlot"), width = paste0(total_w, "px"), height = paste0(total_h, "px"))
+      jqui_resizable(div(
+        style = sprintf("min-height: %dpx; width: 100%%;", final_h),
+        plotOutput(session$ns("logratioPlot"), width = "100%", height = sprintf("%dpx", final_h))
+      ))
     })
     
     applied_violin_colors <- reactiveVal(NULL)
@@ -1014,25 +1091,40 @@ logratio_server <- function(id, shared_data, global_color_map) {
         df_log$Combined_Grouping <- df_log$GroupingVal
       }
       req(c_var)
-      c_levels <- sort(unique(df_log[[c_var]]))
+      c_levels <- as.character(sort(unique(df_log[[c_var]])))
+      req(length(c_levels) > 0)
       
+      base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[c_var]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[c_var]], error = function(e) NULL)
+      if (is.null(base_map) || !all(c_levels %in% names(base_map))) {
+         pal <- RColorBrewer::brewer.pal(min(9, max(3, length(c_levels))), "Set1")
+         if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
+         base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
+      }
+      
+      safe_col <- gsub("[^A-Za-z0-9]", "", c_var)
       cols <- sapply(c_levels, function(lvl) {
-         safe_col <- gsub("[^A-Za-z0-9]", "", c_var)
          safe_lvl <- gsub("[^A-Za-z0-9]", "", lvl)
          val <- input[[paste0("cp_", safe_col, "_", safe_lvl)]]
-          if (is.null(val)) {
-             base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[c_var]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[c_var]], error = function(e) NULL)
-            if (is.null(base_map)) {
-               pal <- RColorBrewer::brewer.pal(min(9, max(3, length(c_levels))), "Set1")
-               if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
-               base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
-            }
-            return(as.character(base_map[lvl]))
+         if (is.null(val) || !nzchar(trimws(val))) {
+            return(as.character(base_map[[lvl]]))
          } else {
             return(as.character(val))
          }
       })
+      cols <- as.character(cols)
+      names(cols) <- c_levels
+      
       applied_violin_colors(cols)
+      
+      # Also update shared_data$color_maps so all connected views reflect the change
+      if (!is.null(shared_data$color_maps)) {
+         current_maps <- tryCatch(shared_data$color_maps(), error = function(e) NULL)
+         if (!is.null(current_maps)) {
+            current_maps[[c_var]] <- cols
+            shared_data$color_maps(current_maps)
+         }
+      }
+      
       showNotification("Violin plot colors applied successfully!", type = "message", duration = 2)
     })
     
@@ -1057,7 +1149,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
       if (c_var == "Combined_Grouping" && !("Combined_Grouping" %in% names(df_log))) {
         df_log$Combined_Grouping <- df_log$GroupingVal
       }
-      c_levels <- sort(unique(df_log[[c_var]]))
+      c_levels <- as.character(sort(unique(df_log[[c_var]])))
       
       base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[c_var]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[c_var]], error = function(e) NULL)
       applied <- applied_violin_colors()
@@ -1067,17 +1159,20 @@ logratio_server <- function(id, shared_data, global_color_map) {
       } else if (!is.null(base_map) && all(c_levels %in% names(base_map))) {
          base_map[c_levels]
       } else {
-         sapply(c_levels, function(lvl) {
+         cols_fallback <- sapply(c_levels, function(lvl) {
             safe_col <- gsub("[^A-Za-z0-9]", "", c_var)
             safe_lvl <- gsub("[^A-Za-z0-9]", "", lvl)
             val <- isolate(input[[paste0("cp_", safe_col, "_", safe_lvl)]])
-            if (is.null(val)) {
-               b_col <- if(!is.null(base_map)) base_map[lvl] else NA
+            if (is.null(val) || !nzchar(trimws(val))) {
+               b_col <- if(!is.null(base_map)) base_map[[lvl]] else NA
                if (is.na(b_col)) "#4E79A7" else b_col
             } else {
-               val
+               as.character(val)
             }
          })
+         cols_fallback <- as.character(cols_fallback)
+         names(cols_fallback) <- c_levels
+         cols_fallback
       }
       
       # source("R/utils_vis.R", local=TRUE)
@@ -1086,12 +1181,16 @@ logratio_server <- function(id, shared_data, global_color_map) {
          y_lab <- switch(input$scaleMode %||% "log2fc",
                          "log2fc" = "Log2FC",
                          "fc"     = "FC",
-                         "delta"  = "Delta")
+                         "delta"  = "Delta",
+                         "log2"   = "Log2 Abundance",
+                         "linear" = "Linear Abundance")
       } else {
          y_lab <- switch(input$scaleMode %||% "log2fc",
                          "log2fc" = "Log2(Proportion / Mean Baseline Proportion)",
                          "fc"     = "Fold Change (Proportion / Mean Baseline Proportion)",
-                         "delta"  = "Difference (Proportion - Mean Baseline Proportion)")
+                         "delta"  = "Difference (Proportion - Mean Baseline Proportion)",
+                         "log2"   = "Log2 Abundance Intensity",
+                         "linear" = "Linear Abundance Intensity")
       }
       
       plot_logratio_violin(df_log, 
@@ -1118,7 +1217,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
               tags$h6(style = "font-weight: 700; color: #92400e; margin: 0 0 2px 0; font-size: 0.95rem;", 
                      "Reference Baseline Selection Required"),
               tags$span(style = "color: #b45309; font-size: 13px;", 
-                        "Select an item in 'Reference Baseline:' in the left sidebar to calculate and display violin distributions.")
+                        "Select an item in 'Baseline Reference (Violin View):' in the top control bar to calculate and display violin distributions.")
             )
           ),
           div(class = "d-flex flex-wrap gap-2 align-items-center mt-2 mt-sm-0",
@@ -1142,7 +1241,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
         return(generate_empty_plot_message("Please upload a dataset and click 'Run Analysis' in the left sidebar"))
       }
       if (is.null(input$selectedBaseline) || length(input$selectedBaseline) == 0 || all(!nzchar(trimws(input$selectedBaseline)))) {
-        return(generate_empty_plot_message("Please select an item in 'Reference Baseline:' in the left sidebar to generate violin plots"))
+        return(generate_empty_plot_message("Please select an item in 'Baseline Reference (Violin View):' in the top control bar to generate violin plots"))
       }
       feats <- unifiedSelectedFeatures()
       if (is.null(feats) || length(feats) == 0) {
@@ -1150,7 +1249,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
       }
       p <- current_plot()
       if (is.null(p)) {
-        return(generate_empty_plot_message("Please select an item in 'Reference Baseline:' in the left sidebar to generate violin plots"))
+        return(generate_empty_plot_message("Please select an item in 'Baseline Reference (Violin View):' in the top control bar to generate violin plots"))
       }
       p
     })
@@ -1174,9 +1273,8 @@ logratio_server <- function(id, shared_data, global_color_map) {
           n <- if (!is.null(feats)) length(feats) else 1
           ncols <- min(3, n)
           nrows <- ceiling(n / 3)
-          zoom <- (input$plotZoom %||% 100) / 100
-          fallback_w <- max(800, ncols * 600) * zoom
-          fallback_h <- max(500, nrows * 500) * zoom
+          fallback_w <- max(800, ncols * 400)
+          fallback_h <- input$plotHeight %||% max(500, nrows * 450)
           
           w_px <- if (!is.null(w) && is.numeric(w) && w > 10) w else fallback_w
           h_px <- if (!is.null(h) && is.numeric(h) && h > 10) h else fallback_h
@@ -1235,30 +1333,34 @@ logratio_server <- function(id, shared_data, global_color_map) {
        if (c_var == "Combined_Grouping" && !("Combined_Grouping" %in% names(db_info$plot_db))) {
          db_info$plot_db$Combined_Grouping <- db_info$plot_db$GroupingVal
        }
-       c_levels <- sort(unique(db_info$plot_db[[c_var]]))
+       c_levels <- as.character(sort(unique(db_info$plot_db[[c_var]])))
        
-       safe_colors <- sapply(c_levels, function(lvl) {
-          safe_col <- gsub("[^A-Za-z0-9]", "", c_var)
-          safe_lvl <- gsub("[^A-Za-z0-9]", "", lvl)
-          val <- input[[paste0("cp_", safe_col, "_", safe_lvl)]]
-          if(is.null(val)) {
-             base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[c_var]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[c_var]], error = function(e) NULL)
-             if (is.null(base_map)) {
-                pal <- RColorBrewer::brewer.pal(min(9, max(3, length(c_levels))), "Set1")
-                if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
-                base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
+       applied <- applied_violin_colors()
+       base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[c_var]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[c_var]], error = function(e) NULL)
+       
+       safe_colors <- if (!is.null(applied) && all(c_levels %in% names(applied))) {
+          applied[c_levels]
+       } else if (!is.null(base_map) && all(c_levels %in% names(base_map))) {
+          base_map[c_levels]
+       } else {
+          cols_exp <- sapply(c_levels, function(lvl) {
+             safe_col <- gsub("[^A-Za-z0-9]", "", c_var)
+             safe_lvl <- gsub("[^A-Za-z0-9]", "", lvl)
+             val <- input[[paste0("cp_", safe_col, "_", safe_lvl)]]
+             if (is.null(val) || !nzchar(trimws(val))) {
+                if (is.null(base_map) || !lvl %in% names(base_map)) {
+                   pal <- RColorBrewer::brewer.pal(min(9, max(3, length(c_levels))), "Set1")
+                   if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
+                   base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
+                }
+                return(as.character(base_map[[lvl]]))
+             } else {
+                return(as.character(val))
              }
-             return(base_map[lvl])
-          } else {
-             return(val)
-          }
-       })
-       
-    # Safely grab custom color map locally
-       base_colors <- isolate(shared_data$color_maps())
-       
-       if (is.null(safe_colors) || length(intersect(names(safe_colors), c_levels)) == 0) {
-          safe_colors <- base_colors[["group_colors"]]
+          })
+          cols_exp <- as.character(cols_exp)
+          names(cols_exp) <- c_levels
+          cols_exp
        }
        
        # source("R/utils_vis.R", local=TRUE)
@@ -1276,12 +1378,16 @@ logratio_server <- function(id, shared_data, global_color_map) {
           y_lab <- switch(input$scaleMode %||% "log2fc",
                           "log2fc" = "Log2FC",
                           "fc"     = "FC",
-                          "delta"  = "Delta")
+                          "delta"  = "Delta",
+                          "log2"   = "Log2 Abundance",
+                          "linear" = "Linear Abundance")
        } else {
           y_lab <- switch(input$scaleMode %||% "log2fc",
                           "log2fc" = "Log2(Proportion / Mean Baseline Proportion)",
                           "fc"     = "Fold Change (Proportion / Mean Baseline Proportion)",
-                          "delta"  = "Difference (Proportion - Mean Baseline Proportion)")
+                          "delta"  = "Difference (Proportion - Mean Baseline Proportion)",
+                          "log2"   = "Log2 Abundance Intensity",
+                          "linear" = "Linear Abundance Intensity")
        }
        
        for(feat in all_features) {

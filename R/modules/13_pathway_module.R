@@ -76,7 +76,7 @@ pathway_ui <- function(id) {
         textInput(ns("position_overrides_json"), "", value = "{}")
       ),
       accordion(
-        open = c("0. Nomenclature", "1. Active Contrast", "7. Options & Configuration", "8. Dynamic Physics Flow"), multiple = TRUE,
+        open = c("0. Nomenclature", "1. Active Contrast", "7. Options & Configuration"), multiple = TRUE,
         accordion_panel("0. Nomenclature", icon = icon("font"),
           radioButtons(ns("classLabelFormat"), "Class/Origin Name Format:",
                        choices = c("Complete Names" = "full", "Abbreviated Names" = "short"),
@@ -171,13 +171,6 @@ pathway_ui <- function(id) {
           p(class="text-muted small", "Import/Export Layout Configuration JSON:"),
           downloadButton(ns("download_config"), "Download Layout JSON", class = "btn-download-layout-json btn-sm w-100 mb-2"),
           fileInput(ns("upload_config"), "Upload Layout JSON (.json):", accept = c(".json"), width = "100%")
-        ),
-        accordion_panel("8. Dynamic Physics Flow", icon = icon("atom"),
-          p(class="text-muted small", "Control the interactive bubble collision and rebounding physics engine:"),
-          checkboxInput(ns("enable_physics"), "Enable Dynamic Physics Flow", value = TRUE),
-          sliderInput(ns("overlap_avoidance"), "Repulsion & Bump Force:", min = 0.5, max = 2.0, value = 1.0, step = 0.1),
-          sliderInput(ns("spring_length"), "Spring Connection Distance:", min = 60, max = 200, value = 120, step = 10),
-          actionButton(ns("stabilize_physics_btn"), "Stabilize & Settle Layout", icon = icon("anchor"), class = "btn-outline-primary btn-sm w-100 mt-1")
         )
       )
     ),
@@ -186,7 +179,7 @@ pathway_ui <- function(id) {
         title = "Lipid Pathways",
         subtitle = "This module overlays lipid abundance, carbon length changes, and saturation shifts onto an interactive metabolic pathway map:",
         bullets = list(
-          tags$li(tags$strong("Dynamic Physics Flow:"), " Drag and position class bubbles with active physics flow that bumps neighboring bubbles and causes them to bounce and rebound."),
+          tags$li(tags$strong("Cartesian Grid Map:"), " Structured biosynthetic layout organizing lipid classes across metabolic pathways and interconnected reactions."),
           tags$li(tags$strong("Biochemical Shifts:"), " Map saturation change, carbon chain length, or log2 fold changes directly onto node sizes and colors.")
         ),
         collapse_id = ns("intro_collapse")
@@ -202,25 +195,7 @@ pathway_ui <- function(id) {
         ),
         card_body(
           uiOutput(ns("de_not_run_banner")),
-          navset_card_pill(
-            id = ns("pathway_view_type"),
-            selected = "Dynamic Physics Flow",
-            nav_panel(
-              "Dynamic Physics Flow",
-              icon = icon("atom"),
-              tags$div(
-                style = "margin-bottom: 8px; font-size: 12px; color: #475569; background-color: #f1f5f9; padding: 6px 12px; border-radius: 6px;",
-                icon("hand-pointer", class = "text-primary me-1"),
-                tags$strong("Interactive Physics:"), " Click and drag any lipid bubble to move it across the canvas. Dynamic flow physics will actively bump neighboring bubbles and cause them to bounce and rebound."
-              ),
-              visNetworkOutput(ns("pathwayVisNetwork"), height = "720px")
-            ),
-            nav_panel(
-              "Cartesian Grid Map",
-              icon = icon("table-cells"),
-              plotlyOutput(ns("pathwayPlot"), height = "700px")
-            )
-          ),
+          plotlyOutput(ns("pathwayPlot"), height = "700px"),
           uiOutput(ns("pathwayCaptionUI"))
         )
       )

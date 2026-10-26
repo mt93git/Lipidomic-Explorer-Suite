@@ -8,7 +8,7 @@ cat("Checking TARGETED_FALLBACK_MESSAGE:\n")
 cat(TARGETED_FALLBACK_MESSAGE, "\n\n")
 
 stopifnot(grepl("Couldn't display the plot with selected lipid", TARGETED_FALLBACK_MESSAGE))
-stopifnot(grepl("All Matrix has been used", TARGETED_FALLBACK_MESSAGE))
+stopifnot(grepl("switch to all lipid", TARGETED_FALLBACK_MESSAGE))
 stopifnot(grepl("Lipid Class Filters", TARGETED_FALLBACK_MESSAGE))
 stopifnot(grepl("Cohort and Filter", TARGETED_FALLBACK_MESSAGE))
 

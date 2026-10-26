@@ -35,7 +35,7 @@ qc_boxplot_ui <- function(id) {
              radioButtons(ns("pcaMode"), "PCA Analysis Mode (Loading Plot):",
                           choices = c("Individual Lipids" = "omics",
                                       "Aggregated Classes" = "class"),
-                          selected = "class"),
+                          selected = "omics"),
              conditionalPanel(
                condition = "input.pcaMode == 'omics'", ns = ns,
                p("⚠️ Note: Computing PCA on individual lipids can take longer. Labels on the Loading Plot will be pre-disabled to maintain legibility and performance.", class="text-warning small")
@@ -236,6 +236,13 @@ qc_boxplot_ui <- function(id) {
                tags$button(
                  type = "button",
                  class = "btn-quick-access",
+                 onclick = "window.pointToElement('#qc_pca_tab-colorGrouping', 'plot_controls', 'PCA Score Plot', event);",
+                 title = "Configure Color Samples By (Patient / Subject Number) and Label content",
+                 icon("palette"), tags$strong("Color/Label Sample")
+               ),
+               tags$button(
+                 type = "button",
+                 class = "btn-quick-access",
                  onclick = "window.pointToElement('#qc_pca_tab-mergeReplicatesMode', 'plot_controls', '0. Sample Grouping & Nomenclature', event);",
                  title = "Toggle Grouping Mode between Merged Samples and Single Replicates",
                  icon("users-viewfinder"), tags$strong("Grouping: Merged / Single")
@@ -260,6 +267,13 @@ qc_boxplot_ui <- function(id) {
                  onclick = "window.pointToElement('#qc_pca_tab-shapeGrouping', 'plot_controls', 'PCA Score Plot', event);",
                  title = "Assign point shapes to samples by metadata grouping in sidebar",
                  icon("shapes"), "Sample Shape Grouping"
+               ),
+               tags$button(
+                 type = "button",
+                 class = "btn-quick-access",
+                 onclick = "window.pointToElement('#qc_pca_tab-showLabels3D', 'plot_controls', 'Plot Styling', event);",
+                 title = "Toggle sample labels on 3D score plot",
+                 icon("cube"), "3D Plot Labels"
                )
              ),
              navset_card_tab(
@@ -274,6 +288,7 @@ qc_boxplot_ui <- function(id) {
                    ),
                    card_body(
                      uiOutput(ns("pca_fallback_alert")),
+                     uiOutput(ns("pca_score_mode_alert")),
                      plotOutput(ns("pca2dPlot"), height="600px"),
                      get_journal_caption("pca")
                    )
@@ -290,6 +305,7 @@ qc_boxplot_ui <- function(id) {
                    ),
                    card_body(
                      uiOutput(ns("pca3d_fallback_alert")),
+                     uiOutput(ns("pca3d_score_mode_alert")),
                      plotlyOutput(ns("pca3dPlot"), height="600px"),
                      get_journal_caption("pca")
                    )
@@ -328,6 +344,13 @@ qc_boxplot_ui <- function(id) {
                  onclick = "window.pointToElement('#qc_pca_tab-loadMarkerSize2D', 'plot_controls', 'Plot Styling', event);",
                  title = "Adjust marker dot size and label font size in Plot Styling accordion",
                  icon("ruler-combined"), "Plot Styling & Marker Sizes"
+               ),
+               tags$button(
+                 type = "button",
+                 class = "btn-quick-access",
+                 onclick = "window.pointToElement('#qc_pca_tab-showLabels3D', 'plot_controls', 'Plot Styling', event);",
+                 title = "Toggle labels on 3D loading plot",
+                 icon("cube"), "3D Plot Labels"
                )
              ),
              navset_card_tab(
@@ -342,6 +365,7 @@ qc_boxplot_ui <- function(id) {
                    ),
                    card_body(
                      uiOutput(ns("pca_load_fallback_alert")),
+                     uiOutput(ns("pca_load_mode_alert")),
                      plotOutput(ns("load2dPlot"), height="600px"),
                      get_journal_caption("pca")
                    )
@@ -358,6 +382,7 @@ qc_boxplot_ui <- function(id) {
                    ),
                    card_body(
                      uiOutput(ns("pca_load3d_fallback_alert")),
+                     uiOutput(ns("pca_load3d_mode_alert")),
                      plotlyOutput(ns("load3dPlot"), height="600px"),
                      get_journal_caption("pca")
                    )
@@ -559,7 +584,11 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       nm <- names(input)
       shape_inputs <- nm[grep("^customShape_", nm)]
       vals <- list()
-      for(si in shape_inputs) vals[[gsub("customShape_", "", si, fixed=TRUE)]] <- input[[si]]
+      for(si in shape_inputs) {
+        raw_val <- input[[si]]
+        num_val <- suppressWarnings(as.numeric(raw_val))
+        vals[[gsub("customShape_", "", si, fixed=TRUE)]] <- if (!is.na(num_val)) num_val else raw_val
+      }
       vals
     })
     
@@ -606,6 +635,15 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         }
         named_shape_choices <- get_metadata_group_named_choices(valid_shape_choices, meta)
         updateRadioButtons(session, "shapeGrouping", choices = named_shape_choices, selected = selected_shape_choice, inline = TRUE)
+
+        valid_label_candidates <- c("Group1", "Group2", "Replicate", "TimePoint", "PatientNumber")
+        valid_label_choices <- valid_label_candidates[sapply(valid_label_candidates, function(col) {
+          col %in% names(meta) && !all(meta[[col]] == "Unspecified", na.rm = TRUE)
+        })]
+        if (length(valid_label_choices) == 0) valid_label_choices <- c("Group1")
+        selected_labels <- if (!is.null(input$labelParts)) intersect(input$labelParts, valid_label_choices) else c("Group1")
+        named_label_choices <- get_metadata_group_named_choices(valid_label_choices, meta)
+        updateCheckboxGroupInput(session, "labelParts", choices = named_label_choices, selected = selected_labels, inline = TRUE)
       })
     })
 
@@ -639,14 +677,38 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
        }
      })
      
+     loading_tab_auto_switched <- reactiveVal(FALSE)
+
      observeEvent(input$main_tabs, {
-       if (input$main_tabs == "PCA Loading Plots" && input$pcaMode == "omics") {
-          showNotification(
-            "Rendering loading plot for individual lipids. Plot rendering time may vary. Labels have been pre-disabled for clarity and performance.",
-            type = "warning",
-            duration = 5
-          )
+       if (input$main_tabs == "PCA Loading Plots") {
+         # Default to Aggregated Classes on initial visit if not restoring session
+         if (!loading_tab_auto_switched() && !isolate(shared_data$is_restoring())) {
+           loading_tab_auto_switched(TRUE)
+           if (input$pcaMode != "class") {
+             updateRadioButtons(session, "pcaMode", selected = "class")
+           }
+         } else if (input$pcaMode == "omics") {
+           showNotification(
+             "Rendering loading plot for individual lipids. Plot rendering time may vary. Labels have been pre-disabled for clarity and performance.",
+             type = "warning",
+             duration = 5
+           )
+         }
        }
+     })
+
+     # Observers for quick mode toggle buttons in alert banners
+     observeEvent(input$btnSwitchToClassMode, {
+       updateRadioButtons(session, "pcaMode", selected = "class")
+     })
+     observeEvent(input$btnSwitchToClassMode3D, {
+       updateRadioButtons(session, "pcaMode", selected = "class")
+     })
+     observeEvent(input$btnSwitchToOmicsMode, {
+       updateRadioButtons(session, "pcaMode", selected = "omics")
+     })
+     observeEvent(input$btnSwitchToOmicsMode3D, {
+       updateRadioButtons(session, "pcaMode", selected = "omics")
      })
 
   # --- 2. Aesthetics Logic (Migrated from Shared) ---
@@ -727,11 +789,30 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
 
     observeEvent(input$boxplotAfterNorm_size, { plot_dims$boxplot_after <- input$boxplotAfterNorm_size })
 
+    build_merged_group_vector <- function(meta) {
+      cond_col <- if ("Group1" %in% names(meta)) meta$Group1 else rep("", nrow(meta))
+      pop_col <- if ("Group2" %in% names(meta)) meta$Group2 else rep("", nrow(meta))
+      tp_col <- if ("TimePoint" %in% names(meta)) meta$TimePoint else rep("", nrow(meta))
+      
+      mapply(function(cond, pop, tp) {
+        parts <- c(
+          if (!is.na(cond) && cond != "Unspecified" && nzchar(cond)) as.character(cond) else "",
+          if (!is.na(pop) && pop != "Unspecified" && nzchar(pop)) as.character(pop) else "",
+          if (!is.na(tp) && tp != "Unspecified" && nzchar(tp)) as.character(tp) else ""
+        )
+        parts <- parts[nzchar(parts)]
+        if (length(parts) == 0) "All_Samples" else paste(parts, collapse = "_")
+      }, cond_col, pop_col, tp_col, USE.NAMES = FALSE)
+    }
+
     prepare_boxplot_data <- function(data_df, metadata) {
-      cols_to_select <- intersect(c("FullName", "DisplayLabel", "Group1"), colnames(metadata))
+      cols_to_select <- intersect(c("FullName", "DisplayLabel", "Group1", "Group2", "TimePoint", "PatientNumber"), colnames(metadata))
+      meta_sub <- metadata %>% dplyr::select(all_of(cols_to_select))
+      meta_sub$MergedGroup <- build_merged_group_vector(meta_sub)
+      
       data_df %>%
         tidyr::pivot_longer(cols = -Lipid_Name, names_to = "FullName", values_to = "Intensity") %>%
-        dplyr::left_join(metadata %>% dplyr::select(all_of(cols_to_select)), by = "FullName")
+        dplyr::left_join(meta_sub, by = "FullName")
     }
     data_pre_processed <- reactive({
         req(shared_data$rawData()$data, shared_data$selected_cols())
@@ -772,12 +853,66 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       
       df_log <- df_processed %>% dplyr::mutate(across(where(is.numeric), ~log2(. + 1)))
       plot_data <- prepare_boxplot_data(df_log, metadata)
-      x_col <- if ("DisplayLabel" %in% colnames(plot_data)) "DisplayLabel" else "FullName"
-      ggplot(plot_data, aes(x = .data[[x_col]], y = Intensity, fill = Group1)) +
-        geom_boxplot(outlier.shape = NA) + labs(x = NULL, y = "Log2(Intensity + 1)") +
+      
+      is_merged <- identical(input$mergeReplicatesMode, "merged")
+      
+      # Determine ColorGroupVal
+      group_cols <- input$colorGrouping
+      if (length(group_cols) == 0) group_cols <- "Group1"
+      cols_for_color <- intersect(group_cols, colnames(metadata))
+      if (length(cols_for_color) > 0) {
+        metadata$ColorGroupVal <- apply(metadata[, cols_for_color, drop=FALSE], 1, function(row) {
+          vals <- as.character(row)
+          vals <- vals[!is.na(vals) & vals != "Unspecified"]
+          if (length(vals) == 0) "Unspecified" else paste(vals, collapse = "_")
+        })
+      } else {
+        metadata$ColorGroupVal <- metadata$Group1
+      }
+      color_map_lookup <- setNames(metadata$ColorGroupVal, metadata$FullName)
+      plot_data$ColorGroupVal <- color_map_lookup[plot_data$FullName]
+      if (any(is.na(plot_data$ColorGroupVal))) {
+        plot_data$ColorGroupVal[is.na(plot_data$ColorGroupVal)] <- plot_data$Group1[is.na(plot_data$ColorGroupVal)]
+      }
+      
+      if (is_merged) {
+        plot_data <- plot_data %>%
+          dplyr::group_by(Lipid_Name, MergedGroup, ColorGroupVal, Group1) %>%
+          dplyr::summarise(Intensity = mean(Intensity, na.rm = TRUE), .groups = "drop")
+        x_col <- "MergedGroup"
+      } else {
+        x_col <- if ("DisplayLabel" %in% colnames(plot_data)) "DisplayLabel" else "FullName"
+      }
+      
+      plot_data[[x_col]] <- factor(plot_data[[x_col]], levels = unique(plot_data[[x_col]]))
+      fill_col <- if ("ColorGroupVal" %in% colnames(plot_data)) "ColorGroupVal" else "Group1"
+      plot_data[[fill_col]] <- factor(plot_data[[fill_col]], levels = unique(plot_data[[fill_col]]))
+      
+      colorMap_key <- paste(group_cols, collapse = " & ")
+      colorMap <- tryCatch(global_color_map()[[colorMap_key]], error = function(e) NULL)
+      
+      mode_title <- if (is_merged) "Merged Samples (Group Averages)" else "Single Replicates (Individual Samples)"
+      
+      p <- ggplot(plot_data, aes(x = .data[[x_col]], y = Intensity, fill = .data[[fill_col]])) +
+        geom_boxplot(outlier.shape = NA, alpha = 0.85) +
+        labs(
+          title = paste("Normalized Abundance Distribution -", mode_title),
+          x = if (is_merged) "Sample Group (Merged)" else "Sample Replicate",
+          y = "Log2(Intensity + 1)",
+          fill = paste(group_cols, collapse = " & ")
+        ) +
         theme_bw(base_size = 12) +
         coord_cartesian(ylim = quantile(plot_data$Intensity, c(0.01, 0.99), na.rm = TRUE)) +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+        theme(
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+          plot.title = element_text(size = 13, face = "bold"),
+          legend.position = "right"
+        )
+      
+      if (!is.null(colorMap) && all(levels(plot_data[[fill_col]]) %in% names(colorMap))) {
+        p <- p + scale_fill_manual(values = colorMap)
+      }
+      p
     })
 
     output$boxplotAfterNorm <- renderPlot({ boxplotAfterPlotObj() })
@@ -1681,8 +1816,45 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     
     plot_data <- reactive({
       res <- shared_data$pca_results(); req(res)
-      scores <- res$score_df
+      is_merged <- identical(input$mergeReplicatesMode, "merged")
       rep_scores <- if (!is.null(res$replicate_score_df)) res$replicate_score_df else res$score_df
+      
+      scores <- if (is_merged) {
+        if (!is.null(res$score_df) && nrow(res$score_df) < nrow(rep_scores)) {
+          res$score_df
+        } else {
+          merged_meta <- rep_scores %>%
+            dplyr::mutate(NewGroupName = mapply(function(cond, pop, tp) {
+              parts <- c(
+                if (!is.na(cond) && cond != "Unspecified" && nzchar(cond)) as.character(cond) else "",
+                if (!is.na(pop) && pop != "Unspecified" && nzchar(pop)) as.character(pop) else "",
+                if (!is.na(tp) && tp != "Unspecified" && nzchar(tp)) as.character(tp) else ""
+              )
+              parts <- parts[nzchar(parts)]
+              if (length(parts) == 0) "Unspecified" else paste(parts, collapse = "_")
+            }, Group1, Group2, TimePoint, USE.NAMES = FALSE)) %>%
+            dplyr::distinct(NewGroupName, .keep_all = TRUE) %>%
+            dplyr::select(-any_of(c("FullName", "Replicate", "DisplayLabel")))
+          
+          rep_scores %>%
+            dplyr::mutate(NewGroupName = mapply(function(cond, pop, tp) {
+              parts <- c(
+                if (!is.na(cond) && cond != "Unspecified" && nzchar(cond)) as.character(cond) else "",
+                if (!is.na(pop) && pop != "Unspecified" && nzchar(pop)) as.character(pop) else "",
+                if (!is.na(tp) && tp != "Unspecified" && nzchar(tp)) as.character(tp) else ""
+              )
+              parts <- parts[nzchar(parts)]
+              if (length(parts) == 0) "Unspecified" else paste(parts, collapse = "_")
+            }, Group1, Group2, TimePoint, USE.NAMES = FALSE)) %>%
+            dplyr::group_by(NewGroupName) %>%
+            dplyr::summarise(across(starts_with("PC"), mean), .groups = "drop") %>%
+            dplyr::left_join(merged_meta, by = "NewGroupName") %>%
+            dplyr::mutate(FullName = NewGroupName)
+        }
+      } else {
+        rep_scores
+      }
+      
       replicate_col <- if ("Replicate" %in% names(scores)) scores$Replicate else NA
       if (length(input$labelParts) > 0) {
         scores$Label <- mapply(
@@ -1723,7 +1895,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         scores$Label <- gsub("^[\\/_]+|[\\/_]+$", "", scores$Label) # trim leading/trailing separators
         scores$Label[scores$Label == ""] <- scores$FullName[scores$Label == ""]
       } else {
-        scores$Label <- ""
+        scores$Label <- if (is_merged) scores$FullName else ""
       }
 
       # Generate Label for rep_scores as well
@@ -1841,7 +2013,12 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         guides(color = color_guide) +
         geom_hline(yintercept = 0, color = "black", linewidth = 0.4) +
         geom_vline(xintercept = 0, color = "black", linewidth = 0.4) +
-        labs(title="2D PCA Score Plot", x=paste0("PC1 (",p_data$var_pc[1],"%)"), y=paste0("PC2 (",p_data$var_pc[2 %||% 1],"%)")) +
+        labs(
+          title = "2D PCA Score Plot",
+          subtitle = if (identical(input$mergeReplicatesMode, "merged")) "Merged Samples (Group Centroids)" else "Single Replicates (Individual Samples)",
+          x = paste0("PC1 (", p_data$var_pc[1], "%)"),
+          y = paste0("PC2 (", p_data$var_pc[2 %||% 1], "%)")
+        ) +
         theme_bw(base_size = 14) + 
         theme(panel.grid=element_blank(), legend.position = legend_pos)
         
@@ -1855,8 +2032,10 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       
       if (isTRUE(input$useShapes)) { 
         shapeMap <- shared_data$shape_maps()[[input$shapeGrouping]]
+        req(shapeMap)
+        shapeMap_num <- stats::setNames(as.numeric(shapeMap), names(shapeMap))
         shape_guide <- if (num_colors > 10) guide_legend(nrow = 1) else guide_legend(ncol = 1)
-        p <- p + scale_shape_manual(name = input$shapeGrouping, values = shapeMap, drop = FALSE) +
+        p <- p + scale_shape_manual(name = input$shapeGrouping, values = shapeMap_num, drop = FALSE) +
           guides(shape = shape_guide)
       }
       
@@ -1906,13 +2085,14 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
           shapeMap_plotly <- GGPLOT_TO_PLOTLY_SHAPES[as.character(shapeMap_gg)]; names(shapeMap_plotly) <- names(shapeMap_gg)
           scores$ShapeGroupVal <- scores[[input$shapeGrouping]] %>% replace_na("NA"); scores$ShapeGroupVal <- factor(scores$ShapeGroupVal, levels=names(shapeMap_plotly))
       }
+      pca3d_mode_label <- if (identical(input$mergeReplicatesMode, "merged")) "Merged Samples" else "Single Replicates"
       plot_ly(data=scores, x=~PC1, y=~PC2, z=~PC3, color=~ColorGroupVal, colors=colorMap,
               symbol=if(isTRUE(input$useShapes)) ~ShapeGroupVal else I("circle"),
               symbols=if(isTRUE(input$useShapes)) shapeMap_plotly else NULL,
               text=~Label, type="scatter3d", mode=if(isTRUE(input$showLabels3D)) "markers+text" else "markers",
               textfont=list(color='#000000', size=12),
               marker=list(size=input$scoreMarkerSize3D)) %>%
-        layout(title=list(text="3D PCA Score"), scene=list(xaxis=list(title=paste0("PC1 (",p_data$var_pc[1],"%)")),
+        layout(title=list(text=paste0("3D PCA Score (", pca3d_mode_label, ")")), scene=list(xaxis=list(title=paste0("PC1 (",p_data$var_pc[1],"%)")),
                           yaxis=list(title=paste0("PC2 (",p_data$var_pc[2] %||% 1,"%)")), zaxis=list(title=paste0("PC3 (",p_data$var_pc[3] %||% 1,"%)"))))
     })
     
@@ -1955,7 +2135,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         return(plotly::ggplotly(generate_empty_plot_message("At least 3 dimensions/components are required for 3D Loadings.")))
       }
       plot_ly(data=loadings, x=~PC1, y=~PC2, z=~PC3, color=~Class, colors=local_class_colors(),
-              text=~Label, type="scatter3d", mode=if(isTRUE(input$showSingleLipidNames)) "markers+text" else "markers",
+              text=~Label, type="scatter3d", mode=if(isTRUE(input$showLabels3D)) "markers+text" else "markers",
               textfont=list(color='#000000', size=12),
               marker=list(size=input$loadMarkerSize3D)) %>%
         layout(title=list(text="3D PCA Loadings"), scene=list(xaxis=list(title="PC1 Loading"),
@@ -1988,7 +2168,28 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       }
       
       req(nrow(df) > 0)
+      rownames(df) <- NULL
       mat <- df %>% tibble::column_to_rownames("Lipid_Name") %>% as.matrix()
+      
+      # If Merged Samples selected, aggregate replicates by cohort
+      if (identical(input$mergeReplicatesMode, "merged")) {
+        metadata <- shared_data$all_metadata()
+        if (!is.null(metadata)) {
+          meta_df <- metadata %>% dplyr::filter(FullName %in% colnames(mat))
+          merged_groups <- build_merged_group_vector(meta_df)
+          names(merged_groups) <- meta_df$FullName
+          unique_grps <- unique(merged_groups)
+          if (length(unique_grps) > 1) {
+            mat_merged <- sapply(unique_grps, function(g) {
+              cols <- names(merged_groups)[merged_groups == g]
+              if (length(cols) == 1) mat[, cols] else rowMeans(mat[, cols, drop=FALSE], na.rm=TRUE)
+            })
+            rownames(mat_merged) <- rownames(mat)
+            mat <- mat_merged
+          }
+        }
+      }
+      
       method <- input$corrMethod %||% "pearson"
       cor_mat <- cor(mat, use = "pairwise.complete.obs", method = method)
       cor_mat
@@ -2012,8 +2213,13 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       }
       
       p_data <- tryCatch(plot_data(), error = function(e) NULL)
+      is_merged <- identical(input$mergeReplicatesMode, "merged")
       label_lookup <- if (!is.null(p_data)) {
-        setNames(p_data$scores$Label, p_data$scores$FullName)
+        if (is_merged) {
+          setNames(p_data$scores$Label, p_data$scores$FullName)
+        } else {
+          setNames(p_data$replicate_scores$Label, p_data$replicate_scores$FullName)
+        }
       } else {
         NULL
       }
@@ -2069,7 +2275,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
           }
         ) +
         labs(
-          title = "Sample-Sample Correlation Matrix",
+          title = if (is_merged) "Cohort Correlation Matrix (Merged Samples)" else "Sample-Sample Correlation Matrix (Single Replicates)",
           subtitle = paste("Method:", toupper(method), if(do_cluster) "| Hierarchically Clustered" else "")
         )
         
@@ -2083,6 +2289,70 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     output$pca_load3d_fallback_alert <- renderUI({ targeted_fallback_banner_ui(isTRUE(shared_data$pca_fallback_active())) })
     output$outlier_pca_fallback_alert <- renderUI({ targeted_fallback_banner_ui(isTRUE(shared_data$pca_fallback_active())) })
     output$corr_fallback_alert <- renderUI({ targeted_fallback_banner_ui(isTRUE(sample_corr_fallback_active())) })
+
+    # Warning / Guidance banners for PCA Mode switching
+    pca_load_mode_alert_ui <- function(is_3d = FALSE) {
+      if (input$pcaMode != "omics") return(NULL)
+      btn_id <- if (is_3d) ns("btnSwitchToClassMode3D") else ns("btnSwitchToClassMode")
+      tags$div(
+        class = "alert alert-warning d-flex align-items-center justify-content-between mb-3 py-2 px-3",
+        role = "alert",
+        style = "border-left: 4px solid #ffc107; font-size: 0.88rem;",
+        tags$div(
+          icon("triangle-exclamation", class = "me-2 text-warning fs-5"),
+          tags$span(
+            tags$strong("High-density Mode: "),
+            "Currently displaying Loading Plot with ", tags$strong("Individual Lipids"), 
+            ". For clearer functional interpretation, switch to ", tags$strong("Aggregated Classes"), "."
+          )
+        ),
+        tags$div(
+          class = "d-flex align-items-center gap-2",
+          actionButton(btn_id, "Switch to Aggregated Classes", icon = icon("layer-group"), class = "btn btn-sm btn-primary"),
+          tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            onclick = "window.pointToElement('#qc_pca_tab-pcaMode', 'plot_controls', '1. Data processing and PCA', event);",
+            title = "Locate PCA Mode control in sidebar",
+            icon("arrow-up-right-from-square"), "Locate Mode Control"
+          )
+        )
+      )
+    }
+
+    pca_score_mode_alert_ui <- function(is_3d = FALSE) {
+      if (input$pcaMode != "class") return(NULL)
+      btn_id <- if (is_3d) ns("btnSwitchToOmicsMode3D") else ns("btnSwitchToOmicsMode")
+      tags$div(
+        class = "alert alert-info d-flex align-items-center justify-content-between mb-3 py-2 px-3",
+        role = "alert",
+        style = "border-left: 4px solid #0dcaf0; font-size: 0.88rem;",
+        tags$div(
+          icon("circle-info", class = "me-2 text-info fs-5"),
+          tags$span(
+            tags$strong("Aggregated Mode: "),
+            "PCA Score Plot is running on ", tags$strong("Aggregated Classes"), 
+            ". Default full-resolution PCA is ", tags$strong("Individual Lipids"), "."
+          )
+        ),
+        tags$div(
+          class = "d-flex align-items-center gap-2",
+          actionButton(btn_id, "Switch to Individual Lipids", icon = icon("dna"), class = "btn btn-sm btn-outline-primary"),
+          tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            onclick = "window.pointToElement('#qc_pca_tab-pcaMode', 'plot_controls', '1. Data processing and PCA', event);",
+            title = "Locate PCA Mode control in sidebar",
+            icon("arrow-up-right-from-square"), "Locate Mode Control"
+          )
+        )
+      )
+    }
+
+    output$pca_load_mode_alert <- renderUI({ pca_load_mode_alert_ui(is_3d = FALSE) })
+    output$pca_load3d_mode_alert <- renderUI({ pca_load_mode_alert_ui(is_3d = TRUE) })
+    output$pca_score_mode_alert <- renderUI({ pca_score_mode_alert_ui(is_3d = FALSE) })
+    output$pca3d_score_mode_alert <- renderUI({ pca_score_mode_alert_ui(is_3d = TRUE) })
 
     output$pca2dPlot <- renderPlot({ buildPCA2D_ggplot() })
     output$pca3dPlot <- renderPlotly({ buildPCA3D_plotly() })

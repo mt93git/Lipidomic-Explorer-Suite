@@ -1,7 +1,7 @@
 Package: MTGlobalLipidomicExplorer
-Version: 12.0.0
+Version: 12.1.0
 Title: MT_Global_Lipidomic_Explorer: High-Throughput Lipidomic Data Interface
-Date: 2026-09-10
+Date: 2026-09-30
 Authors@R: c(
     person("Maxence", "Tricaud", email = "mtricaud.cetri@gmail.com", role = c("aut", "cre"))
   )

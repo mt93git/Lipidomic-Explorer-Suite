@@ -609,9 +609,9 @@ math_proof_ui <- function(id) {
           # 1. Header Banner
           div(
             class = "mb-3 p-3 rounded bg-light border",
-            h4(class = "mb-1 text-primary fw-bold", icon("square-root-variable"), " Mathematical Proof & Transformation Audit"),
+            h4(class = "mb-1 text-primary fw-bold", icon("square-root-variable"), " Mathematical Step-by-Step Walkthrough of Dataset Transformation"),
             p(class = "text-muted small mb-0", 
-              "Step-by-step arithmetic transparency and formal peer-review verification benchmarked against ",
+              "Arithmetic transparency and formal peer-review verification benchmarked against ",
               tags$strong("Nature Communications (2025) 16:8714"), ".")
           ),
           
@@ -1367,12 +1367,18 @@ math_proof_server <- function(id, shared_data) {
         "  .semantic-translation.proof-translation strong { color: #16a34a; }",
         "  .literal-reading { background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); border-radius: 6px; padding: 8px 12px; margin: 8px 0 10px 0; font-size: 0.86rem; color: #334155; line-height: 1.5; }",
         "  .justification { font-size: 0.90rem; color: #334155; margin-top: 6px; line-height: 1.5; }",
-        "  .audit-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.85rem; }",
+        "  .audit-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.85rem; }",
         "  .audit-table th, .audit-table td { border: 1px solid #cbd5e1; padding: 6px 10px; text-align: left; }",
         "  .audit-table th { background-color: #f1f5f9; font-weight: 600; }",
         "  .audit-table tr:nth-child(even) { background-color: #f8fafc; }",
         "  .na-tag { color: #b45309; font-weight: 700; background: #fef3c7; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; }",
-        "  @media print { body { background: white; padding: 0; } .lipid-card { box-shadow: none; border: 1px solid #ccc; page-break-after: always; } .no-print { display: none; } }",
+        "  .cohort-matrix-toggle { margin: 10px 0 16px 0; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; background: #f8fafc; }",
+        "  .cohort-matrix-toggle summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: #2563eb; outline: none; }",
+        "  .cohort-matrix-toggle summary:hover { color: #1d4ed8; text-decoration: underline; }",
+        "  .cohort-matrix-toggle[open] { background: white; border-color: #94a3b8; }",
+        "  .selected-case-row { background-color: #eff6ff !important; font-weight: 600; }",
+        "  .selected-case-badge { background: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; margin-left: 6px; }",
+        "  @media print { body { background: white; padding: 0; } .lipid-card { box-shadow: none; border: 1px solid #ccc; page-break-after: always; } .no-print { display: none; } .cohort-matrix-toggle { border: 1px solid #ddd; background: white; } }",
         "</style>",
         "</head>",
         "<body>",
@@ -1466,14 +1472,23 @@ math_proof_server <- function(id, shared_data) {
           sprintf("    <div><span class='badge %s'>%s</span></div>",
                   if (n_na == 0) "badge-success" else "badge-warning",
                   if (n_na == 0) sprintf("100%% Detected (%d/%d)", n_obs, length(samples)) else sprintf("Has N/A (%d/%d non-detects)", n_na, length(samples))),
+          "  </div>"
+        )
+        
+        active_cases <- if (!is.null(target_samples) && any(target_samples %in% samples)) intersect(target_samples, samples) else rep_sample
+        
+        card_html <- c(
+          card_html,
+          "  <div style='margin: 14px 0 6px 0; display: flex; justify-content: space-between; align-items: center;'>",
+          sprintf("    <h4 style='margin: 0; font-size: 0.95rem; color: #1e3a8a;'>Empirical Transformation Values &mdash; Selected Case%s (<code>%s</code>)</h4>",
+                  if (length(active_cases) > 1) "s" else "", htmltools::htmlEscape(paste(active_cases, collapse = ", "))),
+          sprintf("    <span class='badge badge-primary'>Demonstrated Case%s</span>", if (length(active_cases) > 1) "s" else ""),
           "  </div>",
-          "  <h4 style='margin: 12px 0 6px 0; font-size: 0.95rem; color: #334155;'>Cross-Sample Empirical Transformation Matrix</h4>",
-          "  <table class='audit-table'>",
+          "  <table class='audit-table' style='margin-bottom: 10px;'>",
           "    <thead><tr><th>Sample Column</th><th>Raw Abundance</th><th>LOD Status</th><th>Log2 Raw</th><th>QRILC Log2</th><th>Median Offset (&Delta;<sub>j</sub>)</th><th>Norm Log2</th><th>Restituted Linear</th><th>Ratio Check</th></tr></thead>",
           "    <tbody>"
         )
-        
-        for (s in samples) {
+        for (s in active_cases) {
           cur_idx <- match(s, samples)
           s_raw <- raw_vals[cur_idx]
           s_obs <- isTRUE(is_obs[cur_idx])
@@ -1483,9 +1498,8 @@ math_proof_server <- function(id, shared_data) {
           s_fin <- final_linear_vals[cur_idx]
           s_off <- if (!is.null(names(a_data$norm_offsets))) a_data$norm_offsets[s] else a_data$norm_offsets[cur_idx]
           s_ratio <- s_fin / (2^s_imp)
-          
           card_html <- c(card_html, sprintf(
-            "    <tr><td><strong>%s</strong></td><td>%s</td><td>%s</td><td>%s</td><td><strong>%.3f</strong></td><td>%+.3f</td><td>%.3f</td><td><strong style='color:#15803d;'>%s</strong></td><td>%.4f (<em>S</em><sub>j</sub>)</td></tr>",
+            "    <tr class='selected-case-row'><td><strong>%s</strong> <span class='selected-case-badge'>Selected</span></td><td>%s</td><td>%s</td><td>%s</td><td><strong>%.3f</strong></td><td>%+.3f</td><td>%.3f</td><td><strong style='color:#15803d;'>%s</strong></td><td>%.4f (<em>S</em><sub>j</sub>)</td></tr>",
             s,
             if (s_obs) format(round(s_raw, 2), big.mark = ",") else "<span class='na-tag'>N/A (Below LOD)</span>",
             if (s_obs) "<span class='badge badge-success'>Observed</span>" else "<span class='badge badge-warning'>Imputed MNAR</span>",
@@ -1501,6 +1515,44 @@ math_proof_server <- function(id, shared_data) {
         
         card_html <- c(
           card_html,
+          "  <details class='cohort-matrix-toggle'>",
+          sprintf("    <summary><span>&#9656; Cross-Sample Empirical Transformation Matrix (Full Cohort: %d Samples)</span><span style='font-size: 0.78rem; font-weight: 500; color: #64748b;'>Click to Toggle All Samples</span></summary>", length(samples)),
+          "    <div style='margin-top: 10px; overflow-x: auto;'>",
+          "      <table class='audit-table'>",
+          "        <thead><tr><th>Sample Column</th><th>Raw Abundance</th><th>LOD Status</th><th>Log2 Raw</th><th>QRILC Log2</th><th>Median Offset (&Delta;<sub>j</sub>)</th><th>Norm Log2</th><th>Restituted Linear</th><th>Ratio Check</th></tr></thead>",
+          "        <tbody>"
+        )
+        for (s in samples) {
+          cur_idx <- match(s, samples)
+          s_raw <- raw_vals[cur_idx]
+          s_obs <- isTRUE(is_obs[cur_idx])
+          s_log <- log_vals[cur_idx]
+          s_imp <- imp_vals[cur_idx]
+          s_norm <- norm_vals[cur_idx]
+          s_fin <- final_linear_vals[cur_idx]
+          s_off <- if (!is.null(names(a_data$norm_offsets))) a_data$norm_offsets[s] else a_data$norm_offsets[cur_idx]
+          s_ratio <- s_fin / (2^s_imp)
+          is_selected <- s %in% active_cases
+          
+          card_html <- c(card_html, sprintf(
+            "    <tr%s><td><strong>%s</strong>%s</td><td>%s</td><td>%s</td><td>%s</td><td><strong>%.3f</strong></td><td>%+.3f</td><td>%.3f</td><td><strong style='color:#15803d;'>%s</strong></td><td>%.4f (<em>S</em><sub>j</sub>)</td></tr>",
+            if (is_selected) " class='selected-case-row'" else "",
+            s,
+            if (is_selected) " <span class='selected-case-badge'>Selected</span>" else "",
+            if (s_obs) format(round(s_raw, 2), big.mark = ",") else "<span class='na-tag'>N/A (Below LOD)</span>",
+            if (s_obs) "<span class='badge badge-success'>Observed</span>" else "<span class='badge badge-warning'>Imputed MNAR</span>",
+            if (s_obs) sprintf("%.3f", s_log) else "NA",
+            s_imp,
+            s_off,
+            s_norm,
+            format(round(s_fin, 2), big.mark = ","),
+            s_ratio
+          ))
+        }
+        card_html <- c(card_html, "        </tbody></table>", "    </div>", "  </details>")
+        
+        card_html <- c(
+          card_html,
           sprintf("<h4 style='margin: 18px 0 8px 0; font-size: 0.95rem; color: #334155;'>5-Step Mathematical Derivation with Term of Lipid (Demonstration on Sample: <code>%s</code>)</h4>", rep_sample),
           
           # STEP 1
@@ -1510,10 +1562,10 @@ math_proof_server <- function(id, shared_data) {
                   if (rep_is_obs) "Signal Validated" else "Left-Censored Non-Detect (NA)"),
           sprintf("    <div class='math-block'>%s<details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step1$mml_gen, htmltools::htmlEscape(forms$step1$gen)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step1$lit_gen),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step1$lit_gen),
           sprintf("    <div class='math-block'><strong>Specific Formulation for Selected Lipid:</strong><div style='margin-top:6px;'>%s</div><details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step1$mml_spec, htmltools::htmlEscape(forms$step1$spec)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step1$lit_spec),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step1$lit_spec),
           "    <div class='justification'>",
           sprintf("      <strong>Methodological Justification:</strong> For analyte <em>%s</em> in sample <em>%s</em>, physical instrument threshold was %s. %s",
                   lip, rep_sample,
@@ -1527,10 +1579,10 @@ math_proof_server <- function(id, shared_data) {
           "    <div class='step-title'><span>Step 2: Variance-Stabilizing Base-2 Log Transformation</span><span class='badge badge-secondary'>Log2 Normalization</span></div>",
           sprintf("    <div class='math-block'>%s<details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step2$mml_gen, htmltools::htmlEscape(forms$step2$gen)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step2$lit_gen),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step2$lit_gen),
           sprintf("    <div class='math-block'><strong>Specific Formulation for Selected Lipid:</strong><div style='margin-top:6px;'>%s</div><details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step2$mml_spec, htmltools::htmlEscape(forms$step2$spec)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step2$lit_spec),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step2$lit_spec),
           "    <div class='justification'>",
           "      <strong>Methodological Justification:</strong> Raw lipid peak area variance scales quadratically with abundance. Log2 transformation stabilizes heteroscedastic noise and converts multiplicative biological fold changes into uniform additive linear distances.",
           "    </div>",
@@ -1543,10 +1595,10 @@ math_proof_server <- function(id, shared_data) {
                   if (rep_is_obs) "Observed (Unaltered)" else "QRILC Imputed"),
           sprintf("    <div class='math-block'>%s<details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step3$mml_gen, htmltools::htmlEscape(forms$step3$gen)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step3$lit_gen),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step3$lit_gen),
           sprintf("    <div class='math-block'><strong>Specific Formulation for Selected Lipid:</strong><div style='margin-top:6px;'>%s</div><details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step3$mml_spec, htmltools::htmlEscape(forms$step3$spec)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step3$lit_spec),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step3$lit_spec),
           "    <div class='justification'>",
           "      <strong>Methodological Justification:</strong> Imputing cohort means for low-abundance non-detects distorts biological reality. QRILC rigorously estimates the truncated Gaussian lower tail, sampling biologically plausible sub-LOD abundances without inflating cohort variance.",
           "    </div>",
@@ -1557,10 +1609,10 @@ math_proof_server <- function(id, shared_data) {
           sprintf("    <div class='step-title'><span>Step 4: Sample-Wise Global Median Centering Normalization</span><span class='badge badge-primary'>Offset: %+.3f log2</span></div>", rep_offset),
           sprintf("    <div class='math-block'>%s<details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step4$mml_gen, htmltools::htmlEscape(forms$step4$gen)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step4$lit_gen),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step4$lit_gen),
           sprintf("    <div class='math-block'><strong>Specific Formulation for Selected Lipid:</strong><div style='margin-top:6px;'>%s</div><details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step4$mml_spec, htmltools::htmlEscape(forms$step4$spec)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step4$lit_spec),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step4$lit_spec),
           "    <div class='justification'>",
           sprintf("      <strong>Methodological Justification:</strong> Corrects run-to-run electrospray ionization shifts and injection volume variance uniformly across all lipids by centering sample median to the grand cohort median (calculated offset &Delta;<sub>j</sub> = %+.4f log2).", rep_offset),
           "    </div>",
@@ -1571,13 +1623,13 @@ math_proof_server <- function(id, shared_data) {
           sprintf("    <div class='step-title'><span>Step 5: Linear Restitution & Exact Scaling Equivalence Proof</span><span class='badge badge-success'>Multiplier: %.4f</span></div>", rep_scaling),
           sprintf("    <div class='math-block'>%s<details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step5$mml_gen, htmltools::htmlEscape(forms$step5$gen)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step5$lit_gen),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step5$lit_gen),
           sprintf("    <div class='math-block'><strong>Specific Formulation for Selected Lipid:</strong><div style='margin-top:6px;'>%s</div><details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step5$mml_spec, htmltools::htmlEscape(forms$step5$spec)),
-          sprintf("    <div class='semantic-translation'><strong>Semantic Translation:</strong> %s</div>", forms$step5$lit_spec),
+          sprintf("    <div class='semantic-translation'><strong>Explanation:</strong> %s</div>", forms$step5$lit_spec),
           sprintf("    <div class='math-block' style='background:#f0fdf4; border-color:#86efac;'>%s<details class='latex-code-toggle'><summary>LaTeX Source</summary><code>%s</code></details></div>",
                   forms$step5$mml_proof, htmltools::htmlEscape(forms$step5$proof)),
-          sprintf("    <div class='semantic-translation proof-translation'><strong style='color:#166534;'>Semantic Translation (Equivalence Proof):</strong> %s</div>", forms$step5$proof_lit),
+          sprintf("    <div class='semantic-translation proof-translation'><strong style='color:#166534;'>Explanation (Equivalence Proof):</strong> %s</div>", forms$step5$proof_lit),
           "    <div class='justification'>",
           sprintf("      <strong>Methodological Justification:</strong> Demonstrates bit-for-bit mathematical equivalence between normalized log2 exponentiation and multiplying the original linear signal by the sample scaling multiplier <em>S</em><sub>j</sub> = %.5f.", rep_scaling),
           "    </div>",
@@ -1699,8 +1751,51 @@ math_proof_server <- function(id, shared_data) {
           md_lines,
           sprintf("## %d. Lipid Species: `%s`", idx, lip),
           sprintf("- **Quantitative Status**: %s", if (n_na == 0) sprintf("100%% Detected (%d/%d)", n_obs, length(samples)) else sprintf("Has N/A (%d/%d non-detects)", n_na, length(samples))),
+          ""
+        )
+        
+        active_cases <- if (!is.null(target_samples) && any(target_samples %in% samples)) intersect(target_samples, samples) else rep_sample
+        case_label <- paste(active_cases, collapse = ", ")
+        
+        md_lines <- c(
+          md_lines,
+          sprintf("### Empirical Transformation Values — Selected Case%s: `%s`", if (length(active_cases) > 1) "s" else "", case_label),
           "",
-          "### Cross-Sample Transformation Matrix",
+          "| Sample | Raw Abundance | LOD Status | Log2 Raw | QRILC Log2 | Median Offset ($\\Delta_j$) | Norm Log2 | Restituted Linear | Ratio Check |",
+          "|:---|:---|:---|:---|:---|:---|:---|:---|:---|",
+          ""
+        )
+        
+        for (s in active_cases) {
+          cur_idx <- match(s, samples)
+          s_raw <- raw_vals[cur_idx]
+          s_obs <- isTRUE(is_obs[cur_idx])
+          s_log <- log_vals[cur_idx]
+          s_imp <- imp_vals[cur_idx]
+          s_norm <- norm_vals[cur_idx]
+          s_fin <- final_linear_vals[cur_idx]
+          s_off <- if (!is.null(names(a_data$norm_offsets))) a_data$norm_offsets[s] else a_data$norm_offsets[cur_idx]
+          s_ratio <- s_fin / (2^s_imp)
+          
+          md_lines <- c(md_lines, sprintf(
+            "| **%s** *(Selected)* | %s | %s | %s | **%.3f** | %+.3f | %.3f | **%s** | %.4f ($S_j$) |",
+            s,
+            if (s_obs) format(round(s_raw, 2), big.mark = ",") else "N/A (Below LOD)",
+            if (s_obs) "Observed" else "Imputed MNAR",
+            if (s_obs) sprintf("%.3f", s_log) else "NA",
+            s_imp,
+            s_off,
+            s_norm,
+            format(round(s_fin, 2), big.mark = ","),
+            s_ratio
+          ))
+        }
+        
+        md_lines <- c(
+          md_lines,
+          "",
+          "<details>",
+          sprintf("<summary><b>Cross-Sample Empirical Transformation Matrix (Full Cohort: %d Samples — Click to Expand)</b></summary>", length(samples)),
           "",
           "| Sample | Raw Abundance | LOD Status | Log2 Raw | QRILC Log2 | Median Offset ($\\Delta_j$) | Norm Log2 | Restituted Linear | Ratio Check |",
           "|:---|:---|:---|:---|:---|:---|:---|:---|:---|",
@@ -1717,10 +1812,12 @@ math_proof_server <- function(id, shared_data) {
           s_fin <- final_linear_vals[cur_idx]
           s_off <- if (!is.null(names(a_data$norm_offsets))) a_data$norm_offsets[s] else a_data$norm_offsets[cur_idx]
           s_ratio <- s_fin / (2^s_imp)
+          is_selected <- s %in% active_cases
           
           md_lines <- c(md_lines, sprintf(
-            "| **%s** | %s | %s | %s | **%.3f** | %+.3f | %.3f | **%s** | %.4f ($S_j$) |",
+            "| **%s**%s | %s | %s | %s | **%.3f** | %+.3f | %.3f | **%s** | %.4f ($S_j$) |",
             s,
+            if (is_selected) " *(Selected)*" else "",
             if (s_obs) format(round(s_raw, 2), big.mark = ",") else "N/A (Below LOD)",
             if (s_obs) "Observed" else "Imputed MNAR",
             if (s_obs) sprintf("%.3f", s_log) else "NA",
@@ -1735,15 +1832,17 @@ math_proof_server <- function(id, shared_data) {
         md_lines <- c(
           md_lines,
           "",
+          "</details>",
+          "",
           sprintf("### 5-Step Mathematical Derivation with Term of Lipid (`%s` in `%s`)", lip, rep_sample),
           "",
           "#### Step 1: Limit of Detection (LOD) Screening",
           forms$step1$gen,
-          sprintf("> **Semantic Translation**: %s", forms$step1$lit_gen),
+          sprintf("> **Explanation**: %s", forms$step1$lit_gen),
           "",
           sprintf("**Real Formula for Selected Lipid (%s in %s)**:", lip, rep_sample),
           forms$step1$spec,
-          sprintf("> **Semantic Translation**: %s", forms$step1$lit_spec),
+          sprintf("> **Explanation**: %s", forms$step1$lit_spec),
           sprintf("> **Methodological Justification**: For analyte %s in sample %s, physical instrument threshold was %s. %s",
                   lip, rep_sample,
                   if (rep_is_obs) sprintf("exceeded at %s (above LOD)", format(round(rep_raw, 2), big.mark=",")) else "not met (below physical detector limit)",
@@ -1751,41 +1850,41 @@ math_proof_server <- function(id, shared_data) {
           "",
           "#### Step 2: Variance-Stabilizing Base-2 Logarithmic Transformation",
           forms$step2$gen,
-          sprintf("> **Semantic Translation**: %s", forms$step2$lit_gen),
+          sprintf("> **Explanation**: %s", forms$step2$lit_gen),
           "",
           sprintf("**Real Formula for Selected Lipid (%s in %s)**:", lip, rep_sample),
           forms$step2$spec,
-          sprintf("> **Semantic Translation**: %s", forms$step2$lit_spec),
+          sprintf("> **Explanation**: %s", forms$step2$lit_spec),
           "> **Methodological Justification**: Raw lipid peak area variance scales quadratically with abundance. Log2 transformation stabilizes heteroscedastic noise and converts multiplicative biological fold changes into uniform additive linear distances.",
           "",
           "#### Step 3: QRILC Tail Imputation (Left-Censored Data)",
           forms$step3$gen,
-          sprintf("> **Semantic Translation**: %s", forms$step3$lit_gen),
+          sprintf("> **Explanation**: %s", forms$step3$lit_gen),
           "",
           sprintf("**Real Formula for Selected Lipid (%s in %s)**:", lip, rep_sample),
           forms$step3$spec,
-          sprintf("> **Semantic Translation**: %s", forms$step3$lit_spec),
+          sprintf("> **Explanation**: %s", forms$step3$lit_spec),
           "> **Methodological Justification**: Imputing cohort means for low-abundance non-detects distorts biological reality. QRILC rigorously estimates the truncated Gaussian lower tail, sampling biologically plausible sub-LOD abundances without inflating cohort variance.",
           "",
           "#### Step 4: Sample-Wise Global Median Centering Normalization",
           forms$step4$gen,
-          sprintf("> **Semantic Translation**: %s", forms$step4$lit_gen),
+          sprintf("> **Explanation**: %s", forms$step4$lit_gen),
           "",
           sprintf("**Real Formula for Selected Lipid (%s in %s)**:", lip, rep_sample),
           forms$step4$spec,
-          sprintf("> **Semantic Translation**: %s", forms$step4$lit_spec),
+          sprintf("> **Explanation**: %s", forms$step4$lit_spec),
           sprintf("> **Methodological Justification**: Corrects run-to-run electrospray ionization shifts and injection volume variance uniformly across all lipids by centering sample median to the grand cohort median (calculated offset Delta_j = %+.4f log2).", rep_offset),
           "",
           "#### Step 5: Linear Restitution & Exact Scaling Equivalence Proof",
           forms$step5$gen,
-          sprintf("> **Semantic Translation**: %s", forms$step5$lit_gen),
+          sprintf("> **Explanation**: %s", forms$step5$lit_gen),
           "",
           sprintf("**Real Formula for Selected Lipid (%s in %s)**:", lip, rep_sample),
           forms$step5$spec,
-          sprintf("> **Semantic Translation**: %s", forms$step5$lit_spec),
+          sprintf("> **Explanation**: %s", forms$step5$lit_spec),
           "",
           forms$step5$proof,
-          sprintf("> **Semantic Translation (Equivalence Proof)**: %s", forms$step5$proof_lit),
+          sprintf("> **Explanation (Equivalence Proof)**: %s", forms$step5$proof_lit),
           sprintf("> **Methodological Justification**: Demonstrates bit-for-bit mathematical equivalence between normalized log2 exponentiation and multiplying the original linear signal by the sample scaling multiplier S_j = %.5f.", rep_scaling),
           "",
           "---",
@@ -2575,11 +2674,11 @@ math_proof_server <- function(id, shared_data) {
                       "Step 1: Limit of Detection (LOD) Screening & Raw Ingestion"),
               tags$div(class = "math-block-card", HTML(forms$step1$mml_gen)),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step1$lit_gen
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step1$lit_gen
               ),
               tags$div(class = "math-block-card", tags$strong("Selected Lipid Formulation:"), tags$div(style = "margin-top: 4px;", HTML(forms$step1$mml_spec))),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step1$lit_spec
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step1$lit_spec
               ),
               tags$small(class = "text-muted",
                          "Justification: Establishes instrument sensitivity bounds. Mappings of non-detects to NA prevent log2(0) crashes and mark measurements as Missing Not At Random (MNAR).")
@@ -2596,11 +2695,11 @@ math_proof_server <- function(id, shared_data) {
                       "Step 2: Variance-Stabilizing Base-2 Logarithmic Transformation"),
               tags$div(class = "math-block-card", HTML(forms$step2$mml_gen)),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step2$lit_gen
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step2$lit_gen
               ),
               tags$div(class = "math-block-card", tags$strong("Selected Lipid Formulation:"), tags$div(style = "margin-top: 4px;", HTML(forms$step2$mml_spec))),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step2$lit_spec
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step2$lit_spec
               ),
               tags$small(class = "text-muted",
                          "Justification: Heteroscedastic mass spec variance scales with signal magnitude; log2 transformation stabilizes error variance and linearizes multiplicative fold changes.")
@@ -2617,11 +2716,11 @@ math_proof_server <- function(id, shared_data) {
                       "Step 3: Quantile Regression for Left-Censored Data (QRILC) Imputation"),
               tags$div(class = "math-block-card", HTML(forms$step3$mml_gen)),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step3$lit_gen
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step3$lit_gen
               ),
               tags$div(class = "math-block-card", tags$strong("Selected Lipid Formulation:"), tags$div(style = "margin-top: 4px;", HTML(forms$step3$mml_spec))),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step3$lit_spec
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step3$lit_spec
               ),
               tags$small(class = "text-muted",
                          "Justification: Left-censored non-detects are modeled via Gaussian tail estimation, avoiding artificial high-abundance artifacts from mean/median imputation.")
@@ -2638,11 +2737,11 @@ math_proof_server <- function(id, shared_data) {
                       sprintf("Step 4: Sample-Wise Global Median Centering Normalization (Offset: %+.3f log2)", s_off)),
               tags$div(class = "math-block-card", HTML(forms$step4$mml_gen)),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step4$lit_gen
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step4$lit_gen
               ),
               tags$div(class = "math-block-card", tags$strong("Selected Lipid Formulation:"), tags$div(style = "margin-top: 4px;", HTML(forms$step4$mml_spec))),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step4$lit_spec
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step4$lit_spec
               ),
               tags$small(class = "text-muted",
                          "Justification: Eliminates systematic technical loading biases between sample injection runs uniformly across all analytes.")
@@ -2659,15 +2758,15 @@ math_proof_server <- function(id, shared_data) {
                       sprintf("Step 5: Restitution to Linear Abundance & Exact Multiplier Equivalence (S = %.5f)", s_scaling)),
               tags$div(class = "math-block-card", HTML(forms$step5$mml_gen)),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step5$lit_gen
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step5$lit_gen
               ),
               tags$div(class = "math-block-card", tags$strong("Selected Lipid Formulation:"), tags$div(style = "margin-top: 4px;", HTML(forms$step5$mml_spec))),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 249, 255, 0.35); border: 1px solid rgba(186, 230, 253, 0.35); border-left: 3px solid rgba(2, 132, 199, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation: ", style = "color: #0284c7;"), forms$step5$lit_spec
+                tags$strong("Explanation: ", style = "color: #0284c7;"), forms$step5$lit_spec
               ),
               tags$div(class = "math-block-card", style = "background: #f0fdf4; border-color: #86efac;", HTML(forms$step5$mml_proof)),
               tags$div(class = "p-2 rounded mb-2", style = "background: rgba(240, 253, 244, 0.35); border: 1px solid rgba(187, 247, 208, 0.35); border-left: 3px solid rgba(22, 163, 74, 0.45); font-size: 0.85rem; color: #334155;",
-                tags$strong("Semantic Translation (Equivalence Proof): ", style = "color: #16a34a;"), forms$step5$proof_lit
+                tags$strong("Explanation (Equivalence Proof): ", style = "color: #16a34a;"), forms$step5$proof_lit
               ),
               tags$small(class = "text-muted",
                          "Bit-for-Bit Verification: Direct exponentiation exactly equals multiplying the imputed linear peak area by the constant scaling multiplier Sj.")
@@ -2826,15 +2925,15 @@ math_proof_server <- function(id, shared_data) {
               tags$span(class = paste("dot-text", if (!is_hover_default) "text-dark fw-semibold" else "text-muted fw-normal"), style = "font-size: 0.80rem;", "Normal Formula")
             ),
             tags$span(class = "text-muted", style = "font-size: 0.80rem;", "·"),
-            # Dot 2: Hoverable
+            # Dot 2: Explained
             tags$button(
               type = "button",
               class = paste("btn btn-sm btn-link text-decoration-none py-0 px-2 math-dot-btn", if (is_hover_default) "active" else ""),
               `data-view` = "hoverable",
               onclick = "switchTierMath(this, 'hoverable');",
-              title = "Dot 2: Interactive Hoverable Formula (Hover terms for details)",
+              title = "Dot 2: Interactive Explained Formula (Hover terms for details)",
               tags$span(class = paste("dot-symbol fw-bold", if (is_hover_default) "text-primary" else "text-muted"), style = "font-size: 1.1rem; line-height: 1;", if (is_hover_default) "●" else "○"),
-              tags$span(class = paste("dot-text", if (is_hover_default) "text-dark fw-semibold" else "text-muted fw-normal"), style = "font-size: 0.80rem;", "Hoverable Formula")
+              tags$span(class = paste("dot-text", if (is_hover_default) "text-dark fw-semibold" else "text-muted fw-normal"), style = "font-size: 0.80rem;", "Explained Formula")
             )
           )
         ),
@@ -2846,7 +2945,7 @@ math_proof_server <- function(id, shared_data) {
           div(class = ns("math-display"), style = "margin: 0; border: none; box-shadow: none;", normal_content)
         ),
         
-        # Slide 2: Hoverable Formula
+        # Slide 2: Explained Formula
         div(
           class = "math-view math-view-hoverable bg-white px-3 py-4",
           style = if (is_hover_default) "display: block; overflow: visible !important;" else "display: none; overflow: visible !important;",
@@ -2867,7 +2966,7 @@ math_proof_server <- function(id, shared_data) {
             class = paste("carousel-dot", if (is_hover_default) "active" else ""),
             `data-view` = "hoverable",
             onclick = "switchTierMath(this, 'hoverable');",
-            title = "Dot 2: Interactive Hoverable Formula"
+            title = "Dot 2: Interactive Explained Formula"
           )
         )
       )

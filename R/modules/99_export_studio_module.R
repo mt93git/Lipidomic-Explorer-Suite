@@ -230,13 +230,20 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
 
     reg_colors <- c("Up" = "#ef4444", "Down" = "#3b82f6", "NS" = "#94a3b8")
 
+    ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+    contrast_str <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
+      paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
+    } else {
+      ""
+    }
+
     p <- ggplot(de_res, aes(x = log2FC, y = negLog10P, color = Regulation)) +
       geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "#64748b", linewidth = 0.4) +
       geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed", color = "#64748b", linewidth = 0.4) +
       geom_point(size = 2.0, alpha = 0.75) +
       scale_color_manual(values = reg_colors, drop = FALSE) +
       labs(
-        title = "Volcano Plot (Differential Lipid Species)",
+        title = paste0("Volcano Plot", contrast_str),
         x = expression(bold(Log[2]~"Fold Change")),
         y = expression(bold(-Log[10]~italic(P)~"-value (FDR)")),
         color = "Regulation"
