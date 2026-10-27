@@ -1,5 +1,7 @@
 name: Classic and Team browser regression
 on:
+  push:
+    branches: [audit/dual-ui-replay-post-pr5]
   workflow_dispatch:
   pull_request:
     branches: [integration/libreros-guided-workflow]
