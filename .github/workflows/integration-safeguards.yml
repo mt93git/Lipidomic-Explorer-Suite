@@ -21,6 +21,10 @@ jobs:
         with:
           r-version: '4.4.3'
           use-public-rspm: true
+      - name: Install system libraries for graph packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglpk-dev libxml2-dev
       - name: Install declared dependencies for the complete acceptance suite
         shell: Rscript --vanilla {0}
         run: |
@@ -32,6 +36,7 @@ jobs:
           packages <- unique(c(packages[nzchar(packages)], 'statmod'))
           BiocManager::install(packages, ask=FALSE, update=FALSE)
           missing <- packages[!vapply(packages, requireNamespace, logical(1), quietly=TRUE)]
+          for (pkg in missing) tryCatch(loadNamespace(pkg), error=function(e) message(pkg, ': ', conditionMessage(e)))
           if (length(missing)) stop('Missing acceptance dependencies: ', paste(missing, collapse=', '))
       - name: Run complete acceptance suite against pinned baseline
         env:
