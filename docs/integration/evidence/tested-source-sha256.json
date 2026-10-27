@@ -1,0 +1,5 @@
+{
+  "R/modules/1_shared_data_module.R": "0d657ad794a32262c52bddc45e31dece4565e408f5c727b964b3890c4a17a64c",
+  "R/modules/utils_stats.R": "be53c3abf2f3d3fd6d156c74ed2b12769b771e53a2750b845a25bce54072f747",
+  "tests/integration/guided_snapshot.R": "4a8bba2bcb832316d80b2906a55d61306b1911d17a80b1bc107ed4cc5bde6e39"
+}

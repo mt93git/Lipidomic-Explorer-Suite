@@ -790,8 +790,17 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
 #' @param paired Logical, whether the comparison is paired (e.g. longitudinal)
 #' @return Numeric p-value or NA
 compute_local_p_val <- function(base_vals, comp_vals, method = "limma", paired = FALSE) {
-  base_vals <- base_vals[!is.na(base_vals)]
-  comp_vals <- comp_vals[!is.na(comp_vals)]
+  if (isTRUE(paired)) {
+    # Positions represent matched observations. Filter pairs together so missing
+    # values cannot silently pair measurements from different subjects.
+    if (length(base_vals) != length(comp_vals)) return(NA_real_)
+    complete <- stats::complete.cases(base_vals, comp_vals)
+    base_vals <- base_vals[complete]
+    comp_vals <- comp_vals[complete]
+  } else {
+    base_vals <- base_vals[!is.na(base_vals)]
+    comp_vals <- comp_vals[!is.na(comp_vals)]
+  }
   if (length(base_vals) < 2 || length(comp_vals) < 2) return(NA_real_)
   
   # Check if variance is zero in both

@@ -1339,7 +1339,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               
               for (uc in c_unchecked) {
                   is_avg_outlier <- (uc %in% names(outlier_treatments) && outlier_treatments[[uc]] == "average")
-                  should_average <- isTRUE(input$useAveragedSubstitution) || (isTRUE(apply_outliers) && is_avg_outlier)
+                  # Explicit removal takes precedence over global substitution.
+                  is_removed_outlier <- isTRUE(apply_outliers) && identical(outlier_treatments[[uc]], "remove")
+                  should_average <- !is_removed_outlier && (isTRUE(input$useAveragedSubstitution) || (isTRUE(apply_outliers) && is_avg_outlier))
                   
                   # Requires at least one valid peer to act as a mathematical anchor
                   if (should_average && length(c_checked) >= 1) {

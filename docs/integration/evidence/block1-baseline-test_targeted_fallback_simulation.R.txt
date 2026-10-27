@@ -1,0 +1,9 @@
+Checking TARGETED_FALLBACK_MESSAGE:
+Couldn't display the plot with selected lipid; try to switch to all lipid and select class in 'Lipid Class Filters' in 'Cohort and Filter' to get less stringent filtering.
+
+TARGETED_FALLBACK_MESSAGE text verified.
+targeted_fallback_banner_ui verified.
+PCA fallback simulation verified.
+Correlation fallback simulation verified.
+
+ALL TARGETED FALLBACK UNIT TESTS PASSED SUCCESSFULLY!

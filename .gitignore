@@ -35,3 +35,6 @@ Thumbs.db
 /*.Rcheck/
 Rplots.pdf
 launch_debug.ps1
+
+# Generated scientific comparison outputs
+/parity-evidence/
