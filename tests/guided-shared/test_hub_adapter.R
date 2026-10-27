@@ -32,6 +32,12 @@ shiny::testServer(shared_data_server,args=list(external_settings=shiny::reactive
   restored<-metadata_sidecar_decode(metadata_sidecar_encode(archive$shared$metadata))
   check('Restored metadata produces identical hub table',identical(restored$scientific_metadata,allParsedMetadata()))
   unlink(archive$directory,recursive=TRUE)
+  session$setInputs(import_session_file=data.frame(datapath=archive_path))
+  for(i in 1:6)session$flushReact()
+  check('Real import callback completes without reactive context errors',isTRUE(session_restored()) && !isTRUE(is_restoring()))
+  check('Real import clears previous prepared results',is.null(data_processed_full()))
+  session$setInputs(runAnalysis=19);session$flushReact()
+  check('Real imported ZIP reproduces the matrix after explicit run',isTRUE(all.equal(data_processed_full(),before,tolerance=1e-12)))
   # Restoring over an already prepared session must invalidate its old outputs.
   awaiting_restore_review(TRUE);preparation$reset()
   check('Restore reset withholds previous-session results',is.null(data_processed_full()) && is.null(preparation$state()$applied))
