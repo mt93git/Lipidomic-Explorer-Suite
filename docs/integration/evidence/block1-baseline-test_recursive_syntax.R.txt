@@ -1,0 +1,54 @@
+[1] ""
+Found 46 R files to audit:
+  ./00_ENVIRONMENT_SETUP.R                                     : OK
+  ./01_RUN_APP.R                                               : OK
+  ./02_DIAGNOSTIC_REPORT.R                                     : OK
+  ./app.R                                                      : OK
+  ./OS/Linux/00_ENVIRONMENT_SETUP_linux.R                      : OK
+  ./OS/Linux/01_RUN_APP_linux.R                                : OK
+  ./OS/macOS_AppleSilicon/00_ENVIRONMENT_SETUP_macos.R         : OK
+  ./OS/macOS_AppleSilicon/01_RUN_APP_macos.R                   : OK
+  ./OS/macOS_Intel/00_ENVIRONMENT_SETUP_macos.R                : OK
+  ./OS/macOS_Intel/01_RUN_APP_macos.R                          : OK
+  ./OS/Windows/00_ENVIRONMENT_SETUP_windows.R                  : OK
+  ./OS/Windows/01_RUN_APP_windows.R                            : OK
+  ./pipeline_math_proof_stacked.R                              : OK
+  ./R/global.R                                                 : OK
+  ./R/modules/1_shared_data_module.R                           : OK
+  ./R/modules/10_fla_module.R                                  : OK
+  ./R/modules/11_longitudinal_module.R                         : OK
+  ./R/modules/12_structural_grid_module.R                      : OK
+  ./R/modules/13_pathway_module.R                              : OK
+  ./R/modules/14_cellular_org_module.R                         : OK
+  ./R/modules/15_math_proof_module.R                           : OK
+  ./R/modules/2_qc_boxplot_module.R                            : OK
+  ./R/modules/4_heatmap_module.R                               : OK
+  ./R/modules/5_barchart_module.R                              : OK
+  ./R/modules/6_volcano_module.R                               : OK
+  ./R/modules/7_lsea_module.R                                  : OK
+  ./R/modules/8_structural_module.R                            : OK
+  ./R/modules/9_logratio_module.R                              : OK
+  ./R/modules/97_statistics_module.R                           : OK
+  ./R/modules/98_system_debug_module.R                         : OK
+  ./R/modules/99_export_studio_module.R                        : OK
+  ./R/modules/utils_stats.R                                    : OK
+  ./R/modules/utils_targeted_lipids.R                          : OK
+  ./R/server.R                                                 : OK
+  ./R/ui.R                                                     : OK
+  ./R/utils_colors.R                                           : OK
+  ./R/utils_data.R                                             : OK
+  ./R/utils_lipid_genes.R                                      : OK
+  ./R/utils_memento.R                                          : OK
+  ./R/utils_vis.R                                              : OK
+  ./tests/test_pathway_logic.R                                 : OK
+  ./tests/test_recursive_syntax.R                              : OK
+  ./tests/test_restore_helper.R                                : OK
+  ./tests/test_session_roundtrip_simulation.R                  : OK
+  ./tests/test_statistical_engine.R                            : OK
+  ./tests/test_targeted_fallback_simulation.R                  : OK
+
+--------------------------------------------------
+=== RECURSIVE SYNTAX AUDIT SUCCESSFUL (ALL OK) ===
+Warning message:
+In Sys.setlocale("LC_ALL", "en_US.UTF-8") :
+  OS reports request to set locale to "en_US.UTF-8" cannot be honored

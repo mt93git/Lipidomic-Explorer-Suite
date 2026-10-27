@@ -1,0 +1,43 @@
+                                        check max_absolute_difference status
+1    none_no_imputation/candidate/preparation                       0   PASS
+2          none_no_imputation/candidate/limma                       0   PASS
+3       none_no_imputation/candidate/wilcoxon                       0   PASS
+4       none_no_imputation/guided/preparation                       0   PASS
+5             none_no_imputation/guided/limma                       0   PASS
+6          none_no_imputation/guided/wilcoxon                       0   PASS
+7            none_qrilc/candidate/preparation                       0   PASS
+8                  none_qrilc/candidate/limma                       0   PASS
+9               none_qrilc/candidate/wilcoxon                       0   PASS
+10              none_qrilc/guided/preparation                       0   PASS
+11                    none_qrilc/guided/limma                       0   PASS
+12                 none_qrilc/guided/wilcoxon                       0   PASS
+13 median_no_imputation/candidate/preparation                       0   PASS
+14       median_no_imputation/candidate/limma                       0   PASS
+15    median_no_imputation/candidate/wilcoxon                       0   PASS
+16    median_no_imputation/guided/preparation                       0   PASS
+17          median_no_imputation/guided/limma                       0   PASS
+18       median_no_imputation/guided/wilcoxon                       0   PASS
+19         median_qrilc/candidate/preparation                       0   PASS
+20               median_qrilc/candidate/limma                       0   PASS
+21            median_qrilc/candidate/wilcoxon                       0   PASS
+22            median_qrilc/guided/preparation                       0   PASS
+23                  median_qrilc/guided/limma                       0   PASS
+24               median_qrilc/guided/wilcoxon                       0   PASS
+25    pqn_no_imputation/candidate/preparation                       0   PASS
+26          pqn_no_imputation/candidate/limma                       0   PASS
+27       pqn_no_imputation/candidate/wilcoxon                       0   PASS
+28       pqn_no_imputation/guided/preparation                       0   PASS
+29             pqn_no_imputation/guided/limma                       0   PASS
+30          pqn_no_imputation/guided/wilcoxon                       0   PASS
+31            pqn_qrilc/candidate/preparation                       0   PASS
+32                  pqn_qrilc/candidate/limma                       0   PASS
+33               pqn_qrilc/candidate/wilcoxon                       0   PASS
+34               pqn_qrilc/guided/preparation                       0   PASS
+35                     pqn_qrilc/guided/limma                       0   PASS
+36                  pqn_qrilc/guided/wilcoxon                       0   PASS
+          method   upstream  candidate     guided     oracle
+1          limma 0.03668199 0.06627560 0.06627560 0.06627560
+2 non_parametric 0.05447404 0.09751254 0.09751254 0.09751254
+ upstream candidate    guided
+     TRUE     FALSE     FALSE
+PASS: 36 parity comparisons, 18 repeat preparations, 18 contrast reversals, and intentional safeguard differences.

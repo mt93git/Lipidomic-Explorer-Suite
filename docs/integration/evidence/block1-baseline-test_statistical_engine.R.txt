@@ -1,0 +1,40 @@
+[1] ""
+>>> Running Statistical & Mathematical Engine Unit Tests...
+
+[TEST 1] Auditing Cellular Peroxidation Index (calculate_cpi)...
+  - Pure trienoic (db=3) CPI: 200.0000 (expected: 200.0000)
+  - Mixed lipidome CPI: 260.2333 (expected: 260.2333)
+  [PASS] calculate_cpi correctly includes tri-unsaturated fatty acids (db = 3, weight 2.0).
+
+[TEST 2] Auditing Auto-Route Statistical Engine (auto_route_statistical_method)...
+  - Small sample size (n=3) with high skewness route: 'limma' (expected: 'limma')
+  - Large sample size (n=10) with symmetric data route: 'limma' (expected: 'limma')
+  - Large sample size (n=10) with skewed data route: 'non_parametric' (expected: 'non_parametric')
+  [PASS] auto_route_statistical_method correctly guards statistical power for n < 5.
+
+[TEST 3] Auditing Limma Contrast Construction (construct_contrast_string)...
+  - 1 vs 1 contrast: '(KO)/1 - (WT)/1'
+  - 2 vs 2 contrast: '(KO_0h+KO_2h)/2 - (WT_0h+WT_2h)/2'
+  [PASS] construct_contrast_string produces valid mathematical syntax.
+
+[TEST 4] Auditing Nomenclature Shielding (mask_clinical_classifications)...
+  [PASS] mask_clinical_classifications reliably protects compound clinical terms.
+
+[TEST 5] Auditing Primary Grouping Selection Engine (determine_default_grouping_metadata & determine_active_grouping_selection)...
+  - Asymmetric cohort (Group1 [1 level] vs Group2 [4 levels]) default: Group2 (expected: 'Group2')
+  - Stale Group1 input redirection: Group2 (expected: 'Group2')
+  - Reverse asymmetric cohort (Group1 [3 levels] vs Group2 [1 level]) default: Group1 (expected: 'Group1')
+  - Dual multi-level cohort default: Group1 (expected: 'Group1')
+  - Exception dual single-level cohort default: Group1, Group2 (expected: 'Group1, Group2')
+  - Exception active expansion: Group1, Group2 (expected: 'Group1, Group2')
+  [PASS] determine_default_grouping_metadata & determine_active_grouping_selection passed all edge-case tests.
+
+===================================================================
+=== ALL STATISTICAL & MATHEMATICAL ENGINE TESTS PASSED (5/5)    ===
+===================================================================
+Warning message:
+In Sys.setlocale("LC_ALL", "en_US.UTF-8") :
+  OS reports request to set locale to "en_US.UTF-8" cannot be honored
+[DE AUTO-ROUTE] Small sample size detected (min cohort n = 3 < 5). Non-parametric rank tests suffer severe power loss under multiple testing. Preserving empirical Bayes moderated limma.
+[DE AUTO-ROUTE] Symmetric distributions. Routing to standard limma.
+[DE AUTO-ROUTE] Skewed distributions (skewness = 2.772326 ) with sufficient sample size (n >= 5). Routing to non_parametric.

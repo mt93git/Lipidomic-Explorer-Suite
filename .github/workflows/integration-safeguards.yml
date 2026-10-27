@@ -1,0 +1,44 @@
+name: Integration safeguards and scientific parity
+on:
+  push:
+    branches: [integration/libreros-guided-workflow]
+  pull_request:
+    branches: [main, integration/libreros-guided-workflow]
+permissions:
+  contents: read
+jobs:
+  scientific-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.4.3'
+          use-public-rspm: true
+      - name: Install focused comparison dependencies
+        shell: Rscript --vanilla {0}
+        run: |
+          options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
+          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'digest', 'BiocManager'))
+          BiocManager::install(c('limma', 'imputeLCMD'), ask=FALSE, update=FALSE)
+      - name: Run existing lightweight regression suites
+        run: |
+          Rscript --vanilla tests/test_recursive_syntax.R
+          Rscript --vanilla tests/test_restore_helper.R
+          Rscript --vanilla tests/test_pathway_logic.R
+          Rscript --vanilla tests/test_targeted_fallback_simulation.R
+      - name: Verify integration safeguards
+        run: Rscript --vanilla tests/test_integration_safeguards.R
+      - name: Compare pinned upstream, candidate and guided snapshot
+        run: |
+          mkdir -p "$RUNNER_TEMP/lipidomic-baseline"
+          git archive d48933ca20e59e67def18f29bc3cf035b81e1ca2 | tar -x -C "$RUNNER_TEMP/lipidomic-baseline"
+          Rscript --vanilla tests/integration/compare_versions.R "$RUNNER_TEMP/lipidomic-baseline" parity-evidence
+      - name: Retain comparison outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scientific-parity
+          path: parity-evidence/
