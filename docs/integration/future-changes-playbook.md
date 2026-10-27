@@ -49,6 +49,7 @@ BASELINE_DIR=$(mktemp -d)
 EVIDENCE_DIR=$(mktemp -d)
 git archive d48933ca20e59e67def18f29bc3cf035b81e1ca2 | tar -x -C "$BASELINE_DIR"
 R_PROFILE_USER=/dev/null R_ENVIRON_USER=/dev/null LIPIDOMIC_COMPANION_AI=0 LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL=0 Rscript --vanilla tests/dual-ui/run_acceptance.R "$BASELINE_DIR" "$EVIDENCE_DIR"
+node tests/dual-ui/test_shown_layout_reentrancy.cjs
 ```
 
 The pinned baseline is historical; changing it requires a documented reference decision. The workflow tests GitHub’s temporary merge revision, not just a contributor’s isolated branch. Archive run-info, sessionInfo, manifest, stdout/stderr and comparison CSVs. A passing CI is not proof of every UI or physical-device interaction.
