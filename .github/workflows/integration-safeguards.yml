@@ -18,8 +18,9 @@ jobs:
           r-version: '4.4.3'
           use-public-rspm: true
       - name: Install focused comparison dependencies
-        shell: Rscript {0}
+        shell: Rscript --vanilla {0}
         run: |
+          options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
           install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'digest', 'BiocManager'))
           BiocManager::install(c('limma', 'imputeLCMD'), ask=FALSE, update=FALSE)
       - name: Run existing lightweight regression suites
