@@ -7952,3 +7952,20 @@ body.modal-open .targeted-scope-tooltip-balloon {
     transform: translateY(0);
   }
 }
+
+/* Keep Classic navigation within the viewport; scroll only the tool strip. */
+@media (max-width: 767px) {
+  .navbar > .container-fluid { flex-wrap: wrap !important; }
+  .navbar-collapse { min-width: 0; flex-basis: 100% !important; }
+  .navbar-collapse.collapse:not(.show) { display: none !important; }
+  .navbar-nav { flex-direction: column !important; align-items: stretch !important; white-space: normal !important; width: 100%; }
+  .subsubnavbar-container, .subsubnavbar-pills-wrapper { min-width: 0; max-width: 100%; }
+  .subsubnavbar-pills-list { flex-shrink: 0; }
+  .dendrogram-canvas { overflow: hidden; }
+  .bslib-sidebar-layout > .main { max-width: 100%; overflow-x: auto; }
+  [id$="classColorUI"] .control-label { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 767px) {
+  .bslib-sidebar-layout > .collapse-toggle { left: auto !important; right: 8px !important; }
+  .sidebar-drag-resizer, .bslib-sidebar-resize-handle { display: none !important; }
+}

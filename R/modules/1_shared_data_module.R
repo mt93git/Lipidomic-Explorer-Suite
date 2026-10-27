@@ -4110,7 +4110,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
        }
     })
 
-  # --- UI Rendering for Panel 8 ---
+  # Classic Panel 8 must not replace the Team palette editor.
+  if (preparation_policy == "classic") {
     output$classColorUI <- renderUI({
       anno <- annotationData(); req(anno)
       mode <- input$colorEditMode # Current Dropdown Selection
@@ -4147,6 +4148,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       )
     })
     
+  }
+
   # Backward Compatibility Wrapper
     global_class_color_map <- map_lipid_class
 
