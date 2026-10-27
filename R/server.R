@@ -51,7 +51,11 @@ server <- function(input, output, session) {
   welcome_load_demo_trigger <- reactiveVal(0)
   
   # The shared_data_server is called first, accepting the bridge.
-  shared_data <- shared_data_server("data_hub", external_settings = qc_settings_bridge, welcome_load_demo_trigger = welcome_load_demo_trigger)
+  guided_design <- reactiveVal(NULL)
+  shared_data <- shared_data_server("data_hub", external_settings = qc_settings_bridge, welcome_load_demo_trigger = welcome_load_demo_trigger, root_session=session,
+    design_check=if (guided_shared_enabled()) function() {f<-guided_design();is.function(f)&&isTRUE(f())} else NULL)
+
+  if (guided_shared_enabled()) guided_shared_server(input,output,session,shared_data,guided_design)
 
   # =========================================================================
   # Global Targeted Lipid Selection Hub
@@ -208,7 +212,7 @@ server <- function(input, output, session) {
   # Show introductory welcome message on startup
   has_shown_welcome <- FALSE
   observe({
-    if (!has_shown_welcome) {
+    if (!has_shown_welcome && !guided_shared_enabled()) {
       has_shown_welcome <<- TRUE
       showWelcomeModal()
     }

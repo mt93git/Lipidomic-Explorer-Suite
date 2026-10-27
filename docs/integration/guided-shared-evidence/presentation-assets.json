@@ -1,0 +1,30 @@
+[
+  {
+    "file": "R/cell_show.R",
+    "sha256": "930462a9c8b18f7a25bb91f5eec1a5528bf22ccc4d07c69a010cf6db3ffa9daf"
+  },
+  {
+    "file": "www/js/cell_viewer.js",
+    "sha256": "1475edc1499fb00ea080a5bbe6a1661803fc6ff74294a6cbd89c33746058a5e1"
+  },
+  {
+    "file": "www/css/cell_show.css",
+    "sha256": "e968f41b384c8f483df4f2133ad11d3dd7fe10b78402667fbfbf251023adcde4"
+  },
+  {
+    "file": "www/models/neutrophil.glb",
+    "sha256": "151e3283310a1d61772d512d78a77540e3625250957b3ec3fde42c69fa5d66a4"
+  },
+  {
+    "file": "www/models/neutrophil-cinematic.jpg",
+    "sha256": "de139c131899d6ad718a8af25b5fe317af3d39e1f8ee5bfaf33c788d838b347d"
+  },
+  {
+    "file": "www/models/neutrophil-preview.png",
+    "sha256": "d0a7bc747930f5c88ca2281e9102dfc7dd0a503ab81a8f00ed84f6fc382eb27a"
+  },
+  {
+    "file": "www/models/neutrophil-cinematic.mp4",
+    "sha256": "719f96b30dc09daa1f062322d3c136543268ec74f20d93989d96b2c60ab4ed1d"
+  }
+]

@@ -27,7 +27,7 @@ app_theme <- bslib::bs_theme(
 # Main UI definition using page_navbar for a multi-tab layout.
 ui <- page_navbar(
   id = "main_navbar",
-  selected = "Quality Check",
+  selected = if (guided_shared_enabled()) "Experiment" else "Quality Check",
   title = tags$img(
     id = "navbar_brand_logo_img",
     src = "img/app_logo_ribbon.png",
@@ -37,6 +37,8 @@ ui <- page_navbar(
   window_title = "Global Lipidomic Explorer",
   theme = app_theme,
   header = tagList(
+    if (guided_shared_enabled()) guided_shared_header(),
+    if (guided_shared_enabled()) tagList(tags$link(rel="stylesheet",href="css/cell_show.css"),tags$script(src="js/cell_viewer.js")),
     tags$head(
       tags$link(rel = "icon", type = "image/png", href = "img/favicon.png"),
       tags$link(rel = "shortcut icon", href = "img/favicon.png"),
@@ -58,6 +60,8 @@ ui <- page_navbar(
     shared_data_ui("data_hub") # UI from the central data module.
   ),
   
+  !!!(if (guided_shared_enabled()) guided_shared_panels() else list()),
+
   # ==============================================================================
   # --- 1. Data & Overview ---
   # ==============================================================================
@@ -321,6 +325,7 @@ ui <- page_navbar(
     title = "2. Quality Control",
     icon = icon("shield-halved"),
     nav_panel("Quality Check", icon = icon("sitemap"),
+      if (guided_shared_enabled()) div(class="shared-guide-page",guide_heading(3,"Prepare data, then review quality","Review detection, normalization and missing-value settings in Data processing and PCA. Run Analysis explicitly, then inspect the QC plots."), div(id="shared-run-slot")),
       qc_boxplot_ui("qc_pca_tab")
     )
   ),

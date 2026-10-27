@@ -138,6 +138,10 @@ shared_preparation_controller <- function(pending, compute, run_trigger, qc_trig
     r <- pending(); a <- applied()$spec
     preparation_request(r$data_info,a$selected,r$metadata,a$settings,a$use_average,a$data_id)
   })
-  list(state=state,data=data,preview=shiny::reactive(preparation_request_preview(pending())),
+  reset <- function() {
+    result(NULL); applied(NULL); failure(NULL); revision(0L); history(list())
+    invisible(NULL)
+  }
+  list(reset=reset,state=state,data=data,preview=shiny::reactive(preparation_request_preview(pending())),
        applied_request=applied_request,apply=apply)
 }
