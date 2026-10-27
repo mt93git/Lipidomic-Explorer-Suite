@@ -1912,6 +1912,8 @@ longitudinal_server <- function(id, shared_data) {
     # 3. Significance Ledger Engine
     # -------------------------------------------------------------------------
     ledgerData <- reactive({
+      shiny::validate(shiny::need(guided_local_inference_allowed(session, shared_data, paired = TRUE),
+        "Longitudinal significance requires a confirmed matched or repeated design and measured samples only."))
       message("[DEBUG longitudinal] Starting ledgerData reactive...")
       start_time <- Sys.time()
       
@@ -2573,7 +2575,7 @@ longitudinal_server <- function(id, shared_data) {
       if (length(common_pts) >= 2 && g1 %in% colnames(paired_diffs) && g2 %in% colnames(paired_diffs)) {
         wide_data <- paired_diffs %>% dplyr::filter(!is.na(.data[[g1]]) & !is.na(.data[[g2]]))
         if (nrow(wide_data) >= 2) {
-          pval <- tryCatch(compute_local_p_val(wide_data[[g1]], wide_data[[g2]], method = resolved_method, paired = TRUE), error = function(e) NA_real_)
+          pval <- tryCatch(guided_local_p_value(wide_data[[g1]], wide_data[[g2]], method = resolved_method, session = session, shared_data = shared_data, paired = TRUE), error = function(e) NA_real_)
           if (!is.na(pval)) {
             if (!is.na(pval)) {
               if (pval < 0.001) {
@@ -2743,10 +2745,10 @@ longitudinal_server <- function(id, shared_data) {
       
       p_v1 <- NA; p_v2 <- NA
       if (nrow(wide_visit1) >= 2 && "Pain Crisis" %in% colnames(wide_visit1) && "Steady State" %in% colnames(wide_visit1)) {
-        p_v1 <- tryCatch(compute_local_p_val(wide_visit1$`Steady State`, wide_visit1$`Pain Crisis`, method = resolved_method, paired = TRUE), error = function(e) NA_real_)
+        p_v1 <- tryCatch(guided_local_p_value(wide_visit1$`Steady State`, wide_visit1$`Pain Crisis`, method = resolved_method, session = session, shared_data = shared_data, paired = TRUE), error = function(e) NA_real_)
       }
       if (nrow(wide_visit2) >= 2 && "Pain Crisis" %in% colnames(wide_visit2) && "Steady State" %in% colnames(wide_visit2)) {
-        p_v2 <- tryCatch(compute_local_p_val(wide_visit2$`Steady State`, wide_visit2$`Pain Crisis`, method = resolved_method, paired = TRUE), error = function(e) NA_real_)
+        p_v2 <- tryCatch(guided_local_p_value(wide_visit2$`Steady State`, wide_visit2$`Pain Crisis`, method = resolved_method, session = session, shared_data = shared_data, paired = TRUE), error = function(e) NA_real_)
       }
       
       format_pval_short <- function(p) {
@@ -2945,7 +2947,7 @@ longitudinal_server <- function(id, shared_data) {
         if (length(unique(tc_data$Patient_ID)) >= 2 && first_cohort %in% colnames(tc_wide) && last_cohort %in% colnames(tc_wide)) {
           wide_test <- tc_wide %>% dplyr::filter(!is.na(.data[[first_cohort]]) & !is.na(.data[[last_cohort]]))
           if (nrow(wide_test) >= 2) {
-            pval <- tryCatch(compute_local_p_val(wide_test[[first_cohort]], wide_test[[last_cohort]], method = resolved_method, paired = TRUE), error = function(e) NA_real_)
+            pval <- tryCatch(guided_local_p_value(wide_test[[first_cohort]], wide_test[[last_cohort]], method = resolved_method, session = session, shared_data = shared_data, paired = TRUE), error = function(e) NA_real_)
             if (!is.na(pval)) {
               if (!is.na(pval)) {
                 if (pval < 0.001) {
@@ -4001,7 +4003,7 @@ longitudinal_server <- function(id, shared_data) {
           df <- ledgerData()
         }
         
-        write.csv(df, file, row.names = FALSE)
+        write_spreadsheet_csv(df, file, row.names = FALSE)
       }
     )
     

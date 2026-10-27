@@ -1,14 +1,18 @@
 name: Integration safeguards and scientific parity
 on:
   push:
-    branches: [integration/libreros-guided-workflow]
+    branches: [integration/libreros-guided-workflow, integration/shared-preparation-qc, integration/guided-shared-core]
   pull_request:
-    branches: [main, integration/libreros-guided-workflow]
+    branches: [main, integration/libreros-guided-workflow, integration/shared-preparation-qc]
 permissions:
   contents: read
 jobs:
   scientific-parity:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      R_PROFILE_USER: /dev/null
+      R_ENVIRON_USER: /dev/null
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,28 +21,30 @@ jobs:
         with:
           r-version: '4.4.3'
           use-public-rspm: true
-      - name: Install focused comparison dependencies
+      - name: Install declared dependencies for the complete acceptance suite
         shell: Rscript --vanilla {0}
         run: |
           options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
-          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'digest', 'BiocManager'))
-          BiocManager::install(c('limma', 'imputeLCMD'), ask=FALSE, update=FALSE)
-      - name: Run existing lightweight regression suites
-        run: |
-          Rscript --vanilla tests/test_recursive_syntax.R
-          Rscript --vanilla tests/test_restore_helper.R
-          Rscript --vanilla tests/test_pathway_logic.R
-          Rscript --vanilla tests/test_targeted_fallback_simulation.R
-      - name: Verify integration safeguards
-        run: Rscript --vanilla tests/test_integration_safeguards.R
-      - name: Compare pinned upstream, candidate and guided snapshot
+          install.packages('BiocManager')
+          desc <- read.dcf('DESCRIPTION')
+          fields <- intersect(c('Imports', 'Suggests'), colnames(desc))
+          packages <- unique(trimws(gsub('\\s*\\([^)]*\\)', '', unlist(strsplit(paste(desc[1, fields], collapse=','), ',')))))
+          packages <- unique(c(packages[nzchar(packages)], 'statmod'))
+          BiocManager::install(packages, ask=FALSE, update=FALSE)
+          missing <- packages[!vapply(packages, requireNamespace, logical(1), quietly=TRUE)]
+          if (length(missing)) stop('Missing acceptance dependencies: ', paste(missing, collapse=', '))
+      - name: Run complete acceptance suite against pinned baseline
+        env:
+          LIPIDOMIC_COMPANION_AI: '0'
+          LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL: '0'
         run: |
           mkdir -p "$RUNNER_TEMP/lipidomic-baseline"
           git archive d48933ca20e59e67def18f29bc3cf035b81e1ca2 | tar -x -C "$RUNNER_TEMP/lipidomic-baseline"
-          Rscript --vanilla tests/integration/compare_versions.R "$RUNNER_TEMP/lipidomic-baseline" parity-evidence
-      - name: Retain comparison outputs
+          Rscript --vanilla tests/dual-ui/run_acceptance.R "$RUNNER_TEMP/lipidomic-baseline" "$RUNNER_TEMP/lipidomic-acceptance"
+      - name: Retain complete acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scientific-parity
-          path: parity-evidence/
+          name: dual-ui-acceptance-${{ github.sha }}
+          path: ${{ runner.temp }}/lipidomic-acceptance/
+          if-no-files-found: warn

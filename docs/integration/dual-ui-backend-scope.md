@@ -1,0 +1,9 @@
+# Dual-interface backend scope
+
+The candidate creates one session-local `shared_data_server` for either Classic or Team. It owns the applied preparation request, matrix and metadata, and the shared analytical modules consume that state. Explicit preparation settings use the same scientific computation; frontend-specific defaults and approval policies remain explicit. Optional Team views `results_dashboard.R` and `cell_show.R` consume the shared hub and contain additional descriptive calculations and presentation logic. They are part of the candidate's analytical functionality, but are not duplicate preparation pipelines and are not registered as Classic views.
+
+The Team Results dashboard now defaults to the same individual-lipid PCA recipe as the shared hub: `log2(pmax(x, 0) + 1)`, complete finite lipids, variance cutoff `1e-10`, centering and unit-variance scaling. Explicit log10/linear and centered-only alternatives remain exploratory options and are identified in the CSV and explanatory text. Default PCA equivalence requires the same samples, lipid selection and complete matrix; class-level PCA remains a separate aggregation/NIPALS analysis.
+
+The server-level comparison of identical explicit preparation requests and ZIP round trips does not establish identical presentation, view-specific PCA scores, or browser behavior. Those require the corresponding view and browser checks.
+
+Classic requires a prepared matrix without missing values. Team can explicitly prepare data with missing values when imputation and replacement are both disabled. A Team session with that setting can be restored in Classic, but if missing values remain, Classic will ask the user to review missing-value handling before it can prepare the matrix. The restored original data are unchanged; no setting is altered automatically. The cross-interface equality claim therefore applies to requests accepted by both policies.

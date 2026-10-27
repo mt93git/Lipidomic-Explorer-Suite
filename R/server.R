@@ -10,37 +10,19 @@ server <- function(input, output, session) {
   # =========================================================================
   observeEvent(input$client_ui_trace, {
     evt <- input$client_ui_trace
-    req(evt, evt$type)
-    ts <- format(Sys.time(), "%H:%M:%S")
-    
-    if (evt$type == "CLICK") {
-      p <- evt$payload
-      target_info <- if (!is.null(p$dock_target) && nzchar(p$dock_target)) sprintf(" | Target: '%s'", p$dock_target) else ""
-      cat(sprintf("\n[RSTUDIO CLICK %s] Button: '%s' | ID: '%s' | Tag: <%s>%s\n",
-                  ts, p$label, p$id, p$tag, target_info))
-      flush.console()
-    } else if (evt$type == "FILE_SELECTED") {
-      p <- evt$payload
-      cat(sprintf("\n[RSTUDIO FILE PICKER %s] %d file(s) selected by user in file dialog:\n", ts, p$count))
-      if (!is.null(p$files) && length(p$files) > 0) {
-        for (f in p$files) {
-          cat(sprintf("   >> File: '%s' | Size: %s | Type: '%s'\n", f$name, f$size_mb, f$type))
-        }
-      }
-      cat("   >> Status: Browser is uploading file bytes to Shiny server...\n")
-      flush.console()
-    } else if (evt$type == "FILE_UPLOAD_COMPLETE") {
-      p <- evt$payload
-      cat(sprintf("\n[RSTUDIO UPLOAD %s] Browser finished uploading bytes for input '%s'.\n", ts, p$input_id))
-      flush.console()
-    } else if (evt$type == "STATUS") {
-      cat(sprintf("\n[RSTUDIO SESSION %s] %s\n", ts, evt$payload$message))
-      flush.console()
-    } else if (evt$type == "JS_ERROR") {
-      p <- evt$payload
-      cat(sprintf("\n[RSTUDIO JS ERROR %s] %s (at %s:%s)\n", ts, p$message, p$filename, p$lineno))
-      flush.console()
+    if (!is.list(evt) || !is.character(evt$type) || length(evt$type) != 1L) return()
+    allowed <- c("CLICK", "FILE_SELECTED", "FILE_UPLOAD_COMPLETE", "STATUS", "JS_ERROR")
+    if (!evt$type %in% allowed) return()
+    # The browser payload can include study filenames, labels, paths or user text.
+    # Even opt-in debugging emits only event category and a bounded file count.
+    suffix <- ""
+    if (identical(Sys.getenv("LIPIDOMIC_UI_TRACE_DEBUG", unset = "0"), "1") &&
+        identical(evt$type, "FILE_SELECTED")) {
+      n <- suppressWarnings(as.integer(evt$payload$count))
+      if (length(n) == 1L && !is.na(n) && n >= 0L && n <= 1000L)
+        suffix <- sprintf(" | files: %d", n)
     }
+    cat(sprintf("[UI TRACE %s] %s%s\n", format(Sys.time(), "%H:%M:%S"), evt$type, suffix))
   }, ignoreInit = TRUE)
 
  # --- REACTIVE BRIDGE ---
@@ -51,7 +33,24 @@ server <- function(input, output, session) {
   welcome_load_demo_trigger <- reactiveVal(0)
   
   # The shared_data_server is called first, accepting the bridge.
-  shared_data <- shared_data_server("data_hub", external_settings = qc_settings_bridge, welcome_load_demo_trigger = welcome_load_demo_trigger)
+  is_team <- identical(lipidomic_interface(), "team")
+  design_check <- if (is_team) function() {
+    if (isTRUE(guide_workflow$design_ok())) return(TRUE)
+    guide_workflow$require_design()
+    FALSE
+  } else NULL
+  inference_check <- if (is_team) function(paired = FALSE) {
+    guide_allows_inference(
+      confirmed = isTRUE(guide_workflow$design_ok()),
+      unit = input$guide_unit, type = input$guide_design_type,
+      synthetic_ids = shared_data$synthetic_sample_ids(), paired = paired)
+  } else NULL
+  shared_data <- shared_data_server("data_hub", external_settings = qc_settings_bridge,
+    welcome_load_demo_trigger = welcome_load_demo_trigger, root_session = session,
+    design_check = design_check, preparation_policy = if (is_team) "team" else "classic",
+    inference_check = inference_check)
+
+  guide_workflow <- frontend_server_hooks()(input, output, session, shared_data)
 
   # =========================================================================
   # Global Targeted Lipid Selection Hub
@@ -208,7 +207,7 @@ server <- function(input, output, session) {
   # Show introductory welcome message on startup
   has_shown_welcome <- FALSE
   observe({
-    if (!has_shown_welcome) {
+    if (!has_shown_welcome && !is_team) {
       has_shown_welcome <<- TRUE
       showWelcomeModal()
     }

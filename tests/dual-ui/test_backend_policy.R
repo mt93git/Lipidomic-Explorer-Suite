@@ -1,0 +1,35 @@
+library(shiny)
+source('R/utils_preparation.R')
+classic <- preparation_settings()
+team <- preparation_settings(policy='team')
+stopifnot(!classic$dropNonDetected, classic$imputeRemainingNAtoZero,
+          team$dropNonDetected, !team$imputeRemainingNAtoZero)
+stopifnot(inherits(try(preparation_settings(list(imputationSeed=-1)),silent=TRUE),'try-error'))
+d <- data.frame(Lipid_Name=c('a','b'), S1=c(1,NA), S2=c(2,3))
+info <- list(data=d,file_cols=list(c('S1','S2')))
+settings <- list(useImputation=FALSE,imputeRemainingNAtoZero=FALSE,dropNonDetected=FALSE,imputationSeed=7L)
+r <- preparation_request(info,c('S1','S2'),NULL,settings,policy='team')
+stopifnot(r$spec$imputation_seed==7L)
+server <- function(input,output,session) {
+  current <- reactiveVal(r); run <- reactiveVal(0L); qc <- reactiveVal(0L)
+  ctl <- shared_preparation_controller(current,function(req) req$data_info$data,run,qc,function() TRUE,policy='team')
+}
+testServer(server, {
+  session$flushReact(); run(1L); session$flushReact()
+  stopifnot(ctl$state()$status=='ready',anyNA(ctl$data()))
+  settings$outlierTreatments <- list(S1='remove')
+  current(preparation_request(info,c('S1','S2'),NULL,settings,policy='team'))
+  qc(1L); session$flushReact()
+  stopifnot(ctl$state()$dirty,ctl$state()$revision==1L)
+  run(2L); session$flushReact()
+  stopifnot(ctl$state()$revision==2L)
+})
+cat('PASS: team policy, seed, NA and explicit QC commit\n')
+# Both shells invoke the same production computation for the same explicit request.
+source('tests/integration/helpers.R')
+e <- preparation_env(); f <- synthetic_fixture()
+s <- e$settings
+rc <- preparation_request(e$rawData(),e$input$selectedColumns,f$metadata,s,policy='classic')
+rt <- preparation_request(e$rawData(),e$input$selectedColumns,f$metadata,s,policy='team')
+stopifnot(identical(e$compute_imputed_matrix(TRUE,rc),e$compute_imputed_matrix(TRUE,rt)))
+cat('PASS: identical explicit requests share computation\n')

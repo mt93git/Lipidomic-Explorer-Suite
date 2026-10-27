@@ -44,6 +44,9 @@ critical_core_pkgs <- c("shiny", "bslib", "DT", "dplyr", "visNetwork")
 pkgs_missing <- critical_core_pkgs[!vapply(critical_core_pkgs, function(p) requireNamespace(p, quietly = TRUE), logical(1))]
 
 if (length(pkgs_missing) > 0 && file.exists("00_ENVIRONMENT_SETUP.R")) {
+  if (!identical(Sys.getenv("LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL", unset = "0"), "1")) {
+    stop(sprintf("Missing required packages: %s. Run 00_ENVIRONMENT_SETUP.R explicitly before launching; automatic installation is disabled.", paste(pkgs_missing, collapse = ", ")), call. = FALSE)
+  }
   message(sprintf("\n[PRE-FLIGHT] Missing %d required package(s): %s.", length(pkgs_missing), paste(pkgs_missing, collapse = ", ")))
   message("[PRE-FLIGHT] Auto-triggering 00_ENVIRONMENT_SETUP.R to initialize environment and install packages...")
   assign("..launching_from_run_app", TRUE, envir = .GlobalEnv)

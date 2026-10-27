@@ -624,6 +624,7 @@ auto_route_statistical_method <- function(data_matrix, metadata, group_col) {
 #' @param p_value_type The active P-value type ("adjusted" or "raw")
 #' @return HTML character string
 get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted", contrast_info = NULL, selected_features = NULL) {
+  escape_caption <- function(x) paste(htmltools::htmlEscape(as.character(x)), collapse = " + ")
   # Clean arguments
   method <- as.character(method)
   if (length(method) == 0) method <- "limma"
@@ -690,7 +691,7 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
   
   # Determine Contrast comparison
   contrast_detail <- if (!is.null(contrast_info) && !is.null(contrast_info$comp) && !is.null(contrast_info$ref)) {
-    paste0(paste(contrast_info$comp, collapse = " + "), " vs ", paste(contrast_info$ref, collapse = " + "))
+    paste0(escape_caption(contrast_info$comp), " vs ", escape_caption(contrast_info$ref))
   } else {
     "All groups"
   }
@@ -699,22 +700,22 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
   
   base_desc <- switch(type,
     "bqc" = "Batch Quality Control (BQC) measurement precision is evaluated by calculating the Coefficient of Variation (CoV % = SD / Mean * 100) for each lipid species across all selected BQC replicates. A dashed vertical line indicates the user-defined threshold, above which lipids are flagged as imprecise.",
-    "qc" = "Boxplots represent the distribution of lipid abundance values across samples. Sample intensities were normalized using median centering to align global distribution scaling.",
-    "pca" = "Principal Component Analysis (PCA) was performed on log<sub>2</sub>-transformed, median-centered lipid abundance data using the NIPALS algorithm to accommodate missing values.",
+    "qc" = "Boxplots represent the distribution of lipid abundance values across samples after the selected preparation settings. Consult the methods record for the applied normalization.",
+    "pca" = "Principal Component Analysis (PCA) uses log<sub>2</sub>(abundance + 1) input after preparation. Consult the methods record for additional processing and the plot settings.",
     "composition" = "Compositional profiles display the cumulative abundance of lipid categories or species.",
     "heatmap_unfiltered" = "Hierarchical clustering of lipid abundance profiles. Color scale indicates Z-score values (standard deviations from the row mean). No statistical filtering or significance testing is applied to this plot.",
     "heatmap_filtered" = "Hierarchical clustering of differentially abundant lipids. Color scale indicates Z-score values (standard deviations from the row mean).",
     "volcano" = {
-      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) paste(contrast_info$comp, collapse = " + ") else "Comparison Group"
-      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) paste(contrast_info$ref, collapse = " + ") else "Reference Group"
+      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) escape_caption(contrast_info$comp) else "Comparison Group"
+      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) escape_caption(contrast_info$ref) else "Reference Group"
       paste0(
         "Volcano plot illustrating the relationship between effect size and statistical significance for all analyzed lipids. ",
         "Right side (positive log2 fold change) shows lipids upregulated in <strong>", comp_str, "</strong>, while left side (negative log2 fold change) shows lipids upregulated in <strong>", ref_str, "</strong>."
       )
     },
     "lsea" = {
-      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) paste(contrast_info$comp, collapse = " + ") else "Comparison Group"
-      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) paste(contrast_info$ref, collapse = " + ") else "Reference Group"
+      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) escape_caption(contrast_info$comp) else "Comparison Group"
+      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) escape_caption(contrast_info$ref) else "Reference Group"
       paste0(
         "Lipid Set Enrichment Analysis (LSEA) dot plot illustrating ranked differential abundance effect sizes across lipid categories or subclasses. ",
         "Right side (+X axis, positive log2 fold change) shows lipid sets enriched / upregulated in <b>", comp_str, "</b>, while left side (-X axis, negative log2 fold change) shows lipid sets enriched / upregulated in <b>", ref_str, "</b>. ",
@@ -722,8 +723,8 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
       )
     },
     "structural" = {
-      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) paste(contrast_info$comp, collapse = " + ") else "Comparison Group"
-      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) paste(contrast_info$ref, collapse = " + ") else "Reference Group"
+      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) escape_caption(contrast_info$comp) else "Comparison Group"
+      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) escape_caption(contrast_info$ref) else "Reference Group"
       paste0(
         "Structural Analysis dot plot illustrating differential abundance shifts mapped across lipid structural attributes (carbon chain length and double bond unsaturation). ",
         "Right side (+X axis, positive difference) shows structural features increased in <b>", comp_str, "</b>, while left side (-X axis, negative difference) shows structural features increased in <b>", ref_str, "</b>. ",
@@ -731,20 +732,20 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
       )
     },
     "structural_grid" = {
-      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) paste(contrast_info$comp, collapse = " + ") else "Comparison Group"
-      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) paste(contrast_info$ref, collapse = " + ") else "Reference Group"
+      comp_str <- if (!is.null(contrast_info) && !is.null(contrast_info$comp)) escape_caption(contrast_info$comp) else "Comparison Group"
+      ref_str <- if (!is.null(contrast_info) && !is.null(contrast_info$ref)) escape_caption(contrast_info$ref) else "Reference Group"
       paste0(
         "Structural grid visualization displays the differential abundance patterns mapped by Carbon Chain Length (X-axis) and Double Bond Count (Y-axis) for individual lipid species within the selected class. ",
         "Red color shows structural features upregulated in <strong>", comp_str, "</strong>, while blue color shows structural features upregulated in <strong>", ref_str, "</strong>."
       )
     },
     "violin" = "Violin plots illustrating the distribution probability density of individual lipid species across groups.",
-    "fla" = "Functional lipid indices and ratios representing key biochemical properties, including membrane structural architecture, fluidity, lipid signaling intermediates, and energy storage dynamics.",
-    "fla_volcano" = "Volcano plot illustrating the relationship between effect size and statistical significance for calculated functional lipid class indices and ratios (representing membrane structure, fluidity, signaling intermediates, and energy storage dynamics).",
+    "fla" = "Functional lipid indices and ratios summarize measured lipid composition. They do not directly measure membrane structure, fluidity, signaling, or energy storage dynamics.",
+    "fla_volcano" = "Volcano plot of effect sizes and statistical significance for calculated lipid composition indices and ratios. These indices do not directly measure membrane structure, fluidity, signaling, or energy storage dynamics.",
     "longitudinal" = "Longitudinal trajectory plots display the mean abundance profiles across sequential timepoints.",
-    "cellular_org_stress" = "Organelle stress profiles display computed biochemical markers across essential subcellular compartments (Endoplasmic Reticulum, Mitochondria, Lysosomes, Peroxisomes, and the Golgi apparatus). It assesses curvature, saturation, maturation blocks, degradative capacity, and transport stall.",
-    "cellular_org_cpi" = "The Cellular Peroxidation Index (CPI) quantifies sample-level susceptibility to lipid peroxidation and ferroptosis by applying weighted coefficients to the abundance of monoenoic, dienoic, tetraenoic, pentaenoic, and hexaenoic lipid species.",
-    "cellular_org_polar" = "The Lipidomic Phenotypic State Map illustrates sample-level trajectories along two functional axes: neutral lipid storage (M1-like inflammatory state) and membrane structural/ether complexity (M2-like resolving state).",
+    "cellular_org_stress" = "These exploratory lipid composition ratios can motivate hypotheses about subcellular biology. They do not directly measure organelle function, membrane curvature, maturation, degradation, or transport.",
+    "cellular_org_cpi" = "The Cellular Peroxidation Index (CPI) is a composition-based proxy calculated from weighted lipid unsaturation. It does not measure susceptibility to lipid peroxidation, ferroptosis, or cell death.",
+    "cellular_org_polar" = "This exploratory map compares sample-level lipid composition indices for neutral lipid signal and membrane-related or ether lipid composition. It does not measure macrophage polarization or establish a biological trajectory.",
     "Statistical methodology note"
   )
   
@@ -753,7 +754,7 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
   if (!is.null(selected_features) && length(selected_features) > 0) {
     max_show <- 8
     shown_features <- selected_features[1:min(max_show, length(selected_features))]
-    features_str <- paste(shown_features, collapse = ", ")
+    features_str <- paste(htmltools::htmlEscape(as.character(shown_features)), collapse = ", ")
     if (length(selected_features) > max_show) {
       features_str <- paste0(features_str, " (+", length(selected_features) - max_show, " more)")
     }
@@ -780,6 +781,18 @@ get_journal_caption <- function(type, method = "limma", p_value_type = "adjusted
     caption,
     "</div>"
   )))
+}
+
+# Keep local tests under the same study-design and synthetic-sample policy as DE.
+guided_local_inference_allowed <- function(session, shared_data, paired = FALSE) {
+  policy <- shared_data$inference_allowed
+  if (!is.function(policy)) return(FALSE)
+  isTRUE(policy(paired = paired))
+}
+
+guided_local_p_value <- function(reference, comparison, method, session, shared_data, paired = FALSE) {
+  if (!guided_local_inference_allowed(session, shared_data, paired = paired)) return(NA_real_)
+  compute_local_p_val(reference, comparison, method = method, paired = paired)
 }
 
 #' Compute Local P-Value for Two-Group Comparison using selected Method

@@ -931,7 +931,7 @@ pathway_server <- function(id, shared_data) {
         abund_fc <- if (!is.na(ref_mean_abund) && ref_mean_abund > 0) comp_mean_abund / ref_mean_abund else NA_real_
         
         p_val_abund <- NA_real_
-        if (length(ref_abunds) >= 2 && length(comp_abunds) >= 2) {
+        if (guided_local_inference_allowed(session, shared_data) && length(ref_abunds) >= 2 && length(comp_abunds) >= 2) {
           ref_log <- log2(ref_abunds + 1)
           comp_log <- log2(comp_abunds + 1)
           
@@ -952,7 +952,7 @@ pathway_server <- function(id, shared_data) {
         }
         
         p_val_sat <- NA_real_
-        if (exists("ref_weighted_s") && exists("comp_weighted_s") && length(ref_weighted_s) >= 2 && length(comp_weighted_s) >= 2) {
+        if (guided_local_inference_allowed(session, shared_data) && exists("ref_weighted_s") && exists("comp_weighted_s") && length(ref_weighted_s) >= 2 && length(comp_weighted_s) >= 2) {
           ref_s_clean <- ref_weighted_s[is.finite(ref_weighted_s)]
           comp_s_clean <- comp_weighted_s[is.finite(comp_weighted_s)]
           if (length(ref_s_clean) >= 2 && length(comp_s_clean) >= 2) {
@@ -968,7 +968,7 @@ pathway_server <- function(id, shared_data) {
         }
         
         p_val_carbon <- NA_real_
-        if (exists("ref_weighted_c") && exists("comp_weighted_c") && length(ref_weighted_c) >= 2 && length(comp_weighted_c) >= 2) {
+        if (guided_local_inference_allowed(session, shared_data) && exists("ref_weighted_c") && exists("comp_weighted_c") && length(ref_weighted_c) >= 2 && length(comp_weighted_c) >= 2) {
           ref_c_clean <- ref_weighted_c[is.finite(ref_weighted_c)]
           comp_c_clean <- comp_weighted_c[is.finite(comp_weighted_c)]
           if (length(ref_c_clean) >= 2 && length(comp_c_clean) >= 2) {
@@ -1880,7 +1880,7 @@ pathway_server <- function(id, shared_data) {
           return()
         }
         metrics <- metrics[order(metrics$Class), ]
-        write.csv(metrics, file, row.names = FALSE)
+        write_spreadsheet_csv(metrics, file, row.names = FALSE)
       }
     )
     

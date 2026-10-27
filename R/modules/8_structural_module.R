@@ -1,6 +1,19 @@
 # R/modules/8_structural_module.R
 # Structural Lipidome Audit.
 
+# Order display categories by chain length and unsaturation without rewriting labels.
+# Unknown or malformed labels remain in their original order; Other is last.
+structural_order_acyl_chains <- function(chains) {
+  chains <- unique(as.character(chains))
+  other <- !is.na(chains) & chains == "Other"
+  body <- chains[!other]
+  match_parts <- regmatches(body, regexec("^(?:[dmt]|[OP]-)?([0-9]+):([0-9]+)$", body, perl=TRUE, ignore.case=TRUE))
+  carbon <- vapply(match_parts, function(x) if (length(x)==3L) as.numeric(x[2]) else NA_real_, numeric(1))
+  double_bonds <- vapply(match_parts, function(x) if (length(x)==3L) as.numeric(x[3]) else NA_real_, numeric(1))
+  body <- body[order(is.na(carbon),carbon,double_bonds,seq_along(body),na.last=TRUE)]
+  if (any(other)) c(body, "Other") else body
+}
+
 # --- Module UI ---
 
 structural_ui <- function(id) {
@@ -1854,18 +1867,18 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       default_val <- if (is_single) min(25, max_count) else max_count
       
       reset_slider <- FALSE
-      if (is.null(last_struct_grouping()) || last_struct_grouping() != grp_col) {
+      if (is.null(isolate(last_struct_grouping())) || isolate(last_struct_grouping()) != grp_col) {
         reset_slider <- TRUE
         last_struct_grouping(grp_col)
       }
-      if (is.null(last_struct_no_sig()) || last_struct_no_sig() != no_sig_val) {
+      if (is.null(isolate(last_struct_no_sig())) || isolate(last_struct_no_sig()) != no_sig_val) {
         reset_slider <- TRUE
         last_struct_no_sig(no_sig_val)
       }
       
       de_ci <- shared_data$de_contrast_info()
       curr_contrast <- if (!is.null(de_ci)) paste(c(de_ci$ref, de_ci$comp), collapse = " vs ") else ""
-      if (is.null(last_struct_contrast()) || last_struct_contrast() != curr_contrast) {
+      if (is.null(isolate(last_struct_contrast())) || isolate(last_struct_contrast()) != curr_contrast) {
         reset_slider <- TRUE
         last_struct_contrast(curr_contrast)
       }
@@ -1878,19 +1891,19 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         input$minClassSize %||% 3,
         sep = "_"
       )
-      if (is.null(last_struct_sig_settings()) || last_struct_sig_settings() != curr_sig_settings) {
+      if (is.null(isolate(last_struct_sig_settings())) || isolate(last_struct_sig_settings()) != curr_sig_settings) {
         reset_slider <- TRUE
         last_struct_sig_settings(curr_sig_settings)
       }
       
       curr_run <- input$runAnalysis %||% 0
-      if (last_struct_run_count() != curr_run) {
+      if (isolate(last_struct_run_count()) != curr_run) {
         reset_slider <- TRUE
         last_struct_run_count(curr_run)
       }
       
       curr_val <- isolate(input$topClassesCount)
-      prev_max <- last_struct_max_count()
+      prev_max <- isolate(last_struct_max_count())
       
       is_restoring_session <- tryCatch(isTRUE(shared_data$is_restoring()), error = function(e) FALSE)
       saved_val <- if (reset_slider || is.null(curr_val)) {
@@ -1951,7 +1964,8 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     
   # --- 2. Structural Audit Loop ---
     
-    auditResults <- eventReactive(input$runAnalysis, {
+    auditResults_event <- eventReactive(input$runAnalysis, {
+      req(guided_local_inference_allowed(session, shared_data))
       df <- structuralData()
       req(nrow(df) > 0)
       
@@ -2000,7 +2014,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
            
            vals_ref <- sub_df[[feat_col]][sub_df$Direction == "Enriched in Ref"]
            vals_comp <- sub_df[[feat_col]][sub_df$Direction == "Enriched in Comp"]
-           pval <- tryCatch(compute_local_p_val(vals_ref, vals_comp, method = shared_data$actual_de_method(), paired = FALSE), error=function(e) NA_real_)
+           pval <- tryCatch(guided_local_p_value(vals_ref, vals_comp, method = shared_data$actual_de_method(), session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA_real_)
            
            if(!is.na(pval)) {
              diff_val <- mean(vals_comp, na.rm=TRUE) - mean(vals_ref, na.rm=TRUE) # Comp - Ref
@@ -2022,6 +2036,10 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       res_df <- do.call(rbind, results_list)
       res_df$P_Adj <- p.adjust(res_df$P_Value, method = "BH")
       res_df
+    })
+    auditResults <- reactive({
+      req(guided_local_inference_allowed(session, shared_data))
+      auditResults_event()
     })
     
   # --- 3. Plotting: Summary ---
@@ -2324,7 +2342,8 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        selectInput(session$ns("selectedDetails"), "Select Shifts to Visualize:", choices = choices, multiple = TRUE, selected = saved_selected)
     })
     
-    speciesPlotReactive <- eventReactive(input$updateSpecies, {
+    speciesPlot_event <- eventReactive(input$updateSpecies, {
+      req(guided_local_inference_allowed(session, shared_data))
       details <- isolate(input$selectedDetails)
       req(details)
       pct_top <- isolate(input$labelTop) / 100
@@ -2492,6 +2511,10 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
           theme_void()
       }
     }, ignoreNULL = FALSE)
+    speciesPlotReactive <- reactive({
+      req(guided_local_inference_allowed(session, shared_data))
+      speciesPlot_event()
+    })
 
     output$speciesPlotPlot <- renderPlot({
       if (is.null(shared_data$de_results())) {
@@ -2714,9 +2737,27 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       content = function(file) {
         res <- auditResults()
         req(res)
-        write.csv(res, file, row.names = FALSE)
+        write_spreadsheet_csv(res, file, row.names = FALSE)
       }
     )
+
+    output$structuralDownloadsUI <- renderUI({
+      result <- tryCatch(auditResults(), error = function(e) NULL)
+      if (is.null(result) || nrow(result) == 0) {
+        return(tags$div(
+          tags$button("CSV", type = "button", disabled = "disabled",
+                      title = "Initiate Structural Analysis before downloading results",
+                      class = "btn btn-sm btn-outline-secondary py-0 btn-download-csv"),
+          tags$button("PDF", type = "button", disabled = "disabled",
+                      title = "Initiate Structural Analysis before downloading results",
+                      class = "btn btn-sm btn-outline-secondary py-0 btn-download-pdf")
+        ))
+      }
+      tags$div(
+        downloadButton(session$ns("downloadSummaryCSV"), "CSV", class = "btn-sm btn-outline-secondary py-0 btn-download-csv"),
+        downloadButton(session$ns("downloadSummaryPDF"), "PDF", class = "btn-sm btn-outline-secondary py-0 btn-download-pdf")
+      )
+    })
 
     output$downloadSpeciesPNG <- downloadHandler(
       filename = function() { paste0("structural_species_", format(Sys.Date(), "%Y%m%d"), ".png") },
@@ -4157,7 +4198,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
           Grouping_Reason = Reason
         )
       
-      readr::write_csv(out_df, file)
+      readr::write_csv(spreadsheet_csv_safe(out_df), file)
     }
 
     output$prop_download_other_csv <- downloadHandler(
@@ -4412,12 +4453,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         df_grp$LipidClass <- "All Selected"
       }
       
-      unique_chains <- setdiff(unique(df_grp$AcylChain), "Other")
-      chain_ord <- unique_chains[order(
-        as.numeric(sapply(strsplit(unique_chains, ":"), `[`, 1)),
-        as.numeric(sapply(strsplit(unique_chains, ":"), `[`, 2))
-      )]
-      if ("Other" %in% df_grp$AcylChain) chain_ord <- c(chain_ord, "Other")
+      chain_ord <- structural_order_acyl_chains(df_grp$AcylChain)
       
       df_grp$AcylChain <- factor(df_grp$AcylChain, levels = chain_ord)
       
@@ -4992,7 +5028,10 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         400
       }
       
-      container_size <- debounced_prop_container_size()
+      # A debounced resize input can be pending (or never sent) when the plot
+      # first renders. Its silent validation error must not block base height.
+      container_size <- tryCatch(debounced_prop_container_size(),
+                                 shiny.silent.error = function(e) NULL)
       if (!is.null(container_size) && !is.null(container_size$height) && is.numeric(container_size$height) && container_size$height > 200) {
         available_h <- max(200, container_size$height - 16)
         return(max(base_h, available_h))
@@ -5271,7 +5310,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       content = function(file) {
         res_info <- buildPropPlotData()
         req(res_info, res_info$data)
-        write.csv(res_info$data, file, row.names = FALSE)
+        write_spreadsheet_csv(res_info$data, file, row.names = FALSE)
       }
     )
 
@@ -5523,6 +5562,8 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
 
     # Differential Acyl Chain Computation Reactive
     diff_acyl_data <- reactive({
+      paired_contrast <- identical(input$diff_comp_type, "paired_patient")
+      req(guided_local_inference_allowed(session, shared_data, paired = paired_contrast))
       raw <- diff_raw_chain_data()
       req(raw, raw$df_long, nrow(raw$df_long) > 0)
       
@@ -5822,7 +5863,8 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         max(420, min(1400, 160 + n_chains * 26))
       }
       
-      container_size <- debounced_diff_container_size()
+      container_size <- tryCatch(debounced_diff_container_size(),
+                                 shiny.silent.error = function(e) NULL)
       if (!is.null(container_size) && !is.null(container_size$height) && is.numeric(container_size$height) && container_size$height > 200) {
         return(max(base_h, container_size$height - 16))
       }
@@ -6041,6 +6083,8 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         dplyr::mutate(
           Color = sapply(AcylChain, function(ch) {
             col <- color_map[[ch]] %||% "#94a3b8"
+            if (length(col) != 1L || is.na(col) || !grepl("^#[0-9A-Fa-f]{6}$", col)) col <- "#94a3b8"
+            ch <- as.character(htmltools::htmlEscape(ch))
             sprintf("<span style='display:inline-block;width:12px;height:12px;border-radius:50%%;background-color:%s;margin-right:6px;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,0.15);'></span><strong>%s</strong>", col, ch)
           }),
           Mean_Ref_Fmt = sprintf("%.2f %s", Mean_Ref, metric_unit),
@@ -6082,7 +6126,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       
       DT::datatable(
         table_df,
-        colnames = col_names,
+        colnames = as.character(htmltools::htmlEscape(col_names)),
         escape = FALSE,
         selection = "single",
         rownames = FALSE,
@@ -6108,7 +6152,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       content = function(file) {
         diff_res <- tryCatch(diff_acyl_data(), error = function(e) NULL)
         req(diff_res, diff_res$results)
-        write.csv(diff_res$results, file, row.names = FALSE)
+        write_spreadsheet_csv(diff_res$results, file, row.names = FALSE)
       }
     )
 

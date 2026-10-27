@@ -1,3 +1,37 @@
+# webshot2/chromote needs a browser for Plotly PDF downloads. Respect an
+# administrator-provided path; Playwright's user-cache browser is a fallback.
+ensure_plotly_pdf_browser <- function() {
+  # A 3D loading plot can take longer than Chromote's ten-second default.
+  extend_timeout <- function() {
+    browser <- chromote::default_chromote_object()
+    browser$default_timeout <- max(browser$default_timeout, 60)
+  }
+  configured <- Sys.getenv("CHROMOTE_CHROME", unset = "")
+  if (nzchar(configured)) {
+    if (!file.exists(configured) || file.access(configured, 1) != 0) {
+      stop("CHROMOTE_CHROME does not point to an executable browser.", call. = FALSE)
+    }
+    extend_timeout()
+    return(configured)
+  }
+  discovered <- tryCatch(chromote::find_chrome(), error = function(e) NULL)
+  if (is.character(discovered) && length(discovered) == 1L &&
+      !is.na(discovered) && nzchar(discovered) && file.access(discovered, 1) == 0) {
+    extend_timeout()
+    return(discovered)
+  }
+  candidates <- Sys.glob(file.path(path.expand("~"), ".cache", "ms-playwright",
+    "chromium_headless_shell-*", "chrome-headless-shell-linux64", "chrome-headless-shell"))
+  candidates <- candidates[file.access(candidates, 1) == 0]
+  if (!length(candidates)) {
+    stop("Plotly PDF export requires an executable Chromium browser (set CHROMOTE_CHROME).", call. = FALSE)
+  }
+  browser <- candidates[which.max(file.info(candidates)$mtime)]
+  Sys.setenv(CHROMOTE_CHROME = browser)
+  extend_timeout()
+  browser
+}
+
 # R/utils_vis.R
 # Visualization Utilities.
 
@@ -691,6 +725,15 @@ generateHeatmapObject <- function(mat, title,
 # --- 3. Bar Chart Generation ---
 # ==============================================================================
 
+# Legacy composition sums require complete measurements. In particular,
+# sum(..., na.rm=TRUE) must not turn an entirely unavailable class into zero.
+validate_composition_values <- function(mat) {
+  shiny::validate(shiny::need(is.numeric(mat) && all(is.finite(mat)),
+    paste("This composition view requires complete, finite prepared abundances.",
+          "Review missing-value handling before using this view; missing values are not replaced here.")))
+  invisible(mat)
+}
+
 #' Generates a ggplot2 bar chart for composition analysis.
 buildBarPlot <- function(mat, titleText, 
                          annotation_data,
@@ -707,6 +750,7 @@ buildBarPlot <- function(mat, titleText,
                          color_error_bars_by_class = FALSE
 ) {
   validate(need(is.matrix(mat) && nrow(mat) > 0 && ncol(mat) > 0, "No data for bar chart."))
+  validate_composition_values(mat)
   req(annotation_data)
   
   clean_unspecified_labels <- function(x) {
@@ -1055,6 +1099,7 @@ buildDonutPlot <- function(mat, titleText,
                            ncols = 4,
                            min_pct = 0.0) {
   validate(need(is.matrix(mat) && nrow(mat) > 0 && ncol(mat) > 0, "No data for donut plot."))
+  validate_composition_values(mat)
   req(annotation_data)
   
   clean_unspecified_labels <- function(x) {
