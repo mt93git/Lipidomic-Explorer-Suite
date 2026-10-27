@@ -1,0 +1,8 @@
+"check","status"
+"CPI_weighted_sum","PASS"
+"zero_negative_to_missing","PASS"
+"row_z_scores","PASS"
+"class_means","PASS"
+"class_SD_singleton_zero","PASS"
+"BQC_sample_SD_CV","PASS"
+"BQC_one_sample_unavailable","PASS"
