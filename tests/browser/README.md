@@ -1,5 +1,7 @@
 # Classic / Team browser replay scenarios
 
+For unattended CI, see [ci/README.md](ci/README.md). The CUA scenarios below remain useful for interactive diagnosis.
+
 Runner: documented CUA browser API, using `tab.playwright` locators, read-only DOM geometry, screenshots and file chooser. This is executable scenario automation, not a headless CI workflow. It complements the 58 R acceptance jobs and the JS layout-event regression.
 
 ## Safety and setup

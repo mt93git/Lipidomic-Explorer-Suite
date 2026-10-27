@@ -1,0 +1,287 @@
+{
+  "version": "1",
+  "metadata": {
+    "version": "0.1",
+    "scientific_metadata": [
+      {
+        "FullName": "S01",
+        "Group1": "Control",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P01",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S01",
+        "TimePoint_Group1": "Control",
+        "Cluster": 1
+      },
+      {
+        "FullName": "S02",
+        "Group1": "Control",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P02",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S02",
+        "TimePoint_Group1": "Control",
+        "Cluster": 1
+      },
+      {
+        "FullName": "S03",
+        "Group1": "Control",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P03",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S03",
+        "TimePoint_Group1": "Control",
+        "Cluster": 1
+      },
+      {
+        "FullName": "S04",
+        "Group1": "Control",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P04",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S04",
+        "TimePoint_Group1": "Control",
+        "Cluster": 1
+      },
+      {
+        "FullName": "S05",
+        "Group1": "Treatment",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P05",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S05",
+        "TimePoint_Group1": "Treatment",
+        "Cluster": 2
+      },
+      {
+        "FullName": "S06",
+        "Group1": "Treatment",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P06",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S06",
+        "TimePoint_Group1": "Treatment",
+        "Cluster": 2
+      },
+      {
+        "FullName": "S07",
+        "Group1": "Treatment",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P07",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S07",
+        "TimePoint_Group1": "Treatment",
+        "Cluster": 2
+      },
+      {
+        "FullName": "S08",
+        "Group1": "Treatment",
+        "Group2": "Reference tissue",
+        "PatientNumber": "P08",
+        "TimePoint": "Unspecified",
+        "Replicate": "Unspecified",
+        "DisplayLabel": "S08",
+        "TimePoint_Group1": "Treatment",
+        "Cluster": 2
+      }
+    ],
+    "display_metadata": [
+      {
+        "FullName": "S01",
+        "Condition": "Control",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P01",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S01"
+      },
+      {
+        "FullName": "S02",
+        "Condition": "Control",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P02",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S02"
+      },
+      {
+        "FullName": "S03",
+        "Condition": "Control",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P03",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S03"
+      },
+      {
+        "FullName": "S04",
+        "Condition": "Control",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P04",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S04"
+      },
+      {
+        "FullName": "S05",
+        "Condition": "Treatment",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P05",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S05"
+      },
+      {
+        "FullName": "S06",
+        "Condition": "Treatment",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P06",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S06"
+      },
+      {
+        "FullName": "S07",
+        "Condition": "Treatment",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P07",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S07"
+      },
+      {
+        "FullName": "S08",
+        "Condition": "Treatment",
+        "Tissue": "Reference tissue",
+        "SubjectID": "P08",
+        "ReplicateID": "1",
+        "TimePoint": "Visit 1",
+        "Batch": "Run A",
+        "SampleType": "study",
+        "SampleID": "S08"
+      }
+    ],
+    "mappings": {
+      "Group1": "Condition",
+      "Group2": "Tissue",
+      "PatientNumber": "SubjectID"
+    },
+    "warnings": []
+  },
+  "applied": {
+    "request_id": "6f672f386fd75bdb3b5965586167414974b12793d7d59734ada4118a43aa6243",
+    "spec": {
+      "data_id": "40c77d3315944dbfb28d4bc0989a4cfadacb9041c1afdae5177986a2eaa5214b",
+      "metadata_id": "6d3fc51fdb4f26f951ae02f9cead4b5f5be95092e2967337f44d14b131f09726",
+      "selected": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07",
+        "S08"
+      ],
+      "settings": {
+        "minDetectionPct": 0,
+        "dropNonDetected": true,
+        "detectionScope": "global",
+        "useImputation": true,
+        "normalizationMethod": "none",
+        "imputeZerosPerFile": true,
+        "imputeRemainingNAtoZero": false,
+        "outlierTreatments": {
+          "S01": "keep"
+        },
+        "imputationSeed": 7
+      },
+      "use_average": false,
+      "imputation_seed": 7,
+      "policy": "classic"
+    },
+    "filter": {
+      "keep": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input": 12,
+      "retained": 12,
+      "excluded": 0,
+      "samples": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07",
+        "S08"
+      ],
+      "all_absent": 0,
+      "threshold": 0,
+      "scope": "global",
+      "drop_absent": true,
+      "raw_missing": 0.0104166666666667,
+      "retained_missing": 0.0104166666666667
+    },
+    "output_lipids": [
+      "PC(34:1)",
+      "PC(36:2)",
+      "PE(34:1)",
+      "PE(36:2)",
+      "SM(d18:1/16:0)",
+      "CER(d18:1/18:1)+H",
+      "TG(52:2)",
+      "TG(54:3)",
+      "LPC(16:0)",
+      "LPE(18:1)",
+      "PI(38:4)",
+      "PS(36:1)"
+    ],
+    "output_samples": [
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S08"
+    ],
+    "reason": "run_analysis",
+    "completed_at": "2026-10-27 18:41:54",
+    "revision": 1
+  }
+}

@@ -1,0 +1,62 @@
+name: Classic and Team browser regression
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [integration/libreros-guided-workflow]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      R_PROFILE_USER: /dev/null
+      R_ENVIRON_USER: /dev/null
+      LIPIDOMIC_COMPANION_AI: '0'
+      LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.4.3'
+          use-public-rspm: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install system libraries for graph packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglpk-dev libxml2-dev
+      - name: Install declared dependencies for the complete acceptance suite
+        shell: Rscript --vanilla {0}
+        run: |
+          options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
+          install.packages('BiocManager')
+          desc <- read.dcf('DESCRIPTION')
+          fields <- intersect(c('Imports', 'Suggests'), colnames(desc))
+          packages <- unique(trimws(gsub('\\s*\\([^)]*\\)', '', unlist(strsplit(paste(desc[1, fields], collapse=','), ',')))))
+          packages <- unique(c(packages[nzchar(packages)], 'statmod'))
+          BiocManager::install(packages, ask=FALSE, update=FALSE)
+          missing <- packages[!vapply(packages, requireNamespace, logical(1), quietly=TRUE)]
+          for (pkg in missing) tryCatch(loadNamespace(pkg), error=function(e) message(pkg, ': ', conditionMessage(e)))
+          if (length(missing)) stop('Missing acceptance dependencies: ', paste(missing, collapse=', '))
+      - name: Install locked browser dependencies
+        working-directory: tests/browser/ci
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Record source revision
+        run: |
+          mkdir -p tests/browser/ci/artifacts
+          git rev-parse HEAD > tests/browser/ci/artifacts/source-commit.txt
+      - name: Run both isolated interfaces in Chromium
+        working-directory: tests/browser/ci
+        run: npm test 2>&1 | tee artifacts/runner.log
+      - name: Retain browser evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-regression-${{ github.sha }}
+          path: tests/browser/ci/artifacts/
+          retention-days: 14
+          if-no-files-found: warn
