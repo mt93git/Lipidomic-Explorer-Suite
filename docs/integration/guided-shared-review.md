@@ -21,7 +21,7 @@ New archives retain `state.json` and original files, adding `shared-state-v1.jso
 
 Restoring a ZIP hydrates files and settings but **requires review and Run Analysis before recomputation**. A Shiny server flush does not prove that client widgets have settled. Guided design confirmation is session-local, reset on restoration, and checked against the current data, selection and mapping at execution time. Legacy ZIPs without a sidecar remain supported; Classic metadata can be previewed and reconfirmed in guided mode.
 
-Archive extraction rejects absolute/traversal/noncanonical paths, duplicate entries and excessive sizes before extraction. Entries are streamed into regular files without restoring symlinks or filesystem attributes; actual streamed sizes are checked as well. Restorations and uploads use session-specific directories, so identically named files cannot overwrite another session's matrix. Invalid files are rejected before hydration. Metadata subgroup labels are JSON-encoded before insertion into click handlers.
+Archive extraction rejects absolute/traversal/noncanonical paths, duplicate entries and excessive sizes before extraction. Entries are streamed into regular files without restoring symlinks or filesystem attributes; actual streamed sizes are checked as well. Restorations and uploads use session-specific directories, so identically named files cannot overwrite another session's matrix. Unsafe archive structures are rejected before hydration. Legacy archives have no source-file checksum; manually supplied missing datasets still require user verification of identity and content. Metadata subgroup labels are JSON-encoded before insertion into click handlers.
 
 ## Evidence and reproduction
 

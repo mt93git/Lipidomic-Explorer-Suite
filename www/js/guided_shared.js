@@ -20,6 +20,15 @@
     const de = document.getElementById('data_hub-deMethod');
     if(de) { const item=de.closest('.accordion-item');move(item,'shared-contrast-slot');item?.querySelector('.accordion-collapse')?.classList.add('show'); }
   }
+  const previewToken = () => document.querySelector('[data-shared-review-token]')?.getAttribute('data-shared-review-token') || '';
+  document.addEventListener('change', e => {
+    if(e.target.id==='shared_design_confirm' && window.Shiny)
+      Shiny.setInputValue('shared_review_receipt',{checked:e.target.checked,token:previewToken()},{priority:'event'});
+  });
+  document.addEventListener('click', e => {
+    if(e.target.closest('#shared_metadata_apply') && window.Shiny)
+      Shiny.setInputValue('shared_apply_receipt',{token:previewToken()},{priority:'event'});
+  });
   document.addEventListener('DOMContentLoaded',mount);
   document.addEventListener('click', e => {const b=e.target.closest('[data-shared-tool]');if(b&&window.Shiny)Shiny.setInputValue('shared_tool',b.dataset.sharedTool,{priority:'event'});});
   if(window.jQuery)jQuery(document).on('shiny:connected shiny:bound',mount).on('shown.bs.tab',updateNavigation);

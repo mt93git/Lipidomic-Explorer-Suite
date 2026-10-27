@@ -27,6 +27,8 @@ y<-x;y$SampleType<-'Pooled QC';y$TimeValue<-'baseline'
 v<-stage_metadata_v01(y,ids,c(Group1='Condition'))
 check('Descriptive sample type and time labels cannot reject ingestion',v$validation$valid && length(v$validation$warnings)>=2)
 check('Descriptive time still requires conversion before scientific mapping',reject(stage_metadata_v01(y,ids,c(TimePoint='TimeValue'))))
+y<-x;y$TimeValue<-'1';y$TimeUnit<-'h';y$TimeUnit[5]<-''
+check('Unused master rows cannot reject mapped time units',stage_metadata_v01(y,ids,c(TimePoint='TimeValue'))$validation$valid)
 # Real ZIP packaging and reading, including legacy state without a sidecar.
 d<-tempfile();dir.create(d);dir.create(file.path(d,'data_files'));write.csv(data.frame(Lipid_Name='PC(34:1)',S01=1),file.path(d,'data_files','raw.csv'),row.names=FALSE)
 state<-list(inputs=list(selectedColumns='S01'),uploads=list(raw='data_files/raw.csv'))
@@ -48,7 +50,7 @@ unlink(c(d,z),recursive=TRUE)
 unsafe<-tempfile();dir.create(unsafe)
 python<-Sys.which('python3');stopifnot(nzchar(python))
 stopifnot(system2(python,c('tests/guided-shared/make_archive_fixtures.py',shQuote(unsafe)))==0)
-for(case in c('traversal','absolute','alias','symlink-chain'))
+for(case in c('traversal','absolute','alias','symlink-chain','case-alias','windows-ads','trailing-dot','reserved-name','directory-dataset'))
   check(paste('Unsafe archive entry rejected:',case),reject(suppressWarnings(read_session_archive(file.path(unsafe,paste0(case,'.zip'))))))
 a<-read_session_archive(file.path(unsafe,'symlink.zip'))
 p<-file.path(a$directory,'data_files/raw.csv')

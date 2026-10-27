@@ -61,7 +61,7 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
     m<-hub$all_metadata();req(m)
     md<-data.frame(SampleID=as.character(m$FullName),stringsAsFactors=FALSE)
     for(target in names(fields)) if(target %in% names(m)) md[[fields[[target]]]]<-as.character(m[[target]])
-    legacy_preview(list(data=md,mappings=fields[names(fields)%in%names(m)]))
+    legacy_preview(list(data=md,mappings=fields[names(fields)%in%names(m)],native=m))
     metadata_file(md)
     confirmed_token(NULL)
     updateCheckboxInput(session,'shared_design_confirm',value=FALSE)
@@ -90,7 +90,8 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
   })
   token <- reactive({
     s<-staged();if(!isTRUE(s$validation$valid))return(NULL)
-    digest::digest(list(s$original,s$mappings,s$matrix_ids,hub$selected_cols(),hub$preparation_data_id()),algo='sha256')
+    digest::digest(list(s$original,s$mappings,s$matrix_ids,hub$selected_cols(),hub$preparation_data_id(),hub$restore_generation(),
+      if(!is.null(legacy_preview()))tryCatch(hub$all_metadata(),error=function(e)NULL)else NULL),algo='sha256')
   })
   design_ok <- reactive(!is.null(token()) && !is.null(confirmed_token()) && identical(token(),confirmed_token()))
   design_bridge(function() design_ok())
@@ -98,25 +99,27 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
     reviewed_token(NULL)
     if(!isTRUE(design_ok())) updateCheckboxInput(session,'shared_design_confirm',value=FALSE)
   },ignoreNULL=FALSE,priority=100)
-  observeEvent(input$shared_design_confirm,{
-    reviewed_token(if(isTRUE(input$shared_design_confirm))token() else NULL)
+  observeEvent(input$shared_review_receipt,{
+    receipt<-input$shared_review_receipt
+    reviewed_token(if(isTRUE(receipt$checked) && identical(receipt$token,token()))token() else NULL)
   },ignoreNULL=FALSE)
   output$shared_metadata_preview <- renderUI({
     s <- tryCatch(staged(),error=function(e)NULL)
     if(is.null(s))return(p('Upload a matrix and metadata CSV to preview the mapping.'))
-    tagList(p(sprintf('%d matrix samples · %d metadata rows',length(s$matrix_ids),nrow(s$original))),
+    tagList(tags$span(`data-shared-review-token`=token() %||% '',hidden=NA),p(sprintf('%d matrix samples · %d metadata rows',length(s$matrix_ids),nrow(s$original))),
       lapply(s$validation$errors,function(x)div(class='alert alert-danger',x)),
       lapply(s$validation$warnings,function(x)div(class='alert alert-info',x)))
   })
   output$shared_metadata_table <- renderTable({s<-staged();req(s$validation$valid);head(s$validation$data,12)},striped=TRUE)
-  observeEvent(input$shared_metadata_apply,{
+  observeEvent(input$shared_apply_receipt,{
     tryCatch({
-      if(!isTRUE(input$shared_design_confirm) || is.null(reviewed_token()) || !identical(reviewed_token(),token()))stop('Review the current mapping and check the confirmation box again.')
+      if(!isTRUE(input$shared_design_confirm) || is.null(reviewed_token()) || !identical(reviewed_token(),token()) || !identical(input$shared_apply_receipt$token,token()))stop('Review the current mapping and check the confirmation box again.')
       s<-staged();if(!'Group1'%in%names(s$mappings))stop('Map the biological condition to Group1 before continuing.')
       if(!isTRUE(s$validation$valid))stop(paste(s$validation$errors,collapse='; '))
       legacy<-legacy_preview()
       preserve_legacy<-!is.null(legacy) && identical(s$original,legacy$data) && identical(s$mappings,legacy$mappings)
       # Keep all native Classic labels, timepoint groups and clusters when merely reviewing.
+      if(preserve_legacy && !identical(legacy$native,hub$all_metadata()))stop('Classic metadata changed after restoration. Restore again or upload the updated metadata for review.')
       if(!preserve_legacy)hub$set_external_sample_metadata(s,TRUE)
       confirmed_token(token())
       showNotification('Metadata confirmed. Continue to Quality to prepare the data.',type='message')

@@ -12,9 +12,9 @@ md<-read_sample_metadata_v01('tests/guided-shared/fixtures/metadata.csv')
 legacy<-confirm_metadata_v01(stage_metadata_v01(md,names(fixture)[-1],c(Group1='Condition',Group2='Tissue',PatientNumber='SubjectID',Replicate='ReplicateID',TimePoint='TimePoint')),TRUE)$scientific_metadata
 legacy$TimePoint_Group1<-paste0('custom-',seq_len(nrow(legacy)));legacy$Cluster<-rev(seq_len(nrow(legacy)));legacy$DisplayLabel<-paste0('custom label ',seq_len(nrow(legacy)))
 server<-function(input,output,session){
-  ext<-reactiveVal(NULL);restored<-reactiveVal(FALSE);bridge<-reactiveVal(NULL);calls<-reactiveVal(0)
+  ext<-reactiveVal(NULL);restored<-reactiveVal(FALSE);generation<-reactiveVal(0L);bridge<-reactiveVal(NULL);calls<-reactiveVal(0)
   scientific<-reactiveVal(legacy);matrix<-reactiveVal(fixture);selection<-reactiveVal(names(fixture)[-1])
-  hub<-list(external_sample_metadata=ext,session_restored=restored,is_restoring=reactive(FALSE),
+  hub<-list(restore_generation=generation,external_sample_metadata=ext,session_restored=restored,is_restoring=reactive(FALSE),
     all_metadata=scientific,all_numeric_columns=reactive(names(matrix())[-1]),selected_cols=selection,
     preparation_data_id=reactive(digest::digest(matrix())),rawData=reactive(list(data=matrix())),
     preparation_state=reactive(list(applied=NULL,dirty=FALSE,data_available=FALSE)),
@@ -35,21 +35,30 @@ shiny::testServer(server,{
   session$setInputs(shared_map_PatientNumber='',shared_map_Group2='Condition');session$flushReact()
   check('Duplicate mapping remains recoverable',!guide$design_ok() && any(grepl('unique',guide$staged()$validation$errors)))
   session$setInputs(shared_map_Group2='');session$flushReact()
-  session$setInputs(shared_design_confirm=TRUE);session$setInputs(shared_metadata_apply=1)
+  session$setInputs(shared_design_confirm=TRUE,shared_review_receipt=list(checked=TRUE,token=guide$token()));session$setInputs(shared_apply_receipt=list(token=guide$token(),n=1))
   check('Explicit review confirms the current valid mapping',guide$design_ok() && calls()==1)
   session$setInputs(shared_map_Group2='Tissue');session$flushReact()
   check('Mapping edit invalidates confirmation',!guide$design_ok())
-  session$setInputs(shared_metadata_apply=2);session$flushReact()
+  session$setInputs(shared_apply_receipt=list(token=guide$token(),n=2));session$flushReact()
   check('Stale checked box cannot approve an edited mapping',calls()==1)
-  session$setInputs(shared_design_confirm=FALSE);session$setInputs(shared_design_confirm=TRUE);session$setInputs(shared_metadata_apply=3)
+  session$setInputs(shared_design_confirm=FALSE);session$setInputs(shared_design_confirm=TRUE,shared_review_receipt=list(checked=TRUE,token=guide$token()));session$setInputs(shared_apply_receipt=list(token=guide$token(),n=3))
   check('Reconfirmation recovers without restarting',guide$design_ok() && calls()==2)
+  generation(1L);session$flushReact()
+  check('A failed restoration attempt revokes approval before hydration',!guide$design_ok())
+  session$setInputs(shared_design_confirm=FALSE);session$setInputs(shared_design_confirm=TRUE,shared_review_receipt=list(checked=TRUE,token=guide$token()));session$setInputs(shared_apply_receipt=list(token=guide$token(),n=5))
+  check('Fresh approval after failed import requires a current receipt',guide$design_ok())
   restored(TRUE);session$flushReact()
   check('Restoring the same sidecar revokes confirmation',!guide$design_ok())
   # Legacy review must preserve fields not represented by the new mapping selectors.
   restored(FALSE);ext(NULL);scientific(legacy);session$flushReact();restored(TRUE);session$flushReact()
   session$setInputs(shared_map_Group1='Condition',shared_map_Group2='Tissue',shared_map_PatientNumber='SubjectID',shared_map_Replicate='ReplicateID',shared_map_TimePoint='TimePoint');session$flushReact()
-  session$setInputs(shared_design_confirm=FALSE);session$setInputs(shared_design_confirm=TRUE);session$setInputs(shared_metadata_apply=4)
-  check('Legacy confirmation preserves native clusters, labels and timepoint groups',guide$design_ok() && identical(scientific(),legacy) && calls()==2)
+  session$setInputs(shared_design_confirm=FALSE);session$setInputs(shared_design_confirm=TRUE,shared_review_receipt=list(checked=TRUE,token=guide$token()));session$setInputs(shared_apply_receipt=list(token=guide$token(),n=4))
+  check('Legacy confirmation preserves native clusters, labels and timepoint groups',guide$design_ok() && identical(scientific(),legacy) && calls()==3)
+  changed<-legacy;changed$Cluster<-rep(99,nrow(changed));scientific(changed);session$flushReact()
+  check('Live Classic metadata edits revoke legacy approval',!guide$design_ok())
+  oldtoken<-guide$token()
+  session$setInputs(shared_map_Group2='',shared_design_confirm=TRUE,shared_review_receipt=list(checked=TRUE,token=oldtoken),shared_apply_receipt=list(token=oldtoken,n=6));session$flushReact()
+  check('One-flush stale preview receipt cannot authorize edited metadata',!guide$design_ok() && calls()==3)
   matrix(transform(fixture,S01=S01+1));session$flushReact()
   check('Matrix replacement revokes design approval',!guide$design_ok())
   unlink(f)

@@ -65,7 +65,8 @@ stage_metadata_v01 <- function(x, matrix_ids, mappings=character(), paired=FALSE
   if ('TimePoint' %in% names(mappings) && identical(unname(mappings['TimePoint']),'TimeValue')) {
     values <- (v$data %||metadata% x)$TimeValue
     if(any(!is.finite(suppressWarnings(as.numeric(values))))) stop('Convert descriptive TimeValue labels before numeric time mapping.')
-    if(!'TimeUnit' %in% names(x) || any(is.na(x$TimeUnit) | !nzchar(trimws(x$TimeUnit)))) stop('Supply TimeUnit before numeric time mapping.')
+    units <- (v$data %||metadata% x)$TimeUnit
+    if(is.null(units) || any(is.na(units) | !nzchar(trimws(units)))) stop('Supply TimeUnit before numeric time mapping.')
   }
   # Always includes the full original metadata for display/export as a separate table.
   list(version='0.1',validation=v,mappings=mappings,matrix_ids=matrix_ids,paired=paired,original=x)

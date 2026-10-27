@@ -26,3 +26,11 @@ with zipfile.ZipFile(root / 'symlink-chain.zip', 'w') as z:
     link.external_attr = (stat.S_IFLNK | 0o777) << 16
     z.writestr(link, str(root))
     z.writestr('data_files/link/escape.csv', 'synthetic')
+
+for label, path in [('case-alias','STATE.JSON'), ('windows-ads','data_files/a:b'), ('trailing-dot','data_files/raw.'), ('reserved-name','data_files/CON.csv')]:
+    with zipfile.ZipFile(root / f'{label}.zip','w') as z:
+        z.writestr('state.json',state)
+        z.writestr(path,'synthetic')
+with zipfile.ZipFile(root / 'directory-dataset.zip','w') as z:
+    z.writestr('state.json',json.dumps({'inputs':{},'uploads':{'raw':'sub'}}))
+    z.writestr('sub/','')

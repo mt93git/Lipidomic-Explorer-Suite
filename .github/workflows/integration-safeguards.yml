@@ -21,7 +21,7 @@ jobs:
         shell: Rscript --vanilla {0}
         run: |
           options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
-          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'jsonlite', 'zip', 'purrr', 'stringr', 'bslib', 'DT', 'scales', 'colourpicker', 'nipals', 'stringdist', 'BiocManager'))
+          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'jsonlite', 'zip', 'purrr', 'stringr', 'stringi', 'bslib', 'DT', 'scales', 'colourpicker', 'nipals', 'stringdist', 'BiocManager'))
           required <- c('limma','imputeLCMD')
           for (attempt in seq_len(3)) {
             missing <- required[!vapply(required, requireNamespace, logical(1), quietly=TRUE)]

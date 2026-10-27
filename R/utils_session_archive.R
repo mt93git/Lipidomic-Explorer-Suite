@@ -8,6 +8,10 @@ read_session_archive <- function(path, max_bytes = 512 * 1024^2) {
       any(entries$uncompressed_size<0) || sum(entries$uncompressed_size)>max_bytes)
     stop('Unsafe or oversized session archive.')
   parts <- strsplit(sub('/$', '', entries$filename), '/', fixed=TRUE)
+  canonical<-tolower(stringi::stri_trans_nfc(entries$filename))
+  if(anyDuplicated(canonical) || any(grepl(':',entries$filename,fixed=TRUE)) ||
+     any(vapply(parts,function(p)any(grepl('[. ]$',p) | grepl('^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])([.]|$)',toupper(p))),logical(1))))
+    stop('Ambiguous or nonportable archive paths.')
   if (any(vapply(parts,function(p) any(p %in% c('', '.', '..')),logical(1)))) stop('Noncanonical archive paths are not supported.')
   if (!'state.json' %in% entries$filename) stop('state.json not found in session archive.')
   if (entries$uncompressed_size[entries$filename=='state.json']>20*1024^2) stop('Session state exceeds 20 MiB.')
@@ -46,6 +50,7 @@ read_session_archive <- function(path, max_bytes = 512 * 1024^2) {
       is.null(names(state$uploads)) || anyDuplicated(names(state$uploads))) stop('Invalid session file list.')
   paths <- unlist(state$uploads,use.names=FALSE)
   if (length(paths)!=length(state$uploads) || !safe(paths)) stop('Invalid session dataset paths.')
+  if(any(dir.exists(file.path(dest,paths))))stop('Dataset paths must refer to files, not directories.')
   sidecar <- NULL
   if (file.exists(file.path(dest,'shared-state-v1.json'))) {
     sidecar <- jsonlite::read_json(file.path(dest,'shared-state-v1.json'),simplifyVector=TRUE)

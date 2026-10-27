@@ -512,6 +512,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     external_metadata <- reactiveVal(NULL)
     explicit_selection <- reactiveVal(FALSE)
     session_restored <- reactiveVal(FALSE)
+    restore_generation <- reactiveVal(0L)
     awaiting_restore_review <- reactiveVal(FALSE)
     is_restoring <- reactiveVal(FALSE)
     metadata_trigger <- reactiveVal(0)
@@ -4417,7 +4418,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       all_inputs <- reactiveValuesToList(global_session$input)
       
       # Exclude buttons, files, import files, and dynamic outlier treatment inputs
-      excl_patterns <- c("import_session_file", "export_session_btn", "files", "openMetadataMappingBtn", "runAnalysis", "downloadPostNAData", "selectAll", "unselectAll", "authorizeMetadata", "remove_", "treat_", "subgroupToggle", "shared_design_confirm", "shared_metadata_apply", "shared_step_", "shared_next_")
+      excl_patterns <- c("import_session_file", "export_session_btn", "files", "openMetadataMappingBtn", "runAnalysis", "downloadPostNAData", "selectAll", "unselectAll", "authorizeMetadata", "remove_", "treat_", "subgroupToggle", "shared_design_confirm", "shared_review_receipt", "shared_apply_receipt", "shared_metadata_apply", "shared_step_", "shared_next_")
       
       clean_inputs <- list()
       for (k in names(all_inputs)) {
@@ -5073,6 +5074,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     observeEvent(input$import_session_file, {
       req(input$import_session_file)
+      restore_generation(isolate(restore_generation())+1L)
       import_status("Processing session import...")
       
       archive <- tryCatch(read_session_archive(input$import_session_file$datapath),
@@ -5381,6 +5383,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         rawData = rawData, data_processed = data_processed, pca_results = pca_results,
         external_sample_metadata = external_metadata,
         session_restored = session_restored,
+        restore_generation = restore_generation,
         set_external_sample_metadata = function(stage, confirmed=FALSE) {
           value <- confirm_metadata_v01(stage,confirmed)
           if (!identical(as.character(stage$matrix_ids),as.character(isolate(all_numeric_columns()))))
