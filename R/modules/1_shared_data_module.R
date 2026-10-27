@@ -571,7 +571,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       if (length(rv$uploads) == 0) {
         return()
       }
-      if (is.null(data_processed()) || !isTRUE(analysis_is_fresh())) {
+      if (is.null(preparation$state()$applied) && is.null(data_processed())) {
         rv$lipidomics_confirmed <- TRUE
         analysis_is_fresh(TRUE)
         run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
@@ -589,6 +589,15 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         ))
       }
       
+      state <- preparation$state()
+      if (state$status %in% c("pending", "invalid", "error")) {
+        message <- if (!is.null(state$error)) state$error else
+          if (isTRUE(state$data_available)) "Changes pending. Plots and CSV exports still use the last applied preparation. Apply changes before exporting a session ZIP." else
+            "Data or metadata changed. Prepare again before viewing results."
+        return(tags$div(class = "border rounded p-2 mb-2", style = "background:white; color:#334155;",
+          tags$strong(if (is.null(state$error)) "Review preparation" else "Preparation needs attention"),
+          tags$p(message), tags$small("Review Quality Control settings, then click Run Analysis / Re-run Pipeline to apply.")))
+      }
       dp <- tryCatch(data_processed(), error = function(e) NULL)
       if (!is.null(dp) && isTRUE(analysis_is_fresh())) {
         n_lipids <- nrow(dp)
@@ -1052,22 +1061,6 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     })
 
-    # Reactive value for data processing settings to prevent circular reactivity loops
-    data_processing_settings <- reactiveVal(list())
-    observe({
-      settings <- external_settings()
-      if (is.null(settings)) return()
-      new_val <- list(
-        normalizationMethod = settings$normalizationMethod,
-        useImputation = settings$useImputation,
-        imputeZerosPerFile = settings$imputeZerosPerFile,
-        imputeRemainingNAtoZero = settings$imputeRemainingNAtoZero
-      )
-      if (!identical(data_processing_settings(), new_val)) {
-        data_processing_settings(new_val)
-      }
-    })
-
     # Reactive value for PCA settings to prevent circular reactivity loops
     pca_settings_val <- reactiveVal(list(
       mergeReplicates = TRUE,
@@ -1146,34 +1139,31 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
 
 
 
-    compute_imputed_matrix <- function(apply_outliers = TRUE) {
-      df_info <- rawData()
+    compute_imputed_matrix <- function(apply_outliers = TRUE, request = NULL) {
+      # A committed run reads one immutable request, never a mixture of live controls.
+      if (!is.null(request)) {
+        get_setting <- function(name, default = NULL) {
+          value <- request$spec$settings[[name]]
+          if (is.null(value)) default else value
+        }
+        input <- list(selectedColumns = request$spec$selected,
+                      useAveragedSubstitution = request$spec$use_average)
+        allParsedMetadata <- function() request$metadata
+      }
+      df_info <- if (is.null(request)) rawData() else request$data_info
       if (is.null(df_info) || is.null(df_info$data) || nrow(df_info$data) == 0) {
         return(NULL)
       }
       
-      useCols <- input$selectedColumns
-      if(is.null(useCols) || length(useCols) == 0) {
-        # Fallback: if input is NULL (UI not ready) or empty, try to default to all numeric columns
-        cols_all <- names(df_info$data)[sapply(df_info$data, is.numeric)]
-        cols_all <- setdiff(cols_all, "Lipid_Name")
-        if(length(cols_all) > 0) useCols <- cols_all
-      }
-      
       outlier_treatments <- get_setting("outlierTreatments", list())
-      
-      if (isTRUE(apply_outliers)) {
-        for (name in names(outlier_treatments)) {
-          act <- outlier_treatments[[name]]
-          if (act %in% c("remove", "average")) {
-            useCols <- setdiff(useCols, name)
-          }
-        }
-      }
-      
+      useCols <- preparation_sample_ids(df_info$data, input$selectedColumns,
+                                       outlier_treatments, apply_outliers)
       if (length(useCols) == 0) return(NULL)
-      data_subset <- df_info$data %>% dplyr::select(Lipid_Name, all_of(useCols))
-        
+      filtered <- preparation_filter_detected(df_info$data, useCols,
+        get_setting("minDetectionPct", 0), get_setting("dropNonDetected", FALSE),
+        get_setting("detectionScope", "global"), allParsedMetadata())
+      data_subset <- filtered$data %>% dplyr::select(Lipid_Name, all_of(useCols))
+
       # External Setting: imputeZerosPerFile (default TRUE)
       if (isTRUE(get_setting("imputeZerosPerFile", TRUE))) {
         for (cols_in_file in df_info$file_cols) {
@@ -1290,6 +1280,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       # Populate Audit Trace Data Cache
       if (isTRUE(apply_outliers)) {
         audit_trace_data(list(
+          detection = filtered$audit,
           mat_raw = mat_subset,
           mat_for_log = mat_for_log,
           mat_log = mat_log,
@@ -1388,47 +1379,32 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       return(data_processed_final)
     }
 
-    data_processed_full <- eventReactive({
-      rawData()
-      run_analysis_trigger_val()
-      outlier_trigger_val()
-      data_processing_settings()
-    }, {
-      log_ingestion_event(
-        stage = "6_DATA_PROCESSED_TRIGGERED",
-        status = "INFO",
-        message_text = "data_processed_full reactive event triggered.",
-        details = list(
-          analysis_is_fresh = isolate(analysis_is_fresh()),
-          run_analysis_val = isolate(run_analysis_trigger_val())
-        )
-      )
-      df_info <- rawData()
-      if (is.null(df_info) || is.null(df_info$data) || nrow(df_info$data) == 0) {
-        return(NULL)
-      }
-      if (!isolate(analysis_is_fresh())) {
-        log_ingestion_event(
-          stage = "6_DATA_PROCESSED_WAITING",
-          status = "INFO",
-          message_text = "Waiting for analysis authorization (analysis_is_fresh is FALSE)."
-        )
-        return(NULL)
-      }
-      res <- tryCatch({
-        compute_imputed_matrix(apply_outliers = TRUE)
-      }, error = function(e) {
-        log_ingestion_event(
-          stage = "6_IMPUTATION_ERROR",
-          status = "ERROR",
-          message_text = paste("compute_imputed_matrix failed:", e$message),
-          details = list(error = e$message)
-        )
-        stop(e)
-      })
-      validate(need(!is.null(res) && sum(is.na(res)) == 0, "Processing resulted in unhandled NA values."))
-      return(res)
+    preparation_data_id <- reactive({
+      info <- rawData()
+      digest::digest(list(info$data, info$file_cols), algo = "sha256")
     })
+    pending_preparation <- reactive({
+      preparation_request(rawData(), input$selectedColumns,
+        tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL),
+        external_settings(), isTRUE(input$useAveragedSubstitution), preparation_data_id())
+    })
+    preparation <- shared_preparation_controller(
+      pending = pending_preparation,
+      compute = function(request) {
+        old_trace <- isolate(audit_trace_data())
+        success <- FALSE
+        on.exit(if (!success) audit_trace_data(old_trace))
+        value <- compute_imputed_matrix(TRUE, request)
+        if (is.null(value) || !nrow(value) || anyNA(value))
+          stop("Processing resulted in unhandled missing values or an empty matrix.")
+        success <- TRUE
+        value
+      },
+      run_trigger = run_analysis_trigger_val,
+      qc_trigger = outlier_trigger_val,
+      authorized = function() isTRUE(analysis_is_fresh()) && !isTRUE(is_restoring())
+    )
+    data_processed_full <- preparation$data
 
     # Global Targeted Lipid Selection State
     targeted_mode_active <- reactiveVal(FALSE)
@@ -4394,6 +4370,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     }
     
     serialize_state <- function() {
+      state <- preparation$state()
+      if (!is.null(state$applied) && (isTRUE(state$dirty) || !isTRUE(state$data_available))) {
+        message <- "Apply or revert pending preparation changes before exporting a session ZIP."
+        showNotification(message, type = "warning", duration = 10)
+        stop(message)
+      }
       global_session <- getDefaultReactiveDomain()
       all_inputs <- reactiveValuesToList(global_session$input)
       
@@ -4563,7 +4545,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       cat(sprintf("  >> [STATUS] Imputed dataset ready (%d lipids x %d cols). Processing download request...\n", nrow(df), ncol(df)))
       flush.console()
       
-      outlier_treatments <- get_setting("outlierTreatments", list())
+      outlier_treatments <- preparation$state()$applied$spec$settings$outlierTreatments
       averaged_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "average"))]
       removed_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "remove"))]
       active_count <- length(averaged_samples) + length(removed_samples)
@@ -4738,13 +4720,19 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       contentType = "text/csv"
     )
 
+    imputed_before_applied <- function() {
+      request <- preparation$applied_request()
+      req(!is.null(request))
+      compute_imputed_matrix(apply_outliers = FALSE, request = request)
+    }
+
     # Choice Modal Handler 1: Before Outliers Treatment CSV
     output$downloadImputedBefore <- downloadHandler(
       filename = function() {
         paste0("LipidomicExplorer_Imputed_Before_Outliers_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
       },
       content = function(file) {
-        df <- compute_imputed_matrix(apply_outliers = FALSE)
+        df <- imputed_before_applied()
         if (is.null(df) || nrow(df) == 0) df <- data_processed()
         write.csv(df, file, row.names = FALSE, na = "")
       },
@@ -4758,7 +4746,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       },
       content = function(file) {
         df <- data_processed()
-        if (is.null(df) || nrow(df) == 0) df <- compute_imputed_matrix(apply_outliers = TRUE)
+        req(!is.null(df), nrow(df) > 0)
         write.csv(df, file, row.names = FALSE, na = "")
       },
       contentType = "text/csv"
@@ -4778,15 +4766,15 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         after_file  <- file.path(tmp_dir, paste0("LipidomicExplorer_Imputed_After_Outliers_", format(Sys.time(), "%Y%m%d"), ".csv"))
         ledger_file <- file.path(tmp_dir, "Outliers_Treatment_Ledger.txt")
         
-        df_before <- compute_imputed_matrix(apply_outliers = FALSE)
+        df_before <- imputed_before_applied()
         if (is.null(df_before) || nrow(df_before) == 0) df_before <- data_processed()
         df_after <- data_processed()
-        if (is.null(df_after) || nrow(df_after) == 0) df_after <- compute_imputed_matrix(apply_outliers = TRUE)
+        req(!is.null(df_after), nrow(df_after) > 0)
         
         write.csv(df_before, before_file, row.names = FALSE, na = "")
         write.csv(df_after, after_file, row.names = FALSE, na = "")
         
-        outlier_treatments <- get_setting("outlierTreatments", list())
+        outlier_treatments <- preparation$state()$applied$spec$settings$outlierTreatments
         averaged_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "average"))]
         removed_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "remove"))]
         
@@ -5357,12 +5345,14 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       list(
         rawData = rawData, data_processed = data_processed, pca_results = pca_results,
         data_processed_unfiltered = data_processed_full,
+        preparation_state = preparation$state,
+        detection_preview = preparation$preview,
         targeted_mode_active = targeted_mode_active,
         targeted_lipids_list = targeted_lipids_list,
         pca_fallback_active = pca_fallback_active,
         set_targeted_mode = function(val) { targeted_mode_active(as.logical(val)) },
         set_targeted_lipids = function(vec) { targeted_lipids_list(as.character(vec)) },
-        audit_trace = reactive({ audit_trace_data() }),
+        audit_trace = reactive({ if (!preparation$state()$data_available) return(NULL); audit_trace_data() }),
         selected_cols = reactive({ input$selectedColumns }), all_metadata = allParsedMetadata,
         annotationData = annotationData,
         multiomics_cohort_map = reactive({ rv$multiomics_cohort_map }),

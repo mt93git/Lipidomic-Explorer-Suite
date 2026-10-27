@@ -1,7 +1,7 @@
 name: Integration safeguards and scientific parity
 on:
   push:
-    branches: [integration/libreros-guided-workflow]
+    branches: [integration/libreros-guided-workflow, integration/shared-preparation-qc]
   pull_request:
     branches: [main, integration/libreros-guided-workflow]
 permissions:
@@ -21,8 +21,16 @@ jobs:
         shell: Rscript --vanilla {0}
         run: |
           options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
-          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'digest', 'BiocManager'))
-          BiocManager::install(c('limma', 'imputeLCMD'), ask=FALSE, update=FALSE)
+          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'BiocManager'))
+          required <- c('limma','imputeLCMD')
+          for (attempt in seq_len(3)) {
+            missing <- required[!vapply(required, requireNamespace, logical(1), quietly=TRUE)]
+            if (!length(missing)) break
+            tryCatch(BiocManager::install(missing, ask=FALSE, update=FALSE),
+                     error=function(e) message(conditionMessage(e)))
+            if (attempt < 3) Sys.sleep(5)
+          }
+          stopifnot(all(vapply(required, requireNamespace, logical(1), quietly=TRUE)))
       - name: Run existing lightweight regression suites
         run: |
           Rscript --vanilla tests/test_recursive_syntax.R
@@ -36,6 +44,16 @@ jobs:
           mkdir -p "$RUNNER_TEMP/lipidomic-baseline"
           git archive d48933ca20e59e67def18f29bc3cf035b81e1ca2 | tar -x -C "$RUNNER_TEMP/lipidomic-baseline"
           Rscript --vanilla tests/integration/compare_versions.R "$RUNNER_TEMP/lipidomic-baseline" parity-evidence
+      - name: Verify shared preparation state and detection filtering
+        run: Rscript --vanilla tests/block2/test_preparation.R block2-evidence
+      - name: Compare Max reference artifacts with Classic defaults
+        run: Rscript --vanilla tests/block2/compare_references.R block2-evidence/reference
+      - name: Retain Block 2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: block2-preparation-evidence
+          path: block2-evidence/
       - name: Retain comparison outputs
         if: always()
         uses: actions/upload-artifact@v4
