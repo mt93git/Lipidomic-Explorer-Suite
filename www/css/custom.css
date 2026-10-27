@@ -7970,3 +7970,11 @@ body.modal-open .targeted-scope-tooltip-balloon {
   .bslib-sidebar-layout > .collapse-toggle { left: auto !important; right: 8px !important; }
   .sidebar-drag-resizer, .bslib-sidebar-resize-handle { display: none !important; }
 }
+
+/* Stack the scope caption above its controls on narrow Classic screens. */
+@media (max-width: 767px) {
+  .targeted-scope-bar { flex-wrap: wrap; width: 100%; min-width: 0; justify-content: flex-start; }
+  .targeted-scope-label-wrapper { flex: 0 0 100%; }
+  .targeted-scope-label { white-space: normal; overflow-wrap: anywhere; }
+  .targeted-scope-pill { flex-wrap: wrap; max-width: 100%; min-width: 0; }
+}
