@@ -2311,20 +2311,6 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                 label = NULL,
                 choices = c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint", "Ignore"),
                 selected = selected_sel
-              ),
-              conditionalPanel(
-                condition = sprintf("input['%s'] != 'Ignore' && input['%s'] != 'TimePoint'", 
-                                    session$ns(paste0("schema_", comp_name)), 
-                                    session$ns(paste0("schema_", comp_name))),
-                ns = session$ns,
-                div(
-                  style = "display: inline-flex; align-items: center; justify-content: center; margin-top: 5px; width: 100%;",
-                  checkboxInput(
-                    session$ns(paste0("schema_has_tp_", comp_name)),
-                    label = tags$span(style = "color: #d97706; font-weight: bold; font-size: 0.95rem;", "Embedded TimePoint ?"),
-                    value = isolate(input[[paste0("schema_has_tp_", comp_name)]]) %||% get_restored_input(paste0("schema_has_tp_", comp_name), FALSE)
-                  )
-                )
               )
             )
           )
@@ -3032,8 +3018,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                       choices = c("Yes" = "Yes", "No" = "No"),
                       selected = if (!is.null(isolate(input$nomenclature_standard_align)) && isolate(input$nomenclature_standard_align) %in% c("Yes", "No")) isolate(input$nomenclature_standard_align) else "Yes",
                       inline = TRUE
-                    ),
-                    uiOutput(session$ns("standard_embedded_tp_ui"))
+                    )
                   )
                 )
               ),
@@ -3065,6 +3050,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                   )
                 )
               ),
+              # One embedded-timepoint editor is shared by both naming modes.
+              # Hidden conditional panels remain mounted, so duplicate inputs are unsafe.
+              uiOutput(session$ns("standard_embedded_tp_ui")),
               # Moved outside conditional panels so they are always visible
               uiOutput(session$ns("timepoint_condition_association_ui")),
               tags$details(

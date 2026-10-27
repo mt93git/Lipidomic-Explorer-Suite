@@ -352,7 +352,7 @@ ui <- page_navbar(
   nav_menu(
     title = "4. Structural",
     icon = icon("dna"),
-    nav_panel("Dot Plots", icon = icon("chart-scatter"),
+    nav_panel("Dot Plots", icon = icon("braille"),
       structural_ui("structural_tab")
     ),
     nav_panel("Main Class & Acyl Chain Proportions", icon = icon("chart-column"),
