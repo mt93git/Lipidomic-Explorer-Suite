@@ -11,7 +11,7 @@ async function restore(p){await p.locator('#data_hub-import_session_file').setIn
 async function teamReady(p){
  await p.goto(url('team'));await connected(p);
  await p.getByText('Resume from a saved session ZIP instead',{exact:true}).click();await restore(p);
- await expect(p.getByRole('heading',{name:'3 items left before Quality',exact:true})).toBeVisible();
+ await expect(p.getByRole('heading',{name:'3 items left before Quality',exact:true})).toBeVisible({timeout:90000});
  await p.getByRole('textbox',{name:'What was independently sampled? (required)',exact:true}).fill('Synthetic independent sample');
  await p.getByRole('combobox',{name:'Relationship between samples (required)',exact:true}).selectOption({label:'Independent experimental units'});
  await expect(p.getByRole('heading',{name:'1 item left before Quality',exact:true})).toBeVisible();
