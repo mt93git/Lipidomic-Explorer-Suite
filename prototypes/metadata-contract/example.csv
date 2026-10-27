@@ -1,0 +1,5 @@
+SampleID,Condition,SubjectID,Tissue,ReplicateID,Batch,TimeValue,TimeUnit,SampleType,Comment
+SYN_C01,Control,001,Plasma,1,B1,0,hour,study,Synthetic example only
+SYN_C02,Control,002,Plasma,1,B2,0,hour,study,Synthetic example only
+SYN_S01,Sickle cell,003,Plasma,1,B1,0,hour,study,Synthetic example only
+SYN_S02,Sickle cell,004,Plasma,1,B2,0,hour,study,Synthetic example only

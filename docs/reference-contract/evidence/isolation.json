@@ -1,0 +1,12 @@
+{
+  "main_before_and_after": "d48933ca20e59e67def18f29bc3cf035b81e1ca2",
+  "pr1_head_before_and_after": "06baf3a9ea776b581ed6f8f817921dedf7f020cb",
+  "production_service_before_and_after": {
+    "ActiveState": "active",
+    "MainPID": 1715767,
+    "ExecMainStartTimestamp": "Mon 2026-10-26 18:59:04 EDT"
+  },
+  "runtime_files_modified": false,
+  "public_demo_only": true,
+  "metadata_fixture": "synthetic"
+}

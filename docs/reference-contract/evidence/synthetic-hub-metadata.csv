@@ -1,0 +1,5 @@
+"FullName","Group1","Group2","PatientNumber","Replicate","TimePoint"
+"SYN_C01","Control","Plasma","001","1","0"
+"SYN_C02","Control","Plasma","002","1","0"
+"SYN_S01","Sickle cell","Plasma","003","1","0"
+"SYN_S02","Sickle cell","Plasma","004","1","0"
