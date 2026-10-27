@@ -5020,7 +5020,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           import_status(paste("Error during metadata restoration:", e$message))
         })
         
-        if (!isTRUE(is_restoring())) return()
+        if (!isTRUE(isolate(is_restoring()))) return()
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
@@ -5044,7 +5044,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             import_status(paste("Error during input hydration:", e$message))
           })
           
-          if (!isTRUE(is_restoring())) return()
+          if (!isTRUE(isolate(is_restoring()))) return()
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
@@ -5255,7 +5255,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           import_status(paste("Error during metadata restoration:", e$message))
         })
         
-        if (!isTRUE(is_restoring())) return()
+        if (!isTRUE(isolate(is_restoring()))) return()
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
@@ -5328,7 +5328,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             import_status(paste("Error during input hydration:", e$message))
           })
           
-          if (!isTRUE(is_restoring())) return()
+          if (!isTRUE(isolate(is_restoring()))) return()
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
