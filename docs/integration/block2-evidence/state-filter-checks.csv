@@ -35,3 +35,6 @@
 "New values with identical matrix dimensions invalidate output","PASS"
 "Unauthorized run cannot commit","PASS"
 "Second session cannot inherit first session state","PASS"
+"QC report names the applied method despite pending controls","PASS"
+"QC before plot uses applied selection and zero handling","PASS"
+"QC report blocks stale provenance after invalidation","PASS"

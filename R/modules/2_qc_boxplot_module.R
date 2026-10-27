@@ -837,8 +837,10 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         dplyr::left_join(meta_sub, by = "FullName")
     }
     data_pre_processed <- reactive({
-        req(shared_data$rawData()$data, shared_data$selected_cols())
-        raw_data_list <- shared_data$rawData(); useCols <- shared_data$selected_cols()
+        state <- shared_data$preparation_state()
+        req(isTRUE(state$data_available), shared_data$rawData()$data)
+        applied <- state$applied$spec
+        raw_data_list <- shared_data$rawData(); useCols <- applied$selected
         df <- raw_data_list$data %>% dplyr::select(Lipid_Name, all_of(useCols))
         
     # --- Restore Imputation Logic ---
@@ -852,7 +854,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
           return(df)
         }
         
-        if (isTRUE(input$imputeZerosPerFile)) {
+        if (isTRUE(applied$settings$imputeZerosPerFile)) {
           for (cols_in_file in raw_data_list$file_cols) {
             df <- impute_zeros(df, cols_in_file)
           }
@@ -2453,11 +2455,14 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       )
       
       if (current_tab == "Normalization Check") {
+        state <- shared_data$preparation_state()
+        req(isTRUE(state$data_available))
+        applied <- state$applied$spec$settings
         msg <- paste0(
           msg,
           "1. DATA MATRIX & NORMALIZATION\n",
-          "   - Normalization Method: ", input$normalizationMethod %||% "median", "\n",
-          "   - Missing Imputation:   ", ifelse(isTRUE(input$useImputation), "Yes (QRILC)", "No"), "\n",
+          "   - Normalization Method (applied): ", applied$normalizationMethod, "\n",
+          "   - Missing Imputation (applied): ", ifelse(isTRUE(applied$useImputation), "Yes (QRILC)", "No"), "\n",
           "   - Drop 'Misc' Lipids:   ", ifelse(isTRUE(input$dropMisc), "Yes", "No"), "\n",
           "   - Raw Sample Count:     ", length(shared_data$all_numeric_columns()), " samples\n\n",
           "   - Normalization Calculus:\n",

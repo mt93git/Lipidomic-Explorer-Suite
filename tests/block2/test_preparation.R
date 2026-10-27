@@ -90,6 +90,21 @@ shiny::testServer(server, {
   check('Unauthorized run cannot commit',ctl$state()$revision==5 && fails(ctl$apply(TRUE,current()$id)))
 })
 shiny::testServer(server, {session$flushReact();check('Second session cannot inherit first session state',is.null(ctl$data()) && ctl$state()$revision==0 && length(ctl$state()$history)==0)})
+# QC reports and pre-normalization plots must not describe pending controls.
+qc_env <- new.env(parent=globalenv())
+qc_state <- list(data_available=TRUE,applied=list(spec=r$spec))
+qc_env$shared_data <- list(preparation_state=function() qc_state,rawData=function() r$data_info,
+  selected_cols=function() 'S01',global_filtered_lipids=function() NULL,
+  all_numeric_columns=function() r$spec$selected)
+qc_env$input <- list(normalizationMethod='pqn',useImputation=TRUE,imputeZerosPerFile=TRUE,dropMisc=FALSE)
+qc_env$`%||%` <- function(x,y) if(is.null(x)) y else x
+load_assignments('R/modules/utils_stats.R','get_stats_console_method_summary',qc_env)
+load_assignments('R/modules/2_qc_boxplot_module.R',c('build_qc_stats_report','data_pre_processed'),qc_env)
+check('QC report names the applied method despite pending controls',grepl('Normalization Method (applied): none',qc_env$build_qc_stats_report('Normalization Check'),fixed=TRUE))
+check('QC before plot uses applied selection and zero handling',identical(shiny::isolate(qc_env$data_pre_processed()),r$data_info$data))
+qc_state$data_available <- FALSE
+check('QC report blocks stale provenance after invalidation',fails(qc_env$build_qc_stats_report('Normalization Check')))
+
 args <- commandArgs(TRUE)
 if(length(args)) {dir.create(args[1],recursive=TRUE,showWarnings=FALSE);write.csv(data.frame(check=checks,status='PASS'),file.path(args[1],'state-filter-checks.csv'),row.names=FALSE)}
 cat(sprintf('PASS: %d preparation, filtering and session-state checks\n',length(checks)))

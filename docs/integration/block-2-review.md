@@ -12,6 +12,7 @@ The shared data hub now captures an immutable preparation request: matrix identi
 - **Explicit application:** changes to preparation settings and selected samples remain pending until **Run Analysis / Re-run Pipeline**. This intentionally replaces automatic recomputation on normalization/imputation changes and needs UX acceptance from Max.
 - **Independent QC actions:** confirmed outlier actions recompute with the last applied preparation settings plus the new treatment list. A pending threshold or normalization cannot be silently adopted by removing a sample. Explicit removal still wins over global averaging, as in Block 1.
 - **Clear provenance:** existing results remain available while compatible settings are pending, with a visible warning. A changed matrix, changed confirmed metadata, or failed computation hides incompatible/stale results. An empty selection means no samples, never all samples.
+- **Consistent QC context:** normalization reports and the before-normalization plot use the applied method, sample selection and per-file zero handling, even while controls have pending edits.
 - **Consistent exports:** before/after-QC CSV and matrix ZIP exports use the applied request. Session ZIP export is blocked with an explanatory notification if an existing run has pending/invalid preparation changes; apply or revert first. The existing session ZIP schema is unchanged. Runtime revision history is not persisted in ZIP in this block.
 
 Detection means finite raw abundance greater than zero. Filtering runs before per-file zero handling, QRILC, normalization and synthetic averaging. Removed/averaged samples are excluded from the detection denominator. Threshold boundaries are inclusive. Optional group detection retains a lipid if it meets the threshold in at least one existing Group1 × Group2 group; it requires confirmed, complete group metadata and does not introduce the proposed metadata schema. Active filters retaining fewer than two lipids fail visibly.
@@ -24,7 +25,7 @@ All computation ran in an isolated checkout/process on the RTX machine, using R 
 
 | Check | Result | Evidence |
 |---|---|---|
-| Production helpers and Shiny state scheduler | 36 checks pass | [State/filter checks](block2-evidence/state-filter-checks.csv) |
+| Production helpers and Shiny state scheduler | 39 checks pass | [State/filter checks](block2-evidence/state-filter-checks.csv) |
 | Actual shared hub, CSV ingestion, bridge, run buttons and real CSV/ZIP download handlers | 15 checks pass | [Hub checks](block2-evidence/hub-checks.csv) |
 | Candidate and frozen guided engine vs pinned main, 3 normalizations × 2 imputation settings, preparation/limma/Wilcoxon | 36 comparisons pass; maximum absolute difference **0** | [Parity](block2-evidence/upstream-guided-parity.csv) |
 | Seeded repeatability and reversed contrasts | 18 preparations repeat identically; 18 contrast reversals preserve p-values and invert fold-change | `tests/integration/compare_versions.R` |
