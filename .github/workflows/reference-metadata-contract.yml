@@ -26,7 +26,15 @@ jobs:
         run: |
           options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
           install.packages(c('shiny','dplyr','tibble','tidyr','readxl','digest','statmod','BiocManager'))
-          BiocManager::install(c('limma','imputeLCMD'), ask=FALSE, update=FALSE)
+          required <- c('limma','imputeLCMD')
+          for (attempt in seq_len(3)) {
+            missing <- required[!vapply(required, requireNamespace, logical(1), quietly=TRUE)]
+            if (!length(missing)) break
+            tryCatch(BiocManager::install(missing, ask=FALSE, update=FALSE),
+                     error=function(e) message(conditionMessage(e)))
+            if (attempt < 3) Sys.sleep(5)
+          }
+          stopifnot(all(vapply(required, requireNamespace, logical(1), quietly=TRUE)))
       - name: Verify syntax and metadata contract
         run: |
           Rscript --vanilla tests/test_recursive_syntax.R
