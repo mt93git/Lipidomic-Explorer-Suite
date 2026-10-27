@@ -27,16 +27,17 @@ validate_sample_metadata_v01 <- function(x, matrix_ids, paired=FALSE) {
   if (length(extra)) warnings <- c(warnings, sprintf('%d extra metadata row(s) excluded; all matrix samples remain aligned by SampleID.', length(extra)))
   # Validate the matrix subset, not unused rows from a master study.
   if (!length(errors)) x <- x[match(matrix_ids, ids),,drop=FALSE]
-  if ('SampleType' %in% names(x) && any(!x$SampleType %in% c('study','pooled_qc','blank','standard'))) add('SampleType must be study, pooled_qc, blank, or standard.')
+  if ('SampleType' %in% names(x) && any(!x$SampleType %in% c('study','pooled_qc','blank','standard'))) warnings <- c(warnings,'SampleType uses custom descriptive labels; no QC role is assigned automatically.')
   if ('TimeValue' %in% names(x)) {
     v <- suppressWarnings(as.numeric(x$TimeValue)); populated <- !blank(x$TimeValue)
-    if (any(populated & !is.finite(v))) add('Populated TimeValue must be finite numeric text.')
-    if (!'TimeUnit' %in% names(x) || any(populated & blank(x$TimeUnit))) add('Populated TimeValue requires TimeUnit.')
+    if (any(populated & !is.finite(v))) warnings <- c(warnings,'TimeValue contains descriptive labels; numeric time modeling needs an explicit conversion.')
+    if (!'TimeUnit' %in% names(x) || any(populated & blank(x$TimeUnit))) warnings <- c(warnings,'TimeValue has no complete TimeUnit; review units before numeric time modeling.')
   }
   if (all(c('Condition','Batch') %in% names(x))) {
     z <- unique(x[,c('Condition','Batch'),drop=FALSE]); z <- z[complete.cases(z) & nzchar(z$Batch),,drop=FALSE]
     if (length(unique(z$Condition))>1L && all(table(z$Batch)==1L)) warnings <- c(warnings,'Batch and condition may be confounded; inspect the design before modeling.')
   }
+  if (!paired && 'Condition' %in% names(x) && length(unique(x$Condition))>2L) warnings <- c(warnings,'Multiple conditions: choose the intended contrast before inference.')
   if (paired) {
     if (!all(c('SubjectID','Condition') %in% names(x))) add('Paired comparison requires explicit SubjectID and Condition.')
     else if (any(blank(x$SubjectID)) || any(blank(x$Condition))) add('Paired identifiers and conditions cannot be blank.')
@@ -47,6 +48,7 @@ validate_sample_metadata_v01 <- function(x, matrix_ids, paired=FALSE) {
     }
   } else if ('SubjectID' %in% names(x) && anyDuplicated(x$SubjectID[!blank(x$SubjectID)])) {
     warnings <- c(warnings,'Repeated SubjectID: review pairing, visits, and technical replicates; no model is selected automatically.')
+    if ('Condition' %in% names(x) && any(table(x$SubjectID,x$Condition)!=1L)) warnings <- c(warnings,'Incomplete or repeated visits: review the longitudinal pairing filter before inference.')
   }
   list(valid=!length(errors),errors=errors,warnings=warnings,
        data=if(length(errors)) NULL else x)
@@ -60,6 +62,11 @@ stage_metadata_v01 <- function(x, matrix_ids, mappings=character(), paired=FALSE
     if (any(vapply((v$data %||metadata% x)[unname(mappings)],function(z) any(is.na(z) | !nzchar(trimws(z))),logical(1)))) stop('Mapped scientific columns cannot contain blank values.')
   }
   if ('TimePoint' %in% names(mappings) && identical(unname(mappings['TimePoint']),'TimeValue') && 'TimeUnit' %in% names(x) && length(unique((v$data %||metadata% x)$TimeUnit))>1L) stop('Convert mixed time units explicitly before mapping TimeValue.')
+  if ('TimePoint' %in% names(mappings) && identical(unname(mappings['TimePoint']),'TimeValue')) {
+    values <- (v$data %||metadata% x)$TimeValue
+    if(any(!is.finite(suppressWarnings(as.numeric(values))))) stop('Convert descriptive TimeValue labels before numeric time mapping.')
+    if(!'TimeUnit' %in% names(x) || any(is.na(x$TimeUnit) | !nzchar(trimws(x$TimeUnit)))) stop('Supply TimeUnit before numeric time mapping.')
+  }
   # Always includes the full original metadata for display/export as a separate table.
   list(version='0.1',validation=v,mappings=mappings,matrix_ids=matrix_ids,paired=paired,original=x)
 }

@@ -21,7 +21,7 @@ jobs:
         shell: Rscript --vanilla {0}
         run: |
           options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
-          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'jsonlite', 'zip', 'BiocManager'))
+          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'jsonlite', 'zip', 'purrr', 'stringr', 'bslib', 'BiocManager'))
           required <- c('limma','imputeLCMD')
           for (attempt in seq_len(3)) {
             missing <- required[!vapply(required, requireNamespace, logical(1), quietly=TRUE)]
@@ -52,6 +52,8 @@ jobs:
         run: |
           mkdir -p guided-evidence
           Rscript --vanilla tests/guided-shared/test_metadata.R guided-evidence
+          Rscript --vanilla tests/guided-shared/test_guided_server.R guided-evidence
+          GUIDED_FOCUSED_CI=1 Rscript --vanilla tests/guided-shared/test_hub_adapter.R guided-evidence
       - name: Retain guided evidence
         if: always()
         uses: actions/upload-artifact@v4

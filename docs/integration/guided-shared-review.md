@@ -21,7 +21,7 @@ New archives retain `state.json` and original files, adding `shared-state-v1.jso
 
 Restoring a ZIP hydrates files and settings but **requires review and Run Analysis before recomputation**. A Shiny server flush does not prove that client widgets have settled. Guided design confirmation is session-local, reset on restoration, and checked against the current data, selection and mapping at execution time. Legacy ZIPs without a sidecar remain supported; Classic metadata can be previewed and reconfirmed in guided mode.
 
-Archive extraction rejects absolute/traversal paths, duplicate entries, symbolic links and excessive sizes before extraction. Restorations and uploads use session-specific directories, so identically named files cannot overwrite another session's matrix. Invalid files are rejected before hydration. Metadata subgroup labels are JSON-encoded before insertion into click handlers.
+Archive extraction rejects absolute/traversal/noncanonical paths, duplicate entries and excessive sizes before extraction. Entries are streamed into regular files without restoring symlinks or filesystem attributes; actual streamed sizes are checked as well. Restorations and uploads use session-specific directories, so identically named files cannot overwrite another session's matrix. Invalid files are rejected before hydration. Metadata subgroup labels are JSON-encoded before insertion into click handlers.
 
 ## Evidence and reproduction
 
@@ -48,3 +48,21 @@ The historical standalone-proof PCA/annotation disagreements remain explicitly d
 4. Consolidate the reviewed commits onto `integration/libreros-guided-workflow` only after agreement. No merge is performed by this task.
 
 The physical-phone keyboard check remains pending, as requested. Numerical parity on the stated fixtures is not a claim of universal scientific validity or a complete visual audit of every advanced tool.
+
+## Adversarial review follow-up
+
+Opus 5.5 (Libreros Lab, Fabric task `t-20261026-232941-69ba`) reviewed candidate 6186ffc statically. Its first verdict was **do not consolidate yet**. No executable tests were performed by that reviewer. The implementation now addresses its findings as follows:
+
+- H1: both subgroup buttons JSON-encode labels; action/approval inputs are excluded from session state.
+- H2/H5: invalid staging is a recoverable validation result; optional mappings start empty; approval is bound to the reviewed token and reset on every restoration. Automated actual guided-server checks include a stale checked-box attempt.
+- H3: ordinary uploads, missing-file recovery and restored files use private directories; duplicate basenames receive distinct paths.
+- H4: reconfirming unchanged native Classic metadata preserves native clusters, timepoint grouping and display labels. Explicit remapping is a separate scientific change.
+- H6/H9: unmapped descriptive SampleType/TimeValue labels warn rather than reject ingestion. Explicit numeric time mapping still validates values and units. Longitudinal design warnings are surfaced without choosing a statistical model automatically.
+- H7: CI runs metadata/archive, actual guided-server and focused production-hub suites. Full application bootstrap is additionally exercised on the isolated RTX runtime.
+- H8: the 3D adapter receives the full applied matrix, matching Share; filenames never infer a study label in this integration branch.
+- H10: default-launch/navigation/QC paths cannot bypass guided approval or the restored-session review barrier.
+- H11: token uses the hub's cached data identity. Selection changes intentionally still require review; whether to relax that remains a review decision.
+
+Additional validation found that zip_list permission bits do not reliably identify symbolic links. Archive entries now stream to regular files with both declared and actual byte limits. A restore clears prior prepared results. Failed hydration stages stop rather than reporting success. A matrix/metadata mismatch is now a recoverable validation error and blocks preparation.
+
+This does not certify all historical Classic controls or the full production guided UX. Physical-phone validation remains pending. No main merge, production deployment, or team service restart is part of this PR.

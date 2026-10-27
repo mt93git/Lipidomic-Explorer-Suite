@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "measurements": 8,
+  "value_tolerance": 1e-12,
+  "group_mapping": "exact",
+  "normalization": "none",
+  "imputation": "None"
+}

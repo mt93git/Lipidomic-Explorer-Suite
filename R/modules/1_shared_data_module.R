@@ -512,6 +512,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     external_metadata <- reactiveVal(NULL)
     explicit_selection <- reactiveVal(FALSE)
     session_restored <- reactiveVal(FALSE)
+    awaiting_restore_review <- reactiveVal(FALSE)
     is_restoring <- reactiveVal(FALSE)
     metadata_trigger <- reactiveVal(0)
     run_analysis_trigger_val <- reactiveVal(0)
@@ -559,6 +560,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         showNotification("Review and confirm the study design in Guided workflow before preparing data.", type="warning")
         return()
       }
+      awaiting_restore_review(FALSE)
       restored_inputs(list())
       ts <- format(Sys.time(), "%H:%M:%S")
       cat(sprintf("[LIPIDOMIC EXPLORER %s] 'Run Analysis' action triggered.\n", ts))
@@ -579,6 +581,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
 
     observeEvent(input$ensure_analysis_run, {
+      if (isTRUE(awaiting_restore_review())) {
+        showNotification("Review the restored session and click Run Analysis explicitly.",type="message")
+        return()
+      }
       if (!is.null(design_check)) {
         showNotification("Use Run Analysis in Quality after confirming the study design.",type="message")
         return() # Guided navigation never prepares data implicitly.
@@ -646,6 +652,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
     
     observeEvent(input$launch_default_analysis, {
+      if (!is.null(design_check) || isTRUE(awaiting_restore_review())) {
+        showNotification("Review the study design and settings, then click Run Analysis.",type="warning"); return()
+      }
       cat(file=stderr(), "\n[DEBUG] --- launch_default_analysis Triggered ---\n")
       if (length(rv$uploads) == 0) {
         showNotification("Please upload your data and metadata files in the Pipeline tab first.", type = "warning", duration = 5)
@@ -1002,7 +1011,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                 style = "display: inline-flex; gap: 4px;",
                 tags$a(
                   href = "#",
-                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: %s, action: 'all'}, {priority: 'event'}); return false;", session$ns("subgroupToggle", "shared_design_confirm", "shared_metadata_apply", "shared_step_", "shared_next_"), sg),
+                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: %s, action: 'all'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), jsonlite::toJSON(sg,auto_unbox=TRUE)),
                   class = "btn btn-xs btn-outline-success",
                   style = "padding: 1px 4px; font-size: 0.75rem; text-decoration: none;",
                   "All"
@@ -1400,6 +1409,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       digest::digest(list(info$data, info$file_cols), algo = "sha256")
     })
     pending_preparation <- reactive({
+      direct <- external_metadata()
+      if (!is.null(direct) && !setequal(all_numeric_columns(),direct$scientific_metadata$FullName))
+        stop("Uploaded metadata no longer matches this matrix. Review the mapping.")
       selected <- input$selectedColumns
       if (!length(selected) && !isTRUE(explicit_selection())) selected <- NULL
       preparation_request(rawData(), selected,
@@ -1420,7 +1432,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       },
       run_trigger = run_analysis_trigger_val,
       qc_trigger = outlier_trigger_val,
-      authorized = function() isTRUE(analysis_is_fresh()) && !isTRUE(is_restoring())
+      authorized = function() isTRUE(analysis_is_fresh()) && !isTRUE(is_restoring()) &&
+        !isTRUE(awaiting_restore_review()) && (is.null(design_check) || isTRUE(design_check()))
     )
     data_processed_full <- preparation$data
 
@@ -1505,7 +1518,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       direct <- external_metadata()
       if (!is.null(direct)) {
         ids <- all_numeric_columns()
-        if (!setequal(ids, direct$scientific_metadata$FullName)) stop("Uploaded metadata no longer matches this matrix. Review the mapping.")
+        shiny::validate(shiny::need(setequal(ids, direct$scientific_metadata$FullName), "Uploaded metadata no longer matches this matrix. Review the mapping."))
         return(direct$scientific_metadata[match(ids,direct$scientific_metadata$FullName),,drop=FALSE])
       }
       req(editableMetadata())
@@ -4404,7 +4417,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       all_inputs <- reactiveValuesToList(global_session$input)
       
       # Exclude buttons, files, import files, and dynamic outlier treatment inputs
-      excl_patterns <- c("import_session_file", "export_session_btn", "files", "openMetadataMappingBtn", "runAnalysis", "downloadPostNAData", "selectAll", "unselectAll", "authorizeMetadata", "remove_", "treat_", "subgroupToggle")
+      excl_patterns <- c("import_session_file", "export_session_btn", "files", "openMetadataMappingBtn", "runAnalysis", "downloadPostNAData", "selectAll", "unselectAll", "authorizeMetadata", "remove_", "treat_", "subgroupToggle", "shared_design_confirm", "shared_metadata_apply", "shared_step_", "shared_next_")
       
       clean_inputs <- list()
       for (k in names(all_inputs)) {
@@ -4887,11 +4900,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       file_info <- input$missing_file_uploader
       orig_name <- missing_files_to_restore()[1]
       
-      # Copy to user_uploads folder
-      dest_dir <- file.path("data", "user_uploads")
+      # Copy into private session storage, with a unique path for each dataset.
+      dest_dir <- upload_storage
       if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
-      dest_path <- file.path(dest_dir, basename(file_info$name))
-      file.copy(file_info$datapath, dest_path, overwrite = TRUE)
+      dest_path <- tempfile("missing-",tmpdir=dest_dir,fileext=paste0("-",basename(file_info$name)))
+      if (!file.copy(file_info$datapath, dest_path, overwrite = FALSE)) {
+        import_status("Error copying the missing dataset."); return()
+      }
       
       # Update rv$uploads
       current_uploads <- rv$uploads
@@ -5005,6 +5020,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           import_status(paste("Error during metadata restoration:", e$message))
         })
         
+        if (!isTRUE(is_restoring())) return()
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
@@ -5028,6 +5044,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             import_status(paste("Error during input hydration:", e$message))
           })
           
+          if (!isTRUE(is_restoring())) return()
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
@@ -5069,6 +5086,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       # Approval is session-local and must never be rehydrated from an archive.
       if (!is.null(design_check)) state_data$inputs$shared_design_confirm <- FALSE
       session_restored(FALSE)
+      missing_files_to_restore(character())
+      awaiting_restore_review(TRUE)
+      preparation$reset()
       external_metadata(NULL)
       explicit_selection(FALSE)
       if (!is.null(archive$shared$metadata)) external_metadata(archive$shared$metadata)
@@ -5105,8 +5125,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             }
             
             if (!is.null(target_path)) {
-              dest_path <- file.path(dest_dir, basename(target_path))
-              file.copy(target_path, dest_path, overwrite = TRUE)
+              dest_path <- tempfile("dataset-",tmpdir=dest_dir,fileext=paste0("-",basename(target_path)))
+              if (!file.copy(target_path, dest_path, overwrite = FALSE)) stop("Could not restore dataset.")
               new_uploads[[name]] <- dest_path
             }
           }
@@ -5152,6 +5172,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         import_status(paste("Error during file restoration:", e$message))
       })
       
+      if (!isTRUE(is_restoring()) || length(missing_files_to_restore())>0) return()
       # Stage 2: Metadata Mappings
       session$onFlushed(function() {
         tryCatch({
@@ -5234,6 +5255,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           import_status(paste("Error during metadata restoration:", e$message))
         })
         
+        if (!isTRUE(is_restoring())) return()
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
@@ -5306,6 +5328,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             import_status(paste("Error during input hydration:", e$message))
           })
           
+          if (!isTRUE(is_restoring())) return()
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
@@ -5488,6 +5511,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         restored_outlier_treatments = restored_outlier_treatments,
         restored_bqc_manual_exclusions = restored_bqc_manual_exclusions,
         all_numeric_columns = all_numeric_columns,
+        preparation_data_id = preparation_data_id,
         actual_de_method = reactive({ actual_method_val() }),
         de_fit = allLipidDEFit,
         stats_detail_text = stats_detail_text,

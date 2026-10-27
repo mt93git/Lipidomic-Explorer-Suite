@@ -7,14 +7,40 @@ read_session_archive <- function(path, max_bytes = 512 * 1024^2) {
       anyDuplicated(entries$filename) || any(!is.finite(entries$uncompressed_size)) ||
       any(entries$uncompressed_size<0) || sum(entries$uncompressed_size)>max_bytes)
     stop('Unsafe or oversized session archive.')
-  # zip exposes Unix file modes; do not permit symlinks to escape the extraction root.
-  if ('permissions' %in% names(entries) && any(bitwAnd(as.integer(entries$permissions), 61440L)==40960L))
-    stop('Session archives cannot contain symbolic links.')
+  parts <- strsplit(sub('/$', '', entries$filename), '/', fixed=TRUE)
+  if (any(vapply(parts,function(p) any(p %in% c('', '.', '..')),logical(1)))) stop('Noncanonical archive paths are not supported.')
   if (!'state.json' %in% entries$filename) stop('state.json not found in session archive.')
   if (entries$uncompressed_size[entries$filename=='state.json']>20*1024^2) stop('Session state exceeds 20 MiB.')
   dest <- tempfile('lipidomic-session-');dir.create(dest)
   success <- FALSE;on.exit(if(!success) unlink(dest,recursive=TRUE))
-  zip::unzip(path,exdir=dest)
+  # zip_list exposes permission bits but not reliable Unix file-type bits. Stream
+  # every entry into a newly created REGULAR file; never restore links/attributes.
+  # Enforce actual streamed size too, not only the archive's declared size.
+  total <- 0
+  for (i in seq_len(nrow(entries))) {
+    name <- entries$filename[i]; target <- file.path(dest,name)
+    if (endsWith(name,'/')) {
+      if (!dir.exists(target) && !dir.create(target,recursive=TRUE)) stop('Invalid archive directory.')
+      next
+    }
+    parent <- dirname(target)
+    if (!dir.exists(parent) && !dir.create(parent,recursive=TRUE)) stop('Invalid archive file hierarchy.')
+    size <- (function() {
+      input <- unz(path,name,open='rb');on.exit(close(input))
+      output <- file(target,open='wb');on.exit(close(output),add=TRUE)
+      n <- 0
+      repeat {
+        chunk <- readBin(input,'raw',n=1024L*1024L)
+        if (!length(chunk)) break
+        n <- n+length(chunk)
+        if (total+n>max_bytes || n>entries$uncompressed_size[i]) stop('Archive exceeds its allowed size.')
+        writeBin(chunk,output)
+      }
+      n
+    })()
+    if (size!=entries$uncompressed_size[i]) stop('Truncated archive entry.')
+    total <- total+size
+  }
   state <- jsonlite::read_json(file.path(dest,'state.json'),simplifyVector=TRUE)
   if (!is.list(state) || !is.list(state$uploads) || !length(state$uploads) ||
       is.null(names(state$uploads)) || anyDuplicated(names(state$uploads))) stop('Invalid session file list.')

@@ -23,6 +23,10 @@ check('Direct mapping bypasses SHIELD token rewriting',m$scientific_metadata$Gro
 y<-x;y$TimeValue<-c('6','1','24','1','0');y$TimeUnit<-c('h','d','h','d','h')
 check('Mixed numeric time units rejected for scientific mapping',reject(stage_metadata_v01(y,ids,c(TimePoint='TimeValue'))))
 check('Same column cannot be mapped to two scientific fields',reject(stage_metadata_v01(x,ids,c(Group1='Condition',Group2='Condition'))))
+y<-x;y$SampleType<-'Pooled QC';y$TimeValue<-'baseline'
+v<-stage_metadata_v01(y,ids,c(Group1='Condition'))
+check('Descriptive sample type and time labels cannot reject ingestion',v$validation$valid && length(v$validation$warnings)>=2)
+check('Descriptive time still requires conversion before scientific mapping',reject(stage_metadata_v01(y,ids,c(TimePoint='TimeValue'))))
 # Real ZIP packaging and reading, including legacy state without a sidecar.
 d<-tempfile();dir.create(d);dir.create(file.path(d,'data_files'));write.csv(data.frame(Lipid_Name='PC(34:1)',S01=1),file.path(d,'data_files','raw.csv'),row.names=FALSE)
 state<-list(inputs=list(selectedColumns='S01'),uploads=list(raw='data_files/raw.csv'))
@@ -39,5 +43,18 @@ state$uploads$raw <- '../outside.csv';jsonlite::write_json(state,file.path(d,'st
 check('ZIP state cannot reference outside files',reject(read_session_archive(z)))
 check('ZIP extraction size limit enforced',reject(read_session_archive(z,max_bytes=1)))
 unlink(c(d,z),recursive=TRUE)
+# External attributes are not safely represented by zip_list$permissions.
+# Exercise actual link/traversal ZIP entries, not merely suspicious state paths.
+unsafe<-tempfile();dir.create(unsafe)
+python<-Sys.which('python3');stopifnot(nzchar(python))
+stopifnot(system2(python,c('tests/guided-shared/make_archive_fixtures.py',shQuote(unsafe)))==0)
+for(case in c('traversal','absolute','alias','symlink-chain'))
+  check(paste('Unsafe archive entry rejected:',case),reject(suppressWarnings(read_session_archive(file.path(unsafe,paste0(case,'.zip'))))))
+a<-read_session_archive(file.path(unsafe,'symlink.zip'))
+p<-file.path(a$directory,'data_files/raw.csv')
+check('Symlink attributes never create a filesystem link',identical(Sys.readlink(p),'') || is.na(Sys.readlink(p)))
+check('Symlink target is not dereferenced',identical(readLines(p,warn=FALSE),gsub('/+','/',file.path(unsafe,'outside-sentinel.txt'))))
+check('Link chain cannot create a file outside extraction',!file.exists(file.path(unsafe,'escape.csv')))
+unlink(c(unsafe,a$directory),recursive=TRUE)
 args<-commandArgs(TRUE);if(length(args))write.csv(data.frame(check=checks,status='PASS'),file.path(args[1],'metadata-and-archive.csv'),row.names=FALSE)
 cat(sprintf('PASS: %d metadata and archive checks\n',length(checks)))

@@ -40,8 +40,10 @@ guided_shared_panels <- function() list(
 
 guided_shared_server <- function(input,output,session,hub,design_bridge) {
   metadata_file <- reactiveVal(NULL); confirmed_token <- reactiveVal(NULL)
+  legacy_preview <- reactiveVal(NULL); reviewed_token <- reactiveVal(NULL)
   fields <- c(Group1='Condition',Group2='Tissue',PatientNumber='SubjectID',Replicate='ReplicateID',TimePoint='TimePoint')
   observeEvent(input$shared_metadata_file,{
+    legacy_preview(NULL); confirmed_token(NULL)
     tryCatch(metadata_file(read_sample_metadata_v01(input$shared_metadata_file$datapath)),
       error=function(e) {metadata_file(NULL);showNotification(conditionMessage(e),type='error')})
   })
@@ -50,10 +52,16 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
     if (!is.null(md) && (is.null(isolate(metadata_file())) || isTRUE(hub$is_restoring()))) metadata_file(md$display_metadata)
   })
   observeEvent(hub$session_restored(),{
-    if (!isTRUE(hub$session_restored()) || !is.null(hub$external_sample_metadata())) return()
+    if (!isTRUE(hub$session_restored())) return()
+    confirmed_token(NULL); reviewed_token(NULL)
+    updateCheckboxInput(session,'shared_design_confirm',value=FALSE)
+    if (!is.null(hub$external_sample_metadata())) {
+      legacy_preview(NULL); metadata_file(hub$external_sample_metadata()$display_metadata); return()
+    }
     m<-hub$all_metadata();req(m)
     md<-data.frame(SampleID=as.character(m$FullName),stringsAsFactors=FALSE)
     for(target in names(fields)) if(target %in% names(m)) md[[fields[[target]]]]<-as.character(m[[target]])
+    legacy_preview(list(data=md,mappings=fields[names(fields)%in%names(m)]))
     metadata_file(md)
     confirmed_token(NULL)
     updateCheckboxInput(session,'shared_design_confirm',value=FALSE)
@@ -63,24 +71,35 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
     md <- metadata_file(); req(md)
     saved <- isolate(hub$external_sample_metadata())
     tagList(lapply(names(fields),function(target) {
-      preferred <- if(!is.null(saved$mappings[[target]])) saved$mappings[[target]] else fields[[target]]
+      preferred <- if(!is.null(saved$mappings[[target]])) saved$mappings[[target]] else if(!is.null(isolate(legacy_preview())))fields[[target]] else if(target=='Group1')fields[[target]] else ''
       selectInput(paste0('shared_map_',target),paste(target,'← metadata column'),
         choices=c('Not mapped'='',setNames(names(md),names(md))),
         selected=if(preferred %in% names(md))preferred else '',selectize=FALSE)
     }))
   })
   staged <- reactive({
-    md <- metadata_file(); req(md)
-    ids <- hub$all_numeric_columns(); req(length(ids))
-    mapping <- vapply(names(fields),function(k)input[[paste0('shared_map_',k)]] %||% '',character(1))
-    mapping <- mapping[nzchar(mapping)]
-    stage_metadata_v01(md,ids,mapping)
+    tryCatch({
+      md <- metadata_file()
+      if(is.null(md))stop('Upload a sample metadata CSV in Design.')
+      ids <- hub$all_numeric_columns()
+      if(!length(ids))stop('Upload an abundance matrix in Experiment first.')
+      mapping <- vapply(names(fields),function(k)input[[paste0('shared_map_',k)]] %||% '',character(1))
+      mapping <- mapping[nzchar(mapping)]
+      stage_metadata_v01(md,ids,mapping)
+    },error=function(e) list(validation=list(valid=FALSE,errors=conditionMessage(e),warnings=character())))
   })
-  token <- reactive({s<-staged();digest::digest(list(s$original,s$mappings,s$matrix_ids,hub$selected_cols(),hub$rawData()$data),algo='sha256')})
-  design_ok <- reactive(!is.null(confirmed_token()) && identical(token(),confirmed_token()))
+  token <- reactive({
+    s<-staged();if(!isTRUE(s$validation$valid))return(NULL)
+    digest::digest(list(s$original,s$mappings,s$matrix_ids,hub$selected_cols(),hub$preparation_data_id()),algo='sha256')
+  })
+  design_ok <- reactive(!is.null(token()) && !is.null(confirmed_token()) && identical(token(),confirmed_token()))
   design_bridge(function() design_ok())
   observeEvent(token(),{
+    reviewed_token(NULL)
     if(!isTRUE(design_ok())) updateCheckboxInput(session,'shared_design_confirm',value=FALSE)
+  },ignoreNULL=FALSE,priority=100)
+  observeEvent(input$shared_design_confirm,{
+    reviewed_token(if(isTRUE(input$shared_design_confirm))token() else NULL)
   },ignoreNULL=FALSE)
   output$shared_metadata_preview <- renderUI({
     s <- tryCatch(staged(),error=function(e)NULL)
@@ -92,9 +111,13 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
   output$shared_metadata_table <- renderTable({s<-staged();req(s$validation$valid);head(s$validation$data,12)},striped=TRUE)
   observeEvent(input$shared_metadata_apply,{
     tryCatch({
-      if(!isTRUE(input$shared_design_confirm))stop('Confirm the reviewed study design first.')
+      if(!isTRUE(input$shared_design_confirm) || is.null(reviewed_token()) || !identical(reviewed_token(),token()))stop('Review the current mapping and check the confirmation box again.')
       s<-staged();if(!'Group1'%in%names(s$mappings))stop('Map the biological condition to Group1 before continuing.')
-      hub$set_external_sample_metadata(s,TRUE)
+      if(!isTRUE(s$validation$valid))stop(paste(s$validation$errors,collapse='; '))
+      legacy<-legacy_preview()
+      preserve_legacy<-!is.null(legacy) && identical(s$original,legacy$data) && identical(s$mappings,legacy$mappings)
+      # Keep all native Classic labels, timepoint groups and clusters when merely reviewing.
+      if(!preserve_legacy)hub$set_external_sample_metadata(s,TRUE)
       confirmed_token(token())
       showNotification('Metadata confirmed. Continue to Quality to prepare the data.',type='message')
     },error=function(e)showNotification(conditionMessage(e),type='error'))
@@ -124,6 +147,7 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
   output$shared_matrix_csv<-downloadHandler(filename=function()'prepared-matrix.csv',content=function(file){d<-hub$data_processed_unfiltered();req(d);write.csv(d,file,row.names=FALSE,na='')})
   output$shared_metadata_csv<-downloadHandler(filename=function()'sample-metadata.csv',content=function(file){m<-hub$external_sample_metadata();req(m);write.csv(m$display_metadata,file,row.names=FALSE,na='')})
   cell_hub <- hub
+  cell_hub$data_processed <- hub$data_processed_unfiltered
   cell_hub$preparation_dirty <- reactive(hub$preparation_state()$dirty)
   cell_hub$preparation_audit <- reactive({
     applied<-hub$preparation_state()$applied
@@ -133,6 +157,7 @@ guided_shared_server <- function(input,output,session,hub,design_bridge) {
       seed=applied$spec$imputation_seed))
   })
   cell_show_server(input,output,session,cell_hub)
+  invisible(list(design_ok=design_ok,staged=staged,token=token))
 }
 # Descriptive class grouping for the read-only cell view, not the scientific annotation parser.
 rd_class <- function(lipids) {

@@ -1,4 +1,4 @@
-source('R/global.R')
+if(identical(Sys.getenv('GUIDED_FOCUSED_CI'),'1')) source('tests/guided-shared/bootstrap_hub.R') else source('R/global.R')
 checks<-character();check<-function(n,x){stopifnot(isTRUE(x));checks<<-c(checks,n)}
 settings<-shiny::reactiveVal(list(useImputation=FALSE,normalizationMethod='none',imputeZerosPerFile=TRUE,imputeRemainingNAtoZero=TRUE,minDetectionPct=0,dropNonDetected=FALSE,detectionScope='global',outlierTreatments=list(),outlier_trigger=0))
 approved<-shiny::reactiveVal(FALSE)
@@ -14,6 +14,10 @@ shiny::testServer(shared_data_server,args=list(external_settings=shiny::reactive
   check('Direct adapter rejects absent confirmation',inherits(tryCatch(api$set_external_sample_metadata(stage),error=identity),'error'))
   api$set_external_sample_metadata(stage,TRUE);session$flushReact()
   check('Uploaded groups bypass filename parser',identical(allParsedMetadata()$Group1,md$Condition))
+  subgroup<-output$subgroupSelectorUI$html
+  check('Subgroup buttons render escaped string arguments',grepl('&quot;Control_Reference tissue&quot;',subgroup,fixed=TRUE) && grepl("action: &#39;all&#39;",subgroup,fixed=TRUE))
+  session$setInputs(launch_default_analysis=1);session$flushReact()
+  check('Default-launch shortcut cannot bypass guided approval',is.null(data_processed_full()))
   check('Descriptive batch is not a scientific factor',!'Batch'%in%names(allParsedMetadata()))
   session$setInputs(ensure_analysis_run=1);session$flushReact()
   check('Navigation does not implicitly execute guided preparation',is.null(data_processed_full()))
@@ -28,18 +32,38 @@ shiny::testServer(shared_data_server,args=list(external_settings=shiny::reactive
   restored<-metadata_sidecar_decode(metadata_sidecar_encode(archive$shared$metadata))
   check('Restored metadata produces identical hub table',identical(restored$scientific_metadata,allParsedMetadata()))
   unlink(archive$directory,recursive=TRUE)
+  # Restoring over an already prepared session must invalidate its old outputs.
+  awaiting_restore_review(TRUE);preparation$reset()
+  check('Restore reset withholds previous-session results',is.null(data_processed_full()) && is.null(preparation$state()$applied))
+  session$setInputs(ensure_analysis_run=2);session$flushReact()
+  check('Restore review cannot be bypassed by navigation',is.null(data_processed_full()))
+  awaiting_restore_review(FALSE)
+  session$setInputs(runAnalysis=20);session$flushReact()
+
   nextmd<-md;nextmd$Condition<-rev(md$Condition)
   approved(FALSE)
   api$set_external_sample_metadata(stage_metadata_v01(nextmd,names(fixture)[-1],stage$mappings),TRUE);session$flushReact()
   check('New metadata withholds old numerical outputs',is.null(data_processed_full()))
   session$setInputs(runAnalysis=3);session$flushReact()
   check('Revoked approval blocks a new run',preparation$state()$revision==1)
+  outlier_trigger_val(1);session$flushReact()
+  check('QC recalculation cannot bypass revoked design approval',preparation$state()$revision==1)
   approved(TRUE);session$setInputs(runAnalysis=4);session$flushReact()
   check('Confirmed metadata re-run recovers',preparation$state()$status=='ready')
   session$setInputs(unselectAll=1,selectedColumns=character());session$flushReact()
   session$setInputs(runAnalysis=5);session$flushReact()
-  check('Intentional deselection cannot silently reinclude samples',is.null(data_processed_full()))
-  unlink(unlist(rv$uploads))
+  check('Intentional deselection cannot silently reinclude samples',is.null(data_processed_full()) && grepl('Select at least one',preparation$state()$error))
+  # Missing-file recovery must keep same-basename datasets separate and private.
+  original_uploads<-rv$uploads
+  missing_files_to_restore(c('first','second','third'))
+  session$setInputs(missing_file_uploader=data.frame(name='raw.csv',datapath=f));session$flushReact()
+  first_missing<-rv$uploads$first
+  replacement<-tempfile(fileext='.csv');write.csv(transform(fixture,S01=S01+999),replacement,row.names=FALSE)
+  session$setInputs(missing_file_uploader=data.frame(name='raw.csv',datapath=replacement));session$flushReact()
+  second_missing<-rv$uploads$second
+  check('Missing-file recovery uses private session directory',dirname(first_missing)==upload_storage && dirname(second_missing)==upload_storage)
+  check('Same-basename recovery cannot overwrite a prior dataset',first_missing!=second_missing && identical(read.csv(first_missing,check.names=FALSE),fixture) && !identical(read.csv(first_missing),read.csv(second_missing)))
+  unlink(c(unlist(rv$uploads),replacement))
 })
 # Classic defaults must handle features without signal without a reactive crash.
 sparse<-rbind(fixture, c('PC(90:0)',rep(0,8)), c('PC(92:0)',rep(NA,8)))
