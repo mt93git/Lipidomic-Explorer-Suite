@@ -32,6 +32,7 @@ preparation_env <- function(root='.', guided=FALSE, fixture=synthetic_fixture())
   if (guided) {
     sys.source(file.path(root,'tests/integration/guided_snapshot.R'),e)
   } else {
+    if (file.exists(file.path(root,"R/utils_preparation.R"))) sys.source(file.path(root,"R/utils_preparation.R"),e)
     load_assignments(file.path(root,'R/modules/1_shared_data_module.R'), 'compute_imputed_matrix', e)
     load_assignments(file.path(root,'R/modules/utils_stats.R'),
       c('compute_local_p_val','perform_limma_analysis','perform_non_parametric_analysis','construct_contrast_string'),e)

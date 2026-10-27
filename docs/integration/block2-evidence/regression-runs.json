@@ -1,0 +1,42 @@
+[
+  {
+    "test": "tests/test_recursive_syntax.R",
+    "exit_code": 0,
+    "log": "run-test_recursive_syntax.txt"
+  },
+  {
+    "test": "tests/test_restore_helper.R",
+    "exit_code": 0,
+    "log": "run-test_restore_helper.txt"
+  },
+  {
+    "test": "tests/test_pathway_logic.R",
+    "exit_code": 0,
+    "log": "run-test_pathway_logic.txt"
+  },
+  {
+    "test": "tests/test_statistical_engine.R",
+    "exit_code": 0,
+    "log": "run-test_statistical_engine.txt"
+  },
+  {
+    "test": "tests/test_targeted_fallback_simulation.R",
+    "exit_code": 0,
+    "log": "run-test_targeted_fallback_simulation.txt"
+  },
+  {
+    "test": "tests/test_session_roundtrip_simulation.R",
+    "exit_code": 0,
+    "log": "run-test_session_roundtrip_simulation.txt"
+  },
+  {
+    "test": "tests/test_integration_safeguards.R",
+    "exit_code": 0,
+    "log": "run-test_integration_safeguards.txt"
+  },
+  {
+    "test": "tests/integration/compare_versions.R",
+    "exit_code": 0,
+    "log": "run-compare_versions.txt"
+  }
+]

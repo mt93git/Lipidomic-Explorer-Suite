@@ -48,6 +48,10 @@ qc_boxplot_ui <- function(id) {
              hr(),
              strong("Data Filtering"),
              checkboxInput(ns("dropMisc"), tags$span("Drop 'Misc' lipids?", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Excludes unclassified or miscellaneous lipid categories from downstream analysis.")), TRUE),
+             sliderInput(ns("minDetectionPct"), "Minimum detection (%)", min = 0, max = 100, value = 0, step = 5),
+             selectInput(ns("detectionScope"), "Detection across", c("All selected samples" = "global", "At least one Group1 / Group2 group" = "group")),
+             uiOutput(ns("detectionPreview")),
+             helpText("Detection means a finite abundance greater than zero, before imputation. Removed and averaged samples do not count. Review the preview, then click Run Analysis / Re-run Pipeline to apply."),
              checkboxInput(ns("dropNonDetected"), "Drop lipids not detected in any sample?", FALSE),
              hr(),
              numericInput(ns("maxPCs"), "Max PCs to compute:", value = 3, min = 2, step = 1)
@@ -552,6 +556,9 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
   # --- 1. Export Settings to Shared Data ---
     settings_out <- reactive({
       list(
+        minDetectionPct = input$minDetectionPct,
+        dropNonDetected = input$dropNonDetected,
+        detectionScope = input$detectionScope,
         normalizationMethod = input$normalizationMethod,
         pcaMode = input$pcaMode,
         useImputation = input$useImputation,
@@ -604,6 +611,21 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       lst$bqcManualExclusions <- bqcManualExclusions()
       lst
     })
+    output$detectionPreview <- renderUI({
+      if (is.null(shared_data$detection_preview)) return(NULL)
+      tryCatch({
+        preview <- shared_data$detection_preview()
+        if (is.null(preview)) return(tags$small("Upload a matrix to preview detection."))
+        state <- shared_data$preparation_state()
+        tags$div(class = "border rounded p-2", style = "background:white; color:#334155;",
+          tags$strong(sprintf("Preview: %d of %d lipids retained", preview$retained, preview$input)),
+          tags$p(sprintf("%d excluded across %d measured samples.", preview$excluded, length(preview$samples))),
+          tags$small(if (is.null(state$applied)) "No preparation applied yet." else
+            sprintf("Last applied: %d lipids. %s", length(state$applied$output_lipids),
+              if (isTRUE(state$dirty)) "Changes are pending." else "Up to date.")))
+      }, error = function(e) tags$div(style = "background:white; color:#9f1239;", conditionMessage(e)))
+    })
+
     # Dynamic update of colorGrouping and shapeGrouping based on non-unspecified columns with >1 level
     observe({
       if (isolate(shared_data$is_restoring())) return()
@@ -815,8 +837,10 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         dplyr::left_join(meta_sub, by = "FullName")
     }
     data_pre_processed <- reactive({
-        req(shared_data$rawData()$data, shared_data$selected_cols())
-        raw_data_list <- shared_data$rawData(); useCols <- shared_data$selected_cols()
+        state <- shared_data$preparation_state()
+        req(isTRUE(state$data_available), shared_data$rawData()$data)
+        applied <- state$applied$spec
+        raw_data_list <- shared_data$rawData(); useCols <- applied$selected
         df <- raw_data_list$data %>% dplyr::select(Lipid_Name, all_of(useCols))
         
     # --- Restore Imputation Logic ---
@@ -830,7 +854,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
           return(df)
         }
         
-        if (isTRUE(input$imputeZerosPerFile)) {
+        if (isTRUE(applied$settings$imputeZerosPerFile)) {
           for (cols_in_file in raw_data_list$file_cols) {
             df <- impute_zeros(df, cols_in_file)
           }
@@ -2431,11 +2455,14 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       )
       
       if (current_tab == "Normalization Check") {
+        state <- shared_data$preparation_state()
+        req(isTRUE(state$data_available))
+        applied <- state$applied$spec$settings
         msg <- paste0(
           msg,
           "1. DATA MATRIX & NORMALIZATION\n",
-          "   - Normalization Method: ", input$normalizationMethod %||% "median", "\n",
-          "   - Missing Imputation:   ", ifelse(isTRUE(input$useImputation), "Yes (QRILC)", "No"), "\n",
+          "   - Normalization Method (applied): ", applied$normalizationMethod, "\n",
+          "   - Missing Imputation (applied): ", ifelse(isTRUE(applied$useImputation), "Yes (QRILC)", "No"), "\n",
           "   - Drop 'Misc' Lipids:   ", ifelse(isTRUE(input$dropMisc), "Yes", "No"), "\n",
           "   - Raw Sample Count:     ", length(shared_data$all_numeric_columns()), " samples\n\n",
           "   - Normalization Calculus:\n",
