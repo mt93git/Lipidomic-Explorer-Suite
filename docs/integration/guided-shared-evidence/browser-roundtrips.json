@@ -14,5 +14,27 @@
     "byte_identical": true,
     "rows": 12,
     "samples": 8
+  },
+  {
+    "case": "guided-final-client-receipts",
+    "application_commit": "88d85f36e7dd9b207a2c64ee59bdbe88bf975691",
+    "before_sha256": "cddcf67aaa1b65aa952cd1ed643e4c21b12447c01fa892a031bd01a669f3ecdb",
+    "after_sha256": "cddcf67aaa1b65aa952cd1ed643e4c21b12447c01fa892a031bd01a669f3ecdb",
+    "byte_identical": true,
+    "rows": 12,
+    "samples": 8,
+    "explicit_confirmation": true,
+    "run_analysis": true
+  },
+  {
+    "case": "legacy-into-guided-final",
+    "application_commit": "88d85f36e7dd9b207a2c64ee59bdbe88bf975691",
+    "before_sha256": "8affc8d628b0f26fddceaa83533b24519000525d4177b322f9fd2d531c011997",
+    "after_sha256": "8affc8d628b0f26fddceaa83533b24519000525d4177b322f9fd2d531c011997",
+    "byte_identical": true,
+    "rows": 12,
+    "samples": 8,
+    "explicit_confirmation": true,
+    "run_analysis": true
   }
 ]

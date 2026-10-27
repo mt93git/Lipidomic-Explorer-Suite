@@ -29,6 +29,7 @@ Run:
 
 ```sh
 Rscript --vanilla tests/guided-shared/test_metadata.R
+Rscript --vanilla tests/guided-shared/test_guided_server.R
 Rscript --vanilla tests/guided-shared/test_hub_adapter.R
 Rscript --vanilla tests/block2/test_preparation.R
 Rscript --vanilla tests/block2/test_hub.R
@@ -66,3 +67,16 @@ Opus 5.5 (Libreros Lab, Fabric task `t-20261026-232941-69ba`) reviewed candidate
 Additional validation found that zip_list permission bits do not reliably identify symbolic links. Archive entries now stream to regular files with both declared and actual byte limits. A restore clears prior prepared results. Failed hydration stages stop rather than reporting success. A matrix/metadata mismatch is now a recoverable validation error and blocks preparation.
 
 This does not certify all historical Classic controls or the full production guided UX. Physical-phone validation remains pending. No main merge, production deployment, or team service restart is part of this PR.
+
+## Final closure at application commit 88d85f3
+
+The final Libreros Lab Opus 5.5 review (`t-20261027-060401-8ccb`, following `t-20261026-235209-13a8`) found no confirmed blocker in the final changes. This was a static review: its attempted executable checks were unavailable, so it does not independently reproduce our runtime results.
+
+Final isolated RTX checks passed: 33 metadata/archive checks, 16 guided-server checks and 26 real-hub adapter checks. Both GitHub scientific-parity jobs passed for 88d85f3 (runs 40485495533 and 40485501805). Existing preparation, hub, numerical parity and regression evidence remains separate from these focused counts.
+
+Browser checks on the final application commit closed the two explicit review follow-ups:
+
+- The browser sends the rendered-preview receipt when checking and confirming the study design. A new guided ZIP with nondefault settings restored and produced a byte-identical prepared CSV (SHA-256 `cddcf67aaa1b65aa952cd1ed643e4c21b12447c01fa892a031bd01a669f3ecdb`).
+- A legacy Classic ZIP was then restored into that already prepared guided session. It cleared prepared results and unchecked confirmation. After reviewing the native metadata and running analysis, **Study design confirmed** remained visible. The downloaded matrix matched the original Classic export byte for byte (SHA-256 `8affc8d628b0f26fddceaa83533b24519000525d4177b322f9fd2d531c011997`). This specifically exercises the real hub, guided UI, client receipts and Run Analysis together.
+
+The synthetic fixture has 12 lipids and 8 samples. Browser downloads and screenshots are retained in the local evidence package; compact hashes are committed here. Existing console warnings about the duplicated Classic barchart badge output and initially unregistered cell plot events were observed, not silently counted as resolved. Neither interrupted these restoration/download checks. The archive case-normalization helper still depends on the process locale for non-ASCII lowercase conversion, a low-priority portability limitation noted by Opus. No claim of complete historical-interface or cross-platform validation is made.
