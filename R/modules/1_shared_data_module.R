@@ -397,7 +397,7 @@ shared_data_ui <- function(id) {
 
 # Server logic
 
-shared_data_server <- function(id, external_settings = reactive(NULL), welcome_load_demo_trigger = NULL) {
+shared_data_server <- function(id, external_settings = reactive(NULL), welcome_load_demo_trigger = NULL, root_session = NULL, design_check = NULL) {
   moduleServer(id, function(input, output, session) {
     
     SHAPE_CHOICES <- c("Circle"=16, "Square"=15, "Triangle"=17, "Diamond"=18, "Plus"=3, "Cross"=4, "Star"=8)
@@ -506,6 +506,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         timepoint_was_available = FALSE
     )
     
+    if (is.null(root_session)) root_session <- session
+    upload_storage <- tempfile("lipidomic-uploads-"); dir.create(upload_storage)
+    session$onSessionEnded(function() unlink(upload_storage,recursive=TRUE))
+    external_metadata <- reactiveVal(NULL)
+    explicit_selection <- reactiveVal(FALSE)
+    session_restored <- reactiveVal(FALSE)
     is_restoring <- reactiveVal(FALSE)
     metadata_trigger <- reactiveVal(0)
     run_analysis_trigger_val <- reactiveVal(0)
@@ -549,6 +555,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     }
 
     observeEvent(input$runAnalysis, {
+      if (!is.null(design_check) && !isTRUE(design_check())) {
+        showNotification("Review and confirm the study design in Guided workflow before preparing data.", type="warning")
+        return()
+      }
+      restored_inputs(list())
       ts <- format(Sys.time(), "%H:%M:%S")
       cat(sprintf("[LIPIDOMIC EXPLORER %s] 'Run Analysis' action triggered.\n", ts))
       cat(sprintf("  >> Staged uploaded file(s): %d\n", length(rv$uploads)))
@@ -568,6 +579,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
 
     observeEvent(input$ensure_analysis_run, {
+      if (!is.null(design_check)) {
+        showNotification("Use Run Analysis in Quality after confirming the study design.",type="message")
+        return() # Guided navigation never prepares data implicitly.
+      }
       if (length(rv$uploads) == 0) {
         return()
       }
@@ -717,11 +732,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         file_info <- input$files[i, ]
         cat(sprintf("  [%d/%d] '%s' (%.2f MB)\n", i, nrow(input$files), file_info$name, file_info$size / (1024^2)))
         if (!file_info$name %in% names(current_files)) {
-          dest_dir <- file.path("data", "user_uploads")
+          dest_dir <- upload_storage
           if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
           
           # Make a unique filename to prevent conflicts
-          safe_fname <- make.unique(c(names(current_files), file_info$name))[length(current_files) + 1]
+          safe_fname <- make.unique(c(basename(names(current_files) %||% character()), basename(file_info$name)))[length(current_files) + 1]
           dest_path <- file.path(dest_dir, safe_fname)
           if (normalizePath(file_info$datapath, mustWork = FALSE) != normalizePath(dest_path, mustWork = FALSE)) {
             file.copy(file_info$datapath, dest_path, overwrite = TRUE)
@@ -987,14 +1002,14 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                 style = "display: inline-flex; gap: 4px;",
                 tags$a(
                   href = "#",
-                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: '%s', action: 'all'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), sg),
+                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: %s, action: 'all'}, {priority: 'event'}); return false;", session$ns("subgroupToggle", "shared_design_confirm", "shared_metadata_apply", "shared_step_", "shared_next_"), sg),
                   class = "btn btn-xs btn-outline-success",
                   style = "padding: 1px 4px; font-size: 0.75rem; text-decoration: none;",
                   "All"
                 ),
                 tags$a(
                   href = "#",
-                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: '%s', action: 'none'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), sg),
+                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: %s, action: 'none'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), jsonlite::toJSON(sg,auto_unbox=TRUE)),
                   class = "btn btn-xs btn-outline-danger",
                   style = "padding: 1px 4px; font-size: 0.75rem; text-decoration: none;",
                   "None"
@@ -1007,8 +1022,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
     outputOptions(output, "columnSelectorUI", suspendWhenHidden = FALSE)
     outputOptions(output, "subgroupSelectorUI", suspendWhenHidden = FALSE)
-    observeEvent(input$selectAll, { updateCheckboxGroupInput(session, "selectedColumns", selected = all_numeric_columns()) })
-    observeEvent(input$unselectAll, { updateCheckboxGroupInput(session, "selectedColumns", selected = character(0)) })
+    observeEvent(input$selectedColumns, { explicit_selection(TRUE) }, ignoreNULL=FALSE, ignoreInit=TRUE)
+    observeEvent(input$selectAll, { explicit_selection(TRUE); updateCheckboxGroupInput(session, "selectedColumns", selected = all_numeric_columns()) })
+    observeEvent(input$unselectAll, { explicit_selection(TRUE); updateCheckboxGroupInput(session, "selectedColumns", selected = character(0)) })
     observeEvent(input$subgroupToggle, {
       trigger <- input$subgroupToggle
       req(trigger$subgroup, trigger$action)
@@ -1384,7 +1400,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       digest::digest(list(info$data, info$file_cols), algo = "sha256")
     })
     pending_preparation <- reactive({
-      preparation_request(rawData(), input$selectedColumns,
+      selected <- input$selectedColumns
+      if (!length(selected) && !isTRUE(explicit_selection())) selected <- NULL
+      preparation_request(rawData(), selected,
         tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL),
         external_settings(), isTRUE(input$useAveragedSubstitution), preparation_data_id())
     })
@@ -1484,6 +1502,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     # eventReactive for authorized metadata - this is the gatekeeper!
     # It only updates when the 'authorizeMetadata' btn in the modal is clicked.
     allParsedMetadata <- eventReactive(metadata_trigger(), {
+      direct <- external_metadata()
+      if (!is.null(direct)) {
+        ids <- all_numeric_columns()
+        if (!setequal(ids, direct$scientific_metadata$FullName)) stop("Uploaded metadata no longer matches this matrix. Review the mapping.")
+        return(direct$scientific_metadata[match(ids,direct$scientific_metadata$FullName),,drop=FALSE])
+      }
       req(editableMetadata())
       req(parsedMetadataStructure())
       t_res_start <- Sys.time()
@@ -2754,7 +2778,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       autoDetectedFeatures(detected_features)
       
       # Show the Metadata Mapping modal automatically when new data is loaded without prior confirmation
-      if (!already_confirmed) {
+      if (!already_confirmed && is.null(design_check)) {
         cat("[LIPIDOMIC EXPLORER] Showing Metadata Mapping modal dialog...\n")
         showMetadataMappingModal(sample_example = ex_sample)
       }
@@ -4376,7 +4400,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         showNotification(message, type = "warning", duration = 10)
         stop(message)
       }
-      global_session <- getDefaultReactiveDomain()
+      global_session <- root_session
       all_inputs <- reactiveValuesToList(global_session$input)
       
       # Exclude buttons, files, import files, and dynamic outlier treatment inputs
@@ -4389,7 +4413,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         if (!is_excluded && !is_dt_transient) {
           val <- all_inputs[[k]]
-          if (is.atomic(val) || is.list(val)) {
+          is_upload <- is.list(val) && all(c("name","size","type","datapath") %in% names(val))
+          if (!is_upload && (is.atomic(val) || is.list(val))) {
             clean_inputs[[k]] <- val
           }
         }
@@ -4512,14 +4537,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         # (Copying transcriptomics file removed)
         
+        sidecar <- list(version="1", metadata=metadata_sidecar_encode(external_metadata()), applied=preparation$state()$applied)
+        jsonlite::write_json(sidecar, file.path(tmp_dir,"shared-state-v1.json"), auto_unbox=TRUE, pretty=TRUE, dataframe="rows", digits=NA)
         # Save state.json
         state_json_path <- file.path(tmp_dir, "state.json")
         jsonlite::write_json(state_list, state_json_path, auto_unbox = TRUE, pretty = TRUE)
         
         # Zip the directory using zip::zip (preserving structure)
         old_wd <- getwd()
+        on.exit(setwd(old_wd), add=TRUE, after=FALSE)
         setwd(tmp_dir)
-        files_to_zip <- "state.json"
+        files_to_zip <- c("state.json", "shared-state-v1.json")
         if (dir.exists("data_files")) {
           files_to_zip <- c(files_to_zip, "data_files")
         }
@@ -4980,7 +5008,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
-            global_session <- getDefaultReactiveDomain()
+            global_session <- root_session
             inputs_to_restore <- state_data$inputs
             
             if (!is.null(state_data$analysisMode)) {
@@ -4994,7 +5022,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               freezeReactiveValue(global_session$input, id)
               update_input_generic(global_session, id, val)
             }
-            import_status("UI inputs hydrated. Running analysis...")
+            import_status("Restoring controls. Review the restored settings before running analysis.")
           }, error = function(e) {
             is_restoring(FALSE)
             import_status(paste("Error during input hydration:", e$message))
@@ -5003,15 +5031,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
-              analysis_is_fresh(TRUE)
-              run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
-              restored_inputs(list())
+              analysis_is_fresh(FALSE)
+              # A server flush is not proof that the browser has hydrated controls.
+              # Require an explicit run after reviewing the restored UI.
+              explicit_selection(TRUE)
               is_restoring(FALSE)
+              session_restored(TRUE)
               just_restored(TRUE)
               session$onFlushed(function() {
                 just_restored(FALSE)
               }, once = TRUE)
-              import_status("Session successfully restored!")
+              import_status("Session restored. Review the study design and settings, then click Run Analysis to prepare the restored data.")
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
@@ -5028,41 +5058,21 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       req(input$import_session_file)
       import_status("Processing session import...")
       
-      # 1. Unzip uploaded file
-      zip_path <- input$import_session_file$datapath
-      dest_dir <- normalizePath(file.path(getwd(), "data", "user_uploads"), winslash = "/", mustWork = FALSE)
-      if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
-      
-      # Create unique extraction directory
-      extract_dir <- normalizePath(file.path(dest_dir, paste0("import_", format(Sys.time(), "%Y%m%d_%H%M%S"))), winslash = "/", mustWork = FALSE)
-      dir.create(extract_dir)
-      
-      extraction_success <- tryCatch({
-        zip::unzip(zip_path, exdir = extract_dir)
-        TRUE
-      }, error = function(e) {
-        import_status(paste("Error: Failed to unzip file.", e$message))
-        FALSE
-      })
-      
-      if (!extraction_success) return()
-      
-      state_json_path <- file.path(extract_dir, "state.json")
-      if (!file.exists(state_json_path)) {
-        import_status("Error: state.json not found in session archive.")
-        return()
-      }
-      
-      # 2. Parse state.json
-      state_data <- tryCatch({
-        jsonlite::read_json(state_json_path, simplifyVector = TRUE)
-      }, error = function(e) {
-        import_status(paste("Error: Failed to parse state.json.", e$message))
-        NULL
-      })
-      
-      if (is.null(state_data)) return()
-      
+      archive <- tryCatch(read_session_archive(input$import_session_file$datapath),
+        error=function(e) {import_status(paste("Error:",conditionMessage(e)));NULL})
+      if (is.null(archive)) return()
+      extract_dir <- archive$directory
+      # A private directory per restoration prevents one session overwriting another.
+      dest_dir <- tempfile("restored-data-"); dir.create(dest_dir)
+      session$onSessionEnded(function() {unlink(extract_dir,recursive=TRUE);unlink(dest_dir,recursive=TRUE)})
+      state_data <- archive$state
+      # Approval is session-local and must never be rehydrated from an archive.
+      if (!is.null(design_check)) state_data$inputs$shared_design_confirm <- FALSE
+      session_restored(FALSE)
+      external_metadata(NULL)
+      explicit_selection(FALSE)
+      if (!is.null(archive$shared$metadata)) external_metadata(archive$shared$metadata)
+
       # Map legacy deMethod values to standard limma for backward compatibility
       if (!is.null(state_data$inputs)) {
         for (k in names(state_data$inputs)) {
@@ -5227,7 +5237,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
-            global_session <- getDefaultReactiveDomain()
+            global_session <- root_session
             inputs_to_restore <- state_data$inputs
             
             # Defensively ensure deReferenceGroups and deComparisonGroups are hydrated from moReferenceGroups / moComparisonGroups if missing
@@ -5290,7 +5300,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               freezeReactiveValue(global_session$input, id)
               update_input_generic(global_session, id, val)
             }
-            import_status("UI inputs hydrated. Running analysis...")
+            import_status("Restoring controls. Review the restored settings before running analysis.")
           }, error = function(e) {
             is_restoring(FALSE)
             import_status(paste("Error during input hydration:", e$message))
@@ -5299,15 +5309,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
-              analysis_is_fresh(TRUE)
-              run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
-              restored_inputs(list())
+              analysis_is_fresh(FALSE)
+              # A server flush is not proof that the browser has hydrated controls.
+              # Require an explicit run after reviewing the restored UI.
+              explicit_selection(TRUE)
               is_restoring(FALSE)
+              session_restored(TRUE)
               just_restored(TRUE)
               session$onFlushed(function() {
                 just_restored(FALSE)
               }, once = TRUE)
-              import_status("Session successfully restored!")
+              import_status("Session restored. Review the study design and settings, then click Run Analysis to prepare the restored data.")
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
@@ -5344,6 +5356,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     return(
       list(
         rawData = rawData, data_processed = data_processed, pca_results = pca_results,
+        external_sample_metadata = external_metadata,
+        session_restored = session_restored,
+        set_external_sample_metadata = function(stage, confirmed=FALSE) {
+          value <- confirm_metadata_v01(stage,confirmed)
+          if (!identical(as.character(stage$matrix_ids),as.character(isolate(all_numeric_columns()))))
+            stop("Matrix samples changed. Review the metadata preview again.")
+          external_metadata(value)
+          metadata_trigger(isolate(metadata_trigger())+1L)
+          analysis_is_fresh(FALSE)
+          invisible(value)
+        },
         data_processed_unfiltered = data_processed_full,
         preparation_state = preparation$state,
         detection_preview = preparation$preview,

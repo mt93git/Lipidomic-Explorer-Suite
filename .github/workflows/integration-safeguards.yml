@@ -1,9 +1,9 @@
 name: Integration safeguards and scientific parity
 on:
   push:
-    branches: [integration/libreros-guided-workflow, integration/shared-preparation-qc]
+    branches: [integration/libreros-guided-workflow, integration/shared-preparation-qc, integration/guided-shared-core]
   pull_request:
-    branches: [main, integration/libreros-guided-workflow]
+    branches: [main, integration/libreros-guided-workflow, integration/shared-preparation-qc]
 permissions:
   contents: read
 jobs:
@@ -21,7 +21,7 @@ jobs:
         shell: Rscript --vanilla {0}
         run: |
           options(repos=c(CRAN=Sys.getenv('RSPM', 'https://cloud.r-project.org')))
-          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'BiocManager'))
+          install.packages(c('shiny', 'dplyr', 'tibble', 'tidyr', 'statmod', 'readxl', 'digest', 'jsonlite', 'zip', 'BiocManager'))
           required <- c('limma','imputeLCMD')
           for (attempt in seq_len(3)) {
             missing <- required[!vapply(required, requireNamespace, logical(1), quietly=TRUE)]
@@ -48,6 +48,16 @@ jobs:
         run: Rscript --vanilla tests/block2/test_preparation.R block2-evidence
       - name: Compare Max reference artifacts with Classic defaults
         run: Rscript --vanilla tests/block2/compare_references.R block2-evidence/reference
+      - name: Validate metadata and real ZIP serialization
+        run: |
+          mkdir -p guided-evidence
+          Rscript --vanilla tests/guided-shared/test_metadata.R guided-evidence
+      - name: Retain guided evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guided-shared-evidence
+          path: guided-evidence/
       - name: Retain Block 2 evidence
         if: always()
         uses: actions/upload-artifact@v4

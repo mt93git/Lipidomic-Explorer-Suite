@@ -1,0 +1,18 @@
+[
+  {
+    "case": "guided-nondefault",
+    "before_sha256": "cddcf67aaa1b65aa952cd1ed643e4c21b12447c01fa892a031bd01a669f3ecdb",
+    "after_sha256": "cddcf67aaa1b65aa952cd1ed643e4c21b12447c01fa892a031bd01a669f3ecdb",
+    "byte_identical": true,
+    "rows": 12,
+    "samples": 8
+  },
+  {
+    "case": "legacy-classic",
+    "before_sha256": "8affc8d628b0f26fddceaa83533b24519000525d4177b322f9fd2d531c011997",
+    "after_sha256": "8affc8d628b0f26fddceaa83533b24519000525d4177b322f9fd2d531c011997",
+    "byte_identical": true,
+    "rows": 12,
+    "samples": 8
+  }
+]

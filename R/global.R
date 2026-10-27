@@ -1296,6 +1296,9 @@ assign("render_tab_intro_card", render_tab_intro_card, envir = .GlobalEnv)
 source("R/utils_lipid_genes.R")
 source("R/utils_data.R")
 source("R/utils_preparation.R")
+source("R/utils_sample_metadata.R")
+source("R/utils_session_archive.R")
+source("R/guided_shared.R")
 source("R/utils_colors.R")
 source("R/utils_vis.R")
 source("R/modules/utils_stats.R")
@@ -1321,3 +1324,5 @@ source("R/modules/99_export_studio_module.R")
 
 
 
+
+if (guided_shared_enabled()) source("R/cell_show.R")
