@@ -7955,6 +7955,7 @@ body.modal-open .targeted-scope-tooltip-balloon {
 
 /* Keep Classic navigation within the viewport; scroll only the tool strip. */
 @media (max-width: 767px) {
+  .navbar.navbar-expand-md, .navbar { height: auto !important; flex-shrink: 0; }
   .navbar > .container-fluid { flex-wrap: wrap !important; }
   .navbar-collapse { min-width: 0; flex-basis: 100% !important; }
   .navbar-collapse.collapse:not(.show) { display: none !important; }
