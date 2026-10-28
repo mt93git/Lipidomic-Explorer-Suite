@@ -1,0 +1,8 @@
+[Unit]
+Description=RTX-only Lipidomic backup health alerts
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/lipidomic-supabase-pilot/monitor_backup.py
+UMask=0077
+MemoryMax=128M
+TimeoutStartSec=5min

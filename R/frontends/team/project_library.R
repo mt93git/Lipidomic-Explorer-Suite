@@ -37,6 +37,42 @@ team_library_commit <- function(path, project, label, token, call=team_library_c
   if(!length(lookup()))stop("Checkpoint registration could not be verified. Retry this saved checkpoint.")
   invisible(hash)
 }
+# Durable queue is operator-owned, outside the application release and web root.
+team_library_queue <- function(user, pending=NULL, clear=FALSE, expected=NULL) {
+  root<-Sys.getenv("LIPIDOMIC_UPLOAD_QUEUE")
+  if(!nzchar(root)||!grepl("^[0-9a-f-]{36}$",user))stop("Durable checkpoint queue is not configured.")
+  dir.create(root,recursive=TRUE,mode="0700",showWarnings=FALSE)
+  slot<-file.path(root,user)
+  lock<-paste0(slot,".lock")
+  handle<-filelock::lock(lock,timeout=1000)
+  if(is.null(handle))stop("Another checkpoint operation is in progress. Retry shortly.")
+  on.exit(filelock::unlock(handle),add=TRUE)
+  if(clear){
+    if(dir.exists(slot)){
+      m<-jsonlite::read_json(file.path(slot,"manifest.json"),simplifyVector=TRUE)
+      if(is.null(expected)||!identical(m$sha256,expected))stop("The pending checkpoint changed. Sign in again before retrying.")
+      unlink(slot,recursive=TRUE)
+    }
+    return(NULL)
+  }
+  if(!is.null(pending)){
+    if(dir.exists(slot))stop("A saved checkpoint is pending. Retry it first.")
+    stage<-tempfile(pattern=".staging-",tmpdir=root);dir.create(stage,mode="0700")
+    on.exit(unlink(stage,recursive=TRUE),add=TRUE)
+    if(!file.copy(pending$path,file.path(stage,"checkpoint.zip")))stop("Could not persist pending checkpoint.")
+    Sys.chmod(file.path(stage,"checkpoint.zip"),"0600")
+    manifest<-list(user=user,project=pending$project,label=pending$label,
+      sha256=digest::digest(file=file.path(stage,"checkpoint.zip"),algo="sha256"))
+    jsonlite::write_json(manifest,file.path(stage,"manifest.json"),auto_unbox=TRUE)
+    Sys.chmod(file.path(stage,"manifest.json"),"0600")
+    if(!file.rename(stage,slot))stop("Another save is pending. Sign in again to recover it.")
+  }
+  if(!dir.exists(slot))return(NULL)
+  m<-jsonlite::read_json(file.path(slot,"manifest.json"),simplifyVector=TRUE)
+  path<-file.path(slot,"checkpoint.zip")
+  if(!identical(m$user,user)||!identical(digest::digest(file=path,algo="sha256"),m$sha256))stop("Pending checkpoint integrity check failed. Contact the administrator.")
+  list(path=path,project=m$project,label=m$label,sha256=m$sha256)
+}
 team_library_ui <- function() {
   tags$section(class="team-library",style="background:white;border:1px solid #d9e5e8;border-radius:12px;margin:16px;padding:20px;",
     tags$style(HTML(".team-library .shiny-input-container{width:100%!important;margin-bottom:10px}.team-library-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:18px;align-items:end}.team-library-login{display:flex;gap:16px;align-items:end;flex-wrap:wrap}.team-library-login>.shiny-input-container{flex:1;min-width:180px}.team-library select{min-height:44px}.team-library small{display:block;margin-top:14px;color:#526b77}@media(max-width:750px){.team-library-grid{grid-template-columns:1fr}.team-library{margin:8px!important;padding:16px!important}}")),
@@ -48,8 +84,7 @@ team_library_server <- function(input,output,session,shared_data) {
   account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); status<-reactiveVal("Sign in to access saved projects.")
   generation<-0L
   pending<-NULL
-  cleanup_pending<-function(){if(!is.null(pending))unlink(pending$path);pending<<-NULL}
-  session$onSessionEnded(cleanup_pending)
+  cleanup_pending<-function(){a<-isolate(account());if(!is.null(a))team_library_queue(a$user,clear=TRUE,expected=pending$sha256);pending<<-NULL}
   session$onSessionEnded(function(){account(NULL)})
   guard<-function(code) tryCatch(force(code),error=function(e) {status(conditionMessage(e)); invisible(NULL)})
   access<-function(){a<-isolate(account());if(is.null(a))stop("Sign in first.")
@@ -84,8 +119,9 @@ team_library_server <- function(input,output,session,shared_data) {
     if(!is.null(isolate(account())))stop("Sign out before switching accounts.")
     r<-team_library_call("auth","/token?grant_type=password",body=list(email=trimws(input$team_library_email),password=input$team_library_password),method="POST")
     updateTextInput(session,"team_library_password",value="")
-    account(list(token=r$access_token,refresh=r$refresh_token,expires=Sys.time()+r$expires_in-30,email=r$user$email))
-    refresh_projects();status("Signed in. Choose a project and a saved checkpoint.")
+    account(list(token=r$access_token,refresh=r$refresh_token,expires=Sys.time()+r$expires_in-30,email=r$user$email,user=r$user$id))
+    refresh_projects();pending<<-team_library_queue(r$user$id)
+    status(if(!is.null(pending)) "An interrupted checkpoint is ready to recover. Select its project and click Retry saved checkpoint." else "Signed in. Choose a project and a saved checkpoint.")
   }))
   observeEvent(input$team_library_project,guard(refresh_files()),ignoreInit=TRUE)
   observeEvent(input$team_library_logout,{
@@ -101,8 +137,9 @@ team_library_server <- function(input,output,session,shared_data) {
     path<-tempfile(fileext=".zip")
     tryCatch(shared_data$export_session_path(path),error=function(e){unlink(path);stop(e)})
     if(file.info(path)$size>100*1024^2){unlink(path);stop("Checkpoint exceeds the pilot's 100 MiB limit.")}
-    pending<<-list(path=path,project=id,label=label)
-    team_library_commit(path,id,label,tok)
+    on.exit(unlink(path),add=TRUE)
+    pending<<-team_library_queue(isolate(account())$user,list(path=path,project=id,label=label))
+    team_library_commit(pending$path,id,label,tok)
     cleanup_pending()
     refresh_files();status("Checkpoint saved privately. Your applied scientific settings have not changed.")
   }))

@@ -1,0 +1,8 @@
+[Unit]
+Description=Check Lipidomic backups every fifteen minutes on RTX
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Unit=lipidomic-pilot-monitor.service
+[Install]
+WantedBy=timers.target
