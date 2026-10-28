@@ -1,0 +1,52 @@
+services:
+  db:
+    image: supabase/postgres:17.6.1.136
+    mem_limit: 768m
+    cpus: 1.0
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: 3600
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+      - ./bootstrap.sql:/docker-entrypoint-initdb.d/migrations/99-pilot.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 30
+  rest:
+    image: postgrest/postgrest:v14.18
+    mem_limit: 192m
+    cpus: 0.5
+    ports: ['127.0.0.1:${REST_PORT}:3000']
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${DB_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+  storage:
+    image: supabase/storage-api:v1.81.0
+    mem_limit: 384m
+    cpus: 0.5
+    ports: ['127.0.0.1:${STORAGE_PORT}:5000']
+    depends_on:
+      db: {condition: service_healthy}
+      rest: {condition: service_started}
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_KEY}
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${DB_PASSWORD}@db:5432/postgres
+      STORAGE_PUBLIC_URL: http://127.0.0.1:${STORAGE_PORT}
+      FILE_SIZE_LIMIT: 104857600
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: lipidomic-pilot
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: lipidomic-pilot
+      REGION: local
+      ENABLE_IMAGE_TRANSFORMATION: 'false'
+    volumes:
+      - ./data/objects:/var/lib/storage

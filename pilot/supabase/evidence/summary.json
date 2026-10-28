@@ -1,0 +1,8 @@
+{
+  "initial_assertions": 52,
+  "restored_assertions": 42,
+  "restart_assertions": 42,
+  "all_passed": true,
+  "six_objects_match_across_all_phases": true,
+  "off_host_encrypted_backup_sha256": "b2b442dc1fee332e1c98a0511c363bd6240869b848cf696494789c56e37785a2"
+}
