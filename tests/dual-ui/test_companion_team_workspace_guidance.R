@@ -46,17 +46,30 @@ stopifnot(identical(vapply(team_cards, `[[`, character(1), "citation"), vapply(l
 stopifnot(!grepl("\\b(Experiment|Results|Share|3D Show)\\b", paste(team_text, collapse = " ")))
 stopifnot(grepl("private project library is available", team_cards$experiment$text, fixed = TRUE))
 stopifnot(grepl("resume a saved checkpoint from Data", team_cards$experiment$text, fixed = TRUE))
-stopifnot(grepl("temporary", team_cards$results$text, fixed = TRUE), grepl("per plot", team_cards$results$text, fixed = TRUE))
+stopifnot(grepl("archived snapshot", team_cards$results$text, fixed = TRUE),
+          grepl("may differ from current live data", team_cards$results$text, fixed = TRUE),
+          grepl("Edit regenerates the current plot", team_cards$results$text, fixed = TRUE),
+          grepl("click Prepare data", team_cards$results$text, fixed = TRUE),
+          grepl("there is no autosave", team_cards$results$text, fixed = TRUE),
+          grepl("per plot", team_cards$results$text, fixed = TRUE))
 stopifnot(grepl("CSV is not provided by every analysis", team_cards$violin$text, fixed = TRUE))
 stopifnot(grepl("from Canvas", team_cards$cell$text, fixed = TRUE))
-stopifnot(grepl("Save private analysis checkpoints and export results in Save & export", team_cards$share$text, fixed = TRUE))
-stopifnot(grepl("Resume an existing private checkpoint from Data", team_cards$share$text, fixed = TRUE))
+stopifnot(grepl("Explicitly save a private checkpoint in Save & export", team_cards$share$text, fixed = TRUE))
+stopifnot(grepl("Resume the private checkpoint from Data after signing in", team_cards$share$text, fixed = TRUE))
 stopifnot(!grepl("save.*checkpoint.*in Data", team_cards$share$text, ignore.case = TRUE))
+stopifnot(grepl("Explicitly save", team_cards$share$text, fixed = TRUE),
+          grepl("retain the Canvas layout, appearance edits and finished figure snapshots", team_cards$share$text, fixed = TRUE),
+          grepl("Nothing autosaves", team_cards$share$text, fixed = TRUE),
+          grepl("not exported as one composite figure", team_cards$share$text, fixed = TRUE))
 stopifnot(grepl("confirm", team_cards$settings$text, ignore.case = TRUE), grepl("Prepare data", team_cards$settings$text, fixed = TRUE))
 
 team_methods <- companion_ai_methods()
 stopifnot(all(grepl("\\[(seven_steps|preparation_methods|results_methods|3d_provenance)\\]", strsplit(team_methods, "\\n")[[1L]])))
 stopifnot(!grepl("\\b(Experiment|Results|Share|3D Show)\\b", team_methods))
+stopifnot(grepl("checkpoints containing Canvas layout, appearance and finished figure snapshots", team_methods, fixed = TRUE),
+          grepl("there is no autosave", team_methods, fixed = TRUE),
+          grepl("Edit regenerates the current plot", team_methods, fixed = TRUE),
+          grepl("click Prepare data", team_methods, fixed = TRUE))
 for (method in c("left-censoring assumption", "positive values", "paired designs", "does not locate lipids")) {
   stopifnot(grepl(method, tolower(legacy_methods), fixed = TRUE))
   stopifnot(grepl(method, tolower(team_methods), fixed = TRUE))
@@ -93,9 +106,15 @@ stopifnot(length(team_guidance) == 7L)
 stopifnot(grepl("In Data", team_guidance[[1L]], fixed = TRUE))
 stopifnot(all(grepl("In Review", team_guidance[2:4], fixed = TRUE)))
 stopifnot(all(grepl("In Canvas", team_guidance[5:6], fixed = TRUE)))
-stopifnot(grepl("save analysis checkpoints and export results", team_guidance[[7L]], fixed = TRUE))
-stopifnot(grepl("Resume existing private checkpoints from Data", team_guidance[[7L]], fixed = TRUE))
-stopifnot(grepl("temporary", team_guidance[[5L]], fixed = TRUE))
+stopifnot(grepl("explicitly save private checkpoints containing Canvas layout", team_guidance[[7L]], fixed = TRUE))
+stopifnot(grepl("Resume a saved checkpoint from Data after signing in", team_guidance[[7L]], fixed = TRUE))
+stopifnot(grepl("persist across sign-in only when included in a private checkpoint", team_guidance[[5L]], fixed = TRUE))
+stopifnot(grepl("nothing autosaves", team_guidance[[5L]], fixed = TRUE))
+stopifnot(grepl("archived snapshots", team_guidance[[7L]], fixed = TRUE),
+          grepl("may differ from current live data", team_guidance[[7L]], fixed = TRUE),
+          grepl("Edit regenerates the current plot", team_guidance[[7L]], fixed = TRUE),
+          grepl("click Prepare data", team_guidance[[7L]], fixed = TRUE),
+          grepl("Nothing autosaves", team_guidance[[7L]], fixed = TRUE))
 stopifnot(grepl("confirm", team_guidance[[2L]], ignore.case = TRUE))
 stopifnot(grepl("does not automatically change the statistical model", team_guidance[[4L]], fixed = TRUE))
 stopifnot(grepl("subcellular", team_guidance[[6L]], fixed = TRUE))

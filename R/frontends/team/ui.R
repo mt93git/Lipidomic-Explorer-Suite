@@ -65,7 +65,7 @@ ui <- page_navbar(
       includeScript("www/team/js/companion_art.js"),
       includeScript("www/team/js/context_help.js"),
       includeScript("www/team/js/companion_assistant.js"),
-      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas.js"),includeScript("www/team/js/companion_workspace.js"))
+      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas.js"),includeScript("www/team/js/canvas_checkpoint.js"),includeScript("www/team/js/companion_workspace.js"))
     ),
     guide_header(),
     if (team_workspace_enabled()) team_canvas_ui(),

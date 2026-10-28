@@ -7,7 +7,7 @@ session_persistent_inputs <- function(inputs) {
   if (is.null(inputs)) return(list())
   if (!is.list(inputs)) return(inputs)
   transient <- grepl("(^|[-_])(assistant_(request|action|confirm|cancel)|client_ui_trace|guide_(review_receipt|focus_request|step|design_confirm)|shared_(design_confirm|review_receipt|apply_receipt|metadata_apply|step_[0-9]+|next_[0-9]+))$", names(inputs))
-  inputs[!transient & !grepl("^team_library_", names(inputs))]
+  inputs[!transient & !grepl("^team_library_|(^|-)team_canvas_", names(inputs))]
 }
 
 shared_data_ui <- function(id) {
@@ -5180,6 +5180,14 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         # Zip relative to the private staging directory without changing process cwd.
         files_to_zip <- c("state.json", "shared-state-v1.json")
+        if (identical(preparation_policy, "team") && is.function(root_session$userData$team_canvas_export)) {
+          canvas <- root_session$userData$team_canvas_export(provenance = preparation$state()$applied)
+          if (!is.null(canvas)) {
+            canvas <- team_canvas_validate(canvas)
+            writeLines(team_canvas_json(canvas), file.path(tmp_dir, "team-canvas-v1.json"), useBytes = TRUE)
+            files_to_zip <- c(files_to_zip, "team-canvas-v1.json")
+          }
+        }
         if (dir.exists(file.path(tmp_dir, "data_files"))) {
           files_to_zip <- c(files_to_zip, "data_files")
         }
@@ -5765,7 +5773,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       restore_generation(isolate(restore_generation())+1L)
       import_status("Processing session import...")
       
-      archive <- tryCatch(read_session_archive(path),
+      include_canvas <- identical(preparation_policy, "team") && is.function(root_session$userData$team_canvas_import)
+      archive <- tryCatch(read_session_archive(path, include_team_canvas = include_canvas),
         error=function(e) {import_status(paste("Error:",conditionMessage(e)));NULL})
       if (is.null(archive)) return()
       extract_dir <- archive$directory
@@ -6060,6 +6069,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               explicit_selection(TRUE)
               is_restoring(FALSE)
               session_restored(TRUE)
+              if (include_canvas) root_session$userData$team_canvas_import(archive$canvas,
+                provenance = archive$shared$applied)
               just_restored(TRUE)
               session$onFlushed(function() {
                 just_restored(FALSE)

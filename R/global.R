@@ -1335,6 +1335,7 @@ if (identical(lipidomic_interface(), "team")) {
   source("R/frontends/team/project_library.R")
   source("R/frontends/team/workspace.R")
   source("R/frontends/team/canvas.R")
+  source("R/frontends/team/canvas_state.R")
   source("R/frontends/team/companion_workspace.R")
   source("R/sample_metadata_import.R")
   source("R/frontends/team/sample_metadata_import_module.R")

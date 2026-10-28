@@ -31,7 +31,7 @@
     'review-prepare': ['Review detection, missing values, and normalization. Settings changes do not prepare data by themselves.', 'Prepare data after review'],
     'review-quality': ['Check sample quality and exclusions. Exclusions and preparation changes remain under your control.', 'Review the comparison'],
     'review-comparison': ['Confirm the reference group and comparison match your biological question. A description does not change the test.', 'Continue to Canvas'],
-    canvas: ['Arrange available live plots in a temporary figure layout. The layout does not change analysis data or save a checkpoint.', 'Explore Canvas']
+    canvas: ['Arrange available live plots in Canvas. Explicitly save in Save & export to retain the layout, appearance edits, and finished snapshots; nothing autosaves.', 'Explore Canvas']
   };
 
   function root() { return document.getElementById('lipidomic-assistant-root'); }
@@ -117,15 +117,15 @@
     if (state.stage === 'canvas' && selectedPlot) {
       var snapshotState = canvasSnapshotState();
       var editCopy = snapshotState === 'stale'
-        ? 'Its frozen figure is out of date after an analysis change. Downloads stay disabled until you choose Edit and finish the current result again.'
+        ? 'This archived snapshot predates an analysis change; it is not the current result. Review and prepare the analysis, then choose Edit to regenerate the current plot.'
         : snapshotState === 'finished'
-          ? 'This is a frozen snapshot of the prepared result. Export PNG, SVG, or PDF here; choose Edit for the live plot and its CSV download.'
-          : 'The selected plot is live in a temporary layout. Choose Finish plot only when preparation is complete; CSV remains available in Edit.';
+          ? 'This is an archived snapshot of the prepared result at Finish and may differ from current live data. Export this figure here; after review and preparation, choose Edit to regenerate the current plot.'
+          : 'The selected plot is live in the current layout. Finish captures one prepared result; explicitly save in Save & export to retain the layout, appearance, and snapshot. CSV remains available in Edit.';
       return { key: key, note: 'Selected plot: ' + String(selectedPlot.title || selectedPlot.id).slice(0,120) + '. ' + editCopy, next: 'Ask about selected plot' };
     }
     if (state.stage === 'canvas' && !selectedPlot) {
       var candidate = suggestedPlot();
-      if (candidate) return { key: key, note: 'Canvas holds live plots in a temporary layout. Choose one plot to add; its source and any available download remain unchanged.', next: 'Add ' + candidate.title + ' to Canvas', candidate: candidate };
+      if (candidate) return { key: key, note: 'Canvas holds live plots in the current layout. Explicitly save in Save & export to retain layout, appearance edits, and finished snapshots; nothing autosaves or exports the whole Canvas as one figure.', next: 'Add ' + candidate.title + ' to Canvas', candidate: candidate };
       return { key: key, note: 'No additional live plot is currently available to add. Open the source analysis to inspect this output and any download it provides.', next: 'Explain this step' };
     }
     return { key: key, note: copy[0], next: copy[1] };
@@ -289,7 +289,7 @@
         primary.style.flex = '1 0 100%';
         primary.style.minWidth = '0';
         context.appendChild(primary);
-        maybeNudge(context, key, state.stage === 'canvas' && selectedPlot ? 'A finished figure is a frozen exportable snapshot, not a saved analysis checkpoint.' : details.next ? 'You can ask a question at any point.' : 'I can explain what this screen checks.');
+        maybeNudge(context, key, state.stage === 'canvas' && selectedPlot ? 'A finished figure is an archived snapshot; Edit regenerates the current plot after review and preparation.' : details.next ? 'You can ask a question at any point.' : 'I can explain what this screen checks.');
       }
     }
 

@@ -1,5 +1,5 @@
 # Session archive boundary. Validate paths and sizes before extracting anything.
-read_session_archive <- function(path, max_bytes = 512 * 1024^2) {
+read_session_archive <- function(path, max_bytes = 512 * 1024^2, include_team_canvas = FALSE) {
   entries <- zip::zip_list(path)
   safe <- function(x) is.character(x) && all(!is.na(x) & nzchar(x) &
     !grepl('(^/|^[A-Za-z]:|\\\\|(^|/)\\.\\.(/|$))', x))
@@ -15,6 +15,9 @@ read_session_archive <- function(path, max_bytes = 512 * 1024^2) {
   if (any(vapply(parts,function(p) any(p %in% c('', '.', '..')),logical(1)))) stop('Noncanonical archive paths are not supported.')
   if (!'state.json' %in% entries$filename) stop('state.json not found in session archive.')
   if (entries$uncompressed_size[entries$filename=='state.json']>20*1024^2) stop('Session state exceeds 20 MiB.')
+  if (isTRUE(include_team_canvas) && 'team-canvas-v1.json' %in% entries$filename &&
+      entries$uncompressed_size[entries$filename=='team-canvas-v1.json'] > 24 * 1024^2)
+    stop('Figure canvas state exceeds 24 MiB.')
   dest <- tempfile('lipidomic-session-');dir.create(dest)
   success <- FALSE;on.exit(if(!success) unlink(dest,recursive=TRUE))
   # zip_list exposes permission bits but not reliable Unix file-type bits. Stream
@@ -57,8 +60,11 @@ read_session_archive <- function(path, max_bytes = 512 * 1024^2) {
     if (!identical(sidecar$version, '1')) stop('Unsupported shared session version.')
     sidecar$metadata <- metadata_sidecar_decode(sidecar$metadata)
   }
+  canvas <- NULL
+  if (isTRUE(include_team_canvas) && file.exists(file.path(dest, 'team-canvas-v1.json')))
+    canvas <- team_canvas_read(file.path(dest, 'team-canvas-v1.json'))
   success <- TRUE
-  list(directory=dest,state=state,shared=sidecar)
+  list(directory=dest,state=state,shared=sidecar,canvas=canvas)
 }
 
 metadata_sidecar_encode <- function(metadata) {

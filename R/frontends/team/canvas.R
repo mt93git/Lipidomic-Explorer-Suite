@@ -23,6 +23,6 @@ team_canvas_ui <- function() {
           shiny::tags$button(type = "button", class = "tc-reset", "Return all plots")),
         shiny::tags$div(class = "tc-scroll", shiny::tags$div(class = "tc-board",
           shiny::tags$div(class = "tc-empty", "Your figure starts here. Add a plot from the library."))),
-        shiny::tags$p(class = "tc-footnote", "Plots use the current shared analysis. Downloads are per plot; CSV is available where provided. Canvas arrangement and appearance edits are temporary in this prototype. Save analysis checkpoints with Save & export."),
+        shiny::tags$p(class = "tc-footnote", "Save & export creates a checkpoint of your analysis, canvas layout, colors and finished figures. Save before signing out; changes are not saved automatically. Restored finished figures are labeled as saved snapshots. Edit reconnects a figure to the current prepared analysis. Downloads are per plot; CSV is available where provided."),
         shiny::tags$div(class = "tc-status", role = "status", `aria-live` = "polite"))))
 }

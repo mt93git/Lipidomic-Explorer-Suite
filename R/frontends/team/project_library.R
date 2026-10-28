@@ -153,7 +153,9 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
     session$reload()
     if (team_workspace_enabled()) session$onFlushed(function() session$close(), once=TRUE)
   })
-  observeEvent(input$team_library_save,guard({
+  canvas_save_request <- NULL
+  canvas_save_sequence <- 0L
+  save_checkpoint <- function() {
     tok<-access();id<-selected_project();req(length(shared_data$loaded_files())>0)
     label<-trimws(input$team_library_label);if(!nzchar(label)||nchar(label)>80)stop("Use a checkpoint name between 1 and 80 characters.")
     if(!is.null(pending))stop("A checkpoint is pending. Retry it before saving another version.")
@@ -164,8 +166,42 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
     pending<<-team_library_queue(isolate(account())$user,list(path=path,project=id,label=label))
     team_library_commit(pending$path,id,label,tok)
     cleanup_pending()
-    refresh_files();status("Checkpoint saved privately. Your applied scientific settings have not changed.")
+    refresh_files();status(if (team_workspace_enabled()) "Checkpoint saved privately, including the canvas and its finished figures. Your applied scientific settings have not changed." else "Checkpoint saved privately. Your applied scientific settings have not changed.")
+    TRUE
+  }
+  observeEvent(input$team_library_save,guard({
+    if (!team_workspace_enabled()) return(save_checkpoint())
+    access(); project <- selected_project(); req(length(shared_data$loaded_files()) > 0)
+    canvas_save_sequence <<- canvas_save_sequence + 1L
+    canvas_save_request <<- list(id=paste0("checkpoint-",canvas_save_sequence),
+                                user=isolate(account())$user, project=project,
+                                label=isolate(input$team_library_label), started=Sys.time())
+    status("Saving your latest canvas edits before creating the checkpoint…")
+    session$sendCustomMessage("team-canvas-save-request",list(requestId=canvas_save_request$id))
   }))
+  observeEvent(input$team_canvas_save_ready, {
+    if (!team_workspace_enabled()) return()
+    reply <- input$team_canvas_save_ready
+    request <- canvas_save_request
+    if (is.null(request) || !is.list(reply) || !identical(reply$requestId,request$id)) return()
+    canvas_save_request <<- NULL
+    ok <- guard({
+      a <- isolate(account())
+      if (is.null(a) || !identical(a$user,request$user) ||
+          as.numeric(difftime(Sys.time(),request$started,units="secs")) > 120)
+        stop("This checkpoint request expired. Please save again.")
+      if (!isTRUE(reply$ok)) stop("Canvas could not be saved. Check the canvas message and try again.")
+      if (!identical(selected_project(),request$project) ||
+          !identical(isolate(input$team_library_label),request$label))
+        stop("The project or checkpoint name changed while saving. Please save again.")
+      ack <- session$userData$team_canvas_acked_token
+      if (!is.function(ack) || !is.character(reply$token) || length(reply$token)!=1L ||
+          !nzchar(reply$token) || !identical(reply$token,ack()))
+        stop("The latest canvas changes have not been confirmed. Please save again.")
+      save_checkpoint()
+    })
+    session$sendCustomMessage("team-canvas-save-result",list(requestId=request$id,ok=isTRUE(ok)))
+  })
   observeEvent(input$team_library_retry,guard({
     if(is.null(pending))stop("There is no pending checkpoint to retry.")
     tok<-access()

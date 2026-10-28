@@ -38,9 +38,9 @@ companion_assistant_step_guidance <- function(team_workspace = identical(Sys.get
     "In Review, inspect sample labels, selected samples and independent or matched design. Only you can confirm the design review.",
     "In Review, inspect detection, missing values and normalization. Prepare data only after reviewing these choices; previous plots keep the applied run until then.",
     "In Review, choose the biological question and comparison. A study description does not automatically change the statistical model.",
-    "In Canvas, explore available PCA, class profile, volcano and violin plots. Layout and appearance edits are temporary; downloads are per plot, and CSV is available only where the source analysis provides it.",
+    "In Canvas, explore available PCA, class profile, volcano and violin plots. Layout and appearance edits persist across sign-in only when included in a private checkpoint explicitly saved through Save & export; nothing autosaves. Downloads are per plot, and CSV is available only where the source analysis provides it.",
     "In Canvas, use the 3D cell as an illustrative reference view. Prepared abundance may include imputed estimates; bulk signals do not establish subcellular locations. No dynamic simulation is enabled.",
-    "In Save & export, save analysis checkpoints and export results. Resume existing private checkpoints from Data. Canvas layouts are temporary; export figures and plot data separately where available, and save methods, decisions, sample labels and the session-local companion action log."
+    "In Save & export, explicitly save private checkpoints containing Canvas layout, appearance edits and finished figure snapshots, and export results. Resume a saved checkpoint from Data after signing in. Finished figures are archived snapshots of the prepared result at Finish and may differ from current live data; Edit regenerates the current plot. After resuming, review the design and preparation and click Prepare data before relying on current live plots. Nothing autosaves, and the Canvas is not exported as one composite figure. Export figures and plot data separately where available, and save methods, decisions, sample labels and the session-local companion action log."
   )
 }
 

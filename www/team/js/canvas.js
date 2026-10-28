@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  var root, board, list, status, search, records = new Map(), sequence = 0, selectedRecord = null, preparation = null, shinyBusy = false, preparationGeneration = 0, activityGeneration = 0;
+  var root, board, list, status, search, records = new Map(), sequence = 0, selectedRecord = null, preparation = null, shinyBusy = false, preparationGeneration = 0, activityGeneration = 0, syncTimer = null, syncEpoch = 0, restorePending = new Map(), ackWaiters = new Map(), applyingRestore = false, checkpointActive = false;
   var selector = '.plotly.html-widget-output[id], .shiny-plot-output[id]';
   // Explicit matches to download handlers declared with these outputs in modules-ui.R.
   var csvByPlot = {
@@ -44,6 +44,11 @@
   ];
   function dynamicOutput(el) { return !!el.parentElement && !!el.parentElement.closest('.shiny-html-output'); }
   function removeDuplicate(r) {
+    // Preserve the saved layout and any frozen image if Shiny replaces the source.
+    var saved = null;
+    try { saved = validateState({version:'1',libraryHidden:false,nodes:[nodeState(r)]}).nodes[0]; }
+    catch (error) { tell('The source changed and its current figure settings could not be preserved: ' + error.message); }
+    if (saved) restorePending.set(saved.id, saved);
     // A replacement exists in the source view. Drop the old bound subtree, never export it.
     if (r.observer) r.observer.disconnect();
     if (r.renderObserver) r.renderObserver.disconnect();
@@ -52,7 +57,8 @@
     if (r.home) r.home.remove(); r.node.remove(); r.node = null;
     if (selectedRecord === r) { selectedRecord = null; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:null})); }
     board.classList.toggle('has-nodes', !!board.querySelector('.tc-node')); expandBoard();
-    tell('The source analysis replaced ' + r.label + '. Its previous canvas plot was removed; open the analysis to use the current output.');
+    changed();
+    tell(saved ? 'The source analysis replaced ' + r.label + '. Its saved figure remains in the workspace checkpoint; open the analysis to use the current output.' : 'The source analysis replaced ' + r.label + '. Its previous canvas plot was removed; open the analysis to use the current output.');
   }
   function portalPlotSettings() {
     var dock = root.querySelector('.tc-settings-dock');
@@ -77,6 +83,7 @@
       records.set(el.id, {el: el, label: labelFor(el), node: null, dynamic: dynamicOutput(el)});
     });
     renderList();
+    hydratePending();
   }
   function renderList() {
     var filter = search.value.toLowerCase().trim(); list.replaceChildren();
@@ -124,13 +131,13 @@
         node.style.top = Math.max(0, top + e.clientY - startY) + 'px';
         expandBoard();
       }
-      function done() { head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', done); head.removeEventListener('pointercancel', done); }
+      function done() { changed(); head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', done); head.removeEventListener('pointercancel', done); }
       head.addEventListener('pointermove', move); head.addEventListener('pointerup', done); head.addEventListener('pointercancel', done);
     });
     head.addEventListener('keydown', function (e) {
       var dx = e.key === 'ArrowRight' ? 10 : e.key === 'ArrowLeft' ? -10 : 0;
       var dy = e.key === 'ArrowDown' ? 10 : e.key === 'ArrowUp' ? -10 : 0;
-      if (!dx && !dy) return; e.preventDefault(); node.style.left = Math.max(0,node.offsetLeft + dx) + 'px'; node.style.top = Math.max(0,node.offsetTop + dy) + 'px'; expandBoard();
+      if (!dx && !dy) return; e.preventDefault(); node.style.left = Math.max(0,node.offsetLeft + dx) + 'px'; node.style.top = Math.max(0,node.offsetTop + dy) + 'px'; expandBoard(); changed();
     });
   }
   function expandBoard() {
@@ -149,7 +156,7 @@
       if (second) { second.style.left = (leftWidth + 60) + 'px'; second.style.top = rowTop + 'px'; }
       rowTop += Math.max(first.offsetHeight, second ? second.offsetHeight : 0) + 30;
     }
-    sequence = nodes.length; expandBoard();
+    sequence = nodes.length; expandBoard(); changed();
   }
   function add(r) {
     if (r.node || r.dynamic || !r.el.isConnected || dynamicOutput(r.el)) return;
@@ -205,13 +212,14 @@
     var visual = r.visual || (r.visual = {});
     function field(label, type, key, placeholder) {
       var wrap = document.createElement('label'); wrap.textContent = label + ' ';
-      var input = document.createElement('input'); input.type = type;
+      var input = document.createElement('input'); input.type = type; input.dataset.visualKey = key;
       if (placeholder) input.placeholder = placeholder;
       if (type === 'color') input.value = visual[key] || '#235c77';
       else if (visual[key] !== undefined) input.value = visual[key];
       if (type === 'number') { input.min = '8'; input.max = '48'; input.step = '1'; }
-      input.addEventListener('input', function () { visual[key] = type === 'number' ? Number(input.value) : input.value; scheduleAppearance(r); });
-      input.addEventListener('change', function () { visual[key] = type === 'number' ? Number(input.value) : input.value; scheduleAppearance(r); });
+      function update() { if (type === 'number' && input.value === '') delete visual[key]; else visual[key] = type === 'number' ? Number(input.value) : input.value; scheduleAppearance(r); }
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
       wrap.appendChild(input); settingsBody.appendChild(wrap); return input;
     }
     field('Plot title', 'text', 'plotTitle', 'Current title');
@@ -230,16 +238,20 @@
     refreshMarkAvailability(r);
     function selectNode() { selectedRecord = r; r.displayTitle = title.value || r.label; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:{id:r.el.id, title:r.displayTitle}})); }
     node.addEventListener('pointerdown', selectNode); node.addEventListener('focusin', selectNode);
-    title.addEventListener('input', function () { heading.textContent = title.value || r.label; selectNode(); });
+    title.addEventListener('input', function () { heading.textContent = title.value || r.label; selectNode(); changed(); });
     color.addEventListener('input', function () { content.style.backgroundColor = color.value; visual.background = color.value; scheduleAppearance(r); });
-    finish.addEventListener('click', function () { if (r.snapshot) editSnapshot(r); else finishSnapshot(r); });
+    finish.addEventListener('click', function () {
+      if (r.snapshot) { editSnapshot(r); return; }
+      var operation = finishSnapshot(r); r.finishPromise = operation;
+      operation.finally(function () { if (r.finishPromise === operation) r.finishPromise = null; });
+    });
     remove.addEventListener('click', function () { restore(r); });
     moveNode(node, head);
-    if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r); }); r.observer.observe(node); }
+    if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r); changed(); }); r.observer.observe(node); }
     board.classList.add('has-nodes'); expandBoard(); renderList();
-    requestAnimationFrame(function () { resize(r); if (r.visual && Object.keys(r.visual).length) applyAppearance(r); });
+    requestAnimationFrame(function () { resize(r); if (!r.hydrating && r.visual && Object.keys(r.visual).length) applyAppearance(r); });
     selectNode();
-    tell('Added ' + r.label + '. Use its existing plot download controls and data download when available.');
+    tell('Added ' + r.label + '. Use its existing plot download controls and data download when available.'); changed();
   }
   function saveFile(blob, name) {
     var url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = name; link.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
@@ -259,6 +271,7 @@
       var gd = plotFor(r), img = r.el.querySelector('img');
       if ((gd && gd.data && gd.data.length && gd._fullLayout) || (img && img.complete && img.naturalWidth && img.naturalHeight)) {
         r.renderRevision = expected; r.sourceError = false; if (r.renderObserver) r.renderObserver.disconnect();
+        if (r.hydrating && !r.snapshot && r.node) { r.hydrating = false; scheduleAppearance(r); tell('The saved figure settings were applied to the current result.'); }
       }
     }
     function signal() { signaled = true; clearTimeout(timer); timer = setTimeout(settle, 120); }
@@ -269,26 +282,41 @@
     r.el.addEventListener('load', signal, {capture:true, once:true});
   }
   function staleSnapshot(r) {
-    if (!r.snapshot || !r.node) return;
-    r.snapshot.stale = true; r.node.classList.add('tc-stale');
+    if (!r.snapshot || !r.node || r.snapshot.archived) return;
+    r.snapshot.stale = true; changed(); r.node.classList.add('tc-stale');
     if (!r.preview) return;
     r.preview.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
     r.preview.querySelector('.tc-snapshot-status').textContent = 'The analysis changed or is updating. This frozen figure needs review. Choose Edit to see the current result.';
   }
   function editSnapshot(r) {
     if (!r.node) return;
+    var wasArchived = !!(r.snapshot && r.snapshot.archived);
     if (r.preview) r.preview.remove(); r.preview = null; r.snapshot = null;
+    if (wasArchived) { r.hydrating = true; if (figureCurrent(r)) { r.hydrating = false; scheduleAppearance(r); } }
     r.node.classList.remove('tc-finished', 'tc-stale');
     r.finishButton.textContent = 'Finish plot'; r.finishButton.setAttribute('aria-pressed', 'false');
-    resize(r); tell('Editing the current live plot.');
+    if (!wasArchived) resize(r); tell(wasArchived ? 'Review the current prepared result before finishing this plot again.' : 'Editing the current live plot.'); changed();
+  }
+  function showSnapshot(r, snapshot) {
+    var preview = document.createElement('div'); preview.className = 'tc-snapshot';
+    var caption = document.createElement('p'); caption.className = 'tc-snapshot-status';
+    caption.textContent = snapshot.archived ? 'Saved checkpoint figure. Edit to regenerate with current data.' :
+      snapshot.url.indexOf('data:image/svg+xml') === 0 ? 'Frozen figure from the current prepared result.' : 'Frozen figure from the current prepared result. SVG and PDF contain a raster image.';
+    preview.appendChild(caption);
+    var image = document.createElement('img'); image.src = snapshot.url; image.alt = r.label + ' frozen figure'; preview.appendChild(image);
+    var exports = document.createElement('div'); exports.className = 'tc-snapshot-exports';
+    ['PNG','SVG','PDF'].forEach(function (format) { var button = document.createElement('button'); button.type = 'button'; button.textContent = format; button.addEventListener('click', function () { exportSnapshot(r, format); }); exports.appendChild(button); });
+    preview.appendChild(exports); r.node.appendChild(preview);
+    r.preview = preview; r.snapshot = snapshot; r.node.classList.add('tc-finished');
+    r.finishButton.textContent = 'Edit'; r.finishButton.setAttribute('aria-pressed','true');
   }
   async function finishSnapshot(r) {
     if (!r.node || !figureCurrent(r)) { tell('Wait for preparation and this plot to finish updating before finishing the figure.'); return; }
-    var gd = plotFor(r), source = r.el.querySelector('img'), renderGeneration = r.revision || 0, revision = preparation.revision, generation = preparationGeneration, activity = activityGeneration, url;
+    var gd = plotFor(r), source = r.el.querySelector('img'), captureNode = r.node, renderGeneration = r.revision || 0, revision = preparation.revision, generation = preparationGeneration, activity = activityGeneration, url;
     r.finishButton.disabled = true;
     try {
       await flushAppearance(r);
-      if (!guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
+      if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
       if (gd && gd.data && gd.data.length && window.Plotly) {
         var rect = gd.getBoundingClientRect();
         if (rect.width < 2 || rect.height < 2) throw new Error('Plot is not ready.');
@@ -296,22 +324,21 @@
       } else if (source && source.complete && source.naturalWidth && source.naturalHeight) {
         var c = document.createElement('canvas'); c.width = source.naturalWidth; c.height = source.naturalHeight; c.getContext('2d').drawImage(source,0,0); url = c.toDataURL('image/png');
       } else throw new Error('Plot is not ready.');
-      if (!guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
-      var preview = document.createElement('div'); preview.className = 'tc-snapshot';
-      var caption = document.createElement('p'); caption.className = 'tc-snapshot-status'; caption.textContent = url.indexOf('data:image/svg+xml') === 0 ? 'Frozen figure from the current prepared result.' : 'Frozen figure from the current prepared result. SVG and PDF contain a raster image.'; preview.appendChild(caption);
-      var image = document.createElement('img'); image.src = url; image.alt = r.label + ' frozen figure'; preview.appendChild(image);
-      var exports = document.createElement('div'); exports.className = 'tc-snapshot-exports';
-      ['PNG','SVG','PDF'].forEach(function (format) { var button = document.createElement('button'); button.type = 'button'; button.textContent = format; button.addEventListener('click', function () { exportSnapshot(r, format); }); exports.appendChild(button); });
-      preview.appendChild(exports); r.node.appendChild(preview);
-      r.preview = preview; r.snapshot = {url:url, stale:false, preparationRevision:revision, preparationGeneration:generation, renderGeneration:renderGeneration}; r.node.classList.add('tc-finished');
-      r.finishButton.textContent = 'Edit'; r.finishButton.setAttribute('aria-pressed','true');
-      tell('Frozen figure ready. Data CSV remains available in Edit.');
-    } catch (e) { tell(e.message || 'Could not finish the plot.'); }
+      if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
+      showSnapshot(r, {url:url, stale:false, createdAt:new Date().toISOString(), provenance:{preparationRevision:revision}, preparationRevision:revision, preparationGeneration:generation, renderGeneration:renderGeneration});
+      changed();
+      tell('Frozen figure ready. Data CSV remains available in Edit.'); return true;
+    } catch (e) { tell(e.message || 'Could not finish the plot.'); return false; }
     finally { if (r.node) r.finishButton.disabled = false; }
   }
+  function snapshotGuard(r, snapshot, activity) {
+    if (!r.node || r.snapshot !== snapshot) return false;
+    if (snapshot.archived) return true;
+    return !snapshot.stale && guard(r,snapshot.preparationRevision,snapshot.preparationGeneration,snapshot.renderGeneration,activity);
+  }
   async function exportSnapshot(r, format) {
-    if (shinyBusy) { tell('The analysis is working. Wait for it to finish, then retry the download.'); return; }
-    if (!r.snapshot || r.snapshot.stale || !guard(r, r.snapshot.preparationRevision, r.snapshot.preparationGeneration, r.snapshot.renderGeneration)) { if (r.snapshot) staleSnapshot(r); tell('The figure is out of date or the analysis is updating. Choose Edit and finish it again.'); return; }
+    if (shinyBusy && !(r.snapshot && r.snapshot.archived)) { tell('The analysis is working. Wait for it to finish, then retry the download.'); return; }
+    if (!r.snapshot || !snapshotGuard(r, r.snapshot)) { if (r.snapshot) staleSnapshot(r); tell('The figure is out of date or the analysis is updating. Choose Edit and finish it again.'); return; }
     var snapshot = r.snapshot, activity = activityGeneration, image = r.preview && r.preview.querySelector('img');
     function checkImage() {
       if (!image || !r.preview || !r.preview.contains(image) || image.getAttribute('src') !== snapshot.url) { staleSnapshot(r); throw new Error('The frozen image is missing or changed. Choose Edit and finish it again.'); }
@@ -320,29 +347,29 @@
       checkImage();
       if (image.decode) await image.decode();
       checkImage();
-      if (!r.snapshot || r.snapshot !== snapshot || snapshot.stale || !guard(r,snapshot.preparationRevision,snapshot.preparationGeneration,snapshot.renderGeneration,activity)) throw new Error('The analysis changed or was busy during export. Try again.');
+      if (!r.snapshot || r.snapshot !== snapshot || !snapshotGuard(r,snapshot,activity)) throw new Error('The analysis changed or was busy during export. Try again.');
       var width = image.naturalWidth, height = image.naturalHeight, canvas = document.createElement('canvas');
       if (!width || !height) throw new Error('The frozen image has no usable dimensions. Choose Edit and finish it again.');
       canvas.width = format === 'PNG' ? width * 2 : width; canvas.height = format === 'PNG' ? height * 2 : height; var ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(image,0,0,canvas.width,canvas.height);
       var isSvg = snapshot.url.indexOf('data:image/svg+xml') === 0, svg;
       if (isSvg) svg = await (await fetch(snapshot.url)).text();
       checkImage();
-      if (!r.snapshot || r.snapshot !== snapshot || snapshot.stale || !guard(r,snapshot.preparationRevision,snapshot.preparationGeneration,snapshot.renderGeneration,activity)) throw new Error('The analysis changed or was busy during export. Try again.');
-      var filename = (r.displayTitle || r.label).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60) || 'figure'; filename += '-rev' + String(snapshot.preparationRevision).replace(/[^a-z0-9_-]/gi,'-');
+      if (!r.snapshot || r.snapshot !== snapshot || !snapshotGuard(r,snapshot,activity)) throw new Error('The analysis changed or was busy during export. Try again.');
+      var filename = (r.displayTitle || r.label).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60) || 'figure'; filename += snapshot.archived ? '-saved' : '-rev' + String(snapshot.preparationRevision).replace(/[^a-z0-9_-]/gi,'-');
       if (format === 'SVG') {
         if (!isSvg) { var png = canvas.toDataURL('image/png'); svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '"><image width="' + width + '" height="' + height + '" href="' + png + '"/></svg>'; }
         saveFile(new Blob([svg], {type:'image/svg+xml'}), filename + '.svg');
       } else if (format === 'PNG') {
         var blob = await new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
-        checkImage(); if (!guard(r,snapshot.preparationRevision,snapshot.preparationGeneration,snapshot.renderGeneration,activity)) throw new Error('The analysis changed or was busy during export. Try again.'); if (!blob) throw new Error('Could not create the PNG image. Try another format.'); if (r.snapshot === snapshot && !snapshot.stale) saveFile(blob, filename + '.png');
+        checkImage(); if (!snapshotGuard(r,snapshot,activity)) throw new Error('The analysis changed or was busy during export. Try again.'); if (!blob) throw new Error('Could not create the PNG image. Try another format.'); if (snapshotGuard(r,snapshot,activity)) saveFile(blob, filename + '.png');
       } else {
         if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('PDF library is unavailable.');
         var pdf = new window.jspdf.jsPDF({orientation:width>=height?'landscape':'portrait',unit:'pt',format:[width,height]});
         if (isSvg && pdf.svg) await pdf.svg(new DOMParser().parseFromString(svg,'image/svg+xml').documentElement, {x:0,y:0,width:width,height:height});
         else pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,width,height);
-        checkImage(); if (!guard(r,snapshot.preparationRevision,snapshot.preparationGeneration,snapshot.renderGeneration,activity)) throw new Error('The analysis changed or was busy during export. Try again.'); if (r.snapshot === snapshot && !snapshot.stale) pdf.save(filename + '.pdf');
+        checkImage(); if (!snapshotGuard(r,snapshot,activity)) throw new Error('The analysis changed or was busy during export. Try again.'); if (snapshotGuard(r,snapshot,activity)) pdf.save(filename + '.pdf');
       }
-    } catch (error) { if (r.snapshot === snapshot && (!preparationOK() || preparation.revision !== snapshot.preparationRevision || preparationGeneration !== snapshot.preparationGeneration || (r.revision || 0) !== snapshot.renderGeneration)) staleSnapshot(r); tell(error.message || 'Could not export the frozen figure. Try another format.'); }
+    } catch (error) { if (!snapshot.archived && r.snapshot === snapshot && (!preparationOK() || preparation.revision !== snapshot.preparationRevision || preparationGeneration !== snapshot.preparationGeneration || (r.revision || 0) !== snapshot.renderGeneration)) staleSnapshot(r); tell(error.message || 'Could not export the frozen figure. Try another format.'); }
   }
   function plotFor(r) { return r.el.classList.contains('js-plotly-plot') ? r.el : r.el.querySelector('.js-plotly-plot'); }
   function scalarMarks(gd) {
@@ -356,6 +383,7 @@
     r.markInput.title = r.markInput.disabled ? 'Use Colors & palettes for group or per-point colors.' : '';
   }
   function scheduleAppearance(r) {
+    changed();
     clearTimeout(r.appearanceTimer);
     r.appearancePending = true;
     r.appearanceTimer = setTimeout(function () { flushAppearance(r).catch(function () { tell('Could not apply this visual edit. Try again.'); }); }, 150);
@@ -363,6 +391,7 @@
   function flushAppearance(r) {
     clearTimeout(r.appearanceTimer);
     if (!r.appearancePending) return r.appearanceQueue || Promise.resolve();
+    if (r.hydrating && !figureCurrent(r)) return r.appearanceQueue || Promise.resolve();
     r.appearancePending = false;
     var generation = r.appearanceGeneration || 0;
     r.appearanceQueue = (r.appearanceQueue || Promise.resolve()).catch(function () {}).then(function () {
@@ -379,7 +408,7 @@
     if (r.snapshot) staleSnapshot(r);
     refreshMarkAvailability(r);
     if (selectedRecord === r) window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:{id:r.el.id,title:r.label}}));
-    tell('The analysis updated ' + r.label + '. Figure edits were cleared; review the new result.');
+    tell('The analysis updated ' + r.label + '. Figure edits were cleared; review the new result.'); changed();
   }
   function applyAppearance(r) {
     var gd = r.el.classList.contains('js-plotly-plot') ? r.el : r.el.querySelector('.js-plotly-plot');
@@ -421,28 +450,185 @@
     r.node.remove(); r.node = null;
     if (selectedRecord === r) { selectedRecord = null; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:null})); }
     board.classList.toggle('has-nodes', !!board.querySelector('.tc-node')); expandBoard(); renderList();
-    window.dispatchEvent(new Event('resize')); tell('Returned ' + r.label + ' to its original view.');
+    window.dispatchEvent(new Event('resize')); tell('Returned ' + r.label + ' to its original view.'); changed();
+  }
+  function checkedImage(url) {
+    if (typeof url !== 'string' || url.length > 4 * 1024 * 1024) return false;
+    if (/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(url)) {
+      try { var binary = atob(url.slice(url.indexOf(',') + 1)); return binary.length >= 33 && binary.slice(0,8) === '\x89PNG\r\n\x1a\n' && binary.slice(12,16) === 'IHDR'; } catch (e) { return false; }
+    }
+    if (!/^data:image\/svg\+xml(?:;charset=utf-8)?(?:;base64)?,/i.test(url)) return false;
+    try {
+      var parts = url.split(',',2), markup = /;base64$/i.test(parts[0]) ? atob(parts[1]) : decodeURIComponent(parts[1]);
+      var doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+      if (doc.documentElement.localName !== 'svg' || doc.querySelector('parsererror, script, foreignObject, iframe, object, embed')) return false;
+      if (Array.from(doc.querySelectorAll('style')).some(function (el) { return /@import|javascript:|url\(\s*['\"]?(?!#)/i.test(el.textContent); })) return false;
+      return Array.from(doc.querySelectorAll('*')).every(function (el) {
+        return Array.from(el.attributes).every(function (a) {
+          var name = a.name.toLowerCase(), value = a.value.trim();
+          if (name.indexOf('on') === 0) return false;
+          if (name === 'href' || name === 'xlink:href') return value.charAt(0) === '#' || /^data:image\/png;base64,[a-z0-9+/=]+$/i.test(value);
+          return !/url\(\s*['"]?(?!#)/i.test(value) && !/@import|javascript:/i.test(value);
+        });
+      });
+    } catch (e) { return false; }
+  }
+  function validateState(state) {
+    if (state == null) return {version:'1',libraryHidden:false,nodes:[]};
+    if (typeof state !== 'object' || !['1',1].includes(state.version) || typeof state.libraryHidden !== 'boolean' || !Array.isArray(state.nodes) || state.nodes.length > 40) throw new Error('Invalid saved figure workspace.');
+    var ids = new Set(), keys = ['plotTitle','xTitle','yTitle','fontSize','fontColor','markColor','background'];
+    var nodes = state.nodes.map(function (n) {
+      if (!n || typeof n.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]{0,159}$/.test(n.id) || ids.has(n.id) || typeof n.label !== 'string' || n.label.length > 512) throw new Error('Invalid saved plot identity.');
+      ids.add(n.id);
+      ['x','y','width','height'].forEach(function (key) { if (!Number.isFinite(n[key]) || n[key] < 0 || n[key] > (key === 'x' || key === 'y' ? 1000000 : 4000)) throw new Error('Invalid saved figure size or position.'); });
+      if (n.width < 240 || n.height < 220 || !n.visual || typeof n.visual !== 'object' || (Array.isArray(n.visual) && n.visual.length !== 0)) throw new Error('Invalid saved plot settings.');
+      var visual = {};
+      keys.forEach(function (key) {
+        if (n.visual[key] == null) return;
+        var value = n.visual[key];
+        if (key === 'fontSize') { if (typeof value !== 'number' || !Number.isFinite(value) || value < 8 || value > 48) throw new Error('Invalid saved font size.'); }
+        else if (typeof value !== 'string' || value.length > 1000 || (['fontColor','markColor','background'].includes(key) && !/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i.test(value))) throw new Error('Invalid saved plot appearance.');
+        visual[key] = value;
+      });
+      var finished = null;
+      if (n.finished != null) {
+        if (!n.finished || typeof n.finished !== 'object' || !checkedImage(n.finished.url) || typeof n.finished.createdAt !== 'string' || n.finished.createdAt.length > 64 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(n.finished.createdAt) || !Number.isFinite(Date.parse(n.finished.createdAt)) || typeof n.finished.stale !== 'boolean') throw new Error('Invalid saved figure image.');
+        finished = {url:n.finished.url, createdAt:n.finished.createdAt, stale:n.finished.stale};
+        if (n.finished.provenance != null) {
+          var provenance = n.finished.provenance;
+          if (typeof provenance !== 'object' || Array.isArray(provenance) || Object.keys(provenance).length > 16) throw new Error('Invalid saved figure provenance.');
+          finished.provenance = {};
+          Object.keys(provenance).forEach(function (key) {
+            var value = provenance[key];
+            if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key) || !(value === null || typeof value === 'boolean' || (typeof value === 'string' && value.length <= 1000) || (typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 1e15))) throw new Error('Invalid saved figure provenance.');
+            finished.provenance[key] = value;
+          });
+        }
+      }
+      return {id:n.id,label:n.label,x:Math.round(n.x),y:Math.round(n.y),width:Math.round(n.width),height:Math.round(n.height),visual:visual,finished:finished};
+    });
+    return {version:'1',libraryHidden:state.libraryHidden,nodes:nodes};
+  }
+  function nodeState(r) {
+    var n = r.node, snap = r.snapshot, finished = null;
+    if (snap) { finished = {url:snap.url,createdAt:snap.createdAt,stale:!!snap.stale}; if (snap.provenance) finished.provenance = snap.provenance; }
+    return {id:r.el.id,label:r.labelInput.value || r.label,x:parseFloat(n.style.left)||0,y:parseFloat(n.style.top)||0,width:parseFloat(n.style.width)||parseFloat(getComputedStyle(n).width)||620,height:parseFloat(n.style.height)||parseFloat(getComputedStyle(n).height)||720,visual:Object.assign({},r.visual),finished:finished};
+  }
+  function collectState() {
+    var nodes = Array.from(records.values()).filter(function (r) { return !!r.node; }).map(nodeState);
+    restorePending.forEach(function (n) { nodes.push(n); });
+    var result = validateState({version:'1', libraryHidden:root.querySelector('.tc-layout').classList.contains('tc-library-hidden'), nodes:nodes});
+    if (new TextEncoder().encode(JSON.stringify(result)).length > 24 * 1024 * 1024) throw new Error('The figure workspace is too large to save. Remove or resize a saved figure.');
+    return result;
+  }
+  function changed() {
+    if (applyingRestore) return;
+    syncEpoch++; clearTimeout(syncTimer);
+    if (!checkpointActive) syncTimer = setTimeout(function () { sendBackground(); }, 350);
+  }
+  async function settledState() {
+    for (var i=0; i<10; i++) {
+      var epoch = syncEpoch, active = Array.from(records.values()).filter(function (r) { return !!r.node; });
+      var finishes = await Promise.all(active.map(function (r) { return r.finishPromise || Promise.resolve(true); }));
+      if (finishes.some(function (ok) { return ok === false; })) throw new Error('A figure could not be finished. Review it before saving.');
+      await Promise.all(active.map(flushAppearance));
+      if (epoch === syncEpoch) return {state:collectState(),epoch:epoch};
+    }
+    throw new Error('The figure workspace is still changing. Try saving again.');
+  }
+  function token() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2); }
+  function sendBackground() {
+    if (checkpointActive || !window.Shiny || !Shiny.setInputValue) return;
+    settledState().then(function (captured) {
+      if (checkpointActive || captured.epoch !== syncEpoch) return;
+      Shiny.setInputValue('team_canvas_state', {token:token(),state:captured.state}, {priority:'event'});
+    }).catch(function (e) { tell(e.message || 'Could not prepare the figure workspace.'); });
+  }
+  async function checkpoint() {
+    if (!window.Shiny || !Shiny.setInputValue) throw new Error('The workspace is not connected.');
+    if (checkpointActive) throw new Error('A figure workspace save is already in progress.');
+    checkpointActive = true; clearTimeout(syncTimer); var succeeded = false;
+    try {
+      for (var i=0; i<10; i++) {
+        var captured = await settledState(), id = token();
+        var ack = new Promise(function (resolve,reject) {
+          var timeout = setTimeout(function () { ackWaiters.delete(id); reject(new Error('Timed out saving the figure workspace.')); }, 15000);
+          ackWaiters.set(id, function (message) { clearTimeout(timeout); if (message.ok) resolve(message); else reject(new Error(message.message || 'Could not save the figure workspace.')); });
+        });
+        Shiny.setInputValue('team_canvas_state', {token:id,state:captured.state}, {priority:'event'});
+        await ack;
+        if (captured.epoch === syncEpoch) { succeeded = true; return {token:id}; }
+      }
+      throw new Error('The figure workspace kept changing while saving. Try again.');
+    } finally {
+      checkpointActive = false;
+      if (!succeeded) { clearTimeout(syncTimer); syncTimer = setTimeout(sendBackground,350); }
+    }
+  }
+  function hydratePending() {
+    if (!restorePending.size) return;
+    var waiting = [];
+    restorePending.forEach(function (saved, id) {
+      var r = records.get(id);
+      if (!r || !r.el.isConnected || r.dynamic || dynamicOutput(r.el)) { waiting.push(saved.label); return; }
+      applyingRestore = true;
+      try {
+        r.visual = Object.assign({}, saved.visual); r.hydrating = true; add(r);
+        if (!r.node) { waiting.push(saved.label); return; }
+        r.node.style.left = saved.x + 'px'; r.node.style.top = saved.y + 'px'; r.node.style.width = saved.width + 'px'; r.node.style.height = saved.height + 'px';
+        r.labelInput.value = saved.label; r.labelHeading.textContent = saved.label; r.displayTitle = saved.label;
+        r.editInputs.forEach(function (input) { var key = input.dataset.visualKey; if (saved.visual[key] !== undefined) input.value = saved.visual[key]; });
+        if (saved.visual.background) { r.backgroundInput.value = saved.visual.background; r.content.style.backgroundColor = saved.visual.background; }
+        if (saved.finished) showSnapshot(r, {url:saved.finished.url, createdAt:saved.finished.createdAt, stale:saved.finished.stale, provenance:saved.finished.provenance, archived:true});
+        restorePending.delete(id); expandBoard();
+      } finally { applyingRestore = false; }
+    });
+    if (waiting.length) tell('Saved plots awaiting their analysis (source analysis replaced or not yet mounted): ' + waiting.join(', ') + '. Open the relevant analysis to load them.');
+  }
+  function restoreState(input) {
+    var state = validateState(input);
+    clearTimeout(syncTimer); applyingRestore = true;
+    try {
+      records.forEach(function (r) {
+        if (r.node) { restore(r); if (r.node) throw new Error('Could not return an existing plot to its original view.'); }
+        clearTimeout(r.appearanceTimer); r.appearancePending = false; r.appearanceGeneration = (r.appearanceGeneration || 0) + 1;
+        if (r.renderObserver) r.renderObserver.disconnect(); r.settleRender = null; r.renderRevision = null; r.revision = (r.revision || 0) + 1;
+        r.visual = {}; r.hydrating = false; r.titleBaseline = null; r.axisBaseline = null;
+      });
+      restorePending.clear(); state.nodes.forEach(function (n) { restorePending.set(n.id,n); });
+      var hidden = state.libraryHidden, layout = root.querySelector('.tc-layout'), toggle = root.querySelector('.tc-library-toggle');
+      layout.classList.toggle('tc-library-hidden', hidden); toggle.setAttribute('aria-expanded', String(!hidden)); toggle.textContent = hidden ? 'Show library' : 'Hide library';
+    } finally { applyingRestore = false; }
+    syncEpoch++; hydratePending();
+    if (!restorePending.size) tell('Saved figure workspace restored. Saved figures are archived until edited.');
   }
   function init() {
     root = document.getElementById('team-canvas-root'); if (!root) return;
     board = root.querySelector('.tc-board'); list = root.querySelector('.tc-list'); status = root.querySelector('.tc-status'); search = root.querySelector('.tc-search');
     search.addEventListener('input', renderList);
-    root.querySelector('.tc-reset').addEventListener('click', function () { records.forEach(restore); });
+    root.querySelector('.tc-reset').addEventListener('click', function () { records.forEach(restore); if (restorePending.size) { restorePending.clear(); changed(); tell('Returned all plots and cleared plots awaiting their analysis.'); } });
     root.querySelector('.tc-arrange').addEventListener('click', arrange);
     root.querySelector('.tc-library-toggle').addEventListener('click', function () {
       var hidden = root.querySelector('.tc-layout').classList.toggle('tc-library-hidden');
       this.setAttribute('aria-expanded', String(!hidden)); this.textContent = hidden ? 'Show library' : 'Hide library';
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event('resize')); changed();
     });
-    if (window.Shiny && Shiny.addCustomMessageHandler) Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
+    if (window.Shiny && Shiny.addCustomMessageHandler) {
+      Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
+      Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
+        var waiter = message && ackWaiters.get(message.token);
+        if (waiter) { ackWaiters.delete(message.token); waiter(message); }
+      });
+      Shiny.addCustomMessageHandler('team-canvas-restore', function (message) { try { restoreState(message && message.state); } catch (error) { tell(error.message || 'Could not restore the figure workspace.'); } });
+    }
     if (window.jQuery) jQuery(document).on('shiny:busy', function () {
       if (!shinyBusy) activityGeneration++; shinyBusy = true;
-      records.forEach(function (r) { if (r.snapshot && r.preview) r.preview.querySelectorAll('button').forEach(function (b) { b.disabled = true; }); });
+      records.forEach(function (r) { if (r.snapshot && !r.snapshot.archived && r.preview) r.preview.querySelectorAll('button').forEach(function (b) { b.disabled = true; }); });
     }).on('shiny:idle', function () {
       shinyBusy = false;
       records.forEach(function (r) {
         if (r.settleRender) r.settleRender();
-        if (r.snapshot && r.preview && !r.snapshot.stale && guard(r,r.snapshot.preparationRevision,r.snapshot.preparationGeneration,r.snapshot.renderGeneration)) r.preview.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+        if (r.snapshot && !r.snapshot.archived && r.preview && !r.snapshot.stale && guard(r,r.snapshot.preparationRevision,r.snapshot.preparationGeneration,r.snapshot.renderGeneration)) r.preview.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
       });
     });
     window.addEventListener('team-preparation-state', function (event) {
@@ -457,18 +643,19 @@
     window.TeamCanvas = {
       listPlots: function () { return Array.from(records.values()).filter(function (r) { return r.el.isConnected; }).map(function (r) { return {id:r.el.id, title:r.label, added:!!r.node, available:!r.dynamic}; }).concat(extraRoutes.map(function (r) { return {id:r.id,title:r.title,added:false,available:false}; })); },
       addPlot: function (id) { if (!records.has(id)) discover(); var r = records.get(id); if (!r || r.dynamic || !r.el.isConnected) return false; if (!r.node) add(r); return !!r.node; },
-      selected: function () { return selectedRecord && selectedRecord.node ? {id:selectedRecord.el.id, title:selectedRecord.displayTitle || selectedRecord.label} : null; }
+      selected: function () { return selectedRecord && selectedRecord.node ? {id:selectedRecord.el.id, title:selectedRecord.displayTitle || selectedRecord.label} : null; },
+      checkpoint: checkpoint, serialize: collectState, restore: restoreState
     };
     if (window.jQuery) jQuery(document).on('shiny:value', function (event) {
       var r = event.target && records.get(event.target.id);
-      if (r) { r.revision = (r.revision || 0) + 1; watchRender(r); if (r.node) { clearAppearance(r); setTimeout(function () { if (r.node) refreshMarkAvailability(r); }, 600); } }
+      if (r) { r.revision = (r.revision || 0) + 1; watchRender(r); if (r.node) { if (!r.hydrating) clearAppearance(r); setTimeout(function () { if (r.node) refreshMarkAvailability(r); }, 600); } }
     });
     if (window.jQuery) jQuery(document).on('shiny:error', function (event) {
       var r = event.target && records.get(event.target.id);
       if (!r) return;
       r.revision = (r.revision || 0) + 1; r.renderRevision = null; r.sourceError = true;
       if (r.renderObserver) r.renderObserver.disconnect(); r.settleRender = null;
-      if (r.node) { clearAppearance(r); staleSnapshot(r); tell('This plot could not be updated. Wait for a valid result before finishing or exporting it.'); }
+      if (r.node) { if (!r.hydrating) clearAppearance(r); staleSnapshot(r); tell('This plot could not be updated. Wait for a valid result before finishing or exporting it.'); }
     });
     new MutationObserver(function (changes) {
       if (!changes.some(function (change) { return !root.contains(change.target); })) return;

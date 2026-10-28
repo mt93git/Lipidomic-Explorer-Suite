@@ -50,6 +50,7 @@ scientific_server <- function(input, output, session) {
     design_check = design_check, preparation_policy = if (is_team) "team" else "classic",
     inference_check = inference_check)
   if (is_team && team_workspace_enabled()) session$userData$team_shared_data <- shared_data
+  if (is_team && team_workspace_enabled()) team_canvas_server(input, output, session, shared_data)
 
   guide_workflow <- frontend_server_hooks()(input, output, session, shared_data)
 
