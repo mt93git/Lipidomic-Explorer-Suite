@@ -40,6 +40,7 @@ ui <- page_navbar(
   window_title = "Libreros Lab · Lipidomic Explorer",
   theme = app_theme,
   header = tagList(
+    if (team_library_enabled()) team_library_ui(),
     tags$head(
       tags$link(rel = "icon", type = "image/png", href = "team/img/favicon.png"),
       tags$link(rel = "shortcut icon", href = "team/img/favicon.png"),

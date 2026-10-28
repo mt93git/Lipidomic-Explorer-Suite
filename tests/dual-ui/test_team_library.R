@@ -1,0 +1,12 @@
+# Persistence boundary regression: no credentials in exported/restored UI state.
+src <- parse('R/modules/1_shared_data_module.R')
+e <- new.env(parent=baseenv())
+for(expr in src) if(is.call(expr) && identical(expr[[1]],as.name('<-')) && identical(expr[[2]],as.name('session_persistent_inputs'))) eval(expr,e)
+x <- e$session_persistent_inputs(list(team_library_password='secret',team_library_email='email',team_library_checkpoint='id',imputationSeed=42,normalization='median'))
+stopifnot(identical(names(x),c('imputationSeed','normalization')), identical(x$imputationSeed,42))
+source('R/frontends/team/project_library.R')
+Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY='0');stopifnot(!team_library_enabled())
+Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY='1');stopifnot(team_library_enabled())
+text <- paste(readLines('R/frontends/team/project_library.R'),collapse='\n')
+stopifnot(!grepl('SERVICE_KEY|JWT_SECRET|service_role',text),grepl('session\\$reload',text),grepl('Checkpoint integrity check failed',text))
+cat('PASS: library defaults off, credentials excluded, user-token-only adapter and session clearing present\n')

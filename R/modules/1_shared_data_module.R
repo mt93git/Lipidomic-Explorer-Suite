@@ -7,7 +7,7 @@ session_persistent_inputs <- function(inputs) {
   if (is.null(inputs)) return(list())
   if (!is.list(inputs)) return(inputs)
   transient <- grepl("(^|[-_])(assistant_(request|action|confirm|cancel)|client_ui_trace|guide_(review_receipt|focus_request|step|design_confirm)|shared_(design_confirm|review_receipt|apply_receipt|metadata_apply|step_[0-9]+|next_[0-9]+))$", names(inputs))
-  inputs[!transient]
+  inputs[!transient & !grepl("^team_library_", names(inputs))]
 }
 
 shared_data_ui <- function(id) {
@@ -5140,11 +5140,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     }
     
-    output$export_session_btn <- downloadHandler(
-      filename = function() {
-        paste0("Lipidomic_Explorer_Session_", format(Sys.time(), "%Y%m%d_%H%M"), ".zip")
-      },
-      content = function(file) {
+    export_session_path <- function(file) {
         # Create a temp directory
         tmp_dir <- tempfile("session_export_")
         dir.create(tmp_dir)
@@ -5183,7 +5179,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           files_to_zip <- c(files_to_zip, "data_files")
         }
         zip::zipr(file, files = files_to_zip, root = tmp_dir, recurse = TRUE)
+    }
+    output$export_session_btn <- downloadHandler(
+      filename = function() {
+        paste0("Lipidomic_Explorer_Session_", format(Sys.time(), "%Y%m%d_%H%M"), ".zip")
       },
+      content = export_session_path,
       contentType = "application/zip"
     )
     
@@ -5755,12 +5756,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     })
     
-    observeEvent(input$import_session_file, {
-      req(input$import_session_file)
+    import_session_path <- function(path) {
       restore_generation(isolate(restore_generation())+1L)
       import_status("Processing session import...")
       
-      archive <- tryCatch(read_session_archive(input$import_session_file$datapath),
+      archive <- tryCatch(read_session_archive(path),
         error=function(e) {import_status(paste("Error:",conditionMessage(e)));NULL})
       if (is.null(archive)) return()
       extract_dir <- archive$directory
@@ -6071,8 +6071,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         }, once = TRUE)
         
       }, once = TRUE)
+    }
+    observeEvent(input$import_session_file, {
+      req(input$import_session_file)
+      import_session_path(input$import_session_file$datapath)
     })
-    
+
     observe({
       meta <- allParsedMetadata()
       if (is.null(meta)) return()
@@ -6095,6 +6099,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     return(
       list(
+        export_session_path = export_session_path,
+        import_session_path = import_session_path,
         loaded_files = reactive(names(rv$uploads)),
         dataset_revision = reactive(preparation_data_id()),
         load_local_workbook = function(path) {

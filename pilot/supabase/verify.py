@@ -3,7 +3,7 @@ import argparse, hashlib, json, uuid, urllib.request, urllib.error
 from pathlib import Path
 from setup_env import token
 p=argparse.ArgumentParser();p.add_argument('--read-only',action='store_true');p.add_argument('--output',default='evidence.json');a=p.parse_args()
-env=dict(line.split('=',1) for line in Path('.env').read_text().splitlines())
+env=dict(line.split('=',1) for line in Path('.env').read_text().splitlines() if '=' in line)
 rest='http://127.0.0.1:'+env['REST_PORT']; storage='http://127.0.0.1:'+env['STORAGE_PORT']
 P='10000000-0000-4000-8000-000000000001'
 users={k:token(env['JWT_SECRET'],'authenticated',f'20000000-0000-4000-8000-00000000000{n}') for k,n in [('owner',1),('outsider',2),('viewer',3)]}

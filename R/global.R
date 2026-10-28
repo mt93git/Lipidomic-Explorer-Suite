@@ -1332,6 +1332,7 @@ source("R/modules/99_export_studio_module.R")
 
 
 if (identical(lipidomic_interface(), "team")) {
+  source("R/frontends/team/project_library.R")
   source("R/sample_metadata_import.R")
   source("R/frontends/team/sample_metadata_import_module.R")
   source("R/ux_preparation.R")

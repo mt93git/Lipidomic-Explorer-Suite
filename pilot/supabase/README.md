@@ -1,3 +1,5 @@
+> Phase 2: Team login and checkpoint library are now available in the isolated candidate. See [README-team.md](README-team.md). The following describes the original backend-only milestone.
+
 # Isolated Supabase persistence pilot
 
 This is a backend feasibility pilot, not an enabled application feature. It does not change scientific processing or either UI. No production credentials or datasets belong in Git.

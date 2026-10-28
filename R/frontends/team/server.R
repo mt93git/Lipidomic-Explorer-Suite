@@ -14,6 +14,7 @@ team_missingness_data_adapter <- function(shared_data) {
   view_data
 }
 team_frontend_server <- function(input, output, session, shared_data) {
+  if (identical(Sys.getenv("LIPIDOMIC_PROJECT_LIBRARY"), "1")) team_library_server(input, output, session, shared_data)
   ux_comparison_server(input, output, session)
   view_data <- team_missingness_data_adapter(shared_data)
   guide_workflow <- guided_workflow_server(input, output, session, view_data)
