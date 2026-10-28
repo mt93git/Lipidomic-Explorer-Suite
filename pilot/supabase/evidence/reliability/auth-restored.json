@@ -1,0 +1,178 @@
+{
+  "checks": [
+    {
+      "test": "owner real password sign-in",
+      "passed": true
+    },
+    {
+      "test": "viewer real password sign-in",
+      "passed": true
+    },
+    {
+      "test": "outsider real password sign-in",
+      "passed": true
+    },
+    {
+      "test": "Invalid password denied",
+      "passed": true
+    },
+    {
+      "test": "Self signup disabled",
+      "passed": true
+    },
+    {
+      "test": "owner project visibility",
+      "passed": true
+    },
+    {
+      "test": "viewer project visibility",
+      "passed": true
+    },
+    {
+      "test": "outsider project visibility",
+      "passed": true
+    },
+    {
+      "test": "Team saved new ZIP checkpoint",
+      "passed": true
+    },
+    {
+      "test": "Stored ZIP integrity 34f46bcc",
+      "passed": true
+    },
+    {
+      "test": "No library credentials serialized 34f46bcc",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state owner 34f46bcc",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state viewer 34f46bcc",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state outsider 34f46bcc",
+      "passed": true
+    },
+    {
+      "test": "Stored ZIP integrity ce954710",
+      "passed": true
+    },
+    {
+      "test": "No library credentials serialized ce954710",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state owner ce954710",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state viewer ce954710",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state outsider ce954710",
+      "passed": true
+    },
+    {
+      "test": "Stored ZIP integrity c2e60834",
+      "passed": true
+    },
+    {
+      "test": "No library credentials serialized c2e60834",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state owner c2e60834",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state viewer c2e60834",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state outsider c2e60834",
+      "passed": true
+    },
+    {
+      "test": "Stored ZIP integrity 4c4a8857",
+      "passed": true
+    },
+    {
+      "test": "No library credentials serialized 4c4a8857",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state owner 4c4a8857",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state viewer 4c4a8857",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state outsider 4c4a8857",
+      "passed": true
+    },
+    {
+      "test": "Stored ZIP integrity ee260029",
+      "passed": true
+    },
+    {
+      "test": "No library credentials serialized ee260029",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state owner ee260029",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state viewer ee260029",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state outsider ee260029",
+      "passed": true
+    },
+    {
+      "test": "Stored ZIP integrity 6c0467c8",
+      "passed": true
+    },
+    {
+      "test": "No library credentials serialized 6c0467c8",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state owner 6c0467c8",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state viewer 6c0467c8",
+      "passed": true
+    },
+    {
+      "test": "No password bytes in ZIP state outsider 6c0467c8",
+      "passed": true
+    },
+    {
+      "test": "Saved and original checkpoint contain identical input data",
+      "passed": true
+    },
+    {
+      "test": "Real outsider cannot download checkpoint",
+      "passed": true
+    },
+    {
+      "test": "Logout accepted",
+      "passed": true
+    },
+    {
+      "test": "Logged-out refresh token rejected",
+      "passed": true
+    }
+  ],
+  "count": 43,
+  "note": "HTTP real GoTrue identities plus archived state checks. Browser resume/save/logout evidence recorded separately."
+}

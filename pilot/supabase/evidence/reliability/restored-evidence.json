@@ -1,0 +1,301 @@
+{
+  "phase": "restored",
+  "checks": [
+    {
+      "test": "Owner sees project",
+      "passed": true
+    },
+    {
+      "test": "Outsider sees no projects",
+      "passed": true
+    },
+    {
+      "test": "Anonymous cannot list projects",
+      "passed": true
+    },
+    {
+      "test": "Restore catalog accessible",
+      "passed": true
+    },
+    {
+      "test": "Real case catalog has at least 5 objects",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 1",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 1",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 1",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 1",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 2",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 2",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 2",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 2",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 3",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 3",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 3",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 3",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 4",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 4",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 4",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 4",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 5",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 5",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 5",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 5",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 6",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 6",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 6",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 6",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 7",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 7",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 7",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 7",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 8",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 8",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 8",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 8",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 9",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 9",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 9",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 9",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 10",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 10",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 10",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 10",
+      "passed": true
+    },
+    {
+      "test": "Owner bytes match SHA256 object 11",
+      "passed": true
+    },
+    {
+      "test": "Viewer reads exact object 11",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot download object 11",
+      "passed": true
+    },
+    {
+      "test": "Public URL cannot expose object 11",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot sign download URL",
+      "passed": true
+    },
+    {
+      "test": "Outsider catalog empty",
+      "passed": true
+    },
+    {
+      "test": "Outsider cannot list bucket contents",
+      "passed": true
+    },
+    {
+      "test": "Overwrite original denied",
+      "passed": true
+    },
+    {
+      "test": "Deleting original denied",
+      "passed": true
+    },
+    {
+      "test": "Delete attempt retains original",
+      "passed": true
+    },
+    {
+      "test": "viewer cannot upload",
+      "passed": true
+    },
+    {
+      "test": "viewer cannot insert metadata",
+      "passed": true
+    },
+    {
+      "test": "outsider cannot upload",
+      "passed": true
+    },
+    {
+      "test": "outsider cannot insert metadata",
+      "passed": true
+    },
+    {
+      "test": "Membership escalation denied",
+      "passed": true
+    },
+    {
+      "test": "Catalog update denied",
+      "passed": true
+    },
+    {
+      "test": "Duplicate catalog record rejected",
+      "passed": true
+    }
+  ],
+  "object_count": 11,
+  "objects": [
+    {
+      "sha256": "be6c2daefba48cdb6de3538f9a96da67e31af47a07dc6a45e049c422536677ff",
+      "bytes": 1240183
+    },
+    {
+      "sha256": "5ecc3be7e8b91c3f4aa32d640488a6ab865f5321c872cbeaaca2c08c233fbfae",
+      "bytes": 14069
+    },
+    {
+      "sha256": "6c0467c83ce415a1efa99d406d00fd0ad5a3a0bf81f65cfca7b53ae5e1157652",
+      "bytes": 323234
+    },
+    {
+      "sha256": "cecc44c24ba8e76fca59be1f979dd01bb554ab2d956693a84a1c287de3333c98",
+      "bytes": 148080
+    },
+    {
+      "sha256": "27e7161ae2264fc1a279db84b2f731348b02852a3e92160e082fbe2df41a8d05",
+      "bytes": 257541
+    },
+    {
+      "sha256": "c003bb525ccb64e8164335184adb35af413850a9518990f2d5b1aecbc5395b65",
+      "bytes": 5024
+    },
+    {
+      "sha256": "ee260029e1767ea2bb19a6a4a6af5a0fb29efc1958249c035f311cae29aeae32",
+      "bytes": 323873
+    },
+    {
+      "sha256": "4c4a8857fe56b2be0b2467fa9479a4e7088684a5202ea0b3af5874c219b57741",
+      "bytes": 323396
+    },
+    {
+      "sha256": "c2e60834547e399df184dbcfadcd34775e4f96298fdab6abdaa3abb0f71e268c",
+      "bytes": 323395
+    },
+    {
+      "sha256": "ce954710662723df780450e4fddd80b2ad67d03c9ca6ede880872f4e03e9befc",
+      "bytes": 323397
+    },
+    {
+      "sha256": "34f46bcc6ac0bd79c8b7ce40eab9e641c10c84bc13707805ccfb72604df6681a",
+      "bytes": 323396
+    }
+  ],
+  "scope": "Storage persistence and HTTP authorization; test identities signed by isolated harness, not production login or Shiny integration."
+}

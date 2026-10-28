@@ -14,6 +14,29 @@ team_library_call <- function(service, path, token=NULL, body=NULL, method="GET"
   if(!nzchar(text)) return(NULL)
   jsonlite::fromJSON(text,simplifyVector=FALSE)
 }
+# Idempotent commit: recover an uploaded object or a lost successful response.
+team_library_commit <- function(path, project, label, token, call=team_library_call) {
+  if(!grepl("^[0-9a-f-]{36}$", project))stop("Invalid project.")
+  hash<-digest::digest(file=path,algo="sha256");key<-paste0(project,"/",hash)
+  lookup<-function()call("rest",paste0("/pilot_files?project_id=eq.",project,"&sha256=eq.",hash),token)
+  verify_object<-function(){b<-call("storage",paste0("/object/authenticated/case-files/",key),token,raw=TRUE)
+    if(!identical(digest::digest(b,algo="sha256",serialize=FALSE),hash))stop("Stored checkpoint integrity check failed.")
+    invisible(TRUE)}
+  existing<-lookup()
+  if(length(existing)){verify_object();return(invisible(hash))}
+  bytes<-readBin(path,"raw",n=file.info(path)$size)
+  # Upload failures include a lost response, a concurrent upload or an orphan
+  # from a prior attempt. Only exact, readable bytes can satisfy recovery.
+  tryCatch(call("storage",paste0("/object/case-files/",key),token,bytes,"POST"),
+    error=function(e){tryCatch(verify_object(),error=function(ignored)stop("Checkpoint upload incomplete. Retry this saved checkpoint."))})
+  verify_object()
+  record<-list(project_id=project,object_path=key,original_name=paste0(label,".zip"),sha256=hash,size_bytes=length(bytes))
+  tryCatch(call("rest","/pilot_files",token,record,"POST"),error=function(e){
+    if(!length(lookup()))stop("Upload verified; registration is pending. Click Retry saved checkpoint.")
+  })
+  if(!length(lookup()))stop("Checkpoint registration could not be verified. Retry this saved checkpoint.")
+  invisible(hash)
+}
 team_library_ui <- function() {
   tags$section(class="team-library",style="background:white;border:1px solid #d9e5e8;border-radius:12px;margin:16px;padding:20px;",
     tags$style(HTML(".team-library .shiny-input-container{width:100%!important;margin-bottom:10px}.team-library-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:18px;align-items:end}.team-library-login{display:flex;gap:16px;align-items:end;flex-wrap:wrap}.team-library-login>.shiny-input-container{flex:1;min-width:180px}.team-library select{min-height:44px}.team-library small{display:block;margin-top:14px;color:#526b77}@media(max-width:750px){.team-library-grid{grid-template-columns:1fr}.team-library{margin:8px!important;padding:16px!important}}")),
@@ -24,6 +47,9 @@ team_library_ui <- function() {
 team_library_server <- function(input,output,session,shared_data) {
   account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); status<-reactiveVal("Sign in to access saved projects.")
   generation<-0L
+  pending<-NULL
+  cleanup_pending<-function(){if(!is.null(pending))unlink(pending$path);pending<<-NULL}
+  session$onSessionEnded(cleanup_pending)
   session$onSessionEnded(function(){account(NULL)})
   guard<-function(code) tryCatch(force(code),error=function(e) {status(conditionMessage(e)); invisible(NULL)})
   access<-function(){a<-isolate(account());if(is.null(a))stop("Sign in first.")
@@ -51,7 +77,7 @@ team_library_server <- function(input,output,session,shared_data) {
     tagList(div(class="team-library-grid",
       div(selectInput("team_library_project","Project",pc,selected=isolate(input$team_library_project),selectize=FALSE)),
       div(selectInput("team_library_checkpoint","Saved checkpoint",fc,selectize=FALSE),actionButton("team_library_resume","Resume checkpoint")),
-      if(writable) div(textInput("team_library_label","New checkpoint name","Analysis checkpoint"),actionButton("team_library_save","Save current analysis")) else p("Read-only access: you can resume checkpoints but cannot save new versions here.")),
+      if(writable) div(textInput("team_library_label","New checkpoint name","Analysis checkpoint"),actionButton("team_library_save","Save current analysis"),actionButton("team_library_retry","Retry saved checkpoint")) else p("Read-only access: you can resume checkpoints but cannot save new versions here.")),
       tags$small("A checkpoint stores your files and settings. Restoring requires review before Prepare data; it never applies new scientific parameters automatically."))})
   output$team_library_status<-renderText(status())
   observeEvent(input$team_library_login,guard({
@@ -71,17 +97,21 @@ team_library_server <- function(input,output,session,shared_data) {
   observeEvent(input$team_library_save,guard({
     tok<-access();id<-selected_project();req(length(shared_data$loaded_files())>0)
     label<-trimws(input$team_library_label);if(!nzchar(label)||nchar(label)>80)stop("Use a checkpoint name between 1 and 80 characters.")
-    path<-tempfile(fileext=".zip");on.exit(unlink(path),add=TRUE)
-    shared_data$export_session_path(path)
-    if(file.info(path)$size>100*1024^2)stop("Checkpoint exceeds the pilot's 100 MiB limit.")
-    hash<-digest::digest(file=path,algo="sha256");key<-paste0(id,"/",hash)
-    existing<-team_library_call("rest",paste0("/pilot_files?project_id=eq.",id,"&sha256=eq.",hash),tok)
-    if(!length(existing)) {
-      bytes<-readBin(path,"raw",n=file.info(path)$size)
-      team_library_call("storage",paste0("/object/case-files/",key),tok,bytes,"POST")
-      team_library_call("rest","/pilot_files",tok,list(project_id=id,object_path=key,original_name=paste0(label,".zip"),sha256=hash,size_bytes=length(bytes)),"POST")
-    }
+    if(!is.null(pending))stop("A checkpoint is pending. Retry it before saving another version.")
+    path<-tempfile(fileext=".zip")
+    tryCatch(shared_data$export_session_path(path),error=function(e){unlink(path);stop(e)})
+    if(file.info(path)$size>100*1024^2){unlink(path);stop("Checkpoint exceeds the pilot's 100 MiB limit.")}
+    pending<<-list(path=path,project=id,label=label)
+    team_library_commit(path,id,label,tok)
+    cleanup_pending()
     refresh_files();status("Checkpoint saved privately. Your applied scientific settings have not changed.")
+  }))
+  observeEvent(input$team_library_retry,guard({
+    if(is.null(pending))stop("There is no pending checkpoint to retry.")
+    tok<-access()
+    if(!identical(selected_project(),pending$project))stop("Select the project used for the pending checkpoint.")
+    team_library_commit(pending$path,pending$project,pending$label,tok)
+    cleanup_pending();refresh_files();status("Checkpoint recovered and saved. No scientific settings were changed.")
   }))
   observeEvent(shared_data$session_restored(), {
     if(isTRUE(shared_data$session_restored()) && !is.null(account())) status("Checkpoint restored. Review Design and Quality, then confirm Prepare data. No new file upload is needed.")

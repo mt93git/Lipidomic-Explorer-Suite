@@ -5,22 +5,16 @@ cd "$(dirname "$0")"
 PILOT_ROOT="$PWD"
 RESTORE_ROOT="${RESTORE_TARGET:-${PILOT_ROOT}-restore}"
 [ ! -e "$RESTORE_ROOT" ] || { echo 'Restore directory already exists; refusing overwrite'; exit 1; }
-mkdir -p backup "$RESTORE_ROOT"
-# Quiesce this pilot only: object files and catalog share a consistent backup boundary.
-docker compose -p lipidomic-pilot -f compose.yml stop rest storage auth
-trap 'docker compose -p lipidomic-pilot -f compose.yml start rest storage auth >/dev/null' EXIT
-docker compose -p lipidomic-pilot -f compose.yml exec -T db pg_dump -U supabase_admin -d postgres -Fc > backup/database.dump
-tar -C data -czf backup/objects.tar.gz objects
-cp .env backup/recovery.env
-openssl rand -hex 32 > backup/recovery.key
-tar -C backup -cf - database.dump objects.tar.gz recovery.env | openssl enc -aes-256-cbc -salt -pbkdf2 -pass file:backup/recovery.key -out backup/pilot-backup.enc
-sha256sum backup/pilot-backup.enc > backup/encrypted-sha256.txt
-docker compose -p lipidomic-pilot -f compose.yml start rest storage auth
-trap - EXIT
+mkdir -p "$RESTORE_ROOT"
+# A unique authenticated backup, with its recovery key kept separately.
+python3 backup.py > "$RESTORE_ROOT/backup-run.log"
+BACKUP_DIR="$(tail -n 1 "$RESTORE_ROOT/backup-run.log")"
+[ -f "$BACKUP_DIR/COMPLETE" ]
 cp compose.yml bootstrap.sql setup_env.py renew_infrastructure_tokens.py verify.py permissions.sql "$RESTORE_ROOT/"
 chmod 644 "$RESTORE_ROOT/bootstrap.sql"
 mkdir "$RESTORE_ROOT/recovered"
-openssl enc -d -aes-256-cbc -pbkdf2 -pass file:backup/recovery.key -in backup/pilot-backup.enc | tar -C "$RESTORE_ROOT/recovered" -xf -
+python3 backup.py --decrypt "$BACKUP_DIR/pilot-backup.enc" --key "$PILOT_ROOT/backup-keys/$(basename "$BACKUP_DIR").key" --output "$RESTORE_ROOT/recovered/payload.tar"
+tar -C "$RESTORE_ROOT/recovered" -xf "$RESTORE_ROOT/recovered/payload.tar"
 python3 - "$RESTORE_ROOT" <<'PY'
 from pathlib import Path
 import sys
@@ -38,7 +32,7 @@ done
 docker compose -p lipidomic-pilot-restore -f compose.yml exec -T db pg_restore -U supabase_admin -d postgres --clean --if-exists --exit-on-error < recovered/database.dump
 docker compose -p lipidomic-pilot-restore -f compose.yml exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/migrations/99-pilot.sql
 docker compose -p lipidomic-pilot-restore -f compose.yml exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < permissions.sql
-docker compose -p lipidomic-pilot-restore -f compose.yml up -d
+docker compose -p lipidomic-pilot-restore -f compose.yml up -d --wait
 for i in $(seq 1 30); do
  if curl -fsS http://127.0.0.1:55442/status >/dev/null; then break; fi
  sleep 2

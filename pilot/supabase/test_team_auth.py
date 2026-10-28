@@ -1,7 +1,8 @@
-import json,urllib.request,urllib.error,io,zipfile,hashlib
+import os,json,urllib.request,urllib.error,io,zipfile,hashlib
 from pathlib import Path
 accounts=json.loads(Path('test-accounts.json').read_text());checks=[]
 def call(port,path,method='GET',body=None,tok=None,raw=False):
+ port += int(os.getenv('PILOT_TEST_PORT_OFFSET','0'))
  h={'Content-Type':'application/json'}
  if tok:h['Authorization']='Bearer '+tok
  try:
