@@ -404,6 +404,22 @@ guided_workflow_server <- function(input,output,session,shared_data) {
   })
   observeEvent(input[['data_hub-authorizeMetadata']],{go(2,FALSE)},ignoreInit=TRUE,priority=-10)
   observeEvent(input$guide_step,{i<-suppressWarnings(as.integer(input$guide_step));if(length(i)==1&&!is.na(i)&&i%in%1:7)go(i)})
+  # The optional Team workspace waits for an explicit navigation receipt rather
+  # than treating a slow computation as a rejected request.
+  if (exists("team_workspace_enabled") && team_workspace_enabled()) {
+    observeEvent(input$team_workspace_nav, {
+      request <- input$team_workspace_nav
+      if (!is.list(request)) return()
+      i <- suppressWarnings(as.integer(request$step))
+      token <- suppressWarnings(as.integer(request$token))
+      if (length(i)!=1L || is.na(i) || !i %in% 1:7 || length(token)!=1L || is.na(token)) return()
+      go(i)
+      accepted <- identical(as.integer(step()), i)
+      reason <- if (accepted) "" else if (step()==1L) "Add an abundance matrix first." else if (step()==2L) "Review the labels and confirm the study design first." else "Prepare the data before continuing."
+      session$sendCustomMessage("team-navigation-receipt", list(token=token, accepted=accepted, step=step(), reason=reason))
+    })
+  }
+
   observeEvent(input$guide_open_tool,open_tool(input$guide_open_tool))
   observeEvent(input$guide_tool,{if(nzchar(input$guide_tool))open_tool(input$guide_tool)},ignoreInit=TRUE)
   for(g in c('overview','compare','structure','function','time')) local({k<-g;observeEvent(input[[paste0('guide_goal_',k)]],{goal(k)})})

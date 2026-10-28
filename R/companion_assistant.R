@@ -21,6 +21,41 @@ companion_sanitize_question <- function(question, known_labels = character()) {
   clean
 }
 
+# Preserve the seven internal workflow sections while presenting the three
+# stages exposed by the optional Team workspace.
+companion_assistant_step_guidance <- function(team_workspace = identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")) {
+  if (!isTRUE(team_workspace)) return(c(
+    "Upload abundance files or restore a session ZIP. Original files stay unchanged.",
+    "Review sample labels, selected samples and independent or matched design. Only you can confirm the design review.",
+    "Review detection, missing values and normalization. Prepare data only after reviewing these choices; previous plots keep the applied run until then.",
+    "Choose the biological question. A study description does not automatically change the statistical model.",
+    "Explore PCA, class profiles, volcano and violin plots. Hover over points and export the CSV behind each plot.",
+    "Select a lipid and measurement to inspect prepared abundances. Anatomy is interpreted reference biology; bulk signals do not establish subcellular lipid locations. No dynamic simulation is enabled.",
+    "Export results, methods and decisions, sample labels and a session ZIP. Also save the companion action log; it is session-local."
+  ))
+  c(
+    "In Data, upload an abundance matrix or restore a saved session ZIP. Resume a private project checkpoint here when available; original input files remain unchanged.",
+    "In Review, inspect sample labels, selected samples and independent or matched design. Only you can confirm the design review.",
+    "In Review, inspect detection, missing values and normalization. Prepare data only after reviewing these choices; previous plots keep the applied run until then.",
+    "In Review, choose the biological question and comparison. A study description does not automatically change the statistical model.",
+    "In Canvas, explore available PCA, class profile, volcano and violin plots. Layout and appearance edits are temporary; downloads are per plot, and CSV is available only where the source analysis provides it.",
+    "In Canvas, use the 3D cell as an illustrative reference view. Prepared abundance may include imputed estimates; bulk signals do not establish subcellular locations. No dynamic simulation is enabled.",
+    "In Save & export, save analysis checkpoints and export results. Resume existing private checkpoints from Data. Canvas layouts are temporary; export figures and plot data separately where available, and save methods, decisions, sample labels and the session-local companion action log."
+  )
+}
+
+# Parse only the reviewed, exact detection-setting command forms. Natural
+# language requests continue through the normal guide/AI path.
+companion_parse_detection_command <- function(question) {
+  if (!is.character(question) || length(question) != 1L || is.na(question)) return(NULL)
+  q <- tolower(trimws(question))
+  match <- regexec("^set (minimum detection|detection|threshold) to ([0-9]+(?:\\.[0-9]+)?)(%?)[.!]?$", q, perl = TRUE)
+  parts <- regmatches(q, match)[[1L]]
+  if (!length(parts)) return(NULL)
+  value <- as.numeric(parts[[3L]])
+  list(value = value, has_percent = identical(parts[[4L]], "%"), needs_percent = value <= 1 && !identical(parts[[4L]], "%"))
+}
+
 companion_assistant_server <- function(input, output, session, shared_data, guide_workflow) {
   ai_busy <- FALSE; ai_count <- 0L; ai_last <- as.POSIXct(0,origin='1970-01-01'); ai_closed <- FALSE
   session$onSessionEnded(function(){ai_closed<<-TRUE})
@@ -48,13 +83,7 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     key<-as.character(x$nonce);if(key %in% seen)return(FALSE);seen<<-tail(c(seen,key),200);TRUE
   }
   explain_step <- function(){
-    txt<-c('Upload abundance files or restore a session ZIP. Original files stay unchanged.',
-    'Review sample labels, selected samples and independent or matched design. Only you can confirm the design review.',
-    'Review detection, missing values and normalization. Prepare data only after reviewing these choices; previous plots keep the applied run until then.',
-    'Choose the biological question. A study description does not automatically change the statistical model.',
-    'Explore PCA, class profiles, volcano and violin plots. Hover over points and export the CSV behind each plot.',
-    'Select a lipid and measurement to inspect prepared abundances. Anatomy is interpreted reference biology; bulk signals do not establish subcellular lipid locations. No dynamic simulation is enabled.',
-    'Export results, methods and decisions, sample labels and a session ZIP. Also save the companion action log; it is session-local.')
+    txt<-companion_assistant_step_guidance()
     reply(txt[step()],list(nav(step(),'Open this step')))
   }
   local_guidance <- function(q) {
@@ -97,7 +126,8 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     if(grepl('^set normalization to (median|pqn|none)[.!]?$',q)){propose('normalization',sub('[.!]$','',sub('^set normalization to ','',q)));return()}
     if(grepl('^please switch normalization from (median|pqn|none) to (median|pqn|none) for me[.!]?$',q)){m<-regexec('^please switch normalization from (median|pqn|none) to (median|pqn|none)',q);z<-regmatches(q,m)[[1]];propose('normalization',z[3]);return()}
     if(grepl('^can you switch to (median|pqn|none)[.!?]?$',q)){propose('normalization',sub('[.!?]$','',sub('^can you switch to ','',q)));return()}
-    if(grepl('^set (detection|threshold) to [0-9]+(\\.[0-9]+)?%?[.!]?$',q)){raw<-sub('^set (detection|threshold) to ','',q);n<-as.numeric(sub('[%!.]+$','',raw));if(n<=1&&!grepl('%',raw)){reply('Please include a percentage for a threshold at or below 1, for example “set detection to 0.8%”.');return()};propose('detection',n);return()}
+    detection_command<-companion_parse_detection_command(q)
+    if(!is.null(detection_command)){if(detection_command$needs_percent){reply('Please include a percentage for a threshold at or below 1, for example “set minimum detection to 0.8%”.');return()};propose('detection',detection_command$value);return()}
     if(q %in% c('turn imputation on','turn imputation off')){propose('imputation',q=='turn imputation on');return()}
     if(exists('companion_ai_guard')) { guarded<-companion_ai_guard(q); if(!is.null(guarded)){reply(guarded$answer,guarded$actions,source='Local guide · reviewed scientific boundaries');return()} }
     if(exists('companion_ai_available')&&companion_ai_available() && !q %in% c('explain this step','help')) {

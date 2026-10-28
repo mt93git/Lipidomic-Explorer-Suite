@@ -1,7 +1,7 @@
 # R/server.R
 # Main Server Logic.
 
-server <- function(input, output, session) {
+scientific_server <- function(input, output, session) {
   
   # =========================================================================
   # REAL-TIME RSTUDIO CONSOLE INTERACTION & CLICK TRACER
@@ -49,6 +49,7 @@ server <- function(input, output, session) {
     welcome_load_demo_trigger = welcome_load_demo_trigger, root_session = session,
     design_check = design_check, preparation_policy = if (is_team) "team" else "classic",
     inference_check = inference_check)
+  if (is_team && team_workspace_enabled()) session$userData$team_shared_data <- shared_data
 
   guide_workflow <- frontend_server_hooks()(input, output, session, shared_data)
 
@@ -307,5 +308,44 @@ server <- function(input, output, session) {
   export_studio_server("export_studio", shared_data = shared_data)
 
   cat("\n[MAIN SERVER] ALL MODULE SERVERS INITIALIZED!\n", file = stderr())
+}
+
+# Workspace authentication is a server boundary: no scientific module or input
+# handler exists in a session until its project-library sign-in succeeds.
+server <- function(input, output, session) {
+  if (!identical(lipidomic_interface(), "team") || !team_workspace_enabled())
+    return(scientific_server(input, output, session))
+  team_workspace_require_library()
+  session$userData$team_shared_data <- NULL
+  deferred <- list(
+    loaded_files = function() {
+      data <- session$userData$team_shared_data
+      if (is.null(data)) return(character())
+      data$loaded_files()
+    },
+    session_restored = function() {
+      data <- session$userData$team_shared_data
+      if (is.null(data)) return(FALSE)
+      data$session_restored()
+    },
+    export_session_path = function(path) {
+      data <- session$userData$team_shared_data
+      if (is.null(data)) stop("Sign in first.")
+      data$export_session_path(path)
+    },
+    import_session_path = function(path) {
+      data <- session$userData$team_shared_data
+      if (is.null(data)) stop("Sign in first.")
+      data$import_session_path(path)
+    }
+  )
+  started <- FALSE
+  start_science <- function() {
+    if (started) return(invisible(NULL))
+    started <<- TRUE
+    scientific_server(input, output, session)
+  }
+  team_library_server(input, output, session, deferred, on_authenticated=start_science)
+  invisible(NULL)
 }
 

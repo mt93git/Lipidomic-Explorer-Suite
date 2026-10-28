@@ -3157,6 +3157,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
     
     annotationData <- reactive({
+      # Restoring freezes inputs. A reactive evaluated while frozen caches a
+      # silent error, and thawing alone does not invalidate that cache. Team's
+      # explicit completion signal refreshes annotation and its dependent
+      # lipid filters after hydration, even when saved controls are unchanged.
+      if (preparation_policy == "team") is_restoring()
       req(baseLipidAnnotation())
       base_anno <- baseLipidAnnotation()
       

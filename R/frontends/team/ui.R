@@ -40,6 +40,7 @@ ui <- page_navbar(
   window_title = "Libreros Lab · Lipidomic Explorer",
   theme = app_theme,
   header = tagList(
+    if (team_workspace_enabled()) team_workspace_ui(),
     if (team_library_enabled()) team_library_ui(),
     tags$head(
       tags$link(rel = "icon", type = "image/png", href = "team/img/favicon.png"),
@@ -63,9 +64,11 @@ ui <- page_navbar(
       includeScript("www/team/js/help_content.js"),
       includeScript("www/team/js/companion_art.js"),
       includeScript("www/team/js/context_help.js"),
-      includeScript("www/team/js/companion_assistant.js")
+      includeScript("www/team/js/companion_assistant.js"),
+      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas.js"),includeScript("www/team/js/companion_workspace.js"))
     ),
     guide_header(),
+    if (team_workspace_enabled()) team_canvas_ui(),
     tags$div(
       id = "targeted_lipids_top_dock",
       class = "targeted-lipids-top-dock d-flex justify-content-end align-items-center mb-2 pe-3",

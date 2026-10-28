@@ -96,7 +96,7 @@
     speech.style.width=w+'px';h=speech.offsetHeight;
     var center=r.left+r.width/2,cy=r.top+58,margin=12,topLimit=12;
     var navbar=document.querySelector('.navbar');if(navbar)topLimit=Math.max(topLimit,navbar.getBoundingClientRect().bottom+8);
-    var controls=Array.from(document.querySelectorAll('button,input,select,textarea,a[href],.js-plotly-plot,.shiny-plot-output')).filter(function(n){
+    var controls=Array.from(document.querySelectorAll('button,input,select,textarea,a[href],.js-plotly-plot,.shiny-plot-output,body.team-workspace-app #team-workspace .tw-journey')).filter(function(n){
       if(dock.contains(n)||!n.getClientRects().length||getComputedStyle(n).visibility==='hidden')return false;
       var q=n.getBoundingClientRect();return q.width&&q.height&&q.right>0&&q.left<innerWidth&&q.bottom>topLimit&&q.top<innerHeight;
     }).map(function(n){return n.getBoundingClientRect();});
@@ -166,7 +166,7 @@
     panel.style.left=clamp(x,12,innerWidth-w-12)+'px';panel.style.top=clamp(y,topLimit,innerHeight-h-16)+'px';
   }
   function protectedEntries(){
-    return Array.from(document.querySelectorAll('button,input,select,textarea,a[href],[role="button"],[contenteditable="true"],img,canvas,svg,.js-plotly-plot,.shiny-plot-output,#cell-stage,.lipid-help-panel')).filter(function(n){
+    return Array.from(document.querySelectorAll('button,input,select,textarea,a[href],[role="button"],[contenteditable="true"],img,canvas,svg,.js-plotly-plot,.shiny-plot-output,#cell-stage,.lipid-help-panel,body.team-workspace-app #team-workspace .tw-journey')).filter(function(n){
       return !dock.contains(n)&&n.getClientRects().length&&getComputedStyle(n).visibility!=='hidden';
     }).map(function(n){return {node:n,rect:n.getBoundingClientRect()};}).filter(function(entry){return entry.rect.width>0&&entry.rect.height>0;});
   }
@@ -187,7 +187,7 @@
     // still covers an actionable control. Candidate positions are relative to the
     // stable intended placement, so repeated scroll frames cannot accumulate drift.
     var launcher=dock.querySelector('.companion-launcher'), lr=launcher.getBoundingClientRect();
-    var actions=entries.filter(function(entry){return entry.node.matches('button,input,select,textarea,a[href],[role="button"],[contenteditable="true"]');}).map(function(entry){return entry.rect;});
+    var actions=entries.filter(function(entry){return entry.node.matches('button,input,select,textarea,a[href],[role="button"],[contenteditable="true"],body.team-workspace-app #team-workspace .tw-journey');}).map(function(entry){return entry.rect;});
     var baseScore=overlapArea(lr,actions),best={x:avoidanceBase.x,y:avoidanceBase.y,score:baseScore};
     if(baseScore>0){
       var dr=dock.getBoundingClientRect(),dxStep=Math.max(90,dr.width+12),dyStep=Math.max(90,dr.height+12), offsets=[[0,dyStep],[0,-dyStep],[-dxStep,0],[dxStep,0],[-dxStep,dyStep],[dxStep,dyStep],[-dxStep,-dyStep],[dxStep,-dyStep]];

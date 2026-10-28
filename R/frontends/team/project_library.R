@@ -80,12 +80,18 @@ team_library_ui <- function() {
     uiOutput("team_library_account"),uiOutput("team_library_projects"),
     tags$p(role="status",textOutput("team_library_status")))
 }
-team_library_server <- function(input,output,session,shared_data) {
+team_library_server <- function(input,output,session,shared_data,on_authenticated=NULL) {
   account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); status<-reactiveVal("Sign in to access saved projects.")
   generation<-0L
+  observe({a<-account();session$sendCustomMessage("team-auth-state",list(authenticated=!is.null(a)))})
+  observeEvent(input$team_workspace_ready,{session$sendCustomMessage("team-auth-state",list(authenticated=!is.null(isolate(account()))))})
   pending<-NULL
   cleanup_pending<-function(){a<-isolate(account());if(!is.null(a))team_library_queue(a$user,clear=TRUE,expected=pending$sha256);pending<<-NULL}
-  session$onSessionEnded(function(){account(NULL)})
+  revoke <- function(a) {
+    if (!is.null(a) && is.character(a$token) && length(a$token)==1L && nzchar(a$token))
+      try(team_library_call("auth","/logout",a$token,method="POST"),silent=TRUE)
+  }
+  session$onSessionEnded(function(){a<-isolate(account());account(NULL);revoke(a)})
   guard<-function(code) tryCatch(force(code),error=function(e) {status(conditionMessage(e)); invisible(NULL)})
   access<-function(){a<-isolate(account());if(is.null(a))stop("Sign in first.")
     if(Sys.time()>a$expires) {
@@ -117,18 +123,35 @@ team_library_server <- function(input,output,session,shared_data) {
   output$team_library_status<-renderText(status())
   observeEvent(input$team_library_login,guard({
     if(!is.null(isolate(account())))stop("Sign out before switching accounts.")
-    r<-team_library_call("auth","/token?grant_type=password",body=list(email=trimws(input$team_library_email),password=input$team_library_password),method="POST")
+    email <- trimws(input$team_library_email)
+    password <- input$team_library_password
     updateTextInput(session,"team_library_password",value="")
+    r<-team_library_call("auth","/token?grant_type=password",body=list(email=email,password=password),method="POST")
+    rm(password)
     account(list(token=r$access_token,refresh=r$refresh_token,expires=Sys.time()+r$expires_in-30,email=r$user$email,user=r$user$id))
-    refresh_projects();pending<<-team_library_queue(r$user$id)
-    status(if(!is.null(pending)) "An interrupted checkpoint is ready to recover. Select its project and click Retry saved checkpoint." else "Signed in. Choose a project and a saved checkpoint.")
+    tryCatch({
+      refresh_projects();pending<<-team_library_queue(r$user$id)
+      status(if(!is.null(pending)) "An interrupted checkpoint is ready to recover. Select its project and click Retry saved checkpoint." else "Signed in. Choose a project and a saved checkpoint.")
+      if (is.function(on_authenticated)) on_authenticated()
+    }, error=function(e) {
+      a<-isolate(account());revoke(a)
+      account(NULL);projects(list());members(list());files(list())
+      # A failed scientific start may already have registered observers. This
+      # Shiny session must never be reused for another login attempt.
+      if (team_workspace_enabled()) {
+        session$close()
+        stop("The workspace could not start. Reload the page and sign in again.", call.=FALSE)
+      }
+      stop(e)
+    })
   }))
   observeEvent(input$team_library_project,guard(refresh_files()),ignoreInit=TRUE)
   observeEvent(input$team_library_logout,{
-    a<-isolate(account());if(!is.null(a))try(team_library_call("auth","/logout",a$token,method="POST"),silent=TRUE)
-    account(NULL);projects(list());files(list());generation<<-generation+1L
+    a<-isolate(account());revoke(a)
+    account(NULL);projects(list());members(list());files(list());generation<<-generation+1L
     # Reload destroys the scientific session too; a second identity cannot inherit data.
     session$reload()
+    if (team_workspace_enabled()) session$onFlushed(function() session$close(), once=TRUE)
   })
   observeEvent(input$team_library_save,guard({
     tok<-access();id<-selected_project();req(length(shared_data$loaded_files())>0)
@@ -165,4 +188,5 @@ team_library_server <- function(input,output,session,shared_data) {
     shared_data$import_session_path(path)
     status("Restoring checkpoint. Review Design and Quality before preparing data.")
   }))
+  invisible(account)
 }

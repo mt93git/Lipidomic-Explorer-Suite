@@ -9,7 +9,17 @@ companion_ai_available <- function() {
   nzchar(key) && requireNamespace("httr2", quietly = TRUE) && requireNamespace("jsonlite", quietly = TRUE)
 }
 
-companion_ai_methods <- function() paste(
+companion_ai_methods <- function() {
+  team_workspace <- identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")
+  if (team_workspace) return(paste(
+  "[seven_steps] Team workspace: Data is for upload and resuming saved checkpoints; Review covers study design, sample decisions, preparation and quality; Canvas is for plot exploration and temporary figure layout. Save analysis checkpoints and export results in Save & export. The legacy analysis sections remain internally numbered 1 through 7. A study description does not automatically change statistical tests.",
+  "[preparation_methods] Median normalization centers log2 values then returns linear abundances; PQN operates in linear space. Detection counts positive values. Changing controls does not recompute; the user must prepare data in Review.",
+  "[preparation_methods] QRILC estimates low-abundance missing values under a left-censoring assumption; estimates are not measurements.",
+  "[results_methods] Canvas arranges live plots temporarily. Appearance edits do not change analysis data. Downloads are per plot; CSV is available only where the source analysis provides it. Do not imply that every dynamic output can be added or that the whole layout is exported as one figure. PCA summarizes variation, not significance. No sample matrix or statistical results are available to this chat: never invent lipid names, p-values, counts or study-specific results, and do not ask users to paste confidential data; direct them to the current plots and available exports instead.",
+  "[results_methods] Volcano interpretation depends on the stated contrast direction, test and correction; this workflow does not convert paired designs into paired tests.",
+  "[3d_provenance] The 3D cell is an illustrative reference view available from Canvas, not a measured lipid location. Bulk or serum lipidomics does not locate lipids inside a cell.",
+  sep = "\n"))
+  paste(
   "[seven_steps] Lipidomic Explorer methods: step numbers: 1 Experiment (upload abundance files or restore saved ZIP; originals unchanged; after restoring review and confirm Design again), 2 Design (review labels and independently sampled units; replicate numbers do not establish pairing; select samples then manually confirm the review), 3 Quality (filter, impute, normalize, Prepare data), 4 My question, 5 Results (plots), 6 3D Show, 7 Share (save the session ZIP plus separate Methods and decisions, sample labels, prepared matrix, plot-data CSVs, plots, and companion action log; do not assume the ZIP contains every result; the log is session-local and previous run history is not restored). Step4 study-description text does not automatically change statistical tests.",
   "[preparation_methods] Median normalization centers log2 values then returns linear abundances; PQN operates in linear space. Detection counts positive values. Changing controls does not recompute; user must Prepare data.",
   "[preparation_methods] QRILC estimates low-abundance missing values under a left-censoring assumption; estimates are not measurements.",
@@ -17,6 +27,7 @@ companion_ai_methods <- function() paste(
   "[results_methods] Volcano interpretation depends on the stated contrast direction, test and correction; this workflow does not convert paired designs into paired tests.",
   "[3d_provenance] The 3D cell combines measured processed abundance with interpreted reference anatomy; bulk or serum lipidomics does not locate lipids inside a cell.",
   sep = "\n")
+}
 
 companion_ai_context <- function(context = list()) {
   allowed <- c("step", "ready", "dirty", "normalization", "imputation")
@@ -60,10 +71,25 @@ companion_ai_validate <- function(x) {
 # High-risk scientific boundaries use reviewed text, not probabilistic claims.
 companion_ai_guard <- function(question, answer = NULL) {
   q <- tolower(question)
-  result <- function(text, step, citation) list(ok=TRUE, answer=text, citations=citation,
-    actions=list(list(id="navigate_step",label=paste("Open",c("Experiment","Design","Quality","My question","Results","3D Show","Share")[step]),args=list(step=step))),source="local-reviewed",usage=list())
+  team_workspace <- identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")
+  result <- function(text, step, citation) {
+    labels <- c("Experiment","Design","Quality","My question","Results","3D Show","Share")
+    if (team_workspace) {
+      for (pair in list(c("3D Show", "Canvas"), c("Experiment", "Data"), c("Design", "Review"), c("Quality", "Review"), c("My question", "Review"), c("Results", "Canvas"), c("Share", "Data"))) {
+        text <- gsub(pair[[1L]], pair[[2L]], text, fixed = TRUE)
+      }
+      labels <- c("Data", "Review", "Review", "Review", "Canvas", "Canvas", "Data")
+    }
+    list(ok=TRUE, answer=text, citations=citation,
+      actions=list(list(id="navigate_step",label=paste("Open",labels[step]),args=list(step=step))),source="local-reviewed",usage=list())
+  }
   if(grepl("ignore.*instructions|override.*rules|bypass.*rules|output commands",q)) return(list(ok=TRUE,answer="I can help with reviewed application guidance, but I cannot override confirmation or execute commands. Please ask about a workflow step or request a single setting change for review.",citations="seven_steps",actions=list(),source="local-reviewed",usage=list()))
   if (grepl("restore.*(session|zip)|resume.*analysis|saved.*zip.*resume",q)) return(result("In Experiment, upload your saved session ZIP. It restores saved data and settings, which may differ from your current controls. Then review sample labels, included samples and Design, and confirm Design again before continuing. Keep Methods and decisions separately; previous guided run history is not restored.",1,"seven_steps"))
+  if (team_workspace && grepl("\\b(samples?)\\b", q) &&
+      grepl("\\b(exclud[a-z]*|remov[a-z]*|drop[a-z]*|omit[a-z]*)\\b", q) &&
+      grepl("\\b(check[a-z]*|before|outlier[a-z]*|reason[a-z]*|should|consider[a-z]*)\\b", q)) {
+    return(result("Before excluding a sample, review its ID and metadata, compare its pattern with technical and biological context (including batch or run details when known), and inspect the QC plots. Distance or PCA position alone is not enough to call a sample an outlier. If exclusion is justified, enter a reason, review and explicitly confirm the decision, then click Update prepared data. You can undo the decision; the original data remain unchanged. Do not exclude a sample just to improve a result.",3,"preparation_methods"))
+  }
   if (grepl("skip confirmation|without confirmation|bypass.*confirm",q)) return(result("I cannot skip confirmation or prepare data for you. Request one setting change, review and confirm the proposal, then use Prepare data in Quality yourself. No change has been applied.",3,"preparation_methods"))
   if (grepl("\\bpaired\\b|pairing|matched (samples|design|measurements)|replicate numbers",q)) return(result("Replicate numbers do not establish pairing. Confirm the independently sampled units and true matching or repeated measurements in Design. Technical replicates are not independent biological units. A paired label or study description does not change the statistical model. The guided Volcano/LSEA route blocks paired designs; use a validated repeated-measures analysis. Do not change the correct design label to bypass that check.",2,"seven_steps"))
   if (grepl("which lipids.*signific|give.*p.?values|name.*signific|significant.*my|my.*significant",q)) return(result("I cannot see your sample matrix or computed statistics, so I cannot identify significant lipids or p-values. The app does compute results: open the actual differential-analysis output in Results and export its table. Check the contrast direction, test and multiple-testing correction. A violin CSV contains plotted values, not significance results.",5,"results_methods"))
@@ -73,7 +99,8 @@ companion_ai_guard <- function(question, answer = NULL) {
 }
 
 # AI selects reviewed guidance; it cannot author scientific facts or executable actions.
-companion_ai_cards <- function() list(
+companion_ai_cards <- function() {
+  cards <- list(
  experiment=list(step=1L,citation="seven_steps",text="Upload an abundance matrix (Excel or CSV) in Experiment, not raw instrument spectra. Review the interpreted labels and selected samples in Design before confirming your review. Original files remain unchanged."),
  design=list(step=2L,citation="seven_steps",text="Identify the independently sampled units and any true matching or repeated measurements. Replicate numbers do not prove pairing. Review labels and selected samples, then confirm Design yourself. A design label does not change the statistical test; do not change a correct paired label to bypass a test restriction."),
  quality=list(step=3L,citation="preparation_methods",text="Detection counts positive measured values before imputation. A global threshold can remove group-specific signals; review the detection scope. QRILC estimates missing values under a left-censoring assumption; estimates are not measurements. Review whether that assumption fits the assay. Changing normalization or another preparation setting does not recompute plots. Review Quality and click Prepare data yourself; until then, plots use the previous applied run."),
@@ -86,7 +113,25 @@ companion_ai_cards <- function() list(
  share=list(step=7L,citation="seven_steps",text="Save the session ZIP and separately save Methods and decisions, sample labels, prepared matrix, plot-data CSVs, figures and the companion action log. Do not assume the ZIP includes all these separate exports. Previous guided run history and the session-local companion log are not restored by the ZIP. Preserve original input files and the applied parameters so another analyst can reproduce the analysis."),
  settings=list(step=3L,citation="preparation_methods",text="To request one setting change, type set normalization to pqn, set detection to 80%, or turn imputation off. I will show the current and proposed values for confirmation. No change is applied before you confirm. Confirmation updates the control only; review Quality and click Prepare data yourself to recompute."),
  unknown=list(step=NA_integer_,citation="seven_steps",text="The reviewed application guidance does not establish an answer to that question. I can help with study design, detection, QRILC, normalization, PCA, violin and volcano plots, 3D interpretation, or exports. For study-specific conclusions or methods outside these topics, review the actual outputs with the analyst.")
-)
+  )
+  # Keep the legacy catalog literal and self-contained: companion_ai_complete()
+  # serializes this function into a future worker, so it must not depend on a
+  # separately defined helper or a captured server environment.
+  if (!identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")) return(cards)
+  cards$experiment$text <- "In Data, upload an abundance matrix (Excel or CSV) or restore a saved session ZIP. If the private project library is available, resume a saved checkpoint from Data. Original input files remain unchanged. After restoring, review sample labels and confirm the study design in Review before preparing data."
+  cards$design$text <- "In Review, identify the independently sampled units and any true matching or repeated measurements. Replicate numbers do not prove pairing. Review labels and selected samples, then confirm the design review yourself. A design label does not change the statistical test; do not change a correct paired label to bypass a test restriction."
+  cards$quality$text <- "In Review, detection counts positive measured values before imputation. A global threshold can remove group-specific signals; review the detection scope. QRILC estimates missing values under a left-censoring assumption; estimates are not measurements. Review whether that assumption fits the assay. Changing normalization or another preparation setting does not recompute plots. Review the settings and click Prepare data yourself; until then, plots use the previous applied run."
+  cards$normalization$text <- "PQN means probabilistic quotient normalization and operates in linear space. Median normalization centers log2 values and returns linear abundances. Neither is automatically best for this study: assess controls and distributions with the analyst. To request a change, type set normalization to pqn. Review and confirm the proposal, then click Prepare data in Review to recompute."
+  cards$question$text <- "In Review, choose the biological question and comparison. Check which group is the reference and which is the comparison. A study description does not automatically change statistical tests. Use independently sampled units and a method appropriate for the design; a paired label does not convert an unpaired test."
+  cards$violin$text <- "In Canvas, explore the violin plot for the distribution of a selected lipid across samples in each group, with individual points. It displays positive prepared abundances on a log10 scale, excluding unavailable or nonpositive values. It is descriptive, not a significance test. Use the plot's existing data download when available; CSV is not provided by every analysis."
+  cards$pca$text <- "In Canvas, explore PCA as a summary of variation, not significance or causality. The dashboard supports linear or log10 prepared abundances and scaling options. Match the samples, lipids, transformation and scaling before comparing plots. Plot downloads are per plot, and CSV is available only when the source analysis provides it; inspect the exported columns rather than assuming it contains loadings."
+  cards$results$text <- "Canvas is a temporary layout for exploring and arranging available live plots. Appearance edits and layout changes do not alter the analysis data, and the layout is not a saved checkpoint. A volcano plot combines effect size and statistical evidence: check contrast direction, test and multiple-testing correction. A violin shape or PCA separation is not proof of a significant difference. I do not receive your matrix or computed statistical results and cannot name significant lipids from this chat. Downloads are per plot; CSV is available only where provided by the source analysis."
+  cards$cell$text <- "The 3D cell reference view is available from Canvas. Its anatomy is an unchanged illustration; prepared abundances appear in the adjacent profile and may include imputed estimates. Bulk or serum lipidomics does not establish subcellular localization. Anatomy is interpreted, not measured, and no dynamic simulation is enabled."
+  cards$share$text <- "Save private analysis checkpoints and export results in Save & export. Resume an existing private checkpoint from Data. Canvas figure arrangements and appearance edits are temporary and are not included in a checkpoint. Downloads are per plot; CSV is available only where the source analysis provides it. Separately save Methods and decisions, sample labels, prepared matrix, figures, plot-data CSVs where available, and the companion action log. Do not assume the checkpoint includes every separate export. Previous guided run history and the session-local companion log are not restored by the checkpoint."
+  cards$settings$text <- "To request one setting change, type set normalization to pqn, set minimum detection to 80%, or turn imputation off. I will show the current and proposed values for confirmation. No change is applied before you confirm. Confirmation updates the control only; review the settings and click Prepare data in Review yourself to recompute."
+  cards$unknown$text <- "The reviewed application guidance does not establish an answer to that question. I can help with study design, detection, QRILC, normalization, PCA, violin and volcano plots, the 3D reference view in Canvas, resuming checkpoints from Data, saving checkpoints and exporting results in Save & export, and temporary figure layouts and per-plot exports in Canvas. For study-specific conclusions or methods outside these topics, review the actual outputs with the analyst."
+  cards
+}
 
 companion_ai_complete <- function(question, context = list(), api_key = Sys.getenv("OPENAI_API_KEY", unset=""), model = Sys.getenv("COMPANION_AI_MODEL", unset="gpt-5-nano")) {
   if (!companion_ai_available()) return(list(ok=FALSE,error="AI guidance is disabled; the local guide remains available."))

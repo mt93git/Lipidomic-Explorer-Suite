@@ -2,7 +2,10 @@
 # This is intentionally fast and does not start Shiny, read user data, or call services.
 source("R/frontends/interface.R")
 source("R/frontends/classic/server.R")
+source("R/frontends/team/project_library.R")
+source("R/frontends/team/workspace.R")
 source("R/frontends/team/server.R")
+Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY = "0", LIPIDOMIC_TEAM_WORKSPACE = "0")
 
 check_selectors <- function() {
   old <- Sys.getenv("LIPIDOMIC_INTERFACE", unset = NA_character_)

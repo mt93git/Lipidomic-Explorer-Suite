@@ -1,0 +1,28 @@
+# Optional Team workspace. All plot outputs remain in the existing Shiny session.
+team_canvas_ui <- function() {
+  shiny::tags$section(id = "team-canvas-root", class = "tc-workspace", `aria-label` = "Figure canvas",
+    shiny::tags$div(class = "tc-intro",
+      shiny::tags$div(shiny::tags$span(class = "tc-eyebrow", "FIGURE WORKSPACE"),
+        shiny::tags$h2("Build your figure"),
+        shiny::tags$p("Add live plots from your current analysis, arrange them, and download each plot or its available data.")),
+      shiny::tags$button(type = "button", class = "tc-palette", "Colors & palettes", onclick = "Shiny.setInputValue('data_hub-open_palette_editor', Date.now(), {priority:'event'});")),
+    shiny::tags$div(class = "tc-layout",
+      shiny::tags$aside(class = "tc-catalog", `aria-label` = "Plot catalog",
+        shiny::tags$h3("Plot library"),
+        shiny::tags$p("Choose a plot to add it to your canvas. A listed plot may still need to load or its analysis may need to run."),
+        shiny::tags$input(type = "search", class = "tc-search", placeholder = "Search plots", `aria-label` = "Search plots"),
+        shiny::tags$div(class = "tc-list", `aria-live` = "polite")),
+      shiny::tags$div(class = "tc-main",
+        shiny::tags$details(class = "tc-view-settings",
+          shiny::tags$summary("Plot settings"),
+          shiny::tags$p("These settings change the displayed results; they do not rerun data preparation."),
+          shiny::tags$div(class = "tc-settings-dock")),
+        shiny::tags$div(class = "tc-toolbar", shiny::tags$strong("Canvas"),
+          shiny::tags$button(type = "button", class = "tc-library-toggle", `aria-expanded` = "true", "Hide library"), shiny::tags$span("Drag a header to move · drag a corner to resize"),
+          shiny::tags$button(type = "button", class = "tc-arrange", "Arrange"),
+          shiny::tags$button(type = "button", class = "tc-reset", "Return all plots")),
+        shiny::tags$div(class = "tc-scroll", shiny::tags$div(class = "tc-board",
+          shiny::tags$div(class = "tc-empty", "Your figure starts here. Add a plot from the library."))),
+        shiny::tags$p(class = "tc-footnote", "Plots use the current shared analysis. Downloads are per plot; CSV is available where provided. Canvas arrangement and appearance edits are temporary in this prototype. Save analysis checkpoints with Save & export."),
+        shiny::tags$div(class = "tc-status", role = "status", `aria-live` = "polite"))))
+}

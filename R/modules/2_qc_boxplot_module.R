@@ -556,6 +556,17 @@ qc_boxplot_ui <- function(id) {
   )
 }
 
+# A bare req() in a shared dependency carries no text. In Team's visible QC
+# review, give that pending state a useful message while preserving scientific
+# validation messages and real exceptions unchanged.
+qc_guided_pca_value <- function(compute) {
+  tryCatch(compute(), shiny.silent.error = function(e) {
+    if (nzchar(trimws(conditionMessage(e)))) stop(e)
+    shiny::validate(shiny::need(FALSE,
+      "PCA is waiting for the current sample and lipid selection. Review Quality settings, then click Update prepared data."))
+  })
+}
+
 qc_boxplot_server <- function(id, shared_data, global_color_map) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -1174,9 +1185,12 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       is.list(state) && isTRUE(state$data_available) && !is.null(state$applied) &&
         !is.null(shared_data$data_processed())
     })
+    guided_pca_result <- reactive({
+      qc_guided_pca_value(function() shared_data$pca_results())
+    })
     guided_scores <- reactive({
       validate(need(guided_applied_ready(), "Prepare data to see the sample quality plot."))
-      result <- shared_data$pca_results()
+      result <- guided_pca_result()
       validate(need(!is.null(result), "Prepare data to see the sample quality plot."))
       scores <- result$replicate_score_df
       validate(need(!is.null(scores) && all(c("FullName", "PC1", "PC2") %in% names(scores)),
@@ -1190,7 +1204,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       if (!guided_applied_ready()) return(p("Prepare data to view the sample quality plot."))
       if (isTRUE(shared_data$preparation_dirty())) return(p(class="guide-pending", "Changes are pending. This plot shows the previous prepared run; update prepared data to apply them."))
       tagList(p("PCA summarizes variation in the prepared data. Click a point to inspect it; investigate technical and biological context before excluding a sample."),
-              if (isTRUE(shared_data$pca_results()$fallback_used)) p(class="guide-pending", "The selected lipid scope could not support PCA; this plot uses the full prepared matrix."))
+              if (isTRUE(guided_pca_result()$fallback_used)) p(class="guide-pending", "The selected lipid scope could not support PCA; this plot uses the full prepared matrix."))
     })
     output$guided_qc_plot <- plotly::renderPlotly({
       # A restored session requires a fresh explicit preparation. Return a real
