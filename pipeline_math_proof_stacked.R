@@ -229,6 +229,24 @@ auto_route_statistical_method <- function(data_matrix_log, metadata, group_col) 
   return("limma")
 }
 
+#' Resolve the explicit, generic reference design used by the reproducibility
+#' fixture. Filename tokens are never interpreted as biological groups.
+read_reference_metadata <- function(sample_names,
+                                    metadata_path = file.path("tests", "fixtures", "proof_reference_metadata.csv")) {
+  if (!file.exists(metadata_path)) stop("Explicit reference metadata not found: ", metadata_path)
+  md <- utils::read.csv(metadata_path, check.names = FALSE, colClasses = "character", stringsAsFactors = FALSE)
+  required <- c("FullName", "Group1")
+  if (!all(required %in% names(md))) stop("Reference metadata requires FullName and Group1 columns")
+  if (anyNA(md$FullName) || any(!nzchar(trimws(md$FullName))) || anyDuplicated(md$FullName)) stop("Reference metadata contains missing or duplicate FullName values")
+  missing <- setdiff(sample_names, md$FullName)
+  extra <- setdiff(md$FullName, sample_names)
+  if (length(missing) || length(extra)) stop("Reference metadata must match matrix sample IDs exactly; missing=",
+    paste(missing, collapse = ","), "; extra=", paste(extra, collapse = ","))
+  md <- md[match(sample_names, md$FullName), , drop = FALSE]
+  if (anyNA(md$Group1) || any(!nzchar(trimws(md$Group1))) || length(unique(md$Group1)) != 2L) stop("Reference metadata must define exactly two complete Group1 levels")
+  md
+}
+
 #' 3.3 Empirical Bayes Moderated Linear Modeling (limma)
 #' Moderates feature variances toward a pooled prior across the lipidome:
 #'   s_tilde_i^2 = ( d_0 * s_0^2 + d_i * s_i^2 ) / ( d_0 + d_i )
@@ -313,11 +331,17 @@ perform_non_parametric_analysis <- function(data_matrix_log, metadata, group_col
 #'   PC Scores: T = U %*% Sigma
 #'   Loadings: V
 #'   Variance Explained: (Sigma_k^2) / sum(Sigma_j^2) * 100 %
-compute_pca <- function(data_matrix_log) {
-  mat_t <- t(data_matrix_log)
-  # Remove zero-variance features
+compute_pca <- function(data_matrix_linear) {
+  # Match the Classic production implementation exactly: nonnegative linear
+  # abundances are transformed once, then near-zero features are removed before
+  # centered/unit-variance prcomp. Keeping this transformation here (rather
+  # than in each caller) prevents the proof and the app from silently drifting.
+  mat_linear <- as.matrix(data_matrix_linear)
+  mode(mat_linear) <- "numeric"
+  mat_t <- t(log2(pmax(mat_linear, 0) + 1))
+  # Production cutoff is deliberately strict: 1e-10 (not the old 1e-9 proof cutoff).
   vars <- apply(mat_t, 2, var, na.rm = TRUE)
-  mat_t <- mat_t[, vars > 1e-9, drop = FALSE]
+  mat_t <- mat_t[, vars >= 1e-10, drop = FALSE]
   
   pca_res <- stats::prcomp(mat_t, center = TRUE, scale. = TRUE)
   var_explained <- (pca_res$sdev^2) / sum(pca_res$sdev^2) * 100
@@ -456,7 +480,8 @@ compute_z_score_matrix <- function(data_matrix_log) {
 # ==============================================================================
 
 execute_audit_proof <- function(raw_excel_path = "demo_data/demo_global_lipidomics.xlsx",
-                                output_dir = "docs/proof_artifacts") {
+                                output_dir = "docs/proof_artifacts",
+                                metadata_path = file.path("tests", "fixtures", "proof_reference_metadata.csv")) {
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   
   cat("--- STEP 1: Ingesting Raw Dataset ---\n")
@@ -536,21 +561,24 @@ execute_audit_proof <- function(raw_excel_path = "demo_data/demo_global_lipidomi
   cat("[SAVED] Transformation Audit Summary:", audit_path, "\n")
   
   cat("\n--- STEP 3: Auto-Routing & Differential Expression Audit ---\n")
-  # Derive synthetic metadata from column names
+  # Read the explicit generic reference design. Filename regex grouping is
+  # intentionally forbidden because it silently changes the study contrast.
   sample_names <- colnames(raw_mat)
-  groups <- ifelse(grepl("WT|Vehicle|Control|Ctrl", sample_names, ignore.case = TRUE), "Control", "Treated")
-  if (length(unique(groups)) < 2) {
-    groups <- rep(c("Control", "Treated"), length.out = length(sample_names))
-  }
-  meta_df <- data.frame(FullName = sample_names, Group = groups, stringsAsFactors = FALSE)
+  reference_metadata <- read_reference_metadata(sample_names, metadata_path)
+  meta_df <- data.frame(FullName = reference_metadata$FullName,
+                        Group = reference_metadata$Group1,
+                        stringsAsFactors = FALSE)
+  reference_group <- "Control"
+  comparison_group <- setdiff(unique(meta_df$Group), reference_group)
+  if (length(comparison_group) != 1L) stop("Explicit reference metadata must define Control and one comparison group")
   
   route <- auto_route_statistical_method(mat_normalized_log, meta_df, "Group")
   cat("  Auto-Route Decision:", route, "\n")
   
   de_results <- if (route == "limma" && requireNamespace("limma", quietly = TRUE)) {
-    perform_limma_analysis(mat_normalized_log, meta_df, "Group", "Control", "Treated")
+    perform_limma_analysis(mat_normalized_log, meta_df, "Group", reference_group, comparison_group)
   } else {
-    perform_non_parametric_analysis(mat_normalized_log, meta_df, "Group", "Control", "Treated")
+    perform_non_parametric_analysis(mat_normalized_log, meta_df, "Group", reference_group, comparison_group)
   }
   
   de_path <- file.path(output_dir, "differential_expression_audit_results.csv")
@@ -558,27 +586,40 @@ execute_audit_proof <- function(raw_excel_path = "demo_data/demo_global_lipidomi
   cat("[SAVED] Differential Expression Results:", de_path, "\n")
   
   cat("\n--- STEP 4: Cellular Peroxidation Index (CPI) & Organelle Stress ---\n")
-  # Synthetic annotation parser
+  # Use the production multi-chain parser supplied by R/global.R. The former
+  # inline single-colon regex was only a proof stub and disagreed on sphingolipid
+  # chains (for example Cer(d18:1/18:1)). Reference and production CPI/stress
+  # calculations must therefore consume the same parser.
   lipid_names <- rownames(raw_mat)
-  extract_db <- function(nm) {
-    m <- regmatches(nm, regexpr("(?<=:)\\d+", nm, perl = TRUE))
-    if (length(m) > 0 && nzchar(m)) as.numeric(m[1]) else 1
+  if (!exists("parse_lipid_names_bulk", mode = "function")) {
+    # Standalone proof runs must remain self-contained, but sourcing all of
+    # global.R would also initialise application state. Load only the parser's
+    # pure AST assignments and their lookup tables instead.
+    parser_path <- file.path("R", "global.R")
+    if (!file.exists(parser_path)) stop("Production parser source not found: ", parser_path)
+    find_parser_assignment <- function(node, target) {
+      if (!is.call(node) && !is.expression(node) && !is.pairlist(node)) return(NULL)
+      if (is.call(node) && identical(node[[1]], as.name("<-")) && identical(node[[2]], as.name(target))) return(node)
+      for (i in seq_along(node)) {
+        found <- tryCatch(find_parser_assignment(node[[i]], target), error = function(e) NULL)
+        if (!is.null(found)) return(found)
+      }
+      NULL
+    }
+    parser_ast <- parse(parser_path)
+    parser_env <- environment()
+    for (parser_name in c("class_map", "HYPERCLASS_MAP", "REVERSE_HYPERCLASS_MAP",
+                          "classify_chain", "clean_lipid_name", "parse_lipid_names_bulk")) {
+      assignment <- find_parser_assignment(parser_ast, parser_name)
+      if (is.null(assignment)) stop("Missing production parser assignment: ", parser_name)
+      eval(assignment, parser_env)
+    }
   }
-  extract_sub <- function(nm) {
-    if (grepl("^PC", nm)) "GP_PC"
-    else if (grepl("^PE", nm)) "GP_PE"
-    else if (grepl("^TAG", nm)) "GL_TAG"
-    else if (grepl("^DAG", nm)) "GL_DAG"
-    else if (grepl("^Cer", nm)) "SP_Cer"
-    else if (grepl("^SM", nm)) "SP_SM"
-    else if (grepl("^BMP", nm)) "GP_BMP"
-    else if (grepl("^ACar", nm)) "FA_ACar"
-    else "Other"
-  }
+  parsed <- parse_lipid_names_bulk(lipid_names, mode = "Global Lipidomics")
   annot_df <- data.frame(
     Lipid_Name = lipid_names,
-    Subclass = sapply(lipid_names, extract_sub),
-    Total_DB = sapply(lipid_names, extract_db),
+    Subclass = parsed$subclass[match(lipid_names, parsed$Lipid_Name)],
+    Total_DB = parsed$Total_DB[match(lipid_names, parsed$Lipid_Name)],
     stringsAsFactors = FALSE
   )
   

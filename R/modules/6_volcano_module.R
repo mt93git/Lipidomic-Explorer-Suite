@@ -510,7 +510,7 @@ volcano_server <- function(id, shared_data) {
     output$downloadTable <- downloadHandler(
       filename = "volcano_data.csv",
       content = function(file) {
-        write.csv(volcanoData(), file, row.names=FALSE)
+        write_spreadsheet_csv(volcanoData(), file, row.names=FALSE)
       }
     )
 

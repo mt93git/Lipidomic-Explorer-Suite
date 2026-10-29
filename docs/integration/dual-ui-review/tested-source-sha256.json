@@ -1,0 +1,666 @@
+[
+  {
+    "path": ".github/workflows/integration-safeguards.yml",
+    "sha256": "b37d601ab39aa04ff1369cbaafccb7010083d957ec0c8fefc08a47c1e3abdcf0"
+  },
+  {
+    "path": ".gitignore",
+    "sha256": "5876bb64373aa9f2447899840ffbfcd9a22e3d3e50218d772a7df4f3e550f096"
+  },
+  {
+    "path": "DESCRIPTION",
+    "sha256": "f9a356d67b2f03aec86feb4b67abf87db660b5c7d6ad411fcd570e97e0d26bff"
+  },
+  {
+    "path": "R/cell_show.R",
+    "sha256": "b9ea25d1dc0f07b9f7dd2b884f282233cd38fdfc3c1c2fd0d3b8e4b317ec2d05"
+  },
+  {
+    "path": "R/companion_ai_provider.R",
+    "sha256": "d4333186fff28403abaf79f82e2eec3e836c6cc757641404ebda3bebc89f663b"
+  },
+  {
+    "path": "R/companion_assistant.R",
+    "sha256": "b9b1b695745d36040651cd77e66661a0da5c29051d8f833db990d7a3f5f34033"
+  },
+  {
+    "path": "R/frontends/README.md",
+    "sha256": "3c2679c43d930956c1778afd18f2434b26f45f12f6afae8d6116472edf74b831"
+  },
+  {
+    "path": "R/frontends/classic/server.R",
+    "sha256": "c14c34ed28a1ed6882cc1628b4ed48a25c44fe7e4f1d8c164162cef82d69f78f"
+  },
+  {
+    "path": "R/frontends/classic/ui.R",
+    "sha256": "89b2178d7f0f26045a7f63d0f03b371f9674460d946bb6b62e332790671940ed"
+  },
+  {
+    "path": "R/frontends/interface.R",
+    "sha256": "0ed6dfc5aab29efbe3b40398f1100a276835b9e7a93ab2828d185202893f8610"
+  },
+  {
+    "path": "R/frontends/team/hub-ui.R",
+    "sha256": "8041ed30ee79a3d51eb8f79220353be472e1e42b0c2b10a99eeeb87fe7e38626"
+  },
+  {
+    "path": "R/frontends/team/modules-ui.R",
+    "sha256": "59dfed198fefa3a0dcedd10fb5591e441851b4a661dc130aa6daa435e13f09e1"
+  },
+  {
+    "path": "R/frontends/team/qc-ui.R",
+    "sha256": "149cdae770e0839b20dc9b929fe5dcf41fea96af7ff44f319b8df507652673fc"
+  },
+  {
+    "path": "R/frontends/team/sample_metadata_import_module.R",
+    "sha256": "70f9d5f3e09addcb35630505815ab54c3e539fa08e7e459b885eed9ec8f2a603"
+  },
+  {
+    "path": "R/frontends/team/server.R",
+    "sha256": "c516c47168ccfa7f8ae1bd04a4fa9332d7ea4d3e8066ebcac9a022267155b804"
+  },
+  {
+    "path": "R/frontends/team/ui.R",
+    "sha256": "da49009547e3d40fdabc89cc2b11c44b2c535a85b1f6ed6ef05d22488a44407f"
+  },
+  {
+    "path": "R/global.R",
+    "sha256": "8777e9e1c06a2ec9c889b5eb398d9f31dc64da8b21367947dba8dbcbcac2f0f9"
+  },
+  {
+    "path": "R/guided_preparation_controls.R",
+    "sha256": "85b79782ab86b70afe2f64e6f6c979873c2a9e42d124c234add79bf4ad26d34d"
+  },
+  {
+    "path": "R/guided_shared.R",
+    "sha256": "3e7bf7b43a27b480374546af9ec1d26be2f0c48c21309a2d0c6b5e94cfeb0d94"
+  },
+  {
+    "path": "R/guided_workflow.R",
+    "sha256": "b8db19315b5ed96ff969defb8890dde0fada880eba083b8548af73ad12e206a2"
+  },
+  {
+    "path": "R/modules/10_fla_module.R",
+    "sha256": "bd40bc541e6bb9b74e55b132fe395a72fcef7c2e89cd8411ee1999c677e21587"
+  },
+  {
+    "path": "R/modules/11_longitudinal_module.R",
+    "sha256": "32aa84dda5876c168e9cefa3ce3cb59ee5c3370d17d63bf603a2a8111e6aae8c"
+  },
+  {
+    "path": "R/modules/12_structural_grid_module.R",
+    "sha256": "b895b6984b610c3ba85014315d18fb17f68cb3822b3cb9722768a6f34336a0c0"
+  },
+  {
+    "path": "R/modules/13_pathway_module.R",
+    "sha256": "25462fa8d63cc10548dbd748d78efe2b7f51b8549c48a6d0aff40f9e408cce1d"
+  },
+  {
+    "path": "R/modules/14_cellular_org_module.R",
+    "sha256": "b254701ffabbdbb23337ca76063bb621a6bf30c687fe9acd22e0b103e19a1208"
+  },
+  {
+    "path": "R/modules/15_math_proof_module.R",
+    "sha256": "506e4158b04b235f090b6aa06ad199b7b72f5268d84e5e70684753a7e7f313b3"
+  },
+  {
+    "path": "R/modules/1_shared_data_module.R",
+    "sha256": "24e8c54627d8c20bfc6a728ca22257938a2e15e417b1756ae87fa2d8bba8a054"
+  },
+  {
+    "path": "R/modules/2_qc_boxplot_module.R",
+    "sha256": "a690abe7f4e167c1edf5232e773b034b9a287c5169367d58e316106046eb1cae"
+  },
+  {
+    "path": "R/modules/4_heatmap_module.R",
+    "sha256": "91dfb630593a511a9cac15ce734c70cc42312886ab57e33dbcb43e62f1be1ad5"
+  },
+  {
+    "path": "R/modules/5_barchart_module.R",
+    "sha256": "d60cd9171e69beb6eb48336d67d7e7505081d03b33b138e6069ce815b93bbff1"
+  },
+  {
+    "path": "R/modules/6_volcano_module.R",
+    "sha256": "56c4e47243f364ac40c5f037868396a53d4b875018d874d4dd277a676ae63c66"
+  },
+  {
+    "path": "R/modules/7_lsea_module.R",
+    "sha256": "ac59769c3efa85dd0f3b7a12beb747d8bc197d2332734d2ddf47c230cf730baf"
+  },
+  {
+    "path": "R/modules/8_structural_module.R",
+    "sha256": "e8fa17738cec3c3dca59014ae67a1e5d788c70dc143f33adb309877b295dd4e1"
+  },
+  {
+    "path": "R/modules/99_export_studio_module.R",
+    "sha256": "10293ac15b6a1333f105685b9dd655b5470bdc2a4d155368d86e5f28882ee454"
+  },
+  {
+    "path": "R/modules/9_logratio_module.R",
+    "sha256": "7bb9dfcf58f2c7665e7180da53b4b1e7186e7bfe8c49daa861a00cea38212cee"
+  },
+  {
+    "path": "R/modules/utils_stats.R",
+    "sha256": "b3ff51050c5d047303e3ac70b0364fe845876adcaf278496711cd1fdf5ad15d3"
+  },
+  {
+    "path": "R/results_dashboard.R",
+    "sha256": "493bacd541af8af40e6621db5a432bc9942c1c1919c42f404f4fd70c4f950f1e"
+  },
+  {
+    "path": "R/sample_metadata_import.R",
+    "sha256": "1ef72a5035eae0e83711717ef490317c40f41ee3f353243ca5764bd81dd03e3f"
+  },
+  {
+    "path": "R/server.R",
+    "sha256": "b05976a943b5da265c08e6ff1cbcd394ff2160dfe79db346f0f40b0c8840bfd4"
+  },
+  {
+    "path": "R/ui.R",
+    "sha256": "7249bc73dc1a4b99ad64352e60f84e7a456f0ff8ee2ac50ad81c2ef09512e654"
+  },
+  {
+    "path": "R/utils_colors.R",
+    "sha256": "9201fc34ba23cdc4ba678a7067810f7727bc54911fef6888374004da007ff9e8"
+  },
+  {
+    "path": "R/utils_csv_export.R",
+    "sha256": "daf686b6ccdf265e575f57e51dc57a546e285b062bfe74e465175e50dc6437e2"
+  },
+  {
+    "path": "R/utils_data.R",
+    "sha256": "86a79d82483cd759370bbf37f59af2ec37d7eeda5cde2cb45611de9989fd7911"
+  },
+  {
+    "path": "R/utils_plot_events.R",
+    "sha256": "ef8cac90ee9a09cb4cec0d3a2f6bf1a9ee030cdcd8f569da123128f5c3e17f55"
+  },
+  {
+    "path": "R/utils_preparation.R",
+    "sha256": "583332da9c6b6f12b3c09fa3c8796e72e904e3bc01b81f46e16111f61703a783"
+  },
+  {
+    "path": "R/utils_sample_metadata.R",
+    "sha256": "d6d6918143d6183dd55141c088fd382cec8a24d48c95b5f426d024e1d3e182a1"
+  },
+  {
+    "path": "R/utils_session_archive.R",
+    "sha256": "111990d102798bbbc9156bc77d4395b0257375b325550c752d29a020a0b39efe"
+  },
+  {
+    "path": "R/utils_vis.R",
+    "sha256": "2a657c2185d1eccc3a0eadba911cff05fb26f7501297576aaee9f25e97a9782c"
+  },
+  {
+    "path": "R/ux_preparation.R",
+    "sha256": "e138fbf624068886fb853a7054aca9e7ada256403931061a11f4bb32aee70851"
+  },
+  {
+    "path": "app.R",
+    "sha256": "3413ae380653a73faa1b6d817651c3e27186ea0102399f39407ff8520e9f4fa0"
+  },
+  {
+    "path": "docs/integration/dual-ui-backend-scope.md",
+    "sha256": "fe69a774cdde3fc4f651e9b20be554745e9bc7adb13397173d2dfdd7a95c9b86"
+  },
+  {
+    "path": "docs/integration/max-alignment-resolution.md",
+    "sha256": "e67aa78a9490324501fae579eb4fbb72dcd92b0a15c5d7ef0cec526707ffaa38"
+  },
+  {
+    "path": "docs/proof_artifacts/differential_expression_audit_results.csv",
+    "sha256": "d881c8772be606f88ef0a1f63c8f86b622b92d6e2f0433e7d50c320641fc3ce3"
+  },
+  {
+    "path": "docs/proof_artifacts/organelle_stress_and_cpi_audit.csv",
+    "sha256": "797785c814bec6450c307ca8a5544f243c8100be248d3165b0d4885583674e63"
+  },
+  {
+    "path": "pipeline_math_proof_stacked.R",
+    "sha256": "ef30a356e1f48669335dcc80106c0ae8c7c3d985e773831352ff689e42109574"
+  },
+  {
+    "path": "tests/block2/compare_references.R",
+    "sha256": "9c0f960c686bbe23cbb01e75052dbdbc7ab63e4f24dc75eeabf8debc7d53ad42"
+  },
+  {
+    "path": "tests/block2/test_hub.R",
+    "sha256": "f34e4077865fb3952aa8d95a637a4a337f81f61c3526c2cdc16c12c71f810d9e"
+  },
+  {
+    "path": "tests/block2/test_preparation.R",
+    "sha256": "b366b93a2583ea6aa6bc774922db8e17e272325344a4fdcf0535afcfe676c78a"
+  },
+  {
+    "path": "tests/dual-ui/fixtures/classic-seed7-synthetic.zip",
+    "sha256": "4b1a893f39e5e8643d0f1b3528994b612c686ddd0cc59dee3a0ee4ef8553faaf"
+  },
+  {
+    "path": "tests/dual-ui/run_acceptance.R",
+    "sha256": "4284a2644703a6faca30c301825bb4dd51df9f218f0481f4da9bd1ee01001ed7"
+  },
+  {
+    "path": "tests/dual-ui/test_accordion_restore.R",
+    "sha256": "072c37f5839734bb97a40b9766cab9ae1d6af2a9ff376c795187f3a2f54e2e73"
+  },
+  {
+    "path": "tests/dual-ui/test_architecture.R",
+    "sha256": "277f7f398c17ca69595076e0737224931c7fc3c68fe98cfd4cd8a305d75ef17d"
+  },
+  {
+    "path": "tests/dual-ui/test_backend_classic_reexport.R",
+    "sha256": "d3d508d21b7edf26153519e078001bff754020050ac8629a308136f1a6e41116"
+  },
+  {
+    "path": "tests/dual-ui/test_backend_hub.R",
+    "sha256": "cd360b41465ad2ee51aebebcac33a65f970fe3f79b20afeec521c8acb49e3cfe"
+  },
+  {
+    "path": "tests/dual-ui/test_backend_metadata.R",
+    "sha256": "3926aa1c596c77b3fdd60715d3fa96a926ba178d7aa833c784d9f44bb89e17b6"
+  },
+  {
+    "path": "tests/dual-ui/test_backend_policy.R",
+    "sha256": "2f4b1e4da946088fcdea38ecf1b6eb587a84c2127aadbef09b18fbdce0f918be"
+  },
+  {
+    "path": "tests/dual-ui/test_backend_restore_seed.R",
+    "sha256": "422f7b61d9bfa7c4b02447c43262815757cae4ff0e18393156550556aa62549f"
+  },
+  {
+    "path": "tests/dual-ui/test_backend_seed_reset.R",
+    "sha256": "684c478ea088c4861db9512206d72b27f3ac36c9b5919bb4148448a527ae1c5b"
+  },
+  {
+    "path": "tests/dual-ui/test_barchart_ui_ids.R",
+    "sha256": "15e0c8049c2586b4e97629bf555f1163d58d5f7aa02aa6cb68cc0ad2f3c4582e"
+  },
+  {
+    "path": "tests/dual-ui/test_ci_full_acceptance.R",
+    "sha256": "baf068914a7131e1bb72653d18cd115175459640e521579e7b356423c7a1458f"
+  },
+  {
+    "path": "tests/dual-ui/test_companion_ai_worker_globals.R",
+    "sha256": "bc656d479330ed72101ad1d90812dd26cf1007b467cf755a0ecb151261ed0eef"
+  },
+  {
+    "path": "tests/dual-ui/test_composition_missingness.R",
+    "sha256": "036d61d28fa2f6ba5a478474755a79247d29ed41dc481f290e9af619c07dbadc"
+  },
+  {
+    "path": "tests/dual-ui/test_cross_zip.R",
+    "sha256": "55d9290417468eaaf1eca13b6fcfc313bae090b1bf3723f02259040ece3a72d7"
+  },
+  {
+    "path": "tests/dual-ui/test_csv_export_boundaries.R",
+    "sha256": "8875767d257335df439a39da7a284c067b1e3ef6407a03a9946db799348595aa"
+  },
+  {
+    "path": "tests/dual-ui/test_dashboard_pca_parity.R",
+    "sha256": "8f6f73b1f34ae1c9b618a6de8310f15d505c347f82379d738473030eb7036d23"
+  },
+  {
+    "path": "tests/dual-ui/test_empty_selection_policy.R",
+    "sha256": "5fee8975c6649964ab5270825b007e162f4631d76b8ccc829b6da3b5d3e465e5"
+  },
+  {
+    "path": "tests/dual-ui/test_export_qc_contract.R",
+    "sha256": "f94a6ce6f8a223c9acf794b786fc0b477cdeb85213855adaba1b82b154564c3d"
+  },
+  {
+    "path": "tests/dual-ui/test_heatmap_dynamic_ids.R",
+    "sha256": "fe121417e17d9eddec2b29df485c2a0fa46daddacfdbb056ab523ae204201f6a"
+  },
+  {
+    "path": "tests/dual-ui/test_heatmap_sd_title.R",
+    "sha256": "d456b63edb2986b6f1538dc6e1cedbb3ef90cce69aadda660d3f9856aa3066b1"
+  },
+  {
+    "path": "tests/dual-ui/test_logratio_zip_lifecycle.R",
+    "sha256": "abd919784578b07634e2be9757b698789555c4d66fa321958d44767130952d14"
+  },
+  {
+    "path": "tests/dual-ui/test_math_asset_integrity.R",
+    "sha256": "9f0900bb446bf02c760cb98909e901cfbb976cdb9d8b781243fc6efd911b09b3"
+  },
+  {
+    "path": "tests/dual-ui/test_math_proof_dom_ids.R",
+    "sha256": "ea014bc17beab13cc4aff1141cb6bf4286f01adc37ac5ed3731d5176b0754760"
+  },
+  {
+    "path": "tests/dual-ui/test_metadata_csv_safe.R",
+    "sha256": "554abef0c09a1a852353dfaf6b685c6512cdf5c92a782bc4d421352b6a3884ea"
+  },
+  {
+    "path": "tests/dual-ui/test_modules_inference.R",
+    "sha256": "738c9adff12b1c7e3d2d81bf547c36610147423002c85691846fe1ea318e99d8"
+  },
+  {
+    "path": "tests/dual-ui/test_modules_ui_contract.R",
+    "sha256": "e90f6d1358c16d0430e4e0015a63861be50267f9049b13cf8d7aa44aa633e211"
+  },
+  {
+    "path": "tests/dual-ui/test_no_metadata_zip_roundtrip.R",
+    "sha256": "28a83811c030abddbeeeeb7da44f0f601bdb71c71c2cb657085ced742546a756"
+  },
+  {
+    "path": "tests/dual-ui/test_optional_comparison.R",
+    "sha256": "ed154aededc24e9d35e1ac8eeb14bfe9545faa9623887724570ff04a6377f522"
+  },
+  {
+    "path": "tests/dual-ui/test_plot_event_lifecycle.R",
+    "sha256": "4b0534e4dab66c9b698433d782ca785f770d39da92d32379646bed39fbb567bb"
+  },
+  {
+    "path": "tests/dual-ui/test_privacy_and_cell_adapter.R",
+    "sha256": "bf6e0e9c20a4922591ee7443bdc3830071484a613a7396cfef564bf511ea99c5"
+  },
+  {
+    "path": "tests/dual-ui/test_reference_parser.R",
+    "sha256": "8b36a7100dc0bde75d70070bb1c7a92c8c1731e745af04a30ad6bf1f4ad6a3eb"
+  },
+  {
+    "path": "tests/dual-ui/test_restore_reexport_precision.R",
+    "sha256": "c374cb718420b2d0330396b24f1b11a76dfc4935245a3979e3de251bea5a4cad"
+  },
+  {
+    "path": "tests/dual-ui/test_runtime_install_policy.R",
+    "sha256": "8c7f75c3b0607a2703c08e7ef90bee318e7fea19d699776b61669203bb0a24b6"
+  },
+  {
+    "path": "tests/dual-ui/test_session_zip_privacy_cwd.R",
+    "sha256": "4975c2c3e9c3f3c53c2ca2cb42324f19077bb711d61f6f9d1c417bdc4b9a58aa"
+  },
+  {
+    "path": "tests/dual-ui/test_structural_chain_order.R",
+    "sha256": "ddf39ed628a1b5b6ba8323d467bed4c6b92e187be8fbd2f982045ab52c31addc"
+  },
+  {
+    "path": "tests/dual-ui/test_structural_plot_height.R",
+    "sha256": "0a61375238514db9f2ec68d72cac0e61d6b32b5bee8dd7ec6a527e95f6ec19c9"
+  },
+  {
+    "path": "tests/dual-ui/test_structural_table_escape.R",
+    "sha256": "a0e1f0766ba495138e26335dd47f06960895d83244cd550c1213aff1066ebb7f"
+  },
+  {
+    "path": "tests/dual-ui/test_structural_top_classes_render.R",
+    "sha256": "2b65422ddd1381b2ad8f9a8b9355b92f18ab9bae5e8aa70b889f12513503b763"
+  },
+  {
+    "path": "tests/dual-ui/test_team_classic_team_state.R",
+    "sha256": "fb6382437d4ae46f015dc8ebabb40f9a1adb07a0d55efb5a154b24aa49f7e571"
+  },
+  {
+    "path": "tests/dual-ui/test_team_csv_downloads.R",
+    "sha256": "5b073ddcd208f3b590478a08f2d49390bb4e6ba73853daeb5827fb5b3428b2a6"
+  },
+  {
+    "path": "tests/dual-ui/test_team_focus_copy.R",
+    "sha256": "41efcd800cffc106e99f3eee49035a55d275fe1d9052fdc1e16195613a28007c"
+  },
+  {
+    "path": "tests/dual-ui/test_team_local_assets.R",
+    "sha256": "8eb82d1956cac2b6b2ec68e8e316f12c2184745c33e02e702dde5d9f7371f725"
+  },
+  {
+    "path": "tests/dual-ui/test_team_restore_route.R",
+    "sha256": "46ad0d49c38685e17062e3906bf62dc1abff013c14c0af83923f800357783300"
+  },
+  {
+    "path": "tests/dual-ui/test_team_run_history.R",
+    "sha256": "e6bb6bbec55ce4acf57b1114451d04cfe0d454391e6e7e66314b06acb0557c13"
+  },
+  {
+    "path": "tests/fixtures/proof_reference_metadata.csv",
+    "sha256": "da5925d6540803fc4149435ee27e3a518ee5120c6d3275ea9733e783a80ac0dc"
+  },
+  {
+    "path": "tests/guided-shared/bootstrap_hub.R",
+    "sha256": "d1d56704fcee58ec0861f50ad8e4184b5b047a733025e6477dfe7125952e4511"
+  },
+  {
+    "path": "tests/guided-shared/fixtures/abundance.csv",
+    "sha256": "bd599b27b6e1c95b07eb4d5e1f962248b44716c533ee37b6082ae1e455283e11"
+  },
+  {
+    "path": "tests/guided-shared/fixtures/metadata.csv",
+    "sha256": "4ecedc8d800e4595dd834bba21b2bc15ad33f3674e915c82b4af9cc28822bdb7"
+  },
+  {
+    "path": "tests/guided-shared/make_archive_fixtures.py",
+    "sha256": "c6c0c7bb1449f757040c6f0bfa1902dae9125990e4da2e5f7ba45be70c8f03bd"
+  },
+  {
+    "path": "tests/guided-shared/test_guided_server.R",
+    "sha256": "1657d1dad15bf7f594b40949aea4a708ba0c11402f230f62fb0aa866559b0e7e"
+  },
+  {
+    "path": "tests/guided-shared/test_hub_adapter.R",
+    "sha256": "1b19a1c06172578b9d7f8bda75ddca140a354a0f06fd996c5c54688eeaf7c0b5"
+  },
+  {
+    "path": "tests/guided-shared/test_metadata.R",
+    "sha256": "1d3d6e886b0990336a0118e582958ce7676a7fb35c708076373124af2ec8ef19"
+  },
+  {
+    "path": "tests/integration/helpers.R",
+    "sha256": "eecd1e6fce42d383b0ddb3050cd82c69973478e4001e4ab3dbbb12a74e0d6efe"
+  },
+  {
+    "path": "www/css/cell_show.css",
+    "sha256": "e968f41b384c8f483df4f2133ad11d3dd7fe10b78402667fbfbf251023adcde4"
+  },
+  {
+    "path": "www/css/guided_shared.css",
+    "sha256": "a9e536da9033bfc35fab09b38e357d40916c60c788f94864729d799213b166b6"
+  },
+  {
+    "path": "www/js/cell_viewer.js",
+    "sha256": "1475edc1499fb00ea080a5bbe6a1661803fc6ff74294a6cbd89c33746058a5e1"
+  },
+  {
+    "path": "www/js/guided_shared.js",
+    "sha256": "c85877494e5d913acaeb7edb1a28b0b78102e7098bb8b2b650dfc9162acdff09"
+  },
+  {
+    "path": "www/models/README.md",
+    "sha256": "db1b8fb143911a6da99510ddd44ba09dbeb98f0fa50a8dddb2e30693b1de53d3"
+  },
+  {
+    "path": "www/models/neutrophil-cinematic.jpg",
+    "sha256": "de139c131899d6ad718a8af25b5fe317af3d39e1f8ee5bfaf33c788d838b347d"
+  },
+  {
+    "path": "www/models/neutrophil-cinematic.mp4",
+    "sha256": "719f96b30dc09daa1f062322d3c136543268ec74f20d93989d96b2c60ab4ed1d"
+  },
+  {
+    "path": "www/models/neutrophil-preview.png",
+    "sha256": "d0a7bc747930f5c88ca2281e9102dfc7dd0a503ab81a8f00ed84f6fc382eb27a"
+  },
+  {
+    "path": "www/models/neutrophil.glb",
+    "sha256": "151e3283310a1d61772d512d78a77540e3625250957b3ec3fde42c69fa5d66a4"
+  },
+  {
+    "path": "www/team/app_logo_256.jpg",
+    "sha256": "4a57017a467a2d4825e1d78440942d7f957ca6fa9c2039cb9fbd48fd0799b4d7"
+  },
+  {
+    "path": "www/team/app_logo_cropped.jpg",
+    "sha256": "f284a36d65b5db0baf4dc5ea145eadc30a6748af2b257348a89d531281ae01d3"
+  },
+  {
+    "path": "www/team/app_logo_retina.png",
+    "sha256": "bd74c08231785fa8ce856ad7afd1a0f8469d90f8435572008c31669414b4e09a"
+  },
+  {
+    "path": "www/team/css/cell_show.css",
+    "sha256": "e968f41b384c8f483df4f2133ad11d3dd7fe10b78402667fbfbf251023adcde4"
+  },
+  {
+    "path": "www/team/css/companion_assistant.css",
+    "sha256": "a05bec991ff946e833425407d90effcbd8ca26dd4ef4253dfb8ba87e8c00cfc5"
+  },
+  {
+    "path": "www/team/css/context_help.css",
+    "sha256": "39eab79a2594ed2331e3324eb0e10a212b6472e13b076a6ff652781e40f633d9"
+  },
+  {
+    "path": "www/team/css/custom.css",
+    "sha256": "4d232176f936dc52dc9addc69edd5b237aa94372c1a70a51fc70f854446565fc"
+  },
+  {
+    "path": "www/team/css/dashboard.css",
+    "sha256": "696593f1409e562a4f599b10355ff07d13640c36d61deee01c0deb5a1f4ac842"
+  },
+  {
+    "path": "www/team/css/guided.css",
+    "sha256": "bf526bcb923696c6e0185666a480b4c98e03fb8c5d8d9b7d5e296fa3392dac42"
+  },
+  {
+    "path": "www/team/css/libreros.css",
+    "sha256": "70711f53647eec87fcb8eb7802e25ff749f885e2b4110155870ad1d8600f5380"
+  },
+  {
+    "path": "www/team/css/palette_editor.css",
+    "sha256": "b69eb4442557998b0cb753194ead33036842b2f9aeeefd52c0af93142b25e8cd"
+  },
+  {
+    "path": "www/team/favicon.png",
+    "sha256": "8af0d2396b908c98de72b3ad00ccea44d0911f5472bd909a0f265d0c665a0743"
+  },
+  {
+    "path": "www/team/img/app_logo.jpg",
+    "sha256": "25d8197b5ab13cd7d5a02930fc97994860d2ff60586fc22bc00bca5453498909"
+  },
+  {
+    "path": "www/team/img/app_logo_256.jpg",
+    "sha256": "4a57017a467a2d4825e1d78440942d7f957ca6fa9c2039cb9fbd48fd0799b4d7"
+  },
+  {
+    "path": "www/team/img/app_logo_cropped.jpg",
+    "sha256": "f284a36d65b5db0baf4dc5ea145eadc30a6748af2b257348a89d531281ae01d3"
+  },
+  {
+    "path": "www/team/img/app_logo_navbar.jpg",
+    "sha256": "b139b95c70f81d62f711149f17b441bd3a33b24704d10725d9aa02ed82338897"
+  },
+  {
+    "path": "www/team/img/app_logo_navbar.png",
+    "sha256": "83554e383b30c8cade23e63f7ddb91fa914b57265f21adc08ac353c46da34270"
+  },
+  {
+    "path": "www/team/img/app_logo_retina.jpg",
+    "sha256": "a8faa807fb978f6d512084a4838233cabdcdc427faf77eac9368f489efe69d28"
+  },
+  {
+    "path": "www/team/img/app_logo_retina.png",
+    "sha256": "bd74c08231785fa8ce856ad7afd1a0f8469d90f8435572008c31669414b4e09a"
+  },
+  {
+    "path": "www/team/img/app_logo_ribbon.jpg",
+    "sha256": "e1bb183c3ac6be8b40f942132678f86b9cb3f27121c7de31da4f21bc71cefa53"
+  },
+  {
+    "path": "www/team/img/app_logo_ribbon.png",
+    "sha256": "b7264b7818e59c15b1ee6711888eba921316cf472fba0fa388704a42a269c2ee"
+  },
+  {
+    "path": "www/team/img/app_logo_transparent.png",
+    "sha256": "f5a4b9eb787e013ca387527c3f7e74a8da6a9d2ef4b5a058c342f0d7cf2942be"
+  },
+  {
+    "path": "www/team/img/favicon.png",
+    "sha256": "8af0d2396b908c98de72b3ad00ccea44d0911f5472bd909a0f265d0c665a0743"
+  },
+  {
+    "path": "www/team/img/help-macrophage.svg",
+    "sha256": "b51a83919bbe044ea57fc6d4e927133c4e1a6547055b13eac4a427159e2ff84d"
+  },
+  {
+    "path": "www/team/img/help-neutrophil.svg",
+    "sha256": "94cee1c79395a3940f404534d12e615b00626da09a28645e3ff83fc161a3384c"
+  },
+  {
+    "path": "www/team/js/app.js",
+    "sha256": "1ce65734f482ff96a0245157c5078412b152c3f18c1b2657b8e0f03e5074bd29"
+  },
+  {
+    "path": "www/team/js/cell_viewer.js",
+    "sha256": "cc1027951122ac8eabc0d55b0f329ee57eda780898fd4b81e39e4459f8a11a70"
+  },
+  {
+    "path": "www/team/js/companion_art.js",
+    "sha256": "1b46eb82ada8abb250fb28b753e127471c8b90002c601aaea558d097b7d51773"
+  },
+  {
+    "path": "www/team/js/companion_assistant.js",
+    "sha256": "c00f5ee1c5d6a2a4d11490d99db08635247b0a7aab2963d8e854745b2cb56c8c"
+  },
+  {
+    "path": "www/team/js/context_help.js",
+    "sha256": "da47286ac74867ab279c88222c2cb3cc6d73598c429943ec7add32b722f0c747"
+  },
+  {
+    "path": "www/team/js/guided.js",
+    "sha256": "f0ac98df75982efe2b442de084d001be0ac3ed600afdfbd5a03451e7772d9d30"
+  },
+  {
+    "path": "www/team/js/help_content.js",
+    "sha256": "b1646ea4d986f4d7dc15f39dacec0ae014a4b26bd7391653b954b92b5b3b727c"
+  },
+  {
+    "path": "www/team/js/palette_editor.js",
+    "sha256": "cfda705056dae4261ad9eefd3a1b5c791092ee298ce81295d0e8a0e646e6a8d4"
+  },
+  {
+    "path": "www/team/js/plot_exports.js",
+    "sha256": "307c06e9349b7efe56e9acfdce9035bfe7f86e3bdd30e2ac5e2705fe4abf3c5b"
+  },
+  {
+    "path": "www/team/js/tour_guide.js",
+    "sha256": "bc8a87965b2ee43eea718ca09f225babefd98969bba8eda6aa756069c34293f5"
+  },
+  {
+    "path": "www/team/libreros-lab-logo.webp",
+    "sha256": "a014673b700b22c271f5bae848a401bf27a9a0fbc910482354198917e917555b"
+  },
+  {
+    "path": "www/team/libreros-logo.webp",
+    "sha256": "d25b070f61185e926fd72c67db6b48a22ba92977951c6e413a6017dd713b1f61"
+  },
+  {
+    "path": "www/team/models/neutrophil-cinematic.jpg",
+    "sha256": "de139c131899d6ad718a8af25b5fe317af3d39e1f8ee5bfaf33c788d838b347d"
+  },
+  {
+    "path": "www/team/models/neutrophil-cinematic.mp4",
+    "sha256": "719f96b30dc09daa1f062322d3c136543268ec74f20d93989d96b2c60ab4ed1d"
+  },
+  {
+    "path": "www/team/models/neutrophil-preview.png",
+    "sha256": "d0a7bc747930f5c88ca2281e9102dfc7dd0a503ab81a8f00ed84f6fc382eb27a"
+  },
+  {
+    "path": "www/team/models/neutrophil.glb",
+    "sha256": "151e3283310a1d61772d512d78a77540e3625250957b3ec3fde42c69fa5d66a4"
+  },
+  {
+    "path": "www/team/vendor/jspdf-LICENSE.txt",
+    "sha256": "dc388ec35ff463288cdde3588a36fd4ed12a45deff053243b37309acc9ef583b"
+  },
+  {
+    "path": "www/team/vendor/jspdf.umd.min.js",
+    "sha256": "e6551fcdc32f09d6853b2c5126d18d01d9447e0da618a41a11ebeee0f6c20d54"
+  },
+  {
+    "path": "www/team/vendor/svg2pdf.js-LICENSE.txt",
+    "sha256": "04db7fb792d065c8c9a0e3a7a8255cd36e32b263ca023cbea10daee4a45132b8"
+  },
+  {
+    "path": "www/team/vendor/svg2pdf.umd.min.js",
+    "sha256": "2f10c0d16959e9a0c4cfd8605cfce0830ddc384337f74fa0351a6eff1c1efb8b"
+  }
+]

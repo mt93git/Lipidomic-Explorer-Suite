@@ -1,0 +1,71 @@
+/* www/css/dashboard.css — Results overview dashboard (R/results_dashboard.R) */
+.rd-dashboard {
+  --rd-surface: #fcfcfb; --rd-plane: #f9f9f7; --rd-border: #e6e5e0;
+  --rd-ink: #0b0b0b; --rd-ink-2: #52514e; --rd-accent: #337f87;
+  --rd-warn-bg: #fff6e0; --rd-warn: #8a5a00;
+  background: var(--rd-plane); color: var(--rd-ink);
+  padding: 1.5rem clamp(0.75rem, 2vw, 2rem) 2.5rem;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.rd-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.rd-header h2 { font-size: 1.6rem; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 0.25rem; }
+.rd-lede { color: var(--rd-ink-2); margin: 0; max-width: 60ch; }
+.rd-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.rd-controls .form-group { margin-bottom: 0; }
+.rd-controls label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rd-ink-2); }
+
+.rd-pending {
+  background: var(--rd-warn-bg); color: var(--rd-warn); border: 1px solid #f3d48a;
+  border-radius: 10px; padding: 0.65rem 0.9rem; margin-bottom: 1rem; font-weight: 500;
+}
+
+.rd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.rd-kpi { background: var(--rd-surface); border: 1px solid var(--rd-border); border-radius: 12px; padding: 0.8rem 1rem; }
+.rd-kpi-value { font-size: 1.5rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.rd-kpi-label { font-size: 0.8rem; color: var(--rd-ink-2); }
+
+.rd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.rd-card {
+  background: var(--rd-surface); border: 1px solid var(--rd-border); border-radius: 14px;
+  padding: 1rem 1rem 0.75rem; box-shadow: 0 1px 2px rgba(11, 11, 11, 0.04); min-width: 0;
+}
+.rd-card:nth-child(3),.rd-card:last-child { grid-column: 1 / -1; }
+.rd-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+.rd-card h3, .rd-methods h3 { font-size: 1.05rem; font-weight: 620; margin: 0; }
+.rd-card-sub { font-size: 0.85rem; color: var(--rd-ink-2); margin: 0.15rem 0 0; }
+.rd-card-note { font-size: 0.8rem; color: var(--rd-ink-2); border-top: 1px solid var(--rd-border); padding-top: 0.5rem; margin-top: 0.25rem; }
+.rd-dl.btn {
+  white-space: nowrap; border: 1px solid var(--rd-border); background: transparent; color: var(--rd-accent);
+  border-radius: 8px; font-weight: 500;
+}
+.rd-dl.btn:hover, .rd-dl.btn:focus-visible { background: #eef4fc; border-color: var(--rd-accent); }
+
+.rd-methods {
+  margin-top: 1rem; background: var(--rd-surface); border: 1px solid var(--rd-border);
+  border-left: 4px solid var(--rd-accent); border-radius: 14px; padding: 1rem 1.25rem;
+}
+.rd-methods ul { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--rd-ink-2); line-height: 1.55; }
+.rd-methods strong { color: var(--rd-ink); }
+
+@media (max-width: 992px) {
+  .rd-grid { grid-template-columns: minmax(0, 1fr); }
+  .rd-header { align-items: flex-start; }
+}
+@media (max-width: 576px) {
+  .rd-card-head { flex-direction: column; }
+  .rd-controls > * { flex: 1 1 140px; }
+}
+
+.rd-dashboard{padding:0 0 32px;background:transparent}.rd-header h2{font-family:inherit;font-size:23px;color:#24404b}.rd-kpi-value{color:#245e66}.rd-card h3{font-family:inherit;font-size:19px;color:#24404b}.rd-card .plotly{max-width:100%}.rd-controls select{appearance:auto;min-height:42px}.rd-card-sub{line-height:1.6}.rd-methods{font-size:14px}
+
+/* Results share the editorial typography and quieter surfaces of the guide. */
+.rd-dashboard{font-family:var(--lab-body,'Nunito Sans',sans-serif);--rd-ink:#162230;--rd-ink-2:#526477;--rd-border:#dce3e9;--rd-surface:#fff;--rd-plane:#fafaf8;--rd-accent:#2d5f8a}
+.rd-card,.rd-kpi,.rd-methods{border-radius:8px;box-shadow:none}
+.rd-card h3,.rd-methods h3{font:600 20px/1.2 var(--lab-heading,'Cormorant Garamond',Georgia,serif);color:var(--rd-ink)}
+.rd-kpi-value{color:var(--rd-ink)}
+.rd-header h2{font:600 23px/1.2 var(--lab-heading,'Cormorant Garamond',Georgia,serif);color:var(--rd-ink)}
+body.guided-app .rd-header h2{display:none}
+
+.rd-violin-card{margin:0 0 20px;border-top:3px solid #337f87}.rd-violin-controls{display:flex;align-items:flex-end;gap:18px;margin:14px 0}.rd-violin-controls .form-group{flex:1;min-width:0;margin:0}.rd-violin-controls .guide-button{flex:none}.rd-violin-card .selectize-control{min-width:0}.rd-violin-card .selectize-input{min-height:42px}.rd-violin-card .selectize-dropdown{z-index:1000}
+@media(max-width:600px){.rd-violin-controls{flex-direction:column;align-items:stretch}.rd-violin-controls .guide-button{white-space:normal}.rd-violin-card .rd-card-head{flex-direction:column}}
+.plot-export-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 6px;font:12px var(--lab-body,system-ui);color:#526477}.plot-export-bar>span:first-child{margin-right:6px}.plot-export-button{min-height:44px;padding:8px 12px;border:1px solid #bdcdd8;border-radius:6px;background:#fff;color:#245e66;font:600 12px var(--lab-body,system-ui);cursor:pointer}.plot-export-button:hover{background:#edf5f6}.plot-export-button:focus-visible{outline:3px solid #2d5f8a;outline-offset:2px}.plot-export-button:disabled{opacity:.55;cursor:wait}.plot-export-status{flex-basis:100%;font-size:12px}.plot-export-status:empty{display:none}

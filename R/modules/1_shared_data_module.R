@@ -1,6 +1,15 @@
 # R/modules/1_shared_data_module.R
 # Shared functionality and data hub.
 
+# Events and review receipts describe a browser interaction, not saved study state.
+# Keep this filter on both archive creation and import (including older archives).
+session_persistent_inputs <- function(inputs) {
+  if (is.null(inputs)) return(list())
+  if (!is.list(inputs)) return(inputs)
+  transient <- grepl("(^|[-_])(assistant_(request|action|confirm|cancel)|client_ui_trace|guide_(review_receipt|focus_request|step|design_confirm)|shared_(design_confirm|review_receipt|apply_receipt|metadata_apply|step_[0-9]+|next_[0-9]+))$", names(inputs))
+  inputs[!transient]
+}
+
 shared_data_ui <- function(id) {
   ns <- NS(id)
   
@@ -397,7 +406,19 @@ shared_data_ui <- function(id) {
 
 # Server logic
 
-shared_data_server <- function(id, external_settings = reactive(NULL), welcome_load_demo_trigger = NULL) {
+# Restore a missing Team seed control from the explicit archive contract.
+# A saved control always takes precedence, including over the contract fallback.
+team_restore_seed_input <- function(inputs, seed, policy) {
+  if (is.null(inputs)) inputs <- list()
+  if (!is.list(inputs)) stop("Invalid saved controls.")
+  id <- "qc_pca_tab-imputationSeed"
+  if (identical(policy, "team") && is.null(inputs[[id]]) && !is.null(seed))
+    inputs[[id]] <- preparation_settings(list(imputationSeed=seed))$imputationSeed
+  inputs
+}
+
+shared_data_server <- function(id, external_settings = reactive(NULL), welcome_load_demo_trigger = NULL, root_session = NULL, design_check = NULL, preparation_policy = "classic", inference_check = NULL, qrilc_imputer = NULL) {
+  preparation_policy <- match.arg(preparation_policy, c("classic", "team"))
   moduleServer(id, function(input, output, session) {
     
     SHAPE_CHOICES <- c("Circle"=16, "Square"=15, "Triangle"=17, "Diamond"=18, "Plus"=3, "Cross"=4, "Star"=8)
@@ -506,6 +527,18 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         timepoint_was_available = FALSE
     )
     
+    if (is.null(root_session)) root_session <- session
+    upload_storage <- tempfile("lipidomic-uploads-"); dir.create(upload_storage)
+    session$onSessionEnded(function() unlink(upload_storage,recursive=TRUE))
+    external_metadata <- reactiveVal(NULL)
+    explicit_selection <- reactiveVal(FALSE)
+    session_restored <- reactiveVal(FALSE)
+    restore_generation <- reactiveVal(0L)
+    restored_preparation_seed <- reactiveVal(NULL)
+    restored_palette_state <- reactiveVal(NULL)
+    restored_team_snapshot <- reactiveVal(NULL)
+    classic_palette_edited <- reactiveVal(FALSE)
+    awaiting_restore_review <- reactiveVal(FALSE)
     is_restoring <- reactiveVal(FALSE)
     metadata_trigger <- reactiveVal(0)
     run_analysis_trigger_val <- reactiveVal(0)
@@ -516,6 +549,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     saved_timepoint_order_prefs <- reactiveVal(NULL)
     saved_level_prefs <- reactiveVal(list())
     restored_inputs <- reactiveVal(list())
+    restore_initial_spec <- reactiveVal(NULL)
     prev_subclass_choices <- reactiveVal(character(0))
     prev_hyperclass_choices <- reactiveVal(character(0))
     prev_lm_species_choices <- reactiveVal(character(0))
@@ -549,6 +583,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     }
 
     observeEvent(input$runAnalysis, {
+      if (!is.null(design_check) && !isTRUE(design_check())) {
+        showNotification("Review and confirm the study design in Guided workflow before preparing data.", type="warning")
+        return()
+      }
+      awaiting_restore_review(FALSE)
+      restored_inputs(list())
+      restore_initial_spec(NULL)
       ts <- format(Sys.time(), "%H:%M:%S")
       cat(sprintf("[LIPIDOMIC EXPLORER %s] 'Run Analysis' action triggered.\n", ts))
       cat(sprintf("  >> Staged uploaded file(s): %d\n", length(rv$uploads)))
@@ -568,10 +609,18 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
 
     observeEvent(input$ensure_analysis_run, {
+      if (isTRUE(awaiting_restore_review())) {
+        showNotification(if (preparation_policy == "team") "Review the restored session and click Prepare data." else "Review the restored session and click Run Analysis explicitly.",type="message")
+        return()
+      }
+      if (!is.null(design_check)) {
+        showNotification(if (preparation_policy == "team") "Use Prepare data in Quality after confirming the study design." else "Use Run Analysis in Quality after confirming the study design.",type="message")
+        return() # Guided navigation never prepares data implicitly.
+      }
       if (length(rv$uploads) == 0) {
         return()
       }
-      if (is.null(data_processed()) || !isTRUE(analysis_is_fresh())) {
+      if (is.null(preparation$state()$applied) && is.null(data_processed_allow_missing())) {
         rv$lipidomics_confirmed <- TRUE
         analysis_is_fresh(TRUE)
         run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
@@ -589,7 +638,16 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         ))
       }
       
-      dp <- tryCatch(data_processed(), error = function(e) NULL)
+      state <- preparation$state()
+      if (state$status %in% c("pending", "invalid", "error")) {
+        message <- if (!is.null(state$error)) state$error else
+          if (isTRUE(state$data_available)) "Changes pending. Plots and CSV exports still use the last applied preparation. Apply changes before exporting a session ZIP." else
+            "Data or metadata changed. Prepare again before viewing results."
+        return(tags$div(class = "border rounded p-2 mb-2", style = "background:white; color:#334155;",
+          tags$strong(if (is.null(state$error)) "Review preparation" else "Preparation needs attention"),
+          tags$p(message), tags$small(if (preparation_policy == "team") "Review Quality Control settings, then click Prepare data or Update prepared data to apply." else "Review Quality Control settings, then click Run Analysis / Re-run Pipeline to apply.")))
+      }
+      dp <- tryCatch(data_processed_allow_missing(), error = function(e) NULL)
       if (!is.null(dp) && isTRUE(analysis_is_fresh())) {
         n_lipids <- nrow(dp)
         return(tags$div(
@@ -613,15 +671,18 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     outputOptions(output, "pipelineStatusUI", suspendWhenHidden = FALSE)
 
     observe({
-      dp <- tryCatch(data_processed(), error = function(e) NULL)
+      dp <- tryCatch(data_processed_allow_missing(), error = function(e) NULL)
       if (!is.null(dp) && isTRUE(analysis_is_fresh())) {
-        updateActionButton(session, "runAnalysis", label = " Re-run Pipeline", icon = icon("rotate"))
+        updateActionButton(session, "runAnalysis", label = if (preparation_policy == "team") " Update prepared data" else " Re-run Pipeline", icon = icon("rotate"))
       } else {
-        updateActionButton(session, "runAnalysis", label = " Run Analysis", icon = icon("play"))
+        updateActionButton(session, "runAnalysis", label = if (preparation_policy == "team") " Prepare data" else " Run Analysis", icon = icon("play"))
       }
     })
     
     observeEvent(input$launch_default_analysis, {
+      if (!is.null(design_check) || isTRUE(awaiting_restore_review())) {
+        showNotification(if (preparation_policy == "team") "Review the study design and settings, then click Prepare data." else "Review the study design and settings, then click Run Analysis.",type="warning"); return()
+      }
       cat(file=stderr(), "\n[DEBUG] --- launch_default_analysis Triggered ---\n")
       if (length(rv$uploads) == 0) {
         showNotification("Please upload your data and metadata files in the Pipeline tab first.", type = "warning", duration = 5)
@@ -702,27 +763,26 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     observeEvent(input$files, {
       req(input$files)
       cat(sprintf("\n[LIPIDOMIC EXPLORER] Received upload of %d file(s):\n", nrow(input$files)))
-      metadata_restored(FALSE)
+      restore_initial_spec(NULL)
       current_files <- rv$uploads
+      dest_dir <- upload_storage
+      if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
+      staged <- list()
       for (i in seq_len(nrow(input$files))) {
         file_info <- input$files[i, ]
-        cat(sprintf("  [%d/%d] '%s' (%.2f MB)\n", i, nrow(input$files), file_info$name, file_info$size / (1024^2)))
-        if (!file_info$name %in% names(current_files)) {
-          dest_dir <- file.path("data", "user_uploads")
-          if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
-          
-          # Make a unique filename to prevent conflicts
-          safe_fname <- make.unique(c(names(current_files), file_info$name))[length(current_files) + 1]
-          dest_path <- file.path(dest_dir, safe_fname)
-          if (normalizePath(file_info$datapath, mustWork = FALSE) != normalizePath(dest_path, mustWork = FALSE)) {
-            file.copy(file_info$datapath, dest_path, overwrite = TRUE)
-          }
-          
-          current_files[[file_info$name]] <- dest_path
-          cat(sprintf("        -> Staged to: %s\n", dest_path))
-        }
+        cat(sprintf("  [%d/%d] Uploaded file (%.2f MB)\n", i, nrow(input$files), file_info$size / (1024^2)))
+        suffix <- tools::file_ext(basename(file_info$name))
+        dest_path <- tempfile("upload-", tmpdir=dest_dir, fileext=if(nzchar(suffix)) paste0(".",suffix) else "")
+        if (!file.copy(file_info$datapath, dest_path, overwrite=FALSE)) stop("Could not stage the uploaded file.")
+        staged[[file_info$name]] <- dest_path
       }
-      flush.console()
+      for (name in names(staged)) current_files[[name]] <- staged[[name]]
+      if (!isTRUE(isolate(is_restoring()))) {
+        restored_preparation_seed(NULL); restored_team_snapshot(NULL)
+        external_metadata(NULL); preparation$reset(); session_restored(FALSE)
+        restore_generation(isolate(restore_generation()) + 1L)
+      }
+      metadata_restored(FALSE)
       rv$lipidomics_confirmed <- FALSE
       analysis_is_fresh(FALSE)
       rv$uploads <- purrr::compact(current_files)
@@ -733,8 +793,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     remove_single_upload <- function(filename) {
       req(filename)
-      cat(sprintf("\n[LIPIDOMIC EXPLORER] Removing uploaded file: '%s'\n", filename))
+      cat("\n[LIPIDOMIC EXPLORER] Removing an uploaded file.\n")
+      restore_initial_spec(NULL)
       current_uploads <- rv$uploads
+      if (!isTRUE(isolate(is_restoring())) && filename %in% names(current_uploads)) {
+        restored_preparation_seed(NULL); restored_team_snapshot(NULL); external_metadata(NULL)
+        preparation$reset(); session_restored(FALSE); restore_generation(isolate(restore_generation()) + 1L)
+      }
       current_uploads[[filename]] <- NULL
       rv$uploads <- current_uploads
       
@@ -807,7 +872,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         }
       }
       
-      dp <- tryCatch(data_processed(), error = function(e) NULL)
+      dp <- tryCatch(data_processed_allow_missing(), error = function(e) NULL)
       if (!is.null(dp) && (is.data.frame(dp) || is.matrix(dp)) && ncol(dp) > 0) {
         meta <- meta %>% dplyr::filter(FullName %in% colnames(dp))
       } else {
@@ -938,7 +1003,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     output$columnSelectorUI <- renderUI({
       cols <- all_numeric_columns(); req(cols)
       saved_cols <- get_restored_input(session$ns("selectedColumns"), cols)
-      checkboxGroupInput(session$ns("selectedColumns"), "Select samples:", choices = cols, selected = saved_cols)
+      tagList(
+        checkboxGroupInput(session$ns("selectedColumns"), "Select samples:", choices = cols, selected = saved_cols),
+        tags$p(class="small text-muted", if (identical(preparation_policy, "classic"))
+          "Classic compatibility: an empty sample selection means all loaded samples on the next explicit Run. QC removals still apply."
+          else "Select at least one sample before confirming the design and preparing data.")
+      )
     })
     output$subgroupSelectorUI <- renderUI({
       cols <- all_numeric_columns(); req(cols)
@@ -978,14 +1048,14 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                 style = "display: inline-flex; gap: 4px;",
                 tags$a(
                   href = "#",
-                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: '%s', action: 'all'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), sg),
+                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: %s, action: 'all'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), jsonlite::toJSON(sg,auto_unbox=TRUE)),
                   class = "btn btn-xs btn-outline-success",
                   style = "padding: 1px 4px; font-size: 0.75rem; text-decoration: none;",
                   "All"
                 ),
                 tags$a(
                   href = "#",
-                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: '%s', action: 'none'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), sg),
+                  onclick = sprintf("Shiny.setInputValue('%s', {subgroup: %s, action: 'none'}, {priority: 'event'}); return false;", session$ns("subgroupToggle"), jsonlite::toJSON(sg,auto_unbox=TRUE)),
                   class = "btn btn-xs btn-outline-danger",
                   style = "padding: 1px 4px; font-size: 0.75rem; text-decoration: none;",
                   "None"
@@ -998,8 +1068,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
     outputOptions(output, "columnSelectorUI", suspendWhenHidden = FALSE)
     outputOptions(output, "subgroupSelectorUI", suspendWhenHidden = FALSE)
-    observeEvent(input$selectAll, { updateCheckboxGroupInput(session, "selectedColumns", selected = all_numeric_columns()) })
-    observeEvent(input$unselectAll, { updateCheckboxGroupInput(session, "selectedColumns", selected = character(0)) })
+    observeEvent(input$selectedColumns, { explicit_selection(TRUE) }, ignoreNULL=FALSE, ignoreInit=TRUE)
+    observeEvent(input$selectAll, { explicit_selection(TRUE); updateCheckboxGroupInput(session, "selectedColumns", selected = all_numeric_columns()) })
+    observeEvent(input$unselectAll, { explicit_selection(TRUE); updateCheckboxGroupInput(session, "selectedColumns", selected = character(0)) })
     observeEvent(input$subgroupToggle, {
       trigger <- input$subgroupToggle
       req(trigger$subgroup, trigger$action)
@@ -1052,22 +1123,6 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     })
 
-    # Reactive value for data processing settings to prevent circular reactivity loops
-    data_processing_settings <- reactiveVal(list())
-    observe({
-      settings <- external_settings()
-      if (is.null(settings)) return()
-      new_val <- list(
-        normalizationMethod = settings$normalizationMethod,
-        useImputation = settings$useImputation,
-        imputeZerosPerFile = settings$imputeZerosPerFile,
-        imputeRemainingNAtoZero = settings$imputeRemainingNAtoZero
-      )
-      if (!identical(data_processing_settings(), new_val)) {
-        data_processing_settings(new_val)
-      }
-    })
-
     # Reactive value for PCA settings to prevent circular reactivity loops
     pca_settings_val <- reactiveVal(list(
       mergeReplicates = TRUE,
@@ -1089,12 +1144,47 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     })
 
+    if (preparation_policy == "team") {
+    # Reactive value for color settings to prevent circular reactivity loops
+    color_settings_val <- reactiveVal(list(
+      colorGrouping = "Group1",
+      useCustomColors = FALSE,
+      custom_colors = list(),
+      color_palettes = list(),
+      active_palette = "Default"
+    ))
+    last_external_color_grouping <- reactiveVal(NULL)
+    observe({
+      settings <- external_settings()
+      if (is.null(settings)) return()
+      grouping <- settings$colorGrouping %||% "Group1"
+      if (identical(grouping, last_external_color_grouping())) return()
+      last_external_color_grouping(grouping)
+      current <- isolate(color_settings_val())
+      # QC's picker overrides belong only to QC plots. Its grouping choice
+      # remains the shared selection, while global palette colors stay intact.
+      current$colorGrouping <- grouping
+      color_settings_val(current)
+    })
+    observeEvent(restored_palette_state(), {
+      restored <- restored_palette_state()
+      if (is.null(restored) || !is.list(restored)) return()
+      current <- isolate(color_settings_val())
+      for (key in intersect(names(restored), c("colorGrouping", "useCustomColors", "custom_colors", "color_palettes", "active_palette"))) {
+        current[[key]] <- restored[[key]]
+      }
+      current$color_palettes <- palette_normalize_registry(current$color_palettes)
+      color_settings_val(current)
+    })
+
+    } else {
     # Reactive value for color settings to prevent circular reactivity loops
     color_settings_val <- reactiveVal(list(
       colorGrouping = "Group1",
       useCustomColors = FALSE,
       custom_colors = list()
     ))
+    classic_external_colors <- reactiveVal(NULL)
     observe({
       settings <- external_settings()
       if (is.null(settings)) return()
@@ -1103,11 +1193,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         useCustomColors = isTRUE(settings$useCustomColors),
         custom_colors = settings$custom_colors %||% list()
       )
-      if (!identical(color_settings_val(), new_val)) {
+      if (!identical(isolate(classic_external_colors()), new_val)) {
+        classic_external_colors(new_val)
         color_settings_val(new_val)
       }
     })
 
+    }
     # Reactive value for shape settings to prevent circular reactivity loops
     shape_settings_val <- reactiveVal(list(
       shapeGrouping = "Group2",
@@ -1146,34 +1238,32 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
 
 
 
-    compute_imputed_matrix <- function(apply_outliers = TRUE) {
-      df_info <- rawData()
+    compute_imputed_matrix <- function(apply_outliers = TRUE, request = NULL) {
+      # A committed run reads one immutable request, never a mixture of live controls.
+      if (!is.null(request)) {
+        get_setting <- function(name, default = NULL) {
+          value <- request$spec$settings[[name]]
+          if (is.null(value)) default else value
+        }
+        input <- list(selectedColumns = request$spec$selected,
+                      useAveragedSubstitution = request$spec$use_average)
+        allParsedMetadata <- function() request$metadata
+      }
+      df_info <- if (is.null(request)) rawData() else request$data_info
       if (is.null(df_info) || is.null(df_info$data) || nrow(df_info$data) == 0) {
         return(NULL)
       }
       
-      useCols <- input$selectedColumns
-      if(is.null(useCols) || length(useCols) == 0) {
-        # Fallback: if input is NULL (UI not ready) or empty, try to default to all numeric columns
-        cols_all <- names(df_info$data)[sapply(df_info$data, is.numeric)]
-        cols_all <- setdiff(cols_all, "Lipid_Name")
-        if(length(cols_all) > 0) useCols <- cols_all
-      }
-      
       outlier_treatments <- get_setting("outlierTreatments", list())
-      
-      if (isTRUE(apply_outliers)) {
-        for (name in names(outlier_treatments)) {
-          act <- outlier_treatments[[name]]
-          if (act %in% c("remove", "average")) {
-            useCols <- setdiff(useCols, name)
-          }
-        }
-      }
-      
+      useCols <- preparation_sample_ids(df_info$data, input$selectedColumns,
+                                       outlier_treatments, apply_outliers,
+                                       empty_means_all = is.null(request) || identical(request$spec$policy, "classic"))
       if (length(useCols) == 0) return(NULL)
-      data_subset <- df_info$data %>% dplyr::select(Lipid_Name, all_of(useCols))
-        
+      filtered <- preparation_filter_detected(df_info$data, useCols,
+        get_setting("minDetectionPct", 0), get_setting("dropNonDetected", FALSE),
+        get_setting("detectionScope", "global"), allParsedMetadata())
+      data_subset <- filtered$data %>% dplyr::select(Lipid_Name, all_of(useCols))
+
       # External Setting: imputeZerosPerFile (default TRUE)
       if (isTRUE(get_setting("imputeZerosPerFile", TRUE))) {
         for (cols_in_file in df_info$file_cols) {
@@ -1205,6 +1295,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       
       # 2. Imputation (QRILC)
       qr_objs <- NULL
+      qrilc_failed <- FALSE
       if (isTRUE(get_setting("useImputation", TRUE))) {
         if (sum(is.na(mat_log)) > 0) {
           log_ingestion_event(
@@ -1214,16 +1305,20 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                                    sum(is.na(mat_log)), 100 * sum(is.na(mat_log)) / length(mat_log))
           )
           mat_log_imputed <- tryCatch({
-             set.seed(42)
-             if (system.file(package = "imputeLCMD") == "") {
-               stop("Package 'imputeLCMD' is not installed. Please install it to use QRILC imputation.")
+             set.seed(get_setting("imputationSeed", 42L))
+             engine <- qrilc_imputer
+             if (is.null(engine)) {
+               if (system.file(package = "imputeLCMD") == "") stop("Package 'imputeLCMD' is not installed. Please install it to use QRILC imputation.")
+               engine <- imputeLCMD::impute.QRILC
              }
-             invisible(capture.output(res_raw <- imputeLCMD::impute.QRILC(mat_log)))
+             invisible(capture.output(res_raw <- engine(mat_log)))
              qr_objs <- res_raw[[2]]
              as.matrix(res_raw[[1]])
           }, error = function(e) {
+             qrilc_failed <<- TRUE
              log_ingestion_event("6a_QRILC_IMPUTATION_ERROR", "WARNING", paste("QRILC Imputation failed:", e$message), list(error = e$message))
-             mat_log # Fallback
+             if (preparation_policy == "team") stop(paste("QRILC failed; no result was substituted:", e$message))
+             mat_log # Classic legacy fallback; retained in the trace.
           })
         } else { 
             mat_log_imputed <- mat_log 
@@ -1290,11 +1385,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       # Populate Audit Trace Data Cache
       if (isTRUE(apply_outliers)) {
         audit_trace_data(list(
+          detection = filtered$audit,
           mat_raw = mat_subset,
           mat_for_log = mat_for_log,
           mat_log = mat_log,
           mat_log_imputed = mat_log_imputed,
           qrilc_params = qrilc_params_df,
+          qrilc_failed = qrilc_failed,
           norm_method = norm_method,
           sample_medians = sample_medians,
           grand_median = grand_median,
@@ -1388,53 +1485,64 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       return(data_processed_final)
     }
 
-    data_processed_full <- eventReactive({
-      rawData()
-      run_analysis_trigger_val()
-      outlier_trigger_val()
-      data_processing_settings()
-    }, {
-      log_ingestion_event(
-        stage = "6_DATA_PROCESSED_TRIGGERED",
-        status = "INFO",
-        message_text = "data_processed_full reactive event triggered.",
-        details = list(
-          analysis_is_fresh = isolate(analysis_is_fresh()),
-          run_analysis_val = isolate(run_analysis_trigger_val())
-        )
-      )
-      df_info <- rawData()
-      if (is.null(df_info) || is.null(df_info$data) || nrow(df_info$data) == 0) {
-        return(NULL)
-      }
-      if (!isolate(analysis_is_fresh())) {
-        log_ingestion_event(
-          stage = "6_DATA_PROCESSED_WAITING",
-          status = "INFO",
-          message_text = "Waiting for analysis authorization (analysis_is_fresh is FALSE)."
-        )
-        return(NULL)
-      }
-      res <- tryCatch({
-        compute_imputed_matrix(apply_outliers = TRUE)
-      }, error = function(e) {
-        log_ingestion_event(
-          stage = "6_IMPUTATION_ERROR",
-          status = "ERROR",
-          message_text = paste("compute_imputed_matrix failed:", e$message),
-          details = list(error = e$message)
-        )
-        stop(e)
-      })
-      validate(need(!is.null(res) && sum(is.na(res)) == 0, "Processing resulted in unhandled NA values."))
-      return(res)
+    preparation_data_id <- reactive({
+      info <- rawData()
+      digest::digest(list(info$data, info$file_cols), algo = "sha256")
+    })
+    pending_preparation <- reactive({
+      direct <- external_metadata()
+      if (!is.null(direct) && !setequal(all_numeric_columns(),direct$scientific_metadata$FullName))
+        stop("Uploaded metadata no longer matches this matrix. Review the mapping.")
+      initial_spec <- restore_initial_spec()
+      selected <- if (!is.null(initial_spec)) initial_spec$selected else input$selectedColumns
+      if (!is.null(initial_spec) && isTRUE(initial_spec$legacy) && !length(selected)) selected <- all_numeric_columns()
+      if (!is.null(initial_spec) && !length(selected)) stop("The saved preparation has no selected samples. Review the restored settings before running.")
+      if (!length(selected) && !isTRUE(explicit_selection())) selected <- NULL
+      settings <- if (!is.null(initial_spec)) initial_spec$settings else external_settings() %||% list()
+      if (is.null(settings$imputationSeed) && !is.null(restored_preparation_seed())) settings$imputationSeed <- restored_preparation_seed()
+      preparation_request(rawData(), selected,
+        tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL),
+        settings, if (!is.null(initial_spec)) isTRUE(initial_spec$use_average) else isTRUE(input$useAveragedSubstitution), preparation_data_id(), preparation_policy)
+    })
+    preparation <- shared_preparation_controller(
+      pending = pending_preparation,
+      compute = function(request) {
+        old_trace <- isolate(audit_trace_data())
+        success <- FALSE
+        on.exit(if (!success) audit_trace_data(old_trace))
+        value <- compute_imputed_matrix(TRUE, request)
+        if (is.null(value) || !nrow(value)) stop("Processing did not produce a usable matrix.")
+        if (anyNA(value) && preparation_policy == "classic")
+          stop("Prepared data contain missing values. Review missing-value handling in Quality Control, then run analysis again.")
+        if (anyNA(value) && (isTRUE(request$spec$settings$useImputation) || isTRUE(request$spec$settings$imputeRemainingNAtoZero)))
+          stop("Processing left missing values despite the selected missing-value settings. Review Quality Control.")
+        success <- TRUE
+        value
+      },
+      run_trigger = run_analysis_trigger_val,
+      qc_trigger = outlier_trigger_val,
+      policy = preparation_policy,
+      authorized = function() isTRUE(analysis_is_fresh()) && !isTRUE(is_restoring()) &&
+        !isTRUE(awaiting_restore_review()) && (is.null(design_check) || isTRUE(design_check()))
+    )
+    data_processed_full <- preparation$data
+    output$preparationSummary <- renderUI({
+      state <- preparation$state(); a <- state$applied
+      if (is.null(a)) return(div(class="ux-prep-note", "Review sample groups and detection settings before running."))
+      f <- a$filter; settings <- a$spec$settings
+      div(class="ux-prep-summary", div(class="ux-eyebrow", "APPLIED PREPARATION"),
+        strong(sprintf("%s lipids · %d samples",format(f$retained,big.mark=","),length(a$output_samples))),
+        p(sprintf("%d excluded before imputation · %.1f%% missing among retained measurements",f$excluded,100*f$retained_missing)),
+        p(sprintf("Detection ≥%g%% (%s) · %s · %s normalization · seed %s",f$threshold,f$scope,
+          if(isTRUE(settings$useImputation)) "QRILC" else "No imputation",settings$normalizationMethod,settings$imputationSeed)),
+        if(isTRUE(state$dirty)) div(class="ux-pending",role="status","Settings changed. Click Update prepared data to apply them."))
     })
 
     # Global Targeted Lipid Selection State
     targeted_mode_active <- reactiveVal(FALSE)
     targeted_lipids_list <- reactiveVal(character(0))
 
-    data_processed <- reactive({
+    data_processed_allow_missing <- reactive({
       df <- data_processed_full()
       if (is.null(df) || nrow(df) == 0) return(df)
       if (isTRUE(targeted_mode_active()) && length(targeted_lipids_list()) > 0) {
@@ -1443,6 +1551,16 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         rownames(df) <- NULL
       }
       return(df)
+    })
+    # Legacy analytical modules assume complete measurements. Keep the exact
+    # prepared data available to explicit NA-aware views and data downloads.
+    data_processed <- reactive({
+      df <- data_processed_allow_missing()
+      if (is.null(df) || !nrow(df)) return(df)
+      measurement_cols <- setdiff(names(df), "Lipid_Name")
+      validate(need(all(is.finite(as.matrix(df[, measurement_cols, drop = FALSE]))),
+        "This analysis requires complete finite measurements. Review missing-value handling and prepare data again."))
+      df
     })
     # --- STAGE-GATED REACTIVE VALIDATION INTERFACE (Phase 2 & 3 & 6) ---
     parsedMetadataStructure <- reactiveVal(NULL)
@@ -1462,6 +1580,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     missing_files_to_restore <- reactiveVal(character(0))
     restoring_state_data <- reactiveVal(NULL)
     restored_outlier_treatments <- reactiveVal(list())
+    restored_qc_decisions <- reactiveVal(NULL)
     restored_bqc_manual_exclusions <- reactiveVal(NULL)
     
     # Fast header extraction for instant display example
@@ -1508,6 +1627,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     # eventReactive for authorized metadata - this is the gatekeeper!
     # It only updates when the 'authorizeMetadata' btn in the modal is clicked.
     allParsedMetadata <- eventReactive(metadata_trigger(), {
+      direct <- external_metadata()
+      if (!is.null(direct)) {
+        ids <- all_numeric_columns()
+        shiny::validate(shiny::need(setequal(ids, direct$scientific_metadata$FullName), "Uploaded metadata no longer matches this matrix. Review the mapping."))
+        return(direct$scientific_metadata[match(ids,direct$scientific_metadata$FullName),,drop=FALSE])
+      }
       req(editableMetadata())
       req(parsedMetadataStructure())
       t_res_start <- Sys.time()
@@ -2778,7 +2903,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       autoDetectedFeatures(detected_features)
       
       # Show the Metadata Mapping modal automatically when new data is loaded without prior confirmation
-      if (!already_confirmed) {
+      if (!already_confirmed && is.null(design_check)) {
         cat("[LIPIDOMIC EXPLORER] Showing Metadata Mapping modal dialog...\n")
         showMetadataMappingModal(sample_example = ex_sample)
       }
@@ -2978,6 +3103,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     # Close modal and validate metadata mapping when authorized
     observeEvent(input$authorizeMetadata, {
+      if (preparation_policy == "classic" && !isTRUE(isolate(is_restoring()))) restored_team_snapshot(NULL)
       ts <- format(Sys.time(), "%H:%M:%S")
       cat(sprintf("\n[RSTUDIO METADATA %s] 'Confirm' (authorizeMetadata) clicked in modal.\n", ts))
       cat("  >> Authorizing metadata mapping and dismissing modal dialog...\n")
@@ -2986,7 +3112,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       rv$lipidomics_confirmed <- TRUE
       metadata_trigger(isolate(metadata_trigger()) + 1)
       analysis_is_fresh(FALSE)
-      showNotification("Metadata mapping confirmed! Click 'Run Analysis' in Pipeline Execution to proceed.", type = "message", duration = 4)
+      showNotification(if (preparation_policy == "team") "Metadata mapping confirmed! Click Prepare data in Quality to proceed." else "Metadata mapping confirmed! Click 'Run Analysis' in Pipeline Execution to proceed.", type = "message", duration = 4)
       session$sendCustomMessage("metadataConfirmed", list())
       
       tryCatch({
@@ -3002,13 +3128,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           for (col in c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint", "TimePoint_Group1")) {
             if (col %in% colnames(meta)) {
               vals <- sort(unique(meta[[col]]))
-              cat(sprintf("  - %s (%d levels): %s\n", col, length(vals), paste(vals, collapse = ", ")))
+              cat(sprintf("  - %s (%d levels)\n", col, length(vals)))
             }
           }
         }
         flush.console()
       }, error = function(e) {
-        cat("Error printing mapping info: ", e$message, "\n")
+        cat("Could not summarize mapping information.\n")
         flush.console()
       })
     })
@@ -3349,20 +3475,20 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       } else if (isTRUE(input$useCombo2)) {
          if (input$granularOrderMode == "respect") cond2B else cond2A | cond2B
       } else { rep(TRUE, nrow(anno_data)) }
-      
+
       anno_data$Lipid_Name[passing_indices]
     })
-    
+
   # 4. Substrate Filters
     lipids_to_show_by_substrate_filter <- reactive({
       anno_data <- annotationData()
       selected_substrates <- c(input$n6_substrates, input$n3_substrates)
       if (length(selected_substrates) == 0) return(anno_data$Lipid_Name)
-      
+
       anno_data <- anno_data %>%
         dplyr::mutate(chain1_str = dplyr::if_else(!is.na(nCchain1), paste(nCchain1, DBchain1, sep = ":"), NA_character_),
                       chain2_str = dplyr::if_else(!is.na(nCchain2), paste(nCchain2, DBchain2, sep = ":"), NA_character_))
-      
+
       positions <- input$substrate_match_positions
       if ("any" %in% positions || length(positions) == 0) {
         anno_data <- anno_data %>% dplyr::filter(chain1_str %in% selected_substrates | chain2_str %in% selected_substrates)
@@ -3373,7 +3499,381 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
       anno_data$Lipid_Name
     })
-    
+
+    if (preparation_policy == "team") {
+  # --- 6. Global Class Colors ---
+    palette_contexts <- reactive({
+      meta <- tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL,
+                       error = function(e) NULL)
+      anno <- tryCatch(annotationData(), shiny.silent.error = function(e) NULL,
+                       error = function(e) NULL)
+      contexts <- list()
+      if (!is.null(meta)) {
+        for (key in intersect(c("Group1", "Group2", "TimePoint", "PatientNumber"), names(meta))) {
+          contexts[[key]] <- as.character(meta[[key]])
+        }
+        if (all(c("Group1", "Group2") %in% names(meta))) {
+          contexts[["Group1 & Group2"]] <- palette_combined_groups(meta)
+        }
+      }
+      if (!is.null(anno)) {
+        if ("subclass" %in% names(anno)) contexts[["Lipid Class"]] <- as.character(anno$subclass)
+        if ("hyperclass" %in% names(anno)) contexts[["Hyperclass"]] <- as.character(anno$hyperclass)
+      }
+      contexts
+    })
+
+    palette_choices <- reactive({
+      c("Default", names(COLOR_PALETTE_PRESETS), names(color_settings_val()$color_palettes %||% list()))
+    })
+
+    palette_current_colors <- reactive({
+      maps <- tryCatch(masterColorMaps(), shiny.silent.error = function(e) list(),
+                       error = function(e) list())
+      class_map <- tryCatch(map_lipid_class(), shiny.silent.error = function(e) NULL,
+                            error = function(e) NULL)
+      origin_map <- tryCatch(map_bio_origin(), shiny.silent.error = function(e) NULL,
+                             error = function(e) NULL)
+      if (!is.null(class_map)) maps[["Lipid Class"]] <- class_map
+      if (!is.null(origin_map)) maps[["Hyperclass"]] <- origin_map
+      out <- character()
+      for (context in names(maps)) {
+        vals <- maps[[context]]
+        for (label in names(vals)) {
+          out[[palette_context_key(context, label)]] <- vals[[label]]
+        }
+      }
+      out
+    })
+
+    palette_color_field <- function(label, value, id) {
+      if (!palette_hex(value)) value <- "#B0B0B0"
+      tags$div(class = "palette-color-field", `data-palette-label` = label,
+        tags$span(class = "palette-color-label", label),
+        tags$div(class = "palette-color-control",
+          tags$button(type = "button", class = "palette-swatch-button",
+            style = paste0("--palette-color:", value),
+            `aria-label` = paste("Choose color for", label, "current color", value),
+            `aria-haspopup` = "dialog", `aria-expanded` = "false",
+            tags$span(class = "palette-swatch-mark", `aria-hidden` = "true"),
+            tags$span("Choose color")),
+          tags$div(class = "palette-color-input",
+            colourpicker::colourInput(session$ns(id), label = NULL, value = value, showColour = "both"))
+        )
+      )
+    }
+
+    output$palettePreviewUI <- renderUI({
+      choice <- input$palette_choice %||% "Default"
+      colors <- if (choice %in% names(COLOR_PALETTE_PRESETS)) {
+        COLOR_PALETTE_PRESETS[[choice]]
+      } else if (choice %in% names(color_settings_val()$color_palettes %||% list())) {
+        unique(unlist(color_settings_val()$color_palettes[[choice]]$colors, use.names = FALSE))
+      } else character()
+      colors <- head(colors[vapply(colors, palette_hex, logical(1))], 10L)
+      if (!length(colors)) return(tags$p(class = "text-muted small", "Default colors follow the data categories."))
+      tags$div(class = "palette-preview", `aria-label` = paste(choice, "palette preview"),
+        lapply(colors, function(color) tags$span(class = "palette-preview-chip",
+          style = paste0("--palette-color:", color), title = color, `aria-hidden` = "true")))
+    })
+
+    observeEvent(input$open_palette_editor, {
+      showModal(modalDialog(
+        title = "Colors & palettes", size = "l", easyClose = TRUE,
+        tags$div(class = "palette-editor",
+          tags$p(class = "text-muted", "Choose a palette, then click any color to make it your own."),
+          tags$h5("Choose a palette"),
+          selectInput(session$ns("palette_choice"), "Palette", choices = palette_choices(),
+                      selected = color_settings_val()$active_palette %||% "Default"),
+          uiOutput(session$ns("palettePreviewUI")),
+          actionButton(session$ns("palette_use"), "Use palette", icon = icon("check")),
+          tags$hr(),
+          tags$h5("Fine-tune colors"),
+          selectInput(session$ns("colorEditMode"), "Color context",
+            choices = c("Sample groups (Group 1)" = "Group1", "Sample groups (Group 2)" = "Group2",
+                        "Combined groups" = "Group1_Group2", "Lipid class" = "Lipid Class", "Lipid category" = "Hyperclass")),
+          tags$div(class = "palette-advanced-toggle",
+            checkboxInput(session$ns("palette_advanced"), "Advanced: show HEX values", FALSE)),
+          uiOutput(session$ns("classColorUI")),
+          actionButton(session$ns("btn_apply_colors"), "Apply color changes", icon = icon("palette"), class = "btn-primary"),
+          tags$hr(),
+          tags$h5("Save & reuse"),
+          tags$p(class = "text-muted small", "Apply color changes, then save this palette for later."),
+          textInput(session$ns("palette_name"), "Save current colors as", placeholder = "My palette"),
+          actionButton(session$ns("palette_save"), "Save palette", icon = icon("floppy-disk")),
+          downloadButton(session$ns("palette_download"), "Download JSON"),
+          fileInput(session$ns("palette_upload"), "Import palette JSON", accept = ".json"),
+          tags$p(class = "text-muted small", "Download JSON or export your session ZIP to reuse palettes later. New categories keep default colors; preset colors may repeat.")
+        ),
+        footer = modalButton("Close")
+      ))
+    })
+
+    observeEvent(input$palette_use, {
+      choice <- input$palette_choice %||% "Default"
+      state <- color_settings_val()
+      if (choice == "Default") {
+        state$useCustomColors <- FALSE
+        state$custom_colors <- list()
+      } else if (choice %in% names(COLOR_PALETTE_PRESETS)) {
+        state$custom_colors <- as.list(palette_preset_colors(choice, palette_contexts()))
+        state$useCustomColors <- TRUE
+
+    } else {
+        record <- state$color_palettes[[choice]]
+        if (is.null(record)) return()
+        state$custom_colors <- as.list(palette_validate_colors(record$colors))
+        state$useCustomColors <- TRUE
+      }
+      rv$origin_colors <- list()
+      state$active_palette <- choice
+      color_settings_val(state)
+      showNotification(paste("Palette applied:", choice), type = "message")
+    })
+
+    observeEvent(input$palette_save, {
+      state <- color_settings_val()
+      record <- tryCatch(palette_validate_record(
+        list(name = input$palette_name, colors = palette_current_colors()),
+        existing = names(state$color_palettes %||% list()),
+        old_name = state$active_palette), error = function(e) e)
+      if (inherits(record, "error")) {
+        showNotification(conditionMessage(record), type = "error")
+        return()
+      }
+      state$color_palettes[[record$name]] <- record
+      state$custom_colors <- as.list(record$colors)
+      state$active_palette <- record$name
+      state$useCustomColors <- TRUE
+      color_settings_val(state)
+      updateSelectInput(session, "palette_choice", choices = palette_choices(), selected = record$name)
+      showNotification(paste("Saved palette:", record$name), type = "message")
+    })
+
+    output$palette_download <- downloadHandler(
+      filename = function() paste0(gsub("[^A-Za-z0-9_-]", "_", color_settings_val()$active_palette), ".json"),
+      content = function(file) {
+        state <- color_settings_val()
+        name <- state$active_palette
+        record <- list(name = if (name %in% c("Default", names(COLOR_PALETTE_PRESETS))) paste0(name, " copy") else name,
+                       colors = as.list(palette_current_colors()))
+        jsonlite::write_json(record, file, auto_unbox = TRUE, pretty = TRUE)
+      }
+    )
+
+    observeEvent(input$palette_upload, {
+      record <- tryCatch({
+        raw <- jsonlite::read_json(input$palette_upload$datapath, simplifyVector = TRUE)
+        palette_validate_record(raw, existing = names(color_settings_val()$color_palettes %||% list()))
+      }, error = function(e) e)
+      if (inherits(record, "error")) {
+        showNotification(conditionMessage(record), type = "error")
+        return()
+      }
+      state <- color_settings_val()
+      state$color_palettes[[record$name]] <- record
+      state$custom_colors <- as.list(record$colors)
+      state$active_palette <- record$name
+      state$useCustomColors <- TRUE
+      rv$origin_colors <- list()
+      color_settings_val(state)
+      updateSelectInput(session, "palette_choice", choices = palette_choices(), selected = record$name)
+      showNotification(paste("Imported palette:", record$name), type = "message")
+    })
+
+    output$classColorUI <- renderUI({
+      mode <- input$colorEditMode %||% "Group1"
+      meta <- tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL,
+                       error = function(e) NULL)
+      anno <- tryCatch(annotationData(), shiny.silent.error = function(e) NULL,
+                       error = function(e) NULL)
+      all_color_maps <- tryCatch(masterColorMaps(), shiny.silent.error = function(e) list(),
+                                 error = function(e) list())
+      if (is.null(meta) && is.null(anno)) {
+        return(tags$p(class = "text-muted", "Load and prepare data to edit category colors."))
+      }
+      if (mode %in% c("Lipid Class", "Hyperclass") && is.null(anno)) {
+        return(tags$p(class = "text-muted", "Prepare data to edit lipid category colors."))
+      }
+
+      if (mode == "Group1" && !is.null(meta) && "Group1" %in% names(meta)) {
+         grp_map <- all_color_maps[["Group1"]] %||% initialize_color_map(sort(unique(meta$Group1)), "Set1")
+         items <- sort(names(grp_map))
+         tags$div(class = "palette-color-grid",
+           lapply(items, function(g) {
+              safe_g <- palette_input_id(g)
+              def_col <- grp_map[[g]] %||% "#B0B0B0"
+              palette_color_field(g, def_col, paste0("globalGroupCol_Group1_", safe_g))
+           })
+         )
+      } else if (mode == "Group2" && !is.null(meta) && "Group2" %in% names(meta)) {
+         grp_map <- all_color_maps[["Group2"]] %||% initialize_color_map(sort(unique(meta$Group2)), "Dark2")
+         items <- sort(names(grp_map))
+         tags$div(class = "palette-color-grid",
+           lapply(items, function(g) {
+              safe_g <- palette_input_id(g)
+              def_col <- grp_map[[g]] %||% "#B0B0B0"
+              palette_color_field(g, def_col, paste0("globalGroupCol_Group2_", safe_g))
+           })
+         )
+      } else if (mode == "Group1_Group2" && !is.null(meta) && "Group1" %in% names(meta) && "Group2" %in% names(meta)) {
+         comp_grps <- unique(palette_combined_groups(meta))
+         grp_map <- all_color_maps[["Group1 & Group2"]] %||% initialize_color_map(comp_grps, "Set2")
+         items <- sort(names(grp_map))
+         tags$div(class = "palette-color-grid",
+           lapply(items, function(g) {
+              safe_g <- palette_input_id(g)
+              def_col <- grp_map[[g]] %||% "#B0B0B0"
+              palette_color_field(g, def_col, paste0("globalGroupCol_Comp_", safe_g))
+           })
+         )
+      } else if (mode == "Hyperclass" && !is.null(anno)) {
+         origins <- sort(unique(anno$hyperclass))
+         grp_map <- map_bio_origin()
+         tags$div(class = "palette-color-grid",
+           lapply(origins, function(org) {
+              safe_org <- palette_input_id(org)
+              def_col <- grp_map[[org]] %||% "#B0B0B0"
+              palette_color_field(org, def_col, paste0("globalOriginCol_", safe_org))
+           })
+         )
+      } else {
+         current_map <- global_class_color_map()
+         classes <- sort(names(current_map))
+         tags$div(class = "palette-color-grid",
+           lapply(classes, function(cls) {
+              safe_cls <- palette_input_id(cls)
+              def_col <- if(!is.null(current_map[[cls]])) current_map[[cls]] else "#B0B0B0"
+              palette_color_field(cls, def_col, paste0("globalClassCol_", safe_cls))
+           })
+         )
+      }
+    })
+
+    observeEvent(input$btn_apply_colors, {
+      mode <- input$colorEditMode %||% "Group1"
+      state <- color_settings_val()
+      curr_custom <- state$custom_colors %||% list()
+
+      meta <- tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL,
+                       error = function(e) NULL)
+      anno <- tryCatch(annotationData(), shiny.silent.error = function(e) NULL,
+                       error = function(e) NULL)
+
+      if (mode == "Group1" && !is.null(meta) && "Group1" %in% names(meta)) {
+         grps <- sort(unique(meta$Group1))
+         for (g in grps) {
+            safe_g <- palette_input_id(g)
+            inp_val <- input[[paste0("globalGroupCol_Group1_", safe_g)]]
+            if (!is.null(inp_val) && inp_val != "") {
+               if (!palette_hex(inp_val)) next
+               curr_custom[[palette_context_key("Group1", g)]] <- toupper(inp_val)
+            }
+         }
+      } else if (mode == "Group2" && !is.null(meta) && "Group2" %in% names(meta)) {
+         grps <- sort(unique(meta$Group2))
+         for (g in grps) {
+            safe_g <- palette_input_id(g)
+            inp_val <- input[[paste0("globalGroupCol_Group2_", safe_g)]]
+            if (!is.null(inp_val) && inp_val != "") {
+               if (!palette_hex(inp_val)) next
+               curr_custom[[palette_context_key("Group2", g)]] <- toupper(inp_val)
+            }
+         }
+      } else if (mode == "Group1_Group2" && !is.null(meta) && "Group1" %in% names(meta) && "Group2" %in% names(meta)) {
+         comp_grps <- unique(palette_combined_groups(meta))
+         for (g in comp_grps) {
+            safe_g <- palette_input_id(g)
+            inp_val <- input[[paste0("globalGroupCol_Comp_", safe_g)]]
+            if (!is.null(inp_val) && inp_val != "") {
+               if (!palette_hex(inp_val)) next
+               curr_custom[[palette_context_key("Group1 & Group2", g)]] <- toupper(inp_val)
+            }
+         }
+      } else if (mode == "Hyperclass" && !is.null(anno)) {
+         origins <- sort(unique(anno$hyperclass))
+         for (org in origins) {
+            safe_org <- palette_input_id(org)
+            inp_val <- input[[paste0("globalOriginCol_", safe_org)]]
+            if (!is.null(inp_val) && inp_val != "") {
+               if (!palette_hex(inp_val)) next
+               curr_custom[[palette_context_key("Hyperclass", org)]] <- toupper(inp_val)
+            }
+         }
+      } else if (mode == "Lipid Class" && !is.null(anno)) {
+         classes <- sort(unique(anno$subclass))
+         for (cls in classes) {
+            safe_cls <- palette_input_id(cls)
+            inp_val <- input[[paste0("globalClassCol_", safe_cls)]]
+            if (!is.null(inp_val) && inp_val != "") {
+               if (!palette_hex(inp_val)) next
+               curr_custom[[palette_context_key("Lipid Class", cls)]] <- toupper(inp_val)
+            }
+         }
+      }
+
+      state$useCustomColors <- TRUE
+      state$custom_colors <- curr_custom
+      color_settings_val(state)
+      showNotification("Global custom colors applied successfully!", type = "message", duration = 3)
+    })
+  # --- 6. Hierarchical Color Logic ---
+
+  # A. Lipid Class Map
+    map_lipid_class <- reactive({
+       anno <- annotationData(); req(anno)
+       classes <- sort(unique(anno$subclass))
+
+       current_map <- CLASS_MAP_COLORS
+       unknown <- setdiff(classes, names(current_map))
+       if (length(unknown) > 0) {
+         # Safe Brewer Fallback
+         fallback_colors <- safe_brewer_pal(length(unknown), "Dark2")
+         names(fallback_colors) <- unknown
+         current_map <- c(current_map, fallback_colors)
+       }
+
+       opts <- color_settings_val()
+       if (isTRUE(opts$useCustomColors)) for (cls in classes) {
+         current_map[[cls]] <- palette_resolve(opts$custom_colors, "Lipid Class", cls,
+           current_map[[cls]], opts$custom_colors)
+       }
+
+       # Return only classes present in the current data
+       current_map[names(current_map) %in% classes]
+    })
+
+  # B. Biosynthetic Origin Map
+    map_bio_origin <- reactive({
+       anno <- annotationData(); req(anno)
+       origins <- sort(unique(anno$hyperclass))
+
+       current_map <- HYPERCLASS_MAP_COLORS
+
+     # Ensure coverage
+       unknown <- setdiff(origins, names(current_map))
+       if(length(unknown) > 0) {
+           fallback <- safe_brewer_pal(length(unknown), "Set1")
+           names(fallback) <- unknown
+           current_map <- c(current_map, fallback)
+       }
+
+     # Override with Inputs (prefix: globalOriginCol_)
+     # Use Persistent Store (rv$origin_colors) to survive UI destruction
+       for(org in names(rv$origin_colors)) {
+          current_map[[org]] <- rv$origin_colors[[org]]
+       }
+       opts <- color_settings_val()
+       if (isTRUE(opts$useCustomColors)) for (org in origins) {
+         current_map[[org]] <- palette_resolve(opts$custom_colors, "Hyperclass", org,
+           current_map[[org]], opts$custom_colors)
+       }
+
+       # Return only origins present in the current data
+       current_map[names(current_map) %in% origins]
+    })
+
+    } else {
   # --- 6. Global Class Colors ---
     output$classColorUI <- renderUI({
       mode <- input$colorEditMode %||% "Group1"
@@ -3448,6 +3948,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
 
     observeEvent(input$btn_apply_colors, {
+      classic_palette_edited(TRUE)
       mode <- input$colorEditMode %||% "Group1"
       curr_custom <- color_settings_val()$custom_colors %||% list()
       
@@ -3585,6 +4086,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
        }
      })
      
+    }
    # C. Single Species Map (Lipid_Name)
      map_single_species <- reactive({
         anno <- annotationData(); req(anno)
@@ -3671,9 +4173,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     getDEGroupChoices <- reactive({
       # 1. Primary source: processed data columns or parsed metadata
       meta <- tryCatch({
-        if (!is.null(data_processed())) {
+        if (!is.null(data_processed_allow_missing())) {
           m <- allParsedMetadata()
-          if (!is.null(m)) m %>% dplyr::filter(FullName %in% colnames(data_processed())) else NULL
+          if (!is.null(m)) m %>% dplyr::filter(FullName %in% colnames(data_processed_allow_missing())) else NULL
         } else {
           allParsedMetadata()
         }
@@ -3780,7 +4282,18 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       updateRadioButtons(session, "deComparisonMode", selected = input$inline_de_mode)
     }, ignoreInit = TRUE)
     
-       allLipidDEOutput <- reactive({
+    inference_allowed <- function(paired=FALSE) {
+      if (preparation_policy != "team") return(TRUE)
+      a <- preparation$state()$applied
+      if (is.null(a) || !preparation$state()$data_available || preparation$state()$dirty) return(FALSE)
+      measured <- preparation_sample_ids(pending_preparation()$data_info$data, a$spec$selected, a$spec$settings$outlierTreatments)
+      if (length(setdiff(a$output_samples, measured))) return(FALSE)
+      is.function(inference_check) && isTRUE(inference_check(isTRUE(paired)))
+    }
+    allLipidDEOutput <- reactive({
+      # This engine fits unpaired comparisons; Team must authorize that exact
+      # design against the current confirmed receipt and applied matrix.
+      if (!inference_allowed(FALSE)) return(NULL)
       mat <- data_processed()
       if (is.null(mat) || ncol(mat) < 3) return(NULL) # Lipid_Name + 2 columns
       
@@ -4098,13 +4611,22 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       
       df_curr <- data_processed()
       filtered_curr <- global_filtered_lipids()
+      # Legacy omics and class PCA both require a complete measurement matrix.
+      # Class aggregation would otherwise turn an entirely missing class into 0.
+      # Keep the prepared NA-bearing matrix available to views that support it.
+      if (!is.null(df_curr) && nrow(df_curr)) {
+        measurement_cols <- setdiff(names(df_curr), "Lipid_Name")
+        measurements <- as.matrix(df_curr[, measurement_cols, drop = FALSE])
+        validate(need(all(is.finite(measurements)),
+          "PCA requires complete finite measurements. Review missing-value handling and prepare data again."))
+      }
       
       # Targeted mode check & graceful fallback
       if (isTRUE(targeted_mode_active()) && length(targeted_lipids_list()) > 0) {
         attempt <- tryCatch({
           run_pca_calc(df_curr, filtered_curr)
         }, error = function(e) {
-          cat("[PCA Notice] Targeted PCA cannot be computed on selected lipids:", e$message, "\n", file = stderr())
+          cat("[PCA Notice] Targeted PCA cannot be computed on selected lipids.\n", file = stderr())
           NULL
         })
         
@@ -4120,6 +4642,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         notify_targeted_fallback(session, id = "targeted_fallback_pca")
         
         df_all <- data_processed_full()
+        validate(need(all(is.finite(as.matrix(df_all[, setdiff(names(df_all), "Lipid_Name"), drop = FALSE]))),
+          "PCA requires complete finite measurements. Review missing-value handling and prepare data again."))
         all_filtered <- global_filtered_lipids_all()
         res_all <- tryCatch({
           run_pca_calc(df_all, all_filtered)
@@ -4136,6 +4660,88 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         return(res)
       }
     })
+    if (preparation_policy == "team") {
+    masterColorMaps <- reactive({
+      meta <- allParsedMetadata(); req(meta)
+      color_opts <- color_settings_val()
+
+      unique_conditions <- sort(unique(meta$Group1)) %>% na.omit()
+      cond_colors <- initialize_color_map(unique_conditions, "Set1")
+
+      unique_group2 <- sort(unique(meta$Group2)) %>% na.omit()
+      pop_colors <- initialize_color_map(unique_group2, "Dark2")
+
+      # Combined (kept for legacy/backward compatibility)
+      unique_groups <- sort(unique(palette_combined_groups(meta)))
+      group_colors <- initialize_color_map(unique_groups, "Set2")
+
+      # TimePoint
+      unique_timepoints <- sort(unique(meta$TimePoint)) %>% na.omit()
+      tp_colors <- initialize_color_map(unique_timepoints, "Accent")
+
+      # PatientNumber
+      unique_patients <- sort(unique(meta$PatientNumber)) %>% na.omit()
+      patient_colors <- initialize_color_map(unique_patients, "Paired")
+
+      # Build dynamic map for the currently selected colorGrouping combination
+      group_cols <- color_opts$colorGrouping
+      if (length(group_cols) == 0) group_cols <- "Group1"
+      comb_key <- paste(group_cols, collapse = " & ")
+
+      combined_vals <- palette_combined_groups(meta, group_cols)
+      unique_combined <- sort(unique(combined_vals))
+      combined_colors <- initialize_color_map(unique_combined, "Set2")
+
+      # Apply Custom Overrides from QC Module
+      if (isTRUE(color_opts$useCustomColors)) {
+         custom_map <- color_opts$custom_colors
+
+         resolve_override <- function(context, name, default) {
+            palette_resolve(custom_map, context, name, default, custom_map)
+         }
+
+         # Override Group1 Colors
+         for (cond in names(cond_colors)) {
+            cond_colors[[cond]] <- resolve_override("Group1", cond, cond_colors[[cond]])
+         }
+
+         # Override Group2 Colors
+         for (pop in names(pop_colors)) {
+            pop_colors[[pop]] <- resolve_override("Group2", pop, pop_colors[[pop]])
+         }
+
+         # Override Group Colors
+         for (grp in names(group_colors)) {
+            group_colors[[grp]] <- resolve_override("Group1 & Group2", grp, group_colors[[grp]])
+         }
+
+         # Override TimePoint Colors
+         for (tp in names(tp_colors)) {
+            tp_colors[[tp]] <- resolve_override("TimePoint", tp, tp_colors[[tp]])
+         }
+
+         # Override PatientNumber Colors
+         for (pt in names(patient_colors)) {
+            patient_colors[[pt]] <- resolve_override("PatientNumber", pt, patient_colors[[pt]])
+         }
+
+         # Override Combined Colors
+         for (comb in names(combined_colors)) {
+            combined_colors[[comb]] <- resolve_override(comb_key, comb, combined_colors[[comb]])
+         }
+      }
+
+      res_list <- list(
+        Group1 = cond_colors,
+        Group2 = pop_colors,
+        "Group1 & Group2" = group_colors,
+        TimePoint = tp_colors,
+        PatientNumber = patient_colors
+      )
+      if (length(group_cols) > 1L) res_list[[comb_key]] <- combined_colors
+      res_list
+    })
+    } else {
     masterColorMaps <- reactive({
       meta <- allParsedMetadata(); req(meta)
       color_opts <- color_settings_val()
@@ -4224,6 +4830,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       res_list[[comb_key]] <- combined_colors
       res_list
     })
+    }
     masterShapeMaps <- reactive({
       meta <- allParsedMetadata(); req(meta)
       shape_opts <- shape_settings_val()
@@ -4394,11 +5001,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     }
     
     serialize_state <- function() {
-      global_session <- getDefaultReactiveDomain()
-      all_inputs <- reactiveValuesToList(global_session$input)
+      state <- preparation$state()
+      if (!is.null(state$applied) && (isTRUE(state$dirty) || !isTRUE(state$data_available))) {
+        message <- "Apply or revert pending preparation changes before exporting a session ZIP."
+        showNotification(message, type = "warning", duration = 10)
+        stop(message)
+      }
+      global_session <- root_session
+      all_inputs <- session_persistent_inputs(reactiveValuesToList(global_session$input))
       
       # Exclude buttons, files, import files, and dynamic outlier treatment inputs
-      excl_patterns <- c("import_session_file", "export_session_btn", "files", "openMetadataMappingBtn", "runAnalysis", "downloadPostNAData", "selectAll", "unselectAll", "authorizeMetadata", "remove_", "treat_", "subgroupToggle")
+      excl_patterns <- c("import_session_file", "export_session_btn", "files", "openMetadataMappingBtn", "runAnalysis", "downloadPostNAData", "selectAll", "unselectAll", "authorizeMetadata", "remove_", "treat_", "subgroupToggle", "shared_design_confirm", "shared_review_receipt", "shared_apply_receipt", "shared_metadata_apply", "shared_step_", "shared_next_")
       
       clean_inputs <- list()
       for (k in names(all_inputs)) {
@@ -4407,7 +5020,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         if (!is_excluded && !is_dt_transient) {
           val <- all_inputs[[k]]
-          if (is.atomic(val) || is.list(val)) {
+          is_upload <- is.list(val) && all(c("name","size","type","datapath") %in% names(val))
+          if (!is_upload && (is.atomic(val) || is.list(val))) {
             clean_inputs[[k]] <- val
           }
         }
@@ -4417,6 +5031,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       metadata_state <- list(
         parsedMetadataStructure = parsedMetadataStructure(),
         editableMetadata = editableMetadata(),
+        external_sample_metadata = {
+          snapshot <- if (preparation_policy == "team" && !is.null(external_metadata())) external_metadata()$team_snapshot else if (preparation_policy == "classic") restored_team_snapshot() else NULL
+          if (!is.null(snapshot)) snapshot$mappings <- as.list(snapshot$mappings %||% character())
+          snapshot
+        },
         clusters = clusters(),
         uniqueCols = uniqueCols(),
         autoDetectedFeatures = autoDetectedFeatures(),
@@ -4427,16 +5046,36 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         embeddedTimePointMap = embeddedTimePointMap()
       )
       
+      # Classic retains Team palette extension until the Classic color editor is applied.
+      palette_export <- color_settings_val()
+      if (preparation_policy == "classic" && !isTRUE(classic_palette_edited()) && !is.null(restored_palette_state())) {
+        saved_palette <- restored_palette_state()
+        saved_palette$color_palettes <- palette_normalize_registry(saved_palette$color_palettes)
+        for (key in intersect(names(saved_palette), c("color_palettes", "active_palette", "custom_colors", "useCustomColors"))) palette_export[[key]] <- saved_palette[[key]]
+      }
       # Gather custom colors/shapes
       color_shape_state <- list(
         origin_colors = rv$origin_colors,
-        species_colors = rv$species_colors
+        species_colors = rv$species_colors,
+        color_palettes = palette_export$color_palettes %||% list(),
+        active_palette = palette_export$active_palette %||% "Default",
+        custom_colors = palette_export$custom_colors %||% list(),
+        useCustomColors = isTRUE(palette_export$useCustomColors)
       )
       
-      # Gather outliers state
+      # Saved Team decision history is valid only while its restored sample
+      # treatments remain identical; never attach it to changed Classic QC.
+      treatments_export <- get_setting("outlierTreatments", list())
+      decisions_export <- get_setting("guidedQcDecisions", NULL)
+      if (preparation_policy == "classic" && !is.null(restored_qc_decisions())) {
+        old <- restored_outlier_treatments()
+        canonical_treatments <- function(x) { if (is.null(x) || !length(x)) return(list()); x[sort(names(x))] }
+        decisions_export <- if (identical(canonical_treatments(treatments_export), canonical_treatments(old))) restored_qc_decisions() else NULL
+      }
       outliers_state <- list(
-        treatments = get_setting("outlierTreatments", list()),
-        bqcManualExclusions = get_setting("bqcManualExclusions", NULL)
+        treatments = treatments_export,
+        bqcManualExclusions = get_setting("bqcManualExclusions", NULL),
+        qc_decisions = decisions_export
       )
       
       # Gather longitudinal custom state
@@ -4450,6 +5089,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       
       # Gather uploads
       uploads_state <- rv$uploads
+      # A restored session may be exported before the next explicit Run.
+      # In that state there is no applied preparation, but its saved seed is
+      # still the seed the next Run will use.
+      export_seed <- state$applied$spec$settings$imputationSeed %||%
+        isolate(restored_preparation_seed()) %||%
+        (isolate(external_settings()) %||% list())$imputationSeed %||% 42L
       
       list(
         inputs = clean_inputs,
@@ -4458,12 +5103,24 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         outliers = outliers_state,
         longitudinal = longitudinal_state,
         uploads = uploads_state,
-        analysisMode = "Global Lipidomics"
+        analysisMode = "Global Lipidomics",
+        preparation_contract = list(version="1", frontend=preparation_policy,
+          imputation_seed=export_seed)
       )
     }
     
     update_input_generic <- function(sess, id, val) {
-      if (grepl("_json$", id)) {
+      if (grepl("_accordion$", id)) {
+        # bslib accordions are inputs, but their receiveMessage method does
+        # not accept the value/selected messages sent by Shiny's form updaters.
+        # Restore open panels through bslib's supported update method.
+        panel_values <- if (isTRUE(val)) TRUE else if (isFALSE(val)) character(0) else as.character(unlist(val, use.names = FALSE))
+        if (length(panel_values) == 0L) {
+          bslib::accordion_panel_close(id, TRUE, session = sess)
+        } else {
+          bslib::accordion_panel_set(id, panel_values, session = sess)
+        }
+      } else if (grepl("_json$", id)) {
         if (is.list(val) || (is.character(val) && length(val) > 1)) {
           val_str <- jsonlite::toJSON(val, auto_unbox = TRUE)
         } else if (is.character(val) && length(val) == 1) {
@@ -4530,19 +5187,18 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         # (Copying transcriptomics file removed)
         
+        sidecar <- list(version="1", metadata=metadata_sidecar_encode(external_metadata()), applied=preparation$state()$applied)
+        jsonlite::write_json(sidecar, file.path(tmp_dir,"shared-state-v1.json"), auto_unbox=TRUE, pretty=TRUE, dataframe="rows", digits=NA, null="null")
         # Save state.json
         state_json_path <- file.path(tmp_dir, "state.json")
-        jsonlite::write_json(state_list, state_json_path, auto_unbox = TRUE, pretty = TRUE)
+        jsonlite::write_json(state_list, state_json_path, auto_unbox = TRUE, pretty = TRUE, digits = 17)
         
-        # Zip the directory using zip::zip (preserving structure)
-        old_wd <- getwd()
-        setwd(tmp_dir)
-        files_to_zip <- "state.json"
-        if (dir.exists("data_files")) {
+        # Zip relative to the private staging directory without changing process cwd.
+        files_to_zip <- c("state.json", "shared-state-v1.json")
+        if (dir.exists(file.path(tmp_dir, "data_files"))) {
           files_to_zip <- c(files_to_zip, "data_files")
         }
-        zip::zip(file, files = files_to_zip, recurse = TRUE)
-        setwd(old_wd)
+        zip::zipr(file, files = files_to_zip, root = tmp_dir, recurse = TRUE)
       },
       contentType = "application/zip"
     )
@@ -4553,17 +5209,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     observeEvent(input$downloadPostNAData, {
       ts <- format(Sys.time(), "%H:%M:%S")
       cat(sprintf("\n[RSTUDIO DOWNLOAD %s] 'Download Imputed CSV' button clicked.\n", ts))
-      df <- tryCatch(data_processed(), error = function(e) NULL)
+      df <- tryCatch(data_processed_allow_missing(), error = function(e) NULL)
       if (is.null(df) || nrow(df) == 0) {
         cat("  >> [STATUS] Imputed dataset not available yet. Prompting user to run analysis first.\n")
         flush.console()
-        showNotification("Please upload data and click 'Run Analysis' first to generate the imputed dataset.", type = "warning")
+        showNotification(if (preparation_policy == "team") "Please upload data and click Prepare data first." else "Please upload data and click 'Run Analysis' first to generate the imputed dataset.", type = "warning")
         return()
       }
       cat(sprintf("  >> [STATUS] Imputed dataset ready (%d lipids x %d cols). Processing download request...\n", nrow(df), ncol(df)))
       flush.console()
       
-      outlier_treatments <- get_setting("outlierTreatments", list())
+      outlier_treatments <- preparation$state()$applied$spec$settings$outlierTreatments
       averaged_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "average"))]
       removed_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "remove"))]
       active_count <- length(averaged_samples) + length(removed_samples)
@@ -4731,12 +5387,22 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         paste0("LipidomicExplorer_Imputed_PostNA_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
       },
       content = function(file) {
-        df <- data_processed()
+        df <- data_processed_allow_missing()
         if (is.null(df) || nrow(df) == 0) return(NULL)
-        write.csv(df, file, row.names = FALSE, na = "")
+        write_spreadsheet_csv(df, file, row.names = FALSE, na = "")
       },
       contentType = "text/csv"
     )
+
+    # Both shells trigger this hidden link from the visible export action.
+    # Keep its download URL bound even while the link itself is not visible.
+    outputOptions(output, "downloadPostNADataDirect", suspendWhenHidden = FALSE)
+
+    imputed_before_applied <- function() {
+      request <- preparation$applied_request()
+      req(!is.null(request))
+      compute_imputed_matrix(apply_outliers = FALSE, request = request)
+    }
 
     # Choice Modal Handler 1: Before Outliers Treatment CSV
     output$downloadImputedBefore <- downloadHandler(
@@ -4744,9 +5410,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         paste0("LipidomicExplorer_Imputed_Before_Outliers_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
       },
       content = function(file) {
-        df <- compute_imputed_matrix(apply_outliers = FALSE)
-        if (is.null(df) || nrow(df) == 0) df <- data_processed()
-        write.csv(df, file, row.names = FALSE, na = "")
+        df <- imputed_before_applied()
+        if (is.null(df) || nrow(df) == 0) df <- data_processed_allow_missing()
+        write_spreadsheet_csv(df, file, row.names = FALSE, na = "")
       },
       contentType = "text/csv"
     )
@@ -4757,9 +5423,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         paste0("LipidomicExplorer_Imputed_After_Outliers_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
       },
       content = function(file) {
-        df <- data_processed()
-        if (is.null(df) || nrow(df) == 0) df <- compute_imputed_matrix(apply_outliers = TRUE)
-        write.csv(df, file, row.names = FALSE, na = "")
+        df <- data_processed_allow_missing()
+        req(!is.null(df), nrow(df) > 0)
+        write_spreadsheet_csv(df, file, row.names = FALSE, na = "")
       },
       contentType = "text/csv"
     )
@@ -4770,23 +5436,24 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         paste0("LipidomicExplorer_Imputed_Both_Versions_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip")
       },
       content = function(file) {
-        tmp_dir <- file.path(tempdir(), paste0("imputed_both_", format(Sys.time(), "%Y%m%d_%H%M%S_%OS3")))
+        tmp_dir <- tempfile("imputed_both_")
         dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+        on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
         
         file_dest <- normalizePath(file, winslash = "/", mustWork = FALSE)
         before_file <- file.path(tmp_dir, paste0("LipidomicExplorer_Imputed_Before_Outliers_", format(Sys.time(), "%Y%m%d"), ".csv"))
         after_file  <- file.path(tmp_dir, paste0("LipidomicExplorer_Imputed_After_Outliers_", format(Sys.time(), "%Y%m%d"), ".csv"))
         ledger_file <- file.path(tmp_dir, "Outliers_Treatment_Ledger.txt")
         
-        df_before <- compute_imputed_matrix(apply_outliers = FALSE)
-        if (is.null(df_before) || nrow(df_before) == 0) df_before <- data_processed()
-        df_after <- data_processed()
-        if (is.null(df_after) || nrow(df_after) == 0) df_after <- compute_imputed_matrix(apply_outliers = TRUE)
+        df_before <- imputed_before_applied()
+        if (is.null(df_before) || nrow(df_before) == 0) df_before <- data_processed_allow_missing()
+        df_after <- data_processed_allow_missing()
+        req(!is.null(df_after), nrow(df_after) > 0)
         
-        write.csv(df_before, before_file, row.names = FALSE, na = "")
-        write.csv(df_after, after_file, row.names = FALSE, na = "")
+        write_spreadsheet_csv(df_before, before_file, row.names = FALSE, na = "")
+        write_spreadsheet_csv(df_after, after_file, row.names = FALSE, na = "")
         
-        outlier_treatments <- get_setting("outlierTreatments", list())
+        outlier_treatments <- preparation$state()$applied$spec$settings$outlierTreatments
         averaged_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "average"))]
         removed_samples <- names(outlier_treatments)[sapply(outlier_treatments, function(x) identical(x, "remove"))]
         
@@ -4842,16 +5509,69 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         )
         writeLines(ledger_lines, ledger_file)
         
-        old_wd <- getwd()
-        setwd(tmp_dir)
         files_to_zip <- c(basename(before_file), basename(after_file), basename(ledger_file))
-        zip::zip(file_dest, files = files_to_zip)
-        setwd(old_wd)
-        unlink(tmp_dir, recursive = TRUE)
+        zip::zipr(file_dest, files = files_to_zip, root = tmp_dir)
       },
       contentType = "application/zip"
     )
     
+    # Convert Team's explicitly confirmed snapshot into the same canonical
+    # scientific metadata representation used by the secure archive sidecar.
+    team_metadata_snapshot_present <- function(snapshot) {
+      if (is.null(snapshot) || (is.list(snapshot) && !length(snapshot))) return(FALSE)
+      if (!is.list(snapshot) || is.null(snapshot$data) || !is.list(snapshot$data))
+        stop("Saved Team sample metadata is malformed.")
+      TRUE
+    }
+    validated_team_snapshot <- function(snapshot) {
+      if (!team_metadata_snapshot_present(snapshot)) stop("Saved Team sample metadata is empty.")
+      if (is.list(snapshot$data) && !is.data.frame(snapshot$data)) snapshot$data <- as.data.frame(snapshot$data, stringsAsFactors=FALSE,check.names=FALSE)
+      snapshot$mappings <- unlist(snapshot$mappings %||% list(),use.names=TRUE)
+      ids <- isolate(all_numeric_columns())
+      if (!is.data.frame(snapshot$data) || !identical(as.character(snapshot$data$FullName),as.character(ids))) stop("Saved sample metadata does not match the active abundance matrix.")
+      x <- snapshot$data; mapping <- snapshot$mappings
+      if ("SampleID" %in% names(x)) {
+        renamed <- make.unique(c(names(x),"Imported SampleID"))[length(names(x))+1L]
+        names(x)[names(x)=="SampleID"] <- renamed
+        mapping[mapping=="SampleID"] <- renamed
+      }
+      x$SampleID <- as.character(x$FullName)
+      stage <- stage_metadata_v01(x,ids,mapping)
+      if (!isTRUE(stage$validation$valid)) stop(paste(stage$validation$errors,collapse="; "))
+      snapshot
+    }
+    canonical_team_metadata <- function(snapshot) {
+      if (!team_metadata_snapshot_present(snapshot)) stop("Saved Team sample metadata is empty.")
+      if (is.list(snapshot$data) && !is.data.frame(snapshot$data))
+        snapshot$data <- as.data.frame(snapshot$data, stringsAsFactors=FALSE, check.names=FALSE)
+      snapshot$mappings <- unlist(snapshot$mappings %||% list(), use.names=TRUE)
+      ids <- isolate(all_numeric_columns())
+      if (!is.data.frame(snapshot$data) || !identical(as.character(snapshot$data$FullName), as.character(ids)))
+        stop("Saved sample metadata does not match the active abundance matrix.")
+      prior <- tryCatch(isolate(allParsedMetadata()), error=function(e) NULL)
+      original_snapshot <- snapshot
+      x <- snapshot$data
+      if ("SampleID" %in% names(x)) {
+        renamed <- make.unique(c(names(x), "Imported SampleID"))[length(names(x))+1L]
+        names(x)[names(x)=="SampleID"] <- renamed
+        snapshot$mappings[snapshot$mappings=="SampleID"] <- renamed
+      }
+      x$SampleID <- as.character(x$FullName)
+      stage <- stage_metadata_v01(x, ids, snapshot$mappings)
+      value <- confirm_metadata_v01(stage, TRUE)
+      value$data <- original_snapshot$data
+      value$team_snapshot <- original_snapshot
+      if (is.data.frame(prior) && identical(as.character(prior$FullName),as.character(ids))) {
+        for (field in setdiff(c("Group1","Group2","Replicate","PatientNumber","TimePoint"),names(stage$mappings)))
+          if (field %in% names(prior)) value$scientific_metadata[[field]] <- prior[[field]]
+        value$scientific_metadata$TimePoint_Group1 <- value$scientific_metadata$Group1
+        value$scientific_metadata$Cluster <- match(value$scientific_metadata$Group1,unique(value$scientific_metadata$Group1))
+      }
+      value$scientific_metadata <- merge_confirmed_sample_metadata(value$scientific_metadata,
+        original_snapshot$data, original_snapshot$mappings)
+      value
+    }
+
     import_status <- reactiveVal("")
     output$import_status_display <- renderUI({
       status <- import_status()
@@ -4871,11 +5591,13 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       file_info <- input$missing_file_uploader
       orig_name <- missing_files_to_restore()[1]
       
-      # Copy to user_uploads folder
-      dest_dir <- file.path("data", "user_uploads")
+      # Copy into private session storage, with a unique path for each dataset.
+      dest_dir <- upload_storage
       if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
-      dest_path <- file.path(dest_dir, basename(file_info$name))
-      file.copy(file_info$datapath, dest_path, overwrite = TRUE)
+      dest_path <- tempfile("missing-",tmpdir=dest_dir,fileext=paste0("-",basename(file_info$name)))
+      if (!file.copy(file_info$datapath, dest_path, overwrite = FALSE)) {
+        import_status("Error copying the missing dataset."); return()
+      }
       
       # Update rv$uploads
       current_uploads <- rv$uploads
@@ -4952,6 +5674,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           embeddedTimePointPrefixes(safe_restore_val(state_data$metadata$embeddedTimePointPrefixes))
           embeddedTimePointMap(safe_restore_val(as.list(state_data$metadata$embeddedTimePointMap)))
           
+          if (is.list(state_data$color_shape)) {
+            keys <- intersect(names(state_data$color_shape), c("color_palettes", "active_palette", "custom_colors", "useCustomColors"))
+            if (length(keys)) restored_palette_state(state_data$color_shape[keys])
+          }
           if (!is.null(state_data$color_shape$origin_colors)) {
             rv$origin_colors <- as.list(state_data$color_shape$origin_colors)
           }
@@ -4973,27 +5699,32 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           if (!is.null(state_data$longitudinal$saved_level_prefs)) {
             saved_level_prefs(as.list(state_data$longitudinal$saved_level_prefs))
           }
-          if (!is.null(state_data$outliers$treatments)) {
-            restored_outlier_treatments(as.list(state_data$outliers$treatments))
-          }
+          restored_qc_decisions(state_data$outliers$qc_decisions %||% NULL)
+          restored_outlier_treatments(as.list(state_data$outliers$treatments %||% list()))
           if (!is.null(state_data$outliers$bqcManualExclusions)) {
             restored_bqc_manual_exclusions(as.character(state_data$outliers$bqcManualExclusions))
           }
           
+          if (team_metadata_snapshot_present(state_data$metadata$external_sample_metadata)) {
+            if (preparation_policy == "team") { external_metadata(NULL); external_metadata(canonical_team_metadata(state_data$metadata$external_sample_metadata)) }
+            else restored_team_snapshot(validated_team_snapshot(state_data$metadata$external_sample_metadata))
+          }
           metadata_restored(TRUE)
           rv$lipidomics_confirmed <- TRUE
           metadata_trigger(isolate(metadata_trigger()) + 1)
           import_status("Metadata restored. Hydrating UI inputs...")
         }, error = function(e) {
+          restore_initial_spec(NULL)
           is_restoring(FALSE)
           import_status(paste("Error during metadata restoration:", e$message))
         })
         
+        if (!isTRUE(isolate(is_restoring()))) return()
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
-            global_session <- getDefaultReactiveDomain()
-            inputs_to_restore <- state_data$inputs
+            global_session <- root_session
+            inputs_to_restore <- team_restore_seed_input(state_data$inputs, isolate(restored_preparation_seed()), preparation_policy)
             
             if (!is.null(state_data$analysisMode)) {
               updateRadioButtons(session, "analysisMode", selected = state_data$analysisMode)
@@ -5006,27 +5737,37 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               freezeReactiveValue(global_session$input, id)
               update_input_generic(global_session, id, val)
             }
-            import_status("UI inputs hydrated. Running analysis...")
+            import_status("Restoring controls. Review the restored settings before running analysis.")
           }, error = function(e) {
+            restore_initial_spec(NULL)
             is_restoring(FALSE)
             import_status(paste("Error during input hydration:", e$message))
           })
           
+          if (!isTRUE(isolate(is_restoring()))) return()
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
-              analysis_is_fresh(TRUE)
-              run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
-              restored_inputs(list())
+              # Team requires explicit review; Classic resumes the saved analysis.
+              explicit_selection(TRUE)
               is_restoring(FALSE)
+              if (identical(preparation_policy, "team")) {
+                analysis_is_fresh(FALSE)
+              } else {
+                analysis_is_fresh(TRUE)
+                run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
+              }
+              session_restored(TRUE)
               just_restored(TRUE)
               session$onFlushed(function() {
+                restore_initial_spec(NULL)
                 just_restored(FALSE)
               }, once = TRUE)
-              import_status("Session successfully restored!")
+              import_status(if (preparation_policy == "team") "Session restored. Review the study design and settings, then click Prepare data." else "Session restored. Preparing the restored analysis.")
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
+              restore_initial_spec(NULL)
               is_restoring(FALSE)
               import_status(paste("Error during analysis execution:", e$message))
             })
@@ -5038,43 +5779,52 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     observeEvent(input$import_session_file, {
       req(input$import_session_file)
+      restore_generation(isolate(restore_generation())+1L)
       import_status("Processing session import...")
       
-      # 1. Unzip uploaded file
-      zip_path <- input$import_session_file$datapath
-      dest_dir <- normalizePath(file.path(getwd(), "data", "user_uploads"), winslash = "/", mustWork = FALSE)
-      if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
-      
-      # Create unique extraction directory
-      extract_dir <- normalizePath(file.path(dest_dir, paste0("import_", format(Sys.time(), "%Y%m%d_%H%M%S"))), winslash = "/", mustWork = FALSE)
-      dir.create(extract_dir)
-      
-      extraction_success <- tryCatch({
-        zip::unzip(zip_path, exdir = extract_dir)
-        TRUE
-      }, error = function(e) {
-        import_status(paste("Error: Failed to unzip file.", e$message))
-        FALSE
-      })
-      
-      if (!extraction_success) return()
-      
-      state_json_path <- file.path(extract_dir, "state.json")
-      if (!file.exists(state_json_path)) {
-        import_status("Error: state.json not found in session archive.")
+      archive <- tryCatch(read_session_archive(input$import_session_file$datapath),
+        error=function(e) {import_status(paste("Error:",conditionMessage(e)));NULL})
+      if (is.null(archive)) return()
+      extract_dir <- archive$directory
+      # Dataset bytes are copied into private session storage below. The
+      # extracted archive is no longer needed after this import event returns,
+      # including when hydration is deferred to later Shiny flushes.
+      on.exit(unlink(extract_dir, recursive = TRUE), add = TRUE)
+      state_data <- archive$state
+      state_data$inputs <- session_persistent_inputs(state_data$inputs)
+      validated_seed <- tryCatch({
+        raw_seed <- state_data$preparation_contract$imputation_seed
+        if (is.null(raw_seed)) NULL else
+          preparation_settings(list(imputationSeed = raw_seed), policy = preparation_policy)$imputationSeed
+      }, error = function(e) e)
+      if (inherits(validated_seed, "error")) {
+        import_status(paste("Error:", conditionMessage(validated_seed)))
         return()
       }
-      
-      # 2. Parse state.json
-      state_data <- tryCatch({
-        jsonlite::read_json(state_json_path, simplifyVector = TRUE)
-      }, error = function(e) {
-        import_status(paste("Error: Failed to parse state.json.", e$message))
-        NULL
-      })
-      
-      if (is.null(state_data)) return()
-      
+      # A private directory per restoration prevents one session overwriting another.
+      dest_dir <- tempfile("restored-data-"); dir.create(dest_dir)
+      session$onSessionEnded(function() unlink(dest_dir, recursive = TRUE))
+      restored_preparation_seed(NULL)
+      if (!is.null(validated_seed)) restored_preparation_seed(validated_seed)
+      # Approval is session-local and must never be rehydrated from an archive.
+      if (!is.null(design_check)) {
+        updateCheckboxInput(root_session, "shared_design_confirm", value = FALSE)
+        updateCheckboxInput(root_session, "guide_design_confirm", value = FALSE)
+      }
+      session_restored(FALSE)
+      missing_files_to_restore(character())
+      awaiting_restore_review(identical(preparation_policy, "team"))
+      restore_initial_spec(if (identical(preparation_policy, "classic")) archive$shared$applied$spec else NULL)
+      preparation$reset()
+      restored_palette_state(NULL)
+      restored_team_snapshot(NULL)
+      classic_palette_edited(FALSE)
+      restored_qc_decisions(NULL)
+      restored_outlier_treatments(NULL)
+      external_metadata(NULL)
+      explicit_selection(FALSE)
+      if (!is.null(archive$shared$metadata)) external_metadata(archive$shared$metadata)
+
       # Map legacy deMethod values to standard limma for backward compatibility
       if (!is.null(state_data$inputs)) {
         for (k in names(state_data$inputs)) {
@@ -5087,6 +5837,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       # 3. Start sequential hydration
       is_restoring(TRUE)
       restored_inputs(state_data$inputs)
+      if (identical(preparation_policy, "classic") && is.null(isolate(restore_initial_spec()))) {
+        # Legacy archives have no applied sidecar. Reconstruct the same settings
+        # consumed by preparation_settings() from their saved QC inputs.
+        keys <- c("minDetectionPct", "dropNonDetected", "detectionScope", "normalizationMethod",
+                  "useImputation", "imputeZerosPerFile", "imputeRemainingNAtoZero", "imputationSeed")
+        settings <- setNames(lapply(keys, function(key) get_restored_input(paste0("qc_pca_tab-", key))), keys)
+        settings$outlierTreatments <- as.list(state_data$outliers$treatments %||% list())
+        if (is.null(settings$imputationSeed)) settings$imputationSeed <- validated_seed
+        restore_initial_spec(list(legacy = TRUE, selected = get_restored_input(session$ns("selectedColumns")),
+          settings = settings, use_average = isTRUE(get_restored_input(session$ns("useAveragedSubstitution"), FALSE))))
+      }
       import_status("Restoring data files...")
       
       # Stage 1: Files restoration
@@ -5107,8 +5868,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             }
             
             if (!is.null(target_path)) {
-              dest_path <- file.path(dest_dir, basename(target_path))
-              file.copy(target_path, dest_path, overwrite = TRUE)
+              dest_path <- tempfile("dataset-",tmpdir=dest_dir,fileext=paste0("-",basename(target_path)))
+              if (!file.copy(target_path, dest_path, overwrite = FALSE)) stop("Could not restore dataset.")
               new_uploads[[name]] <- dest_path
             }
           }
@@ -5150,10 +5911,12 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         import_status("Files restored. Restoring metadata mappings...")
       }, error = function(e) {
+        restore_initial_spec(NULL)
         is_restoring(FALSE)
         import_status(paste("Error during file restoration:", e$message))
       })
       
+      if (!isTRUE(is_restoring()) || length(missing_files_to_restore())>0) return()
       # Stage 2: Metadata Mappings
       session$onFlushed(function() {
         tryCatch({
@@ -5193,6 +5956,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           embeddedTimePointMap(safe_restore_val(as.list(state_data$metadata$embeddedTimePointMap)))
           
           # Custom colors
+          if (is.list(state_data$color_shape)) {
+            keys <- intersect(names(state_data$color_shape), c("color_palettes", "active_palette", "custom_colors", "useCustomColors"))
+            if (length(keys)) restored_palette_state(state_data$color_shape[keys])
+          }
           if (!is.null(state_data$color_shape$origin_colors)) {
             rv$origin_colors <- as.list(state_data$color_shape$origin_colors)
           }
@@ -5216,9 +5983,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           if (!is.null(state_data$longitudinal$saved_level_prefs)) {
             saved_level_prefs(as.list(state_data$longitudinal$saved_level_prefs))
           }
-          if (!is.null(state_data$outliers$treatments)) {
-            restored_outlier_treatments(as.list(state_data$outliers$treatments))
-          }
+          restored_qc_decisions(state_data$outliers$qc_decisions %||% NULL)
+          restored_outlier_treatments(as.list(state_data$outliers$treatments %||% list()))
           if (!is.null(state_data$outliers$bqcManualExclusions)) {
             restored_bqc_manual_exclusions(as.character(state_data$outliers$bqcManualExclusions))
           }
@@ -5226,21 +5992,27 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             rv$multiomics_cohort_map <- as.list(state_data$multiomics_cohort_map)
           }
           
+          if (team_metadata_snapshot_present(state_data$metadata$external_sample_metadata)) {
+            if (preparation_policy == "team") { external_metadata(NULL); external_metadata(canonical_team_metadata(state_data$metadata$external_sample_metadata)) }
+            else restored_team_snapshot(validated_team_snapshot(state_data$metadata$external_sample_metadata))
+          }
           metadata_restored(TRUE)
           rv$lipidomics_confirmed <- TRUE
           # Trigger metadata confirmation
           metadata_trigger(isolate(metadata_trigger()) + 1)
           import_status("Metadata restored. Hydrating UI inputs...")
         }, error = function(e) {
+          restore_initial_spec(NULL)
           is_restoring(FALSE)
           import_status(paste("Error during metadata restoration:", e$message))
         })
         
+        if (!isTRUE(isolate(is_restoring()))) return()
         # Stage 3: Inputs Hydration
         session$onFlushed(function() {
           tryCatch({
-            global_session <- getDefaultReactiveDomain()
-            inputs_to_restore <- state_data$inputs
+            global_session <- root_session
+            inputs_to_restore <- team_restore_seed_input(state_data$inputs, isolate(restored_preparation_seed()), preparation_policy)
             
             # Defensively ensure deReferenceGroups and deComparisonGroups are hydrated from moReferenceGroups / moComparisonGroups if missing
             ns_ref_id <- session$ns("deReferenceGroups")
@@ -5302,27 +6074,37 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               freezeReactiveValue(global_session$input, id)
               update_input_generic(global_session, id, val)
             }
-            import_status("UI inputs hydrated. Running analysis...")
+            import_status("Restoring controls. Review the restored settings before running analysis.")
           }, error = function(e) {
+            restore_initial_spec(NULL)
             is_restoring(FALSE)
             import_status(paste("Error during input hydration:", e$message))
           })
           
+          if (!isTRUE(isolate(is_restoring()))) return()
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
-              analysis_is_fresh(TRUE)
-              run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
-              restored_inputs(list())
+              # Team requires explicit review; Classic resumes the saved analysis.
+              explicit_selection(TRUE)
               is_restoring(FALSE)
+              if (identical(preparation_policy, "team")) {
+                analysis_is_fresh(FALSE)
+              } else {
+                analysis_is_fresh(TRUE)
+                run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
+              }
+              session_restored(TRUE)
               just_restored(TRUE)
               session$onFlushed(function() {
+                restore_initial_spec(NULL)
                 just_restored(FALSE)
               }, once = TRUE)
-              import_status("Session successfully restored!")
+              import_status(if (preparation_policy == "team") "Session restored. Review the study design and settings, then click Prepare data." else "Session restored. Preparing the restored analysis.")
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
+              restore_initial_spec(NULL)
               is_restoring(FALSE)
               import_status(paste("Error during analysis execution:", e$message))
             })
@@ -5355,14 +6137,78 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     return(
       list(
-        rawData = rawData, data_processed = data_processed, pca_results = pca_results,
+        loaded_files = reactive(names(rv$uploads)),
+        dataset_revision = reactive(preparation_data_id()),
+        load_local_workbook = function(path) {
+          if (length(isolate(rv$uploads))) { showNotification("Remove the current files in Experiment before opening another workbook.", type="warning"); return(invisible(FALSE)) }
+          if (!is.character(path) || length(path) != 1L || !file.exists(path)) stop("Workbook does not exist.")
+          restore_generation(isolate(restore_generation())+1L)
+          restored_preparation_seed(NULL)
+          restored_team_snapshot(NULL)
+          restore_initial_spec(NULL)
+          metadata_restored(FALSE); rv$lipidomics_confirmed <- FALSE; analysis_is_fresh(FALSE)
+          external_metadata(NULL); preparation$reset()
+          rv$uploads <- setNames(list(normalizePath(path, mustWork=TRUE)), basename(path))
+          session$sendCustomMessage("dataFilesUploaded", list(count=1))
+          invisible(TRUE)
+        },
+        preparation_dirty = reactive(preparation$state()$dirty),
+        preparation_audit = reactive({
+          a <- preparation$state()$applied
+          if (is.null(a) || !preparation$state()$data_available) return(NULL)
+          z <- a$filter; z$samples <- length(a$output_samples)
+          z$seed <- a$spec$settings$imputationSeed
+          z$imputation <- if (isTRUE(a$spec$settings$useImputation)) "QRILC" else "No imputation"
+          z$normalization <- a$spec$settings$normalizationMethod
+          z$synthetic_samples <- setdiff(a$output_samples, preparation_sample_ids(
+            pending_preparation()$data_info$data, a$spec$selected, a$spec$settings$outlierTreatments))
+          z
+        }),
+        applied_sample_ids = reactive({ a <- preparation$state()$applied; if (is.null(a)) character() else a$output_samples }),
+        synthetic_sample_ids = reactive({ a <- preparation$state()$applied; if (is.null(a) || !preparation$state()$data_available) return(character()); setdiff(a$output_samples, preparation_sample_ids(pending_preparation()$data_info$data, a$spec$selected, a$spec$settings$outlierTreatments)) }),
+        pca_settings = pca_settings_val, actual_method = actual_method_val,
+        allParsedMetadata = allParsedMetadata,
+        inference_allowed = inference_allowed,
+        qc_decisions = reactive({ s <- external_settings(); if (is.null(s)) NULL else s$guidedQcDecisions }),
+        set_selected_cols = function(ids) { explicit_selection(TRUE); updateCheckboxGroupInput(session, "selectedColumns", selected=intersect(ids, isolate(all_numeric_columns()))); invisible(TRUE) },
+        palette_settings = color_settings_val,
+        restored_palette_state = restored_palette_state,
+        set_palette_settings = function(state) {
+          if (!is.list(state)) return(invisible(FALSE))
+          current <- isolate(color_settings_val())
+          for (key in intersect(names(state), c("colorGrouping", "useCustomColors", "custom_colors", "color_palettes", "active_palette"))) current[[key]] <- state[[key]]
+          if (preparation_policy == "team") current$color_palettes <- palette_normalize_registry(current$color_palettes)
+          color_settings_val(current); invisible(TRUE)
+        },
+        rawData = rawData, data_processed = data_processed,
+        data_processed_allow_missing = data_processed_allow_missing,
+        pca_results = pca_results,
+        external_sample_metadata = external_metadata,
+        session_restored = session_restored,
+        restore_generation = restore_generation,
+        set_external_sample_metadata = function(stage, confirmed=FALSE) {
+          if (identical(preparation_policy, "team") && is.list(stage) && is.data.frame(stage$data)) {
+            value <- canonical_team_metadata(stage)
+          } else {
+            value <- confirm_metadata_v01(stage,confirmed)
+            if (!identical(as.character(stage$matrix_ids),as.character(isolate(all_numeric_columns()))))
+              stop("Matrix samples changed. Review the metadata preview again.")
+          }
+          external_metadata(value)
+          if (preparation_policy == "classic") restored_team_snapshot(NULL)
+          metadata_trigger(isolate(metadata_trigger())+1L)
+          analysis_is_fresh(FALSE)
+          invisible(value)
+        },
         data_processed_unfiltered = data_processed_full,
+        preparation_state = preparation$state,
+        detection_preview = preparation$preview,
         targeted_mode_active = targeted_mode_active,
         targeted_lipids_list = targeted_lipids_list,
         pca_fallback_active = pca_fallback_active,
         set_targeted_mode = function(val) { targeted_mode_active(as.logical(val)) },
         set_targeted_lipids = function(vec) { targeted_lipids_list(as.character(vec)) },
-        audit_trace = reactive({ audit_trace_data() }),
+        audit_trace = reactive({ if (!preparation$state()$data_available) return(NULL); audit_trace_data() }),
         selected_cols = reactive({ input$selectedColumns }), all_metadata = allParsedMetadata,
         annotationData = annotationData,
         multiomics_cohort_map = reactive({ rv$multiomics_cohort_map }),
@@ -5473,8 +6319,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         restored_inputs = restored_inputs,
         get_restored_input = get_restored_input,
         restored_outlier_treatments = restored_outlier_treatments,
+        restored_qc_decisions = restored_qc_decisions,
         restored_bqc_manual_exclusions = restored_bqc_manual_exclusions,
         all_numeric_columns = all_numeric_columns,
+        preparation_data_id = preparation_data_id,
         actual_de_method = reactive({ actual_method_val() }),
         de_fit = allLipidDEFit,
         stats_detail_text = stats_detail_text,

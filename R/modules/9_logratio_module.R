@@ -698,7 +698,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
                      v_base <- var(base_vals,na.rm=T)
                      v_comp <- var(comp_vals,na.rm=T)
                      if(!is.na(v_base) && !is.na(v_comp) && !(v_base == 0 && v_comp == 0)) {
-                        tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+                        tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                         if(!is.na(tt)) {
                            p_val <- tt
                            if(p_val < 0.001) stars <- "***"
@@ -730,7 +730,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
                   v_base <- var(base_vals,na.rm=T)
                   v_comp <- var(comp_vals,na.rm=T)
                   if(!is.na(v_base) && !is.na(v_comp) && !(v_base == 0 && v_comp == 0)) {
-                     tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+                     tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                      if(!is.na(tt)) {
                         p_val <- tt
                         if(p_val < 0.001) stars <- "***"
@@ -1035,7 +1035,25 @@ logratio_server <- function(id, shared_data, global_color_map) {
        selected <- input$scaleMode %||% "log2fc"
        tags$span(icon("scale-unbalanced"), paste0(" ", scale_map[[selected]]))
     })
-    
+
+    if (identical(lipidomic_interface(), "team")) {
+    output$scrollable_plot_ui <- renderUI({
+      feats <- unifiedSelectedFeatures()
+      n <- if (!is.null(feats)) length(feats) else 0
+
+      if (is.null(input$selectedBaseline) || length(input$selectedBaseline) == 0 || all(!nzchar(trimws(input$selectedBaseline))) || n == 0) {
+        return(plotOutput(session$ns("logratioPlot"), width = "100%", height = "500px"))
+      }
+
+      ncols <- min(as.integer(input$panelColumns %||% 1), n)
+      nrows <- ceiling(n / ncols)
+      panel_h <- as.numeric(input$panelHeight %||% 520)
+      div(style = sprintf("min-width: %dpx;", ncols * 360),
+          plotOutput(session$ns("logratioPlot"), width = "100%",
+                     height = paste0(nrows * panel_h, "px")))
+    })
+
+    } else {
     prev_nrows_val <- reactiveVal(NULL)
     observe({
       feats <- unifiedSelectedFeatures()
@@ -1043,35 +1061,37 @@ logratio_server <- function(id, shared_data, global_color_map) {
       nrows <- max(1, ceiling(n / 3))
       rec_h <- max(550, nrows * 450)
       rec_h <- min(rec_h, 4500)
-      
+
       prev_nr <- prev_nrows_val()
       if (is.null(prev_nr) || prev_nr != nrows) {
         prev_nrows_val(nrows)
         updateSliderInput(session, "plotHeight", value = rec_h)
       }
     })
-    
+
     output$scrollable_plot_ui <- renderUI({
       feats <- unifiedSelectedFeatures()
       n <- if (!is.null(feats)) length(feats) else 0
-      
+
       if (is.null(input$selectedBaseline) || length(input$selectedBaseline) == 0 || all(!nzchar(trimws(input$selectedBaseline))) || n == 0) {
         return(plotOutput(session$ns("logratioPlot"), width = "100%", height = "500px"))
       }
-      
+
       nrows <- max(1, ceiling(n / 3))
       calc_h <- max(500, nrows * 450)
       cur_h <- input$plotHeight
       final_h <- if (is.null(cur_h) || cur_h == 0) calc_h else cur_h
-      
+
       jqui_resizable(div(
         style = sprintf("min-height: %dpx; width: 100%%;", final_h),
         plotOutput(session$ns("logratioPlot"), width = "100%", height = sprintf("%dpx", final_h))
       ))
     })
-    
+
+    }
+
     applied_violin_colors <- reactiveVal(NULL)
-    
+
     observeEvent(input$btn_apply_violin_colors, {
       db_info <- processed_db()
       if (is.null(db_info)) return()
@@ -1193,7 +1213,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
                          "linear" = "Linear Abundance Intensity")
       }
       
-      plot_logratio_violin(df_log, 
+      plot <- plot_logratio_violin(df_log,
                            target_features = unifiedSelectedFeatures(), 
                            baseline_groups = db_info$baseline_grp,
                            color_mapping = safe_colors,
@@ -1201,6 +1221,10 @@ logratio_server <- function(id, shared_data, global_color_map) {
                            show_baseline = input$showBaseline %||% FALSE,
                            color_var = c_var,
                            sig_display_type = input$sigDisplayType %||% "star")
+      if (identical(lipidomic_interface(), "team") && inherits(plot, "patchwork")) {
+        plot <- plot + patchwork::plot_layout(ncol = as.integer(input$panelColumns %||% 1))
+      }
+      plot
     })
     
     output$baseline_status_banner <- renderUI({
@@ -1271,10 +1295,11 @@ logratio_server <- function(id, shared_data, global_color_map) {
           
           feats <- unifiedSelectedFeatures()
           n <- if (!is.null(feats)) length(feats) else 1
-          ncols <- min(3, n)
-          nrows <- ceiling(n / 3)
-          fallback_w <- max(800, ncols * 400)
-          fallback_h <- input$plotHeight %||% max(500, nrows * 450)
+          team_layout <- identical(lipidomic_interface(), "team")
+          ncols <- if (team_layout) min(as.integer(input$panelColumns %||% 1), max(1, n)) else min(3, n)
+          nrows <- ceiling(max(1, n) / ncols)
+          fallback_w <- if (team_layout) ncols * 600 else max(800, ncols * 400)
+          fallback_h <- if (team_layout) nrows * as.numeric(input$panelHeight %||% 520) else input$plotHeight %||% max(500, nrows * 450)
           
           w_px <- if (!is.null(w) && is.numeric(w) && w > 10) w else fallback_w
           h_px <- if (!is.null(h) && is.numeric(h) && h > 10) h else fallback_h
@@ -1306,15 +1331,15 @@ logratio_server <- function(id, shared_data, global_color_map) {
         }
         export_df <- df_log %>% 
            dplyr::select(Sample, GroupingVal, Feature, Class_Total, Global_Total, Proportion, Baseline_Mean_Prop, Log2FC, P_Value, Significance, Is_Baseline)
-        write.csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(export_df, file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
     
   # --- 6. Batch ZIP Generators ---
     
-    generate_zip_for_level <- function(file, feat_level) {
-       db_info <- build_db_for_level(feat_level)
+    generate_zip_for_level <- function(file, feat_level, add_filter = "none") {
+       db_info <- build_db_for_level(feat_level, add_filter)
        req(db_info)
        
        
@@ -1366,9 +1391,9 @@ logratio_server <- function(id, shared_data, global_color_map) {
        # source("R/utils_vis.R", local=TRUE)
        
        tmpdir <- tempfile("zipdir")
-       dir.create(tmpdir)
-       owd <- setwd(tmpdir)
-       on.exit(setwd(owd))
+       if (!dir.create(tmpdir)) stop("Could not stage the log-ratio export.")
+       on.exit(unlink(tmpdir, recursive = TRUE), add = TRUE)
+       zip_dest <- normalizePath(file, winslash = "/", mustWork = FALSE)
        
        fs <- c()
        
@@ -1405,12 +1430,12 @@ logratio_server <- function(id, shared_data, global_color_map) {
           p <- plot_logratio_violin(feat_df, target_features = feat, baseline_groups = db_info$baseline_grp, color_mapping = safe_colors, y_label = y_lab, show_baseline = input$showBaseline %||% FALSE, color_var = c_var, sig_display_type = input$sigDisplayType %||% "star")
           
           if(!is.null(p)) {
-             ggplot2::ggsave(fname, plot = p, width = 6, height = 5, units = "in", device = "pdf")
+             ggplot2::ggsave(file.path(tmpdir, fname), plot = p, width = 6, height = 5, units = "in", device = "pdf")
              fs <- c(fs, fname)
           }
        }
        
-       zip::zipr(file, fs)
+       zip::zipr(zip_dest, files = fs, root = tmpdir)
     }
     
     generate_csv_for_level <- function(file, feat_level, add_filter) {
@@ -1418,7 +1443,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
        req(db_info)
        export_df <- db_info$plot_db %>% 
            dplyr::select(Sample, GroupingVal, Feature, Class_Total, Global_Total, Proportion, Baseline_Mean_Prop, Log2FC, P_Value, Significance, Is_Baseline)
-       write.csv(export_df, file, row.names = FALSE)
+       write_spreadsheet_csv(export_df, file, row.names = FALSE)
     }
     
     output$downloadAllMacroZip <- downloadHandler(

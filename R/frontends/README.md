@@ -1,0 +1,17 @@
+# Frontend selection
+
+Set `LIPIDOMIC_INTERFACE=classic` (default) or `LIPIDOMIC_INTERFACE=team` before starting `app.R`. `guided` is a migration alias for `team`. The selected shell is fixed for the R process; restart to switch. Each shell uses the same `R/modules` scientific backend and one `shared_data_server` instance per Shiny session.
+
+The Team companion uses reviewed local guidance by default. To explicitly enable its optional OpenAI provider, set `LIPIDOMIC_COMPANION_AI=1` and provide `OPENAI_API_KEY` through the launch environment, or point `LIPIDOMIC_COMPANION_ENV` to an external environment file containing the key. `COMPANION_AI_MODEL` can override the provider model. Do not place credentials in this repository.
+
+Classic static assets remain under `www/`. The Team shell uses `www/team/`, including its CSS, JavaScript, vendor PDF libraries, logos, and 3D model/media.
+
+Local Classic sessions log full ingestion messages/details and browser event payloads by default, including filenames, button labels, and JavaScript error locations. Set `LIPIDOMIC_UI_TRACE_DEBUG=0` to redact these diagnostics. Local Team sessions redact by default; `LIPIDOMIC_UI_TRACE_DEBUG=1` explicitly enables full local diagnostics. Hosted and CI sessions always redact, even with debug enabled: ingestion logs retain fixed stages/statuses and bounded numerical counts, while browser traces retain event categories only.
+
+The Team 3D cell view receives the full applied matrix through a presentation adapter. Targeted lipid mode can narrow other plots but does not narrow this reference view or change the preparation audit it displays.
+
+The Team "Existing data on this computer" picker is disabled unless `LIPIDOMIC_LOCAL_WORKBOOK_DIR` names an existing directory. It lists only `.xlsx` files directly in that resolved directory and revalidates each selected path before opening it. Symlinks resolving outside that directory are excluded. The saved Run comparison panel is likewise optional and needs its separate study CSV and images; a clean install includes neither lab study data nor a configured workbook directory.
+
+Local Classic launches automatically run `00_ENVIRONMENT_SETUP.R` when core packages are missing and attempt optional visNetwork recovery. Team, hosted, and CI sessions disable automatic installation by default. `LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL=0` disables installation explicitly; `LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL=1` explicitly permits it in any runtime. `LIPIDOMIC_DISABLE_DEPENDENCY_INSTALL=1` takes precedence over both defaults and explicit permission. The install and debug switches accept `1/true/yes/on` and `0/false/no/off` (case insensitive, surrounding whitespace ignored); invalid values raise an actionable configuration error. Missing optional visNetwork retains its warning/fallback.
+
+Runtime restrictions recognize CI markers (`CI`, `CONTINUOUS_INTEGRATION`, `GITHUB_ACTIONS`) and hosting markers (`SHINY_SERVER`, `SHINY_SERVER_VERSION`, `SHINY_SERVER_LICENSE`, `RSCONNECT`, `RSCONNECT_SERVER`, `CONNECT_SERVER`, `SHINYAPPS_INSTANCE_ID`). An unmarked Classic process is treated as local, including command-line launches; automatic detection cannot identify every custom host. Custom Classic servers must set `LIPIDOMIC_HOSTED=1` explicitly before launch. Explicit installation permission is intentionally honored in CI/hosting as well, while debug never unredacts hosted/CI logs. Local browser diagnostics are bounded in depth, field count, and output length to keep malformed payloads from flooding logs.

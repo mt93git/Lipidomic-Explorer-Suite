@@ -1,5 +1,9 @@
 # R/global.R
 # Global setup.
+source("R/frontends/interface.R")
+lipidomic_validate_runtime_flags()
+source("R/frontends/classic/server.R")
+source("R/frontends/team/server.R")
 
 
 
@@ -20,7 +24,8 @@ suppressPackageStartupMessages({
 })
 
 # Dynamic graceful load and recovery for visNetwork
-if (!requireNamespace("visNetwork", quietly = TRUE)) {
+if (!requireNamespace("visNetwork", quietly = TRUE) &&
+    lipidomic_allow_dependency_install()) {
   tryCatch({
     message("[GLOBAL RECOVERY] 'visNetwork' not found. Attempting on-the-fly binary installation...")
     install.packages("visNetwork", type = "binary", quiet = TRUE)
@@ -105,20 +110,27 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
     "ERROR"   = "!!! [FATAL ERROR]"
   )
   
-  banner <- sprintf("[INGESTION TRACE] %s | STAGE: %s | %s | %s", ts, stage, status_tag, message_text)
-  
-  detail_lines <- ""
-  if (length(details) > 0) {
-    formatted_details <- sapply(names(details), function(k) {
-      val <- details[[k]]
-      if (is.null(val)) val <- "<NULL>"
-      else if (is.atomic(val) && length(val) > 1) val <- paste0("[", paste(head(val, 8), collapse = ", "), if(length(val) > 8) sprintf("... +%d more", length(val) - 8) else "", "]")
-      else if (is.data.frame(val)) val <- sprintf("DataFrame [%d rows x %d cols]", nrow(val), ncol(val))
-      sprintf("    - %s: %s", k, as.character(val))
-    })
-    detail_lines <- paste0("\n", paste(formatted_details, collapse = "\n"))
+  # This process-wide trace can outlive a session. Hosted/CI and default Team
+  # logs persist only fixed stages and bounded numeric details. Local full
+  # diagnostics below may include filenames, sample IDs, and filesystem paths.
+  safe_stage <- gsub("[^A-Za-z0-9_]", "_", as.character(stage)[1])
+  banner <- sprintf("[INGESTION TRACE] %s | STAGE: %s | %s", ts, safe_stage, status_tag)
+  safe_keys <- intersect(names(details), c(
+    "file_size_mb", "sheet_count", "duplicates_count", "lipid_count",
+    "sample_column_count", "total_lipids", "total_samples", "retained",
+    "excluded", "sample_count", "row_count", "column_count"
+  ))
+  safe_keys <- safe_keys[vapply(details[safe_keys], function(x)
+    is.numeric(x) && length(x) == 1L && is.finite(x), logical(1))]
+  detail_lines <- if (length(safe_keys)) paste0("\n", paste(vapply(safe_keys,
+    function(k) sprintf("    - %s: %s", k, as.character(details[[k]])), character(1)), collapse = "\n")) else ""
+
+  if (lipidomic_full_diagnostics()) {
+    banner <- paste0(banner, " | ", message_text)
+    detail_lines <- if (length(details)) paste0("\n",
+      paste(capture.output(str(details)), collapse = "\n")) else ""
   }
-  
+
   full_output <- paste0(banner, detail_lines, "\n")
   
   # 1. Output to stderr (Shiny log stream) and stdout (RStudio console stream)
@@ -1295,8 +1307,13 @@ assign("render_tab_intro_card", render_tab_intro_card, envir = .GlobalEnv)
 # Load Modules
 source("R/utils_lipid_genes.R")
 source("R/utils_data.R")
+source("R/utils_preparation.R")
+source("R/utils_sample_metadata.R")
+source("R/utils_csv_export.R")
+source("R/utils_session_archive.R")
 source("R/utils_colors.R")
 source("R/utils_vis.R")
+source("R/utils_plot_events.R")
 source("R/modules/utils_stats.R")
 source("R/modules/utils_targeted_lipids.R")
 source("R/utils_memento.R")
@@ -1320,3 +1337,21 @@ source("R/modules/99_export_studio_module.R")
 
 
 
+
+if (identical(lipidomic_interface(), "team")) {
+  source("R/sample_metadata_import.R")
+  source("R/frontends/team/sample_metadata_import_module.R")
+  source("R/ux_preparation.R")
+  source("R/guided_preparation_controls.R")
+  source("R/results_dashboard.R")
+  source("R/cell_show.R")
+  source("R/guided_workflow.R")
+  source("R/frontends/team/hub-ui.R")
+  source("R/frontends/team/qc-ui.R")
+  source("R/frontends/team/modules-ui.R")
+  source("R/companion_assistant.R")
+  companion_env <- Sys.getenv("LIPIDOMIC_COMPANION_ENV", unset = "")
+  if (nzchar(companion_env) && file.exists(companion_env)) readRenviron(companion_env)
+  source("R/companion_ai_provider.R", local = TRUE)
+  if (companion_ai_available()) future::plan(future::multisession, workers = 2)
+}

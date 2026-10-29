@@ -1,0 +1,34 @@
+[
+  {
+    "artifact": "raw_abundance_before.csv",
+    "byte_identical": true,
+    "rows_before": 747,
+    "rows_after": 747,
+    "text_cells_changed": 0,
+    "max_numeric_change": 0.0
+  },
+  {
+    "artifact": "transformed_abundance_after.csv",
+    "byte_identical": true,
+    "rows_before": 747,
+    "rows_after": 747,
+    "text_cells_changed": 0,
+    "max_numeric_change": 0.0
+  },
+  {
+    "artifact": "differential_expression_audit_results.csv",
+    "byte_identical": false,
+    "rows_before": 747,
+    "rows_after": 747,
+    "text_cells_changed": 2364,
+    "max_numeric_change": 1.0125233984581428e-13
+  },
+  {
+    "artifact": "organelle_stress_and_cpi_audit.csv",
+    "byte_identical": false,
+    "rows_before": 24,
+    "rows_after": 24,
+    "text_cells_changed": 171,
+    "max_numeric_change": 730.490153635797
+  }
+]
