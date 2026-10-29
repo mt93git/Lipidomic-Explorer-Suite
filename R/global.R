@@ -1,6 +1,7 @@
 # R/global.R
 # Global setup.
 source("R/frontends/interface.R")
+lipidomic_validate_runtime_flags()
 source("R/frontends/classic/server.R")
 source("R/frontends/team/server.R")
 
@@ -109,9 +110,9 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
     "ERROR"   = "!!! [FATAL ERROR]"
   )
   
-  # This process-wide trace can outlive a session. Persist only fixed stage and
-  # bounded numerical diagnostics; message_text and arbitrary details may contain
-  # filenames, sample IDs, or filesystem paths.
+  # This process-wide trace can outlive a session. Hosted/CI and default Team
+  # logs persist only fixed stages and bounded numeric details. Local full
+  # diagnostics below may include filenames, sample IDs, and filesystem paths.
   safe_stage <- gsub("[^A-Za-z0-9_]", "_", as.character(stage)[1])
   banner <- sprintf("[INGESTION TRACE] %s | STAGE: %s | %s", ts, safe_stage, status_tag)
   safe_keys <- intersect(names(details), c(

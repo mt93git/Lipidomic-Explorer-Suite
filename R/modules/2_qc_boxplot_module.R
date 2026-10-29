@@ -1142,8 +1142,9 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     # Observe and apply restored outlier treatments
     observe({
       treats <- shared_data$restored_outlier_treatments()
-      if (!is.null(treats) && length(treats) > 0) {
+      if (!is.null(treats)) {
         outlierTreatments(treats)
+        tempOutlierTreatments(treats)
       }
     })
     

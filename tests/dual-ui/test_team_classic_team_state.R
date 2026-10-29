@@ -67,9 +67,10 @@ shiny::testServer(shared_data_server, args = list(
     session$setInputs(import_session_file = data.frame(name = basename(export_team),
       size = file.info(export_team)$size, type = "application/zip", datapath = export_team))
     for (i in seq_len(12L)) session$flushReact()
-    stopifnot(isTRUE(api$session_restored()), is.null(api$data_processed_unfiltered()),
+    stopifnot(isTRUE(api$session_restored()), !is.null(api$data_processed_unfiltered()),
       !is.null(api$restored_qc_decisions()))
-    live <- classic_live()
+    live <- api$preparation_state()$applied$spec$settings
+    session$setInputs(selectedColumns = api$preparation_state()$applied$spec$selected)
     live$outlierTreatments <- api$restored_outlier_treatments()
     live$guidedQcDecisions <- api$restored_qc_decisions()
     classic_live(live)

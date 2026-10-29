@@ -117,10 +117,13 @@ restore_archive <- function(path, source, destination, legacy = FALSE) {
           metadata = api$external_sample_metadata(), files = api$loaded_files()))
       }
       check("archive hydrated", isTRUE(api$session_restored()) && !isTRUE(api$is_restoring()))
-      check("restore review barrier clears prepared output", is.null(api$data_processed_unfiltered()))
       if (identical(destination, "team")) {
+        check("restore review barrier clears prepared output", is.null(api$data_processed_unfiltered()))
         session$setInputs(runAnalysis = 1L); session$flushReact()
         check("restore cannot prepare before confirmation", is.null(api$data_processed_unfiltered()))
+      }
+      if (identical(destination, "classic")) {
+        check("Classic automatically prepares restored matrix", !is.null(api$data_processed_unfiltered()))
       }
       restored_meta <- api$external_sample_metadata()
       if (legacy && identical(source, "team")) {

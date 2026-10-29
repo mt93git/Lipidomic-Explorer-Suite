@@ -22,6 +22,15 @@ lipidomic_env_flag <- function(name) {
   stop(sprintf("%s must be 1/true/yes/on or 0/false/no/off", name), call. = FALSE)
 }
 
+lipidomic_validate_runtime_flags <- function() {
+  # Validate even inactive overrides before installs, package loading, or analysis.
+  for (name in c("LIPIDOMIC_DISABLE_DEPENDENCY_INSTALL",
+                 "LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL", "LIPIDOMIC_UI_TRACE_DEBUG")) {
+    lipidomic_env_flag(name)
+  }
+  invisible(TRUE)
+}
+
 lipidomic_restricted_runtime <- function() {
   enabled <- function(name) {
     value <- tolower(trimws(Sys.getenv(name, unset = "")))

@@ -763,6 +763,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     observeEvent(input$files, {
       req(input$files)
       cat(sprintf("\n[LIPIDOMIC EXPLORER] Received upload of %d file(s):\n", nrow(input$files)))
+      restore_initial_spec(NULL)
       current_files <- rv$uploads
       dest_dir <- upload_storage
       if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
@@ -793,6 +794,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     remove_single_upload <- function(filename) {
       req(filename)
       cat("\n[LIPIDOMIC EXPLORER] Removing an uploaded file.\n")
+      restore_initial_spec(NULL)
       current_uploads <- rv$uploads
       if (!isTRUE(isolate(is_restoring())) && filename %in% names(current_uploads)) {
         restored_preparation_seed(NULL); restored_team_snapshot(NULL); external_metadata(NULL)
@@ -5698,9 +5700,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             saved_level_prefs(as.list(state_data$longitudinal$saved_level_prefs))
           }
           restored_qc_decisions(state_data$outliers$qc_decisions %||% NULL)
-          if (!is.null(state_data$outliers$treatments)) {
-            restored_outlier_treatments(as.list(state_data$outliers$treatments))
-          }
+          restored_outlier_treatments(as.list(state_data$outliers$treatments %||% list()))
           if (!is.null(state_data$outliers$bqcManualExclusions)) {
             restored_bqc_manual_exclusions(as.character(state_data$outliers$bqcManualExclusions))
           }
@@ -5714,6 +5714,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           metadata_trigger(isolate(metadata_trigger()) + 1)
           import_status("Metadata restored. Hydrating UI inputs...")
         }, error = function(e) {
+          restore_initial_spec(NULL)
           is_restoring(FALSE)
           import_status(paste("Error during metadata restoration:", e$message))
         })
@@ -5738,6 +5739,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             }
             import_status("Restoring controls. Review the restored settings before running analysis.")
           }, error = function(e) {
+            restore_initial_spec(NULL)
             is_restoring(FALSE)
             import_status(paste("Error during input hydration:", e$message))
           })
@@ -5765,6 +5767,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
+              restore_initial_spec(NULL)
               is_restoring(FALSE)
               import_status(paste("Error during analysis execution:", e$message))
             })
@@ -5817,6 +5820,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       restored_team_snapshot(NULL)
       classic_palette_edited(FALSE)
       restored_qc_decisions(NULL)
+      restored_outlier_treatments(NULL)
       external_metadata(NULL)
       explicit_selection(FALSE)
       if (!is.null(archive$shared$metadata)) external_metadata(archive$shared$metadata)
@@ -5907,6 +5911,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         import_status("Files restored. Restoring metadata mappings...")
       }, error = function(e) {
+        restore_initial_spec(NULL)
         is_restoring(FALSE)
         import_status(paste("Error during file restoration:", e$message))
       })
@@ -5979,9 +5984,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             saved_level_prefs(as.list(state_data$longitudinal$saved_level_prefs))
           }
           restored_qc_decisions(state_data$outliers$qc_decisions %||% NULL)
-          if (!is.null(state_data$outliers$treatments)) {
-            restored_outlier_treatments(as.list(state_data$outliers$treatments))
-          }
+          restored_outlier_treatments(as.list(state_data$outliers$treatments %||% list()))
           if (!is.null(state_data$outliers$bqcManualExclusions)) {
             restored_bqc_manual_exclusions(as.character(state_data$outliers$bqcManualExclusions))
           }
@@ -5999,6 +6002,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           metadata_trigger(isolate(metadata_trigger()) + 1)
           import_status("Metadata restored. Hydrating UI inputs...")
         }, error = function(e) {
+          restore_initial_spec(NULL)
           is_restoring(FALSE)
           import_status(paste("Error during metadata restoration:", e$message))
         })
@@ -6072,6 +6076,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             }
             import_status("Restoring controls. Review the restored settings before running analysis.")
           }, error = function(e) {
+            restore_initial_spec(NULL)
             is_restoring(FALSE)
             import_status(paste("Error during input hydration:", e$message))
           })
@@ -6099,6 +6104,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
+              restore_initial_spec(NULL)
               is_restoring(FALSE)
               import_status(paste("Error during analysis execution:", e$message))
             })
@@ -6139,6 +6145,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           restore_generation(isolate(restore_generation())+1L)
           restored_preparation_seed(NULL)
           restored_team_snapshot(NULL)
+          restore_initial_spec(NULL)
           metadata_restored(FALSE); rv$lipidomics_confirmed <- FALSE; analysis_is_fresh(FALSE)
           external_metadata(NULL); preparation$reset()
           rv$uploads <- setNames(list(normalizePath(path, mustWork=TRUE)), basename(path))

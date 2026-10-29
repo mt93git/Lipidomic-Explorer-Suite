@@ -45,6 +45,27 @@ tryCatch({
   }
   reset(LIPIDOMIC_DISABLE_DEPENDENCY_INSTALL = "typo")
   stopifnot(inherits(tryCatch(lipidomic_allow_dependency_install(), error = identity), "error"))
+  for (flag in vars[2:4]) {
+    reset(CI = "1", LIPIDOMIC_DISABLE_DEPENDENCY_INSTALL = "1")
+    do.call(Sys.setenv, setNames(list("typo"), flag))
+    err <- tryCatch(lipidomic_validate_runtime_flags(), error = identity)
+    stopifnot(inherits(err, "error"), grepl(flag, conditionMessage(err), fixed = TRUE))
+  }
+  # Both startup routes validate before package loading or preflight installation.
+  for (path in c("app.R", "R/global.R")) {
+    startup <- parse(path)
+    validation <- which(vapply(startup, function(e) is.call(e) &&
+      identical(e[[1]], as.name("lipidomic_validate_runtime_flags")), logical(1)))
+    stopifnot(length(validation) == 1L)
+    source_before <- startup[[validation - 1L]]
+    stopifnot(is.call(source_before), identical(source_before[[1]], as.name("source")))
+    reset(LIPIDOMIC_UI_TRACE_DEBUG = "typo")
+    err <- tryCatch(eval(startup[[validation]]), error = identity)
+    stopifnot(inherits(err, "error"), grepl("LIPIDOMIC_UI_TRACE_DEBUG", conditionMessage(err), fixed = TRUE))
+    after <- paste(vapply(as.list(startup)[seq.int(validation + 1L, length(startup))],
+      function(e) paste(deparse(e), collapse = " "), character(1)), collapse = " ")
+    stopifnot(grepl(if (path == "app.R") "pkgs_missing" else "library(shiny)", after, fixed = TRUE))
+  }
   reset(CI = "false")
   stopifnot(lipidomic_allow_dependency_install(), lipidomic_full_diagnostics())
   evt <- list(type = "JS_ERROR", payload = list(message = "secret.xlsx", lineno = 123))

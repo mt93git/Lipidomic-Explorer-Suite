@@ -111,3 +111,31 @@ df <- data.frame(Lipid_Name=c('a','b'), S1=c(1,2), S2=c(2,3))
 req <- preparation_request(list(data=df, file_cols=list()), c('S1','S2'), settings=list(outlierTreatments=list(S1='remove', S2='remove')))
 stopifnot(inherits(try(preparation_request_preview(req), silent=TRUE), 'try-error'))
 cat('PASS: post-QC empty selection does not resurrect samples\n')
+
+# A replacement upload and deletion must discard any interrupted restore spec.
+shiny::testServer(shared_data_server, args=list(external_settings=shiny::reactive(list()), preparation_policy='classic'), {
+  restore_initial_spec(list(selected='stale', settings=list()))
+  session$setInputs(files=data.frame(name='synthetic.csv', size=file.info(matrix_path)$size,
+    type='text/csv', datapath=matrix_path))
+  session$flushReact()
+  stopifnot(is.null(restore_initial_spec()))
+  restore_initial_spec(list(selected='stale', settings=list()))
+  remove_single_upload('synthetic.csv'); session$flushReact()
+  stopifnot(is.null(restore_initial_spec()))
+})
+# Execute the actual QC observer from the module in a minimal reactive server.
+qc_lines <- readLines('R/modules/2_qc_boxplot_module.R', warn=FALSE)
+start <- grep('^    # Observe and apply restored outlier treatments$', qc_lines)
+end <- grep('^    # Team starts a new QC review', qc_lines)
+stopifnot(length(start)==1L, length(end)==1L, end > start)
+qc_observer <- parse(text=paste(qc_lines[(start+1L):(end-1L)], collapse='\n'))
+shiny::testServer(function(input, output, session) {
+  shared_data <- list(restored_outlier_treatments=shiny::reactiveVal(NULL))
+  outlierTreatments <- shiny::reactiveVal(list(S01='remove'))
+  tempOutlierTreatments <- shiny::reactiveVal(list(S01='remove'))
+  eval(qc_observer)
+}, {
+  session$flushReact(); shared_data$restored_outlier_treatments(list()); session$flushReact()
+  stopifnot(identical(outlierTreatments(), list()), identical(tempOutlierTreatments(), list()))
+})
+cat('PASS: interrupted restore spec clears on dataset change; empty QC restore clears old treatments\n')

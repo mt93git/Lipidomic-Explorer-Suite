@@ -44,7 +44,7 @@ for (policy in c("classic", "team")) {
     for (i in seq_len(10L)) session$flushReact()
     stopifnot(isTRUE(session_restored()), is.null(external_metadata()),
               identical(rawData()$data, expected_raw),
-              is.null(preparation$state()$applied))
+              identical(is.null(preparation$state()$applied), policy == "team"))
   })
 
   # A previously exported absent metadata object ({}) remains readable.

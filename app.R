@@ -40,6 +40,7 @@ if (sys_os == "Darwin") {
 }
 
 source(file.path("R", "frontends", "interface.R"))
+lipidomic_validate_runtime_flags()
 
 # Self-healing pre-flight check: If critical packages (e.g. visNetwork, shiny) are missing, auto-run 00_ENVIRONMENT_SETUP.R
 critical_core_pkgs <- c("shiny", "bslib", "DT", "dplyr", "visNetwork")
