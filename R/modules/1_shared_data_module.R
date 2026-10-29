@@ -549,6 +549,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     saved_timepoint_order_prefs <- reactiveVal(NULL)
     saved_level_prefs <- reactiveVal(list())
     restored_inputs <- reactiveVal(list())
+    restore_initial_spec <- reactiveVal(NULL)
     prev_subclass_choices <- reactiveVal(character(0))
     prev_hyperclass_choices <- reactiveVal(character(0))
     prev_lm_species_choices <- reactiveVal(character(0))
@@ -588,6 +589,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
       awaiting_restore_review(FALSE)
       restored_inputs(list())
+      restore_initial_spec(NULL)
       ts <- format(Sys.time(), "%H:%M:%S")
       cat(sprintf("[LIPIDOMIC EXPLORER %s] 'Run Analysis' action triggered.\n", ts))
       cat(sprintf("  >> Staged uploaded file(s): %d\n", length(rv$uploads)))
@@ -1489,13 +1491,16 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       direct <- external_metadata()
       if (!is.null(direct) && !setequal(all_numeric_columns(),direct$scientific_metadata$FullName))
         stop("Uploaded metadata no longer matches this matrix. Review the mapping.")
-      selected <- input$selectedColumns
+      initial_spec <- restore_initial_spec()
+      selected <- if (!is.null(initial_spec)) initial_spec$selected else input$selectedColumns
+      if (!is.null(initial_spec) && isTRUE(initial_spec$legacy) && !length(selected)) selected <- all_numeric_columns()
+      if (!is.null(initial_spec) && !length(selected)) stop("The saved preparation has no selected samples. Review the restored settings before running.")
       if (!length(selected) && !isTRUE(explicit_selection())) selected <- NULL
-      settings <- external_settings() %||% list()
+      settings <- if (!is.null(initial_spec)) initial_spec$settings else external_settings() %||% list()
       if (is.null(settings$imputationSeed) && !is.null(restored_preparation_seed())) settings$imputationSeed <- restored_preparation_seed()
       preparation_request(rawData(), selected,
         tryCatch(allParsedMetadata(), shiny.silent.error = function(e) NULL),
-        settings, isTRUE(input$useAveragedSubstitution), preparation_data_id(), preparation_policy)
+        settings, if (!is.null(initial_spec)) isTRUE(initial_spec$use_average) else isTRUE(input$useAveragedSubstitution), preparation_data_id(), preparation_policy)
     })
     preparation <- shared_preparation_controller(
       pending = pending_preparation,
@@ -5741,17 +5746,22 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
-              analysis_is_fresh(FALSE)
-              # A server flush is not proof that the browser has hydrated controls.
-              # Require an explicit run after reviewing the restored UI.
+              # Team requires explicit review; Classic resumes the saved analysis.
               explicit_selection(TRUE)
               is_restoring(FALSE)
+              if (identical(preparation_policy, "team")) {
+                analysis_is_fresh(FALSE)
+              } else {
+                analysis_is_fresh(TRUE)
+                run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
+              }
               session_restored(TRUE)
               just_restored(TRUE)
               session$onFlushed(function() {
+                restore_initial_spec(NULL)
                 just_restored(FALSE)
               }, once = TRUE)
-              import_status(if (preparation_policy == "team") "Session restored. Review the study design and settings, then click Prepare data." else "Session restored. Review the study design and settings, then click Run Analysis to prepare the restored data.")
+              import_status(if (preparation_policy == "team") "Session restored. Review the study design and settings, then click Prepare data." else "Session restored. Preparing the restored analysis.")
               removeModal()
             }, error = function(e) {
               restored_inputs(list())
@@ -5800,7 +5810,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
       session_restored(FALSE)
       missing_files_to_restore(character())
-      awaiting_restore_review(TRUE)
+      awaiting_restore_review(identical(preparation_policy, "team"))
+      restore_initial_spec(if (identical(preparation_policy, "classic")) archive$shared$applied$spec else NULL)
       preparation$reset()
       restored_palette_state(NULL)
       restored_team_snapshot(NULL)
@@ -5822,6 +5833,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       # 3. Start sequential hydration
       is_restoring(TRUE)
       restored_inputs(state_data$inputs)
+      if (identical(preparation_policy, "classic") && is.null(isolate(restore_initial_spec()))) {
+        # Legacy archives have no applied sidecar. Reconstruct the same settings
+        # consumed by preparation_settings() from their saved QC inputs.
+        keys <- c("minDetectionPct", "dropNonDetected", "detectionScope", "normalizationMethod",
+                  "useImputation", "imputeZerosPerFile", "imputeRemainingNAtoZero", "imputationSeed")
+        settings <- setNames(lapply(keys, function(key) get_restored_input(paste0("qc_pca_tab-", key))), keys)
+        settings$outlierTreatments <- as.list(state_data$outliers$treatments %||% list())
+        if (is.null(settings$imputationSeed)) settings$imputationSeed <- validated_seed
+        restore_initial_spec(list(legacy = TRUE, selected = get_restored_input(session$ns("selectedColumns")),
+          settings = settings, use_average = isTRUE(get_restored_input(session$ns("useAveragedSubstitution"), FALSE))))
+      }
       import_status("Restoring data files...")
       
       # Stage 1: Files restoration
@@ -6058,17 +6080,22 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
           # Stage 4: Run Analysis & Finalize
           session$onFlushed(function() {
             tryCatch({
-              analysis_is_fresh(FALSE)
-              # A server flush is not proof that the browser has hydrated controls.
-              # Require an explicit run after reviewing the restored UI.
+              # Team requires explicit review; Classic resumes the saved analysis.
               explicit_selection(TRUE)
               is_restoring(FALSE)
+              if (identical(preparation_policy, "team")) {
+                analysis_is_fresh(FALSE)
+              } else {
+                analysis_is_fresh(TRUE)
+                run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
+              }
               session_restored(TRUE)
               just_restored(TRUE)
               session$onFlushed(function() {
+                restore_initial_spec(NULL)
                 just_restored(FALSE)
               }, once = TRUE)
-              import_status(if (preparation_policy == "team") "Session restored. Review the study design and settings, then click Prepare data." else "Session restored. Review the study design and settings, then click Run Analysis to prepare the restored data.")
+              import_status(if (preparation_policy == "team") "Session restored. Review the study design and settings, then click Prepare data." else "Session restored. Preparing the restored analysis.")
               removeModal()
             }, error = function(e) {
               restored_inputs(list())

@@ -17,9 +17,15 @@ for (policy in c("classic", "team")) {
       type = "application/zip", datapath = fixture))
     for (i in seq_len(10L)) session$flushReact()
     stopifnot(isTRUE(session_restored()),
-              is.null(preparation$state()$applied),
+              identical(is.null(preparation$state()$applied), policy == "team"),
               identical(restored_preparation_seed(), 7L))
 
+    if (policy == "classic") {
+      applied <- preparation$state()$applied$spec
+      settings(applied$settings)
+      session$setInputs(selectedColumns = applied$selected)
+      session$flushReact()
+    }
     session$setInputs(pFilterThreshold = threshold,
                       minDetectionPct = 33.33333333333334)
     exported <- read_session_archive(output$export_session_btn)

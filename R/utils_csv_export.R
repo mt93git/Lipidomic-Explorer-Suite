@@ -1,7 +1,8 @@
 # CSV downloads are opened directly by spreadsheet software. Keep this
 # presentation-only transformation away from prepared matrices and session ZIPs.
 spreadsheet_csv_escape <- function(values) {
-  unsafe <- !is.na(values) & grepl("^[[:space:]]*[=+@-]", values)
+  signed_number <- !is.na(values) & grepl("^[[:space:]]*[-+]([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([eE][-+]?[0-9]+)?[[:space:]]*$", values)
+  unsafe <- !is.na(values) & grepl("^[[:space:]]*[=+@-]", values) & !signed_number
   values[unsafe] <- paste0("'", values[unsafe])
   values
 }

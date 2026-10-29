@@ -24,7 +24,7 @@ suppressPackageStartupMessages({
 
 # Dynamic graceful load and recovery for visNetwork
 if (!requireNamespace("visNetwork", quietly = TRUE) &&
-    identical(Sys.getenv("LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL", unset = "0"), "1")) {
+    lipidomic_allow_dependency_install()) {
   tryCatch({
     message("[GLOBAL RECOVERY] 'visNetwork' not found. Attempting on-the-fly binary installation...")
     install.packages("visNetwork", type = "binary", quiet = TRUE)
@@ -123,6 +123,12 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
     is.numeric(x) && length(x) == 1L && is.finite(x), logical(1))]
   detail_lines <- if (length(safe_keys)) paste0("\n", paste(vapply(safe_keys,
     function(k) sprintf("    - %s: %s", k, as.character(details[[k]])), character(1)), collapse = "\n")) else ""
+
+  if (lipidomic_full_diagnostics()) {
+    banner <- paste0(banner, " | ", message_text)
+    detail_lines <- if (length(details)) paste0("\n",
+      paste(capture.output(str(details)), collapse = "\n")) else ""
+  }
 
   full_output <- paste0(banner, detail_lines, "\n")
   

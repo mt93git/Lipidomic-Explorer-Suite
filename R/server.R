@@ -13,15 +13,8 @@ server <- function(input, output, session) {
     if (!is.list(evt) || !is.character(evt$type) || length(evt$type) != 1L) return()
     allowed <- c("CLICK", "FILE_SELECTED", "FILE_UPLOAD_COMPLETE", "STATUS", "JS_ERROR")
     if (!evt$type %in% allowed) return()
-    # The browser payload can include study filenames, labels, paths or user text.
-    # Even opt-in debugging emits only event category and a bounded file count.
-    suffix <- ""
-    if (identical(Sys.getenv("LIPIDOMIC_UI_TRACE_DEBUG", unset = "0"), "1") &&
-        identical(evt$type, "FILE_SELECTED")) {
-      n <- suppressWarnings(as.integer(evt$payload$count))
-      if (length(n) == 1L && !is.na(n) && n >= 0L && n <= 1000L)
-        suffix <- sprintf(" | files: %d", n)
-    }
+    # Full payloads are available locally; hosted/CI logs always stay redacted.
+    suffix <- lipidomic_ui_trace_suffix(evt)
     cat(sprintf("[UI TRACE %s] %s%s\n", format(Sys.time(), "%H:%M:%S"), evt$type, suffix))
   }, ignoreInit = TRUE)
 
