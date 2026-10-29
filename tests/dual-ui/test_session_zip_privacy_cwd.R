@@ -27,6 +27,12 @@ for (policy in c("classic", "team")) {
     for (i in seq_len(10L)) session$flushReact()
     stopifnot(isTRUE(session_restored()),
               !length(setdiff(extracted_dirs(), before_import_dirs)))
+    if (policy == "classic") {
+      applied <- preparation$state()$applied$spec
+      settings(applied$settings)
+      session$setInputs(selectedColumns = applied$selected)
+      session$flushReact()
+    }
     session$setInputs(assistant_request = list(text = secret, nonce = 1L),
                       assistant_action = list(id = secret),
                       assistant_confirm = list(token = secret),
