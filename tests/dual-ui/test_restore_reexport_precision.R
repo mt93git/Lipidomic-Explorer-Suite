@@ -21,6 +21,9 @@ for (policy in c("classic", "team")) {
               identical(restored_preparation_seed(), 7L))
 
     if (policy == "classic") {
+      blocked <- tryCatch({ output$export_session_btn; NULL }, error = identity)
+      stopifnot(inherits(blocked, "error"),
+                grepl("Apply or revert pending preparation changes", conditionMessage(blocked), fixed = TRUE))
       applied <- preparation$state()$applied$spec
       settings(applied$settings)
       session$setInputs(selectedColumns = applied$selected)
@@ -83,4 +86,4 @@ shiny::testServer(shared_data_server, args = list(
 })
 unlink(c(tmp, malformed), recursive = TRUE)
 
-cat("PASS: restored seed and numeric controls survive immediate ZIP re-export; invalid seed leaves session intact\n")
+cat("PASS: pre-hydration export is blocked; hydrated ZIP retains seed and numeric controls; invalid seed leaves session intact\n")
