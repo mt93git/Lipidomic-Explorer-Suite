@@ -38,3 +38,7 @@ launch_debug.ps1
 
 # Generated scientific comparison outputs
 /parity-evidence/
+
+/block2-evidence/
+
+/guided-evidence/

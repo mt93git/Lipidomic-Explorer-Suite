@@ -39,7 +39,7 @@ load_one_file <- function(file_path, file_name) {
           list(duplicates_count = dup_count)
         )
       }
-      showNotification(paste("Warning:", file_name, "has duplicates. Averaging values."), type="warning")
+      showNotification(paste(file_name, "contains repeated lipid names. Numeric measurements for each repeated lipid are averaged; the original workbook is unchanged."), type="warning")
       combined <- combined %>% 
         dplyr::group_by(Lipid_Name) %>% 
         dplyr::summarise(dplyr::across(where(is.numeric), ~mean(., na.rm=TRUE)), .groups='drop')
