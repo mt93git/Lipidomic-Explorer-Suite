@@ -1,0 +1,190 @@
+/* One guided workflow; original module pages and bindings remain mounted. */
+body.guided-app{background:#fafaf8;color:#162230}
+.guided-app .navbar{min-height:70px!important;position:relative!important}
+.guided-app #main_navbar,.guided-app .navbar-toggler,.guided-app #secondary_subtab_bar{display:none!important}
+.guided-app #tertiary_subsubtab_bar{position:relative!important;top:auto!important}
+.guided-app[data-guide-analysis=false] #tertiary_subsubtab_bar{display:none!important}
+#guide-navigation{background:#162230;color:#f0f4f8;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 24px;flex-wrap:wrap}
+#guide-navigation nav{display:flex;gap:6px;flex-wrap:wrap}
+#guide-navigation button{font:inherit;color:#d9e6ef;border:0;background:transparent;border-radius:6px;padding:10px 12px;min-height:44px}
+#guide-navigation .guide-step span{display:inline-grid;place-items:center;border:1px solid #698498;border-radius:50%;width:25px;height:25px;margin-right:8px;font-family:'IBM Plex Mono',monospace;font-size:12px}
+#guide-navigation .guide-step[aria-current=step]{background:#eaf1f6;color:#162230}
+#guide-navigation .guide-step[aria-current=step] span{background:#2d5f8a;color:white;border-color:#2d5f8a}
+.guide-global-actions{display:flex;flex-wrap:wrap}
+#guide-context{padding:10px 24px;background:#edf3f7;border-bottom:1px solid #dce3e9;font-size:13px}
+#guide-analysis-toolbar{padding:12px 24px;gap:12px;align-items:center;display:flex;flex-wrap:wrap;background:#fff}
+#guide-analysis-toolbar .shiny-input-container{width:300px;margin:0}
+.guided-app[data-guide-analysis=false] #guide-analysis-toolbar{display:none}
+.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar){grid-template-columns:minmax(0,1fr)!important}
+.guided-app[data-guide-analysis=false] #main_sidebar,.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar)>.collapse-toggle{display:none!important}
+.guided-app .bslib-page-navbar>.container-fluid{padding-top:0!important}
+.guide-page{max-width:1250px;margin:auto;padding:28px 24px 45px}
+.guide-heading{margin-bottom:25px;max-width:800px}
+.guide-heading h2{font:500 36px/1.15 'Cormorant Garamond',Georgia,serif;margin:8px 0 12px}
+.guide-heading p,.guide-panel p{color:#526477}
+.guide-columns,.guide-tool-grid,.guide-goals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:18px 0}
+.guide-panel{background:white;border:1px solid #dce3e9;border-radius:8px;padding:22px;margin-bottom:18px;min-width:0}
+.guide-panel h3{font:600 25px/1.2 'Cormorant Garamond',Georgia,serif;margin-bottom:15px}
+.guide-panel .shiny-input-container{width:100%;max-width:100%}
+.guide-button{background:#fff;border:1px solid #acbfce;border-radius:5px;color:#2d5f8a;font:inherit;padding:10px 15px;margin:5px 8px 5px 0;min-height:44px}
+.guide-actions{border-top:1px solid #dce3e9;padding-top:20px;display:flex;justify-content:flex-end;margin-top:25px}
+.guide-actions button{background:#2d5f8a;color:#fff;border-color:#2d5f8a}
+.guide-goals>.btn{white-space:normal;text-align:left;background:#fff;border:1px solid #bccbd7;padding:22px;border-radius:8px;color:#162230}
+.guide-goals>.btn:hover,.guide-button:hover{background:#eaf1f6;color:#162230}
+.guide-goals h3{font:600 25px 'Cormorant Garamond',Georgia,serif}
+.guide-goals p{white-space:normal;margin:10px 0 0;color:#526477}
+.guide-pending{color:#72531e;background:#fcf5e9;padding:6px;display:inline-block}
+#guide-run-controls #dock_panel_pipeline{display:block!important}
+#guide-run-controls .dock-section{border:0;padding:0}
+#guide-run-controls .dock-section-title{display:none}
+#guide-sample-selection .accordion-item,#guide-contrast-controls .accordion-item{border:0}
+.guided-app .dock-segment-btn[data-dock-target=pipeline]{display:none!important}
+.guide-page .dataTables_wrapper{overflow-x:auto}
+.guide-page details{padding:18px 0}
+.guide-page summary{color:#2d5f8a;font-weight:600}
+.guided-app [data-guide-step]:focus-visible,.guided-app [data-guide-tool]:focus-visible{outline:3px solid #78afe0;outline-offset:3px}
+.guided-app[data-guide-analysis=false] #targeted_lipids_top_dock{display:none!important}
+@media(max-width:760px){#guide-navigation{padding:10px;display:block}#guide-navigation nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}#guide-navigation .guide-step{padding:8px 5px;font-size:13px;text-align:left}#guide-navigation .guide-step span{margin-right:4px}.guide-columns,.guide-tool-grid,.guide-goals{grid-template-columns:1fr}.guide-page{padding:22px 14px}.guide-heading h2{font-size:30px}.guide-panel{padding:16px}#guide-context,#guide-analysis-toolbar{padding:12px}#guide-analysis-toolbar .shiny-input-container{width:100%}}
+.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar)>.main{grid-column:1 / -1!important;width:100%!important;margin-left:0!important}
+.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar){--_sidebar-width:0px!important}
+.guided-app[data-guide-analysis=false] [role=separator]{display:none!important}
+
+.guided-app[data-guide-goal=overview] #guide-contrast-controls{display:none!important}
+.guide-goals .btn[aria-pressed=true]{background:#eaf1f6;border-color:#2d5f8a;box-shadow:inset 0 0 0 1px #2d5f8a}
+.guided-app #data_hub-appliedRunStrip{display:none!important}
+body.guided-app .navbar .navbar-toggler{display:none!important}
+
+/* Required study-design decisions stay actionable, including below long metadata tables. */
+.guide-design-status{background:#edf3f7;border:1px solid #bccbd7;border-radius:8px;padding:20px 22px;margin-bottom:22px}
+.guide-design-status h3{font:600 25px/1.2 'Cormorant Garamond',Georgia,serif;margin:0 0 10px}
+.guide-design-status p{margin:0 0 10px;color:#526477}
+.guide-design-status ol{padding-left:22px;margin-bottom:0}
+.guide-design-jump{font:inherit;text-align:left;color:#244f70;background:none;border:0;padding:8px 4px;text-decoration:underline;text-underline-offset:3px;min-height:44px}
+.guide-design-jump:focus-visible{outline:3px solid #78afe0;outline-offset:2px}
+.guide-design-required{background:#fcf5e9;border-color:#bf9553}
+.guide-design-ready{background:#edf5f0;border-color:#80a88c}
+#guide-design-decisions .shiny-input-container{padding:10px;border:2px solid transparent;border-radius:6px;scroll-margin-block:30px}
+#guide-design-decisions .guide-field-invalid{border-color:#b46424;background:#fff9f1}
+#guide-design-decisions .guide-field-focus{outline:3px solid #2d5f8a;outline-offset:3px;background:#edf3f7}
+#guide-design-decisions p[id$=_help]{font-size:13px;color:#526477;margin:0 10px 22px}
+
+.guided-app .navbar-brand{height:auto!important;min-height:54px;border-right:0!important}
+.guide-brand-lockup{display:flex;align-items:center;gap:22px;max-width:100%;white-space:normal}
+.guide-app-name{color:#eef4f8;font:500 14px/1.4 'Nunito Sans',sans-serif;letter-spacing:.14em;border-left:1px solid #60717f;padding:10px 0 10px 22px}
+@media(max-width:760px){.guide-brand-lockup{gap:12px}.guide-app-name{font-size:11px;letter-spacing:.08em;padding-left:12px;max-width:155px}.guided-app .navbar .navbar-brand{margin-right:0!important;padding-right:0!important;max-width:100%}}
+
+/* Preserve the current website logo's original colors. */
+body.guided-app .navbar #navbar_brand_logo_img{filter:none!important;opacity:1}
+
+/* Guided walkthrough: clear next actions and enough space to inspect a figure. */
+.guide-next-task{padding:16px 20px;border-left:4px solid #2d5f8a;background:#edf3f7;border-radius:5px;margin-bottom:20px}
+.guide-next-task p:last-child{margin-bottom:0}
+.guide-source-file{font-size:12px;color:#526477;overflow-wrap:anywhere}
+.guide-tool-card{padding:14px;border:1px solid #dce3e9;border-radius:6px;background:white}
+.guide-tool-card p{margin:8px 0;color:#526477;font-size:13px}
+.guide-selection-summary{margin:10px 0 20px}
+#guide-design-review .shiny-input-container,#guide-sample-selection .shiny-input-container{padding:10px;border:2px solid transparent;border-radius:6px;scroll-margin-block:30px}
+#guide-design-review .guide-field-invalid,#guide-sample-selection .guide-field-invalid{border-color:#b46424;background:#fff9f1}
+.guide-page .guide-field-focus{outline:3px solid #2d5f8a;outline-offset:3px;background:#edf3f7}
+#guide-design-review p[id$=_help]{font-size:13px;color:#526477;margin:0 10px 22px}
+.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.main>.tab-content{flex:0 0 auto!important;min-height:max(600px,calc(100vh - 120px))}
+
+.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.main>.bslib-page-main>.tab-content{flex:0 0 auto!important;min-height:max(600px,calc(100vh - 120px))!important}
+#guide-running-status{display:none;background:#edf3f7;padding:16px;border-left:4px solid #2d5f8a;margin:12px 0}
+.guide-preparing #guide-running-status{display:block}
+.guide-preparing #guide_quality_status{display:none}
+.guide-loading{padding:14px 18px;background:#edf3f7;border-left:3px solid #2d5f8a;color:#526477}
+
+.guide-preparing #data_hub-pipelineStatusUI,.guide-preparing #data_hub-preparationSummary{display:none}
+.guide-preparing #data_hub-runAnalysis{pointer-events:none;opacity:.65}
+.guide-narrow-controls{display:none}
+.guide-narrow-controls-close{display:none}
+
+/* Below 900px the analysis canvas gets the full width. Plot controls remain
+   available as a compact off-canvas panel instead of squeezing the plot. */
+@media(max-width:899px){
+  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar){grid-template-columns:minmax(0,1fr)!important}
+  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.main{grid-column:1 / -1!important;min-width:0!important;width:100%!important}
+  .guided-app[data-guide-analysis=true] #main_sidebar{position:fixed!important;z-index:1040!important;top:var(--guide-sidebar-top,70px)!important;left:0!important;width:min(320px,calc(100vw - 24px))!important;min-width:0!important;height:calc(100vh - var(--guide-sidebar-top,70px))!important;height:calc(100dvh - var(--guide-sidebar-top,70px))!important;max-height:none!important;transform:translateX(-105%);transition:transform .2s ease!important;box-shadow:8px 0 24px rgba(22,34,48,.16)!important}
+  .guided-app[data-guide-analysis=true].guide-narrow-controls-open #main_sidebar{transform:translateX(0)}
+  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.collapse-toggle{display:none!important}
+  .guide-narrow-controls{margin:0 0 0 auto}
+  .guided-app[data-guide-analysis=true] .guide-narrow-controls{display:inline-flex}
+  .guide-narrow-controls-close{display:block;width:100%;padding:10px 12px;margin:0 0 8px;text-align:right;background:#edf3f7;border:0;border-bottom:1px solid #dce3e9;color:#2d5f8a;font:inherit;cursor:pointer}
+}
+@media(prefers-reduced-motion:reduce){.guided-app[data-guide-analysis=true] #main_sidebar{transition:none!important}}
+
+/* Keep the data-pool ribbon below help, drawers and modal dialogs. */
+body.guided-app #targeted_lipids_top_dock{z-index:30!important}
+/* Wide metadata tables scroll locally rather than stretching the entire step. */
+.guide-page{min-width:0;max-width:min(1250px,100%)}.guide-panel{min-width:0;max-width:100%}
+#guide_metadata,#guide_history{max-width:100%;overflow-x:auto}
+@media(max-width:760px){.guide-page{width:100%}.guide-page .dataTables_wrapper{max-width:100%;overflow-x:auto}.guide-page .shiny-input-container{max-width:100%}}
+
+/* Respect bslib's collapsed state: the legacy sticky/min-width rules otherwise
+   leave a visible 240px panel inside a zero-width grid column. */
+@media(min-width:900px){
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar).sidebar-collapsed > #main_sidebar{
+    visibility:hidden!important;pointer-events:none!important;min-width:0!important;width:0!important;overflow:hidden!important;
+  }
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar):not(.sidebar-collapsed):not(.sidebar-collapsed-layout){grid-template-columns:var(--_sidebar-width,320px) minmax(0,1fr)!important}
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar):not(.sidebar-collapsed):not(.sidebar-collapsed-layout) > #main_sidebar:not(.sidebar-collapsed){
+    width:var(--_sidebar-width,320px)!important;min-width:0!important;top:0!important;height:100%!important;max-height:100%!important;
+  }
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar) > .main{min-width:0!important}
+}
+
+/* Compact, readable run status with methods available on demand. */
+body.guided-app #guide-context{background:#f6f8f8;padding:14px 24px;color:#344956}
+.guide-run-summary{font-size:14px;line-height:1.5;min-width:0}
+.guide-run-top{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px}
+.guide-run-counts{display:flex;gap:10px;align-items:center;color:#213945;font-size:16px}
+.guide-run-counts>span{color:#91a1aa}
+.guide-run-status{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;background:#e5f1eb;color:#285944}
+.guide-run-status.has-changes{background:#f7ecd5;color:#775621}
+.guide-method-details{margin-left:auto;max-width:100%}
+.guide-method-details summary,.guide-contrast-details summary{cursor:pointer;color:#2d5f8a;font-size:13px;padding:5px 0}
+.guide-method-details[open]{flex-basis:100%;margin-left:0}
+.guide-method-copy{padding:6px 0;color:#526477}
+.guide-method-copy p,.guide-contrast-details p{margin:4px 0;font-size:13px}
+.guide-run-next{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}
+body.guided-app .guide-run-next .guide-button{padding:7px 12px;font-size:13px;min-height:36px;background:#fff}
+.guide-run-note{margin:8px 0 0;font-size:13px}
+.guide-contrast-details{margin-top:8px;border-top:1px solid #e0e7e9;padding-top:4px;min-width:0}
+.guide-contrast-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:6px 0}
+.guide-contrast-pair span{display:block;letter-spacing:.08em;font-size:10px;color:#647987}
+.guide-contrast-pair strong{font-size:13px;overflow-wrap:anywhere}
+@media(max-width:760px){body.guided-app #guide-context{padding:12px 14px}.guide-method-details{margin-left:0}.guide-contrast-pair{grid-template-columns:1fr}.guide-run-counts{font-size:15px}}
+
+body.guided-app .bslib-sidebar-layout:has(> #main_sidebar).sidebar-collapsed-layout{grid-template-columns:0 minmax(0,1fr)!important}
+
+/* Quiet tool navigation leaves more room for the figure while keeping global links. */
+body.guided-app[data-guide-analysis=true] #guide-navigation{padding:6px 24px;gap:8px 14px}
+body.guided-app[data-guide-analysis=true] #guide-navigation button{min-height:36px;padding:6px 10px}
+body.guided-app[data-guide-analysis=true] .guide-global-actions{gap:4px}
+body.guided-app[data-guide-analysis=true] .lipid-help-bar{padding:5px 24px;background:#f6f8f8}
+body.guided-app[data-guide-analysis=true] #guide-analysis-toolbar{padding:7px 24px;gap:8px}
+body.guided-app[data-guide-analysis=true] #guide-analysis-toolbar .shiny-input-container{width:min(240px,100%)}
+body.guided-app[data-guide-analysis=true] #guide-analysis-toolbar label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Keep the preparation action available beside long lists of settings. */
+@media(min-width:761px){
+  body.guided-app[data-guide-step="3"] .guide-columns>.guide-panel:nth-child(2){position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto}
+}
+
+/* The step heading carries the hierarchy; pending notes read as compact callouts. */
+.guide-panel h3,.guide-goals h3,.guide-design-status h3{font-size:21px}
+.guide-pending{display:block;padding:8px 12px;border-left:3px solid #bf9553;border-radius:4px;line-height:1.45}
+/* The guided status and next action already describe the applied run. */
+body.guided-app #guide-run-controls #data_hub-pipelineStatusUI,
+body.guided-app #guide-run-controls .ux-prep-summary .ux-pending,
+body.guided-app .rd-pending{display:none!important}
+@media(max-width:760px){
+  body.guided-app[data-guide-analysis=true] #guide-navigation{padding:6px 10px}
+  body.guided-app[data-guide-analysis=true] .lipid-help-bar,body.guided-app[data-guide-analysis=true] #guide-analysis-toolbar{padding:6px 12px}
+  #guide-navigation nav{display:flex;flex-wrap:nowrap;min-width:0;width:100%;gap:4px;max-width:100%;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin}
+  #guide-navigation .guide-step{flex:0 0 auto;scroll-snap-align:center;min-height:44px;padding:7px 10px;white-space:nowrap}
+  body.guided-app[data-guide-analysis=true] #guide-navigation .guide-step{min-height:44px}
+  #guide-navigation .guide-global-actions{gap:4px;margin-top:4px}
+  #guide-navigation .guide-global-actions button{font-size:12px;min-height:44px;padding:6px 8px}
+}

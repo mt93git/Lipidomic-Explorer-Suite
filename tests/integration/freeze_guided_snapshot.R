@@ -4,7 +4,7 @@ source('tests/integration/helpers.R')
 args <- commandArgs(TRUE); stopifnot(length(args)==1L)
 selected <- list(
   'R/modules/1_shared_data_module.R'=c('preparation_sample_ids','compute_imputed_matrix'),
-  'R/ux_preparation.R'=c('ux_detection_preview','ux_filter_detected'),
+  'R/frontends/team/ux_preparation.R'=c('ux_detection_preview','ux_filter_detected'),
   'R/modules/utils_stats.R'=c('compute_local_p_val','perform_limma_analysis','perform_non_parametric_analysis','construct_contrast_string'))
 lines <- c('# Frozen scientific functions from the guided application, 2026-10-26.',
            '# Test fixture only; never sourced by the application. See guided-source-manifest.csv.',

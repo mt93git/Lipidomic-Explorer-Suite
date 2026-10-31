@@ -1,0 +1,27 @@
+[
+  {
+    "path": "R/modules/1_shared_data_module.R",
+    "upstream_ref": "d48933ca20e59e67def18f29bc3cf035b81e1ca2",
+    "upstream_exists": true,
+    "baseline_exists": true,
+    "upstream_sha256": "db986adb62214024382e18458c2c823b5e98b21ef454140b2062f26efe6c14ad",
+    "baseline_sha256": "db986adb62214024382e18458c2c823b5e98b21ef454140b2062f26efe6c14ad",
+    "exact": true
+  },
+  {
+    "path": "R/modules/utils_stats.R",
+    "upstream_ref": "d48933ca20e59e67def18f29bc3cf035b81e1ca2",
+    "upstream_exists": true,
+    "baseline_exists": true,
+    "upstream_sha256": "b9ec265ab927abbafa44cc23fb964eeef90e7891f243e75f1825ba4191887ad7",
+    "baseline_sha256": "b9ec265ab927abbafa44cc23fb964eeef90e7891f243e75f1825ba4191887ad7",
+    "exact": true
+  },
+  {
+    "path": "R/utils_preparation.R",
+    "upstream_ref": "d48933ca20e59e67def18f29bc3cf035b81e1ca2",
+    "upstream_exists": false,
+    "baseline_exists": false,
+    "same_presence": true
+  }
+]
