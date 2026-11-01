@@ -15,6 +15,28 @@
     var nav = document.createElement('div'); nav.className = 'tc-navigation'; nav.setAttribute('aria-label','Canvas navigation');
     nav.innerHTML = '<details class="tc-map" open><summary>Minimap</summary><svg tabindex="0" role="img" aria-label="Canvas minimap. Click or drag to navigate; use arrow keys to pan." preserveAspectRatio="none"><g class="tc-map-nodes"></g><rect class="tc-map-window"/></svg></details><div class="tc-zoom-controls" role="group" aria-label="Canvas zoom"><button type="button" class="tc-zoom-out" aria-label="Zoom out">−</button><button type="button" class="tc-zoom-reset" aria-label="Reset canvas zoom to 100%" title="Reset to 100%">100%</button><button type="button" class="tc-zoom-in" aria-label="Zoom in">+</button><button type="button" class="tc-zoom-fit">Fit all</button></div>';
     shell.appendChild(nav);
+    // The minimap can be moved anywhere inside the canvas; its place is remembered
+    // per browser and pulled back inside when the canvas gets smaller.
+    var grip=document.createElement('button');grip.type='button';grip.className='tc-map-grip';grip.textContent='⠿';
+    grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the minimap';nav.appendChild(grip);
+    var MAP_KEY='team.canvas.minimap.position';
+    function placeMap(x,y,save){
+      var maxX=Math.max(0,shell.clientWidth-nav.offsetWidth-4),maxY=Math.max(0,shell.clientHeight-nav.offsetHeight-4);
+      x=Math.round(Math.max(4,Math.min(maxX,x)));y=Math.round(Math.max(4,Math.min(maxY,y)));
+      nav.style.setProperty('left',x+'px','important');nav.style.setProperty('top',y+'px','important');
+      nav.style.setProperty('bottom','auto','important');nav.style.setProperty('right','auto','important');nav.classList.add('is-placed');
+      if(save){try{localStorage.setItem(MAP_KEY,JSON.stringify({x:x,y:y}));}catch(e){}}
+    }
+    function restoreMap(){var saved=null;try{saved=JSON.parse(localStorage.getItem(MAP_KEY)||'null');}catch(e){}
+      if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)&&shell.clientWidth)placeMap(saved.x,saved.y,false);}
+    grip.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();grip.setPointerCapture(e.pointerId);
+      var start={x:e.clientX,y:e.clientY,l:nav.offsetLeft,t:nav.offsetTop};nav.classList.add('is-dragging');
+      function move(ev){placeMap(start.l+ev.clientX-start.x,start.t+ev.clientY-start.y,false);}
+      function end(){grip.removeEventListener('pointermove',move);nav.classList.remove('is-dragging');placeMap(nav.offsetLeft,nav.offsetTop,true);}
+      grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end,{once:true});grip.addEventListener('pointercancel',end,{once:true});});
+    grip.addEventListener('keydown',function(e){var d={ArrowLeft:[-16,0],ArrowRight:[16,0],ArrowUp:[0,-16],ArrowDown:[0,16]}[e.key];if(!d)return;e.preventDefault();placeMap(nav.offsetLeft+d[0],nav.offsetTop+d[1],true);});
+    window.addEventListener('resize',function(){if(nav.classList.contains('is-placed'))placeMap(nav.offsetLeft,nav.offsetTop,false);});
+    requestAnimationFrame(function(){requestAnimationFrame(restoreMap);});
     var focusButton=document.createElement('button');focusButton.type='button';focusButton.className='tc-focus-toggle';focusButton.textContent='Expand canvas';focusButton.setAttribute('aria-pressed','false');
     var toolbar=root.querySelector('.tc-mode-tabs')||root.querySelector('.tc-toolbar')||nav;toolbar.appendChild(focusButton);
     // Keep explanations available without reserving a second work area below the board.
@@ -87,6 +109,8 @@
       next=zoomSupported?Math.max(.05,Math.min(2,next)):1; if(!Number.isFinite(next))return;
       var x=(scroll.scrollLeft+scroll.clientWidth/2)/scale,y=(scroll.scrollTop+scroll.clientHeight/2)/scale;
       scale=next;api.scale=scale;sizeSpace();scroll.scrollLeft=x*scale-scroll.clientWidth/2;scroll.scrollTop=y*scale-scroll.clientHeight/2;paint();
+      // Plots keep their logical size; re-check them once the zoom settles.
+      clearTimeout(api.zoomFitTimer);api.zoomFitTimer=setTimeout(function(){if(window.TeamCanvas&&TeamCanvas.fitAllPlots)TeamCanvas.fitAllPlots();},120);
     }
     // Put a newly-created node in the middle of the visible work area.  This is
     // deliberately an imperative operation: restoring a checkpoint must retain
@@ -119,12 +143,21 @@
     }
     // Restore positions are data; adjust only the camera once a restored node
     // is available, and only if it does not fit in the visible viewport.
-    var restoreNeedsFocus=false;
+    var restoreNeedsFocus=false, userMoved=false;
+    ['wheel','pointerdown','keydown'].forEach(function(name){scroll.addEventListener(name,function(){userMoved=true;},{passive:true});});
+    nav.addEventListener('click',function(){userMoved=true;});
     function focusRestoredNode() {
       if (!restoreNeedsFocus || !scroll.clientWidth || !scroll.clientHeight) return;
       var target=board.querySelector('.tc-node.is-selected') || board.querySelector('.tc-node');
       if (!target) return;
       restoreNeedsFocus=false;
+      // Several figures: open showing all of them. Cards settle their size as
+      // plots render, so fit again once unless the user has moved the view.
+      if (board.querySelectorAll('.tc-node').length > 1 && !board.querySelector('.tc-node.is-selected')) {
+        fitAll(); userMoved=false;
+        setTimeout(function(){ if(!userMoved) fitAll(); }, 2500);
+        return;
+      }
       var viewport=scroll.getBoundingClientRect(), rect=target.getBoundingClientRect();
       if (rect.left < viewport.left || rect.top < viewport.top || rect.right > viewport.right || rect.bottom > viewport.bottom) focusNode(target);
     }
@@ -147,12 +180,16 @@
     minus.addEventListener('click',function(){zoom(scale/1.25);});plus.addEventListener('click',function(){zoom(scale*1.25);});reset.addEventListener('click',function(){zoom(1);});
     var fitButton=nav.querySelector('.tc-zoom-fit');fitButton.disabled=!zoomSupported;
     if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Use the minimap to pan.';
-    nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){
+    nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
+    function fitAll(){
       var items=Array.from(board.querySelectorAll('.tc-node'));if(!items.length){zoom(1);scroll.scrollLeft=0;scroll.scrollTop=0;refresh();return;}
       var x=Math.min.apply(null,items.map(function(n){return n.offsetLeft;})),y=Math.min.apply(null,items.map(function(n){return n.offsetTop;}));
       var right=Math.max.apply(null,items.map(function(n){return n.offsetLeft+n.offsetWidth;})),bottom=Math.max.apply(null,items.map(function(n){return n.offsetTop+n.offsetHeight;})),padding=32;
-      zoom(Math.min(1,(scroll.clientWidth-padding*2)/(right-x),(scroll.clientHeight-padding*2)/(bottom-y)));scroll.scrollLeft=Math.max(0,(x+(right-x)/2)*scale-scroll.clientWidth/2);scroll.scrollTop=Math.max(0,(y+(bottom-y)/2)*scale-scroll.clientHeight/2);refresh();
-    });
+      // Keep the fitted figures clear of the minimap (its height at the bottom).
+      var reserve=nav.offsetParent?nav.offsetHeight+12:0,usableH=Math.max(120,scroll.clientHeight-padding*2-reserve);
+      zoom(Math.min(1,(scroll.clientWidth-padding*2)/(right-x),usableH/(bottom-y)));scroll.scrollLeft=Math.max(0,(x+(right-x)/2)*scale-scroll.clientWidth/2);scroll.scrollTop=Math.max(0,(y+(bottom-y)/2)*scale-(usableH/2+padding));refresh();
+    }
+    api.fitAll=fitAll;
     function navigate(e){
       var rect=map.getBoundingClientRect(), box=map.viewBox.baseVal;
       if(!rect.width||!rect.height)return;

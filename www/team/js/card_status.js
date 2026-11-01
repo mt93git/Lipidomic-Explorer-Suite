@@ -14,7 +14,7 @@
   };
   function action(state, node) {
     if (state === 'pending') return ['Review', function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
-    if (state === 'finished-stale') return ['Edit figure', function () { var b = Array.from(node.querySelectorAll('.tc-node-head > button')).find(function (x) { return x.textContent === 'Edit'; }); if (b) b.click(); }];
+    if (state === 'finished-stale') return ['Edit figure', function () { var b = Array.from(node.querySelectorAll('.tc-node-head > button, .tc-card-actions > button')).find(function (x) { return x.textContent === 'Edit'; }); if (b) b.click(); }];
     return null;
   }
   function chipFor(node) {

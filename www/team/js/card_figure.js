@@ -25,6 +25,7 @@
   function mark(node) {
     var content = node.querySelector(':scope > .tc-content'), plot = plotOf(node);
     var on = !!(content && plot && eligible(node) && plot.offsetHeight > 0 && content.contains(plot));
+    var was = node.classList.contains('tc-figure-card'), before = node.querySelectorAll('.' + CHROME).length;
     node.classList.toggle('tc-figure-card', on);
     if (!on) { node.querySelectorAll('.' + CHROME + ',.' + PARK).forEach(function (el) { el.classList.remove(CHROME, PARK); el.inert = false; }); return; }
     for (var a = plot; a && a !== content; a = a.parentElement) {
@@ -38,12 +39,24 @@
         if (contents(sibling)) Array.prototype.forEach.call(sibling.children, function (c) { addOnce(c, PARK); });
       });
     }
+    // The plot gained the room the parked content used: let it fill the card.
+    if ((!was || node.querySelectorAll('.' + CHROME).length !== before) && window.TeamCanvas && TeamCanvas.fitPlot) TeamCanvas.fitPlot(node.dataset.plotId);
+  }
+  // Card actions live in one compact toolbar that shows on hover, selection or
+  // keyboard focus; the title keeps one line. Buttons move, never re-created.
+  function actions(node) {
+    var head = node.querySelector(':scope > .tc-node-head'); if (!head) return;
+    var bar = head.querySelector(':scope > .tc-card-actions');
+    var loose = Array.prototype.filter.call(head.children, function (c) { return c.tagName === 'BUTTON'; });
+    if (!loose.length) return;
+    if (!bar) { bar = document.createElement('div'); bar.className = 'tc-card-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Card actions'); head.appendChild(bar); }
+    loose.forEach(function (b) { bar.appendChild(b); });
   }
   function start() {
     var root = document.getElementById('team-canvas-root'), board = root && root.querySelector('.tc-board');
     if (!board) return;
     var queued = false;
-    function sweep() { queued = false; board.querySelectorAll(':scope > .tc-node').forEach(mark); }
+    function sweep() { queued = false; board.querySelectorAll(':scope > .tc-node').forEach(function (n) { mark(n); actions(n); }); }
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(sweep); } }
     new MutationObserver(schedule).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
     // Shiny triggers its events through jQuery; native listeners never see them.

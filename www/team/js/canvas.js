@@ -484,7 +484,42 @@
   }
   function tell(message) { status.textContent = message; }
   function isClassHeatmap(id) { var r=records.get(id);id=sourceKey(r)||id;return /^heatmap_barchart_tab-(heatmapPlot|heatmapSDPlot|filteredHeatmapPlot|filteredHeatmapSDPlot)$/.test(id); }
+  // Plotly's responsive resize re-enables autosize and measures the element
+  // through the canvas CSS zoom, so a zoomed-out canvas redrew card plots at
+  // the zoomed size and they stayed small afterwards. Inside canvas cards,
+  // resize to the element's logical size instead.
+  function guardPlotlyResize() {
+    var P=window.Plotly; if(!P||!P.Plots||P.Plots.resize.teamLogical)return;
+    var original=P.Plots.resize;
+    var logical=function(gd){
+      var g=typeof gd==='string'?document.getElementById(gd):gd, card=g&&g.closest&&g.closest('#team-canvas-root .tc-node');
+      if(!card||!g._fullLayout||!g.clientWidth||!g.clientHeight)return original.apply(this,arguments);
+      var w=g.clientWidth,h=g.clientHeight,update={};
+      if(g.layout.autosize!==false)update.autosize=false;
+      if(Math.abs(g._fullLayout.width-w)>1)update.width=w;
+      if(Math.abs(g._fullLayout.height-h)>1)update.height=h;
+      if(update.autosize===false){update.width=w;update.height=h;}
+      return Object.keys(update).length?P.relayout(g,update):Promise.resolve(g);
+    };
+    logical.teamLogical=true;P.Plots.resize=logical;
+  }
+  // Shiny's onResize hands htmlwidgets the size as seen through the canvas
+  // zoom (a 592 px card at 40% arrived as 237 px), and the plotly binding
+  // relayouts to it. Inside canvas cards use the element's logical size.
+  function guardWidgetResize() {
+    var reg=window.Shiny&&Shiny.outputBindings&&Shiny.outputBindings.getBindings&&Shiny.outputBindings.getBindings(); if(!reg)return;
+    reg.forEach(function(entry){
+      var w=entry.binding, isPlotly=w&&(w.name==='plotly'||entry.id==='plotly'||entry.name==='plotly'||(typeof w.find==='function'&&String(w.find).indexOf('plotly')>=0)||(w.className&&String(w.className).indexOf('plotly')>=0));
+      if(!isPlotly||!w.resize||w.resize.teamLogical)return;
+      var original=w.resize, logical=function(el,width,height,instance){
+        if(el&&el.closest&&el.closest('#team-canvas-root .tc-node')&&el.clientWidth&&el.clientHeight){width=el.clientWidth;height=el.clientHeight;}
+        return original.call(this,el,width,height,instance);
+      };
+      logical.teamLogical=true;w.resize=logical;
+    });
+  }
   function resize(r) {
+    guardPlotlyResize();guardWidgetResize();
     if (!r.node || r.snapshot) return;
     var content = r.node.querySelector('.tc-content');
     var gd = r.el.classList.contains('js-plotly-plot') ? r.el : r.el.querySelector('.js-plotly-plot');
@@ -511,7 +546,9 @@
     var height = square ? gd.data[0].y.length*16+210 : large ? (denseHorizontal?heat.naturalWidth:heat.naturalHeight) : Math.max(minHeight, r.node.clientHeight - plotTop - 24);
     var desired = Math.round(height) + 'px';
     var heightChanged=r.el.style.height !== desired;
-    if (!heightChanged && !square && !(rectHeat && gd._fullLayout && Math.abs(gd._fullLayout.width-r.el.clientWidth)>1)) return;
+    // A figure with a fixed layout size ignores Plots.resize: follow the card frame in both directions.
+    var full=gd && gd._fullLayout, offFrame=!!(full && !square && !large && (Math.abs(full.width-r.el.clientWidth)>1 || Math.abs(full.height-Math.round(height))>1));
+    if (!heightChanged && !square && !offFrame && !(rectHeat && gd._fullLayout && Math.abs(gd._fullLayout.width-r.el.clientWidth)>1)) return;
     if (square && !heightChanged && !r.squareResizePending && r.heatResizePlot===gd && r.heatResizeWidth===r.el.clientWidth && r.heatResizeX===gd.data[0].x.length && r.heatResizeY===gd.data[0].y.length) {
       var currentFull=gd._fullLayout||{}, currentSize=currentFull._size, currentDomain=gd.layout.xaxis&&gd.layout.xaxis.domain, currentY=gd.layout.yaxis&&gd.layout.yaxis.domain;
       var currentTarget=currentSize&&currentSize.w>0?Math.min(1,gd.data[0].x.length*16/currentSize.w):null;
@@ -521,8 +558,13 @@
     r.el.style.height = desired;
     if (gd && gd.data && window.Plotly && !r.squareResizePending) {
       r.squareResizePending=true;
-      Promise.resolve(window.Plotly.Plots.resize(gd)).then(function(){
+      // Heatmap geometries keep Plotly's own resize; other cards get an explicit size below.
+      Promise.resolve(square||rectHeat?window.Plotly.Plots.resize(gd):null).then(function(){
         if(rectHeat && r.node && gd.layout){var denseUpdates={};if(Math.abs((gd._fullLayout||{}).height-height)>1)denseUpdates.height=height;if(Math.abs((gd._fullLayout||{}).width-r.el.clientWidth)>1)denseUpdates.width=r.el.clientWidth;if(Object.keys(denseUpdates).length)return window.Plotly.relayout(gd,denseUpdates);return;}
+        // Plotly's autosize measures through the canvas CSS zoom (a 40% view drew a
+        // 592 px plot at 237 px and kept it). Card plots use an explicit size in
+        // logical pixels instead, so zooming never shrinks them.
+        if(!square && r.node && gd.layout && gd._fullLayout && r.el.clientWidth>0){var frame={};if(gd.layout.autosize!==false)frame.autosize=false;if(Math.abs(gd._fullLayout.width-r.el.clientWidth)>1)frame.width=r.el.clientWidth;if(Math.abs(gd._fullLayout.height-Math.round(height))>1)frame.height=Math.round(height);if(Object.keys(frame).length){if(frame.autosize===false){frame.width=r.el.clientWidth;frame.height=Math.round(height);}return window.Plotly.relayout(gd,frame);}return;}
         if(!square || !r.node || !gd.layout || !gd.data || !gd.data[0])return;
         // Plotly may retain an explicit layout width different from the CSS
         // output width. Use the renderer's actual drawable width, not the
@@ -1600,6 +1642,9 @@
       },
       listIllustrations: function () { return (window.TeamIllustrations && Array.isArray(window.TeamIllustrations.list) ? window.TeamIllustrations.list : []).map(function (x) { return {id:x.id,title:x.title,category:x.category || 'Illustrations'}; }); },
       addIllustration: function (id) { return addIllustration(id); },
+      // Re-fit a card's plot to its frame (the shell parks module content around it).
+      fitPlot:function(id){var r=records.get(id);if(r&&r.node)resize(r);},
+      fitAllPlots:function(){records.forEach(function(r){if(r.node)resize(r);});},
       // Read-only card state for the shell's status chips and export warning.
       cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';return figureCurrent(r)?'current':'updating';},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
