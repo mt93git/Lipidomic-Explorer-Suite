@@ -59,7 +59,8 @@
         var more = document.createElement('button'); more.type = 'button'; more.className = 'tc-inspector-data-settings'; more.textContent = 'Data & settings';
         more.onclick = function () { settings.click(); }; dataBody.appendChild(more);
       }
-      dataPending = !chrome.length && !n.querySelector('.gc-root') ? 20 : 0;
+      // Retry for a while (time, not mutation count) while the plot is still rendering.
+      dataPending = !chrome.length && !n.querySelector('.gc-root') ? Date.now() + 15000 : 0;
       chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; dataBody.appendChild(el); });
       if (!chrome.length) {
         var note = document.createElement('p'); note.className = 'tc-inspector-data-note';
@@ -110,7 +111,7 @@
       var plot = !node.classList.contains('tc-illustration'); if (!plot) activeTab = 'appearance';
       // A finished card that becomes editable (Edit) gains module content: fill Data
       // then, retrying while its plot is still rendering.
-      if (plot && !finished && !movedData.length && dataPending > 0 && !inspector.hidden) { var tries = dataPending; dataBody.textContent = ''; fillData(node); dataPending = movedData.length ? 0 : tries - 1; }
+      if (plot && !finished && !movedData.length && dataPending && Date.now() < dataPending && !inspector.hidden) { var until = dataPending; dataBody.textContent = ''; fillData(node); dataPending = movedData.length ? 0 : until; }
       locked.hidden = !finished; tabs.hidden = finished || !plot; body.inert = statsBody.inert = dataBody.inert = finished;
       tabList.forEach(function (t) { var on = t.key === activeTab; t.button.setAttribute('aria-selected', String(on)); t.button.tabIndex = on ? 0 : -1; t.panel.hidden = finished || !on; });
       if (focusedControl) edit.focus();
@@ -159,11 +160,12 @@
     });
     window.addEventListener('team-canvas-panel-open', function (event) { if (event.detail && event.detail.kind !== 'appearance') hide(); });
     window.addEventListener('team-document-restored', function () { node = null; trigger.disabled = true; hide(); });
-    new MutationObserver(state).observe(root.querySelector('.tc-board'), {childList:true, subtree:true, attributes:true, attributeFilter:['class']});
-    close.onclick = hide; trigger.onclick = function () { if (inspector.hidden) select(node, true); else hide(); };
+    // Plotly's own class churn inside plots does not change the inspector's state.
+    new MutationObserver(function (records) { if (records.some(function (r) { return r.type === 'childList' || !(r.target.closest && r.target.closest('.js-plotly-plot')); })) state(); }).observe(root.querySelector('.tc-board'), {childList:true, subtree:true, attributes:true, attributeFilter:['class']});
+    close.onclick = hide; trigger.onclick = function () { var auto = trigger.dataset.autoOpen === 'true'; delete trigger.dataset.autoOpen; if (inspector.hidden) select(node, !auto); else hide(); };
     edit.onclick = function () { var button = node && Array.from(node.querySelectorAll('.tc-node-head button')).find(function (b) { return b.textContent === 'Edit'; }); if (button) { button.click(); state(); } };
     var libraryToggle = root.querySelector('.tc-library-toggle'); if (libraryToggle) libraryToggle.addEventListener('click', hide);
-    inspector.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !event.defaultPrevented) { event.stopPropagation(); hide(); /* hide() already returned focus (to the card header in the shell, where the Properties toggle is hidden and focusing it re-opened the inspector). */ if (trigger.offsetParent) trigger.focus(); } });
+    inspector.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !event.defaultPrevented) { var sel = event.target.closest && event.target.closest('.selectize-control'); if (sel && sel.querySelector('.selectize-input.dropdown-active')) return; /* Esc closes the open dropdown first */ event.stopPropagation(); hide(); /* hide() already returned focus (to the card header in the shell, where the Properties toggle is hidden and focusing it re-opened the inspector). */ if (trigger.offsetParent) trigger.focus(); } });
     var selected = window.TeamCanvas && TeamCanvas.selected();
     if (selected) select(Array.from(root.querySelectorAll('.tc-node')).find(function (n) { return n.dataset.plotId === selected.id; }));
   }

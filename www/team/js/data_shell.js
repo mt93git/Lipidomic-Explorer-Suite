@@ -3,7 +3,9 @@
    which stay bound and receive every action (select change, Resume). */
 (function () {
   'use strict';
-  var groups = null;
+  var groups = null, loadedProject = null;
+  // Remember which project an analysis was opened from (Resume or Open latest).
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#team_library_resume,.ts-data-open')) { var p = document.getElementById('team_library_project'); loadedProject = p ? p.value : null; } }, true);
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function isCopy(name) { return /\b(copy|check|verification|test)\b/i.test(name); }
   function checkpointLabel(text) { return String(text).replace(/\s*·\s*[0-9a-f]{4,}\.zip.*$/i, '').replace(/\.zip\s+\S+$/i, '').trim(); }
@@ -46,7 +48,8 @@
     var checkpoint = document.getElementById('team_library_checkpoint');
     var options = Array.from(project.options), selected = project.value;
     var bound = document.body.dataset.teamStage && document.querySelector('#qc_pca_tab-guided_qc_plot') && liveCounts();
-    var live = bound && (bound.samples || bound.lipids) ? bound : null;
+    // The loaded analysis belongs to the project that was opened, not to whichever card is selected.
+    var live = bound && (bound.samples || bound.lipids) && loadedProject === selected ? bound : null;
     var html = options.map(function (o) {
       var on = o.value === selected, meta;
       if (on && live) meta = [live.samples && live.samples + ' samples', live.lipids && live.lipids + ' lipids', live.exclusions + ' exclusion' + (live.exclusions === 1 ? '' : 's'), live.figures != null && live.figures + ' figure' + (live.figures === 1 ? '' : 's')].filter(Boolean).join(' · ');

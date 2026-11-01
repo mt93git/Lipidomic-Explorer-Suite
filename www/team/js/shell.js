@@ -173,7 +173,8 @@
     window.addEventListener('team-canvas-selection', function () {
       setTimeout(function () {
         var trigger = root.querySelector('.tc-properties-toggle');
-        if (trigger && !trigger.disabled && trigger.getAttribute('aria-expanded') !== 'true' && inspector.hidden) trigger.click();
+        // Open without moving focus (the user may be typing in the card, e.g. its title).
+        if (trigger && !trigger.disabled && trigger.getAttribute('aria-expanded') !== 'true' && inspector.hidden) { trigger.dataset.autoOpen = 'true'; trigger.click(); }
       }, 0);
     });
 

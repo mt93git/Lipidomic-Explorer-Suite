@@ -208,7 +208,7 @@
     map.addEventListener('pointermove',function(e){if(dragging)navigate(e);});
     ['pointerup','pointercancel','lostpointercapture'].forEach(function(name){map.addEventListener(name,function(){dragging=false;});});
     map.addEventListener('keydown',function(e){var dx=e.key==='ArrowRight'?80:e.key==='ArrowLeft'?-80:0,dy=e.key==='ArrowDown'?80:e.key==='ArrowUp'?-80:0;if(dx||dy){e.preventDefault();scroll.scrollLeft+=dx;scroll.scrollTop+=dy;refresh();}});
-    scroll.addEventListener('scroll',refresh,{passive:true});window.addEventListener('resize',refresh);if(window.visualViewport)window.visualViewport.addEventListener('resize',refresh);nav.querySelector('details').addEventListener('toggle',refresh);
+    scroll.addEventListener('scroll',refresh,{passive:true});window.addEventListener('resize',refresh);if(window.visualViewport)window.visualViewport.addEventListener('resize',refresh);nav.querySelector('details').addEventListener('toggle',function(){refresh();if(nav.classList.contains('is-placed'))requestAnimationFrame(function(){placeMap(nav.offsetLeft,nav.offsetTop,false);});});
     var observer=new MutationObserver(function(events){if(events.some(function(e){return e.target===board || (e.target.classList && e.target.classList.contains('tc-node'));})){refresh();if(restoreNeedsFocus)requestAnimationFrame(focusRestoredNode);}});
     observer.observe(board,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
     if(window.ResizeObserver){var ro=new ResizeObserver(refresh);ro.observe(scroll);ro.observe(board);var intro=root.querySelector('.tc-intro');if(intro)ro.observe(intro);var tools=root.querySelector('.tc-toolbar');if(tools)ro.observe(tools);}

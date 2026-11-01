@@ -461,7 +461,8 @@
   // its home or the canvas has actually changed size (one frame later).
   if(window.ResizeObserver){var settleFrame=false,settle=new ResizeObserver(function(){if(settleFrame)return;settleFrame=true;requestAnimationFrame(function(){settleFrame=false;protectControls();});});
     var watchSettle=function(){var canvas=document.getElementById('team-canvas-root'),home=canvas&&canvas.querySelector('.tc-companion-home');if(canvas)settle.observe(canvas);if(home){settle.observe(home);/* the home moves when these change height */['.ts-inspector-column','.ts-inspector-empty','.tc-selection-inspector','.tc-scroll'].forEach(function(sel){var n=canvas.querySelector(sel);if(n)settle.observe(n);});}return !!home;};
-    if(!watchSettle()){var tries=0,armSettle=setInterval(function(){if(watchSettle()||++tries>120)clearInterval(armSettle);},500);}}
+    if(!watchSettle()){var armSettle=setInterval(function(){if(watchSettle())clearInterval(armSettle);},1000);}
+    window.addEventListener('team-canvas-restored',watchSettle);}
   var controlFrame=false;document.addEventListener('scroll',function(){if(controlFrame)return;controlFrame=true;requestAnimationFrame(function(){controlFrame=false;protectControls();});},true);
   document.addEventListener('visibilitychange',function(){document.body.classList.toggle('companion-page-hidden',document.hidden);noteActivity();if(document.hidden)dismissSpeech();});
   ['pointerdown','pointermove','keydown','input','scroll','focusin'].forEach(function(name){document.addEventListener(name,noteActivity,{passive:true,capture:true});});

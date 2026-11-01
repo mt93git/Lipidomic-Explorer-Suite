@@ -145,7 +145,7 @@
   // Last non-empty value of every input, so a selectize caught mid-reload (blank,
   // options cleared) can still be copied or saved with the user's real choice.
   var lastSelections = {};
-  if (window.jQuery) jQuery(document).on('shiny:inputchanged', function (e) { if (e.value !== '' && e.value != null && !(Array.isArray(e.value) && !e.value.length)) lastSelections[e.name] = e.value; });
+  if (window.jQuery) jQuery(document).on('shiny:inputchanged', function (e) { if (typeof e.value !== 'string' || !e.value) return; var el = document.getElementById(e.name); if (el && el.selectize && !el.multiple) lastSelections[e.name] = e.value; });
   function instanceValues(namespace, allowed) {
     var values={}, all=window.Shiny && Shiny.shinyapp && Shiny.shinyapp.$inputValues || {};
     Object.keys(all).forEach(function(key){
@@ -517,7 +517,8 @@
     var original=P.Plots.resize;
     var logical=function(gd){
       var g=typeof gd==='string'?document.getElementById(gd):gd, card=g&&g.closest&&g.closest('#team-canvas-root .tc-node');
-      if(!card||!g._fullLayout||!g.clientWidth||!g.clientHeight)return original.apply(this,arguments);
+      // Heatmap geometries manage their own size (square cells, dense rectangles).
+      if(!card||!g._fullLayout||!g.clientWidth||!g.clientHeight||(g.layout&&g.layout.meta&&g.layout.meta.teamHeatmap))return original.apply(this,arguments);
       var w=g.clientWidth,h=g.clientHeight,update={};
       if(g.layout.autosize!==false)update.autosize=false;
       if(Math.abs(g._fullLayout.width-w)>1)update.width=w;
@@ -530,7 +531,9 @@
   // Shiny's onResize hands htmlwidgets the size as seen through the canvas
   // zoom (a 592 px card at 40% arrived as 237 px), and the plotly binding
   // relayouts to it. Inside canvas cards use the element's logical size.
+  var widgetGuarded=false;
   function guardWidgetResize() {
+    if(widgetGuarded)return;
     var reg=window.Shiny&&Shiny.outputBindings&&Shiny.outputBindings.getBindings&&Shiny.outputBindings.getBindings(); if(!reg)return;
     reg.forEach(function(entry){
       var w=entry.binding, isPlotly=w&&(w.name==='plotly'||entry.id==='plotly'||entry.name==='plotly'||(typeof w.find==='function'&&String(w.find).indexOf('plotly')>=0)||(w.className&&String(w.className).indexOf('plotly')>=0));
@@ -539,7 +542,7 @@
         if(el&&el.closest&&el.closest('#team-canvas-root .tc-node')&&el.clientWidth&&el.clientHeight){width=el.clientWidth;height=el.clientHeight;}
         return original.call(this,el,width,height,instance);
       };
-      logical.teamLogical=true;w.resize=logical;
+      logical.teamLogical=true;w.resize=logical;widgetGuarded=true;
     });
   }
   function resize(r) {

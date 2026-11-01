@@ -40,7 +40,7 @@ async function ready(p){
    const res=await p.request.get(new URL(href,url).href);
    assert.equal(res.status(),200,`iteration ${i+1}: the CSV download returned ${res.status()} (no selection reaches the server as an error page)`);
    assert.match(res.headers()['content-disposition']||'',/\.csv/,`iteration ${i+1}: the download is not the plot CSV`);
-   await p.evaluate(id=>{const n=document.querySelector('.tc-node[data-plot-id="'+id+'"]');const r=n&&[...n.querySelectorAll('.tc-node-head > button')].find(x=>x.textContent==='Remove');if(r)r.click();},id);
+   await p.evaluate(id=>{const n=document.querySelector('.tc-node[data-plot-id="'+id+'"]');const r=n&&[...n.querySelectorAll('.tc-node-head button')].find(x=>x.textContent==='Remove');if(r)r.click();},id);
    await p.waitForTimeout(1000);passed++;
   }
   console.log(`PASS ${passed}/${N} copies made during a selector reload keep a selection and download their CSV`);

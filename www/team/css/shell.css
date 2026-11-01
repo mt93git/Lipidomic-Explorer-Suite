@@ -99,5 +99,6 @@ body.ts-shell-app #lipidomic-assistant-panel{box-sizing:border-box}
  #team-canvas-root.ts-shell .tc-layout,#team-canvas-root.ts-shell.tc-contextual-editing .tc-layout.tc-inspecting{grid-template-columns:var(--ts-rail) auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;height:auto;min-height:calc(100dvh - var(--ts-bar))}
  #team-canvas-root.ts-shell .ts-inspector-column{grid-column:1/-1;grid-row:2;max-height:45dvh;border-left:0;border-top:1px solid var(--ts-line)}
  #team-canvas-root.ts-shell .tc-toolbar{overflow:visible;flex-wrap:wrap;max-width:calc(100% - 16px)}
+ #team-canvas-root.ts-shell .ts-tools{flex-wrap:wrap;row-gap:2px}
  body.ts-shell-app .ts-step span,body.ts-shell-app .ts-project{display:none}
 }

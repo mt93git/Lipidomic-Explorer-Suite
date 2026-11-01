@@ -24,6 +24,8 @@
   function addOnce(el, cls) { if (!el.classList.contains(cls)) el.classList.add(cls); }
   function mark(node) {
     var content = node.querySelector(':scope > .tc-content'), plot = plotOf(node);
+    // A hidden canvas (Review, Data, compose) measures 0: keep the current marks.
+    if (!node.getClientRects().length) return;
     var on = !!(content && plot && eligible(node) && plot.offsetHeight > 0 && content.contains(plot));
     var was = node.classList.contains('tc-figure-card'), before = node.querySelectorAll('.' + CHROME).length;
     node.classList.toggle('tc-figure-card', on);
@@ -58,7 +60,11 @@
     var queued = false;
     function sweep() { queued = false; board.querySelectorAll(':scope > .tc-node').forEach(function (n) { mark(n); actions(n); }); }
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(sweep); } }
-    new MutationObserver(schedule).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
+    // Plotly restyles its own SVG constantly (hover, zoom): those attribute changes never
+    // affect what is parked, so only structural changes inside a plot wake the sweep.
+    new MutationObserver(function (records) { if (records.some(function (r) { return r.type === 'childList' || !(r.target.closest && r.target.closest('.js-plotly-plot')); })) schedule(); }).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
+    window.addEventListener('team-canvas-restored', schedule);
+    new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });
     // Shiny triggers its events through jQuery; native listeners never see them.
     if (window.jQuery) jQuery(document).on('shiny:value', schedule);
     schedule();
