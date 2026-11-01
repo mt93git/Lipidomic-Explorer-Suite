@@ -130,6 +130,10 @@
       if(allowed && !allowed.includes(local))return;
       if(!/^[A-Za-z][A-Za-z0-9_]{0,99}$/.test(local)||!el||el.matches('button,input[type=file],.action-button')||el.closest('.shiny-file-input-progress')||/plotly_|_brush$|_click$|_hover$|_selected$/.test(local))return;
       if(window.jQuery){var bound=jQuery(el).data('shiny-input-binding');if(bound&&typeof bound.getValue==='function'){try{value=bound.getValue(el);}catch(ignore){}}}
+      // An empty single selectize is transient: a server-side update clears it
+      // while its options reload. Copying that blank would pin the new plot to
+      // no selection (its data then fails req()), so let the copy choose its default.
+      if(el.selectize&&!el.multiple&&(value===''||value===null))return;
       if(value===null||['string','number','boolean'].includes(typeof value)||(Array.isArray(value)&&value.every(function(x){return ['string','number','boolean'].includes(typeof x);})))values[local]=value;
     });
     return JSON.parse(JSON.stringify(values));

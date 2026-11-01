@@ -24,3 +24,7 @@ the card returns them.
 
 `test_card_status.cjs` (same variables) checks the per-card status chip and the
 Export figure warning shown while any card is not up to date.
+
+`test_instance_copy_selection.cjs` (same variables; `TEAM_UX_ITERATIONS`, default 20)
+copies the violin plot while its source's server-side lipid selector is cleared
+mid-reload and checks that every copy still gets a lipid and a working CSV.
