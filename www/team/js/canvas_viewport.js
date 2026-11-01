@@ -21,6 +21,8 @@
     grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the minimap';nav.appendChild(grip);
     var MAP_KEY='team.canvas.minimap.position';
     function placeMap(x,y,save){
+      // A hidden canvas (compose view, 3D cell) measures 0: never clamp or save then.
+      if(!shell.clientWidth||!shell.clientHeight||!nav.offsetWidth)return;
       var maxX=Math.max(0,shell.clientWidth-nav.offsetWidth-4),maxY=Math.max(0,shell.clientHeight-nav.offsetHeight-4);
       x=Math.round(Math.max(4,Math.min(maxX,x)));y=Math.round(Math.max(4,Math.min(maxY,y)));
       nav.style.setProperty('left',x+'px','important');nav.style.setProperty('top',y+'px','important');
@@ -30,12 +32,13 @@
     function restoreMap(){var saved=null;try{saved=JSON.parse(localStorage.getItem(MAP_KEY)||'null');}catch(e){}
       if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)&&shell.clientWidth)placeMap(saved.x,saved.y,false);}
     grip.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();grip.setPointerCapture(e.pointerId);
-      var start={x:e.clientX,y:e.clientY,l:nav.offsetLeft,t:nav.offsetTop};nav.classList.add('is-dragging');
-      function move(ev){placeMap(start.l+ev.clientX-start.x,start.t+ev.clientY-start.y,false);}
-      function end(){grip.removeEventListener('pointermove',move);nav.classList.remove('is-dragging');placeMap(nav.offsetLeft,nav.offsetTop,true);}
+      var start={x:e.clientX,y:e.clientY,l:nav.offsetLeft,t:nav.offsetTop},moved=false;nav.classList.add('is-dragging');
+      function move(ev){if(Math.abs(ev.clientX-start.x)+Math.abs(ev.clientY-start.y)<3&&!moved)return;moved=true;placeMap(start.l+ev.clientX-start.x,start.t+ev.clientY-start.y,false);}
+      function end(){grip.removeEventListener('pointermove',move);nav.classList.remove('is-dragging');if(moved)placeMap(nav.offsetLeft,nav.offsetTop,true);}
       grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end,{once:true});grip.addEventListener('pointercancel',end,{once:true});});
     grip.addEventListener('keydown',function(e){var d={ArrowLeft:[-16,0],ArrowRight:[16,0],ArrowUp:[0,-16],ArrowDown:[0,16]}[e.key];if(!d)return;e.preventDefault();placeMap(nav.offsetLeft+d[0],nav.offsetTop+d[1],true);});
-    window.addEventListener('resize',function(){if(nav.classList.contains('is-placed'))placeMap(nav.offsetLeft,nav.offsetTop,false);});
+    // Pull a placed minimap back inside when the visible canvas shrinks.
+    if(window.ResizeObserver)new ResizeObserver(function(){if(nav.classList.contains('is-placed'))placeMap(nav.offsetLeft,nav.offsetTop,false);else restoreMap();}).observe(shell);
     requestAnimationFrame(function(){requestAnimationFrame(restoreMap);});
     var focusButton=document.createElement('button');focusButton.type='button';focusButton.className='tc-focus-toggle';focusButton.textContent='Expand canvas';focusButton.setAttribute('aria-pressed','false');
     var toolbar=root.querySelector('.tc-mode-tabs')||root.querySelector('.tc-toolbar')||nav;toolbar.appendChild(focusButton);

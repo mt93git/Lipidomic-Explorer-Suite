@@ -231,6 +231,14 @@
     var observer = new MutationObserver(function () { if (tick()) observer.disconnect(); });
     observer.observe(document.body, { childList: true, subtree: true });
   }
+  // Dialogs opened by analysis modules have a footer Dismiss button only; give
+  // every dialog a visible close control in its header as well.
+  if (window.jQuery) jQuery(document).on('shown.bs.modal', function (e) {
+    var header = e.target.querySelector('.modal-header');
+    if (!header || header.querySelector('.btn-close,[data-dismiss="modal"],[data-bs-dismiss="modal"],.close')) return;
+    var x = document.createElement('button'); x.type = 'button'; x.className = 'btn-close btn-close-white ts-modal-close'; x.setAttribute('data-bs-dismiss', 'modal'); x.setAttribute('data-dismiss', 'modal'); x.setAttribute('aria-label', 'Close');
+    header.appendChild(x);
+  });
   window.TeamShell = { mounted: function () { var r = document.getElementById('team-canvas-root'); return !!(r && r.dataset.tsShell === 'true'); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
