@@ -6,6 +6,9 @@
     if (!root || !root.querySelector('#tc-preview-panel')) return;
     var tabs = Array.from(root.querySelectorAll('.tc-mode-tabs [role="tab"]'));
     var panel = root.querySelector('#tc-preview-panel'), pages = panel.querySelector('.tc-preview-pages');
+    // The shell hides the workspace tabs; keep a visible way back from this view.
+    var heading = panel.querySelector('.tc-preview-heading');
+    if (heading && !heading.querySelector('.tc-preview-back')) { var back = document.createElement('button'); back.type = 'button'; back.className = 'tc-preview-back'; back.textContent = '← Back to canvas'; back.addEventListener('click', function () { backToCanvas(); }); heading.prepend(back); }
     // View navigation is deliberately separate from document coordinates and exports.
     var previewZoom = 1, zoomMode = 'width', zoomFrame = 0;
     var navigation = document.createElement('div'); navigation.className = 'tc-preview-navigation';
@@ -327,12 +330,22 @@
         }catch(error){current=null;controls(false);tell(error.message||'The workspace changed before the new placement could be saved. Try again after the workspace settles.');}
       });
     }
+    // Nothing to compose yet: say why on the page itself and offer the way back,
+    // instead of a blank grey area.
+    function backToCanvas() { var t = root.querySelector('#tc-workspace-tab'); if (t) t.click(); }
+    function emptyState(message) {
+      var box = document.createElement('div'); box.className = 'tc-preview-empty';
+      var h = document.createElement('h4'); h.textContent = 'Nothing to compose yet';
+      var p = document.createElement('p'); p.textContent = message || 'Finish the plots on the canvas to compose them here.';
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Back to canvas'; b.addEventListener('click', backToCanvas);
+      box.append(h, p, b); return box;
+    }
     function refresh(silent) {
       closePublicationConfirmation(false);clearTimeout(refreshTimer); exportFailed = false; generation++; current = null;
       try {
         current = capture(); render(current); controls(true); persistNewPlacement(current,generation);
         if(!silent && !errorNotice)tell(placementNotice+(current.settings.layout==='figure1'?'Draft template: illustrations populate A; a finished 2D PCA populates B. C/D remain pending; other plots are omitted. ':'') + model(current).length + ' page' + (model(current).length === 1 ? '' : 's') + ' ready. ' + (current.archived ? (current.settings.layout==='figure1'?'Workspace includes saved checkpoint figures; review the PCA source before use. ':'Includes saved checkpoint figures; edit them to regenerate with current data. ') : '') + (current.settings.layout === 'arrangement' ? 'Canvas positions are preserved on one page. ' : '') + (!(window.jspdf && window.jspdf.jsPDF) ? 'Use Print to save a PDF in your browser.' : ''));
-      } catch (error) { if (!busy) pages.replaceChildren(); controls(false); tell(error.message); }
+      } catch (error) { if (!busy) pages.replaceChildren(emptyState(error.message)); controls(false); tell(error.message); }
     }
     function invalidate() {
       // Global Shiny output traffic includes click tracing and unrelated controls.
@@ -586,7 +599,7 @@
     shapeMenu.addEventListener('keydown',function(e){if(e.key==='Escape'){e.stopPropagation();shapeMenu.open=false;shapeSummary.focus();}});
 
     panel.querySelector('.tc-preview-stephania').addEventListener('click',requestPublicationStyle);
-    panel.querySelector('.tc-preview-add-text').addEventListener('click',function(){if(!documentState || documentState.items.length>=80){tell('A document can contain up to 80 items.');return;} var id='text-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); documentState.items.push({id:id,type:'text',x:46,y:46,width:220,height:50,text:'Text',fontSize:16,color:'#172d4b',z:documentState.items.reduce(function(m,i){return Math.max(m,i.z);},0)+1});selected=id;saveDocument();refresh();});
+    panel.querySelector('.tc-preview-add-text').addEventListener('click',function(){if(!documentState || documentState.items.length>=80){tell('A document can contain up to 80 items.');return;} var id='text-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); var below=documentState.items.reduce(function(m,i){var b=(+i.y||0)+(+i.height||0);return Number.isFinite(b)?Math.max(m,b):m;},0);/* New text goes under what is already on the page, not over the figure titles. */documentState.items.push({id:id,type:'text',x:46,y:below?Math.round(below+16):46,width:220,height:50,text:'Text',fontSize:16,color:'#172d4b',z:documentState.items.reduce(function(m,i){return Math.max(m,i.z);},0)+1});selected=id;saveDocument();refresh();});
     panel.querySelector('.tc-preview-svg').addEventListener('click',downloadSVG);
     window.addEventListener('team-canvas-changed',invalidate);
     [layout,paper,orientation,customWidth,customHeight,furniture].forEach(function (control) { control.addEventListener('change',function(){ updatePaperControls();refresh(); if(documentState && current){syncDocument(current.state,current.settings);documentState.layout=layout.value;documentState.showPageFurniture=furniture.checked;documentState.paper=paper.value;documentState.orientation=orientation.value;if(paper.value==='custom'){documentState.paperWidth=current.settings.paperWidth;documentState.paperHeight=current.settings.paperHeight;}else{delete documentState.paperWidth;delete documentState.paperHeight;}saveDocument();} }); });

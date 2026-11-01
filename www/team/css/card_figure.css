@@ -28,3 +28,12 @@ body.ts-shell-app .tc-card-actions>button:hover{background:#eaf1f7!important;col
 #team-canvas-root.ts-shell .tc-map-grip:hover{background:#eef1f4!important;color:#2d5f8a}
 #team-canvas-root.ts-shell .tc-navigation.is-dragging{box-shadow:0 6px 20px rgba(20,27,36,.18)}
 #team-canvas-root.ts-shell .tc-navigation.is-dragging .tc-map-grip{cursor:grabbing}
+/* Compose view: a visible way back, an explained empty page, and the companion kept below menus. */
+#tc-preview-panel .tc-preview-back{display:inline-flex;align-items:center;height:30px;margin:0 12px 8px 0;padding:0 10px;border:1px solid #cbd7e3;border-radius:6px;background:#fff;color:#2d5f8a;font-weight:600;cursor:pointer}
+#tc-preview-panel .tc-preview-empty{display:grid;justify-items:start;gap:8px;max-width:520px;margin:48px auto;padding:24px 28px;background:#fff;border:1px solid #e3e7ec;border-radius:8px}
+#tc-preview-panel .tc-preview-empty h4{margin:0;font-size:16px;font-weight:600}
+#tc-preview-panel .tc-preview-empty p{margin:0;color:#5a6878}
+#tc-preview-panel .tc-preview-empty button{height:34px!important;padding:0 14px!important;border:0!important;border-radius:6px!important;background:#2d5f8a!important;color:#fff!important;font-weight:600;cursor:pointer}
+#tc-preview-panel .tc-document-editor:has(.tc-preview-empty)>:not(.tc-preview-pages){display:none!important}
+#tc-preview-panel .tc-document-editor:has(.tc-preview-empty)>.tc-preview-pages{grid-column:1/-1;width:100%}
+#tc-preview-panel .tc-shape-menu[open]{position:relative;z-index:1300}
