@@ -43,16 +43,20 @@
       if (moved && home && home.parentNode) home.replaceWith(moved); else if (moved) moved.remove(); moved = home = null;
       if (movedStats && statsHome && statsHome.parentNode) statsHome.replaceWith(movedStats); else if (movedStats) movedStats.remove(); movedStats = statsHome = null;
       statsBody.textContent = '';
-      movedData.forEach(function (m) { if (m.home.parentNode) m.home.replaceWith(m.el); else m.el.remove(); }); movedData = [];
+      movedData.forEach(function (m) { if (m.home.parentNode) m.home.replaceWith(m.el); else dropOrphan(m.el); }); movedData = [];
       dataBody.textContent = '';
     }
+    // The card's source content was replaced (renderUI refresh, return) while
+    // its controls sat here: unbind them so Shiny never sees duplicate ids.
+    function dropOrphan(el) { if (window.Shiny && Shiny.unbindAll) Shiny.unbindAll(el, true); el.remove(); }
+    function pruneOrphans() { movedData = movedData.filter(function (m) { if (m.home.isConnected) return true; dropOrphan(m.el); return false; }); }
     function fillData(n) {
       var chrome = window.TeamCardFigure ? window.TeamCardFigure.chrome(n) : [], settings = n.querySelector('[data-canvas-data-settings]');
       if (settings) {
         var more = document.createElement('button'); more.type = 'button'; more.className = 'tc-inspector-data-settings'; more.textContent = 'Data & settings';
         more.onclick = function () { settings.click(); }; dataBody.appendChild(more);
       }
-      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); dataBody.appendChild(el); });
+      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; dataBody.appendChild(el); });
       if (!chrome.length) {
         var note = document.createElement('p'); note.className = 'tc-inspector-data-note';
         note.textContent = n.querySelector('.gc-root') ? 'Group comparison keeps its data controls on the figure.' : 'This figure has no data controls.';
@@ -90,6 +94,7 @@
       root.tabIndex = -1; root.focus();
     }
     function state() {
+      pruneOrphans();
       if (!node) return;
       if (!node.isConnected) { node = null; trigger.disabled = true; hide(); return; }
       heading.textContent = (node.querySelector('.tc-node-head strong') || {}).textContent || 'Selected object';

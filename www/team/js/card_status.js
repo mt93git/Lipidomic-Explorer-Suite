@@ -21,7 +21,7 @@
     var head = node.querySelector(':scope > .tc-node-head'); if (!head) return null;
     var chip = head.querySelector(':scope > .tc-card-status');
     if (!chip) {
-      chip = document.createElement('span'); chip.className = 'tc-card-status'; chip.setAttribute('role', 'status');
+      chip = document.createElement('span'); chip.className = 'tc-card-status';
       var dot = document.createElement('i'); dot.setAttribute('aria-hidden', 'true');
       var text = document.createElement('span'); text.className = 'tc-card-status-text';
       chip.append(dot, text);
@@ -29,8 +29,12 @@
     }
     return chip;
   }
+  var updatingSince = new WeakMap();
   function paintCard(node) {
     var id = node.dataset.plotId, state = id && window.TeamCanvas && TeamCanvas.cardStatus ? TeamCanvas.cardStatus(id) : null;
+    // Autosave and unrelated outputs briefly mark Shiny busy; show Updating only once it persists.
+    if (state === 'updating') { var since = updatingSince.get(node) || Date.now(); updatingSince.set(node, since); if (Date.now() - since < 2000 && node.querySelector('.tc-card-status[data-state]')) state = node.querySelector('.tc-card-status').dataset.state; }
+    else updatingSince.delete(node);
     var chip = chipFor(node); if (!chip) return null;
     chip.hidden = !state; if (!state) return null;
     if (chip.dataset.state === state) return state;
@@ -61,7 +65,9 @@
     }
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(paint); } }
     new MutationObserver(schedule).observe(board, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'], attributeOldValue: false });
-    ['shiny:busy', 'shiny:idle', 'shiny:value', 'team-canvas-selection', 'team-preparation-state'].forEach(function (e) { document.addEventListener(e, schedule); window.addEventListener(e, schedule); });
+    // Shiny's events arrive through jQuery; the canvas ones are native window events.
+    if (window.jQuery) jQuery(document).on('shiny:busy shiny:idle shiny:value', schedule);
+    ['team-canvas-selection', 'team-preparation-state'].forEach(function (e) { window.addEventListener(e, schedule); });
     // Preparation state lives in canvas.js; a light poll catches changes that emit no DOM event.
     setInterval(function () { if (root.offsetParent !== null) schedule(); }, 1500);
     schedule();

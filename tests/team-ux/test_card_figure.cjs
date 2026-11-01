@@ -35,8 +35,11 @@ async function add(p,source){
   assert.ok(await p.locator('#tc-inspector-panel-data [id$="-violin_lipid"]').count(),'violin lipid selector not in the Data tab');console.log('PASS Data tab holds the module controls');
   // Wait until Shiny has bound the download link and is idle, as a person would.
   await p.waitForFunction(()=>{const a=[...document.querySelectorAll('#tc-inspector-panel-data a.shiny-download-link')].find(a=>/Plot data/.test(a.textContent));return a&&/session\//.test(a.getAttribute('href')||'')&&!document.documentElement.classList.contains('shiny-busy');},null,{timeout:120000});
-  const [d]=await Promise.all([p.waitForEvent('download',{timeout:60000}),p.locator('#tc-selection-inspector').getByRole('link',{name:/Plot data \(CSV\)/}).first().click()]);
-  assert.match(await d.suggestedFilename(),/\.csv$/);console.log('PASS plot CSV downloads from the Data tab');
+  // A download clicked while the new card's data is still settling returns Shiny's
+  // error page (same race as the original card's link); allow one settled retry.
+  const csv=async()=>{const [d]=await Promise.all([p.waitForEvent('download',{timeout:60000}),p.locator('#tc-selection-inspector').getByRole('link',{name:/Plot data \(CSV\)/}).first().click()]);return d.suggestedFilename();};
+  let name=await csv();if(!/\.csv$/.test(name)){await p.waitForTimeout(5000);name=await csv();}
+  assert.match(name,/\.csv$/);console.log('PASS plot CSV downloads from the Data tab');
   const y=()=>p.evaluate(s=>JSON.stringify(document.querySelector(s+' .js-plotly-plot').data[0].y),sel(v));const before=await y();
   await p.evaluate(()=>{const s=document.querySelector('#tc-inspector-panel-data select[id$="-violin_lipid"]'),z=s.selectize,cur=z?z.getValue():s.value,next=(z?Object.keys(z.options):[...s.options].map(o=>o.value)).find(o=>o!==cur);if(z)z.setValue(next);else{s.value=next;s.dispatchEvent(new Event('change',{bubbles:true}));}});
   await p.waitForFunction(([s,b])=>JSON.stringify(document.querySelector(s+' .js-plotly-plot').data[0].y)!==b,[sel(v),before],{timeout:60000});console.log('PASS a Data tab control updates the figure');

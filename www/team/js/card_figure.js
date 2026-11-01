@@ -19,18 +19,23 @@
   // of its own: it moves as one unit, but its children are what get parked.
   function contents(el) { return getComputedStyle(el).display === 'contents'; }
   function shown(el) { return el.offsetHeight > 0 || contents(el) && Array.prototype.some.call(el.children, shown); }
+  // classList.add rewrites the attribute even when the class is present, which
+  // would wake the board observer every frame; write only real changes.
+  function addOnce(el, cls) { if (!el.classList.contains(cls)) el.classList.add(cls); }
   function mark(node) {
     var content = node.querySelector(':scope > .tc-content'), plot = plotOf(node);
     var on = !!(content && plot && eligible(node) && plot.offsetHeight > 0 && content.contains(plot));
     node.classList.toggle('tc-figure-card', on);
-    if (!on) { node.querySelectorAll('.' + CHROME + ',.' + PARK).forEach(function (el) { el.classList.remove(CHROME, PARK); }); return; }
+    if (!on) { node.querySelectorAll('.' + CHROME + ',.' + PARK).forEach(function (el) { el.classList.remove(CHROME, PARK); el.inert = false; }); return; }
     for (var a = plot; a && a !== content; a = a.parentElement) {
       Array.prototype.forEach.call(a.parentElement.children, function (sibling) {
         if (sibling === a || /^(STYLE|SCRIPT|LINK)$/.test(sibling.tagName)) return;
         // Hidden or empty outputs (details, compact selectors) stay where their module put them.
         if (!sibling.classList.contains(CHROME) && !shown(sibling)) return;
-        sibling.classList.add(CHROME);
-        if (contents(sibling)) Array.prototype.forEach.call(sibling.children, function (c) { c.classList.add(PARK); });
+        addOnce(sibling, CHROME);
+        // Parked controls are off-screen: keep them out of the tab order until the Data tab shows them.
+        if (!sibling.inert) sibling.inert = true;
+        if (contents(sibling)) Array.prototype.forEach.call(sibling.children, function (c) { addOnce(c, PARK); });
       });
     }
   }
@@ -41,7 +46,8 @@
     function sweep() { queued = false; board.querySelectorAll(':scope > .tc-node').forEach(mark); }
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(sweep); } }
     new MutationObserver(schedule).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
-    document.addEventListener('shiny:value', schedule);
+    // Shiny triggers its events through jQuery; native listeners never see them.
+    if (window.jQuery) jQuery(document).on('shiny:value', schedule);
     schedule();
     window.TeamCardFigure = { chrome: function (node) { mark(node); return Array.from(node.querySelectorAll('.' + CHROME)); }, refresh: schedule };
   }
