@@ -49,7 +49,7 @@ body.ts-shell-app .ts-data-project{display:grid;grid-template-columns:40px minma
 body.ts-shell-app .ts-data-project:last-child{border-bottom:0}
 body.ts-shell-app .ts-data-project:hover{background:#fbfcfd}
 body.ts-shell-app .ts-data-project.is-selected{background:#eaf1f7}
-body.ts-shell-app .ts-data-thumb{grid-row:1/span 2;width:40px;height:40px;border-radius:6px;background:#eef2f6 radial-gradient(circle at 30% 60%,#8a8f96 0 3px,transparent 4px),radial-gradient(circle at 55% 35%,#c0392b 0 3px,transparent 4px),radial-gradient(circle at 75% 55%,#4f7cb3 0 3px,transparent 4px)}
+body.ts-shell-app .ts-data-thumb{grid-row:1/span 2;width:40px;height:40px;border-radius:6px;border:1px solid #dfe5eb;background:radial-gradient(circle at 30% 60%,#8a8f96 0 3px,transparent 4px),radial-gradient(circle at 55% 35%,#c0392b 0 3px,transparent 4px),radial-gradient(circle at 75% 55%,#4f7cb3 0 3px,transparent 4px) #fff}
 body.ts-shell-app .ts-data-name{font-weight:600;font-size:14px;color:#141b24;overflow-wrap:anywhere}
 body.ts-shell-app .ts-data-meta{grid-column:2;font-size:12.5px;color:#5a6878;font-variant-numeric:tabular-nums}
 body.ts-shell-app .ts-data-chip{grid-column:3;grid-row:1/span 2;font-size:12px;padding:3px 9px;border-radius:999px;background:#eef1f4;color:#3b4855}
