@@ -1,6 +1,7 @@
 source("R/frontends/team/project_records.R")
 source("R/frontends/team/group_comparison.R")
 source("R/frontends/team/plot_instances.R")
+source("R/frontends/team/review_shell.R")
 # Team presentation hooks consume the one shared hub instantiated in R/server.R.
 # Reference-cell comparisons always use the full applied matrix, even when the
 # analyst has narrowed other plots to targeted lipids.
@@ -39,5 +40,6 @@ team_frontend_server <- function(input, output, session, shared_data) {
   assistant <- if(team_workspace_enabled()) team_project_companion_server(input, output, session, view_data, guide_workflow) else companion_assistant_server(input, output, session, view_data, guide_workflow)
   if(team_workspace_enabled()) team_project_records_server(input,output,session,view_data,guide_workflow,assistant)
   if (team_workspace_enabled()) team_companion_workspace_server(session, view_data)
+  if (team_workspace_enabled()) team_review_shell_server(session, view_data)
   invisible(guide_workflow)
 }

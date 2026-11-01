@@ -10,7 +10,7 @@ async function ready(p){
  await p.waitForFunction(()=>document.querySelector('#team_library_checkpoint')?.options.length>0,null,{timeout:120000});
  // Resume the seeded fixture checkpoint, not autosaves written by earlier runs.
  if(process.env.TEAM_CHECKPOINT)await p.evaluate(name=>{const s=document.querySelector('#team_library_checkpoint');const o=[...s.options].find(o=>o.text.startsWith(name));if(!o)throw Error('checkpoint not found');s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));},process.env.TEAM_CHECKPOINT);
- await p.locator('#team_library_resume').click();
+ await p.evaluate(()=>document.getElementById('team_library_resume').click());
  await p.waitForFunction(()=>{const b=document.querySelector('[data-tw-stage="canvas"]');return b&&!b.disabled;},null,{timeout:300000});
  await p.evaluate(()=>document.querySelector('[data-tw-stage="canvas"]').click());
  await p.waitForFunction(()=>window.TeamAutosave?.state().restorePending===false&&window.TeamShell?.mounted(),null,{timeout:300000});

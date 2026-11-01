@@ -270,6 +270,9 @@
     topLimit=Math.min(topLimit,Math.max(8,innerHeight-r.height-8));
     var x=manual?manual.x:(corner.indexOf('right')>=0?innerWidth-r.width-gap:gap),y=manual?manual.y:(corner.indexOf('bottom')===0?innerHeight-r.height-gap:topLimit);
     x=clamp(x,8,innerWidth-r.width-8);y=clamp(y,8,innerHeight-r.height-8);
+    // Pages with a reserved companion home (Team Review) place the character there.
+    var home=!manual&&document.querySelector('.ts-review-home');
+    if(home&&home.getClientRects().length){var hr=home.getBoundingClientRect();if(hr.bottom>0&&hr.top<innerHeight){x=clamp(hr.left+Math.max(0,(hr.width-r.width)/2),8,innerWidth-r.width-8);y=clamp(hr.top+8,8,innerHeight-r.height-8);dock.style.left=x+'px';dock.style.top=y+'px';avoidanceBase={x:x,y:y};positionPanel();positionSpeech();return;}}
     // Only the automatic placement seeks open space. Saved drag coordinates stay put.
     if(!manual){
       var rects=protectedRects(),best={x:x,y:y,score:Infinity};
