@@ -78,7 +78,8 @@
       if(existing&&existing.classList.contains('plot-export-bar')){
         var caption=existing.querySelector('span'),captionText=active?'Download plot · as shown':'Download plot · SVG/PDF contain a raster image';
         if(caption.textContent!==captionText)caption.textContent=captionText;
-        existing.querySelectorAll('button').forEach(function(button){var f=button.textContent;button.title=active?'':(f==='SVG'||f==='PDF'?f+' export wraps the displayed raster image':'');button.setAttribute('aria-label','Download '+f+' '+plotName(widget)+(!active&&(f==='SVG'||f==='PDF')?' (raster image)':''));});
+        // Write only real changes: this runs on every DOM change in the page.
+        existing.querySelectorAll('button').forEach(function(button){var f=button.textContent,title=active?'':(f==='SVG'||f==='PDF'?f+' export wraps the displayed raster image':''),label='Download '+f+' '+plotName(widget)+(!active&&(f==='SVG'||f==='PDF')?' (raster image)':'');if(button.title!==title)button.title=title;if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);});
       }
       return;
     }

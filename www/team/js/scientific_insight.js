@@ -1,5 +1,8 @@
 (function(){
  'use strict';
+ // Rendering runs on every DOM change; write only real changes to avoid restyling loops.
+ function attr(el,k,v){if(el&&el.getAttribute(k)!==v)el.setAttribute(k,v);}
+ function hide(el,h){if(el&&el.hidden!==h)el.hidden=h;}
  var cards=new Map(),notes=new Map(),seq=0,queued=false,registered=false;
  function set(el,v){if(el.textContent!==v)el.textContent=v;}
  function validNote(n){
@@ -11,13 +14,13 @@
  function setNote(id,n){var v=n===null?null:validNote(n);if(n!==null&&!v)return false;try{if(window.TeamCanvas&&typeof TeamCanvas.setInsight==='function'&&TeamCanvas.setInsight(id,v)){notes.delete(id);return true;}if(v===null)notes.delete(id);else notes.set(id,v);return true;}catch(_){return false;}}
  function frozen(id){var n=document.querySelector('.tc-node[data-plot-id="'+CSS.escape(id)+'"]');return !!(n&&(n.classList.contains('tc-finished')||n.querySelector('.tc-snapshot')));}
  function sources(c,items){var ul=c.querySelector('ul'),signature=JSON.stringify(items);if(ul.dataset.signature!==signature){ul.dataset.signature=signature;ul.replaceChildren();items.forEach(function(s){var li=document.createElement('li'),a=document.createElement('a');a.href=s.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='[PMID:'+s.pmid+'] '+s.title;li.appendChild(a);ul.appendChild(li);});}c.querySelector('details').hidden=!items.length;}
- function status(c,text,error){var s=c.querySelector('.team-insight-status');set(s,text||'');s.hidden=!text;s.setAttribute('role',error?'alert':'status');}
+ function status(c,text,error){var s=c.querySelector('.team-insight-status');set(s,text||'');hide(s,!text);attr(s,'role',error?'alert':'status');}
  function unsupportedInstance(id){return id.indexOf('tcinstance_')===0&&!(window.TeamCanvas&&TeamCanvas.insightSupported&&TeamCanvas.insightSupported(id));}
  function render(c){
   var id=c.dataset.plotId,n=getNote(id),loading=c.classList.contains('is-loading'),b=c.querySelector('.team-insight-action');
-  set(b,n?'Update insight':'✧ Scientific insight');b.setAttribute('aria-label',n?'Update insight':'Scientific insight');b.disabled=loading||(frozen(id)&&!n)||unsupportedInstance(id);
+  set(b,n?'Update insight':'✧ Scientific insight');attr(b,'aria-label',n?'Update insight':'Scientific insight');b.disabled=loading||(frozen(id)&&!n)||unsupportedInstance(id);
   if(unsupportedInstance(id)){b.title='Literature research is not yet connected to independent plot settings.';status(c,'Literature research is not yet connected to this independent plot’s data settings.');}
-  c.querySelector('.team-insight-remove').hidden=!n;c.querySelector('.team-insight-result').hidden=!n;
+  hide(c.querySelector('.team-insight-remove'),!n);hide(c.querySelector('.team-insight-result'),!n);
   if(n){set(c.querySelector('.team-insight-body'),n.paragraph);set(c.querySelector('.team-insight-meta'),n.context_label+' · '+n.searched_at);sources(c,n.sources);var caution=c.querySelector('.team-insight-caution');set(caution,n.stale?'The figure may have changed. This is the previous note; update it to check the current context.':c.dataset.restored==='1'?'Saved literature note. Update it to check the current context.':'');caution.hidden=!caution.textContent;}
   else if(!loading&&!c.querySelector('.team-insight-status').textContent&&frozen(id))status(c,'Edit this figure to research its current data.');
  }
@@ -45,7 +48,7 @@
   undo.addEventListener('click',function(){if(c.removedNote&&setNote(id,c.removedNote)){c.removedNote=null;undo.hidden=true;status(c,'Insight restored.');render(c);}});
   cards.set(id,c);return c;
  }
- function mount(plot,id,node){var c=cards.get(id)||make(id),isFrozen=frozen(id);if(c.dataset.wasFrozen==='1'&&!isFrozen)invalidate(id);c.dataset.wasFrozen=isFrozen?'1':'0';if(node){var host=node.querySelector('.tc-snapshot')||node.querySelector('.tc-content')||node;if(c.parentElement!==host)host.appendChild(c);}else if(plot&&plot.nextElementSibling!==c)plot.after(c);render(c);}
+ function mount(plot,id,node){var c=cards.get(id)||make(id),isFrozen=frozen(id);if(c.dataset.wasFrozen==='1'&&!isFrozen)invalidate(id);attr(c,'data-was-frozen',isFrozen?'1':'0');if(node){var host=node.querySelector('.tc-snapshot')||node.querySelector('.tc-content')||node;if(c.parentElement!==host)host.appendChild(c);}else if(plot&&plot.nextElementSibling!==c)plot.after(c);render(c);}
  function scan(){queued=false;document.querySelectorAll('.shiny-plot-output[id],.plotly.html-widget-output[id]').forEach(function(p){if(!p.closest('.publication-canvas-frame,.tc-instance-host'))mount(p,p.id,p.closest('.tc-node'));});document.querySelectorAll('.tc-node[data-plot-id]').forEach(function(n){mount(null,n.dataset.plotId,n);});if(!registered&&window.Shiny&&Shiny.addCustomMessageHandler){registered=true;Shiny.addCustomMessageHandler('team_scientific_insight',response);}}
  function schedule(){if(queued)return;queued=true;requestAnimationFrame(scan);}
  window.TeamScientificInsight={invalidate:invalidate,scan:scan};

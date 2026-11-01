@@ -3182,7 +3182,21 @@
       }
       window.dockActivePlotControls = dockActivePlotControls;
 
+      // Team: this ran on every shiny:value and rewrote the same attributes on every
+      // accordion and checkbox, restyling the whole page continuously (visible flicker
+      // while plots load). Write only real changes, and run at most once per frame.
+      if (!$.fn.attrOnce) $.fn.attrOnce = function (name, value) {
+        if (value == null) return this;
+        value = String(value);
+        return this.each(function () { if (this.getAttribute(name) !== value) this.setAttribute(name, value); });
+      };
+      var dockTintsQueued = false;
       function applyDockCategoryTints() {
+        if (dockTintsQueued) return;
+        dockTintsQueued = true;
+        requestAnimationFrame(function () { dockTintsQueued = false; applyDockCategoryTintsNow(); });
+      }
+      function applyDockCategoryTintsNow() {
         // Pass 1: Numbered menus & explicit top-level categories
         $('.accordion-item').each(function() {
           var $item = $(this);
@@ -3217,9 +3231,9 @@
           }
 
           if (category) {
-            $item.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-            $btn.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-            $item.find('> .accordion-collapse > .accordion-body').attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
+            $item.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+            $btn.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+            $item.find('> .accordion-collapse > .accordion-body').attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
           }
         });
 
@@ -3233,10 +3247,10 @@
           if ($parentItem.length > 0 && $parentItem.attr('data-category')) {
             var parentCat = $parentItem.attr('data-category');
             var parentMenu = $parentItem.attr('data-menu');
-            $item.attr('data-category', parentCat).attr('data-menu', parentMenu);
+            $item.attrOnce('data-category', parentCat).attrOnce('data-menu', parentMenu);
             var $btn = $item.find('.accordion-button').first();
-            $btn.attr('data-category', parentCat).attr('data-menu', parentMenu);
-            $item.find('> .accordion-collapse > .accordion-body').attr('data-category', parentCat).attr('data-menu', parentMenu);
+            $btn.attrOnce('data-category', parentCat).attrOnce('data-menu', parentMenu);
+            $item.find('> .accordion-collapse > .accordion-body').attrOnce('data-category', parentCat).attrOnce('data-menu', parentMenu);
             return;
           }
 
@@ -3267,20 +3281,20 @@
             menuNum = 4;
           }
 
-          $item.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-          $btn.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-          $item.find('> .accordion-collapse > .accordion-body').attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
+          $item.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+          $btn.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+          $item.find('> .accordion-collapse > .accordion-body').attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
         });
 
         // Pass 3: Cascade category attributes to all radio groups and checkboxes inside each accordion item
         $('[data-category]').each(function() {
           var cat = $(this).attr('data-category');
           var menu = $(this).attr('data-menu');
-          $(this).find('.shiny-input-radiogroup, .shiny-options-group').attr('data-category', cat);
-          $(this).find('.checkbox, .form-check').attr('data-category', cat);
+          $(this).find('.shiny-input-radiogroup, .shiny-options-group').attrOnce('data-category', cat);
+          $(this).find('.checkbox, .form-check').attrOnce('data-category', cat);
           if (menu) {
-            $(this).find('.shiny-input-radiogroup, .shiny-options-group').attr('data-menu', menu);
-            $(this).find('.checkbox, .form-check').attr('data-menu', menu);
+            $(this).find('.shiny-input-radiogroup, .shiny-options-group').attrOnce('data-menu', menu);
+            $(this).find('.checkbox, .form-check').attrOnce('data-menu', menu);
           }
         });
       }
