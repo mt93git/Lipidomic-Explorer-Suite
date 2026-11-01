@@ -21,3 +21,6 @@ panel and its canvas action adds a plot.
 its figure, that selecting it moves the module's controls into the inspector's
 Data tab where they still work (CSV download, lipid choice), and that releasing
 the card returns them.
+
+`test_card_status.cjs` (same variables) checks the per-card status chip and the
+Export figure warning shown while any card is not up to date.

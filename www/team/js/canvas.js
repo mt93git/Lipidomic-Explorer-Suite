@@ -1596,6 +1596,8 @@
       },
       listIllustrations: function () { return (window.TeamIllustrations && Array.isArray(window.TeamIllustrations.list) ? window.TeamIllustrations.list : []).map(function (x) { return {id:x.id,title:x.title,category:x.category || 'Illustrations'}; }); },
       addIllustration: function (id) { return addIllustration(id); },
+      // Read-only card state for the shell's status chips and export warning.
+      cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';return figureCurrent(r)?'current':'updating';},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
       copyPlot:function(id){return copyRecord(records.get(id));},pastePlot:pasteRecord,duplicatePlot:function(id){return copyRecord(records.get(id))&&pasteRecord();},
       addPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r = records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
