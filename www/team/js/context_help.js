@@ -196,10 +196,13 @@
     hideTeamFallback();
     if (teamAutoMini) { if (!minimized) dock.classList.remove('is-mini'); teamAutoMini=false; }
     if (!document.body.classList.contains('team-workspace-app') || !canvas || !canvas.getClientRects().length) return false;
-    var obstacles = Array.from(canvas.querySelectorAll('.tc-catalog,.tc-selection-inspector,.tc-navigation,.tc-settings-dock')).filter(function (n) {
+    var obstacles = Array.from(canvas.querySelectorAll('.tc-catalog,.tc-selection-inspector,.tc-navigation,.tc-settings-dock,.ts-rail,.tc-toolbar,.ts-inspector-empty')).filter(function (n) {
       return n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden';
     }).map(function (n) { return n.getBoundingClientRect(); });
     var r = dock.getBoundingClientRect(), base = avoidanceBase || {x:r.left,y:r.top}, margin = 10;
+    // The shell reserves a home under the inspector; automatic placement starts there.
+    var home = canvas.querySelector('.tc-companion-home');
+    if (home && !manual && home.getClientRects().length) { var hr = home.getBoundingClientRect(); base = {x:hr.left+Math.max(0,(hr.width-r.width)/2), y:hr.bottom-r.height-8}; }
     function findPosition(rect) {
       function clampX(x) { return clamp(x, 8, Math.max(8, innerWidth-rect.width-8)); }
       function clampY(y) { return clamp(y, 8, Math.max(8, innerHeight-rect.height-8)); }

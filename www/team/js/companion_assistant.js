@@ -150,6 +150,13 @@
     if(innerWidth<=600){panel.style.bottom=Math.max(8,innerHeight-h-(vv?vv.offsetTop:0)+8)+'px';var nav=document.querySelector('.navbar'),top=nav?Math.max(0,nav.getBoundingClientRect().bottom-(vv?vv.offsetTop:0)):0;panel.style.maxHeight=Math.max(100,Math.min(560,0.72*h,h-top-24))+'px';return;}
     panel.style.bottom='';panel.style.maxHeight='';
     var team=window.LIPIDOMIC_TEAM_WORKSPACE===true||window.LIPIDOMIC_TEAM_WORKSPACE==='1';
+    // The canvas shell docks the open chat over the inspector column, above the companion's home.
+    var column=team && document.querySelector('#team-canvas-root.ts-shell .ts-inspector-column');
+    if(!panel.hidden && column && column.getClientRects().length){
+      var c=column.getBoundingClientRect(), home=column.querySelector('.tc-companion-home'), floor=home?home.getBoundingClientRect().top:c.bottom;
+      panel.style.position='fixed';panel.style.left=c.left+'px';panel.style.top=c.top+'px';panel.style.width=c.width+'px';panel.style.right='auto';panel.style.bottom='auto';
+      panel.style.maxHeight=Math.max(160,floor-c.top-8)+'px';return;
+    }
     var controls=team && document.querySelector('#team-canvas-root .tc-navigation');
     if(panel.hidden||!controls||!controls.getClientRects().length||getComputedStyle(controls).visibility==='hidden')return;
     var r=controls.getBoundingClientRect(), inset=12, gap=12;
