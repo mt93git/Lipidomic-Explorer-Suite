@@ -16,3 +16,8 @@ panel and its canvas action adds a plot.
 
 `test_open_latest.cjs` (same variables) checks that the Data side card's
 "Open latest" button prepares Review like a human Resume click.
+
+`test_card_figure.cjs` (same variables) checks that an idle canvas card shows only
+its figure, that selecting it moves the module's controls into the inspector's
+Data tab where they still work (CSV download, lipid choice), and that releasing
+the card returns them.

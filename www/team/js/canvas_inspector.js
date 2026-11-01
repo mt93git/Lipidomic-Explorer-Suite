@@ -15,11 +15,13 @@
     var note = document.createElement('p'); note.textContent = 'Finished figure. Choose Edit to make changes.';
     var edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Edit figure'; locked.append(note, edit);
     var body = document.createElement('div'); body.className = 'tc-inspector-body';
-    // Appearance keeps the moved .tc-settings; Statistics hosts a node's .tc-statistics panel or explains why it has none.
+    // Data hosts the card's module content (card_figure.js); Style keeps the moved
+    // .tc-settings; Statistics hosts a node's .tc-statistics panel or explains why it has none.
     var tabs = document.createElement('div'); tabs.className = 'tc-inspector-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Property groups');
     var statsBody = document.createElement('div'); statsBody.className = 'tc-inspector-body tc-inspector-statistics';
-    var activeTab = 'appearance', movedStats = null, statsHome = null;
-    var tabList = [['appearance', 'Appearance', body], ['statistics', 'Statistics', statsBody]].map(function (spec) {
+    var dataBody = document.createElement('div'); dataBody.className = 'tc-inspector-body tc-inspector-data';
+    var activeTab = 'appearance', movedStats = null, statsHome = null, movedData = [];
+    var tabList = [['data', 'Data', dataBody], ['appearance', 'Style', body], ['statistics', 'Statistics', statsBody]].map(function (spec) {
       var button = document.createElement('button'); button.type = 'button'; button.className = 'tc-inspector-tab'; button.textContent = spec[1];
       button.id = 'tc-inspector-tab-' + spec[0]; spec[2].id = 'tc-inspector-panel-' + spec[0];
       button.setAttribute('role', 'tab'); button.setAttribute('aria-controls', spec[2].id); spec[2].setAttribute('role', 'tabpanel'); spec[2].setAttribute('aria-labelledby', button.id);
@@ -33,7 +35,7 @@
       else if (event.key === 'Home') next = 0; else if (event.key === 'End') next = tabList.length - 1; else return;
       event.preventDefault(); activeTab = tabList[next].key; state(); tabList[next].button.focus();
     });
-    inspector.append(header, tabs, locked, body, statsBody);
+    inspector.append(header, tabs, locked, dataBody, body, statsBody);
     layout.insertBefore(inspector, layout.querySelector('.tc-main')); root.classList.add('tc-contextual-editing');
     var trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'tc-properties-toggle'; trigger.textContent = 'Properties'; trigger.disabled = true;
     trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-controls', inspector.id); root.querySelector('.tc-toolbar').appendChild(trigger);
@@ -41,6 +43,21 @@
       if (moved && home && home.parentNode) home.replaceWith(moved); else if (moved) moved.remove(); moved = home = null;
       if (movedStats && statsHome && statsHome.parentNode) statsHome.replaceWith(movedStats); else if (movedStats) movedStats.remove(); movedStats = statsHome = null;
       statsBody.textContent = '';
+      movedData.forEach(function (m) { if (m.home.parentNode) m.home.replaceWith(m.el); else m.el.remove(); }); movedData = [];
+      dataBody.textContent = '';
+    }
+    function fillData(n) {
+      var chrome = window.TeamCardFigure ? window.TeamCardFigure.chrome(n) : [], settings = n.querySelector('[data-canvas-data-settings]');
+      if (settings) {
+        var more = document.createElement('button'); more.type = 'button'; more.className = 'tc-inspector-data-settings'; more.textContent = 'Data & settings';
+        more.onclick = function () { settings.click(); }; dataBody.appendChild(more);
+      }
+      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); dataBody.appendChild(el); });
+      if (!chrome.length) {
+        var note = document.createElement('p'); note.className = 'tc-inspector-data-note';
+        note.textContent = n.querySelector('.gc-root') ? 'Group comparison keeps its data controls on the figure.' : 'This figure has no data controls.';
+        dataBody.appendChild(note);
+      }
     }
     function explainStatistics(n) {
       var id = n.dataset.plotId || '', note = document.createElement('p');
@@ -61,7 +78,8 @@
     }
     function focusFirstControl() {
       if (!locked.hidden) { edit.focus(); return; }
-      var controls = Array.from((activeTab === 'statistics' && !statsBody.hidden ? statsBody : body).querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])'));
+      var panel = activeTab === 'statistics' && !statsBody.hidden ? statsBody : activeTab === 'data' && !dataBody.hidden ? dataBody : body;
+      var controls = Array.from(panel.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])'));
       var first = controls.find(function (control) { return control.getClientRects().length > 0 && !control.closest('[hidden]') && !control.closest('[inert]'); });
       (first || close).focus();
     }
@@ -77,12 +95,12 @@
       heading.textContent = (node.querySelector('.tc-node-head strong') || {}).textContent || 'Selected object';
       var finished = node.classList.contains('tc-finished'), focusedControl = finished && (body.contains(document.activeElement) || statsBody.contains(document.activeElement));
       var plot = !node.classList.contains('tc-illustration'); if (!plot) activeTab = 'appearance';
-      locked.hidden = !finished; tabs.hidden = finished || !plot; body.inert = statsBody.inert = finished;
+      locked.hidden = !finished; tabs.hidden = finished || !plot; body.inert = statsBody.inert = dataBody.inert = finished;
       tabList.forEach(function (t) { var on = t.key === activeTab; t.button.setAttribute('aria-selected', String(on)); t.button.tabIndex = on ? 0 : -1; t.panel.hidden = finished || !on; });
       if (focusedControl) edit.focus();
     }
     function hide() {
-      var focusWasInInspector = inspector.contains(document.activeElement) || (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement));
+      var focusWasInInspector = inspector.contains(document.activeElement) || (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement)) || movedData.some(function (m) { return m.el.contains(document.activeElement); });
       if (window.TeamCanvasFloatingPanel) window.TeamCanvasFloatingPanel.close(inspector);
       release(); inspector.hidden = true; layout.classList.remove('tc-inspecting'); trigger.setAttribute('aria-expanded', 'false'); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       if (focusWasInInspector) focusSafe();
@@ -91,7 +109,7 @@
     function select(next, focusControls) {
       if (!next || !next.isConnected) return;
       if (node === next && !inspector.hidden) { state(); if (window.TeamCanvasFloatingPanel) window.TeamCanvasFloatingPanel.open(inspector, node); if (focusControls) focusFirstControl(); return; }
-      var focusWasInMovedControl = (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement));
+      var focusWasInMovedControl = (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement)) || movedData.some(function (m) { return m.el.contains(document.activeElement); });
       release(); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       node = next; node.classList.add('is-selected');
       moved = node.querySelector(':scope > .tc-settings') || (node.classList.contains('tc-illustration') && node.querySelector('.tc-content > .tc-edit'));
@@ -99,6 +117,7 @@
       movedStats = node.querySelector(':scope > .tc-statistics');
       if (movedStats) { statsHome = document.createComment('statistics-controls'); movedStats.before(statsHome); statsBody.appendChild(movedStats); }
       else if (!node.classList.contains('tc-illustration')) explainStatistics(node);
+      if (!node.classList.contains('tc-illustration')) fillData(node);
       window.dispatchEvent(new CustomEvent('team-canvas-panel-open', {detail:{kind:'appearance'}}));
       inspector.hidden = false; layout.classList.add('tc-inspecting'); trigger.disabled = false; trigger.setAttribute('aria-expanded', 'true'); state(); inspector.scrollTop = 0;
       if (window.TeamCanvasFloatingPanel) window.TeamCanvasFloatingPanel.open(inspector, node);
