@@ -15,7 +15,11 @@
 /* Keep the top of the canvas clear of the floating toolbar so card heads and their status stay readable. */
 #team-canvas-root.ts-shell .tc-scroll{padding-top:56px}
 /* Canvas status as a transient notice, not a permanent bottom strip. */
-#team-canvas-root.ts-shell .tc-status{position:absolute!important;left:50%!important;bottom:16px!important;top:auto!important;right:auto!important;transform:translateX(-50%) translateY(8px);max-width:min(560px,70%);width:auto!important;padding:8px 14px!important;border-radius:8px!important;background:#162230!important;color:#e9eff4!important;font-size:12.5px!important;line-height:1.4;box-shadow:0 6px 18px rgba(20,27,36,.2);z-index:26;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;margin:0!important;border:0!important;min-height:0!important}
+/* Top centre, under the floating toolbar: clear of the minimap at every width. */
+#team-canvas-root.ts-shell .tc-status{position:absolute!important;left:50%!important;top:64px!important;bottom:auto!important;right:auto!important;transform:translateX(-50%) translateY(8px);max-width:min(560px,70%);width:auto!important;padding:8px 14px!important;border-radius:8px!important;background:#162230!important;color:#e9eff4!important;font-size:12.5px!important;line-height:1.4;box-shadow:0 6px 18px rgba(20,27,36,.2);z-index:26;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;margin:0!important;border:0!important;min-height:0!important}
 #team-canvas-root.ts-shell .tc-status.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
 @media (prefers-reduced-motion:reduce){#team-canvas-root.ts-shell .tc-status{transition:none}}
 body.ts-shell-app .modal-header .ts-modal-close{margin-left:auto;opacity:.85}
+body.ts-shell-app .ts-saved[data-state=saving]::before{background:#d9a12b}
+body.ts-shell-app .ts-saved:is([data-state=error],[data-state=offline])::before{background:#e0634f}
+body.ts-shell-app .ts-saved:is([data-state=error],[data-state=offline]){color:#f4c7bd;border-color:#7a3d34}

@@ -71,10 +71,13 @@
       var status = document.getElementById('team-autosave-status'), text = status ? status.textContent.trim() : '';
       if (saved.textContent !== text) saved.textContent = text;
       saved.hidden = !text;
+      // Mirror the save state too, so errors and offline do not show a green dot.
+      var state = status && status.getAttribute('data-state') || '';
+      if (saved.dataset.state !== state) saved.dataset.state = state;
     }
     new MutationObserver(syncSteps).observe(original, { attributes: true, subtree: true, attributeFilter: ['aria-current', 'disabled', 'aria-label'] });
     var status = document.getElementById('team-autosave-status');
-    if (status) new MutationObserver(syncSteps).observe(status, { childList: true, characterData: true, subtree: true });
+    if (status) new MutationObserver(syncSteps).observe(status, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['data-state'] });
     new MutationObserver(syncSteps).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });
     syncSteps();
     function sync() {
@@ -104,7 +107,8 @@
     var panel = el('div', 'ts-menu'); panel.setAttribute('role', 'menu'); panel.dataset.open = 'false';
     items.forEach(function (item) { panel.appendChild(item); });
     panel.addEventListener('keydown', function (e) { if (e.key === 'Escape') { panel.dataset.open = 'false'; trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); } });
-    panel.addEventListener('click', function (e) { if (e.target.closest('button') && !e.target.closest('details')) { panel.dataset.open = 'false'; trigger.setAttribute('aria-expanded', 'false'); } });
+    // Closing hides the focused item: hand focus back to the trigger.
+    panel.addEventListener('click', function (e) { if (e.target.closest('button') && !e.target.closest('details')) { var hadFocus = panel.contains(document.activeElement); panel.dataset.open = 'false'; trigger.setAttribute('aria-expanded', 'false'); if (hadFocus) setTimeout(function () { if (!document.activeElement || document.activeElement === document.body || panel.contains(document.activeElement)) trigger.focus(); }, 0); } });
     wrap.append(trigger, panel); return wrap;
   }
   function item(label, run, enabled) {
@@ -135,8 +139,14 @@
     // tabs the shell hides; without this the top bar's Canvas step and the rail
     // could not bring the figure canvas back. Figure tools return to it first.
     function figureCanvasShown() { return root.offsetParent !== null; }
-    function toFigureCanvas() { if (!figureCanvasShown()) { var link = guideLink('Figure canvas'); if (link) link.click(); } }
-    document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-tw-stage="canvas"]')) setTimeout(toFigureCanvas, 0); }, true);
+    // Only when the workspace is really on 3D cell (6) or Save & export (7); during
+    // an ordinary stage change the canvas is briefly hidden and must be left alone.
+    function onLegacyCanvasStep() { var st = window.TeamWorkspace && TeamWorkspace.state(); return !!(st && st.stage === 'canvas' && st.legacyStep > 5); }
+    function toFigureCanvas() {
+      var compose = root.querySelector('#tc-preview-panel'); if (compose && !compose.hidden) proxy('#tc-workspace-tab', root);
+      if (!figureCanvasShown() && onLegacyCanvasStep()) { var link = guideLink('Figure canvas'); if (link) link.click(); }
+    }
+    document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-tw-stage="canvas"]') && onLegacyCanvasStep()) setTimeout(toFigureCanvas, 0); }, true);
     var railPlots = button('ts-rail-item', 'Plots', function () { toFigureCanvas(); var showPlots = !(libraryOpen() && rail.dataset.active === 'plots'); setLibrary(showPlots); if (showPlots) libraryTab('Plots'); paintRail(showPlots ? 'plots' : ''); }, ICONS.plots);
     var railText = button('ts-rail-item', 'Text & shapes', function () { toFigureCanvas(); proxy('.tc-draw-primitives', root); }, ICONS.text);
     var railIllus = button('ts-rail-item', 'Illustrations', function () { toFigureCanvas(); var show = !(libraryOpen() && rail.dataset.active === 'illustrations'); setLibrary(show); if (show) libraryTab('Illustrations'); paintRail(show ? 'illustrations' : ''); }, ICONS.illustrations);

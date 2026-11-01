@@ -78,7 +78,8 @@
     if (line) new MutationObserver(function () {
       var text = line.textContent.trim(); if (text === last) return; last = text;
       clearTimeout(timer); line.classList.toggle('is-visible', !!text);
-      if (text) timer = setTimeout(function () { line.classList.remove('is-visible'); }, 6000);
+      // Forget the message when it fades, so the same notice can show again later.
+      if (text) timer = setTimeout(function () { line.classList.remove('is-visible'); last = ''; }, 6000);
     }).observe(line, { childList: true, characterData: true, subtree: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

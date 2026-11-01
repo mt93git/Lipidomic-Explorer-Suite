@@ -186,6 +186,7 @@
     if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Use the minimap to pan.';
     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
     function fitAll(){
+      if(!scroll.clientWidth||!scroll.clientHeight)return;
       var items=Array.from(board.querySelectorAll('.tc-node'));if(!items.length){zoom(1);scroll.scrollLeft=0;scroll.scrollTop=0;refresh();return;}
       var x=Math.min.apply(null,items.map(function(n){return n.offsetLeft;})),y=Math.min.apply(null,items.map(function(n){return n.offsetTop;}));
       var right=Math.max.apply(null,items.map(function(n){return n.offsetLeft+n.offsetWidth;})),bottom=Math.max.apply(null,items.map(function(n){return n.offsetTop+n.offsetHeight;})),padding=32;

@@ -138,13 +138,17 @@
     Shiny.addCustomMessageHandler('team-review-groups', function (msg) { groups = msg; if (window.TeamDataShell) window.TeamDataShell.setGroups(msg); schedule(); });
     Shiny.addCustomMessageHandler('team-review-reasons', function (msg) { reasons = msg && msg.reasons || {}; document.querySelectorAll('.ts-excluded-row').forEach(function (r) { delete r.dataset.tsDecorated; r.querySelectorAll('.ts-excluded-detail').forEach(function (n) { n.remove(); }); }); schedule(); });
     // Shiny re-renders outputs in place; repaint after every render or plot draw.
-    document.addEventListener('shiny:value', schedule);
+    // Shiny triggers its events through jQuery; native listeners never see them.
+    if (window.jQuery) jQuery(document).on('shiny:value', schedule);
     document.addEventListener('plotly_afterplot', schedule, true);
     new MutationObserver(function (records) {
       if (records.some(function (r) { return !(r.target.closest && r.target.closest('.ts-kpis,.ts-review-legend,.ts-export-menu')); })) schedule();
     }).observe(document.body, { childList: true, subtree: true });
-    var hook = setInterval(function () { var g = plot(); if (g && g.on && !g.dataset.tsHooked) { g.dataset.tsHooked = 'true'; g.on('plotly_afterplot', schedule); } if (g && g.dataset.tsHooked) clearInterval(hook); }, 500);
-    new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });
+    // Hook the PCA once it exists; poll only while Review is the current stage.
+    var hook = null;
+    function arm() { if (hook) return; hook = setInterval(function () { var g = plot(); if (g && g.on && !g.dataset.tsHooked) { g.dataset.tsHooked = 'true'; g.on('plotly_afterplot', schedule); } if ((g && g.dataset.tsHooked) || document.body.dataset.teamStage !== 'review') { clearInterval(hook); hook = null; } }, 500); }
+    arm();
+    new MutationObserver(function () { schedule(); if (document.body.dataset.teamStage === 'review') arm(); }).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });
     schedule();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

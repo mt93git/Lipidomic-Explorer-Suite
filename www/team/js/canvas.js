@@ -133,7 +133,7 @@
       // An empty single selectize is transient: a server-side update clears it
       // while its options reload. Copying that blank would pin the new plot to
       // no selection (its data then fails req()), so let the copy choose its default.
-      if(el.selectize&&!el.multiple&&(value===''||value===null))return;
+      if(el.selectize&&!el.multiple&&(value===''||value===null)&&(!Object.keys(el.selectize.options||{}).length||el.selectize.loading))return;
       if(value===null||['string','number','boolean'].includes(typeof value)||(Array.isArray(value)&&value.every(function(x){return ['string','number','boolean'].includes(typeof x);})))values[local]=value;
     });
     return JSON.parse(JSON.stringify(values));
@@ -1215,6 +1215,9 @@
     if (r.plotEditor) { r.plotEditor.destroy(); r.plotEditor=null; }
     if (r.statistics && window.TeamCanvasStatistics) TeamCanvasStatistics.detach(r);
     restoreSnapshotSource(r);
+    // Card plots run with an explicit logical size; give the returned plot back its autosize.
+    var returned = r.el && (r.el.classList.contains('js-plotly-plot') ? r.el : r.el.querySelector('.js-plotly-plot'));
+    if (returned && returned.layout && returned.layout.autosize === false && window.Plotly) { try { window.Plotly.relayout(returned, {autosize: true, width: null, height: null}); } catch (ignore) {} }
     if(r.canvasCopyNote){r.canvasCopyNote.textContent=r.canvasCopyOriginal;r.canvasCopyNote=null;}
     if (r.originalHeight) r.el.style.setProperty('height', r.originalHeight, r.originalHeightPriority); else r.el.style.removeProperty('height');
     if (r.home.isConnected) { r.home.replaceWith(r.target); }

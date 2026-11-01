@@ -17,7 +17,9 @@ body.ts-shell-app .tc-node .tc-node-head{display:flex!important;flex-wrap:nowrap
 body.ts-shell-app .tc-node .tc-node-head>strong{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.ts-shell-app .tc-node .tc-node-head>.tc-card-status{flex:none}
 body.ts-shell-app .tc-card-actions{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;gap:2px;padding:3px;background:#fff;border:1px solid #e3e7ec;border-radius:6px;box-shadow:0 1px 3px rgba(20,27,36,.10);opacity:0;transition:opacity .12s;z-index:3;white-space:nowrap}
-body.ts-shell-app .tc-node:hover .tc-card-actions,body.ts-shell-app .tc-node.is-selected .tc-card-actions,body.ts-shell-app .tc-node:focus-within .tc-card-actions{opacity:1}
+/* Hidden actions take no clicks (a tap on the header must not hit an invisible Remove). */
+body.ts-shell-app .tc-card-actions{pointer-events:none}
+body.ts-shell-app .tc-node:hover .tc-card-actions,body.ts-shell-app .tc-node.is-selected .tc-card-actions,body.ts-shell-app .tc-node:focus-within .tc-card-actions{opacity:1;pointer-events:auto}
 body.ts-shell-app .tc-card-actions>button{border:0!important;background:transparent!important;font-size:12px!important;padding:3px 8px!important;border-radius:4px!important;color:#3b4855!important;min-height:0!important;height:auto!important;margin:0!important}
 body.ts-shell-app .tc-card-actions>button:hover{background:#eaf1f7!important;color:#2d5f8a!important}
 @media (prefers-reduced-motion:reduce){body.ts-shell-app .tc-card-actions{transition:none}}

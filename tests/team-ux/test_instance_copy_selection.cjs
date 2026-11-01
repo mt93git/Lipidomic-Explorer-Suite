@@ -23,8 +23,9 @@ async function ready(p){
   let passed=0;
   for(let i=0;i<N;i++){
    const before=await p.locator('.tc-node[data-plot-id]').evaluateAll(ns=>ns.map(n=>n.dataset.plotId));
-   // The state a server-side updateSelectizeInput leaves while its options reload.
-   await p.evaluate(id=>{document.getElementById(id).selectize.clear(true);TeamCanvas.addCatalogPlot('results_dashboard-plot_violin');},source);
+   // The state a server-side updateSelectizeInput leaves while its options reload
+   // (Shiny calls clear() and clearOptions() before the AJAX load answers).
+   await p.evaluate(id=>{const z=document.getElementById(id).selectize;z.clear(true);z.clearOptions(true);TeamCanvas.addCatalogPlot('results_dashboard-plot_violin');},source);
    await p.waitForFunction(ids=>[...document.querySelectorAll('.tc-node[data-plot-id]')].some(n=>!ids.includes(n.dataset.plotId)),before,{timeout:180000});
    const id=await p.locator('.tc-node[data-plot-id]').evaluateAll((ns,ids)=>ns.find(n=>!ids.includes(n.dataset.plotId)).dataset.plotId,before);
    await p.evaluate(([id,v])=>{const s=document.getElementById(id).selectize;s.addOption({value:v,label:v});s.setValue(v);},[source,original]);

@@ -39,6 +39,9 @@
     layout.insertBefore(inspector, layout.querySelector('.tc-main')); root.classList.add('tc-contextual-editing');
     var trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'tc-properties-toggle'; trigger.textContent = 'Properties'; trigger.disabled = true;
     trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-controls', inspector.id); root.querySelector('.tc-toolbar').appendChild(trigger);
+    // The floating panel also sizes the inspector within its column (the shell's
+    // companion home depends on it), so it stays on in the shell too.
+    function floating() { return !!window.TeamCanvasFloatingPanel; }
     function release() {
       if (moved && home && home.parentNode) home.replaceWith(moved); else if (moved) moved.remove(); moved = home = null;
       if (movedStats && statsHome && statsHome.parentNode) statsHome.replaceWith(movedStats); else if (movedStats) movedStats.remove(); movedStats = statsHome = null;
@@ -106,14 +109,14 @@
     }
     function hide() {
       var focusWasInInspector = inspector.contains(document.activeElement) || (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement)) || movedData.some(function (m) { return m.el.contains(document.activeElement); });
-      if (window.TeamCanvasFloatingPanel) window.TeamCanvasFloatingPanel.close(inspector);
+      if (floating()) window.TeamCanvasFloatingPanel.close(inspector);
       release(); inspector.hidden = true; layout.classList.remove('tc-inspecting'); trigger.setAttribute('aria-expanded', 'false'); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       if (focusWasInInspector) focusSafe();
       window.dispatchEvent(new Event('resize'));
     }
     function select(next, focusControls) {
       if (!next || !next.isConnected) return;
-      if (node === next && !inspector.hidden) { state(); if (window.TeamCanvasFloatingPanel) window.TeamCanvasFloatingPanel.open(inspector, node); if (focusControls) focusFirstControl(); return; }
+      if (node === next && !inspector.hidden) { state(); if (floating()) window.TeamCanvasFloatingPanel.open(inspector, node); if (focusControls) focusFirstControl(); return; }
       var focusWasInMovedControl = (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement)) || movedData.some(function (m) { return m.el.contains(document.activeElement); });
       release(); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       node = next; node.classList.add('is-selected');
@@ -125,7 +128,7 @@
       if (!node.classList.contains('tc-illustration')) fillData(node);
       window.dispatchEvent(new CustomEvent('team-canvas-panel-open', {detail:{kind:'appearance'}}));
       inspector.hidden = false; layout.classList.add('tc-inspecting'); trigger.disabled = false; trigger.setAttribute('aria-expanded', 'true'); state(); inspector.scrollTop = 0;
-      if (window.TeamCanvasFloatingPanel) window.TeamCanvasFloatingPanel.open(inspector, node);
+      if (floating()) window.TeamCanvasFloatingPanel.open(inspector, node);
       if (focusControls || focusWasInMovedControl) focusFirstControl();
       window.dispatchEvent(new Event('resize'));
     }
