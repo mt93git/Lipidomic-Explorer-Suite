@@ -114,7 +114,8 @@
  function init(){if(!document.getElementById('team-workspace'))return;connectionDiagnostics();window.TeamWorkspace={go:go,next:next,back:back,state:state};
   document.querySelectorAll('[data-tw-stage]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.twStage);});});
   document.querySelector('[data-tw-next]').addEventListener('click',function(event){next(event);});document.querySelector('[data-tw-back]').addEventListener('click',back);
-  document.addEventListener('click',function(event){if(event.target.closest&&event.target.closest('#team_library_resume')){if(window.console&&console.info)console.info('[Team review] resume click observed',{trusted:!!event.isTrusted,legacyStep:legacy,authenticated:authenticated});if(event.isTrusted){resumeEntryPending=true;resumeRestoreReady=false;}}},true);
+  // "Open latest" on the Data side card is the same human resume intent.
+  document.addEventListener('click',function(event){if(event.target.closest&&event.target.closest('#team_library_resume,.ts-data-open')){if(window.console&&console.info)console.info('[Team review] resume click observed',{trusted:!!event.isTrusted,legacyStep:legacy,authenticated:authenticated});if(event.isTrusted){resumeEntryPending=true;resumeRestoreReady=false;}}},true);
   // A human-selected session ZIP has the same reviewed restore intent as a
   // private checkpoint. Wait for server restore completion and idle Review;
   // entry preparation reuses saved settings through the existing R guard.

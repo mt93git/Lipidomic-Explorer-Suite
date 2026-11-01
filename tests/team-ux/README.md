@@ -13,3 +13,6 @@ TEAM_URL=http://127.0.0.1:43262/ TEAM_EMAIL=… TEAM_PASSWORD=… node tests/tea
 top bar, icon rail, library, floating toolbar, minimap, inspector column and the
 companion character never overlap, and that the companion's launcher opens its
 panel and its canvas action adds a plot.
+
+`test_open_latest.cjs` (same variables) checks that the Data side card's
+"Open latest" button prepares Review like a human Resume click.
