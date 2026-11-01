@@ -18,7 +18,9 @@
       if (/^Samples$/i.test(k || '')) out.samples = v; if (/^Lipids$/i.test(k || '')) out.lipids = v;
     });
     out.exclusions = document.querySelectorAll('#qc_pca_tab-guided_qc_decisions button[data-sample]').length;
-    try { out.figures = window.TeamCanvas ? window.TeamCanvas.listPlots().filter(function (p) { return p && p.added; }).length : null; } catch (_) { out.figures = null; }
+    // Count the figures actually on the canvas (independent copies are not catalog "added" entries).
+    var canvasRoot = document.getElementById('team-canvas-root');
+    out.figures = canvasRoot ? canvasRoot.querySelectorAll('.tc-node[data-plot-id]').length : null;
     out.excluded = Array.from(document.querySelectorAll('#qc_pca_tab-guided_qc_decisions button[data-sample]')).map(function (b) { return b.dataset.sample; });
     return out;
   }
