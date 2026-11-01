@@ -1,3 +1,6 @@
+source("R/frontends/team/project_records.R")
+source("R/frontends/team/group_comparison.R")
+source("R/frontends/team/plot_instances.R")
 # Team presentation hooks consume the one shared hub instantiated in R/server.R.
 # Reference-cell comparisons always use the full applied matrix, even when the
 # analyst has narrowed other plots to targeted lipids.
@@ -11,16 +14,30 @@ team_missingness_data_adapter <- function(shared_data) {
   stopifnot(is.list(shared_data), is.function(shared_data$data_processed_allow_missing))
   view_data <- shared_data
   view_data$data_processed <- shared_data$data_processed_allow_missing
+  view_data$team_compact_distribution <- TRUE
   view_data
 }
 team_frontend_server <- function(input, output, session, shared_data) {
   if (team_library_enabled() && !team_workspace_enabled()) team_library_server(input, output, session, shared_data)
+  # A receipt belongs to this upload, never an unrelated background flush.
+  for (upload_id in c("data_hub-files", "data_hub-import_session_file", "sample_metadata_import-file")) local({
+    id <- upload_id
+    observeEvent(input[[id]], {
+      token <- isolate(input[[paste0("team_foreground_",id)]])
+      if (is.character(token) && length(token)==1L && grepl("^foreground-[0-9]+$",token))
+        session$onFlushed(function() session$sendCustomMessage("team-foreground-result",list(id=token,ok=TRUE)),once=TRUE)
+    },ignoreInit=TRUE,priority=-1000)
+  })
   ux_comparison_server(input, output, session)
   view_data <- team_missingness_data_adapter(shared_data)
-  guide_workflow <- guided_workflow_server(input, output, session, view_data)
-  results_dashboard_server(input, output, session, view_data)
+  if (team_workspace_enabled()) view_data <- team_review_foreground_adapter(input, session, view_data)
+  guide_workflow <- if(team_workspace_enabled()) team_project_guided_server(input, output, session, view_data) else guided_workflow_server(input, output, session, view_data)
+  dashboard <- results_dashboard_server(input, output, session, view_data)
+  if (team_workspace_enabled()) team_plot_instances_server(input, output, session, shared_data, view_data)
+  team_scientific_insight_server(input, output, session, view_data, dashboard)
   cell_show_server(input, output, session, team_cell_data_adapter(shared_data))
-  companion_assistant_server(input, output, session, view_data, guide_workflow)
+  assistant <- if(team_workspace_enabled()) team_project_companion_server(input, output, session, view_data, guide_workflow) else companion_assistant_server(input, output, session, view_data, guide_workflow)
+  if(team_workspace_enabled()) team_project_records_server(input,output,session,view_data,guide_workflow,assistant)
   if (team_workspace_enabled()) team_companion_workspace_server(session, view_data)
   invisible(guide_workflow)
 }

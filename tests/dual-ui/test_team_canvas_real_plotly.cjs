@@ -35,12 +35,19 @@ const path = require('node:path');
     await page.locator('.tc-settings summary').click();
     await page.waitForTimeout(250);
     assert.equal(await page.evaluate(() => window.resizeCount), 0, 'collapsing appearance must not request a new plot');
+    await page.evaluate(() => { var gd=document.getElementById('results_dashboard-plot_pca'); window.zoomCapture={width:gd.clientWidth,height:gd.clientHeight,data:JSON.stringify(gd.data.map(t=>({x:t.x,y:t.y})))};window.TeamCanvasViewport={scale:.18};var board=document.querySelector('.tc-board');board.style.transformOrigin='top left';board.style.transform='scale(.18)'; });
     await page.locator('.tc-node-head button', {hasText:'Finish plot'}).click();
     await page.waitForTimeout(500); if (!(await page.locator('.tc-snapshot').count())) throw new Error('Finish blocked: ' + await page.locator('.tc-status').textContent());
     await page.waitForSelector('.tc-snapshot img');
     assert.ok((await page.locator('.tc-snapshot img').getAttribute('src')).startsWith('data:image/svg+xml'));
     const frozen = await page.locator('.tc-snapshot img').getAttribute('src');
     assert.ok(decodeURIComponent(frozen).includes('My PCA'), 'frozen SVG keeps the edited title after collapsing appearance');
+    const zoomedSnapshot=await page.evaluate(url=>{var svg=new DOMParser().parseFromString(decodeURIComponent(url.split(',')[1]),'image/svg+xml').documentElement;var gd=document.getElementById('results_dashboard-plot_pca');return {width:Number(svg.getAttribute('width')),height:Number(svg.getAttribute('height')),expected:window.zoomCapture,after:JSON.stringify(gd.data.map(t=>({x:t.x,y:t.y})))};},frozen);
+    assert.equal(zoomedSnapshot.width,zoomedSnapshot.expected.width,'SVG width uses logical pixels at 18% viewport zoom');
+    assert.equal(zoomedSnapshot.height,zoomedSnapshot.expected.height,'SVG height uses logical pixels at 18% viewport zoom');
+    assert.equal(zoomedSnapshot.after,zoomedSnapshot.expected.data,'export resizing preserves numerical coordinates');
+    await page.evaluate(()=>{document.querySelector('.tc-board').style.transform='';window.TeamCanvasViewport.scale=1;});
+
     for (const format of ['PNG','SVG','PDF']) {
       const downloadPromise = page.waitForEvent('download', {timeout:10000});
       await page.locator('.tc-snapshot-exports button', {hasText:format}).click();

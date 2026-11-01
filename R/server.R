@@ -306,7 +306,11 @@ scientific_server <- function(input, output, session) {
   # =========================================================================
   # PHASE 5: Publication Export Studio
   # =========================================================================
-  export_studio_server("export_studio", shared_data = shared_data)
+  if (is_team && exists("team_export_studio_server", mode = "function")) {
+    team_export_studio_server(input, output, session, shared_data, id = "export_studio")
+  } else {
+    export_studio_server("export_studio", shared_data = shared_data)
+  }
 
   cat("\n[MAIN SERVER] ALL MODULE SERVERS INITIALIZED!\n", file = stderr())
 }
@@ -328,6 +332,11 @@ server <- function(input, output, session) {
       data <- session$userData$team_shared_data
       if (is.null(data)) return(FALSE)
       data$session_restored()
+    },
+    is_restoring = function() {
+      data <- session$userData$team_shared_data
+      if (is.null(data)) return(FALSE)
+      data$is_restoring()
     },
     export_session_path = function(path) {
       data <- session$userData$team_shared_data

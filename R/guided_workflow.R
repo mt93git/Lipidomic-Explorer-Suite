@@ -42,8 +42,10 @@ guide_experiment_ui <- function() div(class='guide-page',
     tags$summary('Resume from a saved session ZIP instead'),
     fileInput('data_hub-import_session_file','Saved session (.zip)',accept='.zip'),
     uiOutput('data_hub-import_status_display'),
-    p('Restores source data and saved settings. Review and confirm Design, then click Prepare data in Quality to rebuild results.')))
-guide_design_ui <- function() div(class='guide-page',
+    p(if(team_simple_review_enabled()) 'Restores source data and saved settings. Open Review to rebuild the data table and PCA automatically; AI-proposed scientific changes still require confirmation.' else 'Restores source data and saved settings. Review and confirm Design, then click Prepare data in Quality to rebuild results.')))
+guide_design_ui <- function() {
+  if(exists('team_workspace_enabled') && team_workspace_enabled()) return(div(class='guide-page',guide_link('Open Review',step=3)))
+  div(class='guide-page',
   guide_heading(2,'Confirm the study design','Review the sample labels, choose which samples to include, then confirm your review.'),
   uiOutput('guide_design_status'),
   div(class='guide-panel',h3('1. Review sample labels'),actionButton('data_hub-openMetadataMappingBtn','Edit sample labels and metadata',class='btn-primary'),
@@ -63,7 +65,52 @@ guide_design_ui <- function() div(class='guide-page',
     checkboxInput('guide_design_confirm','I reviewed the labels, selected samples and design above.',FALSE),
     p(id='guide_design_confirm_help','Check this box after reviewing the three sections above. Changing sample labels, selected samples, or restoring a session asks you to review again.'),
     guide_link('Continue to Quality →',step=3)))
-guide_quality_ui <- function() div(class='guide-page',
+}
+team_simple_review_enabled <- function() exists('team_workspace_enabled') && isTRUE(team_workspace_enabled())
+team_review_summary <- function(data,metadata,applied) {
+  if(!is.data.frame(data) || !'Lipid_Name' %in% names(data)) return(NULL)
+  ids <- setdiff(names(data),'Lipid_Name')
+  values <- unlist(data[ids],use.names=FALSE); values <- values[is.finite(values)]
+  format_number <- function(x) if(length(x)==1L && is.finite(x)) format(signif(x,4),trim=TRUE) else 'Unavailable'
+  missing <- applied$filter$retained_missing
+  measures <- data.frame(Measure=c('Samples','Lipids','Missing before imputation','Median abundance','Abundance IQR'),Value=c(length(ids),nrow(data),if(length(missing)==1L && is.finite(missing)) sprintf('%.1f%%',100*missing) else 'Unavailable',format_number(stats::median(values)),format_number(stats::IQR(values))),stringsAsFactors=FALSE)
+  groups <- NULL
+  if(is.data.frame(metadata) && all(c('FullName','Group1','Group2') %in% names(metadata))) {
+    md <- metadata[match(ids,metadata$FullName),,drop=FALSE]
+    label <- paste(ifelse(is.na(md$Group1),'Unknown',md$Group1),ifelse(is.na(md$Group2),'Unknown',md$Group2),sep=' / ')
+    counts <- table(label)
+    groups <- data.frame(Group=names(counts),Samples=as.integer(counts),stringsAsFactors=FALSE)
+  }
+  list(measures=measures,groups=groups,scale='Linear abundance after preparation and normalization; median and IQR summarize all finite measurements.')
+}
+team_simple_review_ui <- function() div(class='guide-page tw-simple-review',
+  includeCSS('www/team/css/review_live.css'),includeScript('www/team/js/review_live.js'),
+  guide_heading(3,'Review your data','Adjust detection, inspect the data, and click a PCA point to remove a sample.'),
+  div(class='tw-review-board',
+    div(class='guide-panel tw-review-rail',
+      div(class='tw-review-detection',
+        sliderInput('qc_pca_tab-minDetectionPct','Minimum detection (%)',min=0,max=100,value=0,step=5),
+        uiOutput('qc_pca_tab-detectionPreview'),
+        uiOutput('guide_quality_status'),
+        div(id='guide-running-status',role='status','Preparing data…'),div(id='guide-run-controls')),
+      div(class='tw-review-statistics',h4('Prepared data summary'),uiOutput('guide_review_statistics'))),
+    div(class='guide-panel tw-review-pca',id='guide-qc-review',tabindex='-1',h3('Sample overview'),
+      uiOutput('qc_pca_tab-guided_qc_status'),
+      div(class='tw-review-plot-wrap',plotly::plotlyOutput('qc_pca_tab-guided_qc_plot',height='380px'),uiOutput('qc_pca_tab-guided_qc_selection')),
+      uiOutput('qc_pca_tab-guided_qc_decisions'),
+      tags$details(tags$summary('Select a sample by name'),uiOutput('qc_pca_tab-guided_qc_select_ui')))),
+  tags$details(class='guide-panel tw-review-table',tags$summary('Explore the data table'),DT::DTOutput('guide_review_data')),
+  tags$details(class='guide-panel tw-review-advanced',tags$summary('Study design and preparation options'),
+    actionButton('data_hub-openMetadataMappingBtn','Edit sample labels and metadata'),
+    textInput('guide_unit','Experimental unit','',placeholder='Animal, donor, culture…'),
+    selectInput('guide_design_type','Sample relationship',c('Choose a design'='', 'Independent experimental units'='independent','Matched or repeated measurements'='paired','Mixed or uncertain'='uncertain'),selectize=FALSE),
+    textAreaInput('guide_design_notes','Design notes (optional)'),
+    p('Specify the experimental unit and relationship before statistical comparisons. These fields do not change the statistical model.'),
+    div(id='guide-sample-selection',uiOutput('guide_sample_summary')),guided_preparation_controls('qc_pca_tab',compact=TRUE),
+    downloadButton('qc_pca_tab-guided_qc_download','Download sample decisions')))
+guide_quality_ui <- function() {
+  if(team_simple_review_enabled()) return(team_simple_review_ui())
+  div(class='guide-page',
   guide_heading(3,'Check quality and prepare your data','Review detection before imputation, then check distributions and unusual samples.'),
   div(class='guide-columns',div(class='guide-panel',guided_preparation_controls('qc_pca_tab')),
     div(class='guide-panel',h3('Prepare'),uiOutput('guide_quality_status'),div(id='guide-running-status',role='status','Preparing the selected measurements… Please wait for completion before continuing.'),div(id='guide-run-controls'),
@@ -80,6 +127,7 @@ guide_quality_ui <- function() div(class='guide-page',
     div(class='guide-actions',downloadButton('qc_pca_tab-guided_qc_plot_csv','Plot data CSV'),downloadButton('qc_pca_tab-guided_qc_plot_png','PNG'),downloadButton('qc_pca_tab-guided_qc_plot_svg','SVG'),downloadButton('qc_pca_tab-guided_qc_plot_pdf','PDF')),
     downloadButton('qc_pca_tab-guided_qc_download','Download sample decisions')),
   uiOutput('guide_quality_next'))
+}
 guide_question_ui <- function() div(class='guide-page',
   guide_heading(4,'What would you like to find out?','Choose one question below. Start with the big picture to inspect patterns before testing group differences.'),
   div(class='guide-goals',
@@ -113,9 +161,9 @@ guide_share_ui <- function() div(class='guide-page',
       p('Companion actions are session-local. Save this log before closing or restoring a session.'),
       p('Save both files. The labels CSV marks which samples were included in the applied run. The methods record lists preparation settings, selected samples, design notes, the current contrast and run history.')),
     div(class='guide-panel',h3('3. Save a session to resume later'),downloadButton('data_hub-export_session_btn','Export Session',class='btn-primary'),
-      p('Restore this ZIP from Experiment, review and confirm Design, then click Prepare data in Quality to rebuild results. Save Methods and decisions separately to preserve guided design notes and run history.')),
+      p(if(team_simple_review_enabled()) 'Restore this ZIP from Data and open Review to rebuild the data table and PCA automatically. AI-proposed scientific changes still require confirmation. Save Methods and decisions separately to preserve design notes and run history.' else 'Restore this ZIP from Experiment, review and confirm Design, then click Prepare data in Quality to rebuild results. Save Methods and decisions separately to preserve guided design notes and run history.')),
     div(class='guide-panel',h3('Figures and tables (optional)'),actionButton('guide_export_studio','Open Publication Export Studio',class='btn-primary'),
-      p('First open a result in step 5. In the studio, choose that figure and download PDF or another format. Per-figure PDF and CSV buttons also remain inside each analysis.'))),
+      p(if(team_simple_review_enabled()) 'Open a result in Canvas. In the studio, choose that figure and download PDF or another format. Per-figure PDF and CSV buttons also remain inside each analysis.' else 'First open a result in step 5. In the studio, choose that figure and download PDF or another format. Per-figure PDF and CSV buttons also remain inside each analysis.'))),
   div(class='guide-panel',h3('Runs in this session'),DT::DTOutput('guide_history'),
     p('History is kept for this browser session and included in the workflow record. The original session ZIP does not restore this new history.')),
   guide_link('Author and citation',tool='About & Citation'))
@@ -276,7 +324,8 @@ guided_workflow_server <- function(input,output,session,shared_data) {
   ready <- reactive({
     state <- safe(shared_data$preparation_state)
     is.list(state) && isTRUE(state$data_available) && !is.null(state$applied) &&
-      !is.null(safe(shared_data$data_processed))
+      !is.null(safe(shared_data$data_processed)) &&
+      (!team_simple_review_enabled() || (identical(state$status,'ready') && !isTRUE(state$dirty) && !isTRUE(safe(shared_data$preparation_dirty))))
   })
   selected_samples <- reactive(safe(shared_data$selected_cols) %||% character())
   applied_samples <- reactive(safe(shared_data$applied_sample_ids) %||% character())
@@ -316,7 +365,7 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     !is.null(design_token()) && identical(reviewed_token(),design_token()))
   design_issues <- reactive({
     if(isTRUE(safe(shared_data$is_restoring))) return(list(list(id="guide_design_confirm", message="Your saved session is still loading. Wait for restoration to finish, then review and confirm the design.")))
-    issues<-guide_design_issues(review_confirmed(),input$guide_unit,input$guide_design_type)
+    issues<-if(team_simple_review_enabled()) list() else guide_design_issues(review_confirmed(),input$guide_unit,input$guide_design_type)
     if(!is.null(safe(shared_data$rawData))&&!length(selected_samples())) issues<-c(list(list(id='data_hub-selectedColumns',message='Select at least one sample in “Choose samples”.')),issues)
     issues
   })
@@ -325,9 +374,9 @@ guided_workflow_server <- function(input,output,session,shared_data) {
   longitudinal_blocked <- reactiveVal(FALSE)
   require_design <- function(target=NULL) {
     design_attempted(TRUE)
-    step(2L);tool('');bslib::nav_select('main_navbar','Design',session=session)
+    step(if(team_simple_review_enabled()) 3L else 2L);tool('');bslib::nav_select('main_navbar',if(team_simple_review_enabled()) 'Preparation' else 'Design',session=session)
     issues <- design_issues()
-    if(is.null(target)) target <- if(length(issues)) issues[[1]]$id else 'guide_design_type'
+    if(is.null(target)) target <- if(team_simple_review_enabled() && !nzchar(trimws(input$guide_unit %||% ''))) 'guide_unit' else if(length(issues)) issues[[1]]$id else 'guide_design_type'
     session$onFlushed(function(){session$sendCustomMessage('guide-focus',list(id=target))},once=TRUE)
   }
   output$guide_design_status <- renderUI({
@@ -347,6 +396,7 @@ guided_workflow_server <- function(input,output,session,shared_data) {
       tags$ol(lapply(issues,function(issue)tags$li(tags$button(type='button',class='guide-design-jump',`data-guide-focus`=issue$id,issue$message)))),blocked_note)
   })
   go <- function(i,check=TRUE) {
+    if(team_simple_review_enabled() && as.integer(i) %in% c(2L,4L)) i <- 3L
     if(check && i>1 && is.null(safe(shared_data$rawData))) {showNotification('Choose an existing workbook or upload abundance files in Experiment first.',type='warning');i<-1L}
     if(check && i>2 && !design_ok()) {require_design();return()}
     if(check && i>3 && !ready()) {i<-3L;session$onFlushed(function(){session$sendCustomMessage('guide-focus',list(id='data_hub-runAnalysis'))},once=TRUE)}
@@ -358,7 +408,7 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     unpaired_de_tools <- c('Volcano Plot','LSEA','Structural Grid',
       'Violin Plots','Functional Ratios','Lipid Pathways','Cellular Organization')
     if(!x %in% c(unpaired_de_tools,'Structural','Longitudinal'))return(TRUE)
-    if(!design_ok()){require_design();return(FALSE)}
+    if(!design_ok() || (team_simple_review_enabled() && !guide_valid_design(TRUE,input$guide_unit,input$guide_design_type))){require_design();return(FALSE)}
     synthetic_ids <- if(is.function(shared_data$synthetic_sample_ids)) shared_data$synthetic_sample_ids() else character()
     if(length(synthetic_ids)>0L) {
       showNotification('Statistical comparisons are unavailable because this prepared run includes synthetic averaged samples. Prepare a run with measured samples only.',type='warning',duration=12)
@@ -420,6 +470,78 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     })
   }
 
+  review_pending_issue <- reactive({
+    issue <- safe(shared_data$team_review_preparation_issue)
+    if(!is.null(issue)) return(issue)
+    state <- safe(shared_data$preparation_state)
+    if(!isTRUE(state$dirty) || is.null(state$applied) || is.null(state$pending)) return(NULL)
+    old <- state$applied$spec$settings; new <- state$pending$settings
+    keys <- union(names(old),names(new)); changed <- keys[!vapply(keys,function(k) identical(old[[k]],new[[k]]),logical(1))]
+    if(!length(setdiff(changed,c('minDetectionPct','outlierTreatments')))) return(NULL)
+    describe <- function(x) {
+      if(is.null(x) || !length(x)) return("None")
+      if(is.logical(x)) return(paste(ifelse(x,"Enabled","Disabled"),collapse=", "))
+      if(is.list(x) && !is.null(names(x))) return(paste(names(x),vapply(x,as.character,character(1)),sep=": ",collapse=", "))
+      paste(as.character(x),collapse=", ")
+    }
+    changes <- data.frame(Setting=changed,Applied=vapply(changed,function(k) describe(old[[k]]),character(1)),Pending=vapply(changed,function(k) describe(new[[k]]),character(1)),stringsAsFactors=FALSE)
+    labels <- c(minDetectionPct="Minimum detection (%)",dropNonDetected="Exclude undetected lipids",detectionScope="Detection scope",useImputation="QRILC imputation",normalizationMethod="Normalization",imputeZerosPerFile="Entirely missing lipids per file to zero",imputeRemainingNAtoZero="Remaining missing values to zero",outlierTreatments="Sample decisions",imputationSeed="Imputation seed")
+    matched <- match(changes$Setting,names(labels)); changes$Setting[!is.na(matched)] <- unname(labels[matched[!is.na(matched)]])
+    for(field in c('selected','use_average','data_id','metadata_id')) if(!identical(state$applied$spec[[field]],state$pending[[field]])) {
+      label <- switch(field,selected='Selected samples',use_average='Synthetic averaged samples',data_id='Source data',metadata_id='Sample labels and metadata')
+      changes <- rbind(changes,data.frame(Setting=label,Applied=if(field %in% c('data_id','metadata_id')) 'Previous version' else describe(state$applied$spec[[field]]),Pending=if(field %in% c('data_id','metadata_id')) 'Current version shown in Review' else describe(state$pending[[field]]),stringsAsFactors=FALSE))
+    }
+    list(message='Preparation options changed. Review the differences before applying them.',confirmation=TRUE,request_id=state$pending_id,changes=changes)
+  })
+  review_confirmation_id <- reactiveVal(NULL)
+  observeEvent(input$team_review_show_changes,{
+    issue <- review_pending_issue()
+    if(!team_simple_review_enabled() || !isTRUE(issue$confirmation) || is.null(issue$changes)) return()
+    review_confirmation_id(issue$request_id)
+    showModal(modalDialog(title='Review pending preparation changes',
+      p('These settings will be applied together. The previous results stay visible until preparation finishes.'),
+      tags$table(class='table',tags$thead(tags$tr(lapply(names(issue$changes),tags$th))),tags$tbody(lapply(seq_len(nrow(issue$changes)),function(i) tags$tr(lapply(issue$changes[i,],tags$td))))),
+      footer=tagList(modalButton('Cancel'),actionButton('team_review_confirm_changes','Confirm changes',class='btn-primary'))))
+  },ignoreInit=TRUE)
+  observeEvent(input$team_review_confirm_changes,{
+    token <- review_confirmation_id();review_confirmation_id(NULL);removeModal()
+    if(team_simple_review_enabled() && !is.null(token) && is.function(shared_data$request_team_review_preparation))
+      shared_data$request_team_review_preparation(kind='confirmed',expected_id=token)
+  },ignoreInit=TRUE)
+  observeEvent(input$team_review_prepare, {
+    request <- input$team_review_prepare
+    if(!team_simple_review_enabled() || !is.list(request) || !identical(request$source,'human') ||
+       !isTRUE(request$kind %in% c('detection','entry')) || !is.function(shared_data$request_team_review_preparation)) return()
+    kind <- request$kind
+    token <- suppressWarnings(as.integer(request$token))
+    review_entry_diagnostic <- function(phase, result=NA, current_step=NA_integer_, trigger_changed=NA) {
+      if(!identical(kind,'entry')) return(invisible(NULL))
+      session$sendCustomMessage('team-review-entry-diagnostic',list(
+        phase=phase,token=token,step=as.integer(current_step),result=isTRUE(result),
+        triggerChanged=isTRUE(trigger_changed)))
+      invisible(NULL)
+    }
+    review_entry_diagnostic('received',current_step=step())
+    threshold <- if(identical(kind,'detection')) suppressWarnings(as.numeric(request$threshold)) else NULL
+    if(identical(kind,'detection') && (length(threshold)!=1L || !is.finite(threshold) || threshold<0 || threshold>100)) return()
+    session$onFlushed(function() isolate({
+      current_step <- as.integer(step())
+      if(!identical(current_step,3L)) {
+        review_entry_diagnostic('step-gate-rejected',current_step=current_step)
+        return()
+      }
+      trigger_before <- safe(shared_data$run_analysis_trigger)
+      result <- shared_data$request_team_review_preparation(kind=kind,expected_threshold=threshold)
+      trigger_after <- safe(shared_data$run_analysis_trigger)
+      review_entry_diagnostic('method-returned',result=result,current_step=current_step,
+        trigger_changed=!identical(trigger_before,trigger_after))
+    }),once=TRUE)
+  },ignoreInit=TRUE)
+
+  observeEvent(list(shared_data$session_restored(),shared_data$is_restoring(),shared_data$restore_generation()),{
+    if(team_simple_review_enabled() && isTRUE(safe(shared_data$session_restored)) && !isTRUE(safe(shared_data$is_restoring)))
+      session$sendCustomMessage('team-review-restore-ready',list(ready=TRUE,generation=safe(shared_data$restore_generation)))
+  },ignoreInit=TRUE)
   observeEvent(input$guide_open_tool,open_tool(input$guide_open_tool))
   observeEvent(input$guide_tool,{if(nzchar(input$guide_tool))open_tool(input$guide_tool)},ignoreInit=TRUE)
   for(g in c('overview','compare','structure','function','time')) local({k<-g;observeEvent(input[[paste0('guide_goal_',k)]],{goal(k)})})
@@ -437,14 +559,14 @@ guided_workflow_server <- function(input,output,session,shared_data) {
       last_routed_restore)
     if(is.null(route))return()
     last_routed_restore <<- route$generation
-    step(2L);tool('');design_attempted(TRUE)
+    step(if(team_simple_review_enabled()) 3L else 2L);tool('');design_attempted(TRUE)
     session$onFlushed(function() {
-      bslib::nav_select('main_navbar',route$destination,session=session)
+      bslib::nav_select('main_navbar',if(team_simple_review_enabled()) 'Preparation' else route$destination,session=session)
     },once=TRUE)
   },ignoreInit=TRUE,priority=-20)
   # Keep an already-open statistical tool subject to the current design too.
   # Changing the relationship or invalidating review must not leave a stale tool active.
-  observeEvent(list(input$guide_design_type,design_ok(),
+  observeEvent(list(input$guide_unit,input$guide_design_type,design_ok(),
                     if(is.function(shared_data$synthetic_sample_ids))shared_data$synthetic_sample_ids() else character()),{
     x<-isolate(tool())
     if(!nzchar(x))x<-isolate(input$main_navbar) %||% ''
@@ -454,7 +576,7 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     step=step(),tool=tool(),goal=goal(),selectedSamples=selected_samples(),
     designAttempted=design_attempted(),designIssues=design_issues(),
     experimentStage=experiment_stage(),
-    preparationStage=if(!ready()) 'not_prepared' else if(isTRUE(safe(shared_data$preparation_dirty))) 'update_pending' else 'prepared'
+    preparationStage=if(team_simple_review_enabled() && !is.null(safe(shared_data$preparation_state)$applied) && isTRUE(safe(shared_data$preparation_dirty))) 'update_pending' else if(!ready()) 'not_prepared' else if(isTRUE(safe(shared_data$preparation_dirty))) 'update_pending' else 'prepared'
   ))})
   # Descriptive fields do not alter the study design; mapped design fields do.
   previous_metadata <- NULL
@@ -591,13 +713,44 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     valid <- !is.null(preview) && is.null(preview$error) && length(preview$retained)==1L && is.finite(preview$retained) && preview$retained>=2
     session$sendCustomMessage("guide-qc-prepare-enabled",list(enabled=valid))
   })
+  output$guide_review_statistics <- renderUI({
+    state <- safe(shared_data$preparation_state)
+    if(!is.list(state) || !isTRUE(state$data_available) || is.null(state$applied)) return(p('The summary appears when preparation finishes.'))
+    summary <- team_review_summary(safe(shared_data$data_processed_unfiltered) %||% safe(shared_data$data_processed),metadata(),state$applied)
+    if(is.null(summary)) return(NULL)
+    tagList(tags$table(class='tw-review-stats-table',tags$tbody(lapply(seq_len(nrow(summary$measures)),function(i) tags$tr(tags$th(scope='row',summary$measures$Measure[i]),tags$td(summary$measures$Value[i]))))),
+      p(class='tw-review-stats-scale',summary$scale),
+      if(!is.null(summary$groups)) tagList(h5('Samples by condition / tissue'),tags$table(class='tw-review-stats-table',tags$tbody(lapply(seq_len(nrow(summary$groups)),function(i) tags$tr(tags$th(scope='row',summary$groups$Group[i]),tags$td(summary$groups$Samples[i])))))),
+      if(isTRUE(state$dirty)) p('Last applied run; an update is in progress.'))
+  })
+  output$guide_review_data <- DT::renderDT({
+    preparation <- safe(shared_data$preparation_state)
+    data <- if(is.list(preparation) && isTRUE(preparation$data_available) && !is.null(preparation$applied)) safe(shared_data$data_processed_unfiltered) %||% safe(shared_data$data_processed) else {
+      raw <- safe(shared_data$rawData)
+      if(is.list(raw)) raw$data else NULL
+    }
+    req(is.data.frame(data))
+    table <- DT::datatable(data,rownames=FALSE,escape=TRUE,options=list(pageLength=5,lengthMenu=c(5,10,25),scrollX=TRUE,autoWidth=FALSE,deferRender=TRUE))
+    numeric_columns <- names(data)[vapply(data,is.numeric,logical(1))]
+    if(length(numeric_columns)) table <- DT::formatSignif(table,columns=numeric_columns,digits=5)
+    table
+  })
   output$guide_quality_status <- renderUI({
+    if(team_simple_review_enabled()) {
+      state <- safe(shared_data$preparation_state)
+      issue <- review_pending_issue()
+      if(!is.null(issue)) return(div(role='status',class='guide-pending',p(issue$message),if(isTRUE(issue$confirmation)) actionButton('team_review_show_changes','Review pending changes')))
+      if(!is.null(state$error)) return(div(role='alert',strong('Preparation needs attention. '),as.character(state$error)))
+      if(ready()) return(NULL)
+      return(p(role='status',if(is.null(state$applied)) 'The table shows your uploaded data. Continue from Data to Review to prepare PCA.' else 'Changes pending; the last applied run remains visible.'))
+    }
     preview<-tryCatch(shared_data$detection_preview(),error=function(e) NULL)
     if(!is.null(preview) && (!is.null(preview$error) || (length(preview$retained)==1L && is.finite(preview$retained) && preview$retained < 2))) return(div(class='guide-next-task guide-pending',role='status',p(strong('Preparation unavailable: the detection preview must retain at least two lipids.')),p(preview$error %||% 'Adjust the detection settings before preparing.')))
     if(!ready())return(div(class='guide-next-task',role='status',p(strong('Next: review the three settings, then click Prepare data.')),p(sprintf('%d measurements selected. Review detection, missing-value handling and normalization on the left. When preparation finishes, review the sample quality plot.',length(selected_samples())))))
     if(isTRUE(safe(shared_data$preparation_dirty))) return(div(class='guide-next-task',role='status',p(strong('Changes are pending.')),p('Review your settings or sample decisions, then click Update prepared data in the preparation controls. The plot and results still show the previous prepared run.'),guide_focus_link('Go to Update prepared data button','data_hub-runAnalysis')))
     div(class='guide-next-task',role='status',p(strong('Preparation complete. Next: review sample quality.')),p('Inspect the plot and sample details before choosing whether a decision is needed.'),tags$a(class='guide-button',href='#guide-qc-review','Review sample quality ↓'))
   })
+  outputOptions(output,'guide_quality_status',suspendWhenHidden=FALSE)
   output$guide_quality_next <- renderUI({
     if(!ready())return(div(class='guide-actions',guide_focus_link('Go to Prepare data button','data_hub-runAnalysis')))
     div(class='guide-actions',guide_link(if(isTRUE(safe(shared_data$preparation_dirty)))'Continue with the previous applied run →' else 'After reviewing quality, continue to My question →',step=4))
@@ -621,8 +774,8 @@ guided_workflow_server <- function(input,output,session,shared_data) {
   output$guide_share_summary <- renderUI({
     a<-safe(shared_data$preparation_audit);req(a)
     div(class='guide-next-task',p(strong(sprintf('Ready to save: %s lipids × %d measurements in the applied run.',format(a$retained,big.mark=','),a$samples))),
-      p('Save the prepared matrix, labels CSV and methods record in the same folder. After restoring the session ZIP, confirm Design and click Prepare data in Quality to rebuild results. Keep the methods record for guided design notes and run history.'),
-      if(isTRUE(safe(shared_data$preparation_dirty)))p(class='guide-pending','Pending changes are not included in these applied results. Return to Quality and update preparation to apply them.'))
+      p(if(team_simple_review_enabled()) 'Save the prepared matrix, labels CSV and methods record in the same folder. After restoring the session ZIP, open Review to rebuild the data table and PCA automatically; AI-proposed scientific changes still require confirmation. Keep the methods record for guided design notes and run history.' else 'Save the prepared matrix, labels CSV and methods record in the same folder. After restoring the session ZIP, confirm Design and click Prepare data in Quality to rebuild results. Keep the methods record for guided design notes and run history.'),
+      if(isTRUE(safe(shared_data$preparation_dirty)))p(class='guide-pending',if(team_simple_review_enabled()) 'Pending changes are not included in these applied results. Adjust the detection threshold or make a sample decision in Review to update them.' else 'Pending changes are not included in these applied results. Return to Quality and update preparation to apply them.'))
   })
   recommended <- reactive(switch(goal(),overview=c('Quality Check','Composition','Heatmap'),compare=c('Volcano Plot','LSEA','Violin Plots'),structure=c('Structural','Main Class & Acyl Chain Proportions','Structural Grid'),`function`=c('Functional Ratios','Lipid Pathways','Cellular Organization'),time='Longitudinal'))
   output$guide_recommended <- renderUI(div(class='guide-panel',h3('Recommended tools'),
@@ -669,7 +822,7 @@ guided_workflow_server <- function(input,output,session,shared_data) {
       'QRILC assumes left-censored missingness. NA values alone do not demonstrate this mechanism.',
       'Default preparation settings are starting values, not an approved scientific protocol.',
       if(identical(input$guide_design_type,'uncertain'))'Animal/donor matching remains unresolved. Do not interpret statistical comparisons until the experimental-unit relationships and test are established.',
-      'A session ZIP restores source data and saved settings. Review and confirm Design, then click Prepare data in Quality to rebuild results. Previous run history is not restored.',
+      if(team_simple_review_enabled()) 'A session ZIP restores source data and saved settings. Open Review to rebuild the data table and PCA automatically; AI-proposed scientific changes still require confirmation. Previous run history is not restored.' else 'A session ZIP restores source data and saved settings. Review and confirm Design, then click Prepare data in Quality to rebuild results. Previous run history is not restored.',
       paste('Advanced PCA settings:',paste(capture.output(str(safe(shared_data$pca_settings))),collapse=' ')),
       'Advanced individual-lipid PCA: prcomp on log2(pmax(prepared abundance, 0) + 1), centered and scaled to unit variance after removing near-constant lipids. Class PCA sums linear prepared abundances and uses NIPALS.',
       paste('Dashboard PCA:', if(identical(input[['results_dashboard-pca_transform']], 'linear')) 'linear complete finite prepared abundances' else 'log10 of positive complete prepared abundances', '; centered; scaling:', input[['results_dashboard-pca_scale']] %||% 'uv'),

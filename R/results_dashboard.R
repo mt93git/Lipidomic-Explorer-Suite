@@ -6,6 +6,43 @@
 rd_palette <- c("#337f87", "#c77958", "#6d7195", "#b89b5e", "#78a095", "#a68a9c", "#708ca6", "#a0a579")
 rd_other <- "#9a9893"
 
+# Presentation adapter: transpose all cell-associated data together, preserving IDs.
+# Numeric colorscale stop positions deliberately use heterogeneous lists, not c().
+rd_team_heatmap_view <- function(z, group_n) {
+  stopifnot(is.matrix(z), length(group_n)==ncol(z))
+  squares <- nrow(z)<=15L && ncol(z)<=15L
+  text <- outer(rownames(z),seq_len(ncol(z)),function(lipid,i)
+    paste0('Group: ',htmltools::htmlEscape(colnames(z)[i]),'<br>n = ',group_n[i],
+      '<br>Lipid: ',htmltools::htmlEscape(lipid)))
+  groups <- vapply(seq_len(ncol(z)),function(i) rd_team_heat_tick(colnames(z)[i],group_n[i]),character(1))
+  if(squares) {
+    width <- max(520, nrow(z)*16+230)
+    list(squares=TRUE,z=t(z),text=t(text),x=rownames(z),y=colnames(z),
+      width=width,height=ncol(z)*16+210,
+      colorbar=list(title='Mean z-score',orientation='h',x=0,xanchor='left',y=1.02,yanchor='bottom',lenmode='pixels',len=250,thickness=10),
+      xaxis=list(title='',type='category',tickmode='array',tickvals=rownames(z),ticktext=rownames(z),
+        tickangle=-90,tickfont=list(size=9),domain=c(0,nrow(z)*16/(width-230)),constrain='domain',automargin=FALSE),
+      yaxis=list(title=list(text='Sample group',standoff=20),type='category',tickmode='array',tickvals=colnames(z),ticktext=paste0(htmltools::htmlEscape(colnames(z)),' (n=',group_n,')'),
+        scaleanchor='x',scaleratio=1,constrain='domain',automargin=FALSE),margin=list(l=210,r=20,t=70,b=140,autoexpand=FALSE))
+  } else {
+    # Preserve a usable row height instead of compressing the entire catalog
+    # into a short card. The Canvas scrolls this bounded natural-size plot.
+    height <- min(24000, max(420, nrow(z)*12+155))
+    dense <- nrow(z)>60L
+    margin <- if(dense)list(l=125,r=20,t=110,b=45) else list(l=125,r=20,t=10,b=145)
+    colorbar <- if(dense)list(title='Mean z-score',thickness=12,lenmode='pixels',len=160,y=1,yanchor='top',x=1,xanchor='left') else list(title='Mean z-score',thickness=12)
+    tick_budget <- min(80L,max(2L,floor((height-155)/16)))
+    ticks <- rd_ticks(rownames(z),tick_budget)
+    list(squares=FALSE,z=z,text=text,x=colnames(z),y=rownames(z),
+      width=800,height=height,colorbar=colorbar,
+      xaxis=list(title=list(text='Sample group',standoff=20),type='category',tickangle=0,side=if(dense)'top' else 'bottom',
+        tickmode='array',tickvals=colnames(z),ticktext=groups,automargin=TRUE),
+      yaxis=list(title='',type='category',tickmode='array',tickvals=ticks,
+        ticktext=vapply(ticks,function(x)if(nchar(x)>19)paste0(substr(x,1,18),'…')else x,character(1)),
+        tickfont=list(size=10),automargin=TRUE),margin=margin)
+  }
+}
+
 rd_int <- function(x, default) {
   x <- suppressWarnings(as.integer(x))
   if (length(x) != 1 || is.na(x)) default else x
@@ -13,9 +50,43 @@ rd_int <- function(x, default) {
 
 rd_value <- function(x) if (is.function(x)) tryCatch(x(), error = function(e) NULL) else x
 
-# Fixed-order categorical colors; levels beyond 8 share the neutral "other" gray.
+# Team condition defaults only; explicit shared maps take precedence by exact ID.
+rd_team_condition_colors <- function(levels, mapping=NULL) {
+  palette<-c('#BCD8EC','#FFCBE1','#D6E5BD','#DCCCEC','#FFDAB4','#F9E1A8')
+  # Sort IDs so category display order cannot change their default color.
+  ids<-sort(unique(as.character(levels)),method='radix')
+  defaults<-stats::setNames(rep(palette,length.out=length(ids)),ids)
+  defaults[grepl('^healthy($|[_ -])',ids,ignore.case=TRUE)]<-'#7A7A7A'
+  if(!is.null(mapping) && length(mapping) && !is.null(names(mapping))) {
+    colors<-unlist(mapping,use.names=FALSE);keys<-names(mapping)
+    valid<-!is.na(colors) & grepl('^#[0-9A-Fa-f]{6}$',colors) & keys%in%ids
+    defaults[keys[valid]]<-colors[valid]
+  }
+  defaults[levels]
+}
+
+# masterColorMaps is populated with automatic Brewer defaults even when no user
+# has chosen colors. Only the persisted palette state identifies intentional edits.
+rd_team_resolved_condition_colors <- function(levels, palette_settings=NULL, context='Group1') {
+  overrides<-list()
+  if(is.list(palette_settings) && isTRUE(palette_settings$useCustomColors)) {
+    custom<-palette_settings$custom_colors
+    if(!is.null(custom)) for(id in levels) {
+      keys<-c(paste0(context,'::',id),paste0(context,'_',gsub('[^A-Za-z0-9]','_',id)),id,gsub('\\s|&','_',id))
+      for(key in unique(keys)) {
+        value<-if(key %in% names(custom)) custom[[key]] else NULL
+        if(is.character(value) && length(value)==1L && !is.na(value) && grepl('^#[0-9A-Fa-f]{6}$',value)) {
+          overrides[[id]]<-value;break
+        }
+      }
+    }
+  }
+  rd_team_condition_colors(levels,overrides)
+}
+
+# Fixed-order categorical colors with a deterministic extended palette.
 rd_colors <- function(levels) {
-  cols <- rep(rd_other, length(levels))
+  cols <- if(length(levels)) grDevices::hcl.colors(length(levels), "Dark 3") else character()
   n <- min(length(levels), length(rd_palette))
   cols[seq_len(n)] <- rd_palette[seq_len(n)]
   stats::setNames(cols, levels)
@@ -127,6 +198,7 @@ rd_card <- function(ns, id, title, subtitle, height = "420px") {
     div(class = "rd-card-head",
       div(h3(title), p(class = "rd-card-sub", subtitle)),
       downloadButton(ns(paste0("dl_", id)), "Plot data (CSV)", class = "btn-sm rd-dl")),
+    if (id %in% c("comp", "heat")) uiOutput(ns(paste0("select_", id))),
     plotly::plotlyOutput(ns(paste0("plot_", id)), height = height),
     uiOutput(ns(paste0("detail_", id))),
     uiOutput(ns(paste0("note_", id)), class = "rd-card-note"))
@@ -146,8 +218,8 @@ results_dashboard_ui <- function(id = "results_dashboard") {
         selectInput(ns("color_by"), "Color samples by", c("Condition / cell type"="Group1", "Tissue / sample type"="Group2"), width = "190px", selectize=FALSE),
         selectInput(ns("pca_transform"), "PCA abundance scale", c("Log2(pmax(x, 0) + 1) (canonical default)" = "log2", "Log10" = "log10", "Linear prepared values" = "linear"), width = "290px", selectize=FALSE),
         selectInput(ns("pca_scale"), "PCA scaling", c("Unit variance" = "uv", "Centered only" = "none"), width = "160px", selectize=FALSE),
-        numericInput(ns("top_n"), "Heatmap lipids", 30, min = 5, max = 500, step = 5, width = "130px"),
-        numericInput(ns("n_class"), "Classes shown", 7, min = 1, max = 7, width = "130px"))),
+        numericInput(ns("top_n"), "Most variable: count", 30, min = 5, max = 500, step = 5, width = "130px")),
+      tags$div(style="display:none", textInput(ns("heat_group_selection"), NULL, value="__ALL__"), textInput(ns("heat_lipid_selection"), NULL, value="__ALL__"), textInput(ns("comp_class_selection"), NULL, value="__ALL__"))),
     uiOutput(ns("status")),
     uiOutput(ns("kpis")),
     div(class = "rd-card rd-violin-card",
@@ -166,16 +238,40 @@ results_dashboard_ui <- function(id = "results_dashboard") {
       rd_card(ns, "pca", "Principal component analysis", "Samples projected on PC1 and PC2 of the selected abundance scale."),
       rd_card(ns, "comp", "Class signal composition", "Share of each sample's summed prepared signal by lipid class."),
       rd_card(ns, "dist", "Abundance distribution", "Per-sample distribution of log10 abundances."),
-      rd_card(ns, "heat", "Top-variable lipids", "Row z-scores of log10 abundances for the most variable lipids.", "560px")),
+      rd_card(ns, "heat", "Lipid heatmap", "Explore individual lipids by class or search the full available catalog.", "560px")),
     div(class = "rd-methods",
       h3("How to read these views"),
       tags$ul(
         tags$li(strong("Sample labels. "),"#1, #2 and so on are display positions in the current prepared dataset, not sample IDs. They can change after samples are excluded. Axes show fewer labels when space is limited; every measurement remains plotted. Hover or tap a mark for the original sample ID and confirmed metadata; click a mark to open its details below the chart. CSV files include the original IDs and display positions."),
         tags$li(strong("Input. "), "The applied output of data preparation (linear scale), restricted to the active targeted lipid scope. Pending, unapplied settings are not reflected."),
         tags$li(strong("Missing and nonpositive values. "), "Values that are missing, zero or negative cannot be log-transformed and are treated as missing in log10 views; they are never imputed here. Linear PCA uses complete finite lipids; log10 PCA and the heatmap use only lipids with a positive value in every displayed sample. The distribution plot shows positive values only; composition sums positive values only. Counts of excluded lipids are reported under each plot."),
-        tags$li(strong("Transformations. "), "The canonical dashboard PCA uses log2(pmax(x, 0) + 1), centers each lipid and scales to unit variance, matching the shared individual-lipid PCA. Log10 and linear views remain available as explicitly labeled exploratory alternatives. The distribution and heatmap always use log10(abundance). The heatmap ranks lipids by variance of log10 values across displayed samples and shows per-lipid z-scores (color is relative within each row)."),
+        tags$li(strong("Transformations. "), "The canonical dashboard PCA uses log2(pmax(x, 0) + 1), centers each lipid and scales to unit variance, matching the shared individual-lipid PCA. Log10 and linear views remain available as explicitly labeled exploratory alternatives. The distribution and heatmap always use log10(abundance). The heatmap ranks lipids and computes row z-scores over the full prepared cohort, then displays group means. Changing visible groups does not recalculate these values."),
         tags$li(strong("Composition is not molar. "), "Class shares are fractions of summed prepared feature signal. Ionization efficiency differs across classes and species, so these shares are not molar proportions or absolute amounts without validated quantitative calibration."),
-        tags$li(strong("No inference. "), "Groups are used only for color and ordering. Separation in PCA or the heatmap is exploratory, not evidence of a group difference."))))
+        tags$li(strong("No inference. "), "Groups define heatmap columns and sample colors. Separation in PCA or the heatmap is exploratory, not evidence of a group difference."))))
+}
+
+# Plotly expands a per-sample constant hover template once per lipid. In Team,
+# compact only identical templates after Plotly builds its traces: a scalar is
+# the same Plotly template for every point and leaves the numeric data intact.
+plotly_build.team_compact_distribution <- function(p, ...) {
+  class(p) <- setdiff(class(p), 'team_compact_distribution')
+  p <- plotly::plotly_build(p, ...)
+  p$x$data <- lapply(p$x$data, function(trace) {
+    h <- trace$hovertemplate
+    if (is.character(h) && length(h) > 1L && !anyNA(h) && all(h == h[[1L]])) trace$hovertemplate <- h[[1L]]
+    trace
+  })
+  p
+}
+
+# Team Canvas labels use multiple lines without changing group keys or hover data.
+rd_team_heat_tick <- function(group, n) {
+  label <- htmltools::htmlEscape(as.character(group))
+  if (nchar(as.character(group)) > 12L) {
+    label <- gsub("([_-])", "\\1<br>", label, perl=TRUE)
+    label <- gsub("[[:space:]]+", "<br>", label, perl=TRUE)
+  }
+  paste0(label, "<br>(n=", n, ")")
 }
 
 results_dashboard_module_server <- function(input, output, session, shared_data) {
@@ -217,6 +313,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     chart_id <- chart
     source_id <- session$ns(paste0("rd_", chart_id))
     observeEvent(lipidomic_plotly_event("plotly_click", source = source_id), {
+      if(chart_id=="comp" && isTRUE(shared_data$team_compact_distribution) && !identical(input$comp_axis_mode,"sample")) return()
       hit <- lipidomic_plotly_event("plotly_click", source = source_id)
       raw <- if (chart_id %in% c("violin", "pca")) hit$customdata else hit$x
       sample <- as.character(unlist(raw, use.names = FALSE)[1])
@@ -244,8 +341,18 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     labels <- stats::setNames(sprintf("#%d",seq_along(g)),b$groups$Sample)
     grouping <- if (identical(input$color_by, "Group2")) "Group2" else "Group1"
     maps <- rd_value(shared_data$color_maps)
-    list(group = g, levels = lev, colors = rd_shared_colors(lev, maps[[grouping]]), order = ord, labels = labels)
+    colors <- if(isTRUE(shared_data$team_compact_distribution)) rd_team_resolved_condition_colors(lev,rd_value(shared_data$palette_settings),grouping) else rd_shared_colors(lev,maps[[grouping]])
+    list(group = g, levels = lev, colors = colors, order = ord, labels = labels)
   })
+
+  team_condition_meta <- function() if(isTRUE(shared_data$team_compact_distribution)) list(teamConditions=unname(sort(sample_info()$levels,method='radix'))) else NULL
+
+  # Full label map lets the Team figure workspace distinguish a change in
+  # label meaning from width-dependent thinning of axis ticks.
+  canvas_sample_labels <- function() {
+    labels <- sample_info()$labels
+    c(list(teamCanvasSampleLabels = list(values = unname(names(labels)), labels = unname(labels))),team_condition_meta())
+  }
 
   complete_log <- reactive({
     lm <- base()$log
@@ -297,18 +404,25 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
                       as.character(htmltools::htmlEscape(d$Lipid)))
     plotly::plot_ly(d, x = ~Group, y = ~Log10_abundance, color = ~Group,
       source = session$ns("rd_violin"), customdata = ~Sample,
-      colors = si$colors, type = "violin", points = "all", jitter = 0.16,
-      pointpos = 0, spanmode = "hard", box = list(visible = TRUE),
+      colors = si$colors, type = "violin", points = "all", hoveron = "points", jitter = 0.16,
+      pointpos = 0, spanmode = "soft", box = list(visible = TRUE),
       marker = list(color = "#162230", size = 5, opacity = 0.8),
       meanline = list(visible = FALSE), text = ~Hover,
       hovertemplate = "%{text}<br>log10 prepared abundance: %{y:.3f}<extra></extra>") |>
-      rd_layout(xaxis = list(title = "Sample group", type = "category"),
-        yaxis = list(title = "log10 prepared abundance", gridcolor = "#ebeae6"), showlegend = FALSE)
+      rd_layout(meta=team_condition_meta(),xaxis = list(title = "Sample group", type = "category"),
+        yaxis = list(title = "log10 prepared abundance", zeroline = FALSE,
+          autorange = TRUE, gridcolor = "#ebeae6"), showlegend = FALSE,
+        margin = list(l = 60, r = 20, t = 10, b = 95),
+        annotations = list(list(x = 0, y = 0, yshift = -65, xref = "paper", yref = "paper",
+          text = "Dots: prepared sample values. Tails: smoothed estimates.",
+          showarrow = FALSE, xanchor = "left", yanchor = "top",
+          font = list(size = 10, color = "#52514e")))) |>
+      htmlwidgets::onRender("function(el) { if (window.TeamViolinDisplay) return window.TeamViolinDisplay.fit(el); }")
   })
   output$note_violin <- renderUI({
     d <- violin_data(); omitted <- ncol(base()$mat) - nrow(d)
     paste0(nrow(d), " measurements shown; ", omitted,
-      " excluded for missing, zero or negative values. Shape shows a smoothed distribution; the inner box shows quartiles and median. Small groups may not form a meaningful violin. Descriptive only: no significance test is applied.")
+      " excluded for missing, zero or negative values. Points show prepared sample values, which may include imputation. The smoothed shape extends beyond their range; its tails are estimates, not additional measurements. The inner box shows quartiles and median. Small groups may not form a meaningful violin. Descriptive only: no significance test is applied.")
   })
 
   # ---- PCA -------------------------------------------------------------------
@@ -348,7 +462,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
                     source = session$ns("rd_pca"), customdata = ~Sample,
                     marker = list(size = 11, line = list(color = "#fcfcfb", width = 2)),
                     text = ~Hover, hovertemplate = "%{text}<br>PC1 %{x:.2f}<br>PC2 %{y:.2f}<extra></extra>") |>
-      rd_layout(xaxis = list(title = sprintf("PC1 (%.1f%%)", d$ve[1]), zeroline = FALSE, gridcolor = "#ebeae6"),
+      rd_layout(meta=team_condition_meta(),xaxis = list(title = sprintf("PC1 (%.1f%%)", d$ve[1]), zeroline = FALSE, gridcolor = "#ebeae6"),
                 yaxis = list(title = sprintf("PC2 (%.1f%%)", d$ve[2]), zeroline = FALSE, gridcolor = "#ebeae6"),
                 legend = list(orientation = "h", y = -0.25),margin=list(l=60,r=15,t=10,b=100))
   })
@@ -362,42 +476,124 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
             cl$n_constant)
   })
 
-  # ---- Class composition -----------------------------------------------------
+  # Selections are persisted as input strings, not encoded in plotted values.
+  selection <- function(raw, choices) {
+    if (is.null(raw) || identical(raw, "__ALL__")) return(choices)
+    if (!is.character(raw) || length(raw)!=1L || is.na(raw) || nchar(raw)>2000000L) return(character())
+    parsed <- tryCatch(jsonlite::fromJSON(raw,simplifyVector=FALSE),error=function(e) NULL)
+    if (!is.list(parsed) || !is.null(names(parsed)) || any(!vapply(parsed,function(x)is.character(x)&&length(x)==1L&&!is.na(x),logical(1)))) return(character())
+    intersect(choices,unlist(parsed,use.names=FALSE))
+  }
+  selection_bar <- function(id, choices, selected, label, colors=NULL, searchable=FALSE, defaults=NULL, classes=NULL) {
+    tags$div(class="rd-selection-bar", `data-selection-input`=session$ns(id),
+      `data-choices`=jsonlite::toJSON(unname(choices),auto_unbox=FALSE), `data-selection-kind`=if(id=="comp_class_selection") "composition" else "heatmap", `aria-label`=label,
+      `data-default-choices`=if(!is.null(defaults)) jsonlite::toJSON(unname(defaults),auto_unbox=FALSE),
+      `data-all-token`=if(!is.null(defaults)) "__EVERY__",
+      `data-class-members`=if(!is.null(classes)) jsonlite::toJSON(lapply(split(choices,classes),unname),auto_unbox=FALSE),
+      if(!is.null(classes)) tags$div(class="tds-class-catalog",tags$strong(class="tds-label","Lipid classes"),
+        lapply(sort(unique(classes)),function(cl) tags$button(type="button",`data-class`=cl,cl,tags$small(class="tds-class-count")))),
+      if (searchable) tags$details(class="tds-collapsible", tags$summary(label), tags$div(class="tds-picker-body",
+      if (searchable) tags$input(type="search", class="tds-search", placeholder="Search all available lipids…", `aria-label`="Search lipids"),
+      if(!is.null(defaults)) tags$button(type="button",`data-action`="default","Most variable"),
+      tags$button(type="button", `data-action`="all", "All"),
+      tags$button(type="button", `data-action`="none", "None"),
+      lapply(choices,function(choice) tags$button(type="button",`data-value`=choice,
+        `aria-pressed`=if(choice %in% selected) "true" else "false",
+        if(!is.null(colors)) tags$span(class="tds-swatch",style=paste0("background:",colors[[choice]]),`aria-hidden`="true"),choice)))) else tagList(
+      tags$strong(class="tds-label",label), tags$button(type="button", `data-action`="all", "All"), tags$button(type="button", `data-action`="none", "None"),
+      lapply(choices,function(choice) tags$button(type="button",`data-value`=choice, `aria-pressed`=if(choice %in% selected) "true" else "false", if(!is.null(colors)) tags$span(class="tds-swatch",style=paste0("background:",colors[[choice]]),`aria-hidden`="true"), choice))))
+  }
+  comp_full <- reactive({
+    b <- base(); si <- sample_info(); pos <- b$mat; pos[!is.finite(pos) | pos<=0] <- 0
+    by_class <- rowsum(pos,b$class); lev <- rownames(by_class)
+    out <- expand.grid(Class=lev,Sample=colnames(by_class),stringsAsFactors=FALSE)
+    out$Signal_sum <- as.vector(by_class); out$Group <- si$group[match(out$Sample,b$groups$Sample)]
+    out$Class <- factor(out$Class,levels=lev);out$Sample <- factor(out$Sample,levels=b$groups$Sample[si$order])
+    out[order(out$Sample,out$Class),]
+  })
   comp_data <- reactive({
-    b <- base(); si <- sample_info()
-    pos <- b$mat
-    pos[!is.finite(pos) | pos <= 0] <- 0
-    by_class <- rowsum(pos, b$class)
-    totals <- colSums(by_class)
-    n_keep <- min(7, max(1, rd_int(input$n_class, 7)))  # 7 classes + "Other" fits the 8-hue palette
-    top <- names(sort(rowSums(sweep(by_class, 2, pmax(totals, .Machine$double.eps), "/")), decreasing = TRUE))
-    lab <- ifelse(rownames(by_class) %in% head(top, n_keep), rownames(by_class), "Other classes")
-    by_class <- rowsum(by_class, lab)
-    out <- expand.grid(Class = rownames(by_class), Sample = colnames(by_class), stringsAsFactors = FALSE)
-    out$Signal_sum <- as.vector(by_class)
-    out$Share_pct <- ifelse(totals[out$Sample] > 0, out$Signal_sum / totals[out$Sample] * 100, NA)
-    out$Group <- si$group[match(out$Sample, b$groups$Sample)]
-    lev <- c(intersect(head(top, n_keep), rownames(by_class)), intersect("Other classes", rownames(by_class)))
-    out$Class <- factor(out$Class, levels = lev)
-    out$Sample <- factor(out$Sample, levels = b$groups$Sample[si$order])
-    out[order(out$Sample, out$Class), ]
+    out<-comp_full(); chosen<-selection(input$comp_class_selection,levels(out$Class))
+    out$Selected<-as.character(out$Class)%in%chosen
+    selected_totals<-tapply(ifelse(out$Selected,out$Signal_sum,0),as.character(out$Sample),sum)
+    all_totals<-tapply(out$Signal_sum,as.character(out$Sample),sum)
+    out$Denominator_selected<-unname(selected_totals[as.character(out$Sample)])
+    denominator_all<-unname(all_totals[as.character(out$Sample)])
+    out$Share_pct<-ifelse(out$Selected & out$Denominator_selected>0,100*out$Signal_sum/out$Denominator_selected,NA_real_)
+    out$Share_all_pct<-ifelse(denominator_all>0,100*out$Signal_sum/denominator_all,NA_real_)
+    out
   })
-
+  output$select_comp <- renderUI({
+    df<-comp_full();lev<-levels(df$Class)
+    classes<-selection_bar('comp_class_selection',lev,selection(input$comp_class_selection,lev),'Visible lipid classes',rd_shared_colors(lev,rd_value(shared_data$class_color_map),fold_case=TRUE))
+    if(!isTRUE(shared_data$team_compact_distribution)) return(classes)
+    groups<-unique(as.character(df$Group))
+    tagList(classes,
+      tags$div(style='display:none',textInput(session$ns('comp_group_selection'),NULL,value=isolate(input$comp_group_selection) %||% '__ALL__')),
+      selection_bar('comp_group_selection',groups,isolate(selection(input$comp_group_selection,groups)),'Conditions'),
+      selectInput(session$ns('comp_axis_mode'),'X axis',c('By group'='group','By sample'='sample'),selected=isolate(input$comp_axis_mode) %||% 'group',selectize=FALSE))
+  })
+  comp_team_data <- reactive({
+    d<-comp_data(); visible<-selection(input$comp_group_selection,unique(as.character(d$Group)))
+    d$Group_visible<-as.character(d$Group)%in%visible
+    d$Estimator<-'Equal-weight mean of per-sample selected-class signal percentages'
+    d$Axis_mode<-if(identical(input$comp_axis_mode,'sample')) 'sample' else 'group'
+    # Group summaries include all classes and flags for an auditable CSV.
+    keys<-unique(d[c('Group','Class')]);keys$Mean_share_pct<-NA_real_;keys$SD_share_pct<-NA_real_;keys$N_samples<-0L
+    for(i in seq_len(nrow(keys))) {
+      values<-d$Share_pct[as.character(d$Group)==as.character(keys$Group[i]) & as.character(d$Class)==as.character(keys$Class[i])]
+      values<-values[is.finite(values)];keys$N_samples[i]<-length(values)
+      if(length(values))keys$Mean_share_pct[i]<-mean(values)
+      if(length(values)>1L)keys$SD_share_pct[i]<-stats::sd(values)
+    }
+    index<-match(paste(d$Group,d$Class,sep='\r'),paste(keys$Group,keys$Class,sep='\r'))
+    d$Group_mean_share_pct<-keys$Mean_share_pct[index];d$Group_SD_share_pct<-keys$SD_share_pct[index];d$Group_N_samples<-keys$N_samples[index]
+    list(samples=d,groups=keys)
+  })
   output$plot_comp <- plotly::renderPlotly({
-    df <- comp_data(); lev <- levels(df$Class)
-    cols <- rd_shared_colors(lev, rd_value(shared_data$class_color_map), fold_case = TRUE); cols["Other classes"] <- rd_other
-    df$Hover <- paste0(unname(sample_hover()[as.character(df$Sample)]), "<br>Class: ",
-                       as.character(htmltools::htmlEscape(as.character(df$Class))))
-    plotly::plot_ly(df, x = ~Sample, y = ~Share_pct, color = ~Class, colors = cols[lev], type = "bar",
-                    source = session$ns("rd_comp"), text = ~Hover,
-                    marker = list(line = list(color = "#fcfcfb", width = 1)),
-                    hovertemplate = "%{text}<br>%{y:.1f}% of summed signal<extra></extra>") |>
-      rd_layout(barmode = "stack", bargap = 0.15,
-                xaxis = sample_axis(levels(df$Sample),"comp"),
-                yaxis = list(title = "Share of summed signal (%)", range = c(0, 100), gridcolor = "#ebeae6"),
-                legend = list(traceorder = "normal",orientation="h",x=0,y=-0.25), margin=list(l=60,r=15,t=10,b=130))
+    if(isTRUE(shared_data$team_compact_distribution)) {
+      source<-comp_team_data();d<-source$samples
+      group_mode<-!identical(input$comp_axis_mode,'sample')
+      chosen<-selection(input$comp_class_selection,levels(d$Class));visible<-selection(input$comp_group_selection,unique(as.character(d$Group)))
+      validate(need(length(chosen)>0,'Select at least one lipid class.'),need(length(visible)>0,'Select at least one condition.'))
+      lev<-levels(d$Class);cols<-rd_shared_colors(lev,rd_value(shared_data$class_color_map),fold_case=TRUE)
+      p<-plotly::plot_ly(source=session$ns('rd_comp'))
+      for(cl in lev) {
+        if(group_mode) {
+          df<-source$groups[as.character(source$groups$Class)==cl & as.character(source$groups$Group)%in%visible,,drop=FALSE]
+          x<-as.character(df$Group);y<-df$Mean_share_pct
+          hover<-paste0('Group: ',htmltools::htmlEscape(x),'<br>Class: ',htmltools::htmlEscape(cl),'<br>Mean share: ',round(y,2),'%<br>SD: ',ifelse(is.finite(df$SD_share_pct),paste0(round(df$SD_share_pct,2),' percentage points'),'not defined (n < 2)'),'<br>n = ',df$N_samples)
+          counts<-vapply(x,function(g) length(unique(as.character(d$Sample[as.character(d$Group)==g & d$Denominator_selected>0]))),integer(1))
+        } else {
+          df<-d[as.character(d$Class)==cl & d$Group_visible,,drop=FALSE]
+          x<-as.character(df$Sample);y<-df$Share_pct
+          hover<-paste0(unname(sample_hover()[x]),'<br>Class: ',htmltools::htmlEscape(cl),'<br>Share: ',round(y,2),'%')
+        }
+        p<-plotly::add_trace(p,x=x,y=y,type='bar',name=cl,legendgroup=cl,
+          visible=cl%in%chosen,meta=list(teamSourceKey=paste0('team-composition:',cl)),
+          marker=list(color=unname(cols[cl]),line=list(color='#fcfcfb',width=1)),text=hover,hovertemplate='%{text}<extra></extra>')
+      }
+      axis<-if(group_mode) list(title='Condition / cell type',type='category',tickmode='array',tickvals=x,ticktext=paste0(x,' · n = ',counts)) else sample_axis(x,'comp')
+      return(p |> rd_layout(barmode='stack',bargap=.15,
+        meta=list(teamConditions=unname(sort(sample_info()$levels,method='radix')),teamComposition=list(version=1L,axisMode=if(group_mode)'group' else 'sample',groupInputId=session$ns('comp_group_selection'),groupIds=unique(as.character(d$Group)),estimator='Equal-weight mean of per-sample selected-class signal percentages'),
+          teamClassSelection=list(inputId=session$ns('comp_class_selection'),classes=unname(lev),selected=unname(chosen),serverEstimator=TRUE)),
+        xaxis=axis,yaxis=list(title=if(group_mode)'Mean share of selected signal (%)' else 'Share of selected signal (%)',range=c(0,100)),
+        showlegend=FALSE,margin=list(l=60,r=15,t=10,b=100)))
+    }
+    df<-comp_full();lev<-levels(df$Class);cols<-rd_shared_colors(lev,rd_value(shared_data$class_color_map),fold_case=TRUE)
+    df$Hover<-paste0(unname(sample_hover()[as.character(df$Sample)]),"<br>Class: ",as.character(htmltools::htmlEscape(as.character(df$Class))))
+    meta<-canvas_sample_labels();meta$teamClassSelection<-list(inputId=session$ns('comp_class_selection'),classes=unname(lev))
+    plotly::plot_ly(df,x=~Sample,y=~Signal_sum,color=~Class,colors=cols[lev],legendgroup=~Class,type='bar',source=session$ns('rd_comp'),text=~Hover,textposition='none',
+      marker=list(line=list(color='#fcfcfb',width=1)),hovertemplate='%{text}<br>%{y:.1f}% of selected signal<extra></extra>') |>
+      rd_layout(barmode='stack',barnorm='percent',bargap=0.15,meta=meta,xaxis=sample_axis(levels(df$Sample),'comp'),
+        yaxis=list(title='Share of selected signal (%)',range=c(0,100),gridcolor='#ebeae6'),showlegend=FALSE,legend=list(itemclick=FALSE,itemdoubleclick=FALSE),margin=list(l=60,r=15,t=10,b=100))
   })
-  output$note_comp <- renderUI("Signal shares, not molar proportions. Missing and nonpositive values contribute nothing to sums. Sample labels are spaced for readability; hover or tap any bar for its full identifier.")
+  output$note_comp <- renderUI({
+    d<-comp_data();chosen<-unique(as.character(d$Class[d$Selected]));zero<-length(unique(as.character(d$Sample[d$Denominator_selected<=0])))
+    paste(if(isTRUE(shared_data$team_compact_distribution) && !identical(input$comp_axis_mode,"sample")) "Group bars are equal-weight means of per-sample selected-class percentages; hover reports SD and the number of samples with positive selected signal." else "Visible classes are renormalized to 100% per sample. Signal shares, not molar proportions.",
+      if(length(chosen)==1L) "With one class selected, every sample with signal is 100%." else "",
+      if(zero) sprintf("%d samples have no positive signal in this selection; their shares are undefined.",zero) else "",
+      "CSV includes all classes with a Selected flag, raw sums and both selected/all-class shares.")
+  })
 
   # ---- Distribution ----------------------------------------------------------
   dist_data <- reactive({
@@ -422,59 +618,127 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
       if (!length(values)) next
       group <- as.character(df$Group[match(sample, as.character(df$Sample))])
       color <- unname(si$colors[[group]])
-      p <- plotly::add_trace(p, x = rep(sample, length(values)), y = values,
+      trace <- list(x = rep(sample, length(values)), y = values,
         type = "box", name = group, legendgroup = group,
         showlegend = !group %in% shown_groups,
         marker = list(color = color), line = list(color = color, width = 1.5),
         boxpoints = FALSE,
         hovertemplate = paste0(hovers[[sample]],
           "<br>log10 abundance: %{y:.3f}<extra></extra>"))
+      # Plotly box traces need an explicit fill; marker color alone does not
+      # control the box and can disagree with the group legend.
+      if (isTRUE(shared_data$team_compact_distribution)) {
+        trace$fillcolor <- color
+        trace$meta <- list(teamSourceKey=paste0('team-abundance-distribution:',sample))
+      }
+      p <- do.call(plotly::add_trace, c(list(p), trace))
       shown_groups <- union(shown_groups, group)
     }
-    p |>
-      rd_layout(xaxis = sample_axis(levels(df$Sample),"dist"),
+    p <- p |>
+      rd_layout(meta = canvas_sample_labels(), xaxis = sample_axis(levels(df$Sample),"dist"),
                 yaxis = list(title = "log10(abundance)", gridcolor = "#ebeae6"),
                 legend = list(orientation = "h", y = -0.25),margin=list(l=60,r=15,t=10,b=100))
+    if (isTRUE(shared_data$team_compact_distribution)) class(p) <- c('team_compact_distribution', class(p))
+    p
   })
   output$note_dist <- renderUI({
     sprintf("%s positive values shown; %s missing or nonpositive values omitted.",
             format(nrow(dist_data()), big.mark = ","), format(sum(is.na(base()$log)), big.mark = ","))
   })
 
-  # ---- Heatmap ---------------------------------------------------------------
+  # Full eligible catalog. The historical __ALL__ token keeps its original
+  # top-N meaning; __EVERY__ explicitly requests every eligible individual row.
+  # Class buttons write species IDs, never aggregate abundances or annotations.
+  heat_base <- reactive({
+    cl<-complete_log(); si<-sample_info()
+    validate(need(nrow(cl$mat)>=2,'The heatmap needs at least 2 lipids with positive, non-constant values in every sample.'))
+    v<-apply(cl$mat,1,stats::var)
+    ranked<-names(sort(v,decreasing=TRUE))
+    top<-head(ranked,min(max(2,rd_int(input$top_n,30)),length(v)))
+    z<-t(scale(t(cl$mat)))
+    # Keep the former top-N clustering, with remaining catalog rows in variance
+    # order. Do not run quadratic clustering over the entire lipid catalog.
+    if(length(top)>2)top<-top[stats::hclust(stats::dist(z[top,,drop=FALSE]))$order]
+    row_order<-c(top,setdiff(ranked,top)); z<-z[row_order,,drop=FALSE]
+    m<-cl$mat[row_order,,drop=FALSE]; groups<-si$levels
+    counts<-vapply(groups,function(g)sum(si$group==g),integer(1))
+    group_z<-vapply(groups,function(g)rowMeans(z[,si$group==g,drop=FALSE]),numeric(nrow(z)))
+    group_log<-vapply(groups,function(g)rowMeans(m[,si$group==g,drop=FALSE]),numeric(nrow(z)))
+    dim(group_z)<-c(nrow(z),length(groups));dim(group_log)<-dim(group_z)
+    dimnames(group_z)<-list(rownames(z),groups);dimnames(group_log)<-dimnames(group_z)
+    # Fixed across top-N, custom species, classes and visible sample groups.
+    lim<-max(abs(group_z),1,na.rm=TRUE)
+    lipids<-rownames(z)
+    # Preserve exact name prefixes (e.g. PC, LPC and PC O- stay distinct).
+    classes<-ifelse(grepl("(",lipids,fixed=TRUE),toupper(trimws(sub("\\(.*","",lipids))),rd_class(lipids))
+    out<-expand.grid(Lipid_Name=lipids,Group=groups,stringsAsFactors=FALSE)
+    out$Class<-rep(classes,length(groups));out$Group_n<-rep(counts,each=nrow(z))
+    out$mean_z<-as.vector(group_z);out$mean_log10<-as.vector(group_log)
+    out$log10_variance<-unname(v[out$Lipid_Name]);out$Variance_rank<-match(out$Lipid_Name,ranked)
+    list(full_z=group_z,full_log=group_log,df=out,n=length(v),lim=lim,groups=groups,
+         lipids=lipids,default_lipids=top,classes=classes,
+         n_incomplete=cl$n_incomplete,n_constant=cl$n_constant)
+  })
+  heat_selected <- function(raw,h) {
+    if(is.null(raw)||identical(raw,"__ALL__")) return(h$default_lipids)
+    if(identical(raw,"__EVERY__")) return(h$lipids)
+    selection(raw,h$lipids)
+  }
   heat_data <- reactive({
-    cl <- complete_log(); si <- sample_info()
-    validate(need(nrow(cl$mat) >= 2, "The heatmap needs at least 2 lipids with positive, non-constant values in every sample."))
-    v <- apply(cl$mat, 1, stats::var)
-    top <- names(sort(v, decreasing = TRUE))[seq_len(min(max(2, rd_int(input$top_n, 50)), length(v)))]
-    m <- cl$mat[top, si$order, drop = FALSE]
-    z <- t(scale(t(m)))
-    if (nrow(z) > 2) z <- z[stats::hclust(stats::dist(z))$order, , drop = FALSE]
-    out <- data.frame(Lipid_Name = rep(rownames(z), ncol(z)), Sample = rep(colnames(z), each = nrow(z)),
-                      z_score = as.vector(z), log10_abundance = as.vector(cl$mat[rownames(z), colnames(z)]),
-                      log10_variance = unname(v[rep(rownames(z), ncol(z))]), stringsAsFactors = FALSE)
-    out$Group <- si$group[match(out$Sample, base()$groups$Sample)]
-    list(z = z, df = out, n = length(v))
+    h<-heat_base(); visible<-selection(input$heat_group_selection,h$groups)
+    lipids<-heat_selected(input$heat_lipid_selection,h)
+    h$df$Group_visible<-h$df$Group %in% visible
+    h$df$Lipid_visible<-h$df$Lipid_Name %in% lipids
+    h$df$Visible<-h$df$Group_visible & h$df$Lipid_visible
+    h$z<-h$full_z[lipids,visible,drop=FALSE]
+    h$visible<-visible;h$lipids_visible<-lipids
+    h
   })
-
-  output$plot_heat <- plotly::renderPlotly({
-    h <- heat_data(); z <- h$z; lim <- max(abs(z), 1, na.rm = TRUE)
-    hover <- matrix(rep(unname(sample_hover()[colnames(z)]), each = nrow(z)), nrow = nrow(z))
-    hover <- paste0(hover, "<br>Lipid: ",
-                    rep(as.character(htmltools::htmlEscape(rownames(z))), ncol(z)))
-    dim(hover) <- dim(z)
-    plotly::plot_ly(x = colnames(z), y = rownames(z), z = z, type = "heatmap", zmin = -lim, zmax = lim,
-                    source = session$ns("rd_heat"), text = hover,
-                    colorscale = list(c(0, "#337f87"), c(0.5, "#f0efec"), c(1, "#c77958")),
-                    xgap = 1, ygap = 1, colorbar = list(title = "z-score", thickness = 12),
-                    hovertemplate = "%{text}<br>z = %{z:.2f}<extra></extra>") |>
-      rd_layout(xaxis = sample_axis(colnames(z),"heat",left=125),
-                yaxis = list(title = "", type = "category", tickmode="array",tickvals=rd_ticks(rownames(z),24),ticktext=vapply(rd_ticks(rownames(z),24),function(x)if(nchar(x)>19)paste0(substr(x,1,18),"…")else x,character(1)),tickfont = list(size = 10),automargin=TRUE),
-                margin = list(l = 125, r = 20, t = 10, b = 70))
+  output$select_heat<-renderUI({
+    h<-heat_base(); groups<-isolate(selection(input$heat_group_selection,h$groups))
+    lipids<-isolate(heat_selected(input$heat_lipid_selection,h))
+    controls<-tagList(selection_bar('heat_group_selection',h$groups,groups,'Visible sample groups'),
+      selection_bar('heat_lipid_selection',h$lipids,lipids,'Visible lipids',searchable=TRUE,
+        defaults=h$default_lipids,classes=h$classes))
+    if(!isTRUE(shared_data$team_compact_distribution))return(controls)
+    tags$details(class='tds-heat-controls',id=session$ns('heat_selection_controls'),open=if(length(lipids)<=60L)NA else NULL,
+      tags$summary(textOutput(session$ns('heat_selection_summary'),inline=TRUE)),controls)
   })
-  output$note_heat <- renderUI({
-    h <- heat_data()
-    sprintf("Top %d of %d eligible lipids by variance of log10 values; rows clustered (Euclidean, complete linkage).", nrow(h$z), h$n)
+  output$heat_selection_summary<-renderText({h<-heat_data();sprintf('Groups & lipids · %d selected',length(h$lipids_visible))})
+  output$plot_heat<-plotly::renderPlotly({
+    h<-heat_data();z<-h$z;validate(need(nrow(z)>0,'Select at least one lipid to display the heatmap.'), need(ncol(z)>0,'Select at least one group to display the heatmap.'))
+    team_labels <- isTRUE(shared_data$team_compact_distribution)
+    group_n <- h$df$Group_n[match(colnames(z),h$df$Group)]
+    heat_ticks <- if (team_labels) vapply(seq_along(colnames(z)), function(i) rd_team_heat_tick(colnames(z)[i],group_n[i]), character(1)) else paste0(colnames(z),' (n=',group_n,')')
+    row_ticks <- rd_ticks(rownames(z), if(team_labels && nrow(z)<=60L) nrow(z) else 24L)
+    # Team presentation is rebuilt from the current selection on every render.
+    # Matrix values, full-cohort limits and source IDs remain the shared contract.
+    if (team_labels) {
+      view <- rd_team_heatmap_view(z, group_n)
+      return(plotly::plot_ly(x=view$x,y=view$y,z=view$z,type='heatmap',
+        zmin=-h$lim,zmax=h$lim,source=session$ns('rd_heat'),width=view$width,height=view$height,
+        meta=list(teamSourceKey='team-abundance-heatmap'),
+        colorscale=list(list(0,'#0047AB'),list(0.5,'#FFFFFF'),list(1,'#FF0000')),
+        autocolorscale=FALSE,xgap=0,ygap=0,
+        colorbar=view$colorbar,text=view$text,
+        hovertemplate='%{text}<br>Mean z = %{z:.2f}<extra></extra>') |>
+        rd_layout(xaxis=view$xaxis,yaxis=view$yaxis,margin=view$margin,
+          meta=list(teamConditions=unname(sort(sample_info()$levels,method='radix')),teamHeatmap=list(version=1L,geometry=if(view$squares)'square-horizontal' else 'rectangular',
+            lipidIds=rownames(z),groupIds=colnames(z),naturalWidth=view$width,naturalHeight=view$height,
+            rowCount=nrow(z),columnCount=ncol(z),valueDefinition='Mean full-cohort lipid z-score'))))
+    }
+    plotly::plot_ly(x=colnames(z),y=rownames(z),z=z,type='heatmap',zmin=-h$lim,zmax=h$lim,source=session$ns('rd_heat'),
+      colorscale=list(c(0,'#337f87'),c(0.5,'#f0efec'),c(1,'#c77958')),xgap=1,ygap=1,colorbar=list(title='Mean z-score',thickness=12),
+      text=matrix(rep(paste0('n = ',h$df$Group_n[match(colnames(z),h$df$Group)]),each=nrow(z)),nrow=nrow(z)),
+      hovertemplate='Group: %{x}<br>%{text}<br>Lipid: %{y}<br>Mean z = %{z:.2f}<extra></extra>') |>
+      rd_layout(xaxis=list(title=if(team_labels) list(text='Sample group',standoff=20) else 'Sample group',type='category',tickangle=0,tickmode='array',tickvals=colnames(z),ticktext=heat_ticks,automargin=TRUE),
+        yaxis=list(title='',type='category',tickmode='array',tickvals=row_ticks,ticktext=vapply(row_ticks,function(x)if(nchar(x)>19)paste0(substr(x,1,18),'…')else x,character(1)),tickfont=list(size=10),automargin=TRUE),margin=list(l=125,r=20,t=10,b=if(team_labels)145 else 70))
+  })
+  output$note_heat<-renderUI({
+    h<-heat_data()
+    paste(sprintf('Showing %d of %d available lipids. Classes select individual lipids; rows are never combined. Full-cohort z-scores and color scale stay fixed.',length(h$lipids_visible),h$n),
+      sprintf('%d excluded for missing/nonpositive values; %d for zero variance.',h$n_incomplete,h$n_constant),
+      if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else '')
   })
 
   # ---- Downloads: exactly the data frames drawn ------------------------------
@@ -487,11 +751,12 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     })
   output$dl_violin <- dl("lipid_violin", violin_data)
   output$dl_pca <- dl("pca_scores", function() pca_data()$df)
-  output$dl_comp <- dl("class_signal_composition", comp_data)
+  output$dl_comp <- dl("class_signal_composition", function() if(isTRUE(shared_data$team_compact_distribution)) comp_team_data()$samples else comp_data())
   output$dl_dist <- dl("log10_distribution", dist_data)
   output$dl_heat <- dl("top_variable_heatmap", function() heat_data()$df)
 
-  invisible(list(pca=pca_data,composition=comp_data,distribution=dist_data,heatmap=heat_data))
+  invisible(list(pca=pca_data,composition=comp_data,composition_team=comp_team_data,distribution=dist_data,heatmap=heat_data,
+                violin_data=violin_data))
 }
 
 results_dashboard_server <- function(input,output,session,shared_data) {

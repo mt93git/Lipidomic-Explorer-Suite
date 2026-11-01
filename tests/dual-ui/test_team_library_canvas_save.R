@@ -3,6 +3,9 @@
 library(shiny)
 source("R/frontends/team/workspace.R")
 source("R/frontends/team/project_library.R")
+# This handshake fixture uses synthetic non-ZIP bytes; sidecar behavior has
+# separate ZIP and database tests. Keep this test scoped to the save barrier.
+team_project_records_attach <- function(path,session) invisible(TRUE)
 
 project_a <- "11111111-1111-4111-8111-111111111111"
 project_b <- "22222222-2222-4222-8222-222222222222"
@@ -121,6 +124,96 @@ run_workspace_server(function(session, output, saved_messages) {
   stopifnot(test_state$exports == 0L, length(test_state$commits) == 0L,
             grepl("project or checkpoint name changed", output$team_library_status))
 })
+
+# Autosave binds the revision and project, uses the same fresh Canvas ACK, and
+# emits a result that the client can use to show Saved/Retrying state.
+reset_test_state()
+run_workspace_server(function(session, output, saved_messages) {
+  session$userData$team_canvas_acked_token <- function() "autosave-token"
+  session$setInputs(team_library_autosave_request = list(revision = "canvas-rev-17", reason = "canvas-edit"))
+  session$flushReact()
+  requests <- Filter(function(x) identical(x$type, "team-canvas-save-request"), saved_messages$items)
+  stopifnot(length(requests) == 1L, identical(requests[[1L]]$message$kind, "autosave"),
+            grepl("^autosave-", requests[[1L]]$message$requestId))
+  request_id <- requests[[1L]]$message$requestId
+  session$setInputs(team_library_autosave_request = list(revision = "canvas-rev-18", reason = "second-edit"))
+  session$flushReact()
+  busy <- Filter(function(x) identical(x$type, "team-autosave-result") && !isTRUE(x$message$ok), saved_messages$items)
+  stopifnot(length(busy) == 1L, grepl("already in progress", busy[[1L]]$message$message))
+  session$setInputs(team_canvas_save_ready = list(requestId = request_id, ok = TRUE, token = "autosave-token"))
+  session$flushReact()
+  results <- Filter(function(x) identical(x$type, "team-autosave-result") && isTRUE(x$message$ok), saved_messages$items)
+  stopifnot(length(results) == 1L, isTRUE(results[[1L]]$message$ok),
+            identical(results[[1L]]$message$revision, "canvas-rev-17"),
+            length(test_state$commits) == 1L,
+            grepl("^Autosave ", test_state$commits[[1L]]$label))
+})
+
+# Invalid revisions and stale acknowledgements never create a checkpoint.
+reset_test_state()
+run_workspace_server(function(session, output, saved_messages) {
+  session$userData$team_canvas_acked_token <- function() "stale-token"
+  session$setInputs(team_library_autosave_request = list(revision = "contains spaces", reason = "bad"))
+  session$flushReact()
+  invalid <- Filter(function(x) identical(x$type, "team-autosave-result"), saved_messages$items)
+  stopifnot(length(invalid) == 1L, !isTRUE(invalid[[1L]]$message$ok),
+            grepl("Invalid autosave revision", invalid[[1L]]$message$message),
+            length(test_state$commits) == 0L)
+
+  session$setInputs(team_library_autosave_request = list(revision = "canvas-rev-stale", reason = "edit"))
+  session$flushReact()
+  request <- Filter(function(x) identical(x$type, "team-canvas-save-request"), saved_messages$items)
+  request <- request[[length(request)]]$message$requestId
+  session$setInputs(team_canvas_save_ready = list(requestId = "wrong-request", ok = TRUE, token = "stale-token"))
+  session$flushReact()
+  stopifnot(length(test_state$commits) == 0L)
+  session$setInputs(team_canvas_save_ready = list(requestId = request, ok = TRUE, token = "stale-token"))
+  session$flushReact()
+  stopifnot(length(test_state$commits) == 1L)
+})
+
+# Once data are bound to a project, a later project switch is rejected.
+reset_test_state()
+run_workspace_server(function(session, output, saved_messages) {
+  session$userData$team_canvas_acked_token <- function() "bound-token"
+  session$setInputs(team_library_autosave_request = list(revision = "bound-1", reason = "edit"))
+  session$flushReact()
+  req1 <- Filter(function(x) identical(x$type, "team-canvas-save-request"), saved_messages$items)
+  req1 <- req1[[length(req1)]]$message$requestId
+  session$setInputs(team_canvas_save_ready = list(requestId = req1, ok = TRUE, token = "bound-token"))
+  session$flushReact()
+  stopifnot(length(test_state$commits) == 1L)
+  session$setInputs(team_library_project = project_b)
+  session$flushReact()
+  session$setInputs(team_library_autosave_request = list(revision = "bound-2", reason = "edit"))
+  session$flushReact()
+  denied <- Filter(function(x) identical(x$type, "team-autosave-result") && !isTRUE(x$message$ok), saved_messages$items)
+  stopifnot(length(denied) >= 1L, grepl("already bound", tail(denied, 1L)[[1L]]$message$message),
+            length(test_state$commits) == 1L)
+})
+
+# Revoke write membership after the browser capture was requested. The server
+# must refresh authorization at commit, not trust the role from sign-in.
+original_call <- team_library_call
+permission_revoked <- FALSE
+team_library_call <- function(service, path, token=NULL, body=NULL, method="GET", raw=FALSE) {
+  if (permission_revoked && identical(service,"rest") && identical(path,"/pilot_members"))
+    return(list(list(project_id=project_a,role="viewer")))
+  original_call(service,path,token,body,method,raw)
+}
+reset_test_state()
+run_workspace_server(function(session, output, saved_messages) {
+  session$userData$team_canvas_acked_token <- function() "permission-token"
+  session$setInputs(team_library_autosave_request=list(revision="permission-1"))
+  request_id <- canvas_request(saved_messages$items)
+  permission_revoked <<- TRUE
+  session$setInputs(team_canvas_save_ready=list(requestId=request_id,ok=TRUE,token="permission-token")); session$flushReact()
+  stopifnot(test_state$exports==0L,length(test_state$commits)==0L)
+  results <- Filter(function(x) identical(x$type,"team-autosave-result"), saved_messages$items)
+  stopifnot(length(results)==1L,identical(results[[1L]]$message$ok,FALSE),grepl("owner or editor",results[[1L]]$message$message))
+})
+team_library_call <- original_call
+permission_revoked <- FALSE
 
 Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE = "0")
 reset_test_state()

@@ -19,6 +19,24 @@ base64_svg <- paste0("data:image/svg+xml;base64,", gsub("[\r\n]", "", jsonlite::
 stopifnot(identical(team_canvas_image(base64_svg), base64_svg))
 empty <- team_canvas_validate(list(version = 1, libraryHidden = FALSE, nodes = list()))
 stopifnot(identical(empty$version, "1"), grepl('"nodes":[]', team_canvas_json(empty), fixed = TRUE))
+illustration <- list(version = "1", libraryHidden = FALSE, nodes = list(list(
+  kind = "illustration", assetVersion = "1", id = "illustration_neutrophil_1", assetId = "neutrophil",
+  label = "Neutrophil (conceptual)", x = 20, y = 20, width = 320, height = 260,
+  visual = list(background = "#ffffff"), color = "#2d5f8a", finished = NULL
+)))
+illustration_checked <- team_canvas_validate(illustration)
+stopifnot(identical(illustration_checked$nodes[[1]]$kind, "illustration"),
+  identical(illustration_checked$nodes[[1]]$assetId, "neutrophil"),
+  identical(illustration_checked$nodes[[1]]$color, "#2d5f8a"))
+taxonomy <- illustration
+taxonomy$nodes[[1]]$id <- "illustration_lipid_class_taxonomy_1"
+taxonomy$nodes[[1]]$assetId <- "lipid-class-taxonomy"
+stopifnot(identical(team_canvas_validate(taxonomy)$nodes[[1]]$assetId, "lipid-class-taxonomy"))
+for (bad in list(
+  within(illustration, {nodes[[1]]$assetId <- "unknown"}),
+  within(illustration, {nodes[[1]]$color <- "javascript:alert(1)"}),
+  within(illustration, {nodes[[1]]$kind <- "illustration"; nodes[[1]]$visual <- list(plotTitle = "not allowed")})
+)) stopifnot(inherits(tryCatch(team_canvas_validate(bad), error = identity), "error"))
 
 for (change in list(function(x) {x$version <- "2";x}, function(x) {x$libraryHidden <- 1;x},
   function(x) {x$nodes[[1]]$width <- Inf;x}, function(x) {x$nodes[[1]]$height <- 100;x},
@@ -90,12 +108,26 @@ shiny::testServer(host, {
 # Real shared-data archive hooks: optional sidecar, old ZIP clear, Classic ignores.
 source("R/global.R")
 fixture <- normalizePath("tests/dual-ui/fixtures/classic-seed7-synthetic.zip")
+# Simulate an archive created by several historical restore/export cycles,
+# where the stored basename has grown close to the filesystem's component limit.
+long_fixture_dir <- tempfile("long-session-fixture-"); dir.create(long_fixture_dir)
+utils::unzip(fixture, exdir = long_fixture_dir)
+long_state_path <- file.path(long_fixture_dir, "state.json")
+long_state <- jsonlite::read_json(long_state_path, simplifyVector = TRUE)
+old_dataset <- file.path(long_fixture_dir, long_state$uploads[[1]])
+long_dataset_name <- paste0(strrep("d", 220L), ".csv")
+long_dataset <- file.path(dirname(old_dataset), long_dataset_name)
+stopifnot(file.rename(old_dataset, long_dataset))
+long_state$uploads[[1]] <- file.path("data_files", long_dataset_name)
+jsonlite::write_json(long_state, long_state_path, auto_unbox = TRUE, pretty = TRUE, digits = 17)
+long_fixture <- tempfile(fileext = ".zip")
+zip::zipr(long_fixture, c("state.json", "shared-state-v1.json", "data_files"), root = long_fixture_dir)
 exported <- NULL
 shiny::testServer(shared_data_server, args = list(preparation_policy = "team", design_check = function() FALSE), {
   imported <- "not-called"
   session$userData$team_canvas_export <- function(provenance = NULL) valid
   session$userData$team_canvas_import <- function(state = NULL, provenance = NULL) imported <<- state
-  session$returned$import_session_path(fixture)
+  session$returned$import_session_path(long_fixture)
   for (i in seq_len(10L)) session$flushReact()
   stopifnot(isTRUE(session$returned$session_restored()), is.null(imported))
   session$setInputs(team_canvas_state = list(token = "private-token", state = state))
@@ -110,6 +142,25 @@ shiny::testServer(shared_data_server, args = list(preparation_policy = "team", d
   for (i in seq_len(10L)) session$flushReact()
   stopifnot(identical(team_canvas_json(imported), team_canvas_json(valid)),
     is.null(session$returned$data_processed()))
+  # Repeatedly restore and re-export a near-limit legacy basename. The restored
+  # private path and every subsequent archive entry must remain short.
+  cycle_archive <- long_fixture
+  for (cycle in seq_len(8L)) {
+    session$returned$import_session_path(cycle_archive)
+    for (i in seq_len(10L)) session$flushReact()
+    stopifnot(isTRUE(session$returned$session_restored()), length(session$returned$loaded_files()) == 1L,
+      nchar(basename(unname(session$returned$loaded_files()[[1]]))) < 80L)
+    next_archive <- tempfile(fileext = ".zip")
+    session$returned$export_session_path(next_archive)
+    checked <- read_session_archive(next_archive, include_team_canvas = TRUE)
+    internal <- unname(checked$state$uploads[[1]])
+    stopifnot(nchar(basename(internal)) < 64L,
+      file.exists(file.path(checked$directory, internal)))
+    unlink(checked$directory, recursive = TRUE)
+    if (!identical(cycle_archive, long_fixture)) unlink(cycle_archive)
+    cycle_archive <- next_archive
+  }
+  if (!identical(cycle_archive, long_fixture)) unlink(cycle_archive)
 })
 
 bad_dir <- tempfile("bad-canvas-sidecar-"); dir.create(bad_dir)
@@ -129,5 +180,5 @@ shiny::testServer(shared_data_server, args = list(preparation_policy = "classic"
   classic_zip <- output$export_session_btn
   stopifnot(!"team-canvas-v1.json" %in% zip::zip_list(classic_zip)$filename)
 })
-unlink(c(path, exported, bad_zip, bad_dir), recursive = TRUE)
-cat("PASS: bounded Canvas schema, safe immutable figures, token acknowledgements, Team archive round-trip, old ZIP clear, Classic isolation\n")
+unlink(c(path, exported, bad_zip, bad_dir, long_fixture, long_fixture_dir), recursive = TRUE)
+cat("PASS: bounded Canvas schema, safe immutable figures, token acknowledgements, short-name repeated Team archive round-trip, old ZIP clear, Classic isolation\n")

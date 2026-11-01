@@ -854,6 +854,9 @@ logratio_server <- function(id, shared_data, global_color_map) {
           }
         }
         curr_sel <- isolate(input$featureLevel)
+        if (identical(lipidomic_interface(), "team") && is.null(curr_sel)) {
+          curr_sel <- shared_data$get_restored_input(session$ns("featureLevel"), NULL)
+        }
         default_sel <- if (is_targeted) {
           if (!is.null(curr_sel) && curr_sel %in% lvl_choices) curr_sel else "individual"
         } else {
@@ -1038,6 +1041,11 @@ logratio_server <- function(id, shared_data, global_color_map) {
 
     if (identical(lipidomic_interface(), "team")) {
     output$scrollable_plot_ui <- renderUI({
+      # The restored Team canvas needs the original output boundary even before
+      # the lazy analysis controls have supplied featureLevel.
+      if (is.null(input$featureLevel) || !length(input$featureLevel)) {
+        return(plotOutput(session$ns("logratioPlot"), width = "100%", height = "500px"))
+      }
       feats <- unifiedSelectedFeatures()
       n <- if (!is.null(feats)) length(feats) else 0
 

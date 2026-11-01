@@ -643,6 +643,11 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         preview <- shared_data$detection_preview()
         if (is.null(preview)) return(tags$small("Upload a matrix to preview detection."))
         state <- shared_data$preparation_state()
+        if (exists("team_workspace_enabled", mode="function") && isTRUE(team_workspace_enabled())) {
+          return(tags$div(class="tw-detection-counts", role="status",
+            tags$strong(sprintf("%s lipids retained", format(preview$retained,big.mark=","))),
+            tags$span(sprintf(" · %s excluded · %d samples", format(preview$excluded,big.mark=","),length(preview$samples)))))
+        }
         tags$div(class = "border rounded p-2", style = "background:white; color:#334155;",
           tags$strong(sprintf("Preview: %d of %d lipids retained", preview$retained, preview$input)),
           tags$p(sprintf("%d excluded across %d measured samples.", preview$excluded, length(preview$samples))),
@@ -1175,6 +1180,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     # Guided QC uses the same treatment state as the advanced outlier manager.
     guided_selected <- reactiveVal(NULL)
     guided_proposal <- reactiveVal(NULL)
+    guided_selected_run <- reactiveVal(NULL)
     observeEvent(shared_data$dataset_revision(), {
       guided_selected(NULL)
       guided_proposal(NULL)
@@ -1201,8 +1207,8 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       scores
     })
     output$guided_qc_status <- renderUI({
-      if (!guided_applied_ready()) return(p("Prepare data to view the sample quality plot."))
-      if (isTRUE(shared_data$preparation_dirty())) return(p(class="guide-pending", "Changes are pending. This plot shows the previous prepared run; update prepared data to apply them."))
+      if (!guided_applied_ready()) return(p(if(exists("team_workspace_enabled") && team_workspace_enabled()) "PCA appears after preparation completes." else "Prepare data to view the sample quality plot."))
+      if (isTRUE(shared_data$preparation_dirty())) return(p(class="guide-pending", if(exists("team_workspace_enabled") && team_workspace_enabled()) "Changes pending. This plot shows the last applied run." else "Changes are pending. This plot shows the previous prepared run; update prepared data to apply them."))
       tagList(p("PCA summarizes variation in the prepared data. Click a point to inspect it; investigate technical and biological context before excluding a sample."),
               if (isTRUE(guided_pca_result()$fallback_used)) p(class="guide-pending", "The selected lipid scope could not support PCA; this plot uses the full prepared matrix."))
     })
@@ -1225,25 +1231,55 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       id <- as.character(click$customdata)[1]
       matrix <- shared_data$data_processed()
       raw <- shared_data$rawData()$data
-      if (length(id) && !is.na(id) && id %in% guided_scores()$FullName && id %in% names(matrix)[-1] && id %in% names(raw)[-1]) guided_selected(id)
+      if (length(id) && !is.na(id) && id %in% guided_scores()$FullName && id %in% names(matrix)[-1] && id %in% names(raw)[-1]) {
+        guided_selected(id); guided_selected_run(shared_data$preparation_state()$applied$request_id)
+      }
     })
+    observeEvent(shared_data$preparation_state()$applied$request_id, {
+      guided_selected(NULL); guided_selected_run(NULL)
+    },ignoreInit=TRUE)
+    observeEvent(input$guided_qc_dismiss, { guided_selected(NULL); guided_selected_run(NULL) })
     output$guided_qc_selection <- renderUI({
-      id <- guided_selected(); if (is.null(id)) return(p("Select a sample point to review it."))
+      id <- guided_selected()
+      simple_review <- exists("team_workspace_enabled") && isTRUE(team_workspace_enabled())
+      if (is.null(id)) return(if(simple_review) NULL else p("Select a sample point to review it."))
+      if(simple_review) return(div(class="tw-review-popover",role="dialog",`aria-label`="Sample exclusion",
+        strong(id),
+        p("Exclude this sample and recalculate the prepared data and PCA. Source measurements are preserved; Undo restores the sample."),
+        textInput(session$ns("guided_qc_reason"),"Reason (optional)",value=""),
+        div(class="tw-review-popover-actions",actionButton(session$ns("guided_qc_propose"),"Exclude",class="btn-danger"),actionButton(session$ns("guided_qc_dismiss"),"Cancel",class="btn-outline-secondary"))))
       div(class="guide-next-task", strong("Selected sample: ", id), rd_sample_card(id,shared_data$all_metadata()),
           p("A point's position alone does not prove it is an outlier. Record the evidence for your decision."),
-          textAreaInput(session$ns("guided_qc_reason"), "Reason for exclusion", placeholder="For example, documented instrument failure"),
-          actionButton(session$ns("guided_qc_propose"), "Review exclusion", class="btn-outline-danger"))
+          textAreaInput(session$ns("guided_qc_reason"), if(exists("team_workspace_enabled") && team_workspace_enabled()) "Reason (optional)" else "Reason for exclusion", placeholder="For example, documented instrument failure"),
+          actionButton(session$ns("guided_qc_propose"), if(exists("team_workspace_enabled") && team_workspace_enabled()) "Remove sample" else "Review exclusion", class="btn-outline-danger"))
     })
     observeEvent(input$guided_qc_propose, {
       id <- guided_selected(); reason <- trimws(input$guided_qc_reason %||% "")
       req(id)
-      if (!nzchar(reason)) { showNotification("Enter a reason before reviewing the exclusion.",type="warning"); return() }
+      simple_review <- exists("team_workspace_enabled") && isTRUE(team_workspace_enabled())
+      if (!nzchar(reason) && !simple_review) { showNotification("Enter a reason before reviewing the exclusion.",type="warning"); return() }
+      if (!nzchar(reason)) reason <- "Removed by user in Review"
+      if(simple_review && !identical(guided_selected_run(),shared_data$preparation_state()$applied$request_id)) {
+        guided_selected(NULL);showNotification("The prepared data changed. Select the sample again.",type="warning");return()
+      }
       if (isTRUE(shared_data$preparation_dirty()) || !id %in% guided_scores()$FullName) {
         showNotification("Update prepared data and select the sample again before excluding it.",type="warning"); return()
       }
       matrix <- shared_data$data_processed()
       raw <- shared_data$rawData()$data
       if (!id %in% names(matrix)[-1] || !id %in% names(raw)[-1]) { showNotification("Only original sample measurements can be excluded here.",type="warning"); return() }
+      if (simple_review) {
+        treats <- outlierTreatments(); treats[[id]] <- "remove"
+        outlierTreatments(treats); tempOutlierTreatments(treats)
+        guided_decisions(rbind(guided_decisions(),data.frame(time=format(Sys.time(),tz="UTC",usetz=TRUE),sample=id,action="Exclude",reason=reason,pca_settings=paste(capture.output(str(shared_data$pca_settings())),collapse=" "))))
+        outlierChangesTrigger(isolate(outlierChangesTrigger())+1L); guided_selected(NULL)
+        if(is.function(shared_data$request_team_review_preparation)) session$onFlushed(function() isolate({
+          if(!identical(outlierTreatments(),treats)) return()
+          accepted <- shared_data$request_team_review_preparation(kind="exclusion")
+          showNotification(if(isTRUE(accepted)) "Exclusion accepted. Data and PCA will update; you can undo this decision." else "Exclusion is pending. Review the preparation message before applying changes.",type=if(isTRUE(accepted)) "message" else "warning",duration=7)
+        }),once=TRUE)
+        return()
+      }
       guided_proposal(list(sample=id, reason=reason, matrix=matrix, revision=shared_data$dataset_revision()))
       metadata <- shared_data$all_metadata(); row <- metadata[metadata$FullName == id, , drop=FALSE]
       group_fields <- intersect(c("Group1","Group2","TimePoint"),names(metadata))
@@ -1271,18 +1307,33 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     output$guided_qc_decisions <- renderUI({
       decisions <- guided_decisions(); if (!nrow(decisions)) return(NULL)
       treats <- outlierTreatments(); active <- unique(decisions$sample[vapply(decisions$sample, function(id) identical(treats[[id]], "remove"), logical(1))])
-      div(p("Sample decisions are saved in the session ZIP. Download them with your methods record."),
+      team_project_copy <- exists("lipidomic_interface",mode="function") && identical(lipidomic_interface(),"team") && exists("team_workspace_enabled",mode="function") && isTRUE(team_workspace_enabled())
+      div(p(if(team_project_copy) "When signed in with edit access, sample decisions are automatically saved to your project. You can also download a session ZIP." else "Sample decisions are saved in the session ZIP. Download them with your methods record."),
           lapply(active, function(id) div(strong(id), if (id %in% names(shared_data$data_processed())[-1]) " scheduled for exclusion " else " excluded in the applied run ",
             actionButton(session$ns(paste0("guided_undo_",match(id,unique(decisions$sample)))), "Undo", `data-sample`=id,
-              onclick=sprintf("Shiny.setInputValue('%s', %s, {priority:'event'})",session$ns("guided_qc_undo"),jsonlite::toJSON(id,auto_unbox=TRUE))))))
+              onclick=sprintf("Shiny.setInputValue('%s', %s, {priority:'event'})",session$ns("guided_qc_undo"),jsonlite::toJSON(if(exists("team_workspace_enabled") && team_workspace_enabled()) list(sample=id,request_id=shared_data$preparation_state()$applied$request_id) else id,auto_unbox=TRUE))))))
     })
     observeEvent(input$guided_qc_undo, {
-      id <- as.character(input$guided_qc_undo); treats <- outlierTreatments()
+      request <- input$guided_qc_undo
+      if(exists("team_workspace_enabled") && team_workspace_enabled()) {
+        if(!is.list(request) || !identical(request$request_id,shared_data$preparation_state()$applied$request_id)) {
+          showNotification("The prepared data changed. Use Undo beside the current sample decision.",type="warning");return()
+        }
+        id <- as.character(request$sample)
+      } else id <- as.character(request)
+      if(length(id)!=1L || is.na(id)) return()
+      treats <- outlierTreatments()
       if (!identical(treats[[id]],"remove")) return()
       treats[[id]] <- "keep"; outlierTreatments(treats); tempOutlierTreatments(treats)
       guided_decisions(rbind(guided_decisions(),data.frame(time=format(Sys.time(),tz="UTC",usetz=TRUE),sample=id,action="Undo exclusion",reason="User restored sample",pca_settings="Not applicable")))
       outlierChangesTrigger(isolate(outlierChangesTrigger())+1L)
-      showNotification("Sample restored for the next preparation. Update prepared data to apply it.",type="message",duration=10)
+      if(exists("team_workspace_enabled") && team_workspace_enabled() && is.function(shared_data$request_team_review_preparation)) {
+        session$onFlushed(function() isolate({
+          if(!identical(outlierTreatments(),treats)) return()
+          accepted <- shared_data$request_team_review_preparation(kind="undo")
+          showNotification(if(isTRUE(accepted)) "Restoration accepted. Data and PCA will update." else "Restoration is pending. Review the preparation message before applying changes.",type=if(isTRUE(accepted)) "message" else "warning",duration=7)
+        }),once=TRUE)
+      } else showNotification("Sample restored for the next preparation. Update prepared data to apply it.",type="message",duration=5)
     })
     output$guided_qc_select_ui <- renderUI({
       scores <- guided_scores()
@@ -1291,7 +1342,9 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     })
     observeEvent(input$guided_qc_sample, {
       id <- input$guided_qc_sample
-      if (!is.null(id) && nzchar(id) && id %in% guided_scores()$FullName) guided_selected(id)
+      if (!is.null(id) && nzchar(id) && id %in% guided_scores()$FullName) {
+        guided_selected(id);guided_selected_run(shared_data$preparation_state()$applied$request_id)
+      }
     }, ignoreInit=TRUE)
     output$guided_qc_plot_csv <- downloadHandler(filename=function() paste0("quality-pca-",Sys.Date(),".csv"), content=function(file) {
       scores <- guided_scores(); metadata <- shared_data$all_metadata();

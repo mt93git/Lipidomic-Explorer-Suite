@@ -25,15 +25,11 @@
     'data-choice': ['Choose a private checkpoint or start a new upload. Your source files stay unchanged.', 'Choose the data source'],
     'data-matrix': ['Upload the abundance matrix. Raw instrument files are not used in this analysis workflow.', 'Continue to sample metadata'],
     'data-metadata': ['Review the sample labels and metadata before moving into study design.', 'Review sample labels'],
-    'review-labels': ['Check that sample labels and selected samples match the study records.', 'Review study design'],
-    'review-design': ['Identify independent units and any true matching or repeated measurements.', 'Review the design confirmation'],
-    'review-confirm': ['Confirm the design only after checking the labels and study structure. I cannot confirm it for you.', 'Continue after your confirmation'],
-    'review-prepare': ['Review detection, missing values, and normalization. Settings changes do not prepare data by themselves.', 'Prepare data after review'],
-    'review-quality': ['Check sample quality and exclusions. Exclusions and preparation changes remain under your control.', 'Review the comparison'],
-    'review-comparison': ['Confirm the reference group and comparison match your biological question. A description does not change the test.', 'Continue to Canvas'],
-    canvas: ['Arrange available live plots in Canvas. Explicitly save in Save & export to retain the layout, appearance edits, and finished snapshots; nothing autosaves.', 'Explore Canvas']
+    'review-single': ['Set the detection threshold. The data table and PCA plot update automatically. Click a point to inspect its sample, then choose Exclude if appropriate; Undo restores it.', 'Continue to Canvas'],
+    canvas: ['Arrange and finish plots in Canvas; your workspace saves automatically. Want scientific background? Try Scientific insight below a live plot.', 'Explore Canvas']
   };
 
+  var stageScreens = {data:['data-choice','data-matrix','data-metadata'], review:['review-single'], canvas:['canvas']};
   function root() { return document.getElementById('lipidomic-assistant-root'); }
   function panel() { return document.getElementById('lipidomic-assistant-panel'); }
   function node(tag, cls, text) {
@@ -53,8 +49,8 @@
       window.TeamWorkspace.go(stage);
     }
   }
-  function nextScreen() {
-    if (window.TeamWorkspace && typeof window.TeamWorkspace.next === 'function') window.TeamWorkspace.next();
+  function nextScreen(event) {
+    if (window.TeamWorkspace && typeof window.TeamWorkspace.next === 'function') window.TeamWorkspace.next(event);
   }
   function suggestedPlot() {
     if (!window.TeamCanvas || typeof window.TeamCanvas.listPlots !== 'function') return null;
@@ -72,7 +68,7 @@
     button.addEventListener('click', callback);
     return button;
   }
-  function contextStepKey() { return String(state.stage || 'data') + ':' + String(state.substep || ''); }
+  function contextStepKey() { return String(state.stage || 'data') + ':' + state.legacyStep + ':' + String(state.substep || ''); }
   function nudgeDismissed(key) {
     try { return window.localStorage.getItem('lipidomic-team-companion-nudge-dismissed:' + key) === '1'; } catch (_) { return false; }
   }
@@ -110,9 +106,13 @@
     return plotNode.classList.contains('tc-finished') ? 'finished' : 'editing';
   }
   function stepDetails() {
-    var key = stepCopy[state.substep] ? state.substep : legacyStages[state.legacyStep] === 'canvas' ? 'canvas' : state.legacyStep <= 1 ? 'data-choice' : state.legacyStep === 2 ? 'review-labels' : state.legacyStep <= 4 ? 'review-design' : 'canvas';
+    var key = stepCopy[state.substep] ? state.substep : legacyStages[state.legacyStep] === 'canvas' ? 'canvas' : state.legacyStep <= 1 ? 'data-choice' : state.legacyStep <= 4 ? 'review-single' : 'canvas';
     var copy = stepCopy[key];
-    if (state.dirty && state.stage === 'review') return { key: key, note: 'Settings changed · review and prepare the next run yourself.', next: 'Review changes before preparing data' };
+    if (state.legacyStep === 7) return {key:'save', note:'Give this checkpoint a name and save it to your private project. It keeps the data, canvas, colors and finished figures. Nothing saves automatically.', next:'Explain saving a checkpoint'};
+    if (state.legacyStep === 6) return {key:'cell', note:'Rotate the cell and compare the measured lipid profiles. Its structure and animation are illustrative, not a measured reconstruction.', next:'Explain the cell view'};
+    var preview = document.getElementById('tc-preview-panel');
+    if (state.legacyStep === 5 && preview && !preview.hidden) return {key:'print', note:'See your finished figures on paper. Choose the page layout, then download the PDF. Return to Workspace to edit; unfinished or outdated figures need attention first.', next:'Explain the print preview'};
+    if (state.stage === 'review' && (state.preparationPending || state.preparationRunning || state.dirty)) return { key: key, note: 'Updating…', next: 'Continue to Canvas' };
     if (!state.loaded && state.stage !== 'data') return { key: key, note: 'No analysis loaded · return to Data to upload files or restore a checkpoint.', next: 'Open Data' };
     if (state.stage === 'canvas' && selectedPlot) {
       var snapshotState = canvasSnapshotState();
@@ -120,12 +120,12 @@
         ? 'This archived snapshot predates an analysis change; it is not the current result. Review and prepare the analysis, then choose Edit to regenerate the current plot.'
         : snapshotState === 'finished'
           ? 'This is an archived snapshot of the prepared result at Finish and may differ from current live data. Export this figure here; after review and preparation, choose Edit to regenerate the current plot.'
-          : 'The selected plot is live in the current layout. Finish captures one prepared result; explicitly save in Save & export to retain the layout, appearance, and snapshot. CSV remains available in Edit.';
+          : 'The selected plot is live. Finish captures its current result; autosave keeps your work. Try Scientific insight below the plot for optional literature context.';
       return { key: key, note: 'Selected plot: ' + String(selectedPlot.title || selectedPlot.id).slice(0,120) + '. ' + editCopy, next: 'Ask about selected plot' };
     }
     if (state.stage === 'canvas' && !selectedPlot) {
       var candidate = suggestedPlot();
-      if (candidate) return { key: key, note: 'Canvas holds live plots in the current layout. Explicitly save in Save & export to retain layout, appearance edits, and finished snapshots; nothing autosaves or exports the whole Canvas as one figure.', next: 'Add ' + candidate.title + ' to Canvas', candidate: candidate };
+      if (candidate) return { key: key, note: 'Canvas saves automatically. Finish plots to compose a figure in Print preview. For optional literature context, try Scientific insight below a live plot.', next: 'Add ' + candidate.title + ' to Canvas', candidate: candidate };
       return { key: key, note: 'No additional live plot is currently available to add. Open the source analysis to inspect this output and any download it provides.', next: 'Explain this step' };
     }
     return { key: key, note: copy[0], next: copy[1] };
@@ -144,14 +144,15 @@
     var details = stepDetails();
     var stage = stageLabels[state.stage] ? state.stage : 'data';
     var heading = document.getElementById('tw-screen-title');
-    var titleText = heading && heading.textContent.trim();
+    var titleText = state.legacyStep === 7 ? 'Save your workspace' : state.legacyStep === 6 ? 'Explore the cell' : details.key === 'print' ? 'Print preview' : heading && heading.textContent.trim();
     var fallbackTitles = {
       'data-choice':'Choose how to begin', 'data-matrix':'Add your abundance matrix', 'data-metadata':'Add sample labels',
-      'review-labels':'Check sample labels', 'review-design':'Describe your study', 'review-confirm':'Confirm the design',
-      'review-prepare':'Prepare the data', 'review-quality':'Review sample quality', 'review-comparison':'Choose your question', canvas:'Build your figure'
+      'review-single':'Review the data', canvas:'Build your figure'
     };
     var eyebrow = speech.querySelector('.speech-eyebrow');
-    if (eyebrow) setText(eyebrow, 'YOUR WORKSPACE · ' + stageLabels[stage].toUpperCase() + ' · SCREEN ' + state.substepIndex + ' OF ' + state.substepCount);
+    var screens = stageScreens[stage];
+    var screenIndex = screens.indexOf(state.substep);
+    if (eyebrow) setText(eyebrow, 'YOUR WORKSPACE · ' + stageLabels[stage].toUpperCase() + (screenIndex >= 0 ? ' · ' + (screenIndex + 1) + ' OF ' + screens.length : ''));
     var title = speech.querySelector('.speech-title');
     if (title) setText(title, titleText || fallbackTitles[state.substep] || stageLabels[stage]);
     var copy = speech.querySelector('.speech-copy p');
@@ -165,14 +166,14 @@
     var label, callback;
     if (!state.loaded && stage !== 'data') {
       label = 'Open Data'; callback = function () { go('data'); };
-    } else if (stage === 'canvas' && selectedPlot && selectedPlot.id) {
+    } else if (stage === 'canvas' && state.legacyStep === 5 && details.key !== 'print' && selectedPlot && selectedPlot.id) {
       label = 'Ask about this plot';
       callback = function () {
         var plotName = String(selectedPlot.title || selectedPlot.id).slice(0, 120);
         askFromBubble('Explain how to read the ' + plotName + ' plot. Describe the method and limitations; do not infer findings that are not in the current analysis context.');
       };
     } else if (state.canNext && window.TeamWorkspace && typeof window.TeamWorkspace.next === 'function') {
-      label = 'Next'; callback = nextScreen;
+      label = stage === 'review' ? details.next : 'Next'; callback = nextScreen;
     } else {
       label = 'Explain how'; callback = function () { askFromBubble('Explain this step'); };
     }
@@ -198,24 +199,6 @@
     var launcherLabel = document.querySelector('#lipidomic-companion .companion-help-label');
     if (launcherLabel) setText(launcherLabel, stage === 'data' ? 'Start here' : stage === 'review' ? 'Review your analysis' : 'Build a figure');
 
-    document.querySelectorAll('.speech-eyebrow').forEach(function (label) {
-      var old = label.textContent || '';
-      if (/YOU ARE HERE|YOUR GUIDE|YOUR WORKSPACE/i.test(old)) setText(label, 'YOUR WORKSPACE · ' + stageLabels[stage].toUpperCase());
-    });
-    document.querySelectorAll('.speech-title').forEach(function (title) {
-      if (!title.dataset.workspaceOriginalText) title.dataset.workspaceOriginalText = title.textContent;
-      if (Object.prototype.hasOwnProperty.call(stepLabels, title.dataset.workspaceOriginalText)) setText(title, stepLabels[title.dataset.workspaceOriginalText]);
-    });
-    document.querySelectorAll('.companion-speech .guide-button').forEach(function (button) {
-      var old = button.textContent || '';
-      var destination = /experiment|upload/i.test(old) ? 'data' :
-        /design|quality|preparation/i.test(old) ? 'review' :
-        /result|share|3d|canvas/i.test(old) ? 'canvas' : null;
-      if (!destination || button.dataset.workspaceAdapted === 'true') return;
-      button.dataset.workspaceAdapted = 'true';
-      button.textContent = 'Open ' + stageLabels[destination];
-      button.onclick = function () { if (window.TeamWorkspace && typeof window.TeamWorkspace.go === 'function') window.TeamWorkspace.go(destination); };
-    });
     document.querySelectorAll('.lipid-help-panel').forEach(function (helpPanel) {
       var eyebrow = helpPanel.querySelector('.help-eyebrow');
       if (eyebrow) {
@@ -251,6 +234,8 @@
     renderQueued = false;
     var r = root(), p = panel();
     adaptHelpUI();
+    var currentDock = document.getElementById('lipidomic-companion');
+    if (currentDock && currentDock !== mobileDock) { mobileDock = currentDock; observeMobileDock(currentDock); }
     if (!r || !p) return;
     // Do not expose a companion launcher or chat before the Team workspace has
     // confirmed authentication. Existing chat contents remain mounted.
@@ -270,7 +255,7 @@
         context.replaceChildren();
         context.appendChild(node('p', 'assistant-context-note', stageLabels[stage] + ' · ' + details.note));
         var primary;
-        if (state.stage === 'canvas' && selectedPlot && selectedPlot.id) {
+        if (state.stage === 'canvas' && state.legacyStep === 5 && details.key !== 'print' && selectedPlot && selectedPlot.id) {
           primary = actionButton('Ask about selected plot', function () {
             sendQuestion('Explain how to read the ' + String(selectedPlot.title || selectedPlot.id).slice(0,120) + ' plot. Describe the method and limitations; do not infer findings that are not in the current analysis context.');
           }, false);
@@ -289,7 +274,7 @@
         primary.style.flex = '1 0 100%';
         primary.style.minWidth = '0';
         context.appendChild(primary);
-        maybeNudge(context, key, state.stage === 'canvas' && selectedPlot ? 'A finished figure is an archived snapshot; Edit regenerates the current plot after review and preparation.' : details.next ? 'You can ask a question at any point.' : 'I can explain what this screen checks.');
+        maybeNudge(context, key, state.stage === 'canvas' && selectedPlot ? 'Want scientific background? Try Scientific insight below a live plot. For a finished figure, choose Edit first.' : details.next ? 'You can ask a question at any point.' : 'I can explain what this screen checks.');
       }
     }
 
@@ -322,11 +307,13 @@
       if (!stageLabels[detail.stage]) state.stage = legacyStages[state.legacyStep] || state.stage;
     }
     if (typeof detail.tool === 'string') state.tool = detail.tool;
-    if (typeof detail.substep === 'string') state.substep = detail.substep;
+    if (typeof detail.substep === 'string') state.substep = detail.substep === 'review-samples' ? 'review-single' : detail.substep;
     if (Number.isFinite(Number(detail.substepIndex))) state.substepIndex = Number(detail.substepIndex);
     if (Number.isFinite(Number(detail.substepCount))) state.substepCount = Number(detail.substepCount);
     if (typeof detail.canNext === 'boolean') state.canNext = detail.canNext;
     if (typeof detail.canBack === 'boolean') state.canBack = detail.canBack;
+    if (typeof detail.preparationPending === 'boolean') state.preparationPending = detail.preparationPending;
+    if (typeof detail.preparationRunning === 'boolean') state.preparationRunning = detail.preparationRunning;
     if (typeof detail.authenticated === 'boolean') {
       state.authenticated = detail.authenticated;
       if (!state.authenticated) {
@@ -356,13 +343,61 @@
     if (detail && typeof detail.dirty === 'boolean') state.dirty = detail.dirty;
     scheduleRender();
   }
+  var mobileDock = null;
+  var mobileDockObserver = null;
+  function observeMobileDock(dock) {
+    if (mobileDockObserver) mobileDockObserver.disconnect();
+    mobileDockObserver = new MutationObserver(function () {
+      // The core help lifecycle repositions on content changes and scrolling,
+      // after resize. Correct only unsafe coordinates; our safe write is a no-op
+      // on the next delivery, so this cannot form a style feedback loop.
+      keepMobileDockSafe();
+    });
+    mobileDockObserver.observe(dock, {attributes:true, attributeFilter:['style']});
+    keepMobileDockSafe();
+  }
+  function keepMobileDockSafe() {
+    if (window.innerWidth > 600) return;
+    var dock = document.getElementById('lipidomic-companion');
+    if (!dock || dock.classList.contains('is-dragging')) return;
+    var rect = dock.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    var headerBottom = 0;
+    document.querySelectorAll('.navbar,#team-workspace .tw-steps,#team-workspace .tw-signout').forEach(function (el) {
+      var bounds = el.getBoundingClientRect();
+      if (bounds.bottom > 0 && bounds.top < window.innerHeight / 2) headerBottom = Math.max(headerBottom, bounds.bottom);
+    });
+    var inset = 12;
+    // Respect a user placement whenever it remains visible and clears navigation.
+    if (rect.top >= headerBottom + inset && rect.left >= inset && rect.right <= window.innerWidth - inset && rect.bottom <= window.innerHeight - inset) return;
+    var x = Math.max(inset, window.innerWidth - rect.width - inset);
+    var y = Math.max(headerBottom + inset, window.innerHeight - rect.height - 24);
+    // Prefer the lower right; move upwards only when it would cover an action.
+    var controls = Array.prototype.slice.call(document.querySelectorAll('button,a,input,select,textarea')).filter(function (el) {
+      return !dock.contains(el) && !el.closest('#lipidomic-assistant-root,.lipid-help-panel') && el.getClientRects().length;
+    }).map(function (el) { return el.getBoundingClientRect(); });
+    var best = {y:y, score:Infinity};
+    for (var candidate = y; candidate >= headerBottom + inset; candidate -= 24) {
+      var score = controls.reduce(function (sum, bounds) {
+        return sum + Math.max(0, Math.min(x + rect.width, bounds.right) - Math.max(x, bounds.left)) * Math.max(0, Math.min(candidate + rect.height, bounds.bottom) - Math.max(candidate, bounds.top));
+      }, 0);
+      if (score < best.score) best = {y:candidate, score:score};
+      if (!score) break;
+    }
+    dock.style.left = x + 'px'; dock.style.top = best.y + 'px';
+    dock.style.right = 'auto'; dock.style.bottom = 'auto';
+  }
   function mount() {
+    window.addEventListener('resize', function () { window.requestAnimationFrame(keepMobileDockSafe); });
     window.addEventListener('team-workspace-state', onWorkspace);
     window.addEventListener('team-canvas-selection', onCanvasSelection);
+    document.addEventListener('click', function(e){if(e.target.closest('#tc-preview-tab,#tc-workspace-tab')) scheduleRender();});
     var observer = new MutationObserver(scheduleRender);
     var r = root();
     if (r) observer.observe(r, { childList: true, subtree: true });
-    var helpObserver = new MutationObserver(function () { scheduleRender(); });
+    // Legacy context helpers may replace the floating tip after our frame. Repair
+    // its presentation before the next paint; setText makes this idempotent.
+    var helpObserver = new MutationObserver(function () { adaptFloatingBubble(); scheduleRender(); });
     if (document.body) helpObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-pressed'], characterData: true });
     if (window.Shiny && typeof window.Shiny.addCustomMessageHandler === 'function') {
       window.Shiny.addCustomMessageHandler('team_companion_workspace_state', onCompanionState);

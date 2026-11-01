@@ -1,5 +1,10 @@
 source("R/global.R")
 
+# Team checkpoints always restore to Review, regardless of the legacy tab saved
+# by a previous seven-step session. Classic keeps the archived tab unchanged.
+stopifnot(is.null(team_restore_seed_input(list(main_navbar="Share",keep="value"),NULL,"team")$main_navbar),
+          identical(team_restore_seed_input(list(main_navbar="Share"),NULL,"classic")$main_navbar,"Share"))
+
 fixture <- "tests/dual-ui/fixtures/classic-seed7-synthetic.zip"
 stopifnot(file.exists(fixture))
 threshold <- 0.0000123456

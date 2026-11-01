@@ -38,6 +38,18 @@ const path=require('node:path');
   await page.locator('#data_hub-export_session_btn').click();
   await page.evaluate(()=>resolvers.shift().reject(new Error('Rejected')));
   assert.equal(await page.evaluate(()=>downloads),1);
+  // A just-edited name must reach Shiny before the save action, not after ACK.
+  await page.evaluate(() => {
+    const label = document.createElement('input'); label.id='team_library_label';
+    document.getElementById('team_library_save').before(label);
+    document.getElementById('team_library_save').addEventListener('click',()=>sent.push({n:'save-action'}));
+    sent.length=0;
+  });
+  await page.locator('#team_library_label').fill('Fresh name');
+  await page.locator('#team_library_save').click();
+  assert.deepEqual(await page.evaluate(()=>sent),[
+    {n:'team_library_label',v:'Fresh name'},{n:'save-action'}
+  ]);
   console.log('PASS: private save and ZIP wait for Canvas ACK; failure never exports stale state');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

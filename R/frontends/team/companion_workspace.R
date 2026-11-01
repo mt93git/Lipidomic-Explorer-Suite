@@ -8,10 +8,11 @@ team_companion_workspace_server <- function(session, shared_data) {
     loaded_files <- safe(shared_data$loaded_files)
     processed <- safe(shared_data$data_processed)
     prep <- safe(shared_data$preparation_state, list())
+    restoring <- isTRUE(safe(shared_data$is_restoring, FALSE))
     loaded <- !is.null(raw) || length(unlist(loaded_files, use.names = FALSE)) > 0L
     session$sendCustomMessage("team-preparation-state", list(
-      ready = isTRUE(prep$data_available) && identical(prep$status, "ready") && !is.null(processed),
-      pending = isTRUE(prep$dirty), running = FALSE,
+      ready = !restoring && isTRUE(prep$data_available) && identical(prep$status, "ready") && !is.null(processed),
+      pending = isTRUE(prep$dirty), running = FALSE, restoring = restoring,
       revision = prep$revision %||% 0L
     ))
     session$sendCustomMessage("team_companion_workspace_state", list(

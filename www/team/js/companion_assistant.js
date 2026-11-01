@@ -95,7 +95,7 @@
     });
     box.appendChild(details);
     var row = node('div', 'assistant-preview-actions');
-    var yes = node('button', 'assistant-action assistant-action-primary', 'Update Quality setting'); yes.type = 'button';
+    var yes = node('button', 'assistant-action assistant-action-primary', (typeof preview.confirmLabel === 'string' ? preview.confirmLabel : 'Update Quality setting')); yes.type = 'button';
     var no = node('button', 'assistant-action', 'Keep current settings'); no.type = 'button';
     yes.onclick = function () { if (pendingConfirmation || !connected || !preview) return; pendingConfirmation = true; yes.disabled = true; no.disabled = true; send('assistant_confirm', { token: preview.token, nonce: ++nonce }); setStatus('Confirmation sent — waiting for the assistant.'); };
     no.onclick = function () { if (pendingConfirmation || !connected || !preview) return; pendingConfirmation = true; yes.disabled = true; no.disabled = true; send('assistant_cancel', { token: preview.token, nonce: ++nonce }); setStatus('Cancellation sent — keeping current settings.'); };
@@ -144,9 +144,28 @@
     var contextRevision=revision;var contextStep=stateDirty?3:Math.min(lastStep+1,7);var next=node('button','assistant-action',stateDirty?'Review Quality':'Next step');next.type='button';next.disabled=revision===null;next.onclick=function(){send('assistant_action',{id:'navigate_step',args:{step:contextStep},revision:contextRevision,nonce:++nonce});};contextActions.appendChild(next);
   }
   function positionSheet(){
-    if(!panel)return;var vv=window.visualViewport,h=vv?vv.height:innerHeight;
-    if(innerWidth<=600){panel.style.bottom=Math.max(8,innerHeight-h-(vv?vv.offsetTop:0)+8)+'px';var nav=document.querySelector('.navbar'),top=nav?Math.max(0,nav.getBoundingClientRect().bottom-(vv?vv.offsetTop:0)):0;panel.style.maxHeight=Math.max(100,Math.min(560,0.72*h,h-top-24))+'px';}
-    else {panel.style.bottom='';panel.style.maxHeight='';}
+    if(!panel)return;
+    var vv=window.visualViewport,h=vv?vv.height:innerHeight;
+    ['position','left','right','top','width'].forEach(function(key){panel.style[key]='';});
+    if(innerWidth<=600){panel.style.bottom=Math.max(8,innerHeight-h-(vv?vv.offsetTop:0)+8)+'px';var nav=document.querySelector('.navbar'),top=nav?Math.max(0,nav.getBoundingClientRect().bottom-(vv?vv.offsetTop:0)):0;panel.style.maxHeight=Math.max(100,Math.min(560,0.72*h,h-top-24))+'px';return;}
+    panel.style.bottom='';panel.style.maxHeight='';
+    var team=window.LIPIDOMIC_TEAM_WORKSPACE===true||window.LIPIDOMIC_TEAM_WORKSPACE==='1';
+    var controls=team && document.querySelector('#team-canvas-root .tc-navigation');
+    if(panel.hidden||!controls||!controls.getClientRects().length||getComputedStyle(controls).visibility==='hidden')return;
+    var r=controls.getBoundingClientRect(), inset=12, gap=12;
+    // The panel is viewport-fixed; avoid navigation without changing the canvas.
+    var available=r.left-inset-gap;
+    panel.style.position='fixed'; panel.style.right='auto';panel.style.bottom='auto';
+    if(available>=240){
+      var width=Math.min(390,available);panel.style.width=width+'px';panel.style.left=(r.left-gap-width)+'px';
+      panel.style.maxHeight=Math.max(100,Math.min(620,h-2*inset))+'px';
+      var panelHeight=panel.getBoundingClientRect().height;
+      panel.style.top=Math.max(inset,Math.min(h-inset-panelHeight,r.bottom-panelHeight))+'px';
+    }else{
+      panel.style.width=Math.min(390,innerWidth-2*inset)+'px';panel.style.left=inset+'px';
+      panel.style.maxHeight=Math.max(100,Math.min(620,r.top-gap-inset))+'px';
+      panel.style.top=inset+'px';
+    }
   }
   function companionLinks(){
     syncMascot();
@@ -158,6 +177,6 @@
     var observer = new MutationObserver(function () { var step = Number(document.body.dataset.guideStep); if (step >= 1 && step <= 7 && step !== lastStep) { lastStep = step; } });
     observer.observe(document.body, { attributes: true, attributeFilter: ['data-guide-step'] });
   }
-  function start() { window.LipidomicAssistant={open:function(trigger){opener=trigger;open();},isNudgeBlocked:function(){return !!preview||pendingConfirmation||lifeState==='working';}};mount();awaken(false);document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(idleTimer);clearTimeout(greetingTimer);}else awaken(false);});document.addEventListener('pointerdown',function(e){if(e.target.closest('.assistant-rest-button,.assistant-character'))return;if(lifeState!=='working')awaken(lifeState==='sleeping');},{passive:true});document.addEventListener('keydown',function(){if(lifeState!=='working')awaken(lifeState==='sleeping');}); observeStep();renderContext();companionLinks();new MutationObserver(companionLinks).observe(document.body,{childList:true,subtree:true});if(window.jQuery)$(document).on('shiny:connected',registerHandlers);window.addEventListener('resize',positionSheet);if(window.visualViewport){visualViewport.addEventListener('resize',positionSheet);visualViewport.addEventListener('scroll',positionSheet);} }
+  function start() { window.LipidomicAssistant={open:function(trigger){opener=trigger;open();},isNudgeBlocked:function(){return !!preview||pendingConfirmation||lifeState==='working';}};mount();awaken(false);document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(idleTimer);clearTimeout(greetingTimer);}else awaken(false);});document.addEventListener('pointerdown',function(e){if(e.target.closest('.assistant-rest-button,.assistant-character'))return;if(lifeState!=='working')awaken(lifeState==='sleeping');},{passive:true});document.addEventListener('keydown',function(){if(lifeState!=='working')awaken(lifeState==='sleeping');}); observeStep();renderContext();companionLinks();new MutationObserver(companionLinks).observe(document.body,{childList:true,subtree:true});if(window.jQuery)$(document).on('shiny:connected',registerHandlers);window.addEventListener('resize',positionSheet);document.addEventListener('scroll',function(){if(panel&&!panel.hidden)positionSheet();},true);document.addEventListener('click',function(e){if(e.target.closest('.tc-navigation'))window.requestAnimationFrame(positionSheet);});if(window.visualViewport){visualViewport.addEventListener('resize',positionSheet);visualViewport.addEventListener('scroll',positionSheet);} }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

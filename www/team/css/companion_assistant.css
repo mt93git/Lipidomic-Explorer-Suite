@@ -18,3 +18,18 @@
 .assistant-character[data-life="offline"]{filter:saturate(.35)}body.companion-page-hidden .assistant-character *{animation-play-state:paused!important}@media(max-width:600px){.assistant-character{flex-basis:44px;width:44px;height:44px}.assistant-panel-head{padding:8px 10px}.assistant-character-caption{font-size:10px}.assistant-panel-title h3{font-size:16px}}
 
 .assistant-rest-button{border:0;background:transparent;color:#315e78;padding:0 6px!important;min-height:26px!important;text-decoration:underline;font-size:11px}.assistant-rest-button[hidden]{display:none}.assistant-character[data-life="awake"] .cell-eyes{transform-box:fill-box;transform-origin:center;animation:assistant-blink 5s infinite}.assistant-character[data-life="awake"] .cell-body{animation:assistant-float 3.4s ease-in-out infinite}.assistant-character[data-life="sleeping"] .assistant-zzz{animation:assistant-dream 2.5s ease-in-out infinite}.assistant-character[data-life="hello"] .cell-body{animation:assistant-wave .65s ease-in-out 2}@keyframes assistant-float{0%,100%{transform:translateY(1px) scale(1)}50%{transform:translateY(-7px) scale(1.05)}}@keyframes assistant-blink{0%,43%,48%,100%{transform:scaleY(1)}45%,46%{transform:scaleY(.12)}}@keyframes assistant-dream{0%,100%{transform:translateY(0);opacity:.6}50%{transform:translateY(-5px);opacity:1}}@keyframes assistant-wave{0%,100%{transform:rotate(0) translateY(0)}25%{transform:rotate(-10deg) translateY(-5px)}65%{transform:rotate(10deg) translateY(-5px)}}@media(prefers-reduced-motion:reduce){.assistant-character *{animation:none!important}}
+
+/* Team companion controls share the same compact footprint and contrast. */
+#lipidomic-companion .companion-actions{gap:4px}
+#lipidomic-companion .companion-actions button{box-sizing:border-box;width:28px;min-width:28px;height:28px;min-height:28px;padding:0;border:1px solid #dce3eb;border-radius:7px;background:#fff;color:#315c89;font:600 15px/1 system-ui,sans-serif}
+#lipidomic-companion .companion-actions .assistant-dock-chat{width:auto;padding:0 7px;font-size:11px}
+#lipidomic-companion .companion-actions button:hover{background:#eff4f8;border-color:#315c89}
+body.team-workspace-app:has(#team-canvas-root.tc-focus-mode) #lipidomic-assistant-root{z-index:11010}
+body.team-workspace-app:has(#team-canvas-root.tc-focus-mode) .lipid-help-bar .assistant-panel{z-index:11010}
+/* Keep the entire compact dock inside narrow viewports. Full caption text remains accessible. */
+@media(max-width:674px){
+ #lipidomic-companion .companion-help-label{box-sizing:border-box;left:50%;transform:translateX(-50%);max-width:100%;overflow:hidden;text-overflow:ellipsis}
+ #lipidomic-companion .companion-actions{gap:2px}
+ #lipidomic-companion .companion-actions button{width:24px;min-width:24px;height:28px}
+ #lipidomic-companion .companion-actions .assistant-dock-chat{min-width:0;padding:0 3px;font-size:10px}
+}

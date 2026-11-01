@@ -34,6 +34,7 @@ legacy_guards <- lapply(guard_questions, companion_ai_guard)
 stopifnot(grepl("Experiment", legacy_guards[[1L]]$answer, fixed = TRUE),
           grepl("Design", legacy_guards[[2L]]$answer, fixed = TRUE),
           grepl("Quality", legacy_guards[[3L]]$answer, fixed = TRUE))
+stopifnot(is.null(companion_ai_guard("What do the detection slider and PCA tell me in Review, and should I remove the most distant sample?")))
 legacy_sample_exclusion <- companion_ai_guard("What should I check before excluding a sample?")
 stopifnot(is.null(legacy_sample_exclusion))
 
@@ -44,32 +45,14 @@ stopifnot(identical(names(team_cards), names(legacy_cards)))
 stopifnot(identical(vapply(team_cards, `[[`, integer(1), "step"), vapply(legacy_cards, `[[`, integer(1), "step")))
 stopifnot(identical(vapply(team_cards, `[[`, character(1), "citation"), vapply(legacy_cards, `[[`, character(1), "citation")))
 stopifnot(!grepl("\\b(Experiment|Results|Share|3D Show)\\b", paste(team_text, collapse = " ")))
-stopifnot(grepl("private project library is available", team_cards$experiment$text, fixed = TRUE))
-stopifnot(grepl("resume a saved checkpoint from Data", team_cards$experiment$text, fixed = TRUE))
-stopifnot(grepl("archived snapshot", team_cards$results$text, fixed = TRUE),
-          grepl("may differ from current live data", team_cards$results$text, fixed = TRUE),
-          grepl("Edit regenerates the current plot", team_cards$results$text, fixed = TRUE),
-          grepl("click Prepare data", team_cards$results$text, fixed = TRUE),
-          grepl("there is no autosave", team_cards$results$text, fixed = TRUE),
-          grepl("per plot", team_cards$results$text, fixed = TRUE))
-stopifnot(grepl("CSV is not provided by every analysis", team_cards$violin$text, fixed = TRUE))
-stopifnot(grepl("from Canvas", team_cards$cell$text, fixed = TRUE))
-stopifnot(grepl("Explicitly save a private checkpoint in Save & export", team_cards$share$text, fixed = TRUE))
-stopifnot(grepl("Resume the private checkpoint from Data after signing in", team_cards$share$text, fixed = TRUE))
-stopifnot(!grepl("save.*checkpoint.*in Data", team_cards$share$text, ignore.case = TRUE))
-stopifnot(grepl("Explicitly save", team_cards$share$text, fixed = TRUE),
-          grepl("retain the Canvas layout, appearance edits and finished figure snapshots", team_cards$share$text, fixed = TRUE),
-          grepl("Nothing autosaves", team_cards$share$text, fixed = TRUE),
-          grepl("not exported as one composite figure", team_cards$share$text, fixed = TRUE))
-stopifnot(grepl("confirm", team_cards$settings$text, ignore.case = TRUE), grepl("Prepare data", team_cards$settings$text, fixed = TRUE))
-
+stopifnot(grepl("resume a saved checkpoint", team_cards$experiment$text, fixed=TRUE),
+          grepl("archived snapshots", team_cards$results$text, fixed=TRUE),
+          grepl("mean imputation", team_cards$quality$text, fixed=TRUE),
+          grepl("Detection changes update prepared data automatically", team_cards$quality$text, fixed=TRUE),
+          grepl("confirm", team_cards$settings$text, ignore.case=TRUE),
+          !grepl("click Prepare data|click Update prepared data|nothing autosaves", paste(team_text,collapse=" "), ignore.case=TRUE))
 team_methods <- companion_ai_methods()
-stopifnot(all(grepl("\\[(seven_steps|preparation_methods|results_methods|3d_provenance)\\]", strsplit(team_methods, "\\n")[[1L]])))
-stopifnot(!grepl("\\b(Experiment|Results|Share|3D Show)\\b", team_methods))
-stopifnot(grepl("checkpoints containing Canvas layout, appearance and finished figure snapshots", team_methods, fixed = TRUE),
-          grepl("there is no autosave", team_methods, fixed = TRUE),
-          grepl("Edit regenerates the current plot", team_methods, fixed = TRUE),
-          grepl("click Prepare data", team_methods, fixed = TRUE))
+stopifnot(!grepl("Prepare data|nothing autosaves",team_methods,ignore.case=TRUE))
 for (method in c("left-censoring assumption", "positive values", "paired designs", "does not locate lipids")) {
   stopifnot(grepl(method, tolower(legacy_methods), fixed = TRUE))
   stopifnot(grepl(method, tolower(team_methods), fixed = TRUE))
@@ -94,8 +77,8 @@ sample_exclusion <- companion_ai_guard("What should I check before excluding a s
 stopifnot(sample_exclusion$source == "local-reviewed",
           grepl("technical and biological context", sample_exclusion$answer, fixed = TRUE),
           grepl("Distance or PCA position alone is not enough", sample_exclusion$answer, fixed = TRUE),
-          grepl("enter a reason, review and explicitly confirm", sample_exclusion$answer, fixed = TRUE),
-          grepl("You can undo the decision; the original data remain unchanged", sample_exclusion$answer, fixed = TRUE),
+          grepl("enter a reason, and explicitly confirm", sample_exclusion$answer, fixed = TRUE),
+          grepl("you can undo the decision and the original data remain unchanged", sample_exclusion$answer, fixed = TRUE),
           identical(sample_exclusion$citations, "preparation_methods"),
           identical(sample_exclusion$actions[[1L]]$id, "navigate_step"),
           identical(as.integer(sample_exclusion$actions[[1L]]$args$step), 3L),
@@ -106,15 +89,7 @@ stopifnot(length(team_guidance) == 7L)
 stopifnot(grepl("In Data", team_guidance[[1L]], fixed = TRUE))
 stopifnot(all(grepl("In Review", team_guidance[2:4], fixed = TRUE)))
 stopifnot(all(grepl("In Canvas", team_guidance[5:6], fixed = TRUE)))
-stopifnot(grepl("explicitly save private checkpoints containing Canvas layout", team_guidance[[7L]], fixed = TRUE))
-stopifnot(grepl("Resume a saved checkpoint from Data after signing in", team_guidance[[7L]], fixed = TRUE))
-stopifnot(grepl("persist across sign-in only when included in a private checkpoint", team_guidance[[5L]], fixed = TRUE))
-stopifnot(grepl("nothing autosaves", team_guidance[[5L]], fixed = TRUE))
-stopifnot(grepl("archived snapshots", team_guidance[[7L]], fixed = TRUE),
-          grepl("may differ from current live data", team_guidance[[7L]], fixed = TRUE),
-          grepl("Edit regenerates the current plot", team_guidance[[7L]], fixed = TRUE),
-          grepl("click Prepare data", team_guidance[[7L]], fixed = TRUE),
-          grepl("Nothing autosaves", team_guidance[[7L]], fixed = TRUE))
+stopifnot(grepl("autosave",team_guidance[[5L]],ignore.case=TRUE),grepl("whole-Canvas SVG",team_guidance[[7L]],fixed=TRUE),grepl("archived snapshots",team_guidance[[7L]],fixed=TRUE),!grepl("Prepare data|nothing autosaves",paste(team_guidance,collapse=" "),ignore.case=TRUE))
 stopifnot(grepl("confirm", team_guidance[[2L]], ignore.case = TRUE))
 stopifnot(grepl("does not automatically change the statistical model", team_guidance[[4L]], fixed = TRUE))
 stopifnot(grepl("subcellular", team_guidance[[6L]], fixed = TRUE))
@@ -128,3 +103,17 @@ stopifnot(is.null(companion_parse_detection_command("can you set minimum detecti
 stopifnot(is.null(companion_parse_detection_command("set minimum detection to fifty percent")))
 
 cat("PASS: legacy cards remain exact, Team guidance uses Data/Review/Canvas, and minimum-detection parsing is exact\n")
+
+exact_review_question <- companion_ai_guard("What do the detection slider and PCA tell me in Review, and should I remove the most distant sample?")
+stopifnot(grepl("detection slider", exact_review_question$answer, fixed=TRUE),
+          grepl("PCA summarizes variation", exact_review_question$answer, fixed=TRUE),
+          grepl("explicitly confirm", exact_review_question$answer, fixed=TRUE),
+          grepl("Review then updates the prepared data", exact_review_question$answer, fixed=TRUE),
+          !grepl("Update prepared data|Prepare data|seven steps", exact_review_question$answer, ignore.case=TRUE))
+cat("PASS: exact Review question uses current automatic update and explicit exclusion
+")
+stopifnot(identical(companion_parse_detection_command('Set the detection threshold to 80%')$value,80),
+          is.null(companion_parse_detection_command('Set the detection threshold to 80% and prepare data')))
+Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE='0')
+stopifnot(is.null(companion_parse_detection_command('Set the detection threshold to 80%')))
+cat('PASS: Team detection alias stays a single safe proposal; Classic parser unchanged\n')

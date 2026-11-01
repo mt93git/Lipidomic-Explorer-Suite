@@ -1,0 +1,10 @@
+source('R/frontends/team/descriptive_inference_labels_adapter.R')
+guided_local_inference_allowed <- function(session, shared_data, paired = FALSE) shared_data$allowed
+x <- data.frame(P_Value=c(NA, NA, .2, NA), Significance=c('Reference','ns','ns','ns'), Is_Baseline=c(TRUE,FALSE,FALSE,FALSE), value=1:4)
+no <- team_violin_export_labels(x, NULL, list(allowed=FALSE))
+stopifnot(identical(no$Significance,c('Reference','Not tested','ns','Not tested')),identical(no$value,x$value),identical(no$P_Value,x$P_Value),identical(team_violin_export_labels(x,NULL,list(allowed=TRUE)),no))
+source('R/modules/9_logratio_module.R', local=TRUE)
+original <- logratio_server; adapted <- team_violin_export_labels_adapter(original)
+stopifnot(!identical(body(original),body(adapted)),identical(body(original),body(logratio_server)))
+changed <- original; body(changed) <- quote({NULL});stopifnot(inherits(try(team_violin_export_labels_adapter(changed),silent=TRUE),'try-error'))
+cat('PASS: withheld CSV labels, reference and measured p preserved; strict two-writer Team adaptation; original function unchanged\n')

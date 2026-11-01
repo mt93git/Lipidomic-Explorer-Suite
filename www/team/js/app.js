@@ -92,8 +92,9 @@
 })();
 
       // Programmatic Download Trigger via Custom Message Handler
+      var appCustomHandlersRegistered = false;
       function initAppCustomHandlers() {
-        if (window.Shiny && typeof window.Shiny.addCustomMessageHandler === 'function') {
+        if (!appCustomHandlersRegistered && window.Shiny && typeof window.Shiny.addCustomMessageHandler === 'function') {
           try {
             window.Shiny.addCustomMessageHandler('triggerClick', function(message) {
               if (message && message.id) {
@@ -104,7 +105,7 @@
               }
             });
 
-            window.Shiny.addCustomMessageHandler('analysisLaunchRejected', function() {
+            window.Shiny.addCustomMessageHandler('analysisLaunchRejected', function(message) {
               $('.btn-launch-default-analysis')
                 .prop('disabled', false)
                 .html('<i class="fa-solid fa-play me-1"></i> Prepare with current settings');
@@ -137,6 +138,7 @@
                 }
               }
             });
+            appCustomHandlersRegistered = true;
           } catch(e) {}
         }
       }
