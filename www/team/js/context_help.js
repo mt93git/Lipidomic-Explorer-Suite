@@ -452,9 +452,16 @@
   document.addEventListener('click',function(e){var trigger=e.target.closest('[data-help-topic]');if(trigger){e.preventDefault();e.stopPropagation();show(trigger,trigger.dataset.helpTopic,false);}else if(panel&&e.target.isConnected&&opener&&!opener.contains(e.target)&&!panel.contains(e.target)&&!e.target.closest('.companion-dock'))close(false);});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&speech){noteActivity();dismissSpeech();}if(e.key==='Escape'&&panel){var modal=document.querySelector('.modal.show');if(modal&&!modal.contains(panel)){close(false);return;}e.preventDefault();e.stopImmediatePropagation();close(true);}},true);
   var lastViewportWidth=innerWidth,lastViewportHeight=innerHeight;
-  window.addEventListener('resize',function(){lastViewportWidth=innerWidth;lastViewportHeight=innerHeight;positionDock();});
+  // positionDock only clamps to the viewport; the canvas avoidance runs once the new layout has settled.
+  window.addEventListener('resize',function(){lastViewportWidth=innerWidth;lastViewportHeight=innerHeight;positionDock();requestAnimationFrame(protectControls);});
   document.addEventListener('click',function(e){if(e.target.closest('#team-canvas-root')) requestAnimationFrame(protectControls);});
   window.addEventListener('team-canvas-selection',function(){requestAnimationFrame(protectControls);});
+  window.addEventListener('team-canvas-inspector-closed',function(){requestAnimationFrame(protectControls);});
+  // The canvas columns settle after a window resize; re-place the companion once
+  // its home or the canvas has actually changed size (one frame later).
+  if(window.ResizeObserver){var settleFrame=false,settle=new ResizeObserver(function(){if(settleFrame)return;settleFrame=true;requestAnimationFrame(function(){settleFrame=false;protectControls();});});
+    var watchSettle=function(){var canvas=document.getElementById('team-canvas-root'),home=canvas&&canvas.querySelector('.tc-companion-home');if(canvas)settle.observe(canvas);if(home){settle.observe(home);/* the home moves when these change height */['.ts-inspector-column','.ts-inspector-empty','.tc-selection-inspector','.tc-scroll'].forEach(function(sel){var n=canvas.querySelector(sel);if(n)settle.observe(n);});}return !!home;};
+    if(!watchSettle()){var tries=0,armSettle=setInterval(function(){if(watchSettle()||++tries>120)clearInterval(armSettle);},500);}}
   var controlFrame=false;document.addEventListener('scroll',function(){if(controlFrame)return;controlFrame=true;requestAnimationFrame(function(){controlFrame=false;protectControls();});},true);
   document.addEventListener('visibilitychange',function(){document.body.classList.toggle('companion-page-hidden',document.hidden);noteActivity();if(document.hidden)dismissSpeech();});
   ['pointerdown','pointermove','keydown','input','scroll','focusin'].forEach(function(name){document.addEventListener(name,noteActivity,{passive:true,capture:true});});

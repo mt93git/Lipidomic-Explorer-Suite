@@ -94,7 +94,9 @@
     function focusSafe() {
       if (trigger.isConnected && !trigger.disabled && trigger.offsetParent) { trigger.focus(); return; }
       // In the shell the Properties toggle is hidden: go back to the card's header.
-      var head = node && node.isConnected && node.querySelector('.tc-node-head'); if (head) { head.focus(); return; }
+      // In the shell the Properties toggle is hidden; focusing the card would select it again
+      // (and the shell re-opens the inspector on selection), so use the floating toolbar.
+      var tool = root.querySelector('.ts-tools button:not(:disabled)'); if (tool && tool.offsetParent) { tool.focus(); return; }
       var fallback = root.querySelector('.tc-toolbar button:not(:disabled)');
       if (fallback) { fallback.focus(); return; }
       root.tabIndex = -1; root.focus();
@@ -119,6 +121,10 @@
       release(); inspector.hidden = true; layout.classList.remove('tc-inspecting'); trigger.setAttribute('aria-expanded', 'false'); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       if (focusWasInInspector) focusSafe();
       window.dispatchEvent(new Event('resize'));
+      // Let the companion re-place itself now that the column is free (not a selection change:
+      // the shell re-opens the inspector on those).
+      window.dispatchEvent(new CustomEvent('team-canvas-inspector-closed'));
+      requestAnimationFrame(function () { window.dispatchEvent(new CustomEvent('team-canvas-inspector-closed')); });
     }
     function select(next, focusControls) {
       if (!next || !next.isConnected) return;
@@ -157,7 +163,7 @@
     close.onclick = hide; trigger.onclick = function () { if (inspector.hidden) select(node, true); else hide(); };
     edit.onclick = function () { var button = node && Array.from(node.querySelectorAll('.tc-node-head button')).find(function (b) { return b.textContent === 'Edit'; }); if (button) { button.click(); state(); } };
     var libraryToggle = root.querySelector('.tc-library-toggle'); if (libraryToggle) libraryToggle.addEventListener('click', hide);
-    inspector.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !event.defaultPrevented) { event.stopPropagation(); hide(); trigger.focus(); } });
+    inspector.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !event.defaultPrevented) { event.stopPropagation(); hide(); /* hide() already returned focus (to the card header in the shell, where the Properties toggle is hidden and focusing it re-opened the inspector). */ if (trigger.offsetParent) trigger.focus(); } });
     var selected = window.TeamCanvas && TeamCanvas.selected();
     if (selected) select(Array.from(root.querySelectorAll('.tc-node')).find(function (n) { return n.dataset.plotId === selected.id; }));
   }
