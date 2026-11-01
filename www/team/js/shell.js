@@ -119,6 +119,9 @@
     // Wait until the canvas, viewport and inspector modules have mounted.
     if (!layout || !main || !toolbar || !shell || !inspector || !root.querySelector('.tc-paste-plot')) return false;
     root.dataset.tsShell = 'true'; root.classList.add('ts-shell');
+    // The library is a panel opened from the rail. Start it closed so restoring a
+    // checkpoint (which saves it closed) does not shift the whole canvas sideways.
+    if (!layout.classList.contains('tc-library-hidden')) { layout.classList.add('tc-library-hidden'); var libToggle = root.querySelector('.tc-library-toggle'); if (libToggle) { libToggle.setAttribute('aria-expanded', 'false'); libToggle.textContent = 'Show library'; } }
 
     // Left icon rail: panels push the canvas (grid column), never overlay it.
     var rail = el('nav', 'ts-rail'); rail.setAttribute('aria-label', 'Canvas panels');
@@ -128,11 +131,17 @@
       var tab = Array.from(root.querySelectorAll('.tc-catalog [role="tab"],.tc-catalog button')).find(function (b) { return b.textContent.trim() === name; });
       if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click();
     }
-    var railPlots = button('ts-rail-item', 'Plots', function () { var showPlots = !(libraryOpen() && rail.dataset.active === 'plots'); setLibrary(showPlots); if (showPlots) libraryTab('Plots'); paintRail(showPlots ? 'plots' : ''); }, ICONS.plots);
-    var railText = button('ts-rail-item', 'Text & shapes', function () { proxy('.tc-draw-primitives', root); }, ICONS.text);
-    var railIllus = button('ts-rail-item', 'Illustrations', function () { var show = !(libraryOpen() && rail.dataset.active === 'illustrations'); setLibrary(show); if (show) libraryTab('Illustrations'); paintRail(show ? 'illustrations' : ''); }, ICONS.illustrations);
-    var railPalettes = button('ts-rail-item', 'Palettes', function () { proxy('.tc-palette', root); }, ICONS.palettes);
-    var railCell = button('ts-rail-item', '3D cell', function () { var link = guideLink('3D cell'); if (link) link.click(); }, ICONS.cell);
+    // 3D cell and Save & export are legacy steps inside the Canvas stage whose
+    // tabs the shell hides; without this the top bar's Canvas step and the rail
+    // could not bring the figure canvas back. Figure tools return to it first.
+    function figureCanvasShown() { return root.offsetParent !== null; }
+    function toFigureCanvas() { if (!figureCanvasShown()) { var link = guideLink('Figure canvas'); if (link) link.click(); } }
+    document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-tw-stage="canvas"]')) setTimeout(toFigureCanvas, 0); }, true);
+    var railPlots = button('ts-rail-item', 'Plots', function () { toFigureCanvas(); var showPlots = !(libraryOpen() && rail.dataset.active === 'plots'); setLibrary(showPlots); if (showPlots) libraryTab('Plots'); paintRail(showPlots ? 'plots' : ''); }, ICONS.plots);
+    var railText = button('ts-rail-item', 'Text & shapes', function () { toFigureCanvas(); proxy('.tc-draw-primitives', root); }, ICONS.text);
+    var railIllus = button('ts-rail-item', 'Illustrations', function () { toFigureCanvas(); var show = !(libraryOpen() && rail.dataset.active === 'illustrations'); setLibrary(show); if (show) libraryTab('Illustrations'); paintRail(show ? 'illustrations' : ''); }, ICONS.illustrations);
+    var railPalettes = button('ts-rail-item', 'Palettes', function () { toFigureCanvas(); proxy('.tc-palette', root); }, ICONS.palettes);
+    var railCell = button('ts-rail-item', '3D cell', function () { if (!figureCanvasShown()) { toFigureCanvas(); return; } var link = guideLink('3D cell'); if (link) link.click(); }, ICONS.cell);
     railPlots.dataset.panel = 'plots'; railIllus.dataset.panel = 'illustrations';
     rail.append(railPlots, railText, railIllus, railPalettes, railCell);
     function paintRail(active) {

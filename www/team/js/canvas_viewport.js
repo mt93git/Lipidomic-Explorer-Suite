@@ -83,7 +83,8 @@
       // Document position keeps ordinary page scrolling from changing the board height.
       var top=scroll.getBoundingClientRect().top+window.scrollY;
       var viewport=window.visualViewport?window.visualViewport.height:window.innerHeight;
-      var height=Math.max(300,viewport-top-42);
+      // The shell shows canvas status as a floating notice, so no bottom strip to reserve.
+      var height=Math.max(300,viewport-top-(root.classList.contains('ts-shell')?8:42));
       var value=Math.round(height)+'px';if(scroll.style.height!==value)scroll.style.height=value;
     }
     function paint() {

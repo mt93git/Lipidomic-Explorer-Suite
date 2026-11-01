@@ -71,6 +71,15 @@
     // Preparation state lives in canvas.js; a light poll catches changes that emit no DOM event.
     setInterval(function () { if (root.offsetParent !== null) schedule(); }, 1500);
     schedule();
+    // The canvas status line becomes a short notice: it shows when the message
+    // changes and fades after a few seconds instead of a permanent strip that
+    // covered the bottom of the cards. Card state lives in each card's chip.
+    var line = root.querySelector('.tc-status'), timer = null, last = '';
+    if (line) new MutationObserver(function () {
+      var text = line.textContent.trim(); if (text === last) return; last = text;
+      clearTimeout(timer); line.classList.toggle('is-visible', !!text);
+      if (text) timer = setTimeout(function () { line.classList.remove('is-visible'); }, 6000);
+    }).observe(line, { childList: true, characterData: true, subtree: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

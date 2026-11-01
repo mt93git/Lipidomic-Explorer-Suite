@@ -23,7 +23,7 @@ body.ts-shell-app .ts-step.is-done em{background:#2a3b4c;border-color:#2a3b4c;co
 body.ts-shell-app .ts-step.is-current{background:#26394b;color:#fff;font-weight:500}
 body.ts-shell-app .ts-step.is-current em{background:#78afe0;border-color:#78afe0;color:var(--ts-navy)}
 body.ts-shell-app .ts-topbar-right{justify-self:end;display:flex;align-items:center;gap:10px;min-width:0}
-body.ts-shell-app .ts-saved{max-width:210px;overflow:hidden;text-overflow:ellipsis;display:inline-block;line-height:26px;height:28px;box-sizing:border-box;padding:0 10px;border:1px solid #3a4a5a;border-radius:999px;color:#c4d1dc;font:12px/1 'Nunito Sans',system-ui,sans-serif;white-space:nowrap}
+body.ts-shell-app .ts-saved{max-width:210px;overflow:hidden;text-overflow:ellipsis;display:inline-block;height:28px;box-sizing:border-box;padding:0 10px;border:1px solid #3a4a5a;border-radius:999px;color:#c4d1dc;font:12px/26px 'Nunito Sans',system-ui,sans-serif;white-space:nowrap}
 body.ts-shell-app .ts-saved[hidden]{display:none}
 body.ts-shell-app .ts-saved::before{content:'';display:inline-block;vertical-align:middle;margin:-2px 7px 0 0;width:7px;height:7px;border-radius:50%;background:#2f8a57}
 body.ts-shell-app .ts-signout{white-space:nowrap;height:28px;padding:0 6px;border:0;background:transparent;color:#c4d1dc;font:12px/1 'Nunito Sans',system-ui,sans-serif;cursor:pointer}
