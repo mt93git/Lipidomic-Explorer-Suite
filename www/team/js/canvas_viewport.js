@@ -25,6 +25,9 @@
       if(!shell.clientWidth||!shell.clientHeight||!nav.offsetWidth)return;
       var maxX=Math.max(0,shell.clientWidth-nav.offsetWidth-4),maxY=Math.max(0,shell.clientHeight-nav.offsetHeight-4);
       x=Math.round(Math.max(4,Math.min(maxX,x)));y=Math.round(Math.max(4,Math.min(maxY,y)));
+      // Never over the floating toolbar: drop below it when the rectangles would meet.
+      var tb=root.querySelector('.tc-toolbar'),sr=shell.getBoundingClientRect();
+      if(tb&&tb.offsetParent){var t=tb.getBoundingClientRect(),l=t.left-sr.left,tp=t.top-sr.top;if(x<l+t.width&&x+nav.offsetWidth>l&&y<tp+t.height&&y+nav.offsetHeight>tp)y=Math.min(maxY,Math.round(tp+t.height+8));}
       nav.style.setProperty('left',x+'px','important');nav.style.setProperty('top',y+'px','important');
       nav.style.setProperty('bottom','auto','important');nav.style.setProperty('right','auto','important');nav.classList.add('is-placed');
       if(save){try{localStorage.setItem(MAP_KEY,JSON.stringify({x:x,y:y}));}catch(e){}}

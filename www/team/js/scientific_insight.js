@@ -48,7 +48,7 @@
   undo.addEventListener('click',function(){if(c.removedNote&&setNote(id,c.removedNote)){c.removedNote=null;undo.hidden=true;status(c,'Insight restored.');render(c);}});
   cards.set(id,c);return c;
  }
- function mount(plot,id,node){var c=cards.get(id)||make(id),isFrozen=frozen(id);if(c.dataset.wasFrozen==='1'&&!isFrozen)invalidate(id);attr(c,'data-was-frozen',isFrozen?'1':'0');if(node){var host=node.querySelector('.tc-snapshot')||node.querySelector('.tc-content')||node;if(c.parentElement!==host)host.appendChild(c);}else if(plot&&plot.nextElementSibling!==c)plot.after(c);render(c);}
+ function mount(plot,id,node){var c=cards.get(id)||make(id),isFrozen=frozen(id);if(c.dataset.wasFrozen==='1'&&!isFrozen)invalidate(id);attr(c,'data-was-frozen',isFrozen?'1':'0');if(node){var host=node.querySelector('.tc-snapshot')||node.querySelector('.tc-content')||node;/* The inspector's Data tab may hold it while the card is selected. */if(c.parentElement!==host&&!c.closest('#tc-selection-inspector'))host.appendChild(c);}else if(plot&&plot.nextElementSibling!==c)plot.after(c);render(c);}
  function scan(){queued=false;document.querySelectorAll('.shiny-plot-output[id],.plotly.html-widget-output[id]').forEach(function(p){if(!p.closest('.publication-canvas-frame,.tc-instance-host'))mount(p,p.id,p.closest('.tc-node'));});document.querySelectorAll('.tc-node[data-plot-id]').forEach(function(n){mount(null,n.dataset.plotId,n);});if(!registered&&window.Shiny&&Shiny.addCustomMessageHandler){registered=true;Shiny.addCustomMessageHandler('team_scientific_insight',response);}}
  function schedule(){if(queued)return;queued=true;requestAnimationFrame(scan);}
  window.TeamScientificInsight={invalidate:invalidate,scan:scan};

@@ -31,9 +31,29 @@
       style(panel,'left',Math.round(left)+'px');style(panel,'top',Math.round(top)+'px');panel.dataset.floatingSide=side;
       return {visible:true,left:left,top:top,width:width,side:side};
     }
-    function tick(){frame=null;anchors.forEach(function(node,panel){if(!panel.isConnected||!node.isConnected||panel.hidden||getComputedStyle(panel).display==='none'){if(panel.isConnected&&!node.isConnected)panel.style.visibility='hidden';anchors.delete(panel);return;}place(panel,node);});if(anchors.size)frame=requestAnimationFrame(tick);}
-    function open(panel,node){var fresh=anchors.get(panel)!==node;anchors.set(panel,node);if(fresh&&window.innerWidth>=640&&window.TeamCanvasViewport&&TeamCanvasViewport.focusNodeForPanel)TeamCanvasViewport.focusNodeForPanel(node,Number(panel.dataset.floatingWidth)||320);place(panel,node);if(frame===null)frame=requestAnimationFrame(tick);}
-    function close(panel){anchors.delete(panel);panel.style.visibility='';if(!anchors.size&&frame!==null){cancelAnimationFrame(frame);frame=null;}}
+    // Placement runs when geometry can have changed (resize, scroll, the panel or
+    // its card resizing, moving or restyling, canvas zoom), at most once per frame,
+    // instead of an unconditional per-frame loop while a panel is open. A slow
+    // check catches anything those signals miss (e.g. CSS transitions).
+    var watchers=null;
+    function tick(){frame=null;anchors.forEach(function(node,panel){if(!panel.isConnected||!node.isConnected||panel.hidden||getComputedStyle(panel).display==='none'){if(panel.isConnected&&!node.isConnected)panel.style.visibility='hidden';anchors.delete(panel);return;}place(panel,node);});if(!anchors.size)unwatch();}
+    function schedule(){if(frame===null&&anchors.size)frame=requestAnimationFrame(tick);}
+    function watch(){
+      if(!watchers){
+        watchers={resize:new (window.ResizeObserver||function(){this.observe=this.disconnect=function(){};})(schedule),mutations:new MutationObserver(schedule),timer:setInterval(schedule,500)};
+        window.addEventListener('resize',schedule);document.addEventListener('scroll',schedule,{capture:true,passive:true});
+      }
+      watchers.resize.disconnect();watchers.mutations.disconnect();
+      anchors.forEach(function(node,panel){
+        watchers.resize.observe(panel);watchers.resize.observe(node);
+        var scroll=node.closest('.tc-scroll'),board=node.closest('.tc-board');if(scroll)watchers.resize.observe(scroll);
+        watchers.mutations.observe(node,{attributes:true,attributeFilter:['style','class']});
+        if(board)watchers.mutations.observe(board,{attributes:true,attributeFilter:['style']});
+      });
+    }
+    function unwatch(){if(!watchers)return;watchers.resize.disconnect();watchers.mutations.disconnect();clearInterval(watchers.timer);window.removeEventListener('resize',schedule);document.removeEventListener('scroll',schedule,{capture:true});watchers=null;}
+    function open(panel,node){var fresh=anchors.get(panel)!==node;anchors.set(panel,node);if(fresh&&window.innerWidth>=640&&window.TeamCanvasViewport&&TeamCanvasViewport.focusNodeForPanel)TeamCanvasViewport.focusNodeForPanel(node,Number(panel.dataset.floatingWidth)||320);place(panel,node);watch();schedule();}
+    function close(panel){anchors.delete(panel);panel.style.visibility='';if(!anchors.size){if(frame!==null){cancelAnimationFrame(frame);frame=null;}unwatch();}else watch();}
     return {place:place,open:open,close:close};
   })();
   var root, board, list, status, search, records = new Map(), pendingAdds = new Map(), sequence = 0, selectedRecord = null, preparation = null, shinyBusy = false, preparationGeneration = 0, activityGeneration = 0, syncTimer = null, syncEpoch = 0, restorePending = new Map(), ackWaiters = new Map(), applyingRestore = false, checkpointActive = false;
@@ -122,6 +142,10 @@
   function sourceKey(r) { return r && r.instance ? r.instance.source : r && r.el.id; }
   function instancesConnected(){return !!(window.Shiny&&Shiny.shinyapp&&Shiny.shinyapp.$socket);}
   function instanceSupported(id) { return /^cell_(lipid|profile|class|comparison)_plot$/.test(id) || /^(results_dashboard|qc_pca_tab|barchart|heatmap_barchart_tab|volcano_tab|lsea_tab|structural_tab|structural_grid_tab|logratio_tab|group_comparison_tab|fla_tab|longitudinal_tab|pathway_tab|cellular_org_tab)-/.test(id); }
+  // Last non-empty value of every input, so a selectize caught mid-reload (blank,
+  // options cleared) can still be copied or saved with the user's real choice.
+  var lastSelections = {};
+  if (window.jQuery) jQuery(document).on('shiny:inputchanged', function (e) { if (e.value !== '' && e.value != null && !(Array.isArray(e.value) && !e.value.length)) lastSelections[e.name] = e.value; });
   function instanceValues(namespace, allowed) {
     var values={}, all=window.Shiny && Shiny.shinyapp && Shiny.shinyapp.$inputValues || {};
     Object.keys(all).forEach(function(key){
@@ -133,7 +157,7 @@
       // An empty single selectize is transient: a server-side update clears it
       // while its options reload. Copying that blank would pin the new plot to
       // no selection (its data then fails req()), so let the copy choose its default.
-      if(el.selectize&&!el.multiple&&(value===''||value===null)&&(!Object.keys(el.selectize.options||{}).length||el.selectize.loading))return;
+      if(el.selectize&&!el.multiple&&(value===''||value===null)&&(!Object.keys(el.selectize.options||{}).length||el.selectize.loading)){var remembered=lastSelections[namespace+'-'+local];if(remembered==null)return;value=remembered;}
       if(value===null||['string','number','boolean'].includes(typeof value)||(Array.isArray(value)&&value.every(function(x){return ['string','number','boolean'].includes(typeof x);})))values[local]=value;
     });
     return JSON.parse(JSON.stringify(values));
@@ -1215,6 +1239,8 @@
     if (r.plotEditor) { r.plotEditor.destroy(); r.plotEditor=null; }
     if (r.statistics && window.TeamCanvasStatistics) TeamCanvasStatistics.detach(r);
     restoreSnapshotSource(r);
+    // Module content parked by the shell goes home usable: clear the card-only marks.
+    if (r.target) r.target.querySelectorAll('.tc-figure-chrome,.tc-figure-park').forEach(function (el) { el.classList.remove('tc-figure-chrome', 'tc-figure-park'); el.inert = false; });
     // Card plots run with an explicit logical size; give the returned plot back its autosize.
     var returned = r.el && (r.el.classList.contains('js-plotly-plot') ? r.el : r.el.querySelector('.js-plotly-plot'));
     if (returned && returned.layout && returned.layout.autosize === false && window.Plotly) { try { window.Plotly.relayout(returned, {autosize: true, width: null, height: null}); } catch (ignore) {} }

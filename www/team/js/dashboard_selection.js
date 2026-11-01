@@ -2,6 +2,9 @@
  * Plotly receives visibility only; prepared values and coordinates are untouched. */
 (function (root) {
   'use strict';
+  // scan() runs after DOM changes across the page; write only real changes (each
+  // write is itself a mutation and restyle).
+  function setProp(el, key, value) { if (el && el[key] !== value) el[key] = value; }
   var inputs = new Map(), plots = new Map(), queued = false;
   function strings(value) {
     return Array.isArray(value) && value.length <= 10000 && value.every(function (v) {
@@ -30,7 +33,7 @@
     var el = wrapper.querySelector('.tds-status');
     if (!el) { el = document.createElement('p'); el.className='tds-status'; el.setAttribute('role','status'); wrapper.appendChild(el); }
     if (el.textContent !== message) el.textContent = message;
-    el.hidden = !message;
+    setProp(el, 'hidden', !message);
   }
   function paintInput(record) {
     var parsed = read(record.input, record.choices, record.defaults), locked = inputLocked(record.id);
@@ -40,7 +43,7 @@
         var selected = button.dataset.value !== undefined ? parsed.values.includes(button.dataset.value) : button.dataset.action === 'default' ? record.input.value === '__ALL__' : button.dataset.action === 'all' ? parsed.values.length === record.choices.length : parsed.values.length === 0;
         var pressed = selected ? 'true' : 'false';
         if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed',pressed);
-        button.disabled = locked || !parsed.valid;
+        setProp(button, 'disabled', locked || !parsed.valid);
       });
       var selectedSet = new Set(parsed.values);
       wrapper.querySelectorAll('button[data-class]').forEach(function (button) {
@@ -50,8 +53,8 @@
         if(button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed',pressed);
         var counter = button.querySelector('.tds-class-count'), text = ' ' + count + '/' + members.length;
         if(counter && counter.textContent !== text) counter.textContent = text;
-        button.title = (count === members.length ? 'Hide' : 'Show') + ' all ' + button.dataset.class + ' lipids';
-        button.disabled = locked || !parsed.valid;
+        setProp(button, 'title', (count === members.length ? 'Hide' : 'Show') + ' all ' + button.dataset.class + ' lipids');
+        setProp(button, 'disabled', locked || !parsed.valid);
       });
       status(wrapper, !parsed.valid ? 'This saved selection is invalid. Restore a valid selection before continuing.' : locked ? 'Edit the finished figure before changing its selection.' : !parsed.values.length ? 'Nothing selected. Choose one or more items, or Show all.' : '');
       var summary = wrapper.querySelector('summary');
@@ -61,9 +64,9 @@
       if (search) {
         var term = search.value.trim().toLowerCase();
         wrapper.querySelectorAll('button[data-value]').forEach(function (button) {
-          button.hidden = !!term && button.dataset.value.toLowerCase().indexOf(term) === -1;
+          setProp(button, 'hidden', !!term && button.dataset.value.toLowerCase().indexOf(term) === -1);
         });
-        search.disabled = locked;
+        setProp(search, 'disabled', locked);
       }
     });
   }

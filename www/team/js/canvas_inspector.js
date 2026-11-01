@@ -20,7 +20,7 @@
     var tabs = document.createElement('div'); tabs.className = 'tc-inspector-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Property groups');
     var statsBody = document.createElement('div'); statsBody.className = 'tc-inspector-body tc-inspector-statistics';
     var dataBody = document.createElement('div'); dataBody.className = 'tc-inspector-body tc-inspector-data';
-    var activeTab = 'appearance', movedStats = null, statsHome = null, movedData = [];
+    var activeTab = 'appearance', movedStats = null, statsHome = null, movedData = [], dataPending = 0;
     var tabList = [['data', 'Data', dataBody], ['appearance', 'Style', body], ['statistics', 'Statistics', statsBody]].map(function (spec) {
       var button = document.createElement('button'); button.type = 'button'; button.className = 'tc-inspector-tab'; button.textContent = spec[1];
       button.id = 'tc-inspector-tab-' + spec[0]; spec[2].id = 'tc-inspector-panel-' + spec[0];
@@ -59,6 +59,7 @@
         var more = document.createElement('button'); more.type = 'button'; more.className = 'tc-inspector-data-settings'; more.textContent = 'Data & settings';
         more.onclick = function () { settings.click(); }; dataBody.appendChild(more);
       }
+      dataPending = !chrome.length && !n.querySelector('.gc-root') ? 20 : 0;
       chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; dataBody.appendChild(el); });
       if (!chrome.length) {
         var note = document.createElement('p'); note.className = 'tc-inspector-data-note';
@@ -91,7 +92,9 @@
       (first || close).focus();
     }
     function focusSafe() {
-      if (trigger.isConnected && !trigger.disabled) { trigger.focus(); return; }
+      if (trigger.isConnected && !trigger.disabled && trigger.offsetParent) { trigger.focus(); return; }
+      // In the shell the Properties toggle is hidden: go back to the card's header.
+      var head = node && node.isConnected && node.querySelector('.tc-node-head'); if (head) { head.focus(); return; }
       var fallback = root.querySelector('.tc-toolbar button:not(:disabled)');
       if (fallback) { fallback.focus(); return; }
       root.tabIndex = -1; root.focus();
@@ -103,6 +106,9 @@
       heading.textContent = (node.querySelector('.tc-node-head strong') || {}).textContent || 'Selected object';
       var finished = node.classList.contains('tc-finished'), focusedControl = finished && (body.contains(document.activeElement) || statsBody.contains(document.activeElement));
       var plot = !node.classList.contains('tc-illustration'); if (!plot) activeTab = 'appearance';
+      // A finished card that becomes editable (Edit) gains module content: fill Data
+      // then, retrying while its plot is still rendering.
+      if (plot && !finished && !movedData.length && dataPending > 0 && !inspector.hidden) { var tries = dataPending; dataBody.textContent = ''; fillData(node); dataPending = movedData.length ? 0 : tries - 1; }
       locked.hidden = !finished; tabs.hidden = finished || !plot; body.inert = statsBody.inert = dataBody.inert = finished;
       tabList.forEach(function (t) { var on = t.key === activeTab; t.button.setAttribute('aria-selected', String(on)); t.button.tabIndex = on ? 0 : -1; t.panel.hidden = finished || !on; });
       if (focusedControl) edit.focus();

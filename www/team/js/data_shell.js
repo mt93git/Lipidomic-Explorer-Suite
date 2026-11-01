@@ -64,7 +64,8 @@
         if (on && live) meta.textContent = [live.samples && live.samples + ' samples', live.lipids && live.lipids + ' lipids', live.exclusions + ' exclusion' + (live.exclusions === 1 ? '' : 's'), live.figures != null && live.figures + ' figure' + (live.figures === 1 ? '' : 's')].filter(Boolean).join(' · ');
         else if (on && checkpoint) meta.textContent = checkpoint.options.length + ' checkpoint' + (checkpoint.options.length === 1 ? '' : 's');
         else meta.textContent = 'Select to see its checkpoints';
-        card.addEventListener('click', function () { choose(project, o.value); });
+        // Project and checkpoint selects are re-rendered by the server: use the live ones.
+        card.addEventListener('click', function () { var live = document.getElementById('team_library_project'); if (live) choose(live, o.value); });
       });
       // Side card for the selected project.
       side.replaceChildren();
@@ -83,7 +84,7 @@
       side.appendChild(cps);
       var open = el('button', 'ts-data-open', 'Open latest'); open.type = 'button';
       open.disabled = !(checkpoint && checkpoint.options.length);
-      open.addEventListener('click', function () { if (!checkpoint || !checkpoint.options.length) return; choose(checkpoint, checkpoint.options[0].value); setTimeout(function () { var r = document.getElementById('team_library_resume'); if (r && !r.disabled) r.click(); }, 0); });
+      open.addEventListener('click', function () { var checkpoint = document.getElementById('team_library_checkpoint'); if (!checkpoint || !checkpoint.options.length) return; choose(checkpoint, checkpoint.options[0].value); setTimeout(function () { var r = document.getElementById('team_library_resume'); if (r && !r.disabled) r.click(); }, 0); });
       side.appendChild(open);
     }
     // The original controls remain available under "All checkpoints".
@@ -96,7 +97,8 @@
   function schedule() { if (!queued) { queued = true; requestAnimationFrame(function () { queued = false; paint(); }); } }
   function start() {
     if (!window.LIPIDOMIC_TEAM_WORKSPACE || !window.Shiny) return;
-    document.addEventListener('shiny:value', schedule);
+    // Shiny triggers its events through jQuery; native listeners never see them.
+    if (window.jQuery) jQuery(document).on('shiny:value', schedule);
     document.addEventListener('change', function (e) { if (e.target && /^team_library_/.test(e.target.id || '')) schedule(); });
     new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['data-team-authenticated', 'data-team-stage', 'data-tw-screen'] });
     schedule();
