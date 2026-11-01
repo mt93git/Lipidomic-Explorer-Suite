@@ -1,5 +1,6 @@
 # Read-only structural contract for the two presentation shells.
 # This is intentionally fast and does not start Shiny, read user data, or call services.
+suppressPackageStartupMessages(library(shiny))
 source("R/frontends/interface.R")
 source("R/frontends/classic/server.R")
 source("R/frontends/team/project_library.R")
