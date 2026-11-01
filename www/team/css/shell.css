@@ -4,13 +4,13 @@ body.ts-shell-app{--ts-navy:#162230;--ts-line:#e3e7ec;--ts-muted:#5a6878;--ts-in
 /* ---- One top bar ---------------------------------------------------------- */
 body.ts-shell-app .navbar{position:sticky;top:0;z-index:1030;height:var(--ts-bar)!important;min-height:var(--ts-bar)!important;max-height:var(--ts-bar);padding:0 16px!important;background:var(--ts-navy)!important;border:0;box-shadow:none;box-sizing:border-box}
 body.ts-shell-app .navbar>.container-fluid{height:100%;flex-wrap:nowrap;gap:16px;padding:0;min-height:0}
-body.ts-shell-app .navbar .navbar-toggler,body.ts-shell-app .navbar .navbar-collapse{display:none!important}
+html body.ts-shell-app nav.navbar .navbar-toggler,html body.ts-shell-app nav.navbar>.container-fluid>.navbar-collapse{display:none!important}
 body.ts-shell-app .navbar-brand{margin:0;padding:0;display:flex;align-items:center;height:100%}
 body.ts-shell-app .guide-brand-lockup{display:flex;align-items:center;gap:10px}
 body.ts-shell-app .guide-brand-lockup #navbar_brand_logo_img{display:none!important}
 body.ts-shell-app .guide-brand-lockup img.ts-mark{width:26px;height:26px;border-radius:6px;object-fit:cover;background:#fff;display:block}
 body.ts-shell-app .guide-brand-lockup .guide-app-name{font:600 13px/1 'Nunito Sans',system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:#fff!important;border:0!important;padding:0!important;margin:0!important;white-space:nowrap}
-body.ts-shell-app .ts-topbar-extras{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;flex:1;min-width:0;height:100%}
+body.ts-shell-app .ts-topbar-extras{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;flex:1 1 auto;min-width:0;height:100%}
 body.ts-shell-app .ts-project{justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent;border:0;border-left:1px solid #3a4a5a;color:#c4d1dc;font:12.5px/1 'Nunito Sans',system-ui,sans-serif;padding:6px 0 6px 16px;cursor:pointer}
 body.ts-shell-app .ts-project:hover:not(:disabled){color:#fff}
 body.ts-shell-app .ts-project:disabled{cursor:default}
