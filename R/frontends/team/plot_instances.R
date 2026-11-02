@@ -152,6 +152,12 @@ team_plot_instance_validate <- function(value, output_id = NULL) {
 }
 team_plot_instances_server <- function(input, output, session, shared_data, dashboard_data) {
   active <- new.env(parent=emptyenv())
+  settling <- new.env(parent=emptyenv())
+  stop_settling <- function(id) {
+    if (!exists(id,settling,inherits=FALSE)) return(invisible())
+    entry <- get(id,settling);if (!is.null(entry$watcher)) entry$watcher$destroy()
+    entry$watcher <- NULL;assign(id,entry,settling);invisible()
+  }
   insert_host <- function(id, resolved, spec) {
     ui <- get(spec$ui,mode='function')(id)
     if (identical(resolved$family,'structural_tab')) ui <- shiny::tagList(ui,structural_proportions_ui(id))
@@ -187,17 +193,30 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     # Tell the browser when the server holds every saved value. Output values of
     # that flush follow this message, so the next render of the copy is the
     # restored one; the browser uses it to reveal a restored card.
+    # Each creation has its own generation, so a signal from an earlier restore of
+    # the same copy can never reveal this one; a pending watcher is replaced.
+    generation <- (if (exists(id,settling,inherits=FALSE)) get(id,settling)$generation else 0L)+1L
+    stop_settling(id)
     if (length(value$inputs)) {
-      expected <- value$inputs;seen <- FALSE
-      same <- function(a,b) { a <- as.character(unlist(a,use.names=FALSE));b <- as.character(unlist(b,use.names=FALSE));identical(a,b)||(!length(a)&&!length(b))||(length(a)==1L&&length(b)==1L&&!is.na(suppressWarnings(as.numeric(a)))&&identical(suppressWarnings(as.numeric(a)),suppressWarnings(as.numeric(b)))) }
-      settled <- shiny::observe({
+      expected <- value$inputs
+      # Numbers compare as numbers only when the saved value is a number; text is exact.
+      same <- function(actual,saved) {
+        if (is.null(saved)||!length(saved)) return(is.null(actual)||!length(actual))
+        if (is.numeric(saved)) { a <- suppressWarnings(as.numeric(unlist(actual,use.names=FALSE)));return(length(a)==length(saved)&&!anyNA(a)&&all(a==saved)) }
+        identical(as.character(unlist(actual,use.names=FALSE)),as.character(unlist(saved,use.names=FALSE)))
+      }
+      watcher <- shiny::observe({
         ok <- all(vapply(names(expected),function(key)same(input[[paste0(id,'-',key)]],expected[[key]]),logical(1)))
-        if (ok && !seen) { seen <<- TRUE;session$sendCustomMessage('team-canvas-instance-settled',list(id=id));settled$destroy() }
+        if (ok) { session$sendCustomMessage('team-canvas-instance-settled',list(id=id,generation=generation));stop_settling(id) }
       },priority=-100)
-    } else session$sendCustomMessage('team-canvas-instance-settled',list(id=id))
+      assign(id,list(generation=generation,watcher=watcher),settling)
+    } else {
+      assign(id,list(generation=generation,watcher=NULL),settling)
+      session$sendCustomMessage('team-canvas-instance-settled',list(id=id,generation=generation))
+    }
     # Send within the current reactive flush. A message enqueued from onFlushed
     # can otherwise wait indefinitely for an unrelated subsequent flush.
-    session$sendCustomMessage('team-canvas-instance-ready',c(value,list(allowedInputs=team_plot_instance_input_ids(value$source))))
+    session$sendCustomMessage('team-canvas-instance-ready',c(value,list(allowedInputs=team_plot_instance_input_ids(value$source),generation=generation)))
     invisible(value)
   }
   session$userData$team_canvas_instance_context <- function(output_id) {
@@ -226,7 +245,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     entry <- get(id,active,inherits=FALSE); resolved <- team_plot_instance_source(entry$source)
     shiny::outputOptions(output,paste0(id,'-',resolved$output),suspendWhenHidden=TRUE)
     shiny::removeUI(selector=paste0('#',id,'_host'),immediate=TRUE,session=session)
-    entry$parked <- TRUE; assign(id,entry,active)
+    entry$parked <- TRUE; assign(id,entry,active); stop_settling(id)
   },ignoreInit=TRUE)
   session$userData$team_canvas_instances_create <- create
   shiny::observeEvent(input$team_canvas_instance_create,{

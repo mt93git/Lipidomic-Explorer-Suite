@@ -304,29 +304,35 @@
     try { initializeInstance(message,attempt,request); } catch(error) { failInstance(request,error); }
   }
   // A restored copy stays hidden (same size, spinner) until the browser has drawn a
-  // render made after the server confirmed it holds every saved setting
-  // ('team-canvas-instance-settled', sent ahead of that flush's output values).
-  // A long timeout is only a fallback.
-  // The copy's restored render often arrives before its card is mounted, so the
-  // time of each instance's signal and of each output's latest value are kept.
-  var settledInstances = {}, outputValueAt = {}, messageSequence = 0;
-  var idleAt = 0;
+  // render that matches its saved settings. The server confirms, per creation
+  // generation, when it holds every saved setting ('team-canvas-instance-settled',
+  // sent ahead of that flush's output values). After that signal the card is shown
+  // once a new value for its output has been drawn by Plotly, or once that flush
+  // ends (shiny:idle) without a new value: the render already shown is current.
+  // The copy's render often arrives before its card is mounted, so the order of the
+  // signal and of each output's latest value is kept. 45 s is only a fallback.
+  var settledInstances = {}, outputValueAt = {}, idleAt = 0, messageSequence = 0;
   if (window.jQuery) jQuery(document).on('shiny:value', function (e) { outputValueAt[e.name] = ++messageSequence; }).on('shiny:idle', function () { idleAt = ++messageSequence; });
-  function settleRestored(el, instanceId){
-    el.classList.add('tc-restore-settling');var settled=!!settledInstances[instanceId],drawn=settled&&((outputValueAt[el.id]||0)>settledInstances[instanceId]||idleAt>settledInstances[instanceId]),start=Date.now();
-    function onSettled(e){if(e.detail===instanceId)settled=true;}
-    // A render after the signal, or the end of the server flush that sent it with no
-    // recalculation pending (saved settings equal to the defaults), means the shown render is the saved one.
-    function onValue(e){if(e.name===el.id&&settled)drawn=true;}
-    function onIdle(){if(settled)drawn=true;}
-    window.addEventListener('team-canvas-instance-settled',onSettled);
-    if(window.jQuery)jQuery(document).on('shiny:value',onValue).on('shiny:idle',onIdle);
+  function settleRestored(el, instanceId, generation){
+    el.classList.add('tc-restore-settling');
+    var start=Date.now(), drawnAt=0, plot=el.classList.contains('js-plotly-plot')?el:el.querySelector('.js-plotly-plot');
+    function onDraw(){drawnAt=++messageSequence;}
+    function signal(){var s=settledInstances[instanceId];return s&&s.generation===generation?s.at:0;}
+    if(window.jQuery){jQuery(el).on('plotly_afterplot',onDraw);if(plot&&plot!==el)jQuery(plot).on('plotly_afterplot',onDraw);}
+    var mountedAt=messageSequence;
     (function tick(){
-      var now=Date.now(),done=drawn&&!el.classList.contains('recalculating');
-      if(done||now-start>45000||!el.isConnected){
-        // Let Plotly draw the received value before revealing it.
-        requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.remove('tc-restore-settling');});});
-        window.removeEventListener('team-canvas-instance-settled',onSettled);if(window.jQuery)jQuery(document).off('shiny:value',onValue).off('shiny:idle',onIdle);return;
+      var now=Date.now(),settled=signal(),value=outputValueAt[el.id]||0,ready=false;
+      if(settled&&!el.classList.contains('recalculating')){
+        if(value>settled){
+          // A value drawn after mounting, or received and drawn before the card was mounted.
+          var gd=el.classList.contains('js-plotly-plot')?el:el.querySelector('.js-plotly-plot');
+          ready=drawnAt>value||(value<=mountedAt&&!!(gd&&gd._fullLayout))||(!gd&&now-start>3000);
+        } else ready=idleAt>settled;
+      }
+      if(ready||now-start>45000||!el.isConnected){
+        requestAnimationFrame(function(){el.classList.remove('tc-restore-settling');});
+        if(window.jQuery){jQuery(el).off('plotly_afterplot',onDraw);if(plot&&plot!==el)jQuery(plot).off('plotly_afterplot',onDraw);}
+        return;
       }
       setTimeout(tick,100);
     })();
@@ -342,7 +348,7 @@
       var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null};
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
       var csvSource=csvByPlot[request.source];if(csvSource)csvByPlot[el.id]=message.id+(request.source.indexOf('-')<0?'-'+csvSource:csvSource.slice(request.source.indexOf('-')));
-      if(request.saved){settleRestored(el,message.id);restorePending.set(el.id,request.saved);hydratePending();}
+      if(request.saved){settleRestored(el,message.id,message.generation);restorePending.set(el.id,request.saved);hydratePending();}
       else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
       var opened=document.getElementById(message.id+'_host');if(opened&&opened.classList.contains('is-open')&&r.node)TeamCanvasFloatingPanel.open(opened,r.node);
       renderList();changed();
@@ -1643,7 +1649,7 @@
     });
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
-      Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]=++messageSequence;window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
+      Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);tell(message.message||'Could not create an independent plot.');});
       Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
       Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
