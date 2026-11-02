@@ -206,6 +206,7 @@ rd_card <- function(ns, id, title, subtitle, height = "420px") {
     div(class = "rd-card-head",
       div(h3(title), p(class = "rd-card-sub", subtitle)),
       downloadButton(ns(paste0("dl_", id)), "Plot data (CSV)", class = "btn-sm rd-dl")),
+    if (id == "heat") rd_heat_significance_ui(ns),
     if (id %in% c("comp", "heat")) uiOutput(ns(paste0("select_", id))),
     plotly::plotlyOutput(ns(paste0("plot_", id)), height = height),
     uiOutput(ns(paste0("detail_", id))),
@@ -255,7 +256,65 @@ results_dashboard_ui <- function(id = "results_dashboard") {
         tags$li(strong("Missing and nonpositive values. "), "Values that are missing, zero or negative cannot be log-transformed and are treated as missing in log10 views; they are never imputed here. Linear PCA uses complete finite lipids; log10 PCA and the heatmap use only lipids with a positive value in every displayed sample. The distribution plot shows positive values only; composition sums positive values only. Counts of excluded lipids are reported under each plot."),
         tags$li(strong("Transformations. "), "The canonical dashboard PCA uses log2(pmax(x, 0) + 1), centers each lipid and scales to unit variance, matching the shared individual-lipid PCA. Log10 and linear views remain available as explicitly labeled exploratory alternatives. The distribution and heatmap always use log10(abundance). The heatmap ranks lipids and computes row z-scores over the full prepared cohort, then displays group means. Changing visible groups does not recalculate these values."),
         tags$li(strong("Composition is not molar. "), "Class shares are fractions of summed prepared feature signal. Ionization efficiency differs across classes and species, so these shares are not molar proportions or absolute amounts without validated quantitative calibration."),
-        tags$li(strong("No inference. "), "Groups define heatmap columns and sample colors. Separation in PCA or the heatmap is exploratory, not evidence of a group difference."))))
+        tags$li(strong("No inference. "), "Groups define heatmap columns and sample colors. Separation in PCA or the heatmap is exploratory, not evidence of a group difference. The heatmap's optional Significant only view runs no test of its own: it keeps the lipids that Differential analysis already reports as significant for its current comparison, with that analysis's test, multiple-testing correction and thresholds, and is unavailable when the study design does not allow independent-sample inference."))))
+}
+
+# "Show: All lipids / Significant only" for the lipid heatmap. Nothing here
+# computes a test: Significant only reads the Differential analysis result that
+# the volcano and filtered heatmaps already use (shared_data$significant_lipids),
+# so the test, threshold and multiple-testing correction are that analysis's own.
+# "all" (the default, and the value of any older checkpoint without this input)
+# leaves the heatmap exactly as before.
+rd_heat_significance_choices <- c("All lipids" = "all", "Significant only" = "significant")
+rd_heat_significance_ui <- function(ns) {
+  div(class = "rd-heat-significance",
+    radioButtons(ns("heat_significance"), "Show", choices = rd_heat_significance_choices, selected = "all", inline = TRUE),
+    uiOutput(ns("heat_significance_status")))
+}
+
+# The option is offered only under the policy that gates the Differential
+# analysis engine itself (a confirmed independent design, current prepared data,
+# no synthetic samples: shared_data$inference_allowed) and the Team participant
+# check used by Group comparison (repeated participant IDs are pseudoreplication).
+# The returned reason is the app's existing wording for each block.
+rd_heat_significance_guard <- function(shared_data) {
+  guarded <- if (exists("team_group_comparison_guarded_data", mode = "function"))
+    team_group_comparison_guarded_data(shared_data) else shared_data
+  function(design_type = NULL) {
+    policy <- shared_data$inference_allowed
+    if (!is.function(policy) || !isTRUE(tryCatch(policy(paired = FALSE), error = function(e) FALSE))) {
+      reason <- if (exists("team_violin_stats_design", mode = "function"))
+        team_violin_stats_design(shared_data, design_type)$reason else NULL
+      return(list(allowed = FALSE, reason = reason %||% "Independent inference is not authorized for this study design."))
+    }
+    participant <- if (is.function(guarded$participant_reason))
+      tryCatch(guarded$participant_reason(), error = function(e) NULL) else NULL
+    if (!is.null(participant)) return(list(allowed = FALSE, reason = participant))
+    list(allowed = TRUE, reason = NULL)
+  }
+}
+
+# Plain-language statement of the criterion significant_lipids() applies
+# (R/modules/1_shared_data_module.R significantLipids), read from the same inputs.
+rd_heat_significance_criterion <- function(settings, contrast, method) {
+  fmt <- function(x) format(as.numeric(x), trim = TRUE, drop0trailing = TRUE)
+  adjusted <- identical(settings$p_value_type %||% "adjusted", "adjusted")
+  test <- switch(sub("^auto_", "", as.character(method %||% "")[1L]),
+    limma = "limma moderated t-test", non_parametric = "Wilcoxon rank-sum test", "Differential analysis test")
+  side <- if (identical(settings$mode %||% "direct", "direct") && is.list(contrast) && length(contrast$ref) && length(contrast$comp))
+    sprintf("%s vs %s", paste(contrast$comp, collapse = " + "), paste(contrast$ref, collapse = " + ")) else "Differential analysis interaction contrast"
+  sprintf("%s; %s %s %s and |log2FC| %s %s (%s on log2 abundance)", side,
+    if (adjusted) "Benjamini-Hochberg adjusted p" else "unadjusted p", "\u2264", fmt(settings$p_threshold %||% 0.05),
+    "\u2265", fmt(settings$log2fc_threshold %||% 1), test)
+}
+
+rd_heat_significance_result <- function(shared_data) {
+  res <- rd_value(shared_data$de_results)
+  lipids <- rd_value(shared_data$significant_lipids)
+  if (!is.data.frame(res) || is.null(lipids)) return(NULL)
+  list(lipids = unique(as.character(lipids)),
+       criterion = rd_heat_significance_criterion(rd_value(shared_data$de_settings) %||% list(),
+         rd_value(shared_data$de_contrast_info), rd_value(shared_data$actual_de_method)))
 }
 
 # Plotly expands a per-sample constant hover template once per lipid. In Team,
@@ -719,15 +778,49 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     if(identical(raw,"__EVERY__")) return(h$lipids)
     selection(raw,h$lipids)
   }
+  # Significant only: availability follows the inference guard alone; the
+  # Differential analysis result is read only when the view asks for it.
+  heat_significance_guard <- rd_heat_significance_guard(shared_data)
+  heat_significance_allowed <- reactive(heat_significance_guard(tryCatch(session$rootScope()$input$guide_design_type, error = function(e) NULL)))
+  heat_significance <- reactive({
+    g <- heat_significance_allowed()
+    if (!isTRUE(g$allowed)) return(list(allowed = FALSE, reason = g$reason, lipids = character(), criterion = NULL))
+    r <- rd_heat_significance_result(shared_data)
+    if (is.null(r)) return(list(allowed = FALSE, lipids = character(), criterion = NULL,
+      reason = "No Differential analysis result is available for the current comparison. Set the comparison in Differential analysis, then try again."))
+    c(list(allowed = TRUE, reason = NULL), r)
+  })
   heat_data <- reactive({
     h<-heat_base(); visible<-selection(input$heat_group_selection,h$groups)
-    lipids<-heat_selected(input$heat_lipid_selection,h)
+    significance<-if(identical(input$heat_significance,"significant")) heat_significance() else NULL
+    # Significant only shows every heatmap lipid that passes the criterion, in
+    # the heatmap's own row order; the lipid picker applies to All lipids.
+    lipids<-if(is.null(significance)) heat_selected(input$heat_lipid_selection,h) else h$lipids[h$lipids %in% significance$lipids]
     h$df$Group_visible<-h$df$Group %in% visible
     h$df$Lipid_visible<-h$df$Lipid_Name %in% lipids
     h$df$Visible<-h$df$Group_visible & h$df$Lipid_visible
     h$z<-h$full_z[lipids,visible,drop=FALSE]
     h$visible<-visible;h$lipids_visible<-lipids
+    if(!is.null(significance)){
+      h$df$DE_significant<-if(isTRUE(significance$allowed)) h$df$Lipid_Name %in% significance$lipids else NA
+      h$df$Significance_filter<-if(isTRUE(significance$allowed)) paste("Significant only:",significance$criterion) else paste("Significant only unavailable:",significance$reason)
+      h$significance<-significance
+    }
     h
+  })
+  # Under the Show control: why Significant only is unavailable, or what it
+  # currently shows (the card itself only says it could not update when empty).
+  output$heat_significance_status<-renderUI({
+    g<-heat_significance_allowed()
+    text<-if(!isTRUE(g$allowed)) paste("Significant only is unavailable.",g$reason) else if(identical(input$heat_significance,"significant")){
+      h<-tryCatch(heat_data(),error=function(e)NULL);s<-h$significance;k<-length(h$lipids_visible)
+      if(is.null(s)) NULL
+      else if(!isTRUE(s$allowed)) paste("Significant only is unavailable.",s$reason)
+      else if(!k) sprintf("No lipid in this heatmap passes the Differential analysis criterion (%s). Choose All lipids to show the heatmap.",s$criterion)
+      else sprintf("Showing %d significant lipid%s: %s.",k,if(k==1L)"" else "s",s$criterion)
+    }
+    tags$p(class="rd-heat-significance-note",id=session$ns("heat_significance_reason"),`data-rd-significance-for`=session$ns("heat_significance"),
+      `data-allowed`=if(isTRUE(g$allowed)) "true" else "false",role="status",text)
   })
   output$select_heat<-renderUI({
     h<-heat_base(); groups<-isolate(selection(input$heat_group_selection,h$groups))
@@ -741,7 +834,10 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   })
   output$heat_selection_summary<-renderText({h<-heat_data();sprintf('Groups & lipids · %d selected',length(h$lipids_visible))})
   output$plot_heat<-plotly::renderPlotly({
-    h<-heat_data();z<-h$z;validate(need(nrow(z)>0,'Select at least one lipid to display the heatmap.'), need(ncol(z)>0,'Select at least one group to display the heatmap.'))
+    h<-heat_data();z<-h$z;s<-h$significance
+    if(!is.null(s)) validate(need(isTRUE(s$allowed),paste("Significant only is unavailable.",s$reason,"Choose All lipids to show the heatmap.")),
+      need(nrow(z)>0,sprintf("No lipid in this heatmap passes the Differential analysis criterion (%s). Choose All lipids to show the heatmap.",s$criterion)))
+    validate(need(nrow(z)>0,'Select at least one lipid to display the heatmap.'), need(ncol(z)>0,'Select at least one group to display the heatmap.'))
     team_labels <- isTRUE(shared_data$team_compact_distribution)
     group_n <- h$df$Group_n[match(colnames(z),h$df$Group)]
     heat_ticks <- if (team_labels) vapply(seq_along(colnames(z)), function(i) rd_team_heat_tick(colnames(z)[i],group_n[i]), character(1)) else paste0(colnames(z),' (n=',group_n,')')
@@ -770,7 +866,15 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
         yaxis=list(title='',type='category',tickmode='array',tickvals=row_ticks,ticktext=vapply(row_ticks,function(x)if(nchar(x)>19)paste0(substr(x,1,18),'…')else x,character(1)),tickfont=list(size=10),automargin=TRUE),margin=list(l=125,r=20,t=10,b=if(team_labels)145 else 70))
   })
   output$note_heat<-renderUI({
-    h<-heat_data()
+    h<-heat_data();s<-h$significance
+    if(!is.null(s)){
+      if(!isTRUE(s$allowed)||!length(h$lipids_visible)) return(NULL)
+      missing<-length(setdiff(s$lipids,h$lipids))
+      return(paste(sprintf('Significant only: %d lipid%s pass%s the Differential analysis criterion (%s).',length(h$lipids_visible),if(length(h$lipids_visible)==1L)'' else 's',if(length(h$lipids_visible)==1L)'es' else '',s$criterion),
+        if(missing) sprintf('%d further significant lipid%s cannot be drawn here (missing/nonpositive values or zero variance).',missing,if(missing==1L)'' else 's') else '',
+        'The lipid picker applies to All lipids; group selection still applies. Full-cohort z-scores and color scale stay fixed; no test is run here.',
+        if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else ''))
+    }
     paste(sprintf('Showing %d of %d available lipids. Classes select individual lipids; rows are never combined. Full-cohort z-scores and color scale stay fixed.',length(h$lipids_visible),h$n),
       sprintf('%d excluded for missing/nonpositive values; %d for zero variance.',h$n_incomplete,h$n_constant),
       if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else '')
@@ -791,7 +895,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   output$dl_heat <- dl("top_variable_heatmap", function() heat_data()$df)
 
   invisible(list(pca=pca_data,composition=comp_data,composition_team=comp_team_data,distribution=dist_data,heatmap=heat_data,
-                violin_data=violin_data))
+                violin_data=violin_data,heatmap_significance=heat_significance,heatmap_significance_allowed=heat_significance_allowed))
 }
 
 results_dashboard_server <- function(input,output,session,shared_data) {

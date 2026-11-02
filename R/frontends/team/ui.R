@@ -54,6 +54,7 @@ ui <- page_navbar(
       includeCSS("www/team/css/dashboard.css"),
       includeCSS("www/team/css/dashboard_selection.css"),
       includeScript("www/team/js/dashboard_selection.js"),
+      includeScript("www/team/js/dashboard_significance.js"),
       includeCSS("www/team/css/palette_editor.css"),
       includeCSS("www/team/css/cell_show.css"),
       tags$script(src="team/vendor/jspdf.umd.min.js"),
