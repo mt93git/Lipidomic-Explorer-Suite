@@ -112,6 +112,14 @@ rd_shared_colors <- function(levels, mapping = NULL, fold_case = FALSE) {
   cols
 }
 
+# Standalone sourcing (unit tests) still needs the shared palette helpers.
+if (!exists("palette_distinct", mode = "function")) source(file.path("R", "utils_colors.R"))
+# Composition classes: resolve by identity, then never repeat a color within the
+# plot (palette_distinct, R/utils_colors.R). Bars and swatches share this map.
+rd_class_colors <- function(levels, mapping = NULL) {
+  palette_distinct(rd_shared_colors(levels, mapping, fold_case = TRUE))
+}
+
 rd_class <- function(lipids) {
   cls <- toupper(sub("[( /_\\-].*", "", trimws(lipids)))
   cls[is.na(cls) | !nzchar(cls)] <- "Unknown"
@@ -551,7 +559,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   })
   output$select_comp <- renderUI({
     df<-comp_full();lev<-levels(df$Class)
-    classes<-selection_bar('comp_class_selection',lev,selection(input$comp_class_selection,lev),'Visible lipid classes',rd_shared_colors(lev,rd_value(shared_data$class_color_map),fold_case=TRUE))
+    classes<-selection_bar('comp_class_selection',lev,selection(input$comp_class_selection,lev),'Visible lipid classes',rd_class_colors(lev,rd_value(shared_data$class_color_map)))
     if(!isTRUE(shared_data$team_compact_distribution)) return(classes)
     groups<-unique(as.character(df$Group))
     tagList(classes,
@@ -582,7 +590,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
       group_mode<-!identical(input$comp_axis_mode,'sample')
       chosen<-selection(input$comp_class_selection,levels(d$Class));visible<-selection(input$comp_group_selection,unique(as.character(d$Group)))
       validate(need(length(chosen)>0,'Select at least one lipid class.'),need(length(visible)>0,'Select at least one condition.'))
-      lev<-levels(d$Class);cols<-rd_shared_colors(lev,rd_value(shared_data$class_color_map),fold_case=TRUE)
+      lev<-levels(d$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
       p<-plotly::plot_ly(source=session$ns('rd_comp'))
       for(cl in lev) {
         if(group_mode) {
@@ -606,7 +614,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
         xaxis=axis,yaxis=list(title=if(group_mode)'Mean share of selected signal (%)' else 'Share of selected signal (%)',range=c(0,100)),
         showlegend=FALSE,margin=list(l=60,r=15,t=10,b=100)))
     }
-    df<-comp_full();lev<-levels(df$Class);cols<-rd_shared_colors(lev,rd_value(shared_data$class_color_map),fold_case=TRUE)
+    df<-comp_full();lev<-levels(df$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
     df$Hover<-paste0(unname(sample_hover()[as.character(df$Sample)]),"<br>Class: ",as.character(htmltools::htmlEscape(as.character(df$Class))))
     meta<-canvas_sample_labels();meta$teamClassSelection<-list(inputId=session$ns('comp_class_selection'),classes=unname(lev))
     plotly::plot_ly(df,x=~Sample,y=~Signal_sum,color=~Class,colors=cols[lev],legendgroup=~Class,type='bar',source=session$ns('rd_comp'),text=~Hover,textposition='none',
