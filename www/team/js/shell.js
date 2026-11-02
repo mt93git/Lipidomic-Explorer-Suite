@@ -100,7 +100,7 @@
   function closeMenus(except) { document.querySelectorAll('.ts-menu[data-open="true"]').forEach(function (m) { if (m !== except) { m.dataset.open = 'false'; var t = m.previousElementSibling; if (t) t.setAttribute('aria-expanded', 'false'); } }); }
   function menuButton(label, items, cls) {
     var wrap = el('div', 'ts-menu-wrap ' + (cls || ''));
-    var trigger = button('ts-tool ts-menu-trigger', label, function (e) { e.stopPropagation(); var open = panel.dataset.open !== 'true'; closeMenus(panel); panel.dataset.open = String(open); trigger.setAttribute('aria-expanded', String(open)); if (open) { var first = panel.querySelector('button:not([disabled]),summary'); if (first) first.focus(); } });
+    var trigger = button('ts-tool ts-menu-trigger', label, function (e) { e.stopPropagation(); var open = panel.dataset.open !== 'true'; closeMenus(panel); panel.dataset.open = String(open); trigger.setAttribute('aria-expanded', String(open)); if (open) { var first = Array.prototype.find.call(panel.querySelectorAll('button:not([disabled]),summary'), function (b) { return b.getClientRects().length; }); if (first) first.focus(); } });
     trigger.setAttribute('aria-haspopup', 'true'); trigger.setAttribute('aria-expanded', 'false');
     var panel = el('div', 'ts-menu'); panel.setAttribute('role', 'menu'); panel.dataset.open = 'false';
     items.forEach(function (item) { panel.appendChild(item); });
@@ -196,6 +196,7 @@
       el('p', 'ts-menu-note', 'Exports the finished figures as composed in Preview.')], 'ts-export');
     exportMenu.querySelector('.ts-menu-trigger').classList.add('ts-primary');
     var help = root.querySelector('.tc-save-help');
+    var expandItem;
     function compactOnly(b) { b.classList.add('ts-compact-only'); return b; }
     var moreItems = [
       compactOnly(item('Arrange', function () { proxy('.tc-arrange', root); })),
@@ -203,7 +204,7 @@
       compactOnly(item('Shapes', function () { shapes.click(); })),
       item('Paste plot', function () { proxy('.tc-paste-plot', root); }, '.tc-paste-plot'),
       item('Return all plots', function () { proxy('.tc-reset', root); }, '.tc-reset'),
-      item('Expand canvas', function () { proxy('.tc-focus-toggle', root); }, '.tc-focus-toggle'),
+      expandItem = item('Expand canvas', function () { proxy('.tc-focus-toggle', root); }, '.tc-focus-toggle'),
       item('Save & export…', function () { var l = guideLink('Save & export'); if (l) l.click(); }),
       item('Analysis tools', function () { var d = document.querySelector('.tw-canvas-tabs details'); if (d) { d.open = true; var s = d.querySelector('summary'); if (s) s.focus(); } })
     ];
@@ -220,7 +221,7 @@
     var fullToolsWidth = 0;
     function fitTools() {
       var space = toolbar.parentElement ? toolbar.parentElement.clientWidth - 24 : 0;
-      if (!space) return;
+      if (space <= 0 || !tools.getClientRects().length) return; // hidden: measure once visible
       if (!root.classList.contains('ts-tools-compact')) fullToolsWidth = Math.max(fullToolsWidth, Array.prototype.reduce.call(tools.children, function (w, c) { var cs = getComputedStyle(c); return w + c.offsetWidth + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0) + 2; }, 24));
       var compact = fullToolsWidth > space;
       if (compact !== root.classList.contains('ts-tools-compact')) root.classList.toggle('ts-tools-compact', compact);
@@ -236,7 +237,7 @@
       if (preview.textContent !== label) preview.textContent = label;
       if (preview.getAttribute('aria-pressed') !== String(inPreview)) preview.setAttribute('aria-pressed', String(inPreview));
       root.querySelectorAll('.ts-menu-item[data-enabled-from]').forEach(function (b) { var t = root.querySelector(b.dataset.enabledFrom), off = !t || t.disabled; if (b.disabled !== off) b.disabled = off; });
-      var focus = root.querySelector('.tc-focus-toggle'), expand = moreItems[2];
+      var focus = root.querySelector('.tc-focus-toggle'), expand = expandItem;
       if (focus && expand.textContent !== focus.textContent) expand.textContent = focus.textContent;
     }
     new MutationObserver(syncTools).observe(root, { attributes: true, subtree: true, attributeFilter: ['hidden', 'disabled'] });
