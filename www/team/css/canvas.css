@@ -30,3 +30,9 @@
 body.team-workspace-app a.tc-export-fallback,body.team-workspace-app a.plot-export-fallback{display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;padding:8px 12px;margin-left:6px;border:1px solid #bdcdd8;border-radius:7px;background:#fff;color:#2d5f8a;font:inherit;line-height:1.2;text-decoration:none;white-space:nowrap;vertical-align:middle;cursor:pointer}
 body.team-workspace-app a.tc-export-fallback:hover,body.team-workspace-app a.plot-export-fallback:hover{background:#edf3f8;border-color:#2d5f8a;text-decoration:none}
 body.team-workspace-app a.tc-export-fallback:focus-visible,body.team-workspace-app a.plot-export-fallback:focus-visible{outline:3px solid #2d5f8a;outline-offset:2px}
+
+/* A restored plot copy stays hidden until its saved data selection has rendered. */
+.tc-restore-settling{visibility:hidden!important}
+.tc-node:has(.tc-restore-settling)::after{content:'';position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border:2px solid #c9d3dd;border-top-color:#2d5f8a;border-radius:50%;animation:tc-restore-spin .8s linear infinite;pointer-events:none}
+@keyframes tc-restore-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.tc-node:has(.tc-restore-settling)::after{animation:none;border-color:#2d5f8a}}

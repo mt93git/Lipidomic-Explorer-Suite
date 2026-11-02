@@ -302,6 +302,21 @@
     var request=message&&instanceRequests.get(message.id);if(!request)return;
     try { initializeInstance(message,attempt,request); } catch(error) { failInstance(request,error); }
   }
+  // A restored copy may still show the render made before its saved inputs reached
+  // the server. Keep it hidden (same size, spinner) until its first render after the
+  // restored inputs has settled (or the app is idle), so the default view never flashes.
+  function settleRestored(el){
+    el.classList.add('tc-restore-settling');var gotValue=false,quietSince=0,idleSince=0,start=Date.now();
+    function onValue(e){if(e.name===el.id)gotValue=true;}
+    if(window.jQuery)jQuery(document).on('shiny:value',onValue);
+    (function tick(){
+      var now=Date.now(),own=el.classList.contains('recalculating'),busy=own||shinyBusy||document.documentElement.classList.contains('shiny-busy');
+      if(own||!gotValue)quietSince=0;else if(!quietSince)quietSince=now;
+      if(busy)idleSince=0;else if(!idleSince)idleSince=now;
+      if((quietSince&&now-quietSince>=300)||(idleSince&&now-idleSince>=2000)||now-start>45000||!el.isConnected){el.classList.remove('tc-restore-settling');if(window.jQuery)jQuery(document).off('shiny:value',onValue);return;}
+      setTimeout(tick,100);
+    })();
+  }
   function initializeInstance(message, attempt, request) {
     var suffix=request.source.slice(request.source.indexOf('-')+1), el=document.getElementById(message.id+'-'+suffix);
     if(!el){if(attempt===15){var host=document.getElementById(message.id+'_host');if(host){setInstanceInputs(request.instance);openInstanceControls({instance:request.instance,label:plotTitle(request.source),el:{id:message.id+'-'+suffix}});tell('Choose this plot’s data in its independent settings panel.');}}setTimeout(function(){instanceReady(message,(attempt||0)+1);},100);return;}
@@ -313,7 +328,7 @@
       var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null};
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
       var csvSource=csvByPlot[request.source];if(csvSource)csvByPlot[el.id]=message.id+(request.source.indexOf('-')<0?'-'+csvSource:csvSource.slice(request.source.indexOf('-')));
-      if(request.saved){restorePending.set(el.id,request.saved);hydratePending();}
+      if(request.saved){settleRestored(el);restorePending.set(el.id,request.saved);hydratePending();}
       else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
       var opened=document.getElementById(message.id+'_host');if(opened&&opened.classList.contains('is-open')&&r.node)TeamCanvasFloatingPanel.open(opened,r.node);
       renderList();changed();
