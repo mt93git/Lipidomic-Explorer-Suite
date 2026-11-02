@@ -81,7 +81,8 @@ team_group_comparison_ui <- function(id) {
   )
 }
 team_group_comparison_server <- function(id, shared_data, global_color_map) {
-  result <- team_group_comparison_adapter(logratio_server)(id, shared_data, global_color_map)
+  guarded <- team_group_comparison_guarded_data(shared_data)
+  result <- team_group_comparison_adapter(logratio_server)(id, guarded, global_color_map)
   shiny::moduleServer(id, function(input, output, session) {
     output$comparison_dependency <- plotly::renderPlotly(plotly::plot_ly())
     shiny::observe({
@@ -106,24 +107,15 @@ team_group_comparison_server <- function(id, shared_data, global_color_map) {
       inference_allowed <- tryCatch({
         if (!is.function(shared_data$inference_allowed)) NA else isTRUE(shared_data$inference_allowed(FALSE))
       }, error=function(e) NA)
+      # The module computed its p-values through the guarded policy, so when the
+      # participant check blocks, every p-value it produced (plot, CSV, PDF, ZIP) is NA.
+      inference_reason <- if (isTRUE(inference_allowed)) guarded$participant_reason() else NULL
+      if (!is.null(inference_reason)) inference_allowed <- FALSE
       db <- result$processed_db()
       shiny::req(db, db$plot_db)
       d <- db$plot_db
       cols <- intersect(c('Sample','GroupingVal','Feature','Plot_Value','P_Value','Significance','Is_Baseline','X_Grp','Facet_Grp'), names(d))
       d <- as.data.frame(d[,cols,drop=FALSE], stringsAsFactors=FALSE)
-      # Same independence check as Violin statistics: when a participant contributes
-      # more than one compared sample (or IDs are incomplete or ambiguous), unpaired
-      # tests would be pseudoreplication, so no p-values are shown, as when the design
-      # does not allow unpaired inference. Valid results are unchanged.
-      inference_reason <- NULL
-      if (isTRUE(inference_allowed)) {
-        check <- team_group_comparison_participants(shared_data, unique(as.character(d$Sample)))
-        if (!is.null(check$reason)) {
-          inference_allowed <- FALSE; inference_reason <- check$reason
-          if ('P_Value' %in% names(d)) d$P_Value <- NA_real_
-          if (all(c('Significance','Is_Baseline') %in% names(d))) d$Significance[!as.logical(d$Is_Baseline)] <- 'ns'
-        }
-      }
       for (nm in names(d)) if (is.factor(d[[nm]])) d[[nm]] <- as.character(d[[nm]])
       for (nm in names(d)) if (is.numeric(d[[nm]])) d[[nm]][!is.finite(d[[nm]])] <- NA_real_
       families <- team_group_comparison_families(shared_data$annotationData(), input$featureLevel,
@@ -147,8 +139,32 @@ team_group_comparison_server <- function(id, shared_data, global_color_map) {
 team_group_comparison_participants <- function(shared_data, samples) {
   df <- tryCatch(shared_data$data_processed(), error = function(e) NULL)
   meta <- tryCatch(shared_data$all_metadata(), error = function(e) NULL)
+  # Participants do not depend on lipids; a one-lipid selection must still be checked.
+  if (is.data.frame(df) && nrow(df) == 1L) df <- df[c(1L, 1L), , drop = FALSE]
   base <- tryCatch(team_violin_stats_base(df, meta, "Group1"), error = function(e) NULL)
   if (is.null(base) || !length(samples)) return(list(status = "unknown", reason = NULL))
   base$group <- ifelse(base$samples %in% samples, "compared", "other")
   team_violin_stats_participants(base, "compared")
+}
+
+# The log-ratio module compares every prepared sample that has metadata and gets
+# each p-value from shared_data$inference_allowed. Giving it a copy whose unpaired
+# policy also requires participant independence withholds p-values in every output
+# it produces (plot data, CSV, PDF and ZIP exports), not only on the Canvas card.
+team_group_comparison_guarded_data <- function(shared_data) {
+  policy <- shared_data$inference_allowed
+  if (!is.function(policy)) return(shared_data)
+  compared <- function() {
+    df <- shared_data$data_processed(); meta <- shared_data$all_metadata()
+    if (!is.data.frame(df) || !is.data.frame(meta) || !'FullName' %in% names(meta)) return(character())
+    intersect(setdiff(colnames(df), 'Lipid_Name'), as.character(meta$FullName))
+  }
+  reason <- shiny::reactive(tryCatch(team_group_comparison_participants(shared_data, compared())$reason, error = function(e) NULL))
+  guarded <- shared_data
+  guarded$participant_reason <- function() reason()
+  guarded$inference_allowed <- function(paired = FALSE) {
+    if (!isTRUE(policy(paired = paired))) return(FALSE)
+    isTRUE(paired) || is.null(reason())
+  }
+  guarded
 }
