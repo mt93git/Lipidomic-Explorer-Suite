@@ -307,9 +307,12 @@
   // render made after the server confirmed it holds every saved setting
   // ('team-canvas-instance-settled', sent ahead of that flush's output values).
   // A long timeout is only a fallback.
-  var settledInstances = {};
+  // The copy's restored render often arrives before its card is mounted, so the
+  // time of each instance's signal and of each output's latest value are kept.
+  var settledInstances = {}, outputValueAt = {}, messageSequence = 0;
+  if (window.jQuery) jQuery(document).on('shiny:value', function (e) { outputValueAt[e.name] = ++messageSequence; });
   function settleRestored(el, instanceId){
-    el.classList.add('tc-restore-settling');var settled=!!settledInstances[instanceId],drawn=false,start=Date.now();
+    el.classList.add('tc-restore-settling');var settled=!!settledInstances[instanceId],drawn=settled&&(outputValueAt[el.id]||0)>settledInstances[instanceId],start=Date.now();
     function onSettled(e){if(e.detail===instanceId)settled=true;}
     function onValue(e){if(e.name===el.id&&settled)drawn=true;}
     window.addEventListener('team-canvas-instance-settled',onSettled);
@@ -1636,7 +1639,7 @@
     });
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
-      Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]=true;window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
+      Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]=++messageSequence;window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);tell(message.message||'Could not create an independent plot.');});
       Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
       Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
