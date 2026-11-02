@@ -311,27 +311,29 @@
   // ends (shiny:idle) without a new value: the render already shown is current.
   // The copy's render often arrives before its card is mounted, so the order of the
   // signal and of each output's latest value is kept. 45 s is only a fallback.
-  var settledInstances = {}, outputValueAt = {}, idleAt = 0, messageSequence = 0;
-  if (window.jQuery) jQuery(document).on('shiny:value', function (e) { outputValueAt[e.name] = ++messageSequence; }).on('shiny:idle', function () { idleAt = ++messageSequence; });
+  // Plotly's completed draws of each copy are recorded from its first value (shiny:value
+  // fires before the binding renders), so a draw that finished before mounting counts.
+  var settledInstances = {}, outputValueAt = {}, outputDrawnAt = {}, idleAt = 0, messageSequence = 0;
+  if (window.jQuery) jQuery(document).on('shiny:value', function (e) {
+    outputValueAt[e.name] = ++messageSequence;
+    var target = /^tcinstance_/.test(e.name) && document.getElementById(e.name);
+    if (target && !target.tcDrawWatch) { target.tcDrawWatch = true; jQuery(target).on('plotly_afterplot', function () { outputDrawnAt[e.name] = ++messageSequence; }); }
+  }).on('shiny:idle', function () { idleAt = ++messageSequence; });
   function settleRestored(el, instanceId, generation){
     el.classList.add('tc-restore-settling');
-    var start=Date.now(), drawnAt=0, plot=el.classList.contains('js-plotly-plot')?el:el.querySelector('.js-plotly-plot');
-    function onDraw(){drawnAt=++messageSequence;}
+    var start=Date.now();
     function signal(){var s=settledInstances[instanceId];return s&&s.generation===generation?s.at:0;}
-    if(window.jQuery){jQuery(el).on('plotly_afterplot',onDraw);if(plot&&plot!==el)jQuery(plot).on('plotly_afterplot',onDraw);}
-    var mountedAt=messageSequence;
     (function tick(){
       var now=Date.now(),settled=signal(),value=outputValueAt[el.id]||0,ready=false;
       if(settled&&!el.classList.contains('recalculating')){
         if(value>settled){
-          // A value drawn after mounting, or received and drawn before the card was mounted.
-          var gd=el.classList.contains('js-plotly-plot')?el:el.querySelector('.js-plotly-plot');
-          ready=drawnAt>value||(value<=mountedAt&&!!(gd&&gd._fullLayout))||(!gd&&now-start>3000);
+          // That value must have been drawn (non-Plotly outputs: short grace period).
+          var plotly=el.classList.contains('plotly')||el.classList.contains('js-plotly-plot')||!!el.querySelector('.js-plotly-plot');
+          ready=(outputDrawnAt[el.id]||0)>value||(!plotly&&now-start>3000);
         } else ready=idleAt>settled;
       }
       if(ready||now-start>45000||!el.isConnected){
         requestAnimationFrame(function(){el.classList.remove('tc-restore-settling');});
-        if(window.jQuery){jQuery(el).off('plotly_afterplot',onDraw);if(plot&&plot!==el)jQuery(plot).off('plotly_afterplot',onDraw);}
         return;
       }
       setTimeout(tick,100);
