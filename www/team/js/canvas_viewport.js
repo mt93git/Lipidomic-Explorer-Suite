@@ -141,7 +141,7 @@
       if (options && options.topLeft) { scroll.scrollLeft=0; scroll.scrollTop=0; refresh(); return; }
       scroll.scrollLeft=Math.max(0,(node.offsetLeft+node.offsetWidth/2)*scale-scroll.clientWidth/2);
       // A floating toolbar covers the top of the viewport: keep the card's header below it.
-      var bar=root.querySelector('.tc-toolbar'), top=bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+8:16;
+      var top=toolbarReserve();
       scroll.scrollTop=readable?Math.max(0,node.offsetTop*scale-top):Math.max(0,(node.offsetTop+node.offsetHeight/2)*scale-scroll.clientHeight/2);
       // CSS zoom can make offset metrics differ slightly from painted pixels;
       // correct once from the actual rectangles after applying the scroll.
@@ -190,14 +190,18 @@
     var fitButton=nav.querySelector('.tc-zoom-fit');fitButton.disabled=!zoomSupported;
     if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Use the minimap to pan.';
     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
+    // Height covered at the top of the viewport by the floating toolbar plus room for its notices.
+    function toolbarReserve(){var bar=root.querySelector('.tc-toolbar');return bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+48:16;}
     function fitAll(){
       if(!scroll.clientWidth||!scroll.clientHeight)return;
       var items=Array.from(board.querySelectorAll('.tc-node'));if(!items.length){zoom(1);scroll.scrollLeft=0;scroll.scrollTop=0;refresh();return;}
       var x=Math.min.apply(null,items.map(function(n){return n.offsetLeft;})),y=Math.min.apply(null,items.map(function(n){return n.offsetTop;}));
       var right=Math.max.apply(null,items.map(function(n){return n.offsetLeft+n.offsetWidth;})),bottom=Math.max.apply(null,items.map(function(n){return n.offsetTop+n.offsetHeight;})),padding=32;
       // Keep the fitted figures clear of the minimap (its height at the bottom).
-      var reserve=nav.offsetParent?nav.offsetHeight+12:0,usableH=Math.max(120,scroll.clientHeight-padding*2-reserve);
-      zoom(Math.min(1,(scroll.clientWidth-padding*2)/(right-x),usableH/(bottom-y)));scroll.scrollLeft=Math.max(0,(x+(right-x)/2)*scale-scroll.clientWidth/2);scroll.scrollTop=Math.max(0,(y+(bottom-y)/2)*scale-(usableH/2+padding));refresh();
+      // ...and below the floating toolbar and its notice area, so no card header sits under them.
+      var reserve=nav.offsetParent?nav.offsetHeight+12:0,top=toolbarReserve(),usableH=Math.max(120,scroll.clientHeight-padding-top-reserve);
+      zoom(Math.min(1,(scroll.clientWidth-padding*2)/(right-x),usableH/(bottom-y)));scroll.scrollLeft=Math.max(0,(x+(right-x)/2)*scale-scroll.clientWidth/2);
+      var padTop=parseFloat(getComputedStyle(scroll).paddingTop)||0;scroll.scrollTop=Math.max(0,padTop+y*scale-top);refresh();
     }
     api.fitAll=fitAll;
     function navigate(e){
