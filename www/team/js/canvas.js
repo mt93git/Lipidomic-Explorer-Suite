@@ -310,19 +310,23 @@
   // The copy's restored render often arrives before its card is mounted, so the
   // time of each instance's signal and of each output's latest value are kept.
   var settledInstances = {}, outputValueAt = {}, messageSequence = 0;
-  if (window.jQuery) jQuery(document).on('shiny:value', function (e) { outputValueAt[e.name] = ++messageSequence; });
+  var idleAt = 0;
+  if (window.jQuery) jQuery(document).on('shiny:value', function (e) { outputValueAt[e.name] = ++messageSequence; }).on('shiny:idle', function () { idleAt = ++messageSequence; });
   function settleRestored(el, instanceId){
-    el.classList.add('tc-restore-settling');var settled=!!settledInstances[instanceId],drawn=settled&&(outputValueAt[el.id]||0)>settledInstances[instanceId],start=Date.now();
+    el.classList.add('tc-restore-settling');var settled=!!settledInstances[instanceId],drawn=settled&&((outputValueAt[el.id]||0)>settledInstances[instanceId]||idleAt>settledInstances[instanceId]),start=Date.now();
     function onSettled(e){if(e.detail===instanceId)settled=true;}
+    // A render after the signal, or the end of the server flush that sent it with no
+    // recalculation pending (saved settings equal to the defaults), means the shown render is the saved one.
     function onValue(e){if(e.name===el.id&&settled)drawn=true;}
+    function onIdle(){if(settled)drawn=true;}
     window.addEventListener('team-canvas-instance-settled',onSettled);
-    if(window.jQuery)jQuery(document).on('shiny:value',onValue);
+    if(window.jQuery)jQuery(document).on('shiny:value',onValue).on('shiny:idle',onIdle);
     (function tick(){
       var now=Date.now(),done=drawn&&!el.classList.contains('recalculating');
       if(done||now-start>45000||!el.isConnected){
         // Let Plotly draw the received value before revealing it.
         requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.remove('tc-restore-settling');});});
-        window.removeEventListener('team-canvas-instance-settled',onSettled);if(window.jQuery)jQuery(document).off('shiny:value',onValue);return;
+        window.removeEventListener('team-canvas-instance-settled',onSettled);if(window.jQuery)jQuery(document).off('shiny:value',onValue).off('shiny:idle',onIdle);return;
       }
       setTimeout(tick,100);
     })();
