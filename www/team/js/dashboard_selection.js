@@ -38,7 +38,7 @@
   function paintInput(record) {
     var parsed = read(record.input, record.choices, record.defaults), locked = inputLocked(record.id);
     record.wrappers.forEach(function (wrapper) {
-      wrapper.classList.add('tds-selection');
+      if (!wrapper.classList.contains('tds-selection')) wrapper.classList.add('tds-selection');
       wrapper.querySelectorAll('button[data-value],button[data-action]').forEach(function (button) {
         var selected = button.dataset.value !== undefined ? parsed.values.includes(button.dataset.value) : button.dataset.action === 'default' ? record.input.value === '__ALL__' : button.dataset.action === 'all' ? parsed.values.length === record.choices.length : parsed.values.length === 0;
         var pressed = selected ? 'true' : 'false';

@@ -335,7 +335,7 @@
     function backToCanvas() { var t = root.querySelector('#tc-workspace-tab'); if (t) t.click(); }
     function emptyState(message) {
       var box = document.createElement('div'); box.className = 'tc-preview-empty';
-      var h = document.createElement('h4'); h.textContent = /^Finish live plots/.test(message || '') ? 'Nothing to compose yet' : 'This page could not be composed';
+      var h = document.createElement('h4'); h.textContent = /^(Finish live plots|Finish every canvas plot|Add plots in Workspace|Add a plot or drawing|Independent plots are still loading|The analysis is updating|Queued add|Saved plots are waiting)/.test(message || '') ? 'Nothing to compose yet' : 'This page could not be composed';
       var p = document.createElement('p'); p.textContent = message || 'Finish the plots on the canvas to compose them here.';
       var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Back to canvas'; b.addEventListener('click', backToCanvas);
       box.append(h, p, b); return box;

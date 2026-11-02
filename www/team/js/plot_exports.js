@@ -92,7 +92,7 @@
       button.onclick=async function(){
         var gd=visiblePlot(widget),image=widget.querySelector('img');
         if(!gd&&!image){status.textContent='Wait for the plot to finish loading.';return;}
-        var buttons=bar.querySelectorAll('button');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
+        var buttons=bar.querySelectorAll('button:not(.ts-export-trigger)');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
         var name='lipidomic-'+widget.id.replace(/[^a-z0-9_-]/gi,'-');
         try{
           if(gd&&window.Plotly){
@@ -145,7 +145,7 @@
         button.onclick=async function(){
           var gd=widget.classList.contains('js-plotly-plot')?widget:widget.querySelector('.js-plotly-plot');
           if(!gd||!gd.data||!window.Plotly){status.textContent='Wait for the plot to finish loading.';return;}
-          var buttons=bar.querySelectorAll('button');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
+          var buttons=bar.querySelectorAll('button:not(.ts-export-trigger)');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
           var name='lipidomic-'+widget.id.replace(/[^a-z0-9_-]/gi,'-');
           try{
             await exportPlot(gd,format,name,bar);

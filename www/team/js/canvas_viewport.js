@@ -37,8 +37,8 @@
     grip.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();grip.setPointerCapture(e.pointerId);
       var start={x:e.clientX,y:e.clientY,l:nav.offsetLeft,t:nav.offsetTop},moved=false;nav.classList.add('is-dragging');
       function move(ev){if(Math.abs(ev.clientX-start.x)+Math.abs(ev.clientY-start.y)<3&&!moved)return;moved=true;placeMap(start.l+ev.clientX-start.x,start.t+ev.clientY-start.y,false);}
-      function end(){grip.removeEventListener('pointermove',move);nav.classList.remove('is-dragging');if(moved)placeMap(nav.offsetLeft,nav.offsetTop,true);}
-      grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end,{once:true});grip.addEventListener('pointercancel',end,{once:true});});
+      function end(){grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',end);grip.removeEventListener('pointercancel',end);nav.classList.remove('is-dragging');if(moved)placeMap(nav.offsetLeft,nav.offsetTop,true);}
+      grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
     grip.addEventListener('keydown',function(e){var d={ArrowLeft:[-16,0],ArrowRight:[16,0],ArrowUp:[0,-16],ArrowDown:[0,16]}[e.key];if(!d)return;e.preventDefault();placeMap(nav.offsetLeft+d[0],nav.offsetTop+d[1],true);});
     // Pull a placed minimap back inside when the visible canvas shrinks.
     if(window.ResizeObserver)new ResizeObserver(function(){if(nav.classList.contains('is-placed'))placeMap(nav.offsetLeft,nav.offsetTop,false);else restoreMap();}).observe(shell);

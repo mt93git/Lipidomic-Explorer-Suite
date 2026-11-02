@@ -7,8 +7,8 @@ body.ts-shell-app .navbar>.container-fluid{height:100%;flex-wrap:nowrap;gap:16px
 html body.ts-shell-app nav.navbar .navbar-toggler,html body.ts-shell-app nav.navbar>.container-fluid>.navbar-collapse{display:none!important}
 body.ts-shell-app .navbar-brand{margin:0;padding:0;display:flex;align-items:center;height:100%}
 body.ts-shell-app .guide-brand-lockup{display:flex;align-items:center;gap:10px}
-body.ts-shell-app .guide-brand-lockup #navbar_brand_logo_img{display:none!important}
-body.ts-shell-app .guide-brand-lockup img.ts-mark{width:26px;height:26px;border-radius:6px;object-fit:cover;background:#fff;display:block}
+/* The Libreros Lab logo as before, at the height the baseline used on the Canvas bar. */
+body.ts-shell-app .guide-brand-lockup #navbar_brand_logo_img{display:block!important;height:38px!important;max-height:38px!important;width:auto!important;max-width:150px!important;object-fit:contain;filter:none!important;opacity:1}
 body.ts-shell-app .guide-brand-lockup .guide-app-name{font:600 13px/1 'Nunito Sans',system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:#fff!important;border:0!important;padding:0!important;margin:0!important;white-space:nowrap}
 body.ts-shell-app .ts-topbar-extras{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;flex:1 1 auto;min-width:0;height:100%}
 body.ts-shell-app .ts-project{justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent;border:0;border-left:1px solid #3a4a5a;color:#c4d1dc;font:12.5px/1 'Nunito Sans',system-ui,sans-serif;padding:6px 0 6px 16px;cursor:pointer}
@@ -59,9 +59,9 @@ body.ts-shell-app[data-tw-screen=canvas] #team-workspace{margin:0;gap:0}
 #team-canvas-root.ts-shell.tc-focus-mode .tc-layout{height:100dvh}
 
 /* Floating toolbar */
-#team-canvas-root.ts-shell .tc-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:2px;flex-wrap:nowrap;max-width:calc(100% - 24px);min-height:0!important;padding:4px!important;background:#fff;border:1px solid var(--ts-line);border-radius:8px;box-shadow:0 1px 2px #141b240f}
+#team-canvas-root.ts-shell .tc-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:2px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px);min-height:0!important;padding:4px!important;background:#fff;border:1px solid var(--ts-line);border-radius:8px;box-shadow:0 1px 2px #141b240f}
 #team-canvas-root.ts-shell .tc-toolbar>:not(.ts-tools):not(.tc-restore-retry):not([class*=retry]){display:none!important}
-#team-canvas-root.ts-shell .ts-tools{display:flex;align-items:center;gap:2px}
+#team-canvas-root.ts-shell .ts-tools{display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap;row-gap:2px}
 #team-canvas-root.ts-shell .ts-tool{border:0;background:transparent;color:#3b4855;border-radius:5px;padding:5px 9px;font:12.5px/1.2 'Nunito Sans',system-ui,sans-serif;white-space:nowrap;min-height:28px;cursor:pointer}
 #team-canvas-root.ts-shell .ts-tool:hover:not(:disabled){background:#f1f4f7}
 #team-canvas-root.ts-shell .ts-tool:disabled{opacity:.45;cursor:default}
@@ -86,7 +86,8 @@ body.ts-shell-app[data-tw-screen=canvas] #team-workspace{margin:0;gap:0}
 
 /* Fixed inspector column with the companion's reserved home at its foot */
 #team-canvas-root.ts-shell .ts-inspector-column{grid-column:4;grid-row:1;display:flex;flex-direction:column;min-height:0;background:#fff;border-left:1px solid var(--ts-line)}
-#team-canvas-root.ts-shell .tc-selection-inspector{position:static!important;top:auto!important;left:auto!important;right:auto!important;width:auto!important;max-width:none;flex:1;min-height:0;max-height:none!important;overflow:auto;border:0!important;border-radius:0!important;box-shadow:none!important;z-index:auto}
+/* The column holds the inspector in place: it stays visible when its card is panned out of view. */
+#team-canvas-root.ts-shell .tc-selection-inspector{visibility:visible!important;position:static!important;top:auto!important;left:auto!important;right:auto!important;width:auto!important;max-width:none;flex:1;min-height:0;max-height:none!important;overflow:auto;border:0!important;border-radius:0!important;box-shadow:none!important;z-index:auto}
 #team-canvas-root.ts-shell .ts-inspector-empty{flex:1;padding:16px;color:var(--ts-muted);font-size:13px}
 #team-canvas-root.ts-shell .ts-inspector-empty .ts-label{display:block;font:500 10.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
 #team-canvas-root.ts-shell .ts-inspector-column:has(>.tc-selection-inspector:not([hidden]))>.ts-inspector-empty{display:none}
@@ -102,3 +103,8 @@ body.ts-shell-app #lipidomic-assistant-panel{box-sizing:border-box}
  #team-canvas-root.ts-shell .ts-tools{flex-wrap:wrap;row-gap:2px}
  body.ts-shell-app .ts-step span,body.ts-shell-app .ts-project{display:none}
 }
+
+/* Sign-in: full-screen mass-spectrum illustration behind the login card (Team only). */
+body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background:#fafaf8 url("team/img/login-spectrum.svg") center/cover no-repeat!important}
+body.ts-shell-app .team-library:has(.team-library-login){background:rgba(255,255,255,.96)!important;box-shadow:0 18px 50px rgba(22,34,48,.18),0 2px 6px rgba(22,34,48,.08)!important}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background-image:url("team/img/login-spectrum-static.svg")!important}}

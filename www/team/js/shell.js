@@ -28,8 +28,6 @@
     if (!navbar || navbar.querySelector('.ts-topbar-extras')) return !!navbar;
     var original = document.querySelector('#team-workspace .tw-steps');
     if (!original) return false;
-    var logo = document.getElementById('navbar_brand_logo_img');
-    if (logo) { var mark = el('img', 'ts-mark'); mark.src = 'team/img/favicon.png'; mark.alt = ''; logo.after(mark); }
     var name = navbar.querySelector('.guide-app-name'); if (name) name.textContent = 'Lipidomic Explorer';
     var extras = el('div', 'ts-topbar-extras');
     var project = button('ts-project', 'No project open', function () {
@@ -211,6 +209,8 @@
     tools.append(addPlot, sep(), arrange, text, shapes, sep(), undo, redo, sep(), preview, exportMenu, menu);
     toolbar.insertBefore(tools, toolbar.firstChild);
     toolbar.setAttribute('aria-label', 'Canvas tools'); toolbar.setAttribute('role', 'toolbar');
+    // When the toolbar wraps to more rows, keep the status notice and the top of the canvas below it.
+    if (window.ResizeObserver) new ResizeObserver(function () { var b = Math.round(toolbar.offsetTop + toolbar.offsetHeight); if (b > 0 && root.style.getPropertyValue('--ts-toolbar-bottom') !== b + 'px') root.style.setProperty('--ts-toolbar-bottom', b + 'px'); }).observe(toolbar);
     function syncTools() {
       var p = root.querySelector('#tc-preview-panel'), inPreview = !!(p && !p.hidden);
       // Write only real changes: this runs from an attribute observer on the same subtree.

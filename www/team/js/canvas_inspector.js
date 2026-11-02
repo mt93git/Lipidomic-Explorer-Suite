@@ -109,6 +109,9 @@
       heading.textContent = (node.querySelector('.tc-node-head strong') || {}).textContent || 'Selected object';
       var finished = node.classList.contains('tc-finished'), focusedControl = finished && (body.contains(document.activeElement) || statsBody.contains(document.activeElement));
       var plot = !node.classList.contains('tc-illustration'); if (!plot) activeTab = 'appearance';
+      // The retry window starts when the card becomes editable, not when it was selected.
+      if (!finished && node.__tcWasFinished && !movedData.length) dataPending = Date.now() + 15000;
+      node.__tcWasFinished = finished;
       // A finished card that becomes editable (Edit) gains module content: fill Data
       // then, retrying while its plot is still rendering.
       if (plot && !finished && !movedData.length && dataPending && Date.now() < dataPending && !inspector.hidden) { var until = dataPending; dataBody.textContent = ''; fillData(node); dataPending = movedData.length ? 0 : until; }

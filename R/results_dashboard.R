@@ -264,6 +264,32 @@ plotly_build.team_compact_distribution <- function(p, ...) {
   p
 }
 
+# Team violin style (presentation only): condition fill, outline darkened 45%,
+# black points, inner box darkened 15% / 60%, black axis frame with outside ticks
+# and a dotted horizontal grid. Values, samples and hover data are untouched.
+rd_darker <- function(col, f) {
+  m <- grDevices::col2rgb(col)[, 1]
+  grDevices::rgb(floor(m[1] * (1 - f) + .5), floor(m[2] * (1 - f) + .5), floor(m[3] * (1 - f) + .5), maxColorValue = 255)
+}
+plotly_build.team_violin_style <- function(p, ...) {
+  colors <- attr(p, 'team_violin_colors')
+  class(p) <- setdiff(class(p), 'team_violin_style')
+  p <- plotly::plotly_build(p, ...)
+  p$x$data <- lapply(p$x$data, function(trace) {
+    col <- if (identical(trace$type, 'violin')) unname(colors[as.character(trace$name)]) else NA
+    if (length(col) != 1L || is.na(col) || !grepl('^#[0-9A-Fa-f]{6}$', col)) return(trace)
+    trace$fillcolor <- col
+    trace$line <- list(color = rd_darker(col, .45), width = 1.2)
+    trace$marker <- list(color = '#000000', size = 5, opacity = 1, line = list(width = 0))
+    trace$box <- list(visible = TRUE, width = .22, fillcolor = rd_darker(col, .15), line = list(color = rd_darker(col, .60), width = 1))
+    trace
+  })
+  frame <- list(showline = TRUE, mirror = TRUE, linecolor = '#000000', ticks = 'outside')
+  p$x$layout$xaxis <- utils::modifyList(if (is.list(p$x$layout$xaxis)) p$x$layout$xaxis else list(), frame)
+  p$x$layout$yaxis <- utils::modifyList(if (is.list(p$x$layout$yaxis)) p$x$layout$yaxis else list(), c(frame, list(gridcolor = '#dddddd', griddash = 'dot')))
+  p
+}
+
 # Team Canvas labels use multiple lines without changing group keys or hover data.
 rd_team_heat_tick <- function(group, n) {
   label <- htmltools::htmlEscape(as.character(group))
@@ -417,6 +443,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
           text = "Dots: prepared sample values. Tails: smoothed estimates.",
           showarrow = FALSE, xanchor = "left", yanchor = "top",
           font = list(size = 10, color = "#52514e")))) |>
+      (function(p) { if (!isTRUE(shared_data$team_compact_distribution)) return(p); attr(p, 'team_violin_colors') <- si$colors; class(p) <- c('team_violin_style', class(p)); p })() |>
       htmlwidgets::onRender("function(el) { if (window.TeamViolinDisplay) return window.TeamViolinDisplay.fit(el); }")
   })
   output$note_violin <- renderUI({
