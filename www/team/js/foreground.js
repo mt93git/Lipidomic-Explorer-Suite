@@ -68,6 +68,20 @@
         serverStart(actions[button.id], button.id);
       }
     }, true);
+    // Enter in a sign-in or activation field acts like that form's button. The click opens the
+    // modal progress dialog, so a second Enter cannot submit again until the server answers.
+    var enterSubmits = {team_library_email:'team_library_login', team_library_password:'team_library_login'};
+    ['email','code','password','confirm'].forEach(function (key) { enterSubmits['team_library_activation_' + key] = 'team_library_activation_submit'; });
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' || event.isComposing || event.repeat || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+      var button = enterSubmits[event.target.id] && document.getElementById(enterSubmits[event.target.id]);
+      if (!button || button.disabled || operations.size) return;
+      event.preventDefault();
+      // Text inputs report on change; send the typed values before the action.
+      var form = button.closest('.team-library-login, .team-library-activation');
+      if (form && window.Shiny) form.querySelectorAll('input[id]').forEach(function (input) { Shiny.setInputValue(input.id, input.value, {priority:'event'}); });
+      button.click();
+    });
     document.addEventListener('change', function (event) {
       if (['data_hub-files','data_hub-import_session_file','sample_metadata_import-file'].indexOf(event.target.id) >= 0 && event.target.files && event.target.files.length) serverStart('Loading your files…', event.target.id);
     }, true);
