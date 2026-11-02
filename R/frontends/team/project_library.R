@@ -107,8 +107,18 @@ team_library_ui <- function() {
   tags$section(class="team-library",style="background:white;border:1px solid #d9e5e8;border-radius:12px;margin:16px;padding:20px;",
     tags$style(HTML(".team-library .shiny-input-container{width:100%!important;margin-bottom:10px}.team-library-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:18px;align-items:end}.team-library-login{display:flex;gap:16px;align-items:end;flex-wrap:wrap}.team-library-login>.shiny-input-container{flex:1;min-width:180px}.team-library select{min-height:44px}.team-library small{display:block;margin-top:14px;color:#526b77}@media(max-width:750px){.team-library-grid{grid-template-columns:1fr}.team-library{margin:8px!important;padding:16px!important}}")),
     h3("Project library"),p("Save a private checkpoint. Return to your analysis without uploading files again."),
-    uiOutput("team_library_account"),uiOutput("team_library_projects"),uiOutput("team_library_recovery"),
-    tags$p(role="status",textOutput("team_library_status")))
+    tagAppendChild(uiOutput("team_library_account"),team_library_login_placeholder()),uiOutput("team_library_projects"),uiOutput("team_library_recovery"),
+    tags$p(role="status",tagAppendChild(textOutput("team_library_status"),"Sign in to access saved projects.")))
+}
+# Shown inside the account output until the server's first render replaces it, so the sign-in card
+# has its final size from the first paint. Plain boxes, not inputs: nothing can be typed, focused or
+# autofilled by a password manager before the real form arrives.
+team_library_login_placeholder <- function() {
+  field <- function(label) div(class="form-group shiny-input-container",tags$label(class="control-label",label),
+    div(class="form-control",HTML("&nbsp;")))
+  tagList(div(class="team-library-login team-library-login-placeholder",`aria-hidden`="true",
+      field("Email"),field("Password"),tags$button(type="button",class="btn btn-default",tabindex="-1",tags$span("Sign in"))),
+    tags$details(class="team-library-activation",`aria-hidden`="true",tags$summary(tabindex="-1","Activate your invitation or reset your password")))
 }
 team_library_server <- function(input,output,session,shared_data,on_authenticated=NULL) {
   account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); status<-reactiveVal("Sign in to access saved projects.")

@@ -104,6 +104,22 @@ body.ts-shell-app #lipidomic-assistant-panel{box-sizing:border-box}
  body.ts-shell-app .ts-step span,body.ts-shell-app .ts-project{display:none}
 }
 
+/* First paint: the page arrives as the classic layout and the Team scripts restyle it on
+   DOMContentLoaded (shell.js) and when the guided layout first paints (guided.js). Keep it out of
+   sight until both have run, so the sign-in screen is the first thing shown. If a script fails,
+   the animation reveals the page anyway after 4 s. Opacity, not visibility: visibility is
+   inherited, so buttons with `transition: all` would fade in late on their own. */
+body:not(.ts-shell-app.guided-app){opacity:0;animation:ts-reveal 0s 4s forwards}
+@keyframes ts-reveal{to{opacity:1}}
+/* Stand-in for the sign-in form until the server renders the real one (same size, not usable). */
+.team-library-login-placeholder{pointer-events:none}
+/* Shiny dims outputs while they wait for the server; the stand-in must look exactly like the form. */
+#team_library_account.recalculating:has(.team-library-login-placeholder),
+#team_library_account.recalculating:has(.team-library-login-placeholder)>*,
+body:not([data-team-authenticated=true]) #team_library_status.recalculating{opacity:1!important;transition:none!important}
+/* Styled here rather than by the body classes the scripts add, so it is already blue on first paint. */
+.team-library-login-placeholder button{width:100%;margin-top:10px;background:#2d5f8a;border-color:#2d5f8a;color:#fff;transition:none}
+
 /* Sign-in: full-screen mass-spectrum illustration behind the login card (Team only). */
 body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background:#fafaf8 url("team/img/login-spectrum.svg") center/cover no-repeat!important}
 body.ts-shell-app .team-library:has(.team-library-login){background:rgba(255,255,255,.96)!important;box-shadow:0 18px 50px rgba(22,34,48,.18),0 2px 6px rgba(22,34,48,.08)!important}
