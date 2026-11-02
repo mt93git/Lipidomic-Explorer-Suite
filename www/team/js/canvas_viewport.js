@@ -248,6 +248,9 @@
       if(!items.length){zoom(1);scroll.scrollLeft=0;scroll.scrollTop=0;refresh();return;}
       var x=Math.min.apply(null,items.map(function(n){return n.x;})),y=Math.min.apply(null,items.map(function(n){return n.y;}));
       var right=Math.max.apply(null,items.map(function(n){return n.x+n.width;})),bottom=Math.max.apply(null,items.map(function(n){return n.y+n.height;})),padding=32;
+      // Camera only: the board may have been sized while hidden (cards measure 0 there),
+      // so make room for the framed cards before scrolling to them.
+      if(board.offsetWidth<right+40)board.style.width=(right+40)+'px';if(board.offsetHeight<bottom+40)board.style.height=(bottom+40)+'px';
       // Keep the fitted figures clear of the minimap (its height at the bottom).
       // ...and below the floating toolbar and its notice area, so no card header sits under them.
       var reserve=nav.offsetParent?nav.offsetHeight+12:0,top=toolbarReserve(),usableH=Math.max(120,scroll.clientHeight-padding-top-reserve);
