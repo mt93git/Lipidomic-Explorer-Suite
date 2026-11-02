@@ -668,6 +668,8 @@
   function expandBoard() {
     var width = 1320, height = 780;
     board.querySelectorAll('.tc-node').forEach(function (node) { width = Math.max(width, node.offsetLeft + node.offsetWidth + 40); height = Math.max(height, node.offsetTop + node.offsetHeight + 40); });
+    // Saved figures still waiting for their plot keep their room, so the restored camera stays put.
+    restorePending.forEach(function (n) { width = Math.max(width, n.x + n.width + 40); height = Math.max(height, n.y + n.height + 40); });
     board.style.width = width + 'px'; board.style.height = height + 'px';
   }
   // The checkpoint node-array order is the durable newest-first creation order.
@@ -1601,8 +1603,9 @@
       layout.classList.toggle('tc-library-hidden', hidden); toggle.setAttribute('aria-expanded', String(!hidden)); toggle.textContent = hidden ? 'Show library' : 'Hide library';
     } finally { applyingRestore = false; }
     state.nodes.forEach(function(n){if(n.instance)requestInstance(n.instance.source,null,n);});
-    syncEpoch++; hydratePending();
-    window.dispatchEvent(new CustomEvent('team-canvas-restored'));
+    syncEpoch++; hydratePending(); expandBoard();
+    // Saved geometry lets the viewport frame the workspace before the plots arrive.
+    window.dispatchEvent(new CustomEvent('team-canvas-restored', {detail:{nodes:state.nodes.map(function (n) { return {x:n.x, y:n.y, width:n.width, height:n.height}; })}}));
     window.dispatchEvent(new Event('team-document-restored'));
     state.nodes.filter(function (n) { return n.kind === 'illustration'; }).forEach(function (n) { restorePending.delete(n.id); if(!addIllustration(n.assetId,n)) restoreStatus('failed'); });
     restoreBuilding = false;

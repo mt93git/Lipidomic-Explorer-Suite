@@ -69,3 +69,15 @@ body.team-workspace-app[data-tw-screen="canvas"] #team-canvas-root>.tc-intro p{d
 #team-canvas-root .tc-catalog>.tc-library-tabs{padding-right:0}
 @media(max-width:720px){#team-canvas-root .tc-layout:not(.tc-library-hidden)>.tc-library-edge-toggle{left:170px}}
 @media print{#team-canvas-root .tc-library-edge-toggle{display:none!important}}
+
+/* Infinite dot grid. The dots belong to the viewport, not to the zoomed board, so they
+   cover the whole visible canvas at every zoom and pan. `local` scrolls the pattern with
+   the content (panning needs no script); canvas_viewport.js only sets the tile size when
+   the zoom changes. The origin is the content box, where the board's world (0,0) sits. */
+#team-canvas-root .tc-viewport-shell>.tc-scroll{background-image:radial-gradient(circle,var(--tc-grid-dot,#cdd6e2) 1px,transparent 1px);background-size:var(--tc-grid-size,22px) var(--tc-grid-size,22px);background-repeat:repeat;background-origin:content-box;background-attachment:local}
+body.team-workspace-app #team-canvas-root .tc-viewport-shell>.tc-scroll{--tc-grid-dot:var(--lab-line)}
+#team-canvas-root .tc-board.tc-world-board{background-image:none}
+/* While a restored workspace is being framed, keep the camera out of sight so it appears
+   already at its final zoom and position. canvas_viewport.js lifts this class itself and
+   with a timer; no CSS animation (libreros.css turns animations off for reduced motion). */
+#team-canvas-root .tc-viewport-shell.tc-camera-pending>.tc-scroll,#team-canvas-root .tc-viewport-shell.tc-camera-pending>.tc-navigation{opacity:0!important;pointer-events:none;transition:none!important}

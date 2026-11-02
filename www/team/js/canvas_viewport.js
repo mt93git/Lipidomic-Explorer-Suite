@@ -82,6 +82,9 @@
       spacer.style.height=Math.max(scroll.clientHeight,b.h*scale)+'px';
       if(board.style.transform)board.style.removeProperty('transform');
       var zoom=zoomSupported?String(scale):'';if(board.style.zoom!==zoom)board.style.zoom=zoom;
+      // Grid tile follows the zoom (22 world px); far out, every 2nd/4th... dot keeps it legible.
+      var tile=22*(zoomSupported?scale:1);while(tile<11)tile*=2;tile=Math.round(tile*1000)/1000+'px';
+      if(scroll.style.getPropertyValue('--tc-grid-size')!==tile)scroll.style.setProperty('--tc-grid-size',tile);
     }
     function fitViewport() {
       if(!scroll.getClientRects().length)return;
@@ -101,6 +104,7 @@
         var layout=root.querySelector('.tc-layout');if(close && layout && close.parentElement!==layout)layout.insertBefore(close,catalog);
       }
       if(!scroll.clientWidth || !scroll.clientHeight)return;
+      if(restoreNeedsFocus&&restorePlan)focusRestoredNode();
       sizeSpace(); var b=bounds(), w=Math.max(b.w,scroll.clientWidth/scale), h=Math.max(b.h,scroll.clientHeight/scale);
       map.setAttribute('viewBox','0 0 '+w+' '+h); nodes.replaceChildren();
       board.querySelectorAll('.tc-node').forEach(function(n){
@@ -128,21 +132,27 @@
       node.classList.add('tc-camera-target');
       var body=node.querySelector('.tc-content');
       if(body && !body.hasAttribute('tabindex')) { body.tabIndex=0; body.setAttribute('aria-label','Scrollable plot content'); }
-      var width=node.offsetWidth, height=node.offsetHeight;
+      focusRect({x:node.offsetLeft,y:node.offsetTop,width:node.offsetWidth,height:node.offsetHeight}, node, options);
+    }
+    // Camera only. `node` (optional) refines the result from its painted rectangle.
+    function focusRect(r, node, options) {
+      if (!scroll.clientWidth || !scroll.clientHeight) return;
+      var width=r.width, height=r.height;
       var readable=!!(options&&options.readable);
       var fit=readable?Math.min(1,(scroll.clientWidth-64)/Math.max(1,width)):Math.min(1, (scroll.clientWidth-64)/Math.max(1,width), (scroll.clientHeight-64)/Math.max(1,height));
       if (zoomSupported && (readable || fit < scale)) zoom(Math.max(.05, fit));
       // Leave a half viewport of world space beyond the target so centering is
       // possible even when the node was placed near an original board edge.
       var marginX=scroll.clientWidth/(2*scale), marginY=scroll.clientHeight/(2*scale);
-      board.style.width=Math.max(board.offsetWidth,node.offsetLeft+node.offsetWidth+marginX)+'px';
-      board.style.height=Math.max(board.offsetHeight,node.offsetTop+node.offsetHeight+marginY)+'px';
+      board.style.width=Math.max(board.offsetWidth,r.x+r.width+marginX)+'px';
+      board.style.height=Math.max(board.offsetHeight,r.y+r.height+marginY)+'px';
       sizeSpace();
       if (options && options.topLeft) { scroll.scrollLeft=0; scroll.scrollTop=0; refresh(); return; }
-      scroll.scrollLeft=Math.max(0,(node.offsetLeft+node.offsetWidth/2)*scale-scroll.clientWidth/2);
+      scroll.scrollLeft=Math.max(0,(r.x+r.width/2)*scale-scroll.clientWidth/2);
       // A floating toolbar covers the top of the viewport: keep the card's header below it.
       var top=toolbarReserve();
-      scroll.scrollTop=readable?Math.max(0,node.offsetTop*scale-top):Math.max(0,(node.offsetTop+node.offsetHeight/2)*scale-scroll.clientHeight/2);
+      scroll.scrollTop=readable?Math.max(0,r.y*scale-top):Math.max(0,(r.y+r.height/2)*scale-scroll.clientHeight/2);
+      if (!node) { refresh(); return; }
       // CSS zoom can make offset metrics differ slightly from painted pixels;
       // correct once from the actual rectangles after applying the scroll.
       var sr=scroll.getBoundingClientRect(), nr=node.getBoundingClientRect();
@@ -152,25 +162,64 @@
     }
     // Restore positions are data; adjust only the camera once a restored node
     // is available, and only if it does not fit in the visible viewport.
-    var restoreNeedsFocus=false, userMoved=false;
+    var restoreNeedsFocus=false, userMoved=false, restorePlan=null, pendingTimer=null, pendingShown=0;
     ['wheel','pointerdown','keydown'].forEach(function(name){scroll.addEventListener(name,function(){userMoved=true;},{passive:true});});
     nav.addEventListener('click',function(){userMoved=true;});
+    // A restored workspace is framed from its saved geometry, before its plots render
+    // (they arrive one by one from the server). Until that camera is applied the view is
+    // hidden, so it opens already at its final zoom/position instead of jumping there.
+    function reveal(){restorePlan=null;clearInterval(pendingTimer);pendingTimer=null;shell.classList.remove('tc-camera-pending');}
+    function hideUntilFramed(){
+      shell.classList.add('tc-camera-pending');pendingShown=0;clearInterval(pendingTimer);
+      // Fallback: never leave the canvas invisible. Once it has been on screen for ~1 s,
+      // frame what is known and show it whatever else failed. While the Canvas screen is
+      // not shown there is nothing to see, so the check simply keeps waiting (4 cheap ticks/s).
+      pendingTimer=setInterval(function(){
+        if(!shell.classList.contains('tc-camera-pending')){reveal();return;}
+        if(scroll.getClientRects().length&&scroll.clientWidth)pendingShown++;
+        if(pendingShown>=4){try{focusRestoredNode();}catch(e){}reveal();}
+      },250);
+    }
+    function extent(rects){var b=[Infinity,Infinity,-Infinity,-Infinity];rects.forEach(function(r){b=[Math.min(b[0],r.x),Math.min(b[1],r.y),Math.max(b[2],r.x+r.width),Math.max(b[3],r.y+r.height)];});return b.join(',');}
+    function savedRects(){return restorePlan?restorePlan.concat(nodeRects()):nodeRects();}
     function focusRestoredNode() {
       if (!restoreNeedsFocus || !scroll.clientWidth || !scroll.clientHeight) return;
+      if (restorePlan && restorePlan.length) {
+        restoreNeedsFocus=false; var rects=savedRects();
+        if (restorePlan.length > 1) {
+          // Several figures: open showing all of them. Re-check once unless the user
+          // moved: a no-op when the saved sizes held, a correction if a card changed.
+          var planned=restorePlan.length, framed=extent(rects);
+          fitRects(rects); userMoved=false;
+          setTimeout(function(){ var now=nodeRects(); if(!userMoved && now.length>=planned && extent(now)!==framed) fitAll(); }, 2500);
+        } else {
+          var r=rects[0], left=r.x*scale-scroll.scrollLeft, top=r.y*scale-scroll.scrollTop;
+          if (left < 0 || top < 0 || left+r.width*scale > scroll.clientWidth || top+r.height*scale > scroll.clientHeight) focusRect(r, null);
+        }
+        reveal(); return;
+      }
       var target=board.querySelector('.tc-node.is-selected') || board.querySelector('.tc-node');
-      if (!target) return;
+      if (!target) { reveal(); return; }
       restoreNeedsFocus=false;
       // Several figures: open showing all of them. Cards settle their size as
       // plots render, so fit again once unless the user has moved the view.
       if (board.querySelectorAll('.tc-node').length > 1 && !board.querySelector('.tc-node.is-selected')) {
         fitAll(); userMoved=false;
         setTimeout(function(){ if(!userMoved) fitAll(); }, 2500);
-        return;
+        reveal(); return;
       }
       var viewport=scroll.getBoundingClientRect(), rect=target.getBoundingClientRect();
       if (rect.left < viewport.left || rect.top < viewport.top || rect.right > viewport.right || rect.bottom > viewport.bottom) focusNode(target);
+      reveal();
     }
-    window.addEventListener('team-canvas-restored',function(){restoreNeedsFocus=true;requestAnimationFrame(function(){requestAnimationFrame(focusRestoredNode);});});
+    window.addEventListener('team-canvas-restored',function(event){
+      var nodes=event.detail&&Array.isArray(event.detail.nodes)?event.detail.nodes.filter(function(n){return n&&[n.x,n.y,n.width,n.height].every(Number.isFinite);}).map(function(n){return {x:n.x,y:n.y,width:n.width,height:n.height};}):null;
+      restoreNeedsFocus=true;restorePlan=nodes&&nodes.length?nodes:null;
+      if(restorePlan)hideUntilFramed();else reveal();
+      // Frame as soon as the canvas has a size: now if it is on screen, otherwise when it is shown.
+      if(scroll.clientWidth&&scroll.clientHeight)focusRestoredNode();
+      requestAnimationFrame(function(){requestAnimationFrame(focusRestoredNode);});
+    });
     api.focusNode=focusNode;
     api.setScale=zoom;
     api.focusNodeForPanel=function(node,panelWidth){
@@ -192,11 +241,13 @@
     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
     // Height covered at the top of the viewport by the floating toolbar plus room for its notices.
     function toolbarReserve(){var bar=root.querySelector('.tc-toolbar');return bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+48:16;}
-    function fitAll(){
+    function nodeRects(){return Array.from(board.querySelectorAll('.tc-node')).map(function(n){return {x:n.offsetLeft,y:n.offsetTop,width:n.offsetWidth,height:n.offsetHeight};});}
+    function fitAll(){fitRects(nodeRects());}
+    function fitRects(items){
       if(!scroll.clientWidth||!scroll.clientHeight)return;
-      var items=Array.from(board.querySelectorAll('.tc-node'));if(!items.length){zoom(1);scroll.scrollLeft=0;scroll.scrollTop=0;refresh();return;}
-      var x=Math.min.apply(null,items.map(function(n){return n.offsetLeft;})),y=Math.min.apply(null,items.map(function(n){return n.offsetTop;}));
-      var right=Math.max.apply(null,items.map(function(n){return n.offsetLeft+n.offsetWidth;})),bottom=Math.max.apply(null,items.map(function(n){return n.offsetTop+n.offsetHeight;})),padding=32;
+      if(!items.length){zoom(1);scroll.scrollLeft=0;scroll.scrollTop=0;refresh();return;}
+      var x=Math.min.apply(null,items.map(function(n){return n.x;})),y=Math.min.apply(null,items.map(function(n){return n.y;}));
+      var right=Math.max.apply(null,items.map(function(n){return n.x+n.width;})),bottom=Math.max.apply(null,items.map(function(n){return n.y+n.height;})),padding=32;
       // Keep the fitted figures clear of the minimap (its height at the bottom).
       // ...and below the floating toolbar and its notice area, so no card header sits under them.
       var reserve=nav.offsetParent?nav.offsetHeight+12:0,top=toolbarReserve(),usableH=Math.max(120,scroll.clientHeight-padding-top-reserve);
@@ -217,7 +268,8 @@
     scroll.addEventListener('scroll',refresh,{passive:true});window.addEventListener('resize',refresh);if(window.visualViewport)window.visualViewport.addEventListener('resize',refresh);nav.querySelector('details').addEventListener('toggle',function(){refresh();if(nav.classList.contains('is-placed'))requestAnimationFrame(function(){placeMap(nav.offsetLeft,nav.offsetTop,false);});});
     var observer=new MutationObserver(function(events){if(events.some(function(e){return e.target===board || (e.target.classList && e.target.classList.contains('tc-node'));})){refresh();if(restoreNeedsFocus)requestAnimationFrame(focusRestoredNode);}});
     observer.observe(board,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
-    if(window.ResizeObserver){var ro=new ResizeObserver(refresh);ro.observe(scroll);ro.observe(board);var intro=root.querySelector('.tc-intro');if(intro)ro.observe(intro);var tools=root.querySelector('.tc-toolbar');if(tools)ro.observe(tools);}
+    // Shown for the first time (size 0 -> N): frame a restored workspace before this frame paints.
+    if(window.ResizeObserver){var ro=new ResizeObserver(function(){if(restoreNeedsFocus&&restorePlan)focusRestoredNode();refresh();});ro.observe(scroll);ro.observe(board);var intro=root.querySelector('.tc-intro');if(intro)ro.observe(intro);var tools=root.querySelector('.tc-toolbar');if(tools)ro.observe(tools);}
     var visibility=new MutationObserver(refresh);visibility.observe(root,{attributes:true,attributeFilter:['class']});var panel=root.querySelector('#tc-workspace-panel');if(panel)visibility.observe(panel,{attributes:true,attributeFilter:['hidden']});
     api.refresh=refresh;refresh();
   };
