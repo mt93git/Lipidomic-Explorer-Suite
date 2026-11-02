@@ -12,10 +12,12 @@ assigned_function <- function(node, name) {
   }
   NULL
 }
-generator_ast <- assigned_function(body(logratio_server), "generate_zip_for_level")
+# Team wraps the module to pass a participant-guarded hub; inspect the module itself.
+module_server <- if (exists("team_logratio_unguarded")) team_logratio_unguarded(logratio_server) else logratio_server
+generator_ast <- assigned_function(body(module_server), "generate_zip_for_level")
 stopifnot(is.call(generator_ast), identical(generator_ast[[1L]], as.name("function")))
 
-scope <- new.env(parent = environment(logratio_server))
+scope <- new.env(parent = environment(module_server))
 scope$input <- list(groupingMetadata = "Group1", comparisonStrategy = "Faceted (Intra-group Reference)",
                     color_target_var = "Group1", shortYAxis = TRUE, scaleMode = "log2fc",
                     showBaseline = FALSE, sigDisplayType = "star", additiveFiltering = "advanced")
@@ -65,7 +67,7 @@ stopifnot(file.exists(out), length(entries) == 1L,
 # the third UI argument and pass the selected additive filter into the builder.
 for (pair in list(c("downloadAllMacroZip", "macro"),
                   c("downloadAllSubclassZip", "subclass"))) {
-  content_ast <- download_content(body(logratio_server), pair[[1L]])
+  content_ast <- download_content(body(module_server), pair[[1L]])
   stopifnot(is.call(content_ast))
   content <- eval(content_ast, envir = scope)
   handler_zip <- tempfile(fileext = ".zip")

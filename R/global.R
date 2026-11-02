@@ -1345,6 +1345,7 @@ if (identical(lipidomic_interface(), "team")) {
   qc_boxplot_server <- team_qc_vector_adapter(qc_boxplot_server)
   source("R/frontends/team/descriptive_inference_labels_adapter.R")
   logratio_server <- team_violin_export_labels_adapter(logratio_server)
+  logratio_server <- team_logratio_participant_guard_adapter(logratio_server)
   source("R/frontends/team/inferential_network_adapter.R")
   structural_server <- team_inferential_network_adapter(structural_server,"structural")
   fla_server <- team_inferential_network_adapter(fla_server,"fla")

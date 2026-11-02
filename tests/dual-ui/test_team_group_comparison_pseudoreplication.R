@@ -6,8 +6,8 @@ source("R/frontends/team/violin_statistics.R")
 source("R/modules/utils_stats.R")
 local({
   src <- parse("R/frontends/team/group_comparison.R")
-  keep <- vapply(src, function(e) is.call(e) && identical(e[[1]], as.name("<-")) && as.character(e[[2]]) %in% c("team_group_comparison_participants", "team_group_comparison_guarded_data"), logical(1))
-  stopifnot(sum(keep) == 2L); for (i in which(keep)) eval(src[[i]], globalenv())
+  keep <- vapply(src, function(e) is.call(e) && identical(e[[1]], as.name("<-")) && as.character(e[[2]]) %in% c("team_group_comparison_participants", "team_group_comparison_guarded_data", "team_logratio_participant_guard_adapter", "team_logratio_unguarded"), logical(1))
+  stopifnot(sum(keep) == 4L); for (i in which(keep)) eval(src[[i]], globalenv())
 })
 df <- data.frame(Lipid_Name = c("PC(34:1)", "PC(36:2)"), S1 = c(1, 2), S2 = c(2, 3), S3 = c(3, 4), S4 = c(4, 5), check.names = FALSE)
 hub <- function(meta) list(data_processed = function() df, all_metadata = function() meta)
@@ -60,4 +60,14 @@ shiny::isolate({
   g <- guard(c("P1", "P2", "P1", "P3"), allowed = FALSE)
   stopifnot(identical(g$inference_allowed(FALSE), FALSE))
 })
+# The original log-ratio card runs the same module with the same guarded policy;
+# Group comparison starts from the unguarded function and guards it itself.
+received <- NULL
+module <- function(id, shared_data, global_color_map) received <<- shared_data
+wrapped <- team_logratio_participant_guard_adapter(module)
+wrapped("logratio_tab", hub(meta(c("P1", "P2", "P1", "P3"))) |> within(inference_allowed <- function(paired = FALSE) TRUE), NULL)
+shiny::isolate(stopifnot(identical(received$inference_allowed(FALSE), FALSE), identical(received$participant_reason(), repeated$reason)))
+wrapped("logratio_tab", hub(meta(c("P1", "P2", "P3", "P4"))) |> within(inference_allowed <- function(paired = FALSE) TRUE), NULL)
+shiny::isolate(stopifnot(identical(received$inference_allowed(FALSE), TRUE)))
+stopifnot(identical(team_logratio_unguarded(wrapped), module), identical(team_logratio_unguarded(module), module))
 cat("PASS: group comparison uses Violin statistics' participant independence check\n")

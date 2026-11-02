@@ -82,7 +82,7 @@ team_group_comparison_ui <- function(id) {
 }
 team_group_comparison_server <- function(id, shared_data, global_color_map) {
   guarded <- team_group_comparison_guarded_data(shared_data)
-  result <- team_group_comparison_adapter(logratio_server)(id, guarded, global_color_map)
+  result <- team_group_comparison_adapter(team_logratio_unguarded(logratio_server))(id, guarded, global_color_map)
   shiny::moduleServer(id, function(input, output, session) {
     output$comparison_dependency <- plotly::renderPlotly(plotly::plot_ly())
     shiny::observe({
@@ -168,3 +168,17 @@ team_group_comparison_guarded_data <- function(shared_data) {
   }
   guarded
 }
+
+# The original log-ratio card ("Violin Plots · Logratio", restored from older
+# checkpoints and created from the catalog) runs the same module, so in Team it
+# receives the same guarded policy. Group comparison rewrites the module body and
+# therefore starts from the unguarded function, which it guards itself.
+team_logratio_participant_guard_adapter <- function(original) {
+  stopifnot(is.function(original))
+  guarded <- function(id, shared_data, global_color_map) {
+    original(id, team_group_comparison_guarded_data(shared_data), global_color_map)
+  }
+  attr(guarded, 'team_unguarded') <- original
+  guarded
+}
+team_logratio_unguarded <- function(server) attr(server, 'team_unguarded') %||% server
