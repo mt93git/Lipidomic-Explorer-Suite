@@ -122,9 +122,17 @@ body:not([data-team-authenticated=true]) #team_library_status.recalculating{opac
 .team-library-login-placeholder button{width:100%;margin-top:10px;background:#2d5f8a;border-color:#2d5f8a;color:#fff;transition:none}
 
 /* Sign-in: full-screen mass-spectrum illustration behind the login card (Team only). */
-body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background:#fafaf8 url("team/img/login-spectrum.svg") center/cover no-repeat!important}
+/* The Data step-1 matrix rides as a hidden second layer under the opaque spectrum: it is loaded and decoded
+   before the Data screen appears, so it never pops in after the content. */
+body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background:url("team/img/login-spectrum.svg") center/cover no-repeat,#fafaf8 url("team/img/data-matrix.svg") center/cover no-repeat!important}
 body.ts-shell-app .team-library:has(.team-library-login){background:rgba(255,255,255,.96)!important;box-shadow:0 18px 50px rgba(22,34,48,.18),0 2px 6px rgba(22,34,48,.08)!important}
-@media (prefers-reduced-motion:reduce){body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background-image:url("team/img/login-spectrum-static.svg")!important}}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app .bslib-sidebar-layout:has(.team-library-login){background-image:url("team/img/login-spectrum-static.svg"),url("team/img/data-matrix-static.svg")!important}}
+
+/* Data step 1 ("Choose how to begin"), signed in only: full-screen abundance matrix dissolving into the page.
+   Static variant for reduced motion; no other screen (sign-in included) shows it. */
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] .bslib-sidebar-layout:has(.team-library):not(:has(.team-library-login)){background:#fafaf8 url("team/img/data-matrix.svg") center/cover no-repeat!important}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] .bslib-sidebar-layout:has(.team-library):not(:has(.team-library-login)){background-image:url("team/img/data-matrix-static.svg")!important}}
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] :is(.team-library.ts-data-library,.guide-page>details.guide-panel){box-shadow:0 14px 40px rgba(22,34,48,.10),0 2px 6px rgba(22,34,48,.05)}
 
 /* The floating toolbar takes the width it needs (centred, never wider than the canvas);
    separators stay hairlines. At narrow widths secondary tools move into the ⋯ menu. */
