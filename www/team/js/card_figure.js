@@ -54,12 +54,47 @@
     if (!bar) { bar = document.createElement('div'); bar.className = 'tc-card-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Card actions'); head.appendChild(bar); }
     loose.forEach(function (b) { bar.appendChild(b); });
   }
+  // The board is CSS-zoomed, so a toolbar inside the header would shrink with
+  // it and, far out, crowd the title. It stays in the header (same buttons,
+  // ids and handlers) but is fixed-positioned at screen size: counter-zoomed
+  // and anchored just above the card's top edge, or below the header when the
+  // card's top is at the canvas edge. Never over the title.
+  function setStyle(el, prop, value) { if (el.style.getPropertyValue(prop) !== value) el.style.setProperty(prop, value); }
+  function place(node, view) {
+    var bar = node.querySelector(':scope > .tc-node-head > .tc-card-actions');
+    if (!bar) return;
+    var nr = node.getBoundingClientRect();
+    if (!nr.width || !view || nr.right <= view.left || nr.left >= view.right || nr.bottom <= view.top || nr.top >= view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
+    // CSSOM rounds zoom when serialising it back: compare the requested value,
+    // or every sweep would rewrite the style and wake the board observer again.
+    var zoom = node.currentCSSZoom || 1, counter = Math.round(1e4 / zoom) / 1e4;
+    if (bar._tcZoom !== counter) { bar._tcZoom = counter; bar.style.zoom = counter === 1 ? '' : String(counter); }
+    // A toolbar wider than the canvas wraps instead of running under the inspector.
+    setStyle(bar, 'max-width', Math.max(120, Math.floor(view.right - view.left - 8)) + 'px');
+    var br = bar.getBoundingClientRect(), head = node.querySelector(':scope > .tc-node-head').getBoundingClientRect();
+    var left = Math.min(nr.right - br.width, view.right - br.width - 4); left = Math.max(left, view.left + 4);
+    var top = nr.top - br.height;
+    if (top < view.top + 2) top = Math.max(head.bottom, view.top) + 2;
+    if (top + br.height > view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
+    setStyle(bar, 'visibility', '');
+    setStyle(bar, 'left', Math.round(left) + 'px'); setStyle(bar, 'top', Math.round(top) + 'px');
+  }
   function start() {
     var root = document.getElementById('team-canvas-root'), board = root && root.querySelector('.tc-board');
     if (!board) return;
     var queued = false;
-    function sweep() { queued = false; board.querySelectorAll(':scope > .tc-node').forEach(function (n) { mark(n); actions(n); }); }
+    var scroll = board.closest('.tc-scroll') || board, placing = false;
+    function placeAll() {
+      placing = false;
+      var v = scroll.getBoundingClientRect(); v = { left: Math.max(0, v.left), top: Math.max(0, v.top), right: Math.min(window.innerWidth, v.right), bottom: Math.min(window.innerHeight, v.bottom) };
+      board.querySelectorAll(':scope > .tc-node').forEach(function (n) { place(n, v); });
+    }
+    function schedulePlace() { if (!placing) { placing = true; requestAnimationFrame(placeAll); } }
+    function sweep() { queued = false; board.querySelectorAll(':scope > .tc-node').forEach(function (n) { mark(n); actions(n); }); placeAll(); }
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(sweep); } }
+    // Panning (canvas or page) and window resizes move cards on screen without a DOM change.
+    document.addEventListener('scroll', schedulePlace, { capture: true, passive: true });
+    window.addEventListener('resize', schedulePlace);
     // Plotly restyles its own SVG constantly (hover, zoom): those attribute changes never
     // affect what is parked, so only structural changes inside a plot wake the sweep.
     new MutationObserver(function (records) { if (records.some(function (r) { return r.type === 'childList' || !(r.target.closest && r.target.closest('.js-plotly-plot')); })) schedule(); }).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
