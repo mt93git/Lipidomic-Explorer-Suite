@@ -168,7 +168,8 @@
     var home = el('div', 'tc-companion-home'); home.setAttribute('aria-hidden', 'true');
     layout.appendChild(column); column.append(inspector, empty, home);
     // Selecting an object opens its properties in the column without an extra click.
-    window.addEventListener('team-canvas-selection', function () {
+    window.addEventListener('team-canvas-selection', function (event) {
+      if (!event.detail) return; // a cleared selection (Esc, removed card) must not re-open it
       setTimeout(function () {
         var trigger = root.querySelector('.tc-properties-toggle');
         // Open without moving focus (the user may be typing in the card, e.g. its title).
