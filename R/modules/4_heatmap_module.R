@@ -176,7 +176,6 @@ heatmap_ui <- function(id) {
             title = "Heatmap",
             subtitle = "This module provides interactive clustering and visualization of lipid abundance profiles across groups or individual replicates:",
             bullets = list(
-              tags$li(tags$strong("Unfiltered Heatmap:"), " Visualize Z-score row normalized global lipid profiles and clustering patterns across all measured species."),
               tags$li(tags$strong("Filtered Heatmap:"), " Focus hierarchical clustering exclusively on statistically significant differentially abundant lipids (following the set thresholds on the Differential Expression menu and through comparisons of interest) to identify clear lipidomic signatures."),
               tags$li(tags$strong("Violin View:"), " Evaluate statistical significance, abundance variation, and group distributions for selected target species or structural subsets across sample conditions.")
             ),
@@ -185,9 +184,7 @@ heatmap_ui <- function(id) {
           div(class = "heatmap-card-tabs hide-redundant-nav-tabs",
             navset_card_tab(
                id = ns("heatmap_tabs"),
-               nav_panel("Unfiltered Heatmap",
-                  uiOutput(ns("unfiltered_heatmap_container"))
-                ),
+               # Only statistically significant lipids are plotted (see significantLipids in 1_shared_data_module.R).
                 nav_panel("Filtered Heatmap",
                    uiOutput(ns("filtered_heatmap_container"))
                 ),
@@ -594,7 +591,7 @@ heatmap_server <- function(id, shared_data) {
              return(intersect(explicit_sel, all_global))
           }
           
-          tab_sel <- input$heatmap_tabs %||% "Unfiltered Heatmap"
+          tab_sel <- input$heatmap_tabs %||% "Filtered Heatmap"
           if (tab_sel == "Filtered Heatmap") {
              sig_lipids <- tryCatch(shared_data$significant_lipids(), shiny.silent.error = function(e) NULL, error = function(e) NULL)
              if (!is.null(sig_lipids) && length(sig_lipids) > 0) {
@@ -1145,7 +1142,7 @@ heatmap_server <- function(id, shared_data) {
     )
     
      observeEvent(input$show_condensed_formulas, {
-        tab_sel <- input$heatmap_tabs %||% "Unfiltered Heatmap"
+        tab_sel <- input$heatmap_tabs %||% "Filtered Heatmap"
         
         # Generate standard statistical report text first and append show formulas token
         msg <- generateHeatmapStatsMsg()
@@ -1553,7 +1550,7 @@ heatmap_server <- function(id, shared_data) {
         meta
      })
      output$dragDropOrderingUI <- renderUI({
-        tab_sel <- input$heatmap_tabs %||% "Unfiltered Heatmap"
+        tab_sel <- input$heatmap_tabs %||% "Filtered Heatmap"
         
         if (identical(tab_sel, "Violin View")) {
            meta <- shared_data$all_metadata()
@@ -2284,13 +2281,14 @@ heatmap_server <- function(id, shared_data) {
                             class_colors = current_class_colors,
                             origin_colors = current_origin_colors,
                             species_colors = shared_data$species_color_map(),
-                            annotation_cols = sort_cols_param)
-                            
+                            annotation_cols = sort_cols_param,
+                            square_layout = TRUE)
+
       validate(need(!is.null(heatmap_res), "Heatmap rendering failed internally. Check R console for logs."))
-      
+
       return(heatmap_res)
     })
-    
+
     unfilteredHeatmapSDObj <- reactive({
       req(input$repMode, input$heatmapScaleMode)
       if (!isTRUE(input$condenseRowsSD)) return(NULL)
@@ -3556,7 +3554,7 @@ heatmap_server <- function(id, shared_data) {
       p_thresh <- if (!is.null(de_sett) && !is.null(de_sett$p_threshold)) de_sett$p_threshold else 0.05
       fc_thresh <- if (!is.null(de_sett) && !is.null(de_sett$log2fc_threshold)) de_sett$log2fc_threshold else 1.0
       
-      tab_sel <- input$heatmap_tabs %||% "Unfiltered Heatmap"
+      tab_sel <- input$heatmap_tabs %||% "Filtered Heatmap"
       if (identical(tab_sel, "Violin View")) {
          target_lipids <- get_active_violin_lipids()
          base_ref <- input$violin_baseline_group_header %||% input$violin_baseline_group %||% "Control"

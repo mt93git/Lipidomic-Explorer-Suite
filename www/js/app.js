@@ -2020,7 +2020,6 @@
               icon: "fa-table-cells",
               target: "Heatmap",
               subsubtabs: [
-                { label: "Unfiltered Heatmap", icon: "fa-table-cells", target: "Unfiltered Heatmap" },
                 { label: "Filtered Heatmap", icon: "fa-filter", target: "Filtered Heatmap" },
                 { label: "Violin View", icon: "fa-scale-unbalanced", target: "Violin View" }
               ]
@@ -2119,7 +2118,7 @@
       };
 
       var activeSubsubMap = {
-        "Heatmap": "Unfiltered Heatmap",
+        "Heatmap": "Filtered Heatmap",
         "Composition": "Unfiltered (All)",
         "Dot Plots": "Structural Analysis Dot Plots",
         "Structural": "Structural Analysis Dot Plots",

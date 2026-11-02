@@ -301,7 +301,8 @@ generateHeatmapObject <- function(mat, title,
           class_colors = NULL, # Optional: Global class color map
           origin_colors = NULL, # Contextual origin colors (Passed from Shared Data)
           species_colors = NULL, # Granular species colors (Passed from Shared Data)
-          annotation_cols = c("subclass") # Vector of columns to annotate/sort by
+          annotation_cols = c("subclass"), # Vector of columns to annotate/sort by
+          square_layout = FALSE # Square cells, larger labels, color legend on top
 ) {
   
  # --- Pree-Flight Checks ---
@@ -384,10 +385,13 @@ generateHeatmapObject <- function(mat, title,
         colorRampPalette(RColorBrewer::brewer.pal(n=9, name="YlOrRd"))
       }
     }
+  } else if (isTRUE(square_layout) && is_diverging) {
+    # Cobalt blue (low) - white (middle) - Ruby red (high)
+    palette_generator <- colorRampPalette(c("#0047AB", "#FFFFFF", "#900603"))
   } else {
     palette_generator <- if (is_diverging) colorRampPalette(rev(RColorBrewer::brewer.pal(n=7, name="RdBu"))) else colorRampPalette(RColorBrewer::brewer.pal(n=9, name="YlOrRd"))
   }
-  
+
   pheatmap_args$color <- palette_generator(100)
   font_color_matrix <- matrix("black", nrow = nrow(mat_ord), ncol = ncol(mat_ord))
   
@@ -588,14 +592,30 @@ generateHeatmapObject <- function(mat, title,
      display_matrix <- matrix(sprintf("%.0f", display_nodes), nrow=nrow(display_nodes))
   }
   
-  common_args <- list(mat = matrix_to_plot, cluster_rows = FALSE, cluster_cols = FALSE, 
-                      border_color = if (isTRUE(show_grid)) grid_color else NA, 
-                      show_rownames = !hide_row_names, main = title, fontsize_row = 8, 
-                      annotation_row = row_ann_df, annotation_col = col_ann_df, 
-                      annotation_colors = ann_colors, 
-                      display_numbers = display_matrix, 
+  common_args <- list(mat = matrix_to_plot, cluster_rows = FALSE, cluster_cols = FALSE,
+                      border_color = if (isTRUE(show_grid)) grid_color else NA,
+                      show_rownames = !hide_row_names, main = title, fontsize_row = 8,
+                      annotation_row = row_ann_df, annotation_col = col_ann_df,
+                      annotation_colors = ann_colors,
+                      display_numbers = display_matrix,
                       fontsize_number = 8, number_color = font_color_matrix, silent = TRUE,
                       legend = FALSE)
+
+ # Square layout: lipids stay as rows (class band on the left), groups/samples as columns.
+ # Presentation only: the plotted values are unchanged.
+  if (isTRUE(square_layout)) {
+    n_lipids <- nrow(matrix_to_plot)
+    n_groups <- ncol(matrix_to_plot)
+    common_args$fontsize_row <- if (n_lipids <= 20) 14 else if (n_lipids <= 40) 12 else 9
+    common_args$fontsize_col <- 13
+    common_args$angle_col <- 45
+    # Square cells while they stay readable (>= 8 pt); otherwise fall back to filling the panel.
+    cell_pt <- floor(min(1100 / n_groups, 560 / n_lipids, 110))
+    if (cell_pt >= 8) {
+      common_args$cellwidth <- cell_pt
+      common_args$cellheight <- cell_pt
+    }
+  }
   
  # Scaling Logic Verification:
  # The `matrix_to_plot` object is already processed (e.g., Z-scored or normalized) in the preceding steps.
@@ -662,7 +682,24 @@ generateHeatmapObject <- function(mat, title,
         leg_grob <- grid::gTree(children = grid::gList(leg_title, leg_text, leg_rects))
         
         gt <- ht$gtable
-        
+
+        if (isTRUE(square_layout)) {
+          # Legend between the title and the heatmap, aligned with the matrix columns.
+          main_t <- gt$layout$t[gt$layout$name == "main"]
+          insert_after <- if (length(main_t) > 0) max(main_t) else 0
+          gt <- gtable::gtable_add_rows(gt, grid::unit(4.5, "lines"), insert_after)
+          matrix_col <- gt$layout$l[gt$layout$name == "matrix"]
+          if(length(matrix_col) == 0) matrix_col <- 3
+          leg_title$y <- grid::unit(0.85, "npc")
+          leg_text$y <- grid::unit(0.55, "npc")
+          leg_rects$y <- grid::unit(0.25, "npc")
+          leg_rects$height <- grid::unit(0.25, "npc")
+          leg_grob <- grid::gTree(children = grid::gList(leg_title, leg_text, leg_rects))
+          gt <- gtable::gtable_add_grob(gt, leg_grob, t = insert_after + 1, l = matrix_col[1], b = insert_after + 1, r = matrix_col[1], name = "custom_horizontal_legend", clip = "off")
+          ht$gtable <- gt
+          return(list(ht = ht, data = mat_ord, ann_colors = ann_colors))
+        }
+
         # Top margin: compact buffer (0.8 lines) so title starts snugly under card header/banner
         gt <- gtable::gtable_add_rows(gt, grid::unit(0.8, "lines"), 0)
         # Bottom margin: 8.0 lines for the custom horizontal legend
