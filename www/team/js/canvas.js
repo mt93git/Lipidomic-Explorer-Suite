@@ -56,7 +56,7 @@
     function close(panel){anchors.delete(panel);panel.style.visibility='';if(!anchors.size){if(frame!==null){cancelAnimationFrame(frame);frame=null;}unwatch();}else watch();}
     return {place:place,open:open,close:close};
   })();
-  var root, board, list, status, search, records = new Map(), pendingAdds = new Map(), sequence = 0, selectedRecord = null, preparation = null, shinyBusy = false, preparationGeneration = 0, activityGeneration = 0, syncTimer = null, syncEpoch = 0, restorePending = new Map(), ackWaiters = new Map(), applyingRestore = false, checkpointActive = false;
+  var root, board, list, status, search, records = new Map(), paletteClock = 0, pendingAdds = new Map(), sequence = 0, selectedRecord = null, preparation = null, shinyBusy = false, preparationGeneration = 0, activityGeneration = 0, syncTimer = null, syncEpoch = 0, restorePending = new Map(), ackWaiters = new Map(), applyingRestore = false, checkpointActive = false;
   var restoreReceipt = null, restoreBuilding = false, restoreFailed = false, restoreRetryButton = null;
   function showRestoreRetry() {
     if (!restoreRetryButton) return;
@@ -810,13 +810,14 @@
     settings.insertBefore(edit, settingsBody);
     node.append(head, settings, content); board.appendChild(node);
     if (!r.hydrating) node.dataset.teamFresh='true';
+    if (!r.hydrating) r.paletteInherit = true;
     r.node = node; r.target = target; r.home = home; r.bar = bar; r.barHome = barHome; r.originalHeight = originalHeight; r.originalHeightPriority = originalHeightPriority;
     registerCreation(node,r.el.id,!r.hydrating);
     r.editInputs = settingsBody.querySelectorAll('input'); r.labelInput = title; r.labelHeading = heading; r.backgroundInput = color; r.content = content; r.finishButton = finish; r.markInput = markColor;
     if (window.TeamPlotEditor) {
       settingsBody.hidden = true; settingsBody.style.display = 'none';
       var editorHost = document.createElement('div'); settings.appendChild(editorHost);
-      r.plotEditor = TeamPlotEditor.mount({container:editorHost,getPlot:function(){return plotFor(r);},isLocked:function(){return !!r.snapshot;},getState:function(){return r.visual.editor || {};},onChange:function(state){r.visual.editor=state; scheduleAppearance(r);}});
+      r.plotEditor = TeamPlotEditor.mount({container:editorHost,getPlot:function(){return plotFor(r);},isLocked:function(){return !!r.snapshot;},getState:function(){return r.visual.editor || {};},onChange:function(state){notePaletteEdit(r,r.visual.editor,state);r.paletteInherit=false;r.visual.editor=state; scheduleAppearance(r);}});
       settings.addEventListener('toggle',function(){if(settings.open && r.plotEditor)r.plotEditor.refresh();});
     }
     if (window.TeamCanvasStatistics && r.instance && TeamCanvasStatistics.supports(r.instance.source)) {
@@ -843,7 +844,7 @@
     moveNode(node, head);
     if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r); changed(); }); r.observer.observe(node); }
     board.classList.add('has-nodes'); expandBoard(); renderList();
-    requestAnimationFrame(function () { resize(r); if (!r.hydrating && r.visual && Object.keys(r.visual).length) applyAppearance(r); });
+    requestAnimationFrame(function () { resize(r); if (!r.hydrating && r.visual && Object.keys(r.visual).length) applyAppearance(r); inheritPaletteWhenReady(r); });
     if(!r.hydrating)presentNewNode(node,r.el.id);
     selectNode();
     if(r.instance&&window.jQuery)jQuery(r.el).trigger('shown');
@@ -1017,6 +1018,7 @@
         settled = true;
         if (r.editorSourceReset && window.TeamPlotEditor && TeamPlotEditor.resetSource) { TeamPlotEditor.resetSource(gd); r.editorSourceReset=false; }
         if (r.plotEditor) r.plotEditor.refresh();
+        inheritPaletteWhenReady(r);
         r.renderRevision = expected; r.sourceError = false; if (r.renderObserver) r.renderObserver.disconnect();
         if (r.node && r.statistics && window.TeamCanvasStatistics) TeamCanvasStatistics.rendered(r);
         if (r.node && sourceKey(r)==='results_dashboard-plot_heat') resize(r);
@@ -1202,6 +1204,40 @@
       }
       tell(format + ' is ready. If the download did not start, use Save ' + format + ' file.');
     } catch (error) { if (!snapshot.archived && r.snapshot === snapshot && snapshotInvalid(r,snapshot)) staleSnapshot(r); tell(error.message || 'Could not export the frozen figure. Try another format.'); }
+  }
+  // A new plot starts, once its figure first renders, with the group palette of
+  // the most recently re-paletted canvas plot (else the newest canvas plot that
+  // has one; edit times are per session). Only the palette name and
+  // the Healthy-in-grey choice are inherited; the editor maps it to sorted
+  // condition labels exactly as for the source plot, and never to continuous
+  // scales. Saved, copied and restored plots keep their own editor state.
+  function notePaletteEdit(r, before, after) {
+    before = before || {}; after = after || {};
+    if (after.palette && (after.palette !== before.palette || after.greyHealthy !== before.greyHealthy)) r.paletteEditedAt = ++paletteClock;
+  }
+  function inheritablePalette(target) {
+    if (!window.TeamPlotEditor || !TeamPlotEditor.palettes) return null;
+    var best = null, bestAt = -1;
+    Array.from(board.querySelectorAll('.tc-node[data-plot-id]')).forEach(function (node) {
+      var r = records.get(node.dataset.plotId), editor = r && r !== target && r.node === node && r.visual && r.visual.editor;
+      if (!editor || !TeamPlotEditor.palettes[editor.palette]) return;
+      var at = r.paletteEditedAt || 0; if (at >= bestAt) { best = editor; bestAt = at; }
+    });
+    return best ? {palette: best.palette, greyHealthy: best.greyHealthy !== false} : null;
+  }
+  function inheritPaletteWhenReady(r) {
+    var gd = r.paletteInherit && r.node && plotFor(r);
+    if (!gd || r.snapshot || !gd.data || !gd.data.length || !gd._fullLayout || !window.TeamPlotEditor) return;
+    var editor = r.visual.editor || {}, pending = !editor.palette && inheritablePalette(r);
+    if (!pending) { r.paletteInherit = false; return; }
+    // Plots without condition-coloured categorical series (heatmaps, class
+    // compositions, loading placeholders) have nothing to recolor and keep
+    // their own scales; a later render with group series may still inherit.
+    if (!TeamPlotEditor.paletteStyle(gd, {}, pending.palette, pending.greyHealthy, false).traces.length) return;
+    r.paletteInherit = false;
+    r.visual.editor = TeamPlotEditor.sanitize(Object.assign({}, editor, pending));
+    if (r.plotEditor) r.plotEditor.refresh();
+    scheduleAppearance(r);
   }
   function plotFor(r) { return r.el.classList.contains('js-plotly-plot') ? r.el : r.el.querySelector('.js-plotly-plot'); }
   function scalarMarks(gd) {
