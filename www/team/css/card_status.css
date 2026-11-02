@@ -13,12 +13,12 @@
 .ts-export.has-stale .ts-menu-trigger{position:relative}
 .ts-export.has-stale .ts-menu-trigger::after{content:'';position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#f0a92b;box-shadow:0 0 0 2px #fff}
 /* Keep the top of the canvas clear of the floating toolbar so card heads and their status stay readable. */
-/* The top row starts below the floating toolbar and its notice area. */
-#team-canvas-root.ts-shell .tc-scroll{padding-top:calc(var(--ts-toolbar-bottom,52px) + 48px)}
+#team-canvas-root.ts-shell .tc-scroll{padding-top:12px}
 /* Canvas status as a transient notice, not a permanent bottom strip. */
 /* Top centre, under the floating toolbar: clear of the minimap at every width. */
-#team-canvas-root.ts-shell .tc-status{position:absolute!important;left:50%!important;top:calc(var(--ts-toolbar-bottom,52px) + 12px)!important;bottom:auto!important;right:auto!important;transform:translateX(-50%) translateY(8px);max-width:min(560px,calc(100% - 24px))!important;width:max-content!important;height:auto!important;max-height:none!important;overflow:visible!important;white-space:normal!important;overflow-wrap:anywhere;padding:8px 14px!important;border-radius:8px!important;background:#162230!important;color:#e9eff4!important;font-size:12.5px!important;line-height:1.4;box-shadow:0 6px 18px rgba(20,27,36,.2);z-index:26;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;margin:0!important;border:0!important;min-height:0!important}
-#team-canvas-root.ts-shell .tc-status.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+/* Notices have their own reserved line between the toolbar and the canvas, so they never cover a card. */
+#team-canvas-root.ts-shell .tc-status{position:relative!important;order:1;align-self:center;left:auto!important;top:auto!important;bottom:auto!important;right:auto!important;transform:none;max-width:min(560px,calc(100% - 24px))!important;width:max-content!important;min-height:30px!important;height:auto!important;max-height:none!important;overflow:visible!important;white-space:normal!important;overflow-wrap:anywhere;margin:0 auto 4px!important;padding:6px 14px!important;border-radius:8px!important;background:#162230!important;color:#e9eff4!important;font-size:12.5px!important;line-height:1.4;box-shadow:none;z-index:26;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s;border:0!important}
+#team-canvas-root.ts-shell .tc-status.is-visible{opacity:1;visibility:visible;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){#team-canvas-root.ts-shell .tc-status{transition:none}}
 body.ts-shell-app .modal-header .ts-modal-close{margin-left:auto;opacity:.85}
 body.ts-shell-app .ts-saved[data-state=saving]::before{background:#d9a12b}
