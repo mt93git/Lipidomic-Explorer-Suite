@@ -1,0 +1,38 @@
+# Group comparison applies Violin statistics' participant independence check:
+# repeated, incomplete or ambiguous participant IDs among the compared samples
+# block unpaired p-values; unique or unmapped IDs leave results untouched.
+if (!exists("%||%")) `%||%` <- function(a, b) if (is.null(a)) b else a
+source("R/frontends/team/violin_statistics.R")
+local({
+  src <- parse("R/frontends/team/group_comparison.R")
+  keep <- vapply(src, function(e) is.call(e) && identical(e[[1]], as.name("<-")) && identical(as.character(e[[2]]), "team_group_comparison_participants"), logical(1))
+  stopifnot(sum(keep) == 1L); eval(src[[which(keep)]], globalenv())
+})
+df <- data.frame(Lipid_Name = c("PC(34:1)", "PC(36:2)"), S1 = c(1, 2), S2 = c(2, 3), S3 = c(3, 4), S4 = c(4, 5), check.names = FALSE)
+hub <- function(meta) list(data_processed = function() df, all_metadata = function() meta)
+meta <- function(ids) data.frame(FullName = paste0("S", 1:4), Group1 = c("A", "A", "B", "B"), PatientNumber = ids, stringsAsFactors = FALSE)
+samples <- paste0("S", 1:4)
+
+repeated <- team_group_comparison_participants(hub(meta(c("P1", "P2", "P1", "P3"))), samples)
+stopifnot(identical(repeated$status, "repeated"), grepl("pseudoreplication", repeated$reason, fixed = TRUE),
+          grepl("No p-values were computed", repeated$reason, fixed = TRUE))
+# Same wording as Violin statistics for the same samples.
+violin_base <- team_violin_stats_base(df, meta(c("P1", "P2", "P1", "P3")), "Group1")
+stopifnot(identical(repeated$reason, team_violin_stats_participants(violin_base, c("A", "B"))$reason))
+
+unique_ids <- team_group_comparison_participants(hub(meta(c("P1", "P2", "P3", "P4"))), samples)
+stopifnot(identical(unique_ids$status, "unique"), is.null(unique_ids$reason))
+
+unmapped <- team_group_comparison_participants(hub(meta(rep(NA_character_, 4))), samples)
+stopifnot(identical(unmapped$status, "absent"), is.null(unmapped$reason))
+
+incomplete <- team_group_comparison_participants(hub(meta(c("P1", NA, "P3", "P4"))), samples)
+stopifnot(identical(incomplete$status, "incomplete"), !is.null(incomplete$reason))
+
+# Only the compared samples count: a repeat outside them does not block.
+outside <- team_group_comparison_participants(hub(meta(c("P1", "P2", "P3", "P1"))), samples[1:3])
+stopifnot(identical(outside$status, "unique"))
+
+# Without prepared data the check abstains rather than blocking.
+stopifnot(is.null(team_group_comparison_participants(list(data_processed = function() NULL, all_metadata = function() NULL), samples)$reason))
+cat("PASS: group comparison uses Violin statistics' participant independence check\n")

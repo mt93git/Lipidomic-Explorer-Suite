@@ -111,6 +111,19 @@ team_group_comparison_server <- function(id, shared_data, global_color_map) {
       d <- db$plot_db
       cols <- intersect(c('Sample','GroupingVal','Feature','Plot_Value','P_Value','Significance','Is_Baseline','X_Grp','Facet_Grp'), names(d))
       d <- as.data.frame(d[,cols,drop=FALSE], stringsAsFactors=FALSE)
+      # Same independence check as Violin statistics: when a participant contributes
+      # more than one compared sample (or IDs are incomplete or ambiguous), unpaired
+      # tests would be pseudoreplication, so no p-values are shown, as when the design
+      # does not allow unpaired inference. Valid results are unchanged.
+      inference_reason <- NULL
+      if (isTRUE(inference_allowed)) {
+        check <- team_group_comparison_participants(shared_data, unique(as.character(d$Sample)))
+        if (!is.null(check$reason)) {
+          inference_allowed <- FALSE; inference_reason <- check$reason
+          if ('P_Value' %in% names(d)) d$P_Value <- NA_real_
+          if (all(c('Significance','Is_Baseline') %in% names(d))) d$Significance[!as.logical(d$Is_Baseline)] <- 'ns'
+        }
+      }
       for (nm in names(d)) if (is.factor(d[[nm]])) d[[nm]] <- as.character(d[[nm]])
       for (nm in names(d)) if (is.numeric(d[[nm]])) d[[nm]][!is.finite(d[[nm]])] <- NA_real_
       families <- team_group_comparison_families(shared_data$annotationData(), input$featureLevel,
@@ -118,13 +131,24 @@ team_group_comparison_server <- function(id, shared_data, global_color_map) {
       groups <- as.character(db$ordered_groups)
       context <- team_group_comparison_palette_context(settings$grouping,settings$comparison)
       colors <- rd_team_resolved_condition_colors(groups, rd_value(shared_data$palette_settings), context)
-      signature <- digest::digest(list(data=d,settings=settings,inference_allowed=inference_allowed),algo='sha256')
+      signature <- digest::digest(list(data=d,settings=settings,inference_allowed=inference_allowed,inference_reason=inference_reason),algo='sha256')
       session$sendCustomMessage('team-group-comparison-data', list(id=id, rows=d,
         groups=groups, baseline=as.character(db$baseline_grp), settings=settings, families=families,
         conditionColors=as.list(colors),requiresConfirmation=FALSE,scienceSignature=signature,
-        inferenceAllowed=inference_allowed))
+        inferenceAllowed=inference_allowed,inferenceReason=inference_reason))
     })
 
   })
   invisible(result)
+}
+
+# Participant independence over the compared samples, reusing Violin statistics'
+# rules (PatientNumber, else Patient_ID; repeated, incomplete or ambiguous IDs block).
+team_group_comparison_participants <- function(shared_data, samples) {
+  df <- tryCatch(shared_data$data_processed(), error = function(e) NULL)
+  meta <- tryCatch(shared_data$all_metadata(), error = function(e) NULL)
+  base <- tryCatch(team_violin_stats_base(df, meta, "Group1"), error = function(e) NULL)
+  if (is.null(base) || !length(samples)) return(list(status = "unknown", reason = NULL))
+  base$group <- ifelse(base$samples %in% samples, "compared", "other")
+  team_violin_stats_participants(base, "compared")
 }
