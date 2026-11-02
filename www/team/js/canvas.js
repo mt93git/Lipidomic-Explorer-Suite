@@ -303,17 +303,19 @@
     try { initializeInstance(message,attempt,request); } catch(error) { failInstance(request,error); }
   }
   // A restored copy may still show the render made before its saved inputs reached
-  // the server. Keep it hidden (same size, spinner) until its first render after the
-  // restored inputs has settled (or the app is idle), so the default view never flashes.
+  // the server. Keep it hidden (same size, spinner) until a render that started after
+  // the restore has arrived and the app is idle, so the default view never flashes.
+  // A render with no recalculation after the restore is the stale one and is ignored.
   function settleRestored(el){
-    el.classList.add('tc-restore-settling');var gotValue=false,quietSince=0,idleSince=0,start=Date.now();
-    function onValue(e){if(e.name===el.id)gotValue=true;}
-    if(window.jQuery)jQuery(document).on('shiny:value',onValue);
+    el.classList.add('tc-restore-settling');var recalculated=false,gotValue=false,idleSince=0,start=Date.now();
+    function onRecalc(e){if(e.target===el||e.name===el.id){recalculated=true;gotValue=false;}}
+    function onValue(e){if(e.name===el.id&&recalculated)gotValue=true;}
+    if(window.jQuery)jQuery(document).on('shiny:recalculating',onRecalc).on('shiny:value',onValue);
     (function tick(){
-      var now=Date.now(),own=el.classList.contains('recalculating'),busy=own||shinyBusy||document.documentElement.classList.contains('shiny-busy');
-      if(own||!gotValue)quietSince=0;else if(!quietSince)quietSince=now;
+      var now=Date.now(),busy=el.classList.contains('recalculating')||shinyBusy||document.documentElement.classList.contains('shiny-busy');
       if(busy)idleSince=0;else if(!idleSince)idleSince=now;
-      if((quietSince&&now-quietSince>=300)||(idleSince&&now-idleSince>=2000)||now-start>45000||!el.isConnected){el.classList.remove('tc-restore-settling');if(window.jQuery)jQuery(document).off('shiny:value',onValue);return;}
+      var idle=idleSince?now-idleSince:0;
+      if((gotValue&&idle>=400)||idle>=2000||now-start>45000||!el.isConnected){el.classList.remove('tc-restore-settling');if(window.jQuery)jQuery(document).off('shiny:recalculating',onRecalc).off('shiny:value',onValue);return;}
       setTimeout(tick,100);
     })();
   }
