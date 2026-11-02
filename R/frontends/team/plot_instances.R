@@ -179,6 +179,22 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     # even when the browser last reported the parked source as hidden. Sibling
     # family outputs retain Shiny's normal suspension policy.
     shiny::outputOptions(output,paste0(id,'-',resolved$output),suspendWhenHidden=FALSE)
+    # Seed the saved settings into the new host's controls in this same flush, so
+    # the browser's first values for the copy are its own (never the UI defaults)
+    # and each output is computed once from them. The browser still checks and
+    # re-sends any value a control could not take (e.g. server-side selectize).
+    for (key in names(value$inputs)) session$sendInputMessage(paste0(id,'-',key),list(value=value$inputs[[key]]))
+    # Tell the browser when the server holds every saved value. Output values of
+    # that flush follow this message, so the next render of the copy is the
+    # restored one; the browser uses it to reveal a restored card.
+    if (length(value$inputs)) {
+      expected <- value$inputs;seen <- FALSE
+      same <- function(a,b) { a <- as.character(unlist(a,use.names=FALSE));b <- as.character(unlist(b,use.names=FALSE));identical(a,b)||(!length(a)&&!length(b))||(length(a)==1L&&length(b)==1L&&!is.na(suppressWarnings(as.numeric(a)))&&identical(suppressWarnings(as.numeric(a)),suppressWarnings(as.numeric(b)))) }
+      settled <- shiny::observe({
+        ok <- all(vapply(names(expected),function(key)same(input[[paste0(id,'-',key)]],expected[[key]]),logical(1)))
+        if (ok && !seen) { seen <<- TRUE;session$sendCustomMessage('team-canvas-instance-settled',list(id=id));settled$destroy() }
+      },priority=-100)
+    } else session$sendCustomMessage('team-canvas-instance-settled',list(id=id))
     # Send within the current reactive flush. A message enqueued from onFlushed
     # can otherwise wait indefinitely for an unrelated subsequent flush.
     session$sendCustomMessage('team-canvas-instance-ready',c(value,list(allowedInputs=team_plot_instance_input_ids(value$source))))

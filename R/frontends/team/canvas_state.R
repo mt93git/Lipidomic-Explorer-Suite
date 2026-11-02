@@ -580,7 +580,24 @@ team_canvas_validate <- function(state, image_cache = NULL) {
 team_canvas_json <- function(state) jsonlite::toJSON(state, auto_unbox = TRUE, null = "null", digits = NA)
 team_canvas_read <- function(path) {
   if (!file.exists(path) || file.info(path)$size > team_canvas_limits$bytes) team_canvas_fail("Figure canvas state exceeds 24 MiB.")
-  team_canvas_validate(jsonlite::read_json(path, simplifyVector = FALSE))
+  # Keep the figures validated while reading, indexed by content, so the import
+  # that follows in the same restore does not validate the same SVGs again.
+  cache <- team_canvas_image_cache()
+  state <- team_canvas_validate(jsonlite::read_json(path, simplifyVector = FALSE), image_cache = cache)
+  attr(state, "team_canvas_image_cache") <- cache
+  state
+}
+
+# Copy figures already validated while reading an archive into a session cache.
+# Entries are keyed by SHA-256 of the exact figure and re-checked for equality on
+# every hit, so a changed figure is always validated again.
+team_canvas_image_cache_adopt <- function(cache, from) {
+  if (!is.environment(from) || !is.environment(from$entries)) return(invisible(cache))
+  for (key in from$order) {
+    entry <- get(key, envir = from$entries, inherits = FALSE)
+    team_canvas_image_cached(entry$url, cache, validate = function(url) url)
+  }
+  invisible(cache)
 }
 
 team_canvas_server <- function(input, output, session, shared_data) {
@@ -616,6 +633,10 @@ team_canvas_server <- function(input, output, session, shared_data) {
     team_canvas_validate(state, image_cache = image_cache)
   }
   session$userData$team_canvas_import <- function(state = NULL, provenance = NULL) {
+    if (!is.null(state)) {
+      team_canvas_image_cache_adopt(image_cache, attr(state, "team_canvas_image_cache", exact = TRUE))
+      attr(state, "team_canvas_image_cache") <- NULL
+    }
     validated <- if (is.null(state)) NULL else team_canvas_validate(state, image_cache = image_cache)
     restore_sequence <<- restore_sequence + 1L
     token <- paste0('restore-', restore_sequence)

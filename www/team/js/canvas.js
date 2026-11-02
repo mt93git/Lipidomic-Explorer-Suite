@@ -202,7 +202,8 @@
       var id=instance.id+'-'+key, value=instance.inputs[key], el=document.getElementById(id);
       if(el&&el.selectize&&value!=null){var selectize=el.selectize;(Array.isArray(value)?value:[value]).forEach(function(item){var key=String(item);if(!selectize.options[key]){var option={};option[selectize.settings.valueField||'value']=item;option[selectize.settings.labelField||'label']=key;selectize.addOption(option);}});selectize.setValue(value,true);}
       if(el && window.jQuery){var binding=jQuery(el).data('shiny-input-binding');if(binding){try{binding.receiveMessage(el,{value:value});}catch(e){try{binding.setValue(el,value);}catch(ignore){}}}}
-      Shiny.setInputValue(id,value,{priority:'event'});
+      // One coalesced batch: each copy's outputs are computed once from all of its settings.
+      Shiny.setInputValue(id,value);
     });
   }
   function restoreDashboardControls(host){
@@ -302,20 +303,24 @@
     var request=message&&instanceRequests.get(message.id);if(!request)return;
     try { initializeInstance(message,attempt,request); } catch(error) { failInstance(request,error); }
   }
-  // A restored copy may still show the render made before its saved inputs reached
-  // the server. Keep it hidden (same size, spinner) until a render that started after
-  // the restore has arrived and the app is idle, so the default view never flashes.
-  // A render with no recalculation after the restore is the stale one and is ignored.
-  function settleRestored(el){
-    el.classList.add('tc-restore-settling');var recalculated=false,gotValue=false,idleSince=0,start=Date.now();
-    function onRecalc(e){if(e.target===el||e.name===el.id){recalculated=true;gotValue=false;}}
-    function onValue(e){if(e.name===el.id&&recalculated)gotValue=true;}
-    if(window.jQuery)jQuery(document).on('shiny:recalculating',onRecalc).on('shiny:value',onValue);
+  // A restored copy stays hidden (same size, spinner) until the browser has drawn a
+  // render made after the server confirmed it holds every saved setting
+  // ('team-canvas-instance-settled', sent ahead of that flush's output values).
+  // A long timeout is only a fallback.
+  var settledInstances = {};
+  function settleRestored(el, instanceId){
+    el.classList.add('tc-restore-settling');var settled=!!settledInstances[instanceId],drawn=false,start=Date.now();
+    function onSettled(e){if(e.detail===instanceId)settled=true;}
+    function onValue(e){if(e.name===el.id&&settled)drawn=true;}
+    window.addEventListener('team-canvas-instance-settled',onSettled);
+    if(window.jQuery)jQuery(document).on('shiny:value',onValue);
     (function tick(){
-      var now=Date.now(),busy=el.classList.contains('recalculating')||shinyBusy||document.documentElement.classList.contains('shiny-busy');
-      if(busy)idleSince=0;else if(!idleSince)idleSince=now;
-      var idle=idleSince?now-idleSince:0;
-      if((gotValue&&idle>=400)||idle>=2000||now-start>45000||!el.isConnected){el.classList.remove('tc-restore-settling');if(window.jQuery)jQuery(document).off('shiny:recalculating',onRecalc).off('shiny:value',onValue);return;}
+      var now=Date.now(),done=drawn&&!el.classList.contains('recalculating');
+      if(done||now-start>45000||!el.isConnected){
+        // Let Plotly draw the received value before revealing it.
+        requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.remove('tc-restore-settling');});});
+        window.removeEventListener('team-canvas-instance-settled',onSettled);if(window.jQuery)jQuery(document).off('shiny:value',onValue);return;
+      }
       setTimeout(tick,100);
     })();
   }
@@ -330,7 +335,7 @@
       var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null};
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
       var csvSource=csvByPlot[request.source];if(csvSource)csvByPlot[el.id]=message.id+(request.source.indexOf('-')<0?'-'+csvSource:csvSource.slice(request.source.indexOf('-')));
-      if(request.saved){settleRestored(el);restorePending.set(el.id,request.saved);hydratePending();}
+      if(request.saved){settleRestored(el,message.id);restorePending.set(el.id,request.saved);hydratePending();}
       else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
       var opened=document.getElementById(message.id+'_host');if(opened&&opened.classList.contains('is-open')&&r.node)TeamCanvasFloatingPanel.open(opened,r.node);
       renderList();changed();
@@ -1631,6 +1636,7 @@
     });
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
+      Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]=true;window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);tell(message.message||'Could not create an independent plot.');});
       Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
       Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
