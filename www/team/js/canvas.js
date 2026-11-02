@@ -691,7 +691,14 @@
         if(rect.width>0 && rect.height>0 && rect.bottom>viewport.top && rect.top<viewport.bottom && rect.left>=viewport.left+viewport.width/2 && rect.left<viewport.right && rect.right>viewport.left){available=Math.min(available,Math.max(1,rect.left-viewport.left-12));}
       });
     }
-    var width=Math.max(1,available/scale), x=30,y=30,rowHeight=0;
+    // Fill the viewport's shape: choose the number of columns from the cards' average
+    // size and the viewport aspect, so Fit all shows a readable grid rather than a
+    // single column. The visible width is only a lower bound.
+    var viewHeight=scroll?Math.max(1,scroll.clientHeight):900, avgW=30, avgH=30, maxW=30;
+    if(nodes.length){avgW=nodes.reduce(function(a,n){return a+n.offsetWidth;},0)/nodes.length;avgH=nodes.reduce(function(a,n){return a+n.offsetHeight;},0)/nodes.length;maxW=Math.max.apply(null,nodes.map(function(n){return n.offsetWidth;}));}
+    var columns=Math.max(1,Math.min(nodes.length||1,Math.ceil(Math.sqrt((nodes.length||1)*(available/viewHeight)*(avgH/Math.max(1,avgW)))-0.25)));
+    // Room for one wider card (e.g. a heatmap) per row, so it does not drop to a row of its own.
+    var width=Math.max(available/scale,30+columns*(avgW+30)+(maxW-avgW)+1), x=30,y=30,rowHeight=0;
     // Pack complete cards left-to-right with a shared row baseline. Oversized
     // cards get their own row; existing dimensions and scientific inputs stay intact.
     nodes.forEach(function(node){

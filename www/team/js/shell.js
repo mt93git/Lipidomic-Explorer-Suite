@@ -196,7 +196,11 @@
       el('p', 'ts-menu-note', 'Exports the finished figures as composed in Preview.')], 'ts-export');
     exportMenu.querySelector('.ts-menu-trigger').classList.add('ts-primary');
     var help = root.querySelector('.tc-save-help');
+    function compactOnly(b) { b.classList.add('ts-compact-only'); return b; }
     var moreItems = [
+      compactOnly(item('Arrange', function () { proxy('.tc-arrange', root); })),
+      compactOnly(item('Text', function () { text.click(); })),
+      compactOnly(item('Shapes', function () { shapes.click(); })),
       item('Paste plot', function () { proxy('.tc-paste-plot', root); }, '.tc-paste-plot'),
       item('Return all plots', function () { proxy('.tc-reset', root); }, '.tc-reset'),
       item('Expand canvas', function () { proxy('.tc-focus-toggle', root); }, '.tc-focus-toggle'),
@@ -206,10 +210,23 @@
     if (help) moreItems.push(help);
     menu = menuButton('⋯', moreItems, 'ts-more');
     menu.querySelector('.ts-menu-trigger').setAttribute('aria-label', 'More canvas actions');
-    function sep() { var s = el('span', 'ts-sep'); s.setAttribute('aria-hidden', 'true'); return s; }
-    tools.append(addPlot, sep(), arrange, text, shapes, sep(), undo, redo, sep(), preview, exportMenu, menu);
+    function sep(secondary) { var s = el('span', 'ts-sep' + (secondary ? ' ts-secondary' : '')); s.setAttribute('aria-hidden', 'true'); return s; }
+    [arrange, text, shapes].forEach(function (b) { b.classList.add('ts-secondary'); });
+    tools.append(addPlot, sep(true), arrange, text, shapes, sep(), undo, redo, sep(), preview, exportMenu, menu);
     toolbar.insertBefore(tools, toolbar.firstChild);
     toolbar.setAttribute('aria-label', 'Canvas tools'); toolbar.setAttribute('role', 'toolbar');
+    // One row always: when the full toolbar no longer fits the canvas width, Arrange,
+    // Text and Shapes move into the ⋯ menu (same actions).
+    var fullToolsWidth = 0;
+    function fitTools() {
+      var space = toolbar.parentElement ? toolbar.parentElement.clientWidth - 24 : 0;
+      if (!space) return;
+      if (!root.classList.contains('ts-tools-compact')) fullToolsWidth = Math.max(fullToolsWidth, Array.prototype.reduce.call(tools.children, function (w, c) { var cs = getComputedStyle(c); return w + c.offsetWidth + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0) + 2; }, 24));
+      var compact = fullToolsWidth > space;
+      if (compact !== root.classList.contains('ts-tools-compact')) root.classList.toggle('ts-tools-compact', compact);
+    }
+    if (window.ResizeObserver && toolbar.parentElement) new ResizeObserver(fitTools).observe(toolbar.parentElement);
+    fitTools();
     // When the toolbar wraps to more rows, keep the status notice and the top of the canvas below it.
     if (window.ResizeObserver) new ResizeObserver(function () { var b = Math.round(toolbar.offsetTop + toolbar.offsetHeight); if (b > 0 && root.style.getPropertyValue('--ts-toolbar-bottom') !== b + 'px') root.style.setProperty('--ts-toolbar-bottom', b + 'px'); }).observe(toolbar);
     function syncTools() {

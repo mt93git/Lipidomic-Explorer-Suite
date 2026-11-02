@@ -140,12 +140,14 @@
       sizeSpace();
       if (options && options.topLeft) { scroll.scrollLeft=0; scroll.scrollTop=0; refresh(); return; }
       scroll.scrollLeft=Math.max(0,(node.offsetLeft+node.offsetWidth/2)*scale-scroll.clientWidth/2);
-      scroll.scrollTop=readable?Math.max(0,node.offsetTop*scale-16):Math.max(0,(node.offsetTop+node.offsetHeight/2)*scale-scroll.clientHeight/2);
+      // A floating toolbar covers the top of the viewport: keep the card's header below it.
+      var bar=root.querySelector('.tc-toolbar'), top=bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+8:16;
+      scroll.scrollTop=readable?Math.max(0,node.offsetTop*scale-top):Math.max(0,(node.offsetTop+node.offsetHeight/2)*scale-scroll.clientHeight/2);
       // CSS zoom can make offset metrics differ slightly from painted pixels;
       // correct once from the actual rectangles after applying the scroll.
       var sr=scroll.getBoundingClientRect(), nr=node.getBoundingClientRect();
       scroll.scrollLeft=Math.max(0,scroll.scrollLeft+(nr.left+nr.width/2-(sr.left+sr.width/2)));
-      scroll.scrollTop=Math.max(0,scroll.scrollTop+(readable?nr.top-sr.top-16:nr.top+nr.height/2-(sr.top+sr.height/2)));
+      scroll.scrollTop=Math.max(0,scroll.scrollTop+(readable?nr.top-sr.top-top:nr.top+nr.height/2-(sr.top+sr.height/2)));
       refresh();
     }
     // Restore positions are data; adjust only the camera once a restored node
