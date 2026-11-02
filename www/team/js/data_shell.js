@@ -5,9 +5,10 @@
   'use strict';
   var groups = null, loadedProject = null, requestedProject = null;
   // Remember which project an analysis was opened from (Resume or Open latest). The request
-  // becomes the loaded project only once its analysis appears; the server refuses any later
-  // Resume in the same session, so a rejected request never takes over the provenance.
+  // becomes the loaded project only when the server reports the checkpoint as restored, so a
+  // rejected or failed request, or an uploaded matrix, never takes over the provenance.
   document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#team_library_resume,.ts-data-open')) { var p = document.getElementById('team_library_project'); if (loadedProject === null) requestedProject = p ? p.value : null; } }, true);
+  if (window.jQuery) jQuery(document).on('shiny:value', function (e) { if (e.name === 'team_library_status' && loadedProject === null && requestedProject !== null && /^Checkpoint restored/.test(String(e.value || ''))) loadedProject = requestedProject; });
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function isCopy(name) { return /\b(copy|check|verification|test)\b/i.test(name); }
   function checkpointLabel(text) { return String(text).replace(/\s*·\s*[0-9a-f]{4,}\.zip.*$/i, '').replace(/\.zip\s+\S+$/i, '').trim(); }
@@ -53,7 +54,6 @@
     var options = Array.from(project.options), selected = project.value;
     var bound = document.body.dataset.teamStage && document.querySelector('#qc_pca_tab-guided_qc_plot') && liveCounts();
     // The loaded analysis belongs to the project that was opened, not to whichever card is selected.
-    if (bound && (bound.samples || bound.lipids) && loadedProject === null) loadedProject = requestedProject;
     var live = bound && (bound.samples || bound.lipids) && loadedProject !== null && loadedProject === selected ? bound : null;
     var html = options.map(function (o) {
       var on = o.value === selected, meta;

@@ -71,7 +71,9 @@
       var buttons = Array.from(bar.querySelectorAll('.plot-export-button')); if (!buttons.length) return;
       var trigger = el('button', 'ts-export-trigger', 'Export ▾'); trigger.type = 'button'; trigger.setAttribute('aria-haspopup', 'true'); trigger.setAttribute('aria-expanded', 'false');
       var menu = el('div', 'ts-export-menu'); menu.setAttribute('role', 'menu'); menu.hidden = true;
-      buttons.forEach(function (b) { b.setAttribute('role', 'menuitem'); menu.appendChild(b); b.addEventListener('click', function () { var hadFocus = menu.contains(document.activeElement); menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); if (hadFocus) trigger.focus(); }); });
+      buttons.forEach(function (b) { b.setAttribute('role', 'menuitem'); menu.appendChild(b); });
+      // Capture phase: read focus before the export handler disables the chosen item (which blurs it).
+      menu.addEventListener('click', function (e) { if (!e.target.closest('.plot-export-button')) return; var hadFocus = menu.contains(document.activeElement); setTimeout(function () { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); if (hadFocus) trigger.focus(); }, 0); }, true);
       trigger.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = !menu.hidden; trigger.setAttribute('aria-expanded', String(!menu.hidden)); if (!menu.hidden) buttons[0].focus(); });
       menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); } });
       document.addEventListener('click', function (e) { if (!bar.contains(e.target)) { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); } });
