@@ -118,7 +118,7 @@ team_library_login_placeholder <- function() {
     div(class="form-control",HTML("&nbsp;")))
   tagList(div(class="team-library-login team-library-login-placeholder",`aria-hidden`="true",
       field("Email"),field("Password"),tags$button(type="button",class="btn btn-default",tabindex="-1",tags$span("Sign in"))),
-    tags$details(class="team-library-activation",`aria-hidden`="true",tags$summary(tabindex="-1","Activate your invitation or reset your password")))
+    tags$details(class="team-library-activation team-library-login-placeholder",`aria-hidden`="true",tags$summary(tabindex="-1","Activate your invitation or reset your password")))
 }
 team_library_server <- function(input,output,session,shared_data,on_authenticated=NULL) {
   account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); status<-reactiveVal("Sign in to access saved projects.")
