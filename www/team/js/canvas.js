@@ -810,7 +810,7 @@
     settings.insertBefore(edit, settingsBody);
     node.append(head, settings, content); board.appendChild(node);
     if (!r.hydrating) node.dataset.teamFresh='true';
-    if (!r.hydrating) r.paletteInherit = true;
+    r.paletteInherit = !r.hydrating;
     r.node = node; r.target = target; r.home = home; r.bar = bar; r.barHome = barHome; r.originalHeight = originalHeight; r.originalHeightPriority = originalHeightPriority;
     registerCreation(node,r.el.id,!r.hydrating);
     r.editInputs = settingsBody.querySelectorAll('input'); r.labelInput = title; r.labelHeading = heading; r.backgroundInput = color; r.content = content; r.finishButton = finish; r.markInput = markColor;
@@ -1207,35 +1207,72 @@
   }
   // A new plot starts, once its figure first renders, with the group palette of
   // the most recently re-paletted canvas plot (else the newest canvas plot that
-  // has one; edit times are per session). Only the palette name and
-  // the Healthy-in-grey choice are inherited; the editor maps it to sorted
-  // condition labels exactly as for the source plot, and never to continuous
-  // scales. Saved, copied and restored plots keep their own editor state.
+  // has one; edit times are per session) whose figure shares at least one group
+  // label with it. The new plot's state is what "Apply palette" would produce,
+  // except that every group the source plot shows keeps the source's colour
+  // (the editor indexes a palette by each figure's own sorted label set).
+  // Continuous scales, class series and non-overlapping plots are untouched;
+  // saved, copied and restored plots keep their own editor state.
   function notePaletteEdit(r, before, after) {
     before = before || {}; after = after || {};
     if (after.palette && (after.palette !== before.palette || after.greyHealthy !== before.greyHealthy)) r.paletteEditedAt = ++paletteClock;
   }
-  function inheritablePalette(target) {
-    if (!window.TeamPlotEditor || !TeamPlotEditor.palettes) return null;
-    var best = null, bestAt = -1;
-    Array.from(board.querySelectorAll('.tc-node[data-plot-id]')).forEach(function (node) {
-      var r = records.get(node.dataset.plotId), editor = r && r !== target && r.node === node && r.visual && r.visual.editor;
-      if (!editor || !TeamPlotEditor.palettes[editor.palette]) return;
-      var at = r.paletteEditedAt || 0; if (at >= bestAt) { best = editor; bestAt = at; }
-    });
-    return best ? {palette: best.palette, greyHealthy: best.greyHealthy !== false} : null;
+  function paletteLabel(trace) { return (trace && trace.meta && typeof trace.meta.teamCondition === 'string' && trace.meta.teamCondition) || (trace && trace.legendgroup) || (trace && trace.name) || ''; }
+  function paletteLabels(gd) {
+    var meta = gd.layout && gd.layout.meta, labels = meta && Array.isArray(meta.teamConditions) ? meta.teamConditions : gd.data.map(paletteLabel);
+    return Array.from(new Set(labels.filter(function (l) { return typeof l === 'string' && l; }))).sort();
+  }
+  // Base colour per label, computed by the editor itself on a stand-in figure.
+  function paletteBase(labels, palette, grey) {
+    var fake = {data: labels.map(function (l) { return {type: 'bar', name: l, x: ['a'], y: [1], marker: {color: '#000000'}}; }), layout: {meta: {teamConditions: labels}}}, map = {};
+    TeamPlotEditor.paletteStyle(fake, {}, palette, grey, false).traces.forEach(function (t) { if (t.color) map[labels[t.index]] = t.color.toLowerCase(); });
+    return map;
+  }
+  // Source groups keep the source's colours; groups only the new plot shows
+  // take the next palette slots after the source's, so none collide.
+  function sharedPaletteColors(sourceLabels, ownLabels, palette, grey) {
+    var map = paletteBase(sourceLabels, palette, grey), extra = ownLabels.filter(function (l) { return sourceLabels.indexOf(l) < 0 && !(grey && /^healthy(?:$|[_ -])/i.test(l)); });
+    if (extra.length) {
+      var slots = []; for (var i = 0; i < sourceLabels.length + extra.length; i++) slots.push('\u0001' + ('0000' + i).slice(-5));
+      var base = paletteBase(slots, palette, grey);
+      extra.forEach(function (l, k) { if (base[slots[sourceLabels.length + k]]) map[l] = base[slots[sourceLabels.length + k]]; });
+    }
+    return map;
   }
   function inheritPaletteWhenReady(r) {
-    var gd = r.paletteInherit && r.node && plotFor(r);
-    if (!gd || r.snapshot || !gd.data || !gd.data.length || !gd._fullLayout || !window.TeamPlotEditor) return;
-    var editor = r.visual.editor || {}, pending = !editor.palette && inheritablePalette(r);
-    if (!pending) { r.paletteInherit = false; return; }
-    // Plots without condition-coloured categorical series (heatmaps, class
-    // compositions, loading placeholders) have nothing to recolor and keep
-    // their own scales; a later render with group series may still inherit.
-    if (!TeamPlotEditor.paletteStyle(gd, {}, pending.palette, pending.greyHealthy, false).traces.length) return;
+    var gd = r.paletteInherit && !r.hydrating && r.node && plotFor(r);
+    if (!gd || r.snapshot || !gd.data || !gd.data.length || !gd._fullLayout || !window.TeamPlotEditor || !TeamPlotEditor.palettes) return;
+    var editor = r.visual.editor || {};
+    if (editor.palette) { r.paletteInherit = false; return; }
+    var candidates = [];
+    Array.from(board.querySelectorAll('.tc-node[data-plot-id]')).forEach(function (node, order) {
+      var source = records.get(node.dataset.plotId), sourceEditor = source && source !== r && source.node === node && source.visual && source.visual.editor, sourceGd = sourceEditor && plotFor(source);
+      if (sourceEditor && TeamPlotEditor.palettes[sourceEditor.palette] && sourceGd && Array.isArray(sourceGd.data) && sourceGd.data.length) candidates.push({at: source.paletteEditedAt || 0, order: order, editor: sourceEditor, gd: sourceGd});
+    });
+    if (!candidates.length) { r.paletteInherit = false; return; }
+    candidates.sort(function (x, y) { return y.at - x.at || y.order - x.order; });
+    var probe = null, picked = null;
+    for (var i = 0; i < candidates.length && !picked; i++) {
+      var c = candidates[i], grey = c.editor.greyHealthy !== false, sourceLabels = paletteLabels(c.gd);
+      probe = TeamPlotEditor.paletteStyle(gd, {}, c.editor.palette, grey, false).traces;
+      // Plots without condition-coloured categorical series (heatmaps, class
+      // compositions, loading placeholders) have nothing to recolor.
+      if (probe.some(function (t) { return sourceLabels.indexOf(paletteLabel(gd.data[t.index])) >= 0; })) picked = {palette: c.editor.palette, grey: grey, labels: sourceLabels};
+    }
+    if (!picked) return; // a later render with group series may still inherit
     r.paletteInherit = false;
-    r.visual.editor = TeamPlotEditor.sanitize(Object.assign({}, editor, pending));
+    // Same call as the editor's Apply palette button. Group comparison keeps it
+    // verbatim: its restyle listener only treats that exact state as a palette
+    // batch (anything else would become per-panel colour overrides).
+    var next = TeamPlotEditor.paletteStyle(gd, editor, picked.palette, picked.grey);
+    var ownLabels = paletteLabels(gd), own = paletteBase(ownLabels, picked.palette, picked.grey), shared = sharedPaletteColors(picked.labels, ownLabels, picked.palette, picked.grey);
+    if (!(gd.layout.meta && gd.layout.meta.teamGroupComparison)) next.traces.forEach(function (t) {
+      var label = paletteLabel(gd.data[t.index]), from = own[label], to = shared[label];
+      if (!from || !to || from === to) return;
+      var swap = {}; swap[from] = to; [0.15, 0.45, 0.60].forEach(function (f) { swap[TeamPlotEditor.darker(from, f).toLowerCase()] = TeamPlotEditor.darker(to, f); });
+      ['color', 'lineColor', 'fillColor'].forEach(function (k) { var v = typeof t[k] === 'string' && swap[t[k].toLowerCase()]; if (v) t[k] = v; });
+    });
+    r.visual.editor = next;
     if (r.plotEditor) r.plotEditor.refresh();
     scheduleAppearance(r);
   }
