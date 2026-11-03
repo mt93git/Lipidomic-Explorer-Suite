@@ -151,11 +151,35 @@ team_plot_instance_input_ids <- local({
 # the copy reads the value it is about to receive: its saved/copied setting, or
 # else the default written in the module's own UI markup (never restated here).
 # Controls that the module builds on the server (renderUI) are left alone.
+# The module's own (Classic) UI, rendered from its definition in the module file.
+# Team replaces some module UIs, and a copy reads inputs that only the Classic UI
+# declares (QC pcaMode); their Classic defaults are the values the module expects.
+team_plot_instance_classic_doc <- function(family) {
+  path <- team_plot_instance_family_files[family]; spec <- team_plot_instance_families[[family]]
+  if (is.na(path) || !file.exists(path) || is.null(spec$ui)) return(NULL)
+  for (e in parse(path,keep.source=FALSE)) {
+    if (is.call(e) && length(e)==3L && paste(deparse(e[[1L]]),collapse='') %in% c('<-','=') && identical(e[[2L]],as.name(spec$ui))) {
+      ui <- eval(e[[3L]],new.env(parent=globalenv()))
+      return(xml2::read_html(htmltools::renderTags(ui('tcinstance_schema'))$html))
+    }
+  }
+  NULL
+}
 team_plot_instance_input_defaults <- local({
   cache <- new.env(parent=emptyenv())
   function(family) {
     if (exists(family,cache,inherits=FALSE)) return(get(family,cache))
-    doc <- team_plot_instance_schema_doc(family); prefix <- 'tcinstance_schema-'
+    out <- team_plot_instance_doc_defaults(team_plot_instance_schema_doc(family))
+    if (!family %in% c('team_cell','results_dashboard')) {
+      classic <- tryCatch(team_plot_instance_doc_defaults(team_plot_instance_classic_doc(family)),error=function(e)list())
+      for (key in intersect(setdiff(names(classic),names(out)),team_plot_instance_unhosted_ids(family))) out[[key]] <- classic[[key]]
+    }
+    assign(family,out,cache);out
+  }
+})
+team_plot_instance_doc_defaults <- function(doc) {
+    if (is.null(doc)) return(list())
+    prefix <- 'tcinstance_schema-'
     attr_of <- function(node,name) xml2::xml_attr(node,name)
     has_class <- function(node,cls) { value <- attr_of(node,'class'); !is.na(value) && grepl(paste0('(^|\\s)',cls,'(\\s|$)'),value) }
     out <- list()
@@ -191,9 +215,8 @@ team_plot_instance_input_defaults <- local({
       active <- links[grepl('(^|\\s)active(\\s|$)',classes)]
       put(attr_of(node,'id'),xml2::xml_attr(if (length(active)) active[[1L]] else links[[1L]],'data-value'))
     }
-    assign(family,out,cache);out
-  }
-})
+    out
+}
 # Read-only view of a copy's inputs that falls back until a control has reported.
 team_plot_instance_fallback_input <- function(input, fallback) {
   x <- unclass(input); x$team_fallback <- fallback
@@ -448,8 +471,12 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       mode <- value$inputs$barValueMode; if (is.list(mode)) mode <- unlist(mode,use.names=FALSE)
       if (is.character(mode) && length(mode)==1L && !mode %in% c('Absolute (%)','Normalized (%)')) value$inputs$barValueMode <- if (grepl('Normalized',mode)) 'Normalized (%)' else 'Absolute (%)'
     }
+    unhosted_values <- list()
     if (!resolved$family %in% c('team_cell','results_dashboard')) {
       unhosted <- tryCatch(team_plot_instance_unhosted_ids(resolved$family),error=function(e)character())
+      # No control of the copy can report these, so they are not seeded or awaited;
+      # the module still reads them, so the copy keeps the source's values.
+      unhosted_values <- value$inputs[names(value$inputs) %in% unhosted]
       value$inputs <- value$inputs[!names(value$inputs) %in% unhosted]
     }
     if (!exists(id,active,inherits=FALSE)) {
@@ -459,12 +486,16 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       fallback <- list()
       if (!identical(resolved$family,'results_dashboard')) {
         fallback <- tryCatch(team_plot_instance_input_defaults(resolved$family),error=function(e)list())
+        for (key in names(unhosted_values)) { saved <- unhosted_values[[key]]; if (is.list(saved)) saved <- unlist(saved,use.names=FALSE); if (length(saved)) fallback[[key]] <- saved }
         for (key in intersect(names(value$inputs),names(fallback))) {
           saved <- value$inputs[[key]]; if (is.list(saved)) saved <- unlist(saved,use.names=FALSE)
           fallback[[key]] <- if (length(saved)) saved else NULL
         }
       }
+      # One message per error burst: a failing observer can rerun many times. A
+      # parked copy that is placed again reports anew (see `rearm` below).
       reported <- FALSE
+      rearm <- function() reported <<- FALSE
       on_error <- function(e) {
         if (reported) return(invisible())
         reported <<- TRUE
@@ -479,9 +510,9 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         result <- do.call(get(spec$server,mode='function'),args)
       }
       })
-      assign(id,list(source=value$source,dashboard=if(identical(resolved$family,'results_dashboard'))dashboard else NULL,result=result,parked=FALSE),active)
+      assign(id,list(source=value$source,dashboard=if(identical(resolved$family,'results_dashboard'))dashboard else NULL,result=result,parked=FALSE,rearm=rearm),active)
     } else if (!identical(get(id,active)$source,value$source)) stop('Canvas instance namespace already belongs to another plot.',call.=FALSE)
-    else if (isTRUE(get(id,active)$parked)) { entry <- get(id,active); insert_host(id,resolved,spec); entry$parked <- FALSE; assign(id,entry,active) }
+    else if (isTRUE(get(id,active)$parked)) { entry <- get(id,active); insert_host(id,resolved,spec); entry$parked <- FALSE; if (is.function(entry$rearm)) entry$rearm(); assign(id,entry,active) }
     # A restored workspace can be hidden while preparation completes. Keep only
     # this instance's selected output active, so its pending render is delivered
     # even when the browser last reported the parked source as hidden. Sibling

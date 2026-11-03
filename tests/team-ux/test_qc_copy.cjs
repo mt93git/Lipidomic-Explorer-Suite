@@ -30,7 +30,10 @@ const drawn=(p,id)=>p.waitForFunction(id=>{const n=document.querySelector('.tc-n
   return img||plotly;},id,{timeout:120000});
 (async()=>{const b=await chromium.launch({headless:true});const p=await b.newPage({viewport:{width:1440,height:900}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
  try{await ready(p);
-  for(const source of ['qc_pca_tab-pca2dPlot','qc_pca_tab-boxplotAfterNorm','qc_pca_tab-guided_qc_plot']){
+  // Any copy error is announced in the canvas status; record every announcement.
+  await p.evaluate(()=>{window.__copyErrors=[];new MutationObserver(()=>document.querySelectorAll('.tc-status').forEach(s=>{if(/stopped after an error/.test(s.textContent))window.__copyErrors.push(s.textContent)})).observe(document.body,{subtree:true,childList:true,characterData:true});});
+  // load2dPlot forces the loading-plot tab, whose observer reads the Classic-only pcaMode.
+  for(const source of ['qc_pca_tab-pca2dPlot','qc_pca_tab-boxplotAfterNorm','qc_pca_tab-guided_qc_plot','qc_pca_tab-load2dPlot']){
    const id=await add(p,source);await drawn(p,id);
    assert.equal(await connected(p),true,'session connected after adding '+source);
    console.log('PASS '+source+' copy draws and the session stays connected');
@@ -43,6 +46,7 @@ const drawn=(p,id)=>p.waitForFunction(id=>{const n=document.querySelector('.tc-n
   await p.waitForFunction(id=>document.querySelector('.tc-node[data-plot-id="'+id+'"] .tc-card-status')?.dataset.state==='waiting',t,{timeout:60000});
   assert.match(await p.locator('.tc-node[data-plot-id="'+t+'"] .tc-card-status').textContent(),/Needs time points/);console.log('PASS a time course without time points says it needs time points');
   assert.equal(await connected(p),true);
+  assert.deepEqual(await p.evaluate(()=>window.__copyErrors),[],'no copy reported an error');console.log('PASS no copy reported an error');
   assert.equal(errors.length,0,'page errors: '+errors.join(' | '));console.log('PASS no page errors');
  }finally{await b.close();}
 })().catch(e=>{console.error('FAIL',e.message);process.exit(1);});
