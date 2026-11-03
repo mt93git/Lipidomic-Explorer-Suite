@@ -1,0 +1,9 @@
+/* Team text colours raised to WCAG AA (>= 4.5:1). Hover/active states keep their own rules. */
+/* File input "Browse" text in guided panels: #57819f (4.16:1) -> #4a7390 (5.07:1 on #ffffff). */
+.guide-panel .btn-default.btn-file{--bs-btn-color:#4a7390}
+.guide-panel .btn-default.btn-file:not(:hover):not(:active){color:#4a7390}
+/* Companion speech eyebrow: #577f7b (4.36:1) -> #4a706c (5.40:1 on #fffdf7). */
+.companion-speech .speech-eyebrow{color:#4a706c}
+/* Scope pill segments and Edit: #64748b (4.34:1) and the 85% count (#79879c, 3.32:1) -> #5b6b7f (4.97:1 on #f1f5f9). */
+.targeted-scope-segment.is-inactive,.targeted-scope-edit{color:#5b6b7f!important}
+.targeted-scope-segment.is-inactive .targeted-pill-num{opacity:1}

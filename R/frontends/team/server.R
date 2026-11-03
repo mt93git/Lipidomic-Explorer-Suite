@@ -49,6 +49,7 @@ team_frontend_server <- function(input, output, session, shared_data) {
   assistant <- if(team_workspace_enabled()) team_project_companion_server(input, output, session, view_data, guide_workflow) else companion_assistant_server(input, output, session, view_data, guide_workflow)
   if(team_workspace_enabled()) team_project_records_server(input,output,session,view_data,guide_workflow,assistant)
   if (team_workspace_enabled()) team_companion_workspace_server(session, view_data)
-  if (team_workspace_enabled()) team_review_shell_server(session, view_data)
+  # Group colours for the PCA: workspace Review (review_shell.js) and guided Quality (qw_pca_groups.js).
+  if (!is.null(session)) team_review_shell_server(session, view_data)
   invisible(guide_workflow)
 }
