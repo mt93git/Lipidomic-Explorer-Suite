@@ -1371,7 +1371,7 @@
                 var canvasTitle = document.createElement('div'); canvasTitle.className = 'empty-plot-title';
                 canvasTitle.textContent = canvasNeed ? canvasNeed.status : 'Nothing to draw yet';
                 var canvasText = document.createElement('div'); canvasText.className = 'empty-plot-subtitle';
-                canvasText.textContent = canvasNeed ? canvasNeed.reason : 'This plot has no figure for its current settings. Open its Data & settings to choose what it shows.';
+                canvasText.textContent = canvasNeed ? canvasNeed.reason : 'Nothing has been drawn for this plot yet. If this stays, open its Data & settings to choose what it shows.';
                 overlay.append(canvasTitle, canvasText);
               } else if (isStructural) {
                 overlay.innerHTML = 

@@ -95,7 +95,7 @@
   // time: TimePoint values in the sample metadata.
   var requirements = {
     de: {status:'Needs a comparison', reason:'Choose Reference and Comparison cohorts (Data & settings, or Differential in the Data step) to draw this plot.'},
-    time: {status:'Needs time points', reason:'Time courses need at least two TimePoint values in the sample metadata. This dataset has none, so nothing can be drawn.'}
+    time: {status:'Needs time points', reason:'Time courses need at least two TimePoint values in the sample metadata. Without them nothing can be drawn; with them, check the time-course settings in Data & settings.'}
   };
   var needsById = {
     'barchart-barPlotFiltered':'de','barchart-donutPlotFiltered':'de','volcano_tab-volcanoPlot':'de','lsea_tab-lseaPlot':'de',

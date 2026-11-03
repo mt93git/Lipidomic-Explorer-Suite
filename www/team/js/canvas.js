@@ -1860,7 +1860,9 @@
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
       Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
       Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){deResultsReady=!!(message&&message.ready);});
-      Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);tell(message.message||'Could not create an independent plot.');});
+      Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);
+        // A mounted copy whose analysis failed no longer shows a current result.
+        if(!request)records.forEach(function(r){if(r.instance&&r.instance.id===message.id&&r.node){r.revision=(r.revision||0)+1;r.renderRevision=null;r.sourceError=true;r.sourceWaiting=false;r.sourceSignature=null;if(r.statistics&&window.TeamCanvasStatistics)TeamCanvasStatistics.sourceChanged(r);if(!r.hydrating)staleSnapshot(r);}});tell(message.message||'Could not create an independent plot.');});
       Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
       Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
         var waiter = message && ackWaiters.get(message.token);
@@ -2012,7 +2014,17 @@
       // req() in a module sends an empty, silent error: the plot is waiting for
       // an input or an analysis, not failing. Its card says what it needs.
       var err=event.error||{}, types=[].concat(err.type||[]).join(' ');
-      if (/shiny\.silent\.error/.test(types) || err.message==='') { r.sourceWaiting = true; return; }
+      // Its previous figure is no longer the current result either: invalidate it as
+      // an error would (no finishing or export of the old picture), without the
+      // "could not be updated" verdict. Shiny itself treats an empty message as silent.
+      if (/shiny\.silent\.error/.test(types) || err.message==='') {
+        r.sourceWaiting = true; r.revision = (r.revision || 0) + 1; r.renderRevision = null; r.sourceSignature = null;
+        if (r.equivalentObserver) r.equivalentObserver.disconnect();
+        if (r.renderObserver) r.renderObserver.disconnect(); r.settleRender = null;
+        if (r.statistics && window.TeamCanvasStatistics) TeamCanvasStatistics.sourceChanged(r);
+        if (r.node && !r.hydrating) staleSnapshot(r);
+        return;
+      }
       r.revision = (r.revision || 0) + 1; r.renderRevision = null; r.sourceError = true; r.sourceSignature = null;
     if (r.equivalentObserver) r.equivalentObserver.disconnect();
       if (r.renderObserver) r.renderObserver.disconnect(); r.settleRender = null;
