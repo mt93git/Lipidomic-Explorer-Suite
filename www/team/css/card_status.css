@@ -8,6 +8,8 @@
 .tc-card-status[data-state=pending]>i,.tc-card-status[data-state=finished-stale]>i{background:#d98b00}
 .tc-card-status[data-state=error]{background:#fdecea;color:#8a1f11}
 .tc-card-status[data-state=error]>i{background:#c0392b}
+.tc-card-status[data-state=waiting]{background:#e8f1fb;color:#1f4f7a}
+.tc-card-status[data-state=waiting]>i{background:#3b78b5}
 .tc-card-status>button{border:0;background:transparent;color:inherit;font:inherit;font-weight:600;text-decoration:underline;padding:0;cursor:pointer}
 .ts-export-warning{margin:0 0 6px;padding:8px 10px;border-radius:6px;background:#fff4e0;color:#7a4b00;font-size:12.5px;line-height:1.4;max-width:320px}
 .ts-export.has-stale .ts-menu-trigger{position:relative}

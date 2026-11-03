@@ -1010,6 +1010,23 @@
   }
   function preparationSignature(state) { return JSON.stringify(state ? state.revision : null); }
   function preparationOK() { return !!preparation && preparation.ready === true && !preparation.pending && !preparation.running && preparation.revision != null; }
+  // A plot that drew nothing because its analysis is waiting for an input (a
+  // silent req() in the module, or a differential plot without cohorts) is not
+  // "Up to date": it needs settings. Shiny's own busy state still reads Updating.
+  var deResultsReady = null;
+  function deReady() {
+    if (deResultsReady !== null) return deResultsReady;
+    function chosen(id){var el=document.getElementById(id);if(!el)return null;var x=el.selectize?el.selectize.getValue():(window.jQuery?jQuery(el).val():el.value);return Array.isArray(x)?x.length>0:!!x;}
+    var ref=chosen('data_hub-deReferenceGroups'),comp=chosen('data_hub-deComparisonGroups');
+    return ref===null||comp===null?true:ref&&comp;
+  }
+  function plotNeeds(r) { return window.TeamCanvasCatalog && typeof TeamCanvasCatalog.needs === 'function' ? TeamCanvasCatalog.needs(sourceKey(r)) : null; }
+  function awaitingInput(r) {
+    var need=plotNeeds(r);
+    if (need && need.kind==='de' && !deReady()) return true;
+    if (shinyBusy || document.documentElement.classList.contains('shiny-busy') || r.el.classList.contains('recalculating')) return false;
+    return !!r.sourceWaiting || (!hasRenderedPlot(r.el) && !!r.el.querySelector('.empty-plot-overlay'));
+  }
   function figureCurrent(r) { return preparationOK() && !shinyBusy && !(window.Shiny && Shiny.shinyapp && document.documentElement.classList.contains('shiny-busy')) && !r.sourceError && r.renderRevision === preparation.revision; }
   function sourceCurrent(r) { return preparationOK() && !r.sourceError && r.renderRevision===preparation.revision; }
   function guard(r, revision, generation, renderGeneration) {
@@ -1828,6 +1845,7 @@
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
       Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
+      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){deResultsReady=!!(message&&message.ready);});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);tell(message.message||'Could not create an independent plot.');});
       Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
       Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
@@ -1892,7 +1910,8 @@
       fitPlot:function(id){var r=records.get(id);if(r&&r.node)resize(r);},
       fitAllPlots:function(){records.forEach(function(r){if(r.node)resize(r, true);});},
       // Read-only card state for the shell's status chips and export warning.
-      cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';return figureCurrent(r)?'current':'updating';},
+      cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';if(awaitingInput(r))return 'waiting';return figureCurrent(r)?'current':'updating';},
+      catalogSource:function(id){var r=records.get(id);return r?sourceKey(r):null;},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
@@ -1956,6 +1975,7 @@
     if (window.jQuery) jQuery(document).on('shiny:value', function (event) {
       var r = event.target && records.get(event.target.id);
       if (r) {
+        r.sourceWaiting = false;
         dimensionTrace(r,'shiny:value',{width:event.value&&typeof event.value.width==='number'?event.value.width:null,height:event.value&&typeof event.value.height==='number'?event.value.height:null,revision:r.revision||0});
         var signature = plotlySourceSignature(r, event.value);
         var sourceRevision=preparation && preparation.revision;
@@ -1975,6 +1995,10 @@
     if (window.jQuery) jQuery(document).on('shiny:error', function (event) {
       var r = event.target && records.get(event.target.id);
       if (!r) return;
+      // req() in a module sends an empty, silent error: the plot is waiting for
+      // an input or an analysis, not failing. Its card says what it needs.
+      var err=event.error||{}, types=[].concat(err.type||[]).join(' ');
+      if (/shiny\.silent\.error/.test(types) || err.message==='') { r.sourceWaiting = true; return; }
       r.revision = (r.revision || 0) + 1; r.renderRevision = null; r.sourceError = true; r.sourceSignature = null;
     if (r.equivalentObserver) r.equivalentObserver.disconnect();
       if (r.renderObserver) r.renderObserver.disconnect(); r.settleRender = null;

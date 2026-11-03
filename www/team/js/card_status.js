@@ -10,7 +10,8 @@
     pending: ['Data changes pending', 'Review has unapplied changes. Prepare them to update this figure.'],
     finished: ['Finished', 'Frozen figure. Choose Edit to change it.'],
     'finished-stale': ['Finished · out of date', 'The prepared data changed after this figure was finished. Edit it to redraw.'],
-    error: ['Could not update', 'This figure could not be drawn from the current result. Open its Data tab for details.']
+    error: ['Could not update', 'This figure could not be drawn from the current result. Open its Data tab for details.'],
+    waiting: ['Needs settings', 'This plot is waiting for a selection or an analysis. Open its Data & settings.']
   };
   function action(state, node) {
     if (state === 'pending') return ['Review', function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
@@ -38,8 +39,11 @@
     var chip = chipFor(node); if (!chip) return null;
     chip.hidden = !state; if (!state) return null;
     if (chip.dataset.state === state) return state;
-    chip.dataset.state = state; chip.title = LABELS[state][1];
-    chip.querySelector('.tc-card-status-text').textContent = LABELS[state][0];
+    var label = LABELS[state];
+    // A plot with a known requirement names it (catalog: comparison, time points).
+    if (state === 'waiting' && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && TeamCanvas.catalogSource) { var need = TeamCanvasCatalog.needs(TeamCanvas.catalogSource(id)); if (need) label = [need.status, need.reason]; }
+    chip.dataset.state = state; chip.title = label[1];
+    chip.querySelector('.tc-card-status-text').textContent = label[0];
     var old = chip.querySelector('button'); if (old) old.remove();
     var act = action(state, node);
     if (act) { var b = document.createElement('button'); b.type = 'button'; b.textContent = act[0]; b.addEventListener('click', function (e) { e.stopPropagation(); act[1](); }); chip.appendChild(b); }

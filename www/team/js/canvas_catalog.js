@@ -89,6 +89,22 @@
       ['export_studio-studio_preview_plot','Publication preview','Set publication size and download the current figure in Export studio.','input:guide_export_studio',null,null,{action:'Open export studio',status:'Dedicated export view'}]
     ]}
   ];
+  // What a plot needs before it can draw, shown in the catalog tooltip, on the
+  // card's status chip and in place of the generic "Awaiting" overlay.
+  // de: a differential comparison (shared Reference/Comparison cohorts).
+  // time: TimePoint values in the sample metadata.
+  var requirements = {
+    de: {status:'Needs a comparison', reason:'Choose Reference and Comparison cohorts (Data & settings, or Differential in the Data step) to draw this plot.'},
+    time: {status:'Needs time points', reason:'Time courses need at least two TimePoint values in the sample metadata. This dataset has none, so nothing can be drawn.'}
+  };
+  var needsById = {
+    'barchart-barPlotFiltered':'de','barchart-donutPlotFiltered':'de','volcano_tab-volcanoPlot':'de','lsea_tab-lseaPlot':'de',
+    'structural_tab-diffAcylPlot':'de','heatmap_barchart_tab-filteredHeatmapPlot':'de','heatmap_barchart_tab-filteredHeatmapSDPlot':'de',
+    'structural_tab-summaryPlot':'de','structural_tab-speciesPlotPlot':'de',
+    'structural_grid_tab-heatmapPlot':'de','structural_grid_tab-dotplotPlot':'de','structural_grid_tab-mergedPlot':'de','structural_grid_tab-diffAllPlot':'de',
+    'longitudinal_tab-macroclass_plot':'time','longitudinal_tab-subclass_plot':'time','longitudinal_tab-index_plot':'time','longitudinal_tab-struct_plot':'time','longitudinal_tab-allmetrics_plot':'time'
+  };
+  function needs(id) { var kind = needsById[id]; return kind ? Object.assign({kind:kind}, requirements[kind]) : null; }
   var iconPaths = {
     grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     pulse:'<path d="M3 12h4l3-8 4 16 3-8h4"/>', bars:'<path d="M4 20V11h4v9M10 20V4h4v16M16 20v-7h4v7"/>',
@@ -175,6 +191,7 @@
         else if (route && r && r.dynamic && !r.wrapper) { state.textContent = 'Requires configuration'; button.textContent = 'Open analysis'; tooltipDetail = 'This plot shares a dynamic panel with other outputs and cannot be moved safely.'; button.addEventListener('click', function () { renderState.args.onRoute(route); }); }
         else if (route) { state.textContent = 'Requires configuration'; button.textContent = 'Add'; tooltipDetail = 'Open the analysis; the canvas will add the plot when its output is ready.'; button.addEventListener('click', function () { renderState.args.onQueue(entry.id, route); }); }
         else { state.textContent = 'Requires configuration'; button.textContent = 'Unavailable'; tooltipDetail = 'Open the analysis and wait for this plot to render before adding it.'; button.setAttribute('aria-disabled','true'); }
+        var requirement = needs(entry.id); if (requirement && !entry.blocked && !entry.routeOnly) tooltipDetail = (tooltipDetail ? tooltipDetail + ' · ' : '') + requirement.reason;
         var actionLabel = button.getAttribute('aria-label') || (button.textContent + ' ' + entry.title);
         button.innerHTML = icon(entry.icon || groupIcon);
         // The visible tooltip and accessible description carry the same meaningful context.
@@ -198,5 +215,5 @@
       if (card) { var action = card.querySelector('button:not(:disabled)'); (action || card).focus(); }
     }
   }
-  window.TeamCanvasCatalog = {list:flatten(), get:get, blocked:blocked, held:held, render:render};
+  window.TeamCanvasCatalog = {list:flatten(), get:get, blocked:blocked, held:held, needs:needs, render:render};
 })();

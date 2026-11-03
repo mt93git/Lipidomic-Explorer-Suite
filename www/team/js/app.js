@@ -1348,6 +1348,11 @@
           else if (isLongitudinal) overlayType = 'longitudinal';
           else if (isAwaitingBaseline) overlayType = 'baseline';
           else if (isAwaitingDE) overlayType = 'de';
+          // On a canvas card the data are already prepared, there is no left dock
+          // and no "above": say what this plot needs, without the Prepare button.
+          var canvasNode = plot.closest('#team-canvas-root .tc-node');
+          var canvasNeed = canvasNode && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && window.TeamCanvas && TeamCanvas.catalogSource ? TeamCanvasCatalog.needs(TeamCanvas.catalogSource(plot.id)) : null;
+          if (canvasNode) overlayType = canvasNeed ? 'canvas-' + canvasNeed.kind : 'canvas';
 
           // Strictly enforce: AT MOST ONE overlay per plot output! Prevent duplicate stacking loops
           if (existingOverlays.length > 0) {
@@ -1362,7 +1367,13 @@
           overlay.className = 'empty-plot-overlay';
           overlay.setAttribute('data-overlay-type', overlayType);
 
-              if (isStructural) {
+              if (canvasNode) {
+                var canvasTitle = document.createElement('div'); canvasTitle.className = 'empty-plot-title';
+                canvasTitle.textContent = canvasNeed ? canvasNeed.status : 'Nothing to draw yet';
+                var canvasText = document.createElement('div'); canvasText.className = 'empty-plot-subtitle';
+                canvasText.textContent = canvasNeed ? canvasNeed.reason : 'This plot has no figure for its current settings. Open its Data & settings to choose what it shows.';
+                overlay.append(canvasTitle, canvasText);
+              } else if (isStructural) {
                 overlay.innerHTML = 
                   '<div class=\"empty-plot-title\">🧬  Awaiting Structural Analysis</div>' +
                   '<div class=\"empty-plot-subtitle\">Configure parameters and click Initiate Structural Analysis to compute chain length & unsaturation remodeling</div>' +
