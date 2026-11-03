@@ -278,8 +278,6 @@
     // A not-yet-configured dynamic output has no canvas node yet. Its temporary
     // settings anchor is the catalog, then switches to its plot once it exists.
     TeamCanvasFloatingPanel.open(host,anchor||root.querySelector('.tc-catalog'));
-    // Sibling outputs of a dashboard copy are hidden while the panel is closed; let Shiny resume them now.
-    if(window.jQuery)jQuery(host).trigger('shown');
     window.dispatchEvent(new CustomEvent('team-canvas-panel-open',{detail:{kind:'data',id:r.el&&r.el.id||null}}));
     if(focusControls){var first=Array.from(host.querySelectorAll('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')).find(function(el){return el.getClientRects().length&&!el.closest('[hidden],[inert]')&&getComputedStyle(el).visibility!=='hidden';});if(first)first.focus();else host.querySelector('.tc-instance-panel-head button').focus();}
   }

@@ -522,19 +522,8 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     entry <- get(id,settling);if (!is.null(entry$watcher)) entry$watcher$destroy()
     entry$watcher <- NULL;assign(id,entry,settling);invisible()
   }
-  # A dashboard copy shows one card; its sibling cards stay in the off-screen host
-  # unless 'Data & settings' is open. Not displaying them lets Shiny suspend their
-  # outputs (plots, selectors, notes, KPIs). The copy's own card, every download
-  # link and the open settings panel are unaffected, and no input changes.
-  quiet_siblings <- function(id, resolved) {
-    if (!identical(resolved$family,'results_dashboard')) return(NULL)
-    host <- paste0('#',id,'_host:not(.is-open)');primary <- paste0('#',id,'-',resolved$output)
-    shiny::tags$style(paste0(host,' .rd-card:not(:has(',primary,')) .shiny-bound-output:not(.shiny-download-link),',
-      host,' #',id,'-kpis,',host,' #',id,'-status{display:none!important}'))
-  }
   insert_host <- function(id, resolved, spec) {
     ui <- team_plot_instance_host_ui(resolved$family,spec,id)
-    ui <- shiny::tagList(quiet_siblings(id,resolved),ui)
     shiny::insertUI(selector='body',where='beforeEnd',ui=shiny::tags$div(id=paste0(id,'_host'),class='tc-instance-host',`data-instance-id`=id,`data-instance-output`=resolved$output,`aria-hidden`='true',inert='',style='position:absolute;left:-100000px;top:0;width:900px',ui),immediate=TRUE,session=session)
   }
   create <- function(value) {
