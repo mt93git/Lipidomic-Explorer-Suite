@@ -2229,17 +2229,21 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         tidyr::pivot_longer(cols = -Sample1, names_to = "Sample2", values_to = "Correlation")
         
       if (!is.null(label_lookup)) {
-        cor_df$Sample1_Label <- label_lookup[cor_df$Sample1]
-        cor_df$Sample2_Label <- label_lookup[cor_df$Sample2]
+        raw_order_labels <- as.character(label_lookup[sample_order])
+        na_idx <- is.na(raw_order_labels) | !nzchar(raw_order_labels)
+        raw_order_labels[na_idx] <- sample_order[na_idx]
+        sample_order_labels <- make.unique(raw_order_labels, sep = " #")
+        unique_label_map <- setNames(sample_order_labels, sample_order)
+        
+        cor_df$Sample1_Label <- unname(unique_label_map[cor_df$Sample1])
+        cor_df$Sample2_Label <- unname(unique_label_map[cor_df$Sample2])
         cor_df$Sample1_Label[is.na(cor_df$Sample1_Label)] <- cor_df$Sample1[is.na(cor_df$Sample1_Label)]
         cor_df$Sample2_Label[is.na(cor_df$Sample2_Label)] <- cor_df$Sample2[is.na(cor_df$Sample2_Label)]
-        
-        sample_order_labels <- label_lookup[sample_order]
-        sample_order_labels[is.na(sample_order_labels)] <- sample_order[is.na(sample_order_labels)]
       } else {
-        cor_df$Sample1_Label <- cor_df$Sample1
-        cor_df$Sample2_Label <- cor_df$Sample2
-        sample_order_labels <- sample_order
+        sample_order_labels <- make.unique(as.character(sample_order), sep = " #")
+        unique_label_map <- setNames(sample_order_labels, sample_order)
+        cor_df$Sample1_Label <- unname(unique_label_map[cor_df$Sample1])
+        cor_df$Sample2_Label <- unname(unique_label_map[cor_df$Sample2])
       }
       
       cor_df$Sample1_Label <- factor(cor_df$Sample1_Label, levels = sample_order_labels)

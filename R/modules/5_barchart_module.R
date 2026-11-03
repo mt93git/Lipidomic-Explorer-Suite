@@ -1037,6 +1037,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
         }
       }
       if (is.na(n) || n <= 0) n <- 1
+      ncols <- min(4, n)
       ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
       contrast_suffix <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
         paste0(" (", paste(ci$comp, collapse = "+"), " vs ", paste(ci$ref, collapse = "+"), ")")
