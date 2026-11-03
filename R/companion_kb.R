@@ -567,13 +567,110 @@ kb_no_info <- function() list(found = FALSE,
   text = if (companion_kb_friendly()) paste(COMPANION_KB_NO_INFO, COMPANION_KB_TONE$no_info, sep = "\n\n") else COMPANION_KB_NO_INFO,
   source = "Knowledge base · no matching source", passages = kb_empty_chunks())
 
-# The answer: verbatim passages with their sources, or COMPANION_KB_NO_INFO. Never anything else.
+# ---- Digest: a short, structured explanation built only from lines of the sources -------------
+# Nothing is paraphrased or added. The retrieved lines are sorted into fixed sections (by the heading they sit
+# under and by the words they use), the best one or two per section are kept, and the files they came from are
+# named. LIPIDOMIC_KB_STYLE=passages restores the longer answer made of whole passages.
+COMPANION_KB_ORIGIN <- "Libreros_lab"
+COMPANION_KB_SECTIONS <- c(definition = "Definition", structure = "Structure", biological_function = "Biological function",
+                           interactions = "Interactions", relevance = "Relevance", insights = "New insights")
+companion_kb_style <- function() if (identical(Sys.getenv("LIPIDOMIC_KB_STYLE", unset = "digest"), "passages")) "passages" else "digest"
+kb_rules <- list(
+  definition = list(head = "overview|introduction|summary|general|principles|what is|untitled",
+    pat = "\\b(is an?|are an?|is the|refers? to|defined as|known as|class of|type of|group of|family of|unique|comprises?|constitutes?)\\b"),
+  structure = list(head = "structur|composition|stereo|species|isomer|chain|acyl|head ?group|formula|backbone|molecular",
+    pat = "\\b(structure|structural|composed of|consists? of|contains?|backbone|head ?group|chains?|acyl|sn-[123]|moiety|isomers?|saturated|unsaturated|linked|bond|species)\\b"),
+  biological_function = list(head = "function|role|biolog|physiolog|metabol|biosynthes|catabol|homeostas|membrane|signal|transport|storage|energy",
+    pat = "\\b(function|role|essential for|required for|regulates?|provides?|serves?|involved in|storage|energy|signalling|signaling|membranes?|barrier|precursor|mediates?|transport|metabolism|synthesis|degradation)\\b"),
+  interactions = list(head = "interact|binding|partner|cross-?talk|receptor",
+    pat = "\\b(interacts?|interactions?|binds?|binding|bound to|partners?|receptors?|activates?|inhibits?|modulates?|regulated by|associates? with|complex(es)? with|cross-?talk|recruits?)\\b"),
+  relevance = list(head = "disease|health|clinical|therapeutic|patholog|disorder|medical|biomarker|aging",
+    pat = "\\b(disease|diseases|disorders?|cancer|diabetes|obesity|atheroscler\\w*|neuro\\w*|infection|deficien\\w*|syndrome|biomarker|therapeutic|therapy|clinical|pathogen\\w*|inflammat\\w*|apoptosis|insulin resistance)\\b"),
+  insights = list(head = "outlook|emerging|recent|new |future|perspective|research|advances|insight",
+    pat = "\\b(recent|recently|emerging|novel|new|newly|has been shown|have been shown|opens? (up )?avenues|promising|future|discovery|discovered|revealing|reveals?|revealed)\\b"))
+
+kb_n_match <- function(pat, x) lengths(regmatches(x, gregexpr(pat, x, perl = TRUE, ignore.case = TRUE)))
+
+# A topic question asks what something is; a specific one asks about one detail.
+kb_is_topic <- function(q) {
+  q <- tolower(trimws(gsub("[?!.]+$", "", q)))
+  if (grepl("^(tell me about|explain|describe|define|summari[sz]e|overview of|give me an overview of|summary of) ", q)) return(TRUE)
+  if (grepl("^(what|who) (is|are) (an? |the )?[^ ]+( [^ ]+){0,3}$", q) && !grepl(" (of|in|for|on|at|from|with|by) ", q)) return(TRUE)
+  length(strsplit(q, " +")[[1L]]) <= 3L && !grepl("^(what|who|why|how|when|where|which|does|do|is|are|can)\\b", q)
+}
+
+kb_shorten <- function(x, max_chars = 340L) {
+  if (nchar(x) <= max_chars) return(x)
+  s <- unlist(strsplit(x, "(?<=[.!?])\\s+", perl = TRUE)); out <- ""
+  for (z in s) { if (nzchar(out) && nchar(out) + 1L + nchar(z) > max_chars) break; out <- if (nzchar(out)) paste(out, z) else z }
+  if (nchar(out) > max_chars + 120L) NA_character_ else out
+}
+
+kb_source_label <- function(source) paste0(sub("^.*/", "", source), "/", Sys.getenv("LIPIDOMIC_KB_ORIGIN", unset = COMPANION_KB_ORIGIN))
+
+kb_digest <- function(rows, question) {
+  q <- unique(kb_tokens(question))
+  cand <- list()
+  for (i in seq_len(nrow(rows))) {
+    ls <- unlist(strsplit(rows$text[i], "\n+"))
+    ls <- trimws(sub("^\\s*([-*+]|[0-9]+[.)])\\s+", "", ls))
+    ls <- ls[nzchar(ls) & !grepl("^Diagram labels:", ls)]
+    ls <- vapply(ls, kb_shorten, character(1), USE.NAMES = FALSE); ls <- ls[!is.na(ls) & nchar(ls) >= 25L]
+    if (!length(ls)) next
+    sec <- tolower(rows$section[i])
+    cat_score <- vapply(names(kb_rules), function(nm) 2 * grepl(kb_rules[[nm]]$head, sec, perl = TRUE) + pmin(3, kb_n_match(kb_rules[[nm]]$pat, ls)), numeric(length(ls)))
+    if (!is.matrix(cat_score)) cat_score <- matrix(cat_score, nrow = length(ls), dimnames = list(NULL, names(kb_rules)))
+    ctx <- unique(c(kb_tokens(rows$section[i]), kb_tokens(sub("\\.[A-Za-z]+$", "", sub("^.*/", "", rows$source[i])))))
+    fm <- 3 * any(q %in% kb_tokens(sub("\\.[A-Za-z]+$", "", sub("^.*/", "", rows$source[i]))))   # the file is named after the subject
+    hit <- vapply(ls, function(l) sum(q %in% kb_tokens(l)), numeric(1))
+    rel <- 2 * hit + sum(q %in% ctx) + fm * (hit > 0)
+    row_like <- grepl("^[^:;]{1,40}: [^;]*; [^:;]{1,40}: ", ls)   # a table row: fine as evidence, poor as a sentence
+    cat_score[row_like, ] <- cat_score[row_like, , drop = FALSE] - 5
+    best <- max.col(cat_score, ties.method = "first")
+    cand[[length(cand) + 1L]] <- data.frame(line = ls, cat = names(kb_rules)[best], cs = cat_score[cbind(seq_along(ls), best)],
+                                            rel = rel, rank = i, source = rows$source[i], stringsAsFactors = FALSE)
+  }
+  if (!length(cand)) return(NULL)
+  cand <- do.call(rbind, cand)
+  same <- function(a, b) { x <- kb_tokens(a); y <- kb_tokens(b); length(intersect(x, y)) / max(1L, length(union(x, y))) >= 0.6 }
+  pick <- function(d, n) {
+    d <- d[order(-d$rel, -d$cs, d$rank), , drop = FALSE]; keep <- integer()
+    for (i in seq_len(nrow(d))) { if (!any(vapply(keep, function(j) same(d$line[i], d$line[j]), logical(1)))) keep <- c(keep, i); if (length(keep) >= n) break }
+    d[keep, , drop = FALSE]
+  }
+  used <- character(); blocks <- character(); filled <- 0L
+  if (kb_is_topic(question)) {
+    for (nm in names(COMPANION_KB_SECTIONS)) {
+      d <- pick(cand[cand$cat == nm & cand$cs >= 1 & cand$rel >= 2, , drop = FALSE], 2L)
+      if (!nrow(d) && nm == "definition") {   # no sentence defines it: the best line about the subject from the best passage
+        e <- cand[cand$rel >= 2 & cand$rank == min(cand$rank[cand$rel >= 2]) & !(cand$line %in% unlist(lapply(blocks, function(b) strsplit(b, "\n")[[1L]]))), , drop = FALSE]
+        d <- pick(e, 1L)
+      }
+      if (nrow(d)) { blocks <- c(blocks, paste(c(COMPANION_KB_SECTIONS[[nm]], d$line), collapse = "\n")); used <- c(used, d$source); filled <- filled + 1L; cand <- cand[!cand$line %in% d$line, , drop = FALSE] }
+      else if (nm != "interactions") blocks <- c(blocks, paste(COMPANION_KB_SECTIONS[[nm]], "The sources do not cover this part.", sep = "\n"))
+    }
+    if (filled < 3L) { blocks <- character(); used <- character() }
+  }
+  if (!length(blocks)) {
+    d <- pick(cand[cand$rel >= 1, , drop = FALSE], 3L)
+    if (!nrow(d)) d <- pick(cand, 3L)
+    if (!nrow(d)) return(NULL)
+    d <- d[order(d$rank), , drop = FALSE]
+    blocks <- paste0("• ", d$line, collapse = "\n"); used <- d$source
+  }
+  paste(c(blocks, paste0("Source: ", paste(unique(vapply(used, kb_source_label, character(1))), collapse = "; "))), collapse = "\n\n")
+}
+
+# The answer: lines of the sources (or whole passages in the legacy style) with their sources, or
+# COMPANION_KB_NO_INFO. Never anything else.
 companion_kb_answer <- function(question, kb = companion_kb_load(), audience = companion_kb_audience(), k = 3L) {
   if (!is.character(question) || length(question) != 1L || is.na(question) || !nzchar(trimws(question)) || nchar(question) > 600L) return(kb_no_info())
-  s <- companion_kb_search(question, kb, audience, k)
+  digest <- identical(companion_kb_style(), "digest")
+  s <- companion_kb_search(question, kb, audience, if (digest) max(k, 12L) else k)
   if (!nrow(s$hits)) return(kb_no_info())
   rows <- kb$chunks[s$hits$index, , drop = FALSE]
-  body <- kb_compose(rows)
+  body <- if (digest) kb_digest(rows, question) else NULL
+  if (is.null(body)) { rows <- rows[seq_len(min(k, nrow(rows))), , drop = FALSE]; body <- kb_compose(rows) }
   if (companion_kb_friendly()) body <- paste(kb_pick(COMPANION_KB_TONE$intro, question), body, kb_pick(COMPANION_KB_TONE$outro, question), sep = "\n\n")
   list(found = TRUE, text = body,
        source = sprintf("Knowledge base · %d passage%s", nrow(rows), if (nrow(rows) == 1L) "" else "s"), passages = rows)

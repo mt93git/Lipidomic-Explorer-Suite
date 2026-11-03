@@ -4,6 +4,7 @@ Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE = "1")
 source("R/companion_kb.R")
 Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "1")  # most of this file exercises the seed too; the default (off) is checked below
 Sys.setenv(LIPIDOMIC_KB_FRIENDLY = "0")     # plain answers for the exact-text checks; the friendly framing is checked below
+Sys.setenv(LIPIDOMIC_KB_STYLE = "passages")      # whole-passage answers for the verbatim checks; the digest is checked below
 check <- function(label, cond) if (!isTRUE(cond)) stop("FAILED: ", label, call. = FALSE)
 NO <- "I have no information about this."
 check("refusal text is exactly the requested sentence", identical(COMPANION_KB_NO_INFO, NO))
@@ -166,6 +167,34 @@ check("the friendly lines name no subject", !any(grepl("lipid|ceramide|gene|enzy
 check("a step lookup is friendly too", startsWith(companion_kb_by_tag("topic-normalization", companion_kb_load(lib, seed), "team")$text, COMPANION_KB_TONE$step))
 Sys.setenv(LIPIDOMIC_KB_FRIENDLY = "0")
 check("the framing can be switched off", identical(ask(q)$text, plain))
+
+# ---- Digest: a short, structured synthesis built only from lines of the sources ---------------
+Sys.setenv(LIPIDOMIC_KB_STYLE = "digest")
+writeLines(c("<!-- source: Cer/Ceramide overview.png -->", "# Ceramide", "",
+  "## Overview", "- Ceramide is a class of sphingolipids built on a sphingoid base.", "",
+  "## Structure", "- It consists of a sphingosine backbone linked to a fatty acyl chain by an amide bond.", "",
+  "## Biological function", "- Ceramides form the permeability barrier of the skin and regulate apoptosis signalling.", "",
+  "## Disease", "- Elevated ceramide is associated with insulin resistance and cardiovascular disease.", "",
+  "## Recent advances", "- Recent work has shown that ceramide species can serve as plasma biomarkers."), file.path(inbox, "cer.md"))
+companion_kb_add(file.path(inbox, "cer.md"), dir = lib, quiet = TRUE)
+kb <- companion_kb_load(lib, seed)
+d <- ask("what is ceramide")
+corpus <- paste(kb$chunks$text, collapse = "\n")
+heads <- c("Definition", "Structure", "Biological function", "Relevance", "New insights")
+check("a topic question gets the structured sections in order", all(vapply(heads, function(h) grepl(paste0("(^|\n)", h, "\n"), d$text), logical(1))) &&
+  all(diff(vapply(heads, function(h) regexpr(paste0(h, "\n"), d$text, fixed = TRUE)[1L], numeric(1))) > 0))
+body <- setdiff(trimws(unlist(strsplit(d$text, "\n"))), c("", heads, "Interactions"))
+body <- body[!grepl("^Source: ", body) & body != "The sources do not cover this part."]
+check("every digest line is a line of the sources", length(body) >= 4L && all(vapply(body, function(l) grepl(l, corpus, fixed = TRUE), logical(1))))
+check("the digest cites file name/Libreros_lab", grepl("Source: Ceramide overview.png/Libreros_lab", d$text, fixed = TRUE))
+check("the digest does not recite whole passages", nchar(d$text) < nchar(corpus))
+check("a digest never names a source it did not use", !grepl("skin ceramides.png|protocol", d$text))
+check("a digest still refuses unrelated questions", identical(ask("what is the capital of France")$text, NO))
+s <- ask("which bond links the acyl chain in ceramide")
+check("a specific question gets a short answer with its source", s$found && !grepl("(^|\n)Definition\n", s$text) && grepl("amide bond", s$text, fixed = TRUE) && grepl("/Libreros_lab", s$text, fixed = TRUE))
+Sys.setenv(LIPIDOMIC_KB_STYLE = "passages")
+check("the legacy passages style can be restored", !grepl("Libreros_lab", ask("what is ceramide")$text, fixed = TRUE))
+companion_kb_remove("cer.md", dir = lib, quiet = TRUE); kb <- companion_kb_load(lib, seed)
 
 # ---- Default scope: only the fed library answers questions ---------------------------------
 Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "0")

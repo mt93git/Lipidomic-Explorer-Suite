@@ -110,3 +110,13 @@ confirmation, to name significant lipids or p-values it cannot see, and to overr
 
 `LIPIDOMIC_COMPANION_KB=0` restores the previous behavior (scripted guidance and the optional AI topic
 selector). The default is on.
+
+## Short structured answers (default)
+
+Answers are a synthesis, not a recital. For a question about a topic ("what is a ceramide", "tell me about lipin") the
+companion picks the best one or two lines of the sources for each of these sections: **Definition, Structure,
+Biological function, Interactions** (only when the sources have it), **Relevance** and **New insights**. A part the
+sources do not cover says `The sources do not cover this part.` A specific question gets its best two or three lines.
+Every line is copied unchanged from a file (nothing is reworded), and the answer ends with
+`Source: <file name>/Libreros_lab` for each file used (`LIPIDOMIC_KB_ORIGIN` changes the second part).
+`LIPIDOMIC_KB_STYLE=passages` restores the longer answer made of whole passages.
