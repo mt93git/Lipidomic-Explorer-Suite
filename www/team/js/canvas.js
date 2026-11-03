@@ -399,7 +399,7 @@
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
       var csvSource=csvByPlot[request.source];if(csvSource)csvByPlot[el.id]=message.id+(request.source.indexOf('-')<0?'-'+csvSource:csvSource.slice(request.source.indexOf('-')));
       if(request.saved){settleRestored(el,message.id,message.generation);restorePending.set(el.id,request.saved);hydratePending();trackRestoredInputs(r,request.instance.inputs);}
-      else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
+      else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.squareHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
       var opened=document.getElementById(message.id+'_host');if(opened&&opened.classList.contains('is-open')&&r.node)TeamCanvasFloatingPanel.open(opened,r.node);
       renderList();changed();
     });
@@ -1756,7 +1756,7 @@
       if (!r || !r.el.isConnected || (r.dynamic && !r.wrapper) || (dynamicOutput(r.el) && !r.wrapper)) { waiting.push(saved.label); return; }
       applyingRestore = true;
       try {
-        r.largeHeatmapAdapted=true;
+        r.largeHeatmapAdapted=true;r.squareHeatmapAdapted=true;
         r.insight = saved.insight ? validateInsight(saved.insight) : null;
         r.visual = Object.assign({}, saved.visual); r.hydrating = true; r.statisticsSaved = saved.statistics || null; add(r);
         if (!r.node) { waiting.push(saved.label); return; }
