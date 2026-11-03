@@ -8,7 +8,7 @@
 suppressPackageStartupMessages({
   library(shiny); library(bslib); library(htmltools); library(ggplot2); library(plotly)
 })
-source("R/hooks.R")
+source("R/core/hooks.R")
 lipidomic_hook_reset()
 
 # shiny::testServer() returns NULL; capture the value of its test expression.

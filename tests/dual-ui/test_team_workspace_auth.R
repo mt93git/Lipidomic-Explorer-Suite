@@ -2,7 +2,7 @@
 # Keep this test independent of the scientific modules: the boundary must hold
 # before any of them can register an input handler.
 # The gate is the Team "server_entry" hook (R/server.R wraps `server` with it).
-source("R/hooks.R", local = FALSE)
+source("R/core/hooks.R", local = FALSE)
 source("R/frontends/team/hooks/server_wiring.R", local = FALSE)
 source("R/frontends/team/workspace.R", local = FALSE)
 server_text <- paste(readLines("R/server.R", warn = FALSE), collapse = "\n")

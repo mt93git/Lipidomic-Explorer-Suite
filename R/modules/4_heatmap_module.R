@@ -211,7 +211,7 @@ heatmap_ui <- function(id) {
 
 # --- Module Server ---
 
-# Classic default of the heatmap_violin_values hook (see R/hooks.R): selected-feature
+# Classic default of the heatmap_violin_values hook (see R/core/hooks.R): selected-feature
 # violin values on the requested scale. The prepared matrix is log2, so the linear
 # view exponentiates and the log2 view (and its CSV) uses it unchanged.
 heatmap_violin_values_default <- function(sub_df, sample_cols, scale, ...) {

@@ -4,7 +4,7 @@ suppressPackageStartupMessages(library(shiny))
 `%||%` <- function(a, b) if (is.null(a)) b else a
 lipidomic_plotly_event <- function(...) NULL
 source("R/sample_metadata_import.R"); source("R/frontends/team/results_dashboard.R")
-source("R/frontends/team/scientific_insight_context.R"); source("R/hooks.R");source("R/frontends/team/hooks/logratio.R");source("R/frontends/team/violin_statistics.R")
+source("R/frontends/team/scientific_insight_context.R"); source("R/core/hooks.R");source("R/frontends/team/hooks/logratio.R");source("R/frontends/team/violin_statistics.R")
 source("R/frontends/team/plot_instances.R"); source("R/frontends/team/canvas_state.R")
 fails <- function(expr) stopifnot(inherits(tryCatch({ force(expr); NULL }, error = identity), "error"))
 

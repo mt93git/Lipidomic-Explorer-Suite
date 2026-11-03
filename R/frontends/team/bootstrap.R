@@ -1,4 +1,4 @@
-# Team implementations of the shared hooks in R/hooks.R.
+# Team implementations of the shared hooks in R/core/hooks.R.
 invisible(lapply(sort(list.files("R/frontends/team/hooks", pattern = "\\.R$", full.names = TRUE)), source))
 # Publication Export Studio server (registers the "export_studio_server" hook).
 source("R/frontends/team/export_studio.R")

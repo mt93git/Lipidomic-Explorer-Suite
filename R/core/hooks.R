@@ -1,4 +1,4 @@
-# R/hooks.R
+# R/core/hooks.R
 # Named extension points for optional frontends. A module calls
 #   lipidomic_hook("name", default)(value, ...)
 # where `default` is exactly what the module did before the hook existed.

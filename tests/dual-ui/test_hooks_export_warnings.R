@@ -3,7 +3,7 @@
 # Team's registrations reproduce production's adapters on synthetic inputs.
 suppressPackageStartupMessages({ library(shiny); library(ggplot2) })
 `%||%` <- function(a, b) if (!is.null(a)) a else b
-source("R/hooks.R")
+source("R/core/hooks.R")
 source("R/modules/utils_stats.R")
 suppressPackageStartupMessages(source("R/modules/99_export_studio_module.R"))
 eval(parse("R/modules/1_shared_data_module.R")[[1L]])  # session_persistent_inputs only

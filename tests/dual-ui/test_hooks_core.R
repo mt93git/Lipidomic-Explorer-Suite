@@ -1,6 +1,6 @@
 # Hooks run their default until a frontend registers an implementation, and
 # several implementations of one hook compose in registration order.
-source("R/hooks.R")
+source("R/core/hooks.R")
 default <- function(x, k) x * k
 stopifnot(identical(lipidomic_hook("demo", default)(3, 2), 6))
 stopifnot(identical(lipidomic_hook("demo")(3), 3))

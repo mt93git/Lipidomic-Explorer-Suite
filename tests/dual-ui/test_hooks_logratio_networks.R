@@ -2,7 +2,7 @@
 # Classic runs each hook's default, which reproduces the code before the hook;
 # the Team implementations reproduce production's adapters on small synthetic inputs.
 suppressPackageStartupMessages({ library(shiny); library(ggplot2) })
-source("R/hooks.R")
+source("R/core/hooks.R")
 lipidomic_hook_reset()
 
 parsed <- function(path) parse(path, keep.source = FALSE)

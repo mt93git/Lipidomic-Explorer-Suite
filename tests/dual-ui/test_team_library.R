@@ -1,7 +1,7 @@
 # Ported from production tests/dual-ui/test_team_library.R.
 # Persistence boundary regression: no credentials in exported/restored UI state.
 # In this layout the Team credential filter is the "persistent_inputs" hook.
-source('R/hooks.R')
+source('R/core/hooks.R')
 invisible(lapply(sort(list.files('R/frontends/team/hooks', pattern='[.]R$', full.names=TRUE)), source))
 eval(parse('R/modules/1_shared_data_module.R')[[1]])
 x <- session_persistent_inputs(list(team_library_password='secret',team_library_email='email',team_library_checkpoint='id',imputationSeed=42,normalization='median'))

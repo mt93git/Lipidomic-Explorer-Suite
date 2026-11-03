@@ -3,7 +3,7 @@
 suppressPackageStartupMessages({
   source("R/utils_csv_export.R")
   source("R/modules/99_export_studio_module.R")
-  source("R/hooks.R")
+  source("R/core/hooks.R")
   source("R/frontends/team/hooks/export.R")
   source("R/frontends/team/hooks/server_wiring.R")
   source("R/frontends/team/export_studio.R")

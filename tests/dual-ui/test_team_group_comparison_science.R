@@ -1,6 +1,6 @@
 suppressPackageStartupMessages({library(shiny);library(dplyr);library(tidyr)})
 `%||%` <- function(a,b) if(is.null(a))b else a
-source('R/hooks.R');source('R/modules/9_logratio_module.R');source('R/frontends/team/hooks/group_comparison.R');source('R/frontends/team/group_comparison.R')
+source('R/core/hooks.R');source('R/modules/9_logratio_module.R');source('R/frontends/team/hooks/group_comparison.R');source('R/frontends/team/group_comparison.R')
 original <- logratio_server
 # The module function inside moduleServer() (B: after the logratio_shared_data hook line).
 module_call <- Filter(function(x) is.call(x) && identical(x[[1]], as.name('moduleServer')), as.list(body(original)))[[1]]

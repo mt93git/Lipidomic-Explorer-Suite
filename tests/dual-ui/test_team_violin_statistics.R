@@ -1,7 +1,7 @@
 # Numerical and design contract for Team Canvas violin statistics.
 # Reference values come from base R stats functions and hand formulas.
 if (!exists("%||%")) `%||%` <- function(a, b) if (is.null(a)) b else a
-source("R/hooks.R"); source("R/frontends/team/hooks/logratio.R")  # shared participant rules
+source("R/core/hooks.R"); source("R/frontends/team/hooks/logratio.R")  # shared participant rules
 source("R/frontends/team/violin_statistics.R")
 fails <- function(expr, pattern = NULL) {
   e <- tryCatch({ force(expr); NULL }, error = identity)

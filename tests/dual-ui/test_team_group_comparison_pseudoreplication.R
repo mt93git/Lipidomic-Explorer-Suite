@@ -2,7 +2,7 @@
 # repeated, incomplete or ambiguous participant IDs among the compared samples
 # block unpaired p-values; unique or unmapped IDs leave results untouched.
 if (!exists("%||%")) `%||%` <- function(a, b) if (is.null(a)) b else a
-source("R/hooks.R")
+source("R/core/hooks.R")
 source("R/frontends/team/hooks/logratio.R")  # participant rules + "logratio_shared_data" hook
 source("R/frontends/team/violin_statistics.R")
 source("R/modules/utils_stats.R")

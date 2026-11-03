@@ -1,7 +1,7 @@
 # Focused bootstrap evaluates the production hub without unrelated plot widgets.
 suppressPackageStartupMessages({library(shiny);library(bslib);library(dplyr);library(tidyr);library(readxl);library(zip);library(purrr);library(stringr)})
 # Block B layout: interface selection and hooks are sourced by global.R before its assignments.
-source('R/frontends/interface.R');source('R/hooks.R')
+source('R/frontends/interface.R');source('R/core/hooks.R')
 for(expr in parse('R/global.R')) if(is.call(expr) && identical(expr[[1]],as.name('<-'))) eval(expr,.GlobalEnv)
 for(path in c('R/utils_data.R','R/utils_preparation.R','R/utils_restored_inputs.R','R/utils_sample_metadata.R','R/sample_metadata_import.R','R/utils_session_archive.R','R/utils_colors.R','R/utils_vis.R','R/modules/utils_stats.R','R/modules/utils_targeted_lipids.R','R/utils_memento.R','R/modules/1_shared_data_module.R')) source(path)
 team_workspace_enabled <- function() TRUE
