@@ -582,7 +582,8 @@
       logical.teamLogical=true;w.resize=logical;widgetGuarded=true;
     });
   }
-  function resize(r) {
+  // camera: called because the canvas view changed (zoom, card box observer), not the content.
+  function resize(r, camera) {
     guardPlotlyResize();guardWidgetResize();
     if (!r.node || r.snapshot) return;
     var content = r.node.querySelector('.tc-content');
@@ -613,12 +614,13 @@
     // moves between zoom levels: a few pixels, or hundreds for a card whose content scrolls
     // (group comparison). Each such "change" re-laid out every Plotly card, dispatched a window
     // resize (Shiny re-measures every output) and re-rendered static plots in R on every zoom
-    // step. So a zoom alone keeps the current height; at a fixed zoom a wobble within one
-    // device pixel is ignored too. Card resizes and content changes still refit.
+    // step. So a camera refit after a zoom keeps the height computed at the zoom where the
+    // card last really fitted; at a fixed zoom a wobble within one device pixel is ignored
+    // too. Card resizes and content changes (explicit fits) still refit.
     var currentHeight = parseFloat(r.el.style.height), nodeSize = r.node.style.width + 'x' + r.node.style.height;
-    var sameNode = r.fitNodeSize === nodeSize, zoomOnly = sameNode && r.fitScale !== undefined && r.fitScale !== viewScale;
+    var sameNode = r.fitNodeSize === nodeSize, zoomOnly = !!camera && sameNode && r.fitScale !== undefined && r.fitScale !== viewScale;
     var slack = sameNode ? Math.min(12, Math.ceil(1.5 / (viewScale > 0 ? viewScale : 1))) : 0;
-    r.fitNodeSize = nodeSize; r.fitScale = viewScale;
+    r.fitNodeSize = nodeSize; if (!zoomOnly) r.fitScale = viewScale;
     if (!square && !large && Number.isFinite(currentHeight) && (zoomOnly || Math.abs(currentHeight - Math.round(height)) <= slack)) height = currentHeight;
     var desired = Math.round(height) + 'px';
     var heightChanged=r.el.style.height !== desired;
@@ -856,7 +858,7 @@
     moveNode(node, head);
     // The observer also fires when only the canvas zoom changes; that is camera, not a document
     // change, so it must not start a save (each save re-renders the library panel in Shiny).
-    if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r); var size = node.offsetWidth + 'x' + node.offsetHeight; if (size !== r.observedSize) { r.observedSize = size; changed(); } }); r.observer.observe(node); }
+    if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r, true); var size = node.offsetWidth + 'x' + node.offsetHeight; if (size !== r.observedSize) { r.observedSize = size; changed(); } }); r.observer.observe(node); }
     board.classList.add('has-nodes'); expandBoard(); renderList();
     requestAnimationFrame(function () { resize(r); if (!r.hydrating && r.visual && Object.keys(r.visual).length) applyAppearance(r); inheritPaletteWhenReady(r); });
     if(!r.hydrating)presentNewNode(node,r.el.id);
@@ -1811,7 +1813,7 @@
       addIllustration: function (id) { return addIllustration(id); },
       // Re-fit a card's plot to its frame (the shell parks module content around it).
       fitPlot:function(id){var r=records.get(id);if(r&&r.node)resize(r);},
-      fitAllPlots:function(){records.forEach(function(r){if(r.node)resize(r);});},
+      fitAllPlots:function(){records.forEach(function(r){if(r.node)resize(r, true);});},
       // Read-only card state for the shell's status chips and export warning.
       cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';return figureCurrent(r)?'current':'updating';},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
