@@ -3,13 +3,15 @@ invisible(lapply(sort(list.files("R/frontends/team/hooks", pattern = "\\.R$", fu
 # Publication Export Studio server (registers the "export_studio_server" hook).
 source("R/frontends/team/export_studio.R")
 source("R/frontends/team/metadata_state.R")
-# Project library and project records belong to the storage block (D). They are
-# sourced when installed. Without them the project library is disabled, so the
-# Team workspace (which requires it) cannot start.
-for (team_storage_file in c("R/frontends/team/project_library.R", "R/frontends/team/project_records.R"))
-  if (file.exists(team_storage_file)) source(team_storage_file)
-rm(team_storage_file)
-if (!exists("team_library_enabled", mode = "function")) team_library_enabled <- function() FALSE
+# Team checkpoint storage (LIPIDOMIC_STORAGE=files|database), the project
+# library and project records. Validated here so an invalid backend stops the
+# Team process at startup; Classic never sources it.
+source("R/frontends/team/storage/storage.R")
+source("R/frontends/team/storage/storage_files.R")
+source("R/frontends/team/storage/storage_database.R")
+source("R/frontends/team/project_records.R")
+source("R/frontends/team/project_library.R")
+team_storage_validate_config()
 # Team workspace, Canvas and their features (production R/global.R Team block and
 # R/frontends/team/server.R, same order).
 source("R/frontends/team/group_comparison.R")
