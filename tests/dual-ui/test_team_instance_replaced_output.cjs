@@ -14,7 +14,7 @@ const dom={};
 const ctx={instanceRequests:new Map(),records:new Map(),illustrations:new Map(),csvByPlot:{},window:{Shiny:{},jQuery:null},
   Shiny:{setInputValue(){},shinyapp:{$inputValues:{}}},
   document:{documentElement:{classList:{contains:()=>false}},getElementById:id=>dom[id]||null},
-  shinyBusy:false,instanceSupported:()=>true,instanceValues:()=>({scaleMode:'log2fc'}),cellSourceValues:()=>({}),plotTitle:()=> 'Violin distributions',
+  shinyBusy:false,instanceSupported:()=>true,heldPlot:()=>null,instanceValues:()=>({scaleMode:'log2fc'}),cellSourceValues:()=>({}),plotTitle:()=> 'Violin distributions',
   tell:x=>messages.push(x),restoreStatus(){},parkInstance(){},setInstanceInputs(){},openInstanceControls(){},failInstance:(r,e)=>{throw e;},
   watchRender(){},renderList(){},changed(){},hydratePending(){},restorePending:new Map(),
   add:r=>{mounted.push(r.el);if(!r.el.isConnected)return false;r.node={};return true;},
