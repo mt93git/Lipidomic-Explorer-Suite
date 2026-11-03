@@ -51,5 +51,6 @@ team_frontend_server <- function(input, output, session, shared_data) {
   if (team_workspace_enabled()) team_companion_workspace_server(session, view_data)
   # Group colours for the PCA: workspace Review (review_shell.js) and guided Quality (qw_pca_groups.js).
   if (!is.null(session)) team_review_shell_server(session, view_data)
+  team_pending_changes_bar_server(output, shared_data)
   invisible(guide_workflow)
 }
