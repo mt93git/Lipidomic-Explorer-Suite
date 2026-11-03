@@ -331,6 +331,44 @@ team_plot_instance_wrappers <- local({
     assign(family,edges,cache);edges
   }
 })
+# A plot can also wait on a control that a renderUI of its module builds
+# (longitudinal: macroclass_plot req()s input$selectedMacroclass, created by
+# output$macroclass_selector_ui in another, hidden tab). That renderUI must run
+# for the copy to draw. Read from the module source: the inputs the plot's render
+# expression reads, directly or through the module's reactive()s, and the
+# renderUI outputs whose markup creates any of those inputs.
+team_plot_instance_input_providers <- local({
+  cache <- new.env(parent=emptyenv())
+  function(source) {
+    if (exists(source,cache,inherits=FALSE)) return(get(source,cache))
+    resolved <- team_plot_instance_source(source); family <- resolved$family
+    renders <- list(); reactives <- list(); creates <- list()
+    lhs_output <- function(e) is.call(e) && length(e)==3L && paste(deparse(e[[1L]]),collapse='') %in% c('<-','=') && is.call(e[[2L]]) && identical(e[[2L]][[1L]],as.name('$')) && identical(e[[2L]][[2L]],as.name('output'))
+    visit <- function(e) {
+      if (!is.call(e)) return()
+      if (lhs_output(e)) {
+        key <- as.character(e[[2L]][[3L]]); renders[[key]] <<- e[[3L]]
+        if (team_plot_instance_is_render_ui(e)) creates[[key]] <<- team_plot_instance_ns_targets(e[[3L]])
+      } else if (length(e)==3L && paste(deparse(e[[1L]]),collapse='') %in% c('<-','=') && is.name(e[[2L]]) && is.call(e[[3L]]) &&
+                 sub('^shiny::','',paste(deparse(e[[3L]][[1L]]),collapse='')) %in% c('reactive','eventReactive')) reactives[[as.character(e[[2L]])]] <<- e[[3L]]
+      parts <- as.list(e)[-1L]; for (part in parts[team_plot_instance_present(parts)]) visit(part)
+    }
+    path <- team_plot_instance_family_files[family]
+    if (!is.na(path) && file.exists(path)) for (e in parse(path,keep.source=FALSE)) visit(e)
+    inputs <- character(); seen <- character()
+    walk <- function(e) {
+      if (is.name(e)) { n <- as.character(e); if (n %in% names(reactives) && !n %in% seen) { seen <<- c(seen,n); walk(reactives[[n]]) }; return() }
+      if (!is.call(e)) return()
+      if (identical(e[[1L]],as.name('$')) && identical(e[[2L]],as.name('input')) && length(e)==3L) { inputs <<- c(inputs,as.character(e[[3L]])); return() }
+      if (identical(e[[1L]],as.name('[[')) && identical(e[[2L]],as.name('input')) && length(e)==3L && is.character(e[[3L]])) { inputs <<- c(inputs,e[[3L]]); return() }
+      parts <- as.list(e); for (part in parts[team_plot_instance_present(parts)]) walk(part)
+    }
+    if (!is.null(renders[[resolved$output]])) walk(renders[[resolved$output]])
+    out <- names(Filter(function(ids) any(ids %in% inputs),creates))
+    out <- setdiff(out,resolved$output)
+    assign(source,out,cache);out
+  }
+})
 team_plot_instance_layout <- local({
   cache <- new.env(parent=emptyenv())
   function(source) {
@@ -531,7 +569,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     shiny::outputOptions(output,paste0(id,'-',resolved$output),suspendWhenHidden=FALSE)
     # The renderUI outputs that build this plot sit in panes the settings drawer
     # keeps hidden; they must run for the plot to exist at all.
-    for (wrapper in layout$wrappers) tryCatch(shiny::outputOptions(output,paste0(id,'-',wrapper),suspendWhenHidden=FALSE),error=function(e)NULL)
+    for (wrapper in unique(c(layout$wrappers,tryCatch(team_plot_instance_input_providers(value$source),error=function(e)character())))) tryCatch(shiny::outputOptions(output,paste0(id,'-',wrapper),suspendWhenHidden=FALSE),error=function(e)NULL)
     # Seed the saved settings into the new host's controls in this same flush, so
     # the browser's first values for the copy are its own (never the UI defaults)
     # and each output is computed once from them. The browser still checks and
@@ -593,7 +631,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         !grepl('^tcinstance_[a-z0-9_]{1,80}$',id) || !exists(id,active,inherits=FALSE)) return()
     entry <- get(id,active,inherits=FALSE); resolved <- team_plot_instance_source(entry$source)
     shiny::outputOptions(output,paste0(id,'-',resolved$output),suspendWhenHidden=TRUE)
-    for (wrapper in tryCatch(team_plot_instance_layout(entry$source)$wrappers,error=function(e)character())) tryCatch(shiny::outputOptions(output,paste0(id,'-',wrapper),suspendWhenHidden=TRUE),error=function(e)NULL)
+    for (wrapper in unique(c(tryCatch(team_plot_instance_layout(entry$source)$wrappers,error=function(e)character()),tryCatch(team_plot_instance_input_providers(entry$source),error=function(e)character())))) tryCatch(shiny::outputOptions(output,paste0(id,'-',wrapper),suspendWhenHidden=TRUE),error=function(e)NULL)
     shiny::removeUI(selector=paste0('#',id,'_host'),immediate=TRUE,session=session)
     entry$parked <- TRUE; assign(id,entry,active); stop_settling(id)
   },ignoreInit=TRUE)
@@ -602,7 +640,11 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
   # differential analysis has results; the canvas chip reports that state.
   if (is.function(shared_data$de_results)) shiny::observe({
     ready <- tryCatch(!is.null(shared_data$de_results()),error=function(e)FALSE)
-    session$sendCustomMessage('team-canvas-de-state',list(ready=isTRUE(ready)))
+    # No comparison runs at all until the study design is confirmed and the data are
+    # prepared (shared_data$inference_allowed, via server.R's inference_check): cards
+    # then point to Review > Study design instead of asking for a comparison.
+    design <- if (is.function(shared_data$inference_allowed)) tryCatch(isTRUE(shared_data$inference_allowed(FALSE)),error=function(e)NA) else NA
+    session$sendCustomMessage('team-canvas-de-state',list(ready=isTRUE(ready),design=design))
   })
   shiny::observeEvent(input$team_canvas_instance_create,{
     request <- input$team_canvas_instance_create
