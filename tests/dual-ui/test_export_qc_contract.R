@@ -1,3 +1,4 @@
+source('R/hooks.R')
 suppressPackageStartupMessages(source('R/modules/99_export_studio_module.R'))
 source('R/modules/2_qc_boxplot_module.R')
 

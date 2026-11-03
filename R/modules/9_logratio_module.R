@@ -194,6 +194,7 @@ logratio_ui <- function(id) {
 }
 
 logratio_server <- function(id, shared_data, global_color_map) {
+  shared_data <- lipidomic_hook("logratio_shared_data")(shared_data)
   moduleServer(id, function(input, output, session) {
     
   # --- 1. Reactives for Metadata & Grouping ---
@@ -1339,7 +1340,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
         }
         export_df <- df_log %>% 
            dplyr::select(Sample, GroupingVal, Feature, Class_Total, Global_Total, Proportion, Baseline_Mean_Prop, Log2FC, P_Value, Significance, Is_Baseline)
-        write_spreadsheet_csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(lipidomic_hook("violin_export_table")(export_df, session, shared_data), file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
@@ -1451,7 +1452,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
        req(db_info)
        export_df <- db_info$plot_db %>% 
            dplyr::select(Sample, GroupingVal, Feature, Class_Total, Global_Total, Proportion, Baseline_Mean_Prop, Log2FC, P_Value, Significance, Is_Baseline)
-       write_spreadsheet_csv(export_df, file, row.names = FALSE)
+       write_spreadsheet_csv(lipidomic_hook("violin_export_table")(export_df, session, shared_data), file, row.names = FALSE)
     }
     
     output$downloadAllMacroZip <- downloadHandler(

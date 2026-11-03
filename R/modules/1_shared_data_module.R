@@ -7,7 +7,7 @@ session_persistent_inputs <- function(inputs) {
   if (is.null(inputs)) return(list())
   if (!is.list(inputs)) return(inputs)
   transient <- grepl("(^|[-_])(assistant_(request|action|confirm|cancel)|client_ui_trace|guide_(review_receipt|focus_request|step|design_confirm)|shared_(design_confirm|review_receipt|apply_receipt|metadata_apply|step_[0-9]+|next_[0-9]+))$", names(inputs))
-  inputs[!transient]
+  lipidomic_hook("persistent_inputs")(inputs[!transient])
 }
 
 shared_data_ui <- function(id) {

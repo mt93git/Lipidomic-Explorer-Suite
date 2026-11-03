@@ -1040,6 +1040,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
             return(val)
          }
       })
+      safe_colors <- lipidomic_hook("fla_violin_palette")(safe_colors, c_levels)
       
       # Define universal palette for facets
       fla_palette <- c(
@@ -1587,6 +1588,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
     
     # 6. Correlation Engine
     correlation_data <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(NULL)
       req(processed_db())
       df_long <- processed_db()
       
@@ -1658,6 +1660,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
 
     # 6a. Correlation Circos Plot Logic
     circos_plot_logic <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(function(include_title = FALSE) { print(generate_empty_plot_message("Functional correlation circos requires a confirmed independent study design. Repeated observations cannot be treated as independent.")) })
       req(processed_db())
       cor_df <- correlation_data()
       if(is.null(cor_df) || nrow(cor_df) == 0) {
@@ -1754,6 +1757,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
     })
 
     output$plotCircos <- renderPlot({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(generate_empty_plot_message("Functional correlation circos requires a confirmed independent study design. Repeated observations cannot be treated as independent."))
       func <- circos_plot_logic()
       req(func)
       func()

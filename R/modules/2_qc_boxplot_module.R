@@ -2145,7 +2145,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
               symbol=if(isTRUE(input$useShapes)) ~ShapeGroupVal else I("circle"),
               symbols=if(isTRUE(input$useShapes)) shapeMap_plotly else NULL,
               text=~Label, type="scatter3d", mode=if(isTRUE(input$showLabels3D)) "markers+text" else "markers",
-              textfont=list(color='#000000', size=12),
+              textfont=lipidomic_hook("qc_3d_textfont")(list(color='#000000', size=12), input = input),
               marker=list(size=input$scoreMarkerSize3D)) %>%
         layout(title=list(text=paste0("3D PCA Score (", pca3d_mode_label, ")")), scene=list(xaxis=list(title=paste0("PC1 (",p_data$var_pc[1],"%)")),
                           yaxis=list(title=paste0("PC2 (",p_data$var_pc[2] %||% 1,"%)")), zaxis=list(title=paste0("PC3 (",p_data$var_pc[3] %||% 1,"%)"))))
@@ -2191,7 +2191,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       }
       plot_ly(data=loadings, x=~PC1, y=~PC2, z=~PC3, color=~Class, colors=local_class_colors(),
               text=~Label, type="scatter3d", mode=if(isTRUE(input$showLabels3D)) "markers+text" else "markers",
-              textfont=list(color='#000000', size=12),
+              textfont=lipidomic_hook("qc_3d_textfont")(list(color='#000000', size=12), input = input),
               marker=list(size=input$loadMarkerSize3D)) %>%
         layout(title=list(text="3D PCA Loadings"), scene=list(xaxis=list(title="PC1 Loading"),
                           yaxis=list(title="PC2 Loading"), zaxis=list(title="PC3 Loading")))
@@ -2413,6 +2413,9 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     output$pca3dPlot <- renderPlotly({ buildPCA3D_plotly() })
     output$load2dPlot <- renderPlot({ buildLoad2D_ggplot() })
     output$load3dPlot <- renderPlotly({ buildLoad3D_plotly() })
+    # Optional frontends may add views of the 2D builders; Classic adds none.
+    lipidomic_hook("qc_plot_outputs")(output, input = input,
+      builders = list(pca2dPlot = buildPCA2D_ggplot, load2dPlot = buildLoad2D_ggplot))
     
     create_download <- function(plot_obj, dims, file_prefix) {
       downloadHandler(

@@ -42,6 +42,7 @@ server <- function(input, output, session) {
     welcome_load_demo_trigger = welcome_load_demo_trigger, root_session = session,
     design_check = design_check, preparation_policy = if (is_team) "team" else "classic",
     inference_check = inference_check)
+  shared_data <- lipidomic_hook("shared_data")(shared_data)
 
   guide_workflow <- frontend_server_hooks()(input, output, session, shared_data)
 
