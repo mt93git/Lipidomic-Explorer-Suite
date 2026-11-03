@@ -55,8 +55,41 @@
     var editorBody=document.createElement('div');editorBody.className='tc-document-editor';pages.before(editorBody);editorBody.appendChild(inspector);editorBody.appendChild(pages);var inspectorToggle=document.createElement('button');inspectorToggle.type='button';inspectorToggle.className='tc-inspector-toggle';inspectorToggle.textContent='Object properties';inspectorToggle.setAttribute('aria-expanded','false');editorBody.before(inspectorToggle);inspectorToggle.addEventListener('click',function(){var open=editorBody.classList.toggle('tc-inspector-open');inspectorToggle.setAttribute('aria-expanded',String(open));});
     var notes=document.createElement('div');notes.className='tc-compose-notes';notes.setAttribute('aria-live','polite');editorBody.before(notes);
     function noteButton(text,fn){var b=document.createElement('button');b.type='button';b.textContent=text;b.addEventListener('click',fn);return b;}
+    // Plots in this figure: grouped by canvas tab, a checkbox per plot and per tab, and an order.
+    var picker=document.createElement('details');picker.className='tc-figure-plots';picker.open=true;editorBody.before(picker);picker.hidden=true;
+    function renderPicker(){
+      var api=window.TeamCanvasTabs;if(!api||typeof api.groups!=='function'){picker.hidden=true;return;}
+      var groups=api.groups(),order=api.figureOrder(),total=order.length;if(!total){picker.hidden=true;return;}
+      var focusKey=document.activeElement&&picker.contains(document.activeElement)?document.activeElement.dataset.pickKey:null;
+      var chosen=order.filter(function(id){return api.included(id);}).length;picker.hidden=false;picker.replaceChildren();
+      var summary=document.createElement('summary');summary.textContent='Plots in this figure · '+chosen+' of '+total;picker.appendChild(summary);
+      var states={};try{TeamCanvas.previewState().unusable.forEach(function(u){states[u.id]=u.reason;});}catch(e){}
+      var body=document.createElement('div');body.className='tc-figure-plots-body';picker.appendChild(body);
+      groups.forEach(function(g){
+        if(!g.nodes.length)return;
+        var box=document.createElement('fieldset');box.className='tc-figure-plots-tab';var legend=document.createElement('legend');legend.textContent=g.name;box.appendChild(legend);
+        var all=document.createElement('label');all.className='tc-figure-plots-all';var allBox=document.createElement('input');allBox.type='checkbox';allBox.dataset.pickKey='tab:'+g.id;
+        var on=g.nodes.filter(function(id){return api.included(id);}).length;allBox.checked=on===g.nodes.length;allBox.indeterminate=on>0&&on<g.nodes.length;
+        allBox.addEventListener('change',function(){api.setTabIncluded(g.id,allBox.checked);});all.append(allBox,document.createTextNode(' Select all in tab'));box.appendChild(all);
+        order.filter(function(id){return g.nodes.indexOf(id)>=0;}).forEach(function(id){
+          var row=document.createElement('div');row.className='tc-figure-plots-row';var label=document.createElement('label');var cb=document.createElement('input');cb.type='checkbox';cb.checked=api.included(id);cb.dataset.pickKey='plot:'+id;
+          var name=api.label(id),pos=order.indexOf(id);cb.addEventListener('change',function(){api.setIncluded(id,cb.checked);});
+          label.append(cb,document.createTextNode(' '+(pos+1)+'. '+name));
+          if(states[id]){var badge=document.createElement('span');badge.className='tc-figure-plots-state';badge.textContent=states[id]==='live'?'not finished':states[id]==='stale'?'needs review':'not ready';label.appendChild(badge);}
+          var up=document.createElement('button'),down=document.createElement('button');up.type=down.type='button';up.textContent='↑';down.textContent='↓';
+          up.setAttribute('aria-label','Move '+name+' earlier in the figure');down.setAttribute('aria-label','Move '+name+' later in the figure');up.dataset.pickKey='up:'+id;down.dataset.pickKey='down:'+id;
+          up.disabled=pos===0;down.disabled=pos===total-1;up.addEventListener('click',function(){api.moveInOrder(id,-1);});down.addEventListener('click',function(){api.moveInOrder(id,1);});
+          row.append(label,up,down);box.appendChild(row);
+        });
+        body.appendChild(box);
+      });
+      var reset=document.createElement('button');reset.type='button';reset.className='tc-figure-plots-reset';reset.textContent='Reset order (tab order)';reset.dataset.pickKey='reset';reset.addEventListener('click',function(){api.resetOrder();});body.appendChild(reset);
+      var hint=document.createElement('p');hint.className='tc-figure-plots-hint';hint.textContent='Unchecked plots stay on their canvas tab and do not hold up the export. The order sets page order and panel letters.';body.appendChild(hint);
+      if(focusKey){var again=picker.querySelector('[data-pick-key="'+CSS.escape(focusKey)+'"]');if(again)again.focus();}
+    }
+    window.addEventListener('team-canvas-changed',function(){if(!panel.hidden)renderPicker();});
     function updateNotes(captured){
-      notes.replaceChildren();
+      notes.replaceChildren();renderPicker();
       if(!captured)return;
       if(captured.excluded&&captured.excluded.length){var box=document.createElement('p');box.className='tc-compose-note tc-compose-excluded';box.textContent=excludedMessage(captured.excluded)+' Finish '+(captured.excluded.length===1?'it':'them')+' in the draft canvas to place '+(captured.excluded.length===1?'it':'them')+' here; export waits until then. Text and shapes can be added now.';box.appendChild(noteButton('← Back to draft',backToCanvas));notes.appendChild(box);}
       if(captured.settings.layout==='free'&&!(captured.document.items||[]).some(function(i){return i.type!=='figure';})){var hint=document.createElement('p');hint.className='tc-compose-note tc-compose-empty-hint';hint.textContent='Add a title, text or shapes to this page.';hint.appendChild(noteButton('Add a title or text box',addText));hint.appendChild(noteButton('Choose a shape',function(){shapeMenu.open=true;shapeSummary.focus();}));notes.appendChild(hint);}
@@ -135,9 +168,15 @@
       var excluded = (Array.isArray(result.unusable) ? result.unusable : []).filter(function (u) { return allIds.indexOf(u.id) >= 0; });
       // Live or stale nodes are excluded even when the reader did not list them.
       state.nodes.forEach(function (n) { if ((!n.finished || n.finished.stale) && !excluded.some(function (u) { return u.id === n.id; })) excluded.push({id:n.id,label:n.label,reason:!n.finished?'live':'stale'}); });
-      state.nodes = state.nodes.filter(function (n) { return usable.indexOf(n.id) >= 0 && n.finished && !n.finished.stale; });
-      excludedIds = excluded.map(function (u) { return u.id; });
-      if (!state.nodes.length && layout.value!=='free') throw new Error(excluded.length ? 'Finish a plot in the draft canvas to show it here, or choose Free layout to add text and shapes.' : 'Add plots in the draft canvas, or choose Free layout to draw with shapes and text.');
+      // Canvas tabs: only the plots chosen for the figure count (unchosen live plots
+      // never block it), in tab order then card order, or the order set here.
+      var tabsApi = window.TeamCanvasTabs && typeof TeamCanvasTabs.figureOrder === 'function' ? TeamCanvasTabs : null;
+      var deselected = tabsApi ? allIds.filter(function (id) { return !tabsApi.included(id); }) : [];
+      excluded = excluded.filter(function (u) { return deselected.indexOf(u.id) < 0; });
+      state.nodes = state.nodes.filter(function (n) { return usable.indexOf(n.id) >= 0 && n.finished && !n.finished.stale && deselected.indexOf(n.id) < 0; });
+      if (tabsApi) { var order = tabsApi.figureOrder(); state.nodes.sort(function (a, b) { var x = order.indexOf(a.id), y = order.indexOf(b.id); return (x < 0 ? 1e6 : x) - (y < 0 ? 1e6 : y); }); }
+      excludedIds = excluded.map(function (u) { return u.id; }).concat(deselected);
+      if (!state.nodes.length && layout.value!=='free') throw new Error(deselected.length && !excluded.length ? 'No plots are selected for this figure. Choose them under “Plots in this figure”, or choose Free layout to add text and shapes.' : excluded.length ? 'Finish a plot in the draft canvas to show it here, or choose Free layout to add text and shapes.' : 'Add plots in the draft canvas, or choose Free layout to draw with shapes and text.');
       if (forExport && excluded.length) throw new Error(excludedMessage(excluded) + ' Finish or remove ' + (excluded.length === 1 ? 'it' : 'them') + ' in the draft canvas before exporting.');
       state.nodes.forEach(function (n) {
         if (typeof n.id !== 'string' || typeof n.label !== 'string' || n.label.length > 1000 || !safeImage(n.finished.url) || !['x','y','width','height'].every(function (key) { return typeof n[key] === 'number' && Number.isFinite(n[key]) && n[key] >= 0; }) || n.width < 1 || n.height < 1) throw new Error('A finished figure has invalid image or layout data. Review it in the draft canvas.');
@@ -146,7 +185,7 @@
       if (settings.layout === 'free') syncDocument(state, settings, allIds);
       var shown = settings.layout === 'free' ? JSON.parse(JSON.stringify(documentState)) : null;
       if (shown) shown.items = shown.items.filter(function (i) { return i.type !== 'figure' || excludedIds.indexOf(i.nodeId) < 0; });
-      return {state:state, settings:settings, document:shown, excluded:excluded, archived:result.archived || 0, signature:JSON.stringify([state, settings, settings.layout === 'free' ? documentState : null, excluded])};
+      return {state:state, settings:settings, document:shown, excluded:excluded, archived:result.archived || 0, signature:JSON.stringify([state, settings, settings.layout === 'free' ? documentState : null, excluded, deselected])};
     }
     function excludedMessage(excluded) {
       var names = excluded.slice(0,3).map(function (u) { return '“' + u.label + '”' + (u.reason === 'live' ? ' (not finished)' : u.reason === 'stale' ? ' (needs review)' : ''); }).join(', ') + (excluded.length > 3 ? ' and ' + (excluded.length - 3) + ' more' : '');
