@@ -18,7 +18,11 @@
   function runButton(id, button) { return document.getElementById(String(id).split('-')[0] + '-' + button); }
   function action(state, node, need) {
     if (state === 'waiting' && need && need.kind === 'run') { var run = runButton(node.dataset.plotId, need.button); if (run) return [need.action, function () { if (window.jQuery) jQuery(run).trigger('click'); else run.click(); }]; }
-    if (state === 'waiting' && need && need.kind === 'design') return ['Study design', function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
+    if (state === 'waiting' && need && need.kind === 'design') {
+      // A paired design is not a missing step: no button that suggests changing it.
+      var label = need.gate === 'design' || !need.gate ? 'Study design' : need.button;
+      if (label) return [label, function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
+    }
     if (state === 'pending') return ['Review', function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
     if (state === 'finished-stale') return ['Edit figure', function () { var b = Array.from(node.querySelectorAll('.tc-node-head > button, .tc-card-actions > button')).find(function (x) { return x.textContent === 'Edit'; }); if (b) b.click(); }];
     return null;

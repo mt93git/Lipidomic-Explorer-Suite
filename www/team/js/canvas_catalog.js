@@ -109,6 +109,15 @@
   // own req()s): first a confirmed study design, then the comparison, then what the
   // view needs from that comparison.
   var design = {status:'Needs a confirmed study design', reason:'No comparison can run until the study design is confirmed. In Review › Study design, set the experimental unit and the sample relationship; the default comparison then runs on its own.'};
+  // Why the comparison cannot run (R: team_canvas_inference_gate). Only 'design' and
+  // 'uncertain' send the user to the study design; the others name their own cause.
+  var gates = {
+    design: design,
+    uncertain: {status:'Design is mixed or uncertain', reason:'The study design is confirmed as “Mixed or uncertain”, so no group comparison is run. If the samples are independent, change the sample relationship in Review › Study design.', button:'Study design'},
+    paired: {status:'Not available for a paired design', reason:'The confirmed design is “Matched or repeated”. This view uses an independent (unpaired) comparison, which is not valid for paired samples, so it is not run. The design itself is fine; use the paired views (Longitudinal) instead.'},
+    preparation: {status:'Data preparation not ready', reason:'The prepared data are missing or out of date with the current selection, so no comparison is run. Prepare the data again in Review; the comparison then runs on its own.', button:'Prepare data'},
+    measured: {status:'Prepared samples are not all measured', reason:'The prepared data include samples that were not measured (for example averaged or substituted ones). Comparisons use measured samples only, so none is run. Check the samples and outlier treatment in Review.', button:'Review samples'}
+  };
   var afterComparison = {
     'barchart-barPlotFiltered':{kind:'de-empty', when:/No lipids passed filters/, status:'No significant lipids', reason:'The comparison ran, but no lipid passes the current significance and |log2 fold change| thresholds, so the filtered view is empty. The thresholds are in the Differential settings of the Data step.'},
     'barchart-donutPlotFiltered':{kind:'de-empty', when:/No lipids passed filters/, status:'No significant lipids', reason:'The comparison ran, but no lipid passes the current significance and |log2 fold change| thresholds, so the filtered view is empty. The thresholds are in the Differential settings of the Data step.'},
@@ -124,15 +133,20 @@
       // The selectors exist only once the data have time points; the plots are then built
       // only after the module's "Generate Analysis" (its height reads longitudinal_design(),
       // an eventReactive on that button, 11_longitudinal_module.R:1341 and :3283).
+      // Time points come from the metadata (R: team_canvas_timepoints_available), not from
+      // the selectors: some exist only after a run (all metrics, significant-only).
       var prefix = String(plotId || id).split('-')[0], all = window.Shiny && window.Shiny.shinyapp && window.Shiny.shinyapp.$inputValues || {};
-      var hasSelection = Object.keys(all).some(function (k) { var v = all[k]; return k.indexOf(prefix + '-selected') === 0 && v != null && v !== '' && !(Array.isArray(v) && !v.length); });
+      var tp = window.TeamCanvas && typeof window.TeamCanvas.timePointsReady === 'function' ? window.TeamCanvas.timePointsReady() : null;
+      var hasSelection = tp === true || (tp === null && Object.keys(all).some(function (k) { var v = all[k]; return k.indexOf(prefix + '-selected') === 0 && v != null && v !== '' && !(Array.isArray(v) && !v.length); }));
       if (hasSelection) return shinyValue(prefix + '-submit_longitudinal_btn') ? null : {kind:'run', button:'submit_longitudinal_btn', action:'Generate analysis', status:'Needs Generate Analysis', reason:'The time points are there. Time courses are built only on request: choose “Generate analysis” on this card (the module’s “Generate Analysis”, also in Data & settings).'};
       return Object.assign({kind:kind}, requirements[kind]);
     }
     if (kind !== 'de' || !window.TeamCanvas) return Object.assign({kind:kind}, requirements[kind]);
     var tc = window.TeamCanvas, designOk = typeof tc.designReady === 'function' ? tc.designReady() : null;
     var deOk = typeof tc.deReady === 'function' ? tc.deReady() : false;
-    if (designOk === false && !deOk) return Object.assign({kind:'design'}, design);
+    var gate = typeof tc.inferenceGate === 'function' ? tc.inferenceGate() : null;
+    if (!deOk && gate && gate !== 'ok' && gates[gate]) return Object.assign({kind:'design', gate:gate}, gates[gate]);
+    if (designOk === false && !deOk) return Object.assign({kind:'design', gate:'design'}, design);
     if (!deOk) return Object.assign({kind:kind}, requirements[kind]);
     var after = afterComparison[id]; if (!after) return null;
     // Only when the module itself reports that state (its validate() message on the output).

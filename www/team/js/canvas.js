@@ -1060,7 +1060,7 @@
   // A plot that drew nothing because its analysis is waiting for an input (a
   // silent req() in the module, or a differential plot without cohorts) is not
   // "Up to date": it needs settings. Shiny's own busy state still reads Updating.
-  var deResultsReady = null, designReady = null;
+  var deResultsReady = null, designReady = null, inferenceGate = null, timePointsReady = null;
   function deReady() {
     if (deResultsReady !== null) return deResultsReady;
     function chosen(id){var el=document.getElementById(id);if(!el)return null;var x=el.selectize?el.selectize.getValue():(window.jQuery?jQuery(el).val():el.value);return Array.isArray(x)?x.length>0:!!x;}
@@ -1915,7 +1915,7 @@
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
       Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
-      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){var was=deResultsReady,wasDesign=designReady;deResultsReady=!!(message&&message.ready);designReady=message&&typeof message.design==='boolean'?message.design:null;if(was!==deResultsReady||wasDesign!==designReady)renderList();});
+      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){var before=[deResultsReady,designReady,inferenceGate,timePointsReady].join('|');deResultsReady=!!(message&&message.ready);designReady=message&&typeof message.design==='boolean'?message.design:null;inferenceGate=message&&typeof message.gate==='string'?message.gate:null;timePointsReady=message&&typeof message.timepoints==='boolean'?message.timepoints:null;if(before!==[deResultsReady,designReady,inferenceGate,timePointsReady].join('|'))renderList();});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);
         // A mounted copy whose analysis failed no longer shows a current result.
         if(!request)records.forEach(function(r){if(r.instance&&r.instance.id===message.id&&r.node){r.revision=(r.revision||0)+1;r.renderRevision=null;r.sourceError=true;r.sourceWaiting=false;r.sourceSignature=null;if(r.statistics&&window.TeamCanvasStatistics)TeamCanvasStatistics.sourceChanged(r);if(!r.hydrating)staleSnapshot(r);}});tell(message.message||'Could not create an independent plot.');});
@@ -1984,7 +1984,7 @@
       // Read-only card state for the shell's status chips and export warning.
       cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';if(awaitingInput(r))return 'waiting';return figureCurrent(r)?'current':'updating';},
       catalogSource:function(id){var r=records.get(id);return r?sourceKey(r):null;},
-      deReady:deReady,designReady:function(){return designReady;},
+      deReady:deReady,designReady:function(){return designReady;},inferenceGate:function(){return inferenceGate;},timePointsReady:function(){return timePointsReady;},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.

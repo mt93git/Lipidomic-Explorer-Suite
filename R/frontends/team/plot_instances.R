@@ -490,6 +490,30 @@ team_plot_instance_validate <- function(value, output_id = NULL) {
   }
   list(id=id,source=value$source,inputs=values)
 }
+# Why shared_data$inference_allowed(FALSE) refuses the unpaired comparison, read from the
+# same states it checks (1_shared_data_module.R inference_allowed; guided_workflow.R
+# guide_allows_inference): 'ok', 'preparation' (missing, out of date or unavailable),
+# 'measured' (prepared samples include non-measured ones), 'paired' (the confirmed
+# design is matched/repeated, which this comparison does not fit), 'uncertain' (mixed
+# or uncertain design), or 'design' (not confirmed). NA when the policy is unknown.
+team_canvas_inference_gate <- function(unpaired, paired=NULL, unit=NULL, type=NULL, preparation=NULL, synthetic_ids=NULL) {
+  if (is.null(unpaired)) return(NA_character_)
+  if (isTRUE(unpaired)) return('ok')
+  if (!nzchar(trimws(unit %||% '')) || !isTRUE(type %in% c('independent','paired','uncertain'))) return('design')
+  if (is.list(preparation) && (!identical(preparation$status,'ready') || isTRUE(preparation$dirty) || !isTRUE(preparation$data_available))) return('preparation')
+  if (length(synthetic_ids)) return('measured')
+  if (identical(type,'paired') && isTRUE(paired)) return('paired')
+  if (identical(type,'uncertain')) return('uncertain')
+  'design'
+}
+# Time points as the guided Longitudinal gate counts them (guide_longitudinal_block_reasons):
+# at least two real TimePoint values in the metadata. NA when no metadata is loaded.
+team_canvas_timepoints_available <- function(md) {
+  if (is.null(md) || !is.data.frame(md) || !nrow(md)) return(NA)
+  if (!'TimePoint' %in% names(md)) return(FALSE)
+  times <- unique(as.character(md$TimePoint)); times <- times[!is.na(times) & nzchar(times) & times != 'Unspecified']
+  length(times) >= 2L
+}
 team_plot_instances_server <- function(input, output, session, shared_data, dashboard_data) {
   active <- new.env(parent=emptyenv())
   settling <- new.env(parent=emptyenv())
@@ -640,11 +664,15 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
   # differential analysis has results; the canvas chip reports that state.
   if (is.function(shared_data$de_results)) shiny::observe({
     ready <- tryCatch(!is.null(shared_data$de_results()),error=function(e)FALSE)
-    # No comparison runs at all until the study design is confirmed and the data are
-    # prepared (shared_data$inference_allowed, via server.R's inference_check): cards
-    # then point to Review > Study design instead of asking for a comparison.
-    design <- if (is.function(shared_data$inference_allowed)) tryCatch(isTRUE(shared_data$inference_allowed(FALSE)),error=function(e)NA) else NA
-    session$sendCustomMessage('team-canvas-de-state',list(ready=isTRUE(ready),design=design))
+    # No comparison runs until shared_data$inference_allowed(FALSE) holds. That is FALSE
+    # for several different reasons, so the card is told which one applies.
+    safe <- function(f, ...) if (is.function(f)) tryCatch(f(...),error=function(e)NULL) else NULL
+    gate <- team_canvas_inference_gate(
+      unpaired=safe(shared_data$inference_allowed,FALSE), paired=safe(shared_data$inference_allowed,TRUE),
+      unit=input$guide_unit, type=input$guide_design_type,
+      preparation=safe(shared_data$preparation_state), synthetic_ids=safe(shared_data$synthetic_sample_ids))
+    session$sendCustomMessage('team-canvas-de-state',list(ready=isTRUE(ready),design=identical(gate,'ok'),gate=gate,
+      timepoints=team_canvas_timepoints_available(safe(shared_data$all_metadata))))
   })
   shiny::observeEvent(input$team_canvas_instance_create,{
     request <- input$team_canvas_instance_create
