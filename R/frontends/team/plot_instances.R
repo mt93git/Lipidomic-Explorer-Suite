@@ -124,6 +124,34 @@ team_plot_instance_input_ids <- local({
     assign(family,ids,cache);ids
   }
 })
+# A new dashboard copy's server starts in the same flush that inserts its
+# controls, so its first PCA render reads `pca_scale` before the browser has
+# bound that select (NULL: `Scaling = NULL` breaks the result data.frame and
+# `identical(NULL, "uv")` would silently mean centered-only). Until the control
+# reports a value, the copy reads the dashboard's own UI default — the selected
+# option of `pca_scale` in results_dashboard_ui() (R/results_dashboard.R,
+# "Unit variance" = "uv") — read from that markup, never restated here.
+team_dashboard_input_defaults <- local({
+  cache <- NULL
+  function() {
+    if (is.null(cache)) {
+      doc <- xml2::read_html(htmltools::renderTags(results_dashboard_ui('tcinstance_defaults'))$html)
+      select <- xml2::xml_find_first(doc,"//select[@id='tcinstance_defaults-pca_scale']")
+      options <- xml2::xml_find_all(select,'./option')
+      selected <- options[!is.na(xml2::xml_attr(options,'selected'))]
+      value <- xml2::xml_attr(if (length(selected)) selected[[1L]] else options[[1L]],'value')
+      if (!is.character(value) || length(value)!=1L || is.na(value) || !nzchar(value)) stop('Dashboard PCA scaling default could not be read.',call.=FALSE)
+      cache <<- list(pca_scale=value)
+    }
+    cache
+  }
+})
+team_dashboard_instance_input <- function(input) structure(list(input=input,defaults=team_dashboard_input_defaults()),class='team_dashboard_instance_input')
+`$.team_dashboard_instance_input` <- function(x, name) {
+  value <- .subset2(x,'input')[[name]]
+  if (is.null(value)) .subset2(x,'defaults')[[name]] else value
+}
+`[[.team_dashboard_instance_input` <- function(x, i, ...) `$.team_dashboard_instance_input`(x,i)
 team_plot_instance_validate <- function(value, output_id = NULL) {
   if (!is.list(value) || is.null(names(value)) || anyDuplicated(names(value)) ||
       !setequal(names(value),c('id','source','inputs'))) stop('Invalid canvas plot instance.',call.=FALSE)
@@ -171,7 +199,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       insert_host(id, resolved, spec)
       result <- NULL
       if (identical(resolved$family,'results_dashboard')) {
-        dashboard <- shiny::moduleServer(id,function(input,output,session) results_dashboard_module_server(input,output,session,dashboard_data))
+        dashboard <- shiny::moduleServer(id,function(input,output,session) results_dashboard_module_server(team_dashboard_instance_input(input),output,session,dashboard_data))
       } else {
         args <- list(id=id,shared_data=shared_data)
         if (isTRUE(spec$colors)) args$global_color_map <- shiny::reactive(shared_data$color_maps())
@@ -233,6 +261,8 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     if(!identical(source$family,'results_dashboard'))return(NULL)
     local_inputs <- list()
     for(key in team_plot_instance_input_ids(entry$source))local_inputs[[paste0('results_dashboard-',key)]] <- input[[paste0(id,'-',key)]]
+    # Describe the PCA the copy computed: its scaling default applies until bound.
+    for(key in names(team_dashboard_input_defaults()))if(is.null(local_inputs[[paste0('results_dashboard-',key)]]))local_inputs[[paste0('results_dashboard-',key)]] <- team_dashboard_input_defaults()[[key]]
     team_insight_context(entry$source,local_inputs,dashboard_data,entry$dashboard)
   }
   # Park removed/failed instances: Shiny versions without module teardown cannot

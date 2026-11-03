@@ -345,7 +345,18 @@
     request.instance.inputs=message.inputs||{};setInstanceInputs(request.instance);
     // Inputs are sent before mounting or restoring appearance. The next server
     // flush then computes the copy using its own selection, never its sibling's.
-    waitInstanceInputs(request,function(){
+    waitInstanceInputs(request,function mount(){
+      // A renderUI boundary around the output (Violin's scrollable_plot_ui) re-renders
+      // while the copy's inputs settle and replaces the element found above. Mounting
+      // that detached element silently did nothing, so the card never appeared and the
+      // request timed out. Mount the live element, or wait (under the request's own
+      // deadline) for the next one.
+      // A retry belongs to this request only: a cancelled or re-created copy with the
+      // same id has its own request and settling check.
+      if(instanceRequests.get(message.id)!==request)return;
+      var live=document.getElementById(message.id+'-'+suffix);
+      if(!live){setTimeout(mount,100);return;}
+      el=live;
       var wrapper=el.parentElement&&el.parentElement.closest('.shiny-html-output');
       var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null};
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
