@@ -147,6 +147,18 @@ team_group_comparison_participants <- function(shared_data, samples) {
   team_violin_stats_participants(base, "compared")
 }
 
+# Participant reason over every prepared sample that has metadata (the samples
+# the log-ratio module and the Differential analysis engine draw from), or NULL.
+# The same rule as team_group_comparison_guarded_data() below.
+team_group_comparison_participant_reason <- function(shared_data) {
+  compared <- function() {
+    df <- shared_data$data_processed(); meta <- shared_data$all_metadata()
+    if (!is.data.frame(df) || !is.data.frame(meta) || !'FullName' %in% names(meta)) return(character())
+    intersect(setdiff(colnames(df), 'Lipid_Name'), as.character(meta$FullName))
+  }
+  shiny::reactive(tryCatch(team_group_comparison_participants(shared_data, compared())$reason, error = function(e) NULL))
+}
+
 # The log-ratio module compares every prepared sample that has metadata and gets
 # each p-value from shared_data$inference_allowed. Giving it a copy whose unpaired
 # policy also requires participant independence withholds p-values in every output

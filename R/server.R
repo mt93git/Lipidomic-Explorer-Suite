@@ -49,6 +49,15 @@ scientific_server <- function(input, output, session) {
     welcome_load_demo_trigger = welcome_load_demo_trigger, root_session = session,
     design_check = design_check, preparation_policy = if (is_team) "team" else "classic",
     inference_check = inference_check)
+  # Team: Differential analysis is not blocked for repeated participants, but
+  # its views warn when an independent design has participant IDs that repeat
+  # across the prepared samples (R/frontends/team/da_participant_warning.R).
+  if (is_team) {
+    team_da_reason <- team_group_comparison_participant_reason(shared_data)
+    shared_data$team_da_participant_reason <- function() {
+      if (isTRUE(shared_data$inference_allowed(FALSE))) team_da_reason() else NULL
+    }
+  }
   if (is_team && team_workspace_enabled()) session$userData$team_shared_data <- shared_data
   if (is_team && team_workspace_enabled()) team_canvas_server(input, output, session, shared_data)
 
