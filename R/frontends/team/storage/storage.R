@@ -19,19 +19,24 @@ team_storage_backends <- c("files", "database")
 
 team_storage_backend <- function(value = Sys.getenv("LIPIDOMIC_STORAGE", unset = "")) {
   if (!is.character(value) || length(value) != 1L || is.na(value))
-    stop("LIPIDOMIC_STORAGE must be 'files' (default) or 'database'.", call. = FALSE)
+    stop("LIPIDOMIC_STORAGE must be 'files' (default) or 'database' (alias 'db').", call. = FALSE)
   normalized <- tolower(trimws(value))
   if (!nzchar(normalized)) normalized <- "files"
+  if (identical(normalized, "db")) normalized <- "database" # accepted alias
   if (!normalized %in% team_storage_backends)
-    stop(sprintf("LIPIDOMIC_STORAGE must be 'files' (default) or 'database'; got '%s'.",
+    stop(sprintf("LIPIDOMIC_STORAGE must be 'files' (default) or 'database' (alias 'db'); got '%s'.",
       substr(value, 1L, 40L)), call. = FALSE)
   normalized
 }
 
 # Startup check for the Team process: fail before any session opens.
-team_storage_validate_config <- function(backend = team_storage_backend()) {
+# `has_package` is injectable so tests can simulate a missing httr.
+team_storage_validate_config <- function(backend = team_storage_backend(),
+                                         has_package = function(pkg) requireNamespace(pkg, quietly = TRUE)) {
   backend <- team_storage_backend(backend)
   if (identical(backend, "database")) {
+    if (!isTRUE(has_package("httr")))
+      stop("LIPIDOMIC_STORAGE=database needs the httr package. Install it or use LIPIDOMIC_STORAGE=files.", call. = FALSE)
     vars <- paste0("LIPIDOMIC_", c("AUTH", "REST", "STORAGE"), "_URL")
     missing <- vars[!nzchar(Sys.getenv(vars, unset = ""))]
     if (length(missing))

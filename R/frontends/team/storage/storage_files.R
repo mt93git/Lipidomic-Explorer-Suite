@@ -1,11 +1,12 @@
 # Local directory backend (LIPIDOMIC_STORAGE=files, the default).
+# For a single local user only: no accounts and no access control. Anyone who
+# can reach the app can list, load and delete every project. A shared server
+# must use LIPIDOMIC_STORAGE=database.
 # Layout: <root>/projects/<project>/<sha256>.zip  checkpoint bytes
 #         <root>/projects/<project>/<sha256>.json metadata (written last)
 # Checkpoints are content addressed like the database backend's object paths,
 # so saving identical bytes twice is idempotent. A checkpoint is listed only
 # once its metadata exists; interrupted saves leave nothing visible.
-# This backend has no user authentication: it is meant for a single local user
-# or an operator-protected directory.
 
 team_storage_files_root <- function(dir = Sys.getenv("LIPIDOMIC_STORAGE_DIR", unset = "")) {
   if (!nzchar(dir)) dir <- file.path(tools::R_user_dir("LipidomicExplorer", which = "data"), "team-projects")

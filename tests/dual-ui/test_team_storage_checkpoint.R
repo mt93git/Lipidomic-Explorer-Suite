@@ -11,10 +11,7 @@ expect_error <- function(expr, pattern) {
 Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY='0'); stopifnot(!team_library_enabled())
 Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY='1'); stopifnot(team_library_enabled())
 
-# Production policy preserved: the sign-in limiter is a deliberate no-op.
-limit <- team_library_login_limiter(function() 0)
-for (i in seq_len(1000)) stopifnot(isTRUE(limit()))
-stopifnot(identical(body(limit), quote(invisible(TRUE))))
+# Sign-in throttling is covered by test_team_storage_login_throttle.R.
 
 # Activation keeps verify -> set password -> always revoke, with no secret leakage.
 calls <- character()
@@ -81,4 +78,4 @@ stopifnot(is.null(team_library_queue('20000000-0000-4000-8000-000000000002')))
 expect_error(team_library_queue(user, clear=TRUE, expected='wrong'), 'pending checkpoint changed')
 writeBin(charToRaw('changed'), x$path); expect_error(team_library_queue(user), 'integrity check failed')
 unlink(c(root, queue_root, p), recursive=TRUE)
-cat('PASS: checkpoint save/resume over the storage API with records sidecar, legacy checkpoints, invalid records/labels/size rejected before storage, durable-queue recovery, no-op sign-in limiter and activation revocation preserved\n')
+cat('PASS: checkpoint save/resume over the storage API with records sidecar, legacy checkpoints, invalid records/labels/size rejected before storage, durable-queue recovery, activation revocation preserved\n')

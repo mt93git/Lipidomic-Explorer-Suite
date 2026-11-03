@@ -69,6 +69,7 @@ Suggests:
     openxlsx,
     writexl,
     rstudioapi,
+    httr,
     httr2,
     future,
     promises

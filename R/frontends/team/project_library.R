@@ -17,12 +17,52 @@
 
 team_library_enabled <- function() identical(Sys.getenv("LIPIDOMIC_PROJECT_LIBRARY"), "1")
 
-# Team testing: Gerardo requested immediate sign-in retries. Authentication and
-# project permissions remain enforced by the identity service.
-# SECURITY NOTE: this is intentionally a no-op (no application-level throttling
-# of sign-in or activation attempts), preserved from production unchanged.
-team_library_login_limiter <- function(now=function() as.numeric(Sys.time())) {
-  function() invisible(TRUE)
+# Sign-in throttle, ON by default. Per account (normalized email): the first 5
+# failed attempts get no delay; after that the next attempt waits 1 s, 2 s, 4 s ...
+# (capped at 60 s) counted from the last failure. There is no lockout, and a
+# successful sign-in resets the account.
+# LIPIDOMIC_LOGIN_THROTTLE=off restores immediate retries: the Team pilot, where
+# Gerardo requested immediate sign-in retries, keeps that behaviour by setting
+# the variable to off at its next deploy. Authentication and project permissions
+# remain enforced by the identity service either way.
+#
+# Call shape kept from production: `attempt <- team_library_login_limiter()`.
+#   attempt(email)                     before a sign-in: waits if required
+#   attempt(email, outcome="failure")  after a failed sign-in
+#   attempt(email, outcome="success")  after a successful sign-in (reset)
+# attempt() with no email is a no-op, as in production. Failure counts are
+# shared by every session of this R process (a reload must not reset them) and
+# are forgotten after 24 h without failures. Only email hashes are kept.
+# Production does not route activation attempts through this limiter.
+team_library_login_state <- new.env(parent=emptyenv())
+team_library_login_throttle_enabled <- function(value=Sys.getenv("LIPIDOMIC_LOGIN_THROTTLE", unset="")) {
+  !tolower(trimws(value)) %in% c("off","0","false","no")
+}
+team_library_login_delay <- function(failures, free=5L, cap=60) {
+  if (failures < free) 0 else min(cap, 2^(failures - free))
+}
+team_library_login_limiter <- function(now=function() as.numeric(Sys.time()), sleep=Sys.sleep,
+                                       state=team_library_login_state) {
+  forget_after <- 24 * 3600
+  function(email=NULL, outcome=c("attempt","failure","success")) {
+    outcome <- match.arg(outcome)
+    if (!team_library_login_throttle_enabled()) return(invisible(TRUE))
+    if (!is.character(email) || length(email) != 1L || is.na(email)) return(invisible(TRUE))
+    key <- digest::digest(tolower(trimws(email)), algo="sha256", serialize=FALSE)
+    t <- now()
+    for (k in ls(state)) if (t - state[[k]]$last > forget_after) rm(list=k, envir=state)
+    entry <- if (exists(key, envir=state, inherits=FALSE)) state[[key]] else list(failures=0L, last=t)
+    if (identical(outcome, "success")) {
+      if (exists(key, envir=state, inherits=FALSE)) rm(list=key, envir=state)
+    } else if (identical(outcome, "failure")) {
+      assign(key, list(failures=entry$failures + 1L, last=t), envir=state)
+    } else {
+      # The delay counts from the last failure; time already waited is credited.
+      delay <- team_library_login_delay(entry$failures) - (t - entry$last)
+      if (delay > 0) sleep(delay)
+    }
+    invisible(TRUE)
+  }
 }
 
 # One-time setup never authenticates the analysis session. Revoke the temporary

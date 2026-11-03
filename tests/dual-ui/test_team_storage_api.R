@@ -17,7 +17,8 @@ with_env(c(LIPIDOMIC_STORAGE=NA), stopifnot(identical(team_storage_backend(), 'f
 with_env(c(LIPIDOMIC_STORAGE=''), stopifnot(identical(team_storage_backend(), 'files')))
 with_env(c(LIPIDOMIC_STORAGE=' Files '), stopifnot(identical(team_storage_backend(), 'files')))
 with_env(c(LIPIDOMIC_STORAGE='DATABASE'), stopifnot(identical(team_storage_backend(), 'database')))
-with_env(c(LIPIDOMIC_STORAGE='s3'), expect_error(team_storage_backend(), "LIPIDOMIC_STORAGE must be 'files' (default) or 'database'; got 's3'"))
+with_env(c(LIPIDOMIC_STORAGE=' DB '), stopifnot(identical(team_storage_backend(), 'database')))
+with_env(c(LIPIDOMIC_STORAGE='s3'), expect_error(team_storage_backend(), "LIPIDOMIC_STORAGE must be 'files' (default) or 'database' (alias 'db'); got 's3'"))
 expect_error(team_storage_backend(c('files','database')), 'LIPIDOMIC_STORAGE must be')
 
 # Startup validation: invalid value or incomplete database configuration fails.
@@ -28,6 +29,17 @@ with_env(c(LIPIDOMIC_STORAGE='database', LIPIDOMIC_AUTH_URL='http://auth.invalid
   expect_error(team_storage_validate_config(), 'requires LIPIDOMIC_STORAGE_URL'))
 with_env(c(LIPIDOMIC_STORAGE='database', LIPIDOMIC_AUTH_URL='http://auth.invalid', LIPIDOMIC_REST_URL='http://rest.invalid', LIPIDOMIC_STORAGE_URL='http://storage.invalid'),
   stopifnot(identical(team_storage_validate_config(), 'database')))
+# database/db without httr stops at startup (fake requireNamespace).
+configured <- c(LIPIDOMIC_AUTH_URL='http://auth.invalid', LIPIDOMIC_REST_URL='http://rest.invalid', LIPIDOMIC_STORAGE_URL='http://storage.invalid')
+asked <- character()
+no_httr <- function(pkg) { asked <<- c(asked, pkg); !identical(pkg, 'httr') }
+for (v in c('database', 'db')) with_env(c(LIPIDOMIC_STORAGE=v, configured),
+  expect_error(team_storage_validate_config(has_package=no_httr),
+    'LIPIDOMIC_STORAGE=database needs the httr package. Install it or use LIPIDOMIC_STORAGE=files.'))
+stopifnot(identical(asked, c('httr','httr')))
+with_env(c(LIPIDOMIC_STORAGE='db', configured), stopifnot(identical(team_storage_validate_config(has_package=function(pkg) TRUE), 'database')))
+# files never needs httr.
+with_env(c(LIPIDOMIC_STORAGE='files', LIPIDOMIC_STORAGE_DIR=tempfile()), stopifnot(identical(team_storage_validate_config(has_package=function(pkg) stop('not consulted')), 'files')))
 not_dir <- tempfile(); writeLines('x', not_dir)
 with_env(c(LIPIDOMIC_STORAGE=NA, LIPIDOMIC_STORAGE_DIR=not_dir), expect_error(team_storage_validate_config(), 'must name a directory'))
 missing_dir <- tempfile()
@@ -74,4 +86,4 @@ expect_error(files$save('p1', tempfile(), 'ok'), 'missing or empty')
 expect_error(files$save('p1', tempdir(), 'ok'), 'missing or empty')
 stopifnot(!dir.exists(root)) # rejected calls created nothing
 unlink(c(not_dir, zipfile, empty))
-cat('PASS: LIPIDOMIC_STORAGE selection (files default, database, invalid fails at startup), identical 4-op contract, session-scoped store, identifier/label validation before I/O\n')
+cat('PASS: LIPIDOMIC_STORAGE selection (files default, database/db, httr required for database, invalid fails at startup), identical 4-op contract, session-scoped store, identifier/label validation before I/O\n')
