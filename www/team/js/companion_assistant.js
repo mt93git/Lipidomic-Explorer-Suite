@@ -39,12 +39,22 @@
     if (!window.Shiny || !connected) { if (/assistant_(action|confirm|cancel|request)/.test(name)) { setStatus('Offline mode — reconnect to send this request.'); return false; } sendQueue.push([name, value]); return false; }
     window.Shiny.setInputValue(name, value, { priority: 'event' }); return true;
   }
+  var SECTION_TITLES = ['Definition', 'Structure', 'Biological function', 'Interactions', 'Relevance', 'New insights'];
+  // Section titles in bold, the source line in italics; built with DOM nodes so nothing from the text is parsed as HTML.
+  function formatAnswer(span, text) {
+    span.textContent = '';
+    String(text).split('\n').forEach(function (line, i) {
+      if (i) span.appendChild(document.createTextNode('\n'));
+      var wrap = SECTION_TITLES.indexOf(line) >= 0 ? 'strong' : /^Source: /.test(line) ? 'em' : '';
+      if (wrap) span.appendChild(node(wrap, '', line)); else span.appendChild(document.createTextNode(line));
+    });
+  }
   function addMessage(text, kind, source) {
     if (!messages || !text) return;
     var item = node('div', 'assistant-message assistant-message-' + (kind || 'assistant'));
     item.appendChild(node('span', 'assistant-message-text', String(text)));
     if (source) item.appendChild(node('span', 'assistant-source', source === 'local' ? 'Local guide' : String(source)));
-    if (kind === 'assistant') item.querySelector('.assistant-message-text').style.whiteSpace = 'pre-wrap';
+    if (kind === 'assistant') { var body = item.querySelector('.assistant-message-text'); body.style.whiteSpace = 'pre-wrap'; formatAnswer(body, text); }
     messages.appendChild(item);
     while (messages.children.length > 40) messages.firstElementChild.remove();
     var scroller=messages.parentElement;scroller.scrollTop=scroller.scrollHeight;
