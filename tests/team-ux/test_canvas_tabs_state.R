@@ -30,4 +30,7 @@ for (bad in list(list(version = "2", active = "tab-1", tabs = list()), list(vers
                  list(version = "1", active = "tab-1", tabs = list(list(id = "tab-1", name = "A", nodes = list(), extra = 1))))) {
   x <- old; x$tabs <- bad; v <- team_canvas_validate(x); stopifnot(is.null(v$tabs), identical(team_canvas_json(v), before))
 }
+# A tabs field without "active" opens on its first tab instead of being dropped.
+x <- old; x$tabs <- list(version = "1", tabs = list(list(id = "tab-1", name = "A", nodes = list()), list(id = "tab-2", name = "B", nodes = list())))
+na <- team_canvas_validate(x)$tabs; stopifnot(identical(na$active, "tab-1"), length(na$tabs) == 2L)
 cat("PASS canvas tabs state: old checkpoints unchanged, tabs round-trip, bad fields fall back to one tab\n")

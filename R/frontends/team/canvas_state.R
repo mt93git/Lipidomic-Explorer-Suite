@@ -383,7 +383,7 @@ team_canvas_document <- function(document,node_ids) {
 # card in place instead of failing. Mirrors www/team/js/canvas_tabs_model.js.
 team_canvas_tabs <- function(value, node_ids) {
   tryCatch({
-    value <- team_canvas_object(value, c("version", "active", "tabs", "figure"), c("version", "active", "tabs"))
+    value <- team_canvas_object(value, c("version", "active", "tabs", "figure"), c("version", "tabs"))
     if (!identical(value$version, "1")) return(NULL)
     if (!is.list(value$tabs) || !is.null(names(value$tabs)) || !length(value$tabs) || length(value$tabs) > 20L) return(NULL)
     ids <- function(x) {
@@ -405,7 +405,7 @@ team_canvas_tabs <- function(value, node_ids) {
     })
     missing <- setdiff(node_ids, owned)
     if (length(missing)) tabs[[1]]$nodes <- c(tabs[[1]]$nodes, as.list(missing))
-    active <- team_canvas_string(value$active, 44L, FALSE); if (!active %in% seen) active <- seen[[1]]
+    active <- if (is.character(value$active) && length(value$active) == 1L && value$active %in% seen) value$active else seen[[1]]
     figure <- if (is.null(value$figure)) list() else team_canvas_object(value$figure, c("deselected", "order"))
     list(version = "1", active = active, tabs = tabs, figure = list(deselected = ids(figure$deselected), order = ids(figure$order)))
   }, error = function(e) NULL)

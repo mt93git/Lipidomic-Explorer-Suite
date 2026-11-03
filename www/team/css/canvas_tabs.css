@@ -1,5 +1,8 @@
 /* Canvas tabs (Team shell). One row of tabs above the canvas; the floating toolbar sits below it. */
-.tc-node.tc-tab-hidden{display:none!important}
+/* Cards on other tabs keep their layout (so Shiny keeps rendering their outputs and sizes stay
+   right) but are invisible, cannot be clicked or focused, and are left out of Arrange and the minimap. */
+.tc-node.tc-tab-hidden,.tc-node.tc-tab-hidden *{visibility:hidden!important;pointer-events:none!important}
+.tc-sr-only{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 #team-canvas-root.ts-shell .tc-main.has-canvas-tabs{--tc-tabbar-h:38px}
 .tc-tabbar{position:relative;display:flex;align-items:flex-end;gap:4px;min-height:var(--tc-tabbar-h,38px);padding:6px 10px 0;box-sizing:border-box;background:#fff;border-bottom:1px solid var(--ts-line,#e3e7ec);z-index:31;flex:0 0 auto}
 .tc-canvas-tablist{display:flex;align-items:flex-end;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:thin}
@@ -31,7 +34,7 @@
 .tc-tab-del-actions .tc-tab-del-confirm{background:#9b2c2c;border-color:#9b2c2c;color:#fff}
 .tc-tab-picker{top:calc(100% + 4px);right:0;max-height:260px;overflow:auto}
 .tc-tab-picker-title{padding:4px 10px;font:600 11px/1.3 'Nunito Sans',system-ui,sans-serif;color:#66737f;text-transform:uppercase;letter-spacing:.06em}
-.tc-board .tc-empty.tc-tab-empty::after{content:' This tab is empty: add a plot, or move cards here from their menu.';}
+.tc-board .tc-empty.tc-tab-empty::after{content:' This tab is empty: add a plot, or use “Move to tab…” on a card in another tab.';}
 /* Figure page: Plots in this figure, grouped by canvas tab. */
 .tc-figure-plots{margin:8px 26px 0;padding:8px 12px;border:1px solid #d4dde6;border-radius:8px;background:#fff;font-size:.8rem;color:#23384f}
 .tc-figure-plots[hidden]{display:none}

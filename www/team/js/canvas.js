@@ -138,7 +138,7 @@
     'cell_class_plot':'cell_class_profile_csv',
     'cell_comparison_plot':'cell_comparison_csv'
   };
-  var instanceRequests = new Map(), instanceClipboard = null;
+  var instanceRequests = new Map(), instanceClipboard = null, lastInstanceRequest = null;
   function sourceKey(r) { return r && r.instance ? r.instance.source : r && r.el.id; }
   function instancesConnected(){return !!(window.Shiny&&Shiny.shinyapp&&Shiny.shinyapp.$socket);}
   function instanceSupported(id) { return /^cell_(lipid|profile|class|comparison)_plot$/.test(id) || /^(results_dashboard|qc_pca_tab|barchart|heatmap_barchart_tab|volcano_tab|lsea_tab|structural_tab|structural_grid_tab|logratio_tab|group_comparison_tab|fla_tab|longitudinal_tab|pathway_tab|cellular_org_tab)-/.test(id); }
@@ -193,7 +193,7 @@
     }
     instanceRequests.set(id,request);
     request.timer=setTimeout(deadline,250);
-    Shiny.setInputValue('team_canvas_instance_create',instance,{priority:'event'});
+    Shiny.setInputValue('team_canvas_instance_create',instance,{priority:'event'});lastInstanceRequest=id;
     tell('Creating an independent '+plotTitle(source)+'…'); return true;
   }
   function setInstanceInputs(instance, onlyKeys) {
@@ -250,10 +250,13 @@
     window.dispatchEvent(new CustomEvent('team-canvas-panel-open',{detail:{kind:'data',id:r.el&&r.el.id||null}}));
     if(focusControls){var first=Array.from(host.querySelectorAll('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')).find(function(el){return el.getClientRects().length&&!el.closest('[hidden],[inert]')&&getComputedStyle(el).visibility!=='hidden';});if(first)first.focus();else host.querySelector('.tc-instance-panel-head button').focus();}
   }
+  function copyData(r) {
+    if(!r||!r.node)return null;
+    var source=sourceKey(r);if(!instanceSupported(source))return null;
+    return {source:source,inputs:r.instance?instanceValues(r.instance.id,r.allowedInputs):(source.indexOf('-')<0?cellSourceValues():instanceValues(source.split('-')[0],r.allowedInputs)),visual:JSON.parse(JSON.stringify(r.visual||{})),label:r.labelInput.value||r.label,width:r.node.offsetWidth,height:r.node.offsetHeight,statistics:r.statistics&&window.TeamCanvasStatistics?TeamCanvasStatistics.copyState(r):null};
+  }
   function copyRecord(r) {
-    if(!r||!r.node)return false;
-    var source=sourceKey(r);if(!instanceSupported(source))return false;
-    instanceClipboard={source:source,inputs:r.instance?instanceValues(r.instance.id,r.allowedInputs):(source.indexOf('-')<0?cellSourceValues():instanceValues(source.split('-')[0],r.allowedInputs)),visual:JSON.parse(JSON.stringify(r.visual||{})),label:r.labelInput.value||r.label,width:r.node.offsetWidth,height:r.node.offsetHeight,statistics:r.statistics&&window.TeamCanvasStatistics?TeamCanvasStatistics.copyState(r):null};
+    var copied=copyData(r);if(!copied)return false;instanceClipboard=copied;
     var pasteButton=root.querySelector('.tc-paste-plot'); if(pasteButton) pasteButton.disabled=false;
     tell('Copied '+instanceClipboard.label+'. Paste creates an independent plot with these data settings.');return true;
   }
@@ -790,7 +793,7 @@
     var roomyHeatmap=isClassHeatmap(r.el.id)||sourceKey(r)==='results_dashboard-plot_heat';
     var initialWidth = roomyHeatmap ? 1000 : 620, initialHeight = roomyHeatmap ? 1100 : 720;
     if (roomyHeatmap) { node.style.width = initialWidth + 'px'; node.style.height = initialHeight + 'px'; }
-    var index = sequence++, x, y, occupied = Array.from(board.querySelectorAll('.tc-node'));
+    var index = sequence++, x, y, occupied = Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)'));
     do {
       x = 30 + (index % 2) * (initialWidth + 30); y = 30 + Math.floor(index / 2) * (initialHeight + 30); index++;
     } while (occupied.some(function (other) {
@@ -943,7 +946,7 @@
     var node=document.createElement('article'); node.className='tc-node tc-illustration'; node.dataset.illustrationId=id; node.dataset.nodeKind='illustration';
     node.style.left=(saved&&Number.isFinite(saved.x)?saved.x:30+(sequence%2)*380)+'px'; node.style.top=(saved&&Number.isFinite(saved.y)?saved.y:30+Math.floor(sequence/2)*330)+'px';
     node.style.width=(saved&&Number.isFinite(saved.width)?saved.width:340)+'px'; node.style.height=(saved&&Number.isFinite(saved.height)?saved.height:260)+'px'; sequence++;
-    if(!saved){var occupied=Array.from(board.querySelectorAll('.tc-node')),px=30,py=30;while(occupied.some(function(o){return px<o.offsetLeft+o.offsetWidth+20&&px+360>o.offsetLeft&&py<o.offsetTop+o.offsetHeight+20&&py+280>o.offsetTop;})){px+=370;if(px>1140){px=30;py+=290;}}node.style.left=px+'px';node.style.top=py+'px';}
+    if(!saved){var occupied=Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)')),px=30,py=30;while(occupied.some(function(o){return px<o.offsetLeft+o.offsetWidth+20&&px+360>o.offsetLeft&&py<o.offsetTop+o.offsetHeight+20&&py+280>o.offsetTop;})){px+=370;if(px>1140){px=30;py+=290;}}node.style.left=px+'px';node.style.top=py+'px';}
     var head=document.createElement('div'); head.className='tc-node-head'; head.tabIndex=0; head.setAttribute('aria-label','Move '+item.title+' illustration with arrow keys');
     var heading=document.createElement('strong'); heading.textContent=(saved&&saved.label)||item.title; head.appendChild(heading);
     var remove=document.createElement('button'); remove.type='button'; remove.textContent='Remove'; remove.addEventListener('click',function(){ if(r.observer) r.observer.disconnect(); node.remove(); illustrations.delete(key); expandBoard(); changed(); renderList(); }); head.appendChild(remove);
@@ -1871,7 +1874,10 @@
       // Read-only card state for the shell's status chips and export warning.
       cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';return figureCurrent(r)?'current':'updating';},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
-      copyPlot:function(id){return copyRecord(records.get(id));},pastePlot:pasteRecord,duplicatePlot:function(id){return copyRecord(records.get(id))&&pasteRecord();},
+      copyPlot:function(id){return copyRecord(records.get(id));},
+      // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
+      copyPlotAsInstance:function(id){var copied=copyData(records.get(id));if(!copied)return false;lastInstanceRequest=null;return requestInstance(copied.source,copied)&&lastInstanceRequest?lastInstanceRequest:false;},
+      creationOrder:function(){return creationOrder.slice();},pastePlot:pasteRecord,duplicatePlot:function(id){return copyRecord(records.get(id))&&pasteRecord();},
       addPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r = records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
       addCatalogPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (routeOnlyPlot(id)) { tell('Use Open export studio to configure this publication preview.'); return false; } if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r=records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
       queuePlot: function (id, route) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } return queueAdd(id,route); },
@@ -1900,7 +1906,7 @@
       },
       // Canvas tabs: snapshot before a tab edit, then save (navigation only saves).
       tabsWillChange: function () { rememberGeometry(); },
-      tabsChanged: function (navigation) { if (navigation) { if (!applyingRestore) { syncEpoch++; window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:{epoch:syncEpoch}})); if (!checkpointActive) { clearTimeout(syncTimer); syncTimer = setTimeout(function () { sendBackground(); }, 350); } } return; } changed(); },
+      tabsChanged: function (navigation) { if (navigation) { if (!geometryReplay && !geometryGesture && board) geometryLast = geometryState(); if (!applyingRestore) { syncEpoch++; window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:{epoch:syncEpoch}})); if (!checkpointActive) { clearTimeout(syncTimer); syncTimer = setTimeout(function () { sendBackground(); }, 350); } } return; } changed(); },
       deselect: function () { if (!selectedRecord) return; selectedRecord = null; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:null})); },
       selected: function () { return selectedRecord && selectedRecord.node ? {id:selectedRecord.el.id, title:selectedRecord.displayTitle || selectedRecord.label} : null; },
       getInsight: function(id){var r=records.get(id),saved=restorePending.get(id),note=saved?saved.insight:r?r.insight:undefined;return note?validateInsight(note):saved||r?null:undefined;},

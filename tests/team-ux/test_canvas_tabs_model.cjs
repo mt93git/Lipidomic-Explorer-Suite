@@ -49,4 +49,14 @@ const evil=M.validate({version:'1',active:'tab-9',tabs:[{id:'tab-1',name:'<img s
 assert.deepEqual(evil.tabs,[{id:'tab-1',name:'Canvas 1',nodes:ids}],'duplicate tab ids fall back');
 const ok=M.validate({version:'1',active:'tab-9',tabs:[{id:'tab-1',name:'<b>x</b>\u0007',nodes:['plot_a','plot_a','__proto__']}]},ids);
 assert.equal(ok.tabs[0].name,'<b>x</b>');assert.equal(ok.active,'tab-1');assert.deepEqual(ok.tabs[0].nodes,['plot_a','plot_b','plot_c']);
+// Names are cut by characters, never inside an emoji (no lone surrogate).
+const astral=M.cleanName('\u{1F9EA}'.repeat(45));assert.equal(Array.from(astral).length,40);assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(astral));
+// Default order inside a tab follows the canvas's own card order (newest first), so a default
+// workspace keeps the same figure order after a save (no tabs field) and reopen.
+{const t=M.initial([]);M.assign(t,'plot_old');M.assign(t,'plot_new');const canon=['plot_new','plot_old'];
+ assert.deepEqual(M.figureOrder(t,canon),canon);assert.deepEqual(M.figureOrder(M.validate(M.serialize(t,canon),canon),canon),canon);assert.equal(M.serialize(t,canon),null);
+ // Cards that leave the board leave the tab, selection and order; unowned cards are adopted.
+ M.setIncluded(t,'plot_old',false);M.moveInOrder(t,'plot_old',-1,canon);assert.equal(M.forget(t,'plot_old'),true);
+ assert.deepEqual(t.tabs[0].nodes,['plot_new']);assert.deepEqual(t.figure,{deselected:[],order:['plot_new']});
+ M.addTab(t,'B');assert.equal(M.adopt(t,['plot_new','plot_kept'],t.active),true);assert.deepEqual(t.tabs.map(x=>x.nodes),[['plot_new'],['plot_kept']]);}
 console.log('PASS canvas tabs model: migration, fallback, add/rename/reorder/duplicate/delete, move/copy assignment, figure order/selection, round trip');

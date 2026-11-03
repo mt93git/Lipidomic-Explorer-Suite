@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   var M = window.TeamCanvasTabsModel; if (!M) return;
-  var state = M.initial([]), root, main, board, scroll, shell, bar, list, status, cameras = {}, pendingCopies = [], mounted = false, applying = false;
+  var state = M.initial([]), root, main, board, scroll, shell, bar, list, status, cameras = {}, pendingCopies = [], mounted = false, applying = false, restoring = false;
 
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function nodeKey(node) { return node.dataset.canvasOrderId || node.dataset.plotId || ''; }
@@ -18,6 +18,9 @@
   // Uses the card's own Remove (or Return) action, so canvas.js cleans up as usual.
   function removeCard(id) { var n = nodeFor(id), b = n && Array.from(n.querySelectorAll('button')).find(function (x) { return /^(Remove|Return)$/.test(x.textContent.trim()); }); if (b) b.click(); }
   function canvasApi() { return window.TeamCanvas || {}; }
+  function canonical() { var c = canvasApi(); return c.creationOrder ? c.creationOrder() : nodeIds(); }
+  // Picker edits (selection, order) and navigation are saved but kept out of the canvas undo.
+  function quiet() { var c = canvasApi(); if (c.tabsChanged) c.tabsChanged(true); render(); }
   function viewport() { return window.TeamCanvasViewport || null; }
 
   // ---- Undo integration: canvas.js snapshots the tab state with the layout.
@@ -35,6 +38,8 @@
   // ---- Show only the active tab's cards.
   function apply() {
     if (!board) return;
+    // A card on the board that no tab lists (an undo keeps new cards alive) joins the active tab.
+    M.adopt(state, nodeIds(), state.active);
     var active = M.tabOf(state, state.active), shown = [], closeSelection = false;
     applying = true;
     try {
@@ -76,9 +81,9 @@
       b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(t.id === state.active)); b.tabIndex = t.id === state.active ? 0 : -1;
       if (shell && shell.id) b.setAttribute('aria-controls', shell.id);
       b.draggable = true;
-      var name = el('span', 'tc-canvas-tab-name', t.name), count = el('span', 'tc-canvas-tab-count', String(t.nodes.length));
-      count.setAttribute('aria-label', t.nodes.length + ' card' + (t.nodes.length === 1 ? '' : 's'));
-      b.append(name, count);
+      var n = t.nodes.length, name = el('span', 'tc-canvas-tab-name', t.name), count = el('span', 'tc-canvas-tab-count', String(n));
+      count.setAttribute('aria-hidden', 'true');
+      b.append(name, count, el('span', 'tc-sr-only', ' (' + n + ' card' + (n === 1 ? '' : 's') + ')'));
       b.addEventListener('click', function () { activate(t.id, false); });
       b.addEventListener('dblclick', function (e) { e.preventDefault(); startRename(t.id); });
       b.addEventListener('keydown', function (e) { tabKey(e, t, i); });
@@ -105,11 +110,11 @@
   function addTab() {
     saveCamera(state.active); before(); var r = M.addTab(state); if (!r.ok) { tell(r.message); return; }
     apply(); after(); requestAnimationFrame(function () { loadCamera(r.id); }); focusTab(r.id);
-    tell('Added tab “' + M.tabOf(state, r.id).name + '”. New plots go to this tab. Double-click the tab to rename it.');
+    tell('Added tab “' + M.tabOf(state, r.id).name + '”. New plots go to this tab. To rename it, double-click the tab or press F2.');
   }
   function startRename(id) {
     var b = list.querySelector('[data-tab-id="' + id + '"]'); if (!b) return;
-    var t = M.tabOf(state, id), input = el('input', 'tc-canvas-tab-input'); input.type = 'text'; input.value = t.name; input.maxLength = 60;
+    var t = M.tabOf(state, id), input = el('input', 'tc-canvas-tab-input'); input.type = 'text'; input.value = t.name; input.maxLength = M.MAX_NAME;
     input.setAttribute('aria-label', 'Tab name (up to ' + M.MAX_NAME + ' characters)');
     var done = false;
     function finish(save) {
@@ -118,7 +123,7 @@
         before(); var r = M.rename(state, id, input.value);
         if (!r.ok) { tell(r.message); render(); focusTab(id); return; }
         after(); focusTab(id);
-        tell(r.duplicate ? 'Renamed to “' + r.name + '”. Another tab already has this name.' : 'Renamed to “' + r.name + '”.' + (input.value.trim().length > M.MAX_NAME ? ' Names are limited to ' + M.MAX_NAME + ' characters.' : ''));
+        tell('Renamed to “' + r.name + '”.' + (r.duplicate ? ' Another tab already has this name.' : ''));
       } else { render(); focusTab(id); }
     }
     input.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
@@ -128,9 +133,9 @@
   function duplicate(id) {
     var c = canvasApi(); saveCamera(state.active); before(); var r = M.duplicateTab(state, id); if (!r.ok) { tell(r.message); return; }
     var copied = 0, skipped = 0;
-    r.sources.forEach(function (nid) { if (c.copyPlot && c.copyPlot(nid) && c.pastePlot && c.pastePlot()) { pendingCopies.push({tab: r.id, at: Date.now()}); copied++; } else skipped++; });
+    r.sources.forEach(function (nid) { var iid = c.copyPlotAsInstance && c.copyPlotAsInstance(nid); if (iid) { pendingCopies.push({instance: iid, tab: r.id, at: Date.now()}); copied++; } else skipped++; });
     apply(); after(); requestAnimationFrame(function () { loadCamera(r.id); }); focusTab(r.id);
-    tell('Duplicated as “' + M.tabOf(state, r.id).name + '”.' + (copied ? ' Copying ' + copied + ' plot' + (copied === 1 ? '' : 's') + '…' : '') + (skipped ? ' ' + skipped + ' card' + (skipped === 1 ? '' : 's') + ' cannot be copied (illustrations or plots without an independent copy).' : ''));
+    tell('Duplicated as “' + M.tabOf(state, r.id).name + '”.' + (copied ? ' Copying ' + copied + ' plot' + (copied === 1 ? '' : 's') + '…' : '') + (skipped ? ' ' + skipped + ' card' + (skipped === 1 ? '' : 's') + ' could not be copied (illustrations, plots without an independent copy, or the 40-figure limit).' : ''));
   }
 
   // ---- Delete with a confirmation that offers to keep the cards.
@@ -146,7 +151,7 @@
       dialog.appendChild(el('p', '', 'It holds ' + count + ' card' + (count === 1 ? '' : 's') + '.'));
       var keepLabel = el('label', 'tc-tab-del-choice'); keep = el('input'); keep.type = 'radio'; keep.name = 'tc-tab-del'; keep.checked = true; keepLabel.append(keep, document.createTextNode(' Move the cards to '));
       moveSelect = el('select'); moveSelect.setAttribute('aria-label', 'Tab that receives the cards'); others.forEach(function (o) { var op = el('option', '', o.name); op.value = o.id; moveSelect.appendChild(op); }); keepLabel.appendChild(moveSelect);
-      var dropLabel = el('label', 'tc-tab-del-choice'), drop = el('input'); drop.type = 'radio'; drop.name = 'tc-tab-del'; dropLabel.append(drop, document.createTextNode(' Delete the cards too (cannot be undone)'));
+      var dropLabel = el('label', 'tc-tab-del-choice'), drop = el('input'); drop.type = 'radio'; drop.name = 'tc-tab-del'; dropLabel.append(drop, document.createTextNode(' Remove the cards too (copies are deleted, original plots go back to the library; cannot be undone)'));
       moveSelect.addEventListener('change', function () { keep.checked = true; });
       dialog.append(keepLabel, dropLabel);
     } else dialog.appendChild(el('p', '', 'The tab is empty. You can undo this.'));
@@ -156,8 +161,9 @@
       saveCamera(state.active); before(); var r = M.deleteTab(state, id, moveTo); if (!r.ok) { tell(r.message); closeDialog(id); return; }
       closeDialog(); delete cameras[id];
       r.removed.forEach(removeCard);
+      if (moveTo) t.nodes.forEach(function (nid) { var n = nodeFor(nid); if (n) placeAtEnd(n, moveTo); });
       apply(); after(); requestAnimationFrame(function () { loadCamera(state.active); }); focusTab(state.active);
-      tell('Deleted tab “' + t.name + '”.' + (count ? (moveTo ? ' Its cards moved to “' + M.tabOf(state, moveTo).name + '”.' : ' Its cards were removed.') : ''));
+      tell('Deleted tab “' + t.name + '”.' + (count ? (moveTo ? ' Its cards moved to “' + M.tabOf(state, moveTo).name + '”.' : ' Its cards were removed from the canvas.') : ''));
     });
     no.addEventListener('click', function () { closeDialog(id); });
     dialog.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeDialog(id); } });
@@ -168,9 +174,9 @@
   // ---- Tab menu (rename, duplicate, delete, move) for the active tab.
   function menuButton() {
     var wrap = el('div', 'tc-canvas-tab-menu'), trigger = el('button', 'tc-canvas-tab-more', '⋯'); trigger.type = 'button';
-    trigger.setAttribute('aria-label', 'Tab actions'); trigger.setAttribute('aria-haspopup', 'menu'); trigger.setAttribute('aria-expanded', 'false');
-    var menu = el('div', 'tc-canvas-tab-actions'); menu.setAttribute('role', 'menu'); menu.hidden = true;
-    function item(label, fn, needsTwo) { var b = el('button', '', label); b.type = 'button'; b.setAttribute('role', 'menuitem'); if (needsTwo) b.dataset.needsTwo = '1'; b.addEventListener('click', function () { close(); fn(state.active); }); menu.appendChild(b); return b; }
+    trigger.setAttribute('aria-label', 'Tab actions'); trigger.setAttribute('aria-expanded', 'false');
+    var menu = el('div', 'tc-canvas-tab-actions'); menu.setAttribute('role', 'group'); menu.setAttribute('aria-label', 'Tab actions'); menu.hidden = true; trigger.setAttribute('aria-controls', menu.id = 'tc-canvas-tab-actions');
+    function item(label, fn, needsTwo) { var b = el('button', '', label); b.type = 'button'; if (needsTwo) b.dataset.needsTwo = '1'; b.addEventListener('click', function () { close(); fn(state.active); }); menu.appendChild(b); return b; }
     function close() { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); }
     item('Rename…', startRename); item('Duplicate tab', duplicate);
     item('Move tab left', function (id) { reorder(id, state.tabs.findIndex(function (t) { return t.id === id; }) - 1); }, true);
@@ -178,6 +184,7 @@
     item('Delete tab…', confirmDelete, true);
     trigger.addEventListener('click', function (e) { e.stopPropagation(); var open = menu.hidden; menu.hidden = !open; trigger.setAttribute('aria-expanded', String(open)); if (open) { var first = menu.querySelector('button:not(:disabled)'); if (first) first.focus(); } });
     menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { close(); trigger.focus(); } });
+    wrap.addEventListener('focusout', function (e) { if (!menu.hidden && e.relatedTarget && !wrap.contains(e.relatedTarget)) close(); });
     document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
     wrap.append(trigger, menu); return wrap;
   }
@@ -186,13 +193,14 @@
   function moveCard(id, tabId) {
     var node = nodeFor(id), target = M.tabOf(state, tabId); if (!node) return;
     before(); if (!M.moveNode(state, id, tabId)) return;
-    placeAtEnd(node, tabId); apply(); after();
-    tell('Moved “' + labelFor(id) + '” to “' + target.name + '”.');
+    placeAtEnd(node, tabId); apply(); after(); focusTab(tabId);
+    tell('Moved “' + labelFor(id) + '” to “' + target.name + '”. Choose that tab to see it.');
   }
   function copyCard(id, tabId) {
     var c = canvasApi();
-    if (!(c.copyPlot && c.copyPlot(id) && c.pastePlot && c.pastePlot())) { tell('This card cannot be copied. Only plots with an independent copy can be copied.'); return; }
-    pendingCopies.push({tab: tabId, at: Date.now()});
+    var iid = c.copyPlotAsInstance && c.copyPlotAsInstance(id);
+    if (!iid) { tell('This card could not be copied. Only plots with an independent copy can be copied, up to 40 figures.'); return; }
+    pendingCopies.push({instance: iid, tab: tabId, at: Date.now()});
     tell('Copying “' + labelFor(id) + '” to “' + M.tabOf(state, tabId).name + '”…');
   }
   // A card that arrives in another tab goes below that tab's cards.
@@ -202,13 +210,14 @@
   }
   function cardPicker(id, mode, anchor) {
     closePicker(); var others = state.tabs.filter(function (t) { return t.nodes.indexOf(id) < 0 || mode === 'copy'; });
-    var pop = el('div', 'tc-tab-picker'); pop.setAttribute('role', 'menu'); pop.setAttribute('aria-label', (mode === 'move' ? 'Move' : 'Copy') + ' to tab');
+    var pop = el('div', 'tc-tab-picker'); pop.setAttribute('role', 'group'); pop.setAttribute('aria-label', (mode === 'move' ? 'Move' : 'Copy') + ' to tab');
     pop.appendChild(el('span', 'tc-tab-picker-title', mode === 'move' ? 'Move to tab' : 'Copy to tab'));
-    others.forEach(function (t) { var b = el('button', '', t.name + (t.id === state.active ? ' (this tab)' : '')); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.addEventListener('click', function () { closePicker(); (mode === 'move' ? moveCard : copyCard)(id, t.id); }); pop.appendChild(b); });
-    var fresh = el('button', 'tc-tab-picker-new', '+ New tab'); fresh.type = 'button'; fresh.setAttribute('role', 'menuitem');
+    others.forEach(function (t) { var b = el('button', '', t.name + (t.id === state.active ? ' (this tab)' : '')); b.type = 'button'; b.addEventListener('click', function () { closePicker(); (mode === 'move' ? moveCard : copyCard)(id, t.id); }); pop.appendChild(b); });
+    var fresh = el('button', 'tc-tab-picker-new', '+ New tab'); fresh.type = 'button';
     fresh.addEventListener('click', function () { closePicker(); var keep = state.active; before(); var r = M.addTab(state); if (!r.ok) { tell(r.message); return; } state.active = keep; after(); (mode === 'move' ? moveCard : copyCard)(id, r.id); });
     pop.appendChild(fresh);
     pop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); closePicker(); anchor.focus(); } });
+    pop.addEventListener('focusout', function (e) { if (e.relatedTarget && !pop.contains(e.relatedTarget) && e.relatedTarget !== anchor) closePicker(); });
     anchor.after(pop); picker = pop; var first = pop.querySelector('button'); if (first) first.focus();
   }
   var picker = null;
@@ -228,14 +237,24 @@
   }
   function observe() {
     new MutationObserver(function (events) {
-      var added = [];
-      events.forEach(function (ev) { ev.addedNodes.forEach(function (n) { if (n.nodeType === 1 && n.classList.contains('tc-node')) added.push(n); }); });
-      if (!added.length) return;
+      var added = [], removed = [];
+      events.forEach(function (ev) {
+        ev.addedNodes.forEach(function (n) { if (n.nodeType === 1 && n.classList.contains('tc-node')) added.push(n); });
+        ev.removedNodes.forEach(function (n) { if (n.nodeType === 1 && n.classList.contains('tc-node')) removed.push(n); });
+      });
+      // A card removed or returned to the library leaves its tab, so counts stay right and a
+      // re-added plot joins the active tab. Restores replace the tab state themselves.
+      var lost = restoring ? [] : removed.map(nodeKey).filter(function (id) { return id && !nodeFor(id); });
+      if (!added.length && !lost.length) return;
+      lost.forEach(function (id) { M.forget(state, id); });
       added.forEach(function (n) {
-        var id = nodeKey(n); if (!id) return; decorate(n);
+        var id = nodeKey(n); if (!id || !n.isConnected) return; decorate(n);
         if (M.tabForNode(state, id)) return;
-        var now = Date.now(); pendingCopies = pendingCopies.filter(function (p) { return now - p.at < 120000 && state.tabs.some(function (t) { return t.id === p.tab; }); });
-        var target = pendingCopies.length ? pendingCopies.shift().tab : state.active;
+        // Copies sent to another tab are matched by their own instance id.
+        var now = Date.now(); pendingCopies = pendingCopies.filter(function (p) { return now - p.at < 300000 && state.tabs.some(function (t) { return t.id === p.tab; }); });
+        var match = pendingCopies.find(function (p) { return id === p.instance || id.indexOf(p.instance + '-') === 0 || n.id === p.instance || (n.dataset.instanceId || '') === p.instance; });
+        if (match) pendingCopies.splice(pendingCopies.indexOf(match), 1);
+        var target = match ? match.tab : state.active;
         M.assign(state, id, target);
         if (target !== state.active) { placeAtEnd(n, target); tell('Copied “' + labelFor(id) + '” to “' + M.tabOf(state, target).name + '”.'); }
       });
@@ -270,9 +289,10 @@
     // canvas.js: the tab field for a save (null keeps the classic single-canvas format).
     serialize: function (ids) { return M.serialize(state, ids || nodeIds()); },
     snapshot: function () { return JSON.stringify(state); },
-    applySnapshot: function (json) { try { var next = JSON.parse(json); if (!next || !Array.isArray(next.tabs)) return; saveCamera(state.active); var prev = state.active; state = next; apply(); render(); if (prev !== state.active) requestAnimationFrame(function () { loadCamera(state.active); }); } catch (e) { /* keep the current tabs */ } },
+    // Undo/redo restores tabs and membership; the figure-page selection and order are not canvas edits and stay.
+    applySnapshot: function (json) { try { var next = JSON.parse(json); if (!next || !Array.isArray(next.tabs) || !next.tabs.length) return; saveCamera(state.active); var prev = state.active; next.figure = M.clone(state.figure); if (!next.tabs.some(function (t) { return t.id === next.active; })) next.active = next.tabs[0].id; state = next; apply(); render(); if (prev !== state.active) requestAnimationFrame(function () { loadCamera(state.active); }); } catch (e) { /* keep the current tabs */ } },
     // canvas.js restore: returns the ids shown first (the active tab).
-    restore: function (raw, ids) { state = M.validate(raw, ids); cameras = {}; pendingCopies = []; if (mounted) { apply(); render(); } return M.tabOf(state, state.active).nodes.slice(); },
+    restore: function (raw, ids) { state = M.validate(raw, ids); cameras = {}; pendingCopies = []; restoring = true; setTimeout(function () { restoring = false; }, 0); if (mounted) { apply(); render(); } return M.tabOf(state, state.active).nodes.slice(); },
     activeIds: function () { return M.tabOf(state, state.active).nodes.slice(); },
     isVisible: function (id) { return M.tabForNode(state, id) === state.active || !M.tabForNode(state, id); },
     state: function () { return M.clone(state); },
@@ -281,13 +301,13 @@
     remove: function (id, moveTo) { saveCamera(state.active); before(); var r = M.deleteTab(state, id, moveTo || null); if (r.ok) { r.removed.forEach(removeCard); apply(); after(); } return r; },
     duplicate: duplicate, reorder: reorder, moveCard: moveCard, copyCard: copyCard,
     // Figure page: groups by tab, the default/custom order and the selection.
-    groups: function () { var ids = nodeIds(); return state.tabs.map(function (t) { return {id: t.id, name: t.name, nodes: t.nodes.filter(function (n) { return ids.indexOf(n) >= 0; })}; }); },
-    figureOrder: function () { var ids = nodeIds(); return M.figureOrder(state).filter(function (n) { return ids.indexOf(n) >= 0; }); },
+    groups: function () { var ids = nodeIds(), order = canonical(); return state.tabs.map(function (t) { return {id: t.id, name: t.name, nodes: M.tabNodes(t, order).filter(function (n) { return ids.indexOf(n) >= 0; })}; }); },
+    figureOrder: function () { var ids = nodeIds(); return M.figureOrder(state, canonical()).filter(function (n) { return ids.indexOf(n) >= 0; }); },
     included: function (id) { return M.included(state, id); },
-    setIncluded: function (id, on) { before(); if (M.setIncluded(state, id, on)) after(); },
-    setTabIncluded: function (tabId, on) { before(); if (M.setTabIncluded(state, tabId, on)) after(); },
-    moveInOrder: function (id, delta) { before(); if (M.moveInOrder(state, id, delta)) after(); },
-    resetOrder: function () { before(); if (M.resetOrder(state)) after(); },
+    setIncluded: function (id, on) { if (M.setIncluded(state, id, on)) quiet(); },
+    setTabIncluded: function (tabId, on) { if (M.setTabIncluded(state, tabId, on)) quiet(); },
+    moveInOrder: function (id, delta) { if (M.moveInOrder(state, id, delta, canonical())) quiet(); },
+    resetOrder: function () { if (M.resetOrder(state)) quiet(); },
     label: labelFor
   };
 

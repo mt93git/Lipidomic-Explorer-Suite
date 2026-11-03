@@ -40,11 +40,19 @@ async function finishVisible(p){for(const id of await visible(p)){const done=awa
   await p.locator('.tc-canvas-tab-add').click();assert.equal(await p.locator('.tc-canvas-tab[aria-selected=true] .tc-canvas-tab-name').textContent(),'Canvas 2');
   assert.deepEqual(await visible(p),[],'a new tab starts empty');
   const dist=await add(p,'results_dashboard-plot_dist');assert.deepEqual(await visible(p),[dist],'new cards go to the active tab');
+  // Undo after an addition keeps the new card (canvas rule) and it stays visible in a tab.
+  await p.locator('.ts-tools .ts-tool[aria-label=Undo]').click();await p.waitForTimeout(300);
+  assert.deepEqual(await visible(p),[dist],'an undone addition never leaves the card hidden');
+  assert.ok((await tabs(p)).some(t=>t.nodes.includes(dist)),'the kept card belongs to a tab');
+  await p.locator('.ts-tools .ts-tool[aria-label=Redo]').click();await p.waitForTimeout(300);
+  assert.deepEqual((await tabs(p)).map(t=>t.name),['Canvas 1','Canvas 2']);assert.deepEqual((await tabs(p))[1].nodes,[dist]);
+  assert.equal(await p.locator('.tc-canvas-tab[aria-selected=true]').getAttribute('aria-label'),null);
+  assert.match(await p.locator('.tc-canvas-tab[aria-selected=true]').textContent(),/\(1 card\)/,'the count is announced as text');
   await p.locator('.tc-canvas-tab-add').click();
   await shot(p,'three-tabs');
   // Rename by double-click and by the menu.
   await tabButton(p,'Canvas 2').dblclick();await p.locator('.tc-canvas-tab-input').fill('  Results B  ');await p.keyboard.press('Enter');
-  await tabButton(p,'Canvas 3').click();await p.locator('.tc-canvas-tab-more').click();await p.getByRole('menuitem',{name:'Rename…'}).click();
+  await tabButton(p,'Canvas 3').click();await p.locator('.tc-canvas-tab-more').click();await p.locator('.tc-canvas-tab-actions').getByRole('button',{name:'Rename…'}).click();
   await p.locator('.tc-canvas-tab-input').fill('Scratch');await p.keyboard.press('Enter');
   assert.deepEqual((await tabs(p)).map(t=>t.name),['Canvas 1','Results B','Scratch']);
   await shot(p,'renamed');
@@ -53,7 +61,7 @@ async function finishVisible(p){for(const id of await visible(p)){const done=awa
   // Move violin to Scratch from its card menu, undo it, redo it.
   await tabButton(p,'Canvas 1').click();assert.deepEqual((await visible(p)).sort(),[violin,pca].sort());
   await p.locator('.tc-node[data-plot-id="'+violin+'"] .tc-tab-card-action[data-tab-action=move]').evaluate(b=>b.click());
-  await p.locator('.tc-tab-picker').getByRole('menuitem',{name:'Scratch'}).click();
+  await p.locator('.tc-tab-picker').getByRole('button',{name:'Scratch'}).click();
   assert.deepEqual(await visible(p),[pca]);assert.deepEqual((await tabs(p))[2].nodes,[violin]);
   await shot(p,'moved-violin-to-scratch');
   await p.locator('.ts-tools .ts-tool[aria-label=Undo]').click();assert.deepEqual((await tabs(p))[0].nodes.sort(),[violin,pca].sort(),'undo returns the card');
@@ -61,7 +69,7 @@ async function finishVisible(p){for(const id of await visible(p)){const done=awa
   // Copy pca to Results B (a new independent plot instance).
   const before=await p.evaluate(()=>[...document.querySelectorAll('.tc-node[data-plot-id]')].map(n=>n.dataset.plotId));
   await p.locator('.tc-node[data-plot-id="'+pca+'"] .tc-tab-card-action[data-tab-action=copy]').evaluate(b=>b.click());
-  await p.locator('.tc-tab-picker').getByRole('menuitem',{name:'Results B'}).click();
+  await p.locator('.tc-tab-picker').getByRole('button',{name:'Results B'}).click();
   await p.waitForFunction(ids=>[...document.querySelectorAll('.tc-node[data-plot-id]')].some(n=>!ids.includes(n.dataset.plotId)),before,{timeout:180000});
   const copy=await p.evaluate(ids=>[...document.querySelectorAll('.tc-node[data-plot-id]')].map(n=>n.dataset.plotId).find(id=>!ids.includes(id)),before);
   await p.waitForFunction(id=>TeamCanvasTabs.state().tabs[1].nodes.includes(id),copy,{timeout:10000});

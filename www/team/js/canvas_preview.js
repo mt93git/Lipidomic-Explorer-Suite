@@ -11,7 +11,7 @@
     // Two-state switch (Draft canvas | Figure page); the draft half is the way back.
     if (heading && !heading.querySelector('.tc-preview-back')) {
       var modeSwitch = document.createElement('div'); modeSwitch.className = 'tc-mode-switch'; modeSwitch.setAttribute('role', 'group'); modeSwitch.setAttribute('aria-label', 'Canvas mode');
-      var back = document.createElement('button'); back.type = 'button'; back.className = 'tc-preview-back tc-mode-option'; back.textContent = '← Back to draft'; back.setAttribute('aria-pressed', 'false'); back.addEventListener('click', function () { backToCanvas(); });
+      var back = document.createElement('button'); back.type = 'button'; back.className = 'tc-preview-back tc-mode-option'; back.textContent = '← Back to draft'; back.addEventListener('click', function () { backToCanvas(); });
       var here = document.createElement('span'); here.className = 'tc-mode-option is-current'; here.textContent = 'Figure page'; here.setAttribute('aria-current', 'true');
       modeSwitch.append(back, here); heading.prepend(modeSwitch);
     }
@@ -85,7 +85,8 @@
       });
       var reset=document.createElement('button');reset.type='button';reset.className='tc-figure-plots-reset';reset.textContent='Reset order (tab order)';reset.dataset.pickKey='reset';reset.addEventListener('click',function(){api.resetOrder();});body.appendChild(reset);
       var hint=document.createElement('p');hint.className='tc-figure-plots-hint';hint.textContent='Unchecked plots stay on their canvas tab and do not hold up the export. The order sets page order and panel letters.';body.appendChild(hint);
-      if(focusKey){var again=picker.querySelector('[data-pick-key="'+CSS.escape(focusKey)+'"]');if(again)again.focus();}
+      // Keep keyboard focus in the list; an arrow that just became disabled hands it to its row.
+      if(focusKey){var again=picker.querySelector('[data-pick-key="'+CSS.escape(focusKey)+'"]');if(again&&again.disabled){var row=again.closest('.tc-figure-plots-row');again=row&&(row.querySelector('button:not(:disabled)')||row.querySelector('input'));}if(again)again.focus();}
     }
     window.addEventListener('team-canvas-changed',function(){if(!panel.hidden)renderPicker();});
     function updateNotes(captured){
@@ -185,7 +186,7 @@
       if (settings.layout === 'free') syncDocument(state, settings, allIds);
       var shown = settings.layout === 'free' ? JSON.parse(JSON.stringify(documentState)) : null;
       if (shown) shown.items = shown.items.filter(function (i) { return i.type !== 'figure' || excludedIds.indexOf(i.nodeId) < 0; });
-      return {state:state, settings:settings, document:shown, excluded:excluded, archived:result.archived || 0, signature:JSON.stringify([state, settings, settings.layout === 'free' ? documentState : null, excluded, deselected])};
+      return {state:state, settings:settings, document:shown, excluded:excluded, keepIds:allIds, archived:result.archived || 0, signature:JSON.stringify([state, settings, settings.layout === 'free' ? documentState : null, excluded, deselected])};
     }
     function excludedMessage(excluded) {
       var names = excluded.slice(0,3).map(function (u) { return '“' + u.label + '”' + (u.reason === 'live' ? ' (not finished)' : u.reason === 'stale' ? ' (needs review)' : ''); }).join(', ') + (excluded.length > 3 ? ' and ' + (excluded.length - 3) + ' more' : '');
@@ -409,7 +410,7 @@
     function backToCanvas() { var t = root.querySelector('#tc-workspace-tab'); if (t) t.click(); }
     function emptyState(message) {
       var box = document.createElement('div'); box.className = 'tc-preview-empty';
-      var h = document.createElement('h4'); h.textContent = /^(Finish live plots|Finish every canvas plot|Add plots in Workspace|Add a plot or drawing|Independent plots are still loading|The analysis is updating|Queued add|Saved plots are waiting|The canvas is not ready|A finished figure (needs review|is stale))/.test(message || '') ? 'Nothing to compose yet' : 'This page could not be composed';
+      var h = document.createElement('h4'); h.textContent = /^(Finish live plots|Finish every canvas plot|Finish a plot in the draft canvas|No plots are selected|Add plots in the draft canvas|Add plots in Workspace|Add a plot or drawing|Independent plots are still loading|The analysis is updating|Queued add|Saved plots are waiting|The canvas is not ready|A finished figure (needs review|is stale))/.test(message || '') ? 'Nothing to compose yet' : 'This page could not be composed';
       var p = document.createElement('p'); p.textContent = message || 'Finish the plots on the canvas to compose them here.';
       var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Back to canvas'; b.addEventListener('click', backToCanvas);
       box.append(h, p, b); return box;
@@ -609,7 +610,7 @@
     function stephaniaStyle() {
       if(exporting)return;
       var captured;try {captured=capture();}catch(error){tell(error.message);return;}
-      if(!documentState){syncDocument(captured.state,captured.settings);}
+      if(!documentState){syncDocument(captured.state,captured.settings,captured.keepIds);}
       var nodes=captured.state.nodes, old=documentState.items, figures=nodes.map(function(n,index){var item=old.find(function(i){return i.type==='figure'&&i.nodeId===n.id;});return item?Object.assign({},item):{id:'figure-'+index+'-'+n.id.replace(/[^A-Za-z0-9_-]/g,'_').slice(0,130),nodeId:n.id,type:'figure',caption:'',z:index};});
       function generatedLabel(i){var match=i.type==='text' && /^stephania-panel-([A-Z]+)(?:-\d+)?$/.exec(i.id);return !!match && i.text===match[1];}
       var existingShapes=old.filter(function(i){return i.type==='shape';}).map(function(i){return Object.assign({},i);});
@@ -664,6 +665,8 @@
       if(labels.some(function(l){return preserved.some(function(i){return overlaps(l[1],l[2],20,28,i,0);});})){tell('Publication labels would overlap an existing object. The current layout was kept. Move the labels manually or choose One plot per page.');return;}
       var ids=new Set(placed.concat(existingText,existingShapes).map(function(i){return i.id;}));labels.forEach(function(label){var id='stephania-panel-'+label[0],suffix=1;while(ids.has(id))id='stephania-panel-'+label[0]+'-'+suffix++;ids.add(id);placed.push({id:id,type:'text',x:label[1],y:label[2],width:20,height:28,text:label[0],fontSize:22,color:'#000000',z:placed.length});});
       placed.push.apply(placed,existingText);placed.push.apply(placed,existingShapes);
+      // Plots left out of the figure keep their placement and caption for when they are chosen again.
+      placed.push.apply(placed,old.filter(function(i){return i.type==='figure'&&excludedIds.indexOf(i.nodeId)>=0&&!placed.some(function(p){return p.id===i.id;});}).map(function(i){return Object.assign({},i);}));
       documentState={version:'1',layout:'free',paper:'custom',orientation:'landscape',paperWidth:980,paperHeight:publicationHeight,showPageFurniture:false,items:placed};selected=null;applyDocumentSettings(documentState);saveDocument();refresh();tell('Page arranged. Additional plots continue below the primary panels. You can move or resize any item.');
     }
 
@@ -727,7 +730,7 @@
     panel.querySelector('.tc-preview-add-text').addEventListener('click', addText);
     panel.querySelector('.tc-preview-svg').addEventListener('click',downloadSVG);
     window.addEventListener('team-canvas-changed',invalidate);
-    [layout,paper,orientation,customWidth,customHeight,furniture].forEach(function (control) { control.addEventListener('change',function(){ updatePaperControls();refresh(); if(documentState && current){syncDocument(current.state,current.settings);documentState.layout=layout.value;documentState.showPageFurniture=furniture.checked;documentState.paper=paper.value;documentState.orientation=orientation.value;if(paper.value==='custom'){documentState.paperWidth=current.settings.paperWidth;documentState.paperHeight=current.settings.paperHeight;}else{delete documentState.paperWidth;delete documentState.paperHeight;}saveDocument();} }); });
+    [layout,paper,orientation,customWidth,customHeight,furniture].forEach(function (control) { control.addEventListener('change',function(){ updatePaperControls();refresh(); if(documentState && current){syncDocument(current.state,current.settings,current.keepIds);documentState.layout=layout.value;documentState.showPageFurniture=furniture.checked;documentState.paper=paper.value;documentState.orientation=orientation.value;if(paper.value==='custom'){documentState.paperWidth=current.settings.paperWidth;documentState.paperHeight=current.settings.paperHeight;}else{delete documentState.paperWidth;delete documentState.paperHeight;}saveDocument();} }); });
     pdfButton.addEventListener('click',downloadPDF); printButton.addEventListener('click',printPages);
     window.addEventListener('team-document-restored',function(){documentState=null;restored=false;lastSaved=null;history=[];future=[];restoreDocument();if(!panel.hidden){if(exporting){generation++;current=null;controls(false);}else refresh();}});
     window.addEventListener('team-preparation-state',function (event) {

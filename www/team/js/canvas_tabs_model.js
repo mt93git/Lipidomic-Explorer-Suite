@@ -30,7 +30,8 @@
   // Any name: trimmed, at most 40 characters, no control characters. Returns null when empty.
   function cleanName(value) {
     if (typeof value !== 'string') return null;
-    var name = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, MAX_NAME).trim();
+    // Count characters, not UTF-16 units, so a cut never splits an emoji or other astral character.
+    var name = Array.from(value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()).slice(0, MAX_NAME).join('').trim();
     return name ? name : null;
   }
   function initial(nodeIds) {
@@ -124,11 +125,30 @@
     if (tabForNode(state, nodeId)) return false;
     tabOf(state, tabId || state.active).nodes.push(nodeId); return true;
   }
+  // A card that left the workspace leaves its tab, the selection and the order.
+  function forget(state, nodeId) {
+    var had = !!tabForNode(state, nodeId) || state.figure.deselected.indexOf(nodeId) >= 0 || state.figure.order.indexOf(nodeId) >= 0;
+    state.tabs.forEach(function (t) { t.nodes = t.nodes.filter(function (n) { return n !== nodeId; }); });
+    state.figure.deselected = state.figure.deselected.filter(function (n) { return n !== nodeId; });
+    state.figure.order = state.figure.order.filter(function (n) { return n !== nodeId; });
+    return had;
+  }
+  // Cards present on the board but in no tab (e.g. kept alive by an undo) join a tab; nothing is removed.
+  function adopt(state, nodeIds, tabId) {
+    var changed = false; uniqueIds(nodeIds).forEach(function (id) { if (assign(state, id, tabId)) changed = true; }); return changed;
+  }
   function setActive(state, id) { if (!state.tabs.some(function (t) { return t.id === id; }) || state.active === id) return false; state.active = id; return true; }
   // Figure page: default order is tab order, then card order inside each tab;
-  // a saved custom order takes precedence for the cards it names.
-  function figureOrder(state) {
-    var natural = [].concat.apply([], state.tabs.map(function (t) { return t.nodes; }));
+  // a saved custom order takes precedence for the cards it names. `canonical`
+  // (optional) is the canvas's own card order (the saved node array, newest
+  // first); inside a tab it decides the order, so a default single-tab
+  // workspace keeps the same figure order before and after a save and reopen.
+  function tabNodes(t, canonical) {
+    if (!Array.isArray(canonical)) return t.nodes.slice();
+    return t.nodes.slice().sort(function (a, b) { var x = canonical.indexOf(a), y = canonical.indexOf(b); return (x < 0 ? 1e6 : x) - (y < 0 ? 1e6 : y); });
+  }
+  function figureOrder(state, canonical) {
+    var natural = [].concat.apply([], state.tabs.map(function (t) { return tabNodes(t, canonical); }));
     var custom = state.figure.order.filter(function (id) { return natural.indexOf(id) >= 0; });
     return custom.concat(natural.filter(function (id) { return custom.indexOf(id) < 0; }));
   }
@@ -139,8 +159,8 @@
     var changed = list.length !== state.figure.deselected.length; state.figure.deselected = list; return changed;
   }
   function setTabIncluded(state, tabId, on) { var t = state.tabs.find(function (t) { return t.id === tabId; }); if (!t) return false; var any = false; t.nodes.forEach(function (n) { any = setIncluded(state, n, on) || any; }); return any; }
-  function moveInOrder(state, nodeId, delta) {
-    var order = figureOrder(state), at = order.indexOf(nodeId), to = at + delta;
+  function moveInOrder(state, nodeId, delta, canonical) {
+    var order = figureOrder(state, canonical), at = order.indexOf(nodeId), to = at + delta;
     if (at < 0 || to < 0 || to >= order.length) return false;
     order.splice(at, 1); order.splice(to, 0, nodeId); state.figure.order = order; return true;
   }
@@ -148,7 +168,7 @@
   return {VERSION: VERSION, MAX_TABS: MAX_TABS, MAX_NAME: MAX_NAME, DEFAULT_NAME: DEFAULT_NAME,
     initial: initial, validate: validate, prune: prune, isDefault: isDefault, serialize: serialize, cleanName: cleanName,
     tabOf: tabOf, tabForNode: tabForNode, addTab: addTab, rename: rename, reorder: reorder, duplicateTab: duplicateTab,
-    deleteTab: deleteTab, moveNode: moveNode, assign: assign, setActive: setActive, duplicateName: duplicateName,
+    deleteTab: deleteTab, moveNode: moveNode, assign: assign, forget: forget, adopt: adopt, tabNodes: tabNodes, setActive: setActive, duplicateName: duplicateName,
     figureOrder: figureOrder, included: included, setIncluded: setIncluded, setTabIncluded: setTabIncluded,
     moveInOrder: moveInOrder, resetOrder: resetOrder, clone: clone};
 });
