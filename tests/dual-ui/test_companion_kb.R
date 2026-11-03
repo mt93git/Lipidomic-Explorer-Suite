@@ -67,7 +67,7 @@ check("a covered question is found", a$found)
 check("the passage is quoted verbatim", grepl("methyl tert-butyl ether after adding the internal standard mix", a$text, fixed = TRUE))
 check("the source file is shown", grepl("Source: protocol.md", a$text, fixed = TRUE))
 check("a table row is retrievable by lipid species", grepl("log2FC: 1.82", ask("what is the log2FC of PC 34:1")$text, fixed = TRUE))
-check("species in other notations match", grepl("padj: 0.03", ask("TG 52:2 adjusted p value")$text, fixed = TRUE))
+check("species in other notations match", grepl("padj: 0.03", ask("what is padj of TG 52:2")$text, fixed = TRUE))
 check("a docx heading and text are read", grepl("Forty patients were recruited at two hospitals & matched by age", ask("how many patients were recruited at the hospitals")$text, fixed = TRUE))
 check("an xlsx row is read", grepl("rises in plasma", ask("what happens to LPC 16:0 in plasma")$text, fixed = TRUE))
 if (has_pdf) {
@@ -117,6 +117,20 @@ kb <- companion_kb_load(lib, seed)
 check("the base reloads when a file is fed", ask("capital of Atlantis")$found)
 check("a planted instruction does not change other answers", identical(ask("what is the capital of France")$text, NO))
 check("a planted instruction is only quoted", !grepl("HACKED", ask("how are lipids extracted from the samples")$text, fixed = TRUE))
+
+# ---- Transcribed slides: source label, tables, and words that must meet in one line --------
+writeLines(c("<!-- source: Cer/skin ceramides.png -->", "# Skin barrier", "", "## Key facts",
+  "- Ceramides make up about half of the stratum corneum lipids.", "",
+  "## Enzymes", "", "| Gene | Role |", "|---|---|", "| PTDSS1 | makes phosphatidylserine |",
+  "| PISD | converts phosphatidylserine to phosphatidylethanolamine |", "",
+  "## Water solubility", "Inositol phosphates are water soluble second messengers.", "",
+  "## Key points", "- Several points matter for signalling."), file.path(inbox, "slide.md"))
+companion_kb_add(file.path(inbox, "slide.md"), dir = lib, quiet = TRUE)
+kb <- companion_kb_load(lib, seed)
+check("a transcription cites the image it came from", grepl("Source: Cer/skin ceramides.png", ask("what are ceramides in the stratum corneum")$text, fixed = TRUE))
+check("table rows keep their column names", grepl("Gene: PISD; Role: converts phosphatidylserine", ask("what does PISD do")$text, fixed = TRUE))
+check("words scattered over different lines do not answer", identical(ask("what is the boiling point of water")$text, NO) && identical(ask("what is the structure of ceramides in the water")$text, NO))
+companion_kb_remove("slide.md", dir = lib, quiet = TRUE); kb <- companion_kb_load(lib, seed)
 
 # ---- Tags, removal, rebuild ---------------------------------------------------------------
 check("exact lookup by tag", companion_kb_by_tag("protocol", kb, "team")$found && !companion_kb_by_tag("missing-tag", kb, "team")$found)

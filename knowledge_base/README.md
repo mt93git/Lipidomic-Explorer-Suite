@@ -40,6 +40,15 @@ the image: mount a persistent volume and set `LIPIDOMIC_KB_DIR` to it, then run 
 
 Limits: 50 MB per file, 8,000 passages per file. Feeding the same file again replaces its passages.
 
+### Images and slide decks without a text layer
+
+Infographics, scanned pages and PowerPoint slides that are pictures have no text to read, and OCR is not used:
+its errors would be quoted as if they were in the source ("Lipin-1α (nucleus)" came out as "Lpin-ta (mucous)").
+Transcribe each image to a Markdown file, word for word, and feed the Markdown. Start the file with
+`<!-- source: folder/image.png -->` so every answer cites the image it came from, and mark any word you cannot
+read as `[illegible]` instead of guessing. Tables written as Markdown tables become one passage per row, each value
+prefixed by its column name. Spot-check the transcription against the image before feeding it.
+
 ### Writing Markdown for the base
 
 Plain Markdown works. Two optional comments, placed right under a heading, refine a section:
@@ -51,7 +60,7 @@ Plain Markdown works. Two optional comments, placed right under a heading, refin
 Text of the section...
 ```
 
-`audience` decides which interface may quote the section. Other HTML comments are ignored.
+`audience` decides which interface may quote the section. `<!-- source: name -->` anywhere in the file makes its passages cite that name. Other HTML comments are ignored.
 
 ## How a question is answered
 
@@ -61,9 +70,13 @@ Text of the section...
 3. A passage is eligible only when it holds enough of the question's words (`LIPIDOMIC_KB_MIN_COVERAGE`, default
    0.5) and enough of their weight, where rare words count more than common ones and a word the base has never
    seen counts against the match (`LIPIDOMIC_KB_MIN_WEIGHTED`, default 0.6).
-4. Questions that ask for a quantity ("how many", "what is the p-value") are answered only by a passage that
+4. The question's words must meet inside one line of the passage (a bullet, a sentence or a table row); the
+   passage's title and heading count as context for every line (`LIPIDOMIC_KB_MIN_LINE`, default 0.6). Words
+   scattered over a long passage are a coincidence, not an answer. A passage whose heading names the question's
+   words ranks higher.
+5. Questions that ask for a quantity ("how many", "what is the p-value") are answered only by a passage that
    contains a number.
-5. If nothing is eligible, the answer is `I have no information about this.`
+6. If nothing is eligible, the answer is `I have no information about this.`
 
 Nothing is generated, so nothing can be said that is not in a source. Passages that say nearly the same thing
 are shown once.

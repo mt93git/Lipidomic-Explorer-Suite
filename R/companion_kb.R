@@ -40,6 +40,7 @@ kb_stop <- c(
   "up","down","out","off","again","once","only","own","same","other","more","most","much","many","few","less","least",
   "explain","tell","mean","means","meaning","show","give","please","describe","know","understand","help","need","want","use","used","using",
   "work","works","thing","things","one","two","get","got","make","made","like","say","said","let","see","go","going",
+  "handle","handles","first","last","located","locate","happen","happens","occur","occurs","called","exactly","actually","really",
   "el","la","los","las","un","una","unos","unas","de","del","al","y","o","u","e","en","con","por","para","que","qué","como","cómo",
   "es","son","ser","esta","este","esto","estos","estas","se","su","sus","mi","mis","tu","tus","lo","le","les","no","si","sí",
   "cual","cuál","cuales","cuáles","donde","dónde","cuando","cuándo","porque","por qué","hay","puede","pueden","me","te","nos"
@@ -112,7 +113,32 @@ kb_section <- function(section = "", page = NA_integer_, rowwise = FALSE) {
 }
 
 # ---- Extractors: a file becomes list(title, sections) ---------------------------
+# Markdown tables become one line per data row, each value prefixed by its column name
+# ("Class: PC; Chains: 34:1"), so a row keeps its meaning when it is retrieved alone.
+kb_md_tables <- function(lines) {
+  is_row <- function(x) grepl("^\\s*\\|.*\\|\\s*$", x)
+  is_sep <- function(x) grepl("^\\s*\\|?\\s*:?-{2,}:?\\s*(\\|\\s*:?-{2,}:?\\s*)*\\|?\\s*$", x)
+  cells <- function(x) trimws(strsplit(sub("^\\s*\\|", "", sub("\\|\\s*$", "", x)), "|", fixed = TRUE)[[1L]])
+  out <- character(); i <- 1L; n <- length(lines)
+  while (i <= n) {
+    if (is_row(lines[i]) && i < n && is_sep(lines[i + 1L])) {
+      header <- cells(lines[i]); i <- i + 2L
+      while (i <= n && is_row(lines[i]) && !is_sep(lines[i])) {
+        v <- cells(lines[i]); length(v) <- length(header)
+        keep <- !is.na(v) & nzchar(v)
+        if (any(keep)) out <- c(out, paste0("- ", paste0(ifelse(nzchar(header[keep]), paste0(header[keep], ": "), ""), v[keep], collapse = "; ")))
+        i <- i + 1L
+      }
+      out <- c(out, "")
+    } else { out <- c(out, lines[i]); i <- i + 1L }
+  }
+  out
+}
+
 kb_parse_md <- function(lines, default_title) {
+  lines <- kb_md_tables(lines)
+  # `<!-- source: name -->` makes passages cite that name (for example the image a transcription came from).
+  origin_name <- NULL
   title <- NULL; stack <- character(); sections <- list(); buf <- character()
   cur <- kb_section()
   endpara <- function() {
@@ -131,6 +157,8 @@ kb_parse_md <- function(lines, default_title) {
       cur <- kb_section(paste(stack, collapse = " › "))
       next
     }
+    src <- regmatches(ln, regexec("^\\s*<!--\\s*source\\s*:\\s*(.*?)\\s*-->\\s*$", ln))[[1L]]
+    if (length(src) == 2L) { if (is.null(origin_name)) origin_name <- kb_clean(src[2L]); next }
     d <- regmatches(ln, regexec("^\\s*<!--\\s*(tags|audience)\\s*:\\s*(.*?)\\s*-->\\s*$", ln))[[1L]]
     if (length(d) == 3L) {
       if (d[2L] == "tags") cur$tags <- c(cur$tags, trimws(tolower(strsplit(d[3L], ",")[[1L]])))
@@ -143,7 +171,7 @@ kb_parse_md <- function(lines, default_title) {
     buf <- c(buf, trimws(ln))
   }
   flush()
-  list(title = title %||% default_title, sections = sections)
+  list(title = title %||% default_title, sections = sections, source = origin_name)
 }
 
 kb_parse_txt <- function(lines, default_title) {
@@ -282,7 +310,7 @@ kb_build_chunks <- function(parsed, source_id, source_file, audience, tags, orig
   if (!n) return(kb_empty_chunks())
   if (n > COMPANION_KB_LIMITS$chunks_per_file)
     stop(sprintf("This file makes %d passages; the limit is %d per file.", n, COMPANION_KB_LIMITS$chunks_per_file), call. = FALSE)
-  data.frame(id = sprintf("%s#%04d", source_id, seq_len(n)), source_id = source_id, source = source_file, title = parsed$title,
+  data.frame(id = sprintf("%s#%04d", source_id, seq_len(n)), source_id = source_id, source = parsed$source %||% source_file, title = parsed$title,
              section = cols$section, page = cols$page, audience = cols$audience, tags = cols$tags, origin = origin, text = cols$text,
              stringsAsFactors = FALSE)
 }
@@ -405,7 +433,7 @@ kb_signature <- function(files) {
 
 kb_build_index <- function(chunks) {
   n <- nrow(chunks)
-  toks <- lapply(seq_len(n), function(i) kb_tokens(c(chunks$title[i], chunks$section[i], chunks$section[i], chunks$text[i])))
+  toks <- lapply(seq_len(n), function(i) kb_tokens(c(chunks$title[i], chunks$section[i], chunks$section[i], chunks$section[i], chunks$text[i])))
   lens <- lengths(toks)
   ids <- rep(seq_len(n), lens)
   list(chunks = chunks, N = n, len = lens, avglen = if (n) mean(lens) else 0,
@@ -438,6 +466,7 @@ companion_kb_load <- function(dir = companion_kb_dir(), seed_dir = companion_kb_
 companion_kb_search <- function(question, kb = companion_kb_load(), audience = companion_kb_audience(), k = 3L,
                                 min_coverage = as.numeric(Sys.getenv("LIPIDOMIC_KB_MIN_COVERAGE", unset = "0.5")),
                                 min_weighted = as.numeric(Sys.getenv("LIPIDOMIC_KB_MIN_WEIGHTED", unset = "0.6")),
+                                min_line = as.numeric(Sys.getenv("LIPIDOMIC_KB_MIN_LINE", unset = "0.6")),
                                 k1 = 1.5, b = 0.75) {
   none <- list(hits = data.frame(index = integer(), score = numeric(), coverage = numeric(), weighted = numeric()), terms = character(), unknown = character())
   q <- unique(kb_tokens(question))
@@ -451,7 +480,7 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
     ids <- kb$postings[[t]]
     ids <- if (is.null(ids)) integer() else ids[mask[ids]]
     df <- length(unique(ids))
-    if (df == 0L) { unknown <- c(unknown, t); idf_all <- idf_all + 0.5 * log(1 + (Na + 0.5) / 0.5); next }
+    if (df == 0L) { unknown <- c(unknown, t); idf_all <- idf_all + 0.75 * log(1 + (Na + 0.5) / 0.5); next }
     idf <- log(1 + (Na - df + 0.5) / (df + 0.5))
     idf_all <- idf_all + idf
     tf <- tabulate(ids, nbins = N)
@@ -477,6 +506,24 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
   }
   if (!any(ok)) return(c(none, list(terms = q, unknown = unknown)))
   cand <- which(ok); cand <- cand[order(-score[cand], -coverage[cand], cand)]
+  # The question's words must meet in one line of the passage (a bullet, a sentence, a table row), with the
+  # passage's title and heading counting as context for every line. Words scattered across a long passage
+  # are a coincidence, not an answer.
+  line_cov <- function(i) {
+    ch <- kb$chunks[i, , drop = FALSE]
+    ctx <- kb_tokens(c(ch$title, ch$section))
+    lines <- unlist(strsplit(ch$text, "\n+|(?<=[.!?])\\s+", perl = TRUE))
+    lines <- lines[nzchar(trimws(lines))]
+    if (!length(lines)) return(c(line = 0, head = 0))
+    c(line = max(vapply(lines, function(l) mean(q %in% c(kb_tokens(l), ctx)), numeric(1))), head = mean(q %in% ctx))
+  }
+  cand <- head(cand, 40L)
+  lc <- vapply(cand, line_cov, numeric(2))
+  cand <- cand[lc["line", ] >= min_line]
+  if (!length(cand)) return(c(none, list(terms = q, unknown = unknown)))
+  # A passage whose heading names the question's words ranks above one that only mentions them.
+  score[cand] <- score[cand] * (1 + lc["head", lc["line", ] >= min_line])
+  cand <- cand[order(-score[cand], cand)]
   keep <- integer()
   for (i in cand) {
     if (score[i] < 0.4 * score[cand[1L]]) break
