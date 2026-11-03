@@ -2,12 +2,19 @@
 # qc-ui.R. The shared QC module keeps Block B's Classic code, reaching Team only
 # through its Team-only sys.source entry point. Synthetic fixtures only.
 
-# 1. Classic QC module is byte-identical to the C2 baseline (4b45a8b).
+# 1. Classic QC module is byte-identical to the C2 baseline (4b45a8b) plus only
+#    main's 4255aa0 (Max's plot-layout fixes), applied as its exact patch.
 module_path <- "R/modules/2_qc_boxplot_module.R"
+baseline_file <- tempfile(fileext = ".R")
 baseline <- suppressWarnings(system2("git", c("show", paste0("4b45a8b:", module_path)), stdout = TRUE, stderr = FALSE))
 stopifnot("git baseline 4b45a8b must be readable" = is.null(attr(baseline, "status")) && length(baseline) > 0L)
+writeLines(baseline, baseline_file)
+main_patch <- tempfile(fileext = ".patch")
+stopifnot("main patch 4255aa0 must be readable" = system2("git", c("diff", "4255aa0~1", "4255aa0", "--", module_path), stdout = main_patch) == 0L)
+stopifnot("main patch 4255aa0 must apply to 4b45a8b" = system2("patch", c("-s", "-o", shQuote(paste0(baseline_file, ".out")), baseline_file, main_patch)) == 0L)
 module <- readLines(module_path, warn = FALSE)
-stopifnot("QC module must be unchanged from 4b45a8b" = identical(module, baseline))
+stopifnot("QC module must be unchanged from 4b45a8b plus 4255aa0" = identical(module, readLines(paste0(baseline_file, ".out"), warn = FALSE)))
+unlink(c(baseline_file, paste0(baseline_file, ".out"), main_patch))
 module_text <- paste(module, collapse = "\n")
 team_entry <- 'if (identical(lipidomic_interface(), "team")) {\n      sys.source("R/frontends/team/qc-server.R", envir = environment())\n    }'
 stopifnot(grepl(team_entry, module_text, fixed = TRUE),
@@ -26,7 +33,7 @@ stopifnot(grepl(team_entry, module_text, fixed = TRUE),
 team_server_text <- paste(readLines("R/frontends/team/qc-server.R", warn = FALSE), collapse = "\n")
 stopifnot(!grepl("classicPreparationNotice|applyClassicPreparation", team_server_text),
   grepl("shared_data$request_team_review_preparation", team_server_text, fixed = TRUE))
-cat("PASS: Classic QC module unchanged from 4b45a8b; Team review reached only through qc-server.R\n")
+cat("PASS: Classic QC module unchanged from 4b45a8b (plus main 4255aa0); Team review reached only through qc-server.R\n")
 
 # 2. Pending-PCA message helper (production qc_guided_pca_value semantics).
 find_assignment <- function(node, target) {
