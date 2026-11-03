@@ -1035,12 +1035,13 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
                base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
             }
-            return(base_map[lvl])
+            return(unname(base_map[lvl]))
          } else {
             return(val)
          }
       })
-      safe_colors <- lipidomic_hook("fla_violin_palette")(safe_colors, c_levels)
+      # sapply keeps a returned name as a suffix ("A.A"); key the palette by group.
+      safe_colors <- stats::setNames(safe_colors, as.character(c_levels))
       
       # Define universal palette for facets
       fla_palette <- c(

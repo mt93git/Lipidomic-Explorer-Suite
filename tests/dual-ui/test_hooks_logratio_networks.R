@@ -65,9 +65,8 @@ circos_plot <- find_assign(fla, quote(output$plotCircos))
 for (rhs in list(network_data, network_plot, cor_data, circos_logic, circos_plot))
   stopifnot(length(hook_calls(list(rhs[[2L]][[2L]]), "inference_allowed")) == 1L)  # the first statement is the gate
 stopifnot(length(hook_calls(structural, "inference_allowed")) == 2L, length(hook_calls(fla, "inference_allowed")) == 3L)
-stopifnot(length(hook_calls(fla, "fla_violin_palette")) == 1L)
-violin <- find_assign(fla, as.name("current_violin_plot"))
-stopifnot(length(hook_calls(list(violin), "fla_violin_palette")) == 1L)
+# #10 is fixed in the module for both interfaces (Max, 3 Nov): no FLA palette hook.
+stopifnot(length(hook_calls(fla, "fla_violin_palette")) == 0L)
 
 banner <- find_assign(structural, as.name("render_structural_status_banner"))
 banner_base <- find_assign(structural, as.name("render_structural_status_banner_base"))
@@ -75,7 +74,7 @@ stopifnot(length(hook_calls(list(banner), "de_banner")) == 1L, length(hook_calls
   calls_fn(banner_base, "render_de_not_run_banner_base"), !calls_fn(banner_base, "render_de_not_run_banner"))
 # The unwarned Differential analysis banner the structural banner builds on.
 stopifnot(any(grepl("^render_de_not_run_banner_base <- function\\(shared_data\\)", readLines("R/modules/utils_stats.R"))))
-cat("PASS modules call violin_export_table x2, logratio_shared_data, inference_allowed x5, fla_violin_palette, de_banner\n")
+cat("PASS modules call violin_export_table x2, logratio_shared_data, inference_allowed x5, de_banner; FLA palette fixed in module\n")
 
 # --- 2. Classic: no registrations, every default reproduces the original code ---
 stopifnot(identical(lipidomic_hook_registered(), character()))
@@ -85,10 +84,16 @@ stopifnot(identical(lipidomic_hook("violin_export_table")(export_df, NULL, NULL)
 sd_plain <- list(inference_allowed = function(paired = FALSE) TRUE)
 stopifnot(identical(lipidomic_hook("logratio_shared_data")(sd_plain), sd_plain))
 stopifnot(isTRUE(lipidomic_hook("inference_allowed")(TRUE, NULL, list(), scope = "structural")))
-base_map <- stats::setNames(c("#111111", "#222222"), c("A", "B"))
-sapply_colors <- sapply(c("A", "B"), function(lvl) base_map[lvl])
-stopifnot(identical(names(sapply_colors), c("A.A", "B.B")),
-  identical(lipidomic_hook("fla_violin_palette")(sapply_colors, c("A", "B")), sapply_colors))
+# #10: the module's own palette statements key the FLA violin colours by group.
+find_all <- function(node, target) { hits <- list(); walk <- function(x) { if (is.call(x) && identical(x[[1L]], as.name("<-")) && identical(x[[2L]], target)) hits[[length(hits) + 1L]] <<- x; if (is.recursive(x)) for (i in seq_along(x)) if (!is.null(x[[i]])) walk(x[[i]]) }; for (e in node) walk(e); hits }
+palette_steps <- find_all(fla, as.name("safe_colors"))
+stopifnot(length(palette_steps) == 2L)
+palette_env <- new.env()
+palette_env$input <- list(); palette_env$global_color_map <- NULL; palette_env$c_var <- "Group"
+palette_env$c_levels <- c("A", "B"); palette_env$`%||%` <- function(a, b) if (is.null(a)) b else a
+palette_env$shared_data <- list(color_maps = function() list(Group = stats::setNames(c("#111111", "#222222"), c("A", "B"))))
+for (step in palette_steps) eval(step, palette_env)
+stopifnot(identical(palette_env$safe_colors, c(A = "#111111", B = "#222222")))
 
 # Gates pass in Classic: each body runs on to its original first statement
 # (req() on missing data), even when the study design forbids inference.
@@ -127,8 +132,7 @@ cat("PASS Classic defaults leave exports, shared_data, gates, palette and the st
 # --- 3. Team implementations reproduce production's adapters ------------------
 source("R/frontends/team/hooks/logratio.R")
 source("R/frontends/team/hooks/networks.R")
-source("R/frontends/team/hooks/fla.R")
-stopifnot(all(c("violin_export_table", "logratio_shared_data", "inference_allowed", "fla_violin_palette") %in% lipidomic_hook_registered()))
+stopifnot(all(c("violin_export_table", "logratio_shared_data", "inference_allowed") %in% lipidomic_hook_registered()))
 
 # #6: a missing test on a non-baseline row is "Not tested"; baseline, NA-baseline and tested rows unchanged.
 labelled <- lipidomic_hook("violin_export_table")(export_df, NULL, NULL)
@@ -170,9 +174,6 @@ stopifnot(same_message(printed, msg_fla))
 allowed <- function(paired = FALSE) TRUE
 for (rhs in list(network_data, cor_data, circos_logic, circos_plot)) stopifnot(silent(body_fn(rhs, gate_env(allowed))))
 
-# #10: the palette regains the group names that sapply suffixed.
-named <- lipidomic_hook("fla_violin_palette")(sapply_colors, c("A", "B"))
-stopifnot(identical(names(named), c("A", "B")), identical(unname(named), unname(sapply_colors)))
 
 # #13: a de_banner implementation (the participant warning) is added above the
 # whole structural banner, which keeps its ready banner and launch button.
