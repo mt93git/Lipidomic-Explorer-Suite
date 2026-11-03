@@ -17,7 +17,11 @@ backend, `LIPIDOMIC_UPLOAD_QUEUE` (the durable checkpoint queue) without the
 
 **`files` is for a single local user.** It has no accounts and no access
 control: anyone who can reach the app can list, load and delete every project.
-A shared server must use `database`.
+A shared server must use `database`. To prevent an open deployment by
+omission, Team refuses to start in `files` when any of `LIPIDOMIC_AUTH_URL`,
+`LIPIDOMIC_REST_URL` or `LIPIDOMIC_STORAGE_URL` is set, and asks for
+`LIPIDOMIC_STORAGE=database`. The pilot launch must therefore set
+`LIPIDOMIC_STORAGE=database` and `LIPIDOMIC_LOGIN_THROTTLE=off` explicitly.
 
 ## Sign-in and the project library by backend
 

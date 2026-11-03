@@ -43,6 +43,14 @@ team_storage_validate_config <- function(backend = team_storage_backend(),
       stop("LIPIDOMIC_STORAGE=database requires ", paste(missing, collapse = ", "),
         ". Set them in the launch environment or use LIPIDOMIC_STORAGE=files.", call. = FALSE)
   } else {
+    # files has no sign-in or access control, so it must never serve a deployment
+    # that is configured for the shared Supabase project library.
+    shared <- paste0("LIPIDOMIC_", c("AUTH", "REST", "STORAGE"), "_URL")
+    shared <- shared[nzchar(Sys.getenv(shared, unset = ""))]
+    if (length(shared))
+      stop("LIPIDOMIC_STORAGE is files (the default, a single local user without sign-in) but the shared project library is configured (",
+        paste(shared, collapse = ", "), "). ",
+        "Set LIPIDOMIC_STORAGE=database.", call. = FALSE)
     root <- team_storage_files_root()
     if (file.exists(root) && !dir.exists(root))
       stop("LIPIDOMIC_STORAGE_DIR must name a directory: ", root, call. = FALSE)
