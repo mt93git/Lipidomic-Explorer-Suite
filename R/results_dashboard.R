@@ -105,6 +105,14 @@ rd_shared_colors <- function(levels, mapping = NULL, fold_case = FALSE) {
     unique_alias <- !duplicated(short) & !duplicated(short, fromLast = TRUE) & !(short %in% keys)
     mapping <- c(mapping, mapping[unique_alias])
     keys <- c(keys, short[unique_alias])
+    # The app's own class aliases (R/global.R class_map: TG -> GL_TAG, DG -> GL_DAG,
+    # CAR -> FA_ACar, ...) name the same category under another short label.
+    if (exists("class_map", inherits = TRUE) && is.character(class_map) && length(names(class_map))) {
+      alias <- toupper(names(class_map)); target <- match(toupper(unname(class_map)), keys)
+      add <- !is.na(target) & !(alias %in% keys) & !duplicated(alias)
+      mapping <- c(mapping, mapping[target[add]])
+      keys <- c(keys, alias[add])
+    }
   }
   matched <- unlist(mapping, use.names = FALSE)[match(wanted, keys)]
   valid <- !is.na(matched) & grepl("^#[0-9A-Fa-f]{6}$", matched)

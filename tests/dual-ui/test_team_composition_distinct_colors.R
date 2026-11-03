@@ -76,4 +76,19 @@ for (team in c(TRUE, FALSE)) {
             identical(unname(bars[1:8]), toupper(COLOR_PALETTE_PRESETS[['Ocean & Coral']])),
             identical(r, check_render(team)))  # same category, same color across re-renders
 }
-cat('PASS composition colors: palette_extend N=1..40 distinct/palette-first/deterministic for every preset; presets no longer cycle; 40-class composition bars (Team and Classic paths) distinct, legend swatches == bar colors, stable across re-renders.\n')
+# Short dashboard labels that the app aliases to a canonical class (R/global.R class_map)
+# take that class's colour: TG is Triacylglycerol (GL_TAG), DG is GL_DAG, CAR is FA_ACar.
+local({
+  # The app sources R/global.R first; take its class_map the same way.
+  for (e in parse('R/global.R')) if (is.call(e) && identical(e[[1]], as.name('<-')) && identical(e[[2]], as.name('class_map'))) eval(e, globalenv())
+  m <- as.list(CLASS_MAP_COLORS)
+  lv <- c('PC', 'TG', 'DG', 'CAR', 'CHE', 'SM')
+  r <- setNames(rd_class_colors(lv, m), lv)
+  stopifnot(identical(r[['TG']], CLASS_MAP_COLORS[['GL_TAG']]),
+            identical(r[['DG']], CLASS_MAP_COLORS[['GL_DAG']]),
+            identical(r[['CAR']], CLASS_MAP_COLORS[['FA_ACar']]),
+            identical(r[['CHE']], CLASS_MAP_COLORS[['ST_CE']]),
+            identical(r[['PC']], CLASS_MAP_COLORS[['GP_PC']]),
+            !anyDuplicated(toupper(r)))
+})
+cat('PASS composition colors: palette_extend N=1..40 distinct/palette-first/deterministic for every preset; presets no longer cycle; 40-class composition bars (Team and Classic paths) distinct, legend swatches == bar colors, stable across re-renders; TG/DG/CAR/CHE take their aliased class colours.\n')
