@@ -14,6 +14,12 @@ question, the answer is exactly:
 | Seed | `knowledge_base/seed/*.md` | yes | Reviewed guidance about how the application works (Team and Classic). |
 | Library | `knowledge_base/library/` (or the folder in `LIPIDOMIC_KB_DIR`) | no, by default | Files you feed: papers, protocols, notes, tables of results. |
 
+**Current scope.** For now the companion answers questions only from the library, which holds the folder
+*Global Lipids Overview and Functions*. The seed guidance is not searched, so a question about how the
+application works gets `I have no information about this.` The "Explain this step" button still reads its fixed
+step text from the seed, because that is navigation help, not knowledge. Set `LIPIDOMIC_KB_SEARCH_SEED=1` to let
+questions use the app guidance too.
+
 The library is ignored by git on purpose: articles can be copyrighted and result tables can be private. To
 version it, remove the two `knowledge_base/library` lines from `.gitignore`.
 

@@ -2,6 +2,7 @@
 suppressPackageStartupMessages(library(shiny))
 Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE = "1")
 source("R/companion_kb.R")
+Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "1")  # most of this file exercises the seed too; the default (off) is checked below
 check <- function(label, cond) if (!isTRUE(cond)) stop("FAILED: ", label, call. = FALSE)
 NO <- "I have no information about this."
 check("refusal text is exactly the requested sentence", identical(COMPANION_KB_NO_INFO, NO))
@@ -146,6 +147,17 @@ real <- companion_kb_load(file.path(root, "emptylib"), companion_kb_seed_dir(), 
 for (aud in c("team", "classic")) for (i in 1:7) check(sprintf("seed has step %d for %s", i, aud), companion_kb_by_tag(paste0("step-", i), real, aud)$found)
 check("seed answers a reviewed topic", grepl("PQN", companion_kb_answer("what is PQN normalization", real, "team")$text, fixed = TRUE))
 check("seed refuses an unrelated question", identical(companion_kb_answer("what is the capital of France", real, "team")$text, NO))
+
+# ---- Default scope: only the fed library answers questions ---------------------------------
+Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "0")
+kb <- companion_kb_load(lib, seed)
+check("by default the app guidance does not answer questions", identical(ask("what is PQN")$text, NO))
+check("by default the fed library still answers", ask("how are lipids extracted from the samples")$found)
+check("by default the real app guidance does not answer either", identical(companion_kb_answer("what is PQN normalization", real, "team")$text, NO))
+check("the step lookup still reads the seed", all(vapply(1:7, function(i) companion_kb_by_tag(paste0("step-", i), real, "team")$found, logical(1))))
+Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "1")
+check("the seed can be searched again on request", ask("what is PQN")$found)
+Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "0")
 
 # ---- The companion: grounded mode ----------------------------------------------------------
 Sys.setenv(LIPIDOMIC_KB_DIR = lib)

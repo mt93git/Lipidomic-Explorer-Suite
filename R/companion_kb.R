@@ -23,6 +23,7 @@ COMPANION_KB_TYPES <- c("md", "txt", "csv", "tsv", "xlsx", "docx", "pdf")
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0L) y else x
 
 companion_kb_enabled <- function() !identical(Sys.getenv("LIPIDOMIC_COMPANION_KB", unset = "1"), "0")
+companion_kb_search_seed <- function() identical(Sys.getenv("LIPIDOMIC_KB_SEARCH_SEED", unset = "0"), "1")
 companion_kb_audience <- function() if (identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")) "team" else "classic"
 companion_kb_dir <- function() {
   d <- Sys.getenv("LIPIDOMIC_KB_DIR", unset = "")
@@ -467,10 +468,13 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
                                 min_coverage = as.numeric(Sys.getenv("LIPIDOMIC_KB_MIN_COVERAGE", unset = "0.5")),
                                 min_weighted = as.numeric(Sys.getenv("LIPIDOMIC_KB_MIN_WEIGHTED", unset = "0.6")),
                                 min_line = as.numeric(Sys.getenv("LIPIDOMIC_KB_MIN_LINE", unset = "0.6")),
+                                include_seed = companion_kb_search_seed(),
                                 k1 = 1.5, b = 0.75) {
   none <- list(hits = data.frame(index = integer(), score = numeric(), coverage = numeric(), weighted = numeric()), terms = character(), unknown = character())
   q <- unique(kb_tokens(question))
-  allowed <- which(kb$chunks$audience %in% c("all", audience))
+  # By default only the fed library answers questions; the reviewed app guidance (seed) is searched only
+  # when LIPIDOMIC_KB_SEARCH_SEED=1. Fixed lookups by tag (the "Explain this step" button) still use the seed.
+  allowed <- which(kb$chunks$audience %in% c("all", audience) & (include_seed | kb$chunks$origin != "seed"))
   if (!length(q) || !length(allowed)) return(c(none, list(terms = q)))
   Na <- length(allowed); N <- kb$N
   mask <- logical(N); mask[allowed] <- TRUE
