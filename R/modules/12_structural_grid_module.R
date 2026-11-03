@@ -1240,7 +1240,7 @@ structural_grid_server <- function(id, shared_data) {
         export_df <- res %>%
           dplyr::select(Carbon, DB, Mean_LFC, Active_P, Grid_Label = Label, Stars, n_lipids, Lipid_List)
         
-        write.csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(export_df, file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
@@ -1256,7 +1256,7 @@ structural_grid_server <- function(id, shared_data) {
         export_df <- res %>%
           dplyr::select(Carbon, DB, Mean_LFC, Active_P, Grid_Label = Label, Stars, n_lipids, Lipid_List)
         
-        write.csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(export_df, file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
@@ -1274,7 +1274,7 @@ structural_grid_server <- function(id, shared_data) {
         export_df <- res %>%
           dplyr::select(Class_Var, Carbon, DB, Mean_LFC, n_lipids, Lipid_List)
         
-        write.csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(export_df, file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
@@ -1352,7 +1352,7 @@ structural_grid_server <- function(id, shared_data) {
         export_df <- res %>%
           dplyr::select(Class_Var, Carbon, DB, Cell_Mean_LFC, Carbon_LFC, DB_LFC, Active_P, Label, n_lipids, Lipid_List)
         
-        write.csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(export_df, file, row.names = FALSE)
       },
       contentType = "text/csv"
     )

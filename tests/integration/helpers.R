@@ -32,11 +32,15 @@ preparation_env <- function(root='.', guided=FALSE, fixture=synthetic_fixture())
   if (guided) {
     sys.source(file.path(root,'tests/integration/guided_snapshot.R'),e)
   } else {
+    if (file.exists(file.path(root,"R/utils_preparation.R"))) sys.source(file.path(root,"R/utils_preparation.R"),e)
     load_assignments(file.path(root,'R/modules/1_shared_data_module.R'), 'compute_imputed_matrix', e)
     load_assignments(file.path(root,'R/modules/utils_stats.R'),
       c('compute_local_p_val','perform_limma_analysis','perform_non_parametric_analysis','construct_contrast_string'),e)
   }
   e$`%||%` <- function(x,y) if(is.null(x)) y else x
+  # Match the production Classic closure; do not substitute the imputation engine.
+  e$preparation_policy <- 'classic'
+  e$qrilc_imputer <- NULL
   e$rawData <- function() list(data=fixture$data,file_cols=list(names(fixture$data)[-1]))
   e$allParsedMetadata <- function() fixture$metadata
   e$input <- list(selectedColumns=names(fixture$data)[-1],useAveragedSubstitution=FALSE)

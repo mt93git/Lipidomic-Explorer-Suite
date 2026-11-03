@@ -453,7 +453,7 @@ lsea_server <- function(id, shared_data) {
             vals_comp <- dat$Value[dat$Group == "Comp"]
             vals_ref <- dat$Value[dat$Group == "Ref"]
             
-            pval <- tryCatch(compute_local_p_val(vals_ref, vals_comp, method = shared_data$actual_de_method(), paired = FALSE), error=function(e) NA_real_)
+            pval <- tryCatch(guided_local_p_value(vals_ref, vals_comp, method = shared_data$actual_de_method(), session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA_real_)
             if(is.na(pval)) return(NULL)
             
             data.frame(
@@ -736,6 +736,23 @@ lsea_server <- function(id, shared_data) {
     })
     
   # --- Downloads ---
+    output$lseaDownloadsUI <- renderUI({
+      result <- tryCatch(lseaResults(), error = function(e) NULL)
+      if (is.null(result) || nrow(result) == 0) {
+        return(tags$div(
+          tags$button("CSV", type = "button", disabled = "disabled",
+                      title = "No LSEA results are available to download",
+                      class = "btn btn-sm btn-outline-secondary py-0 btn-download-csv"),
+          tags$button("PDF", type = "button", disabled = "disabled",
+                      title = "No LSEA results are available to download",
+                      class = "btn btn-sm btn-outline-secondary py-0 btn-download-pdf")
+        ))
+      }
+      tags$div(
+        downloadButton(session$ns("downloadTable"), "CSV", class = "btn-sm btn-outline-secondary py-0 btn-download-csv"),
+        downloadButton(session$ns("downloadPlot"), "PDF", class = "btn-sm btn-outline-secondary py-0 btn-download-pdf")
+      )
+    })
     output$downloadPlot <- downloadHandler(
       filename = "lsea_plot.pdf",
       content = function(file) {
@@ -762,7 +779,7 @@ lsea_server <- function(id, shared_data) {
     output$downloadTable <- downloadHandler(
       filename = "lsea_results.csv",
       content = function(file) {
-        write.csv(lseaResults(), file, row.names=FALSE)
+        write_spreadsheet_csv(lseaResults(), file, row.names=FALSE)
       }
     )
     

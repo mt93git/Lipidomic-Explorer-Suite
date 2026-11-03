@@ -1,6 +1,19 @@
 # R/modules/2_qc_boxplot_module.R
 # QC boxplots and PCA plots.
 
+# A proposal is tied to the exact displayed prepared matrix and dataset revision.
+qc_proposal_valid <- function(proposal, matrix, revision, dirty, scores) {
+  !is.null(proposal) && !isTRUE(dirty) && identical(proposal$revision, revision) &&
+    identical(proposal$matrix, matrix) && proposal$sample %in% names(matrix)[-1] &&
+    proposal$sample %in% scores$FullName && nzchar(proposal$reason)
+}
+
+qc_reconcile_treatments <- function(treatments, sample_columns, interface) {
+  if (identical(interface, "team") || is.null(treatments) || !length(treatments)) return(list())
+  if (is.null(sample_columns) || !length(sample_columns)) return(list())
+  treatments[intersect(names(treatments), sample_columns)]
+}
+
 qc_boxplot_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -29,6 +42,7 @@ qc_boxplot_ui <- function(id) {
                           selected = "short")
            ),
            accordion_panel("1. Data processing and PCA", icon = icon("cogs"),
+             if (identical(lipidomic_interface(), "classic")) uiOutput(ns("classicPreparationNotice")),
              selectInput(ns("normalizationMethod"), tags$span("Normalization Method:", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Adjusts values to remove experimental bias between samples. TIC scales values relative to the sample total; Median aligns sample medians; PQN uses probabilistic quotient scaling.")),
                          choices = c("Median (Log Scale)" = "median", "PQN (Linear Scale)" = "pqn", "None" = "none"),
                          selected = "median"),
@@ -48,6 +62,10 @@ qc_boxplot_ui <- function(id) {
              hr(),
              strong("Data Filtering"),
              checkboxInput(ns("dropMisc"), tags$span("Drop 'Misc' lipids?", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Excludes unclassified or miscellaneous lipid categories from downstream analysis.")), TRUE),
+             sliderInput(ns("minDetectionPct"), "Minimum detection (%)", min = 0, max = 100, value = 0, step = 5),
+             selectInput(ns("detectionScope"), "Detection across", c("All selected samples" = "global", "At least one Group1 / Group2 group" = "group")),
+             uiOutput(ns("detectionPreview")),
+             helpText("Detection means a finite abundance greater than zero, before imputation. Removed and averaged samples do not count. Review the preview, then click Run Analysis / Re-run Pipeline to apply."),
              checkboxInput(ns("dropNonDetected"), "Drop lipids not detected in any sample?", FALSE),
              hr(),
              numericInput(ns("maxPCs"), "Max PCs to compute:", value = 3, min = 2, step = 1)
@@ -552,6 +570,9 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
   # --- 1. Export Settings to Shared Data ---
     settings_out <- reactive({
       list(
+        minDetectionPct = input$minDetectionPct,
+        dropNonDetected = input$dropNonDetected,
+        detectionScope = input$detectionScope,
         normalizationMethod = input$normalizationMethod,
         pcaMode = input$pcaMode,
         useImputation = input$useImputation,
@@ -559,6 +580,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         imputeRemainingNAtoZero = input$imputeRemainingNAtoZero,
         mergeReplicates = (input$mergeReplicatesMode == "merged"),
         dropMisc = input$dropMisc,
+        imputationSeed = input$imputationSeed,
         maxPCs = input$maxPCs,
         
     # Aesthetics for Shared Config
@@ -597,6 +619,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       lst <- settings_out()
       lst$custom_colors <- custom_colors_list()
       lst$custom_shapes <- custom_shapes_list()
+      lst$guidedQcDecisions <- guided_decisions()
       lst$outlierTreatments <- outlierTreatments()
       lst$outlier_trigger <- outlierChangesTrigger()
       lst$filterBqcOutliers <- input$filterBqcOutliers
@@ -604,6 +627,48 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       lst$bqcManualExclusions <- bqcManualExclusions()
       lst
     })
+    output$detectionPreview <- renderUI({
+      if (is.null(shared_data$detection_preview)) return(NULL)
+      tryCatch({
+        preview <- shared_data$detection_preview()
+        if (is.null(preview)) return(tags$small("Upload a matrix to preview detection."))
+        state <- shared_data$preparation_state()
+        tags$div(class = "border rounded p-2", style = "background:white; color:#334155;",
+          tags$strong(sprintf("Preview: %d of %d lipids retained", preview$retained, preview$input)),
+          tags$p(sprintf("%d excluded across %d measured samples.", preview$excluded, length(preview$samples))),
+          tags$small(if (is.null(state$applied)) "No preparation applied yet." else
+            sprintf("Last applied: %d lipids. %s", length(state$applied$output_lipids),
+              if (isTRUE(state$dirty)) "Changes are pending." else "Up to date.")))
+      }, error = function(e) tags$div(style = "background:white; color:#9f1239;", conditionMessage(e)))
+    })
+
+    # Classic can apply its pending controls here through the same Pipeline action.
+    output$classicPreparationNotice <- renderUI({
+      if (is.null(shared_data$preparation_interface) ||
+          !identical(shared_data$preparation_interface(), "classic")) return(NULL)
+      state <- shared_data$preparation_state()
+      if (identical(state$status, "empty")) return(tags$p("Upload data in Pipeline before running analysis."))
+      pending <- isTRUE(state$dirty) || state$status %in% c("invalid", "error", "unprepared")
+      label <- if (is.null(state$applied)) "Run Analysis" else "Re-run Pipeline"
+      applied_settings <- if (!is.null(state$applied)) state$applied$spec$settings else NULL
+      tags$div(class = "border rounded p-2 mb-2", role = "status",
+        style = "background:white; color:#334155;",
+        tags$strong(if (pending) "Preparation changes pending" else "Preparation up to date"),
+        if (!is.null(applied_settings)) tags$p(sprintf("%s: %s normalization · %s · detection ≥%g%%.",
+          if (isTRUE(state$data_available)) "Applied" else "Previous preparation",
+          applied_settings$normalizationMethod, if (isTRUE(applied_settings$useImputation)) "QRILC" else "No imputation", applied_settings$minDetectionPct)),
+        if (!is.null(state$error)) tags$p(state$error),
+        if (pending) tags$p(if (!is.null(state$error)) "Preparation needs attention. Review the error, then re-run the pipeline. Exports remain blocked until preparation succeeds." else if (is.null(state$applied)) "No preparation has been applied yet." else if (!isTRUE(state$data_available)) "Data or metadata changed. No current prepared result is available; re-run the pipeline before viewing plots or exporting." else
+          "Plots and CSV downloads still show the last applied preparation. Apply changes before exporting a session ZIP or publication."),
+        if (pending) actionButton(ns("applyClassicPreparation"), label,
+          icon = icon("rotate"), class = "btn-primary w-100"))
+    })
+    observeEvent(input$applyClassicPreparation, {
+      if (!is.null(shared_data$preparation_interface) &&
+          identical(shared_data$preparation_interface(), "classic") &&
+          is.function(shared_data$request_preparation_run)) shared_data$request_preparation_run()
+    }, ignoreInit = TRUE)
+
     # Dynamic update of colorGrouping and shapeGrouping based on non-unspecified columns with >1 level
     observe({
       if (isolate(shared_data$is_restoring())) return()
@@ -766,7 +831,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     local_class_colors <- reactive({
       req(shared_data$class_color_map())
       cols <- shared_data$class_color_map()
-      if (input$classLabelFormat == "full") {
+      if (identical(input$classLabelFormat, "full")) {
         names(cols) <- get_full_class_name(names(cols))
       } else {
         names(cols) <- get_short_class_name(names(cols))
@@ -815,8 +880,10 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
         dplyr::left_join(meta_sub, by = "FullName")
     }
     data_pre_processed <- reactive({
-        req(shared_data$rawData()$data, shared_data$selected_cols())
-        raw_data_list <- shared_data$rawData(); useCols <- shared_data$selected_cols()
+        state <- shared_data$preparation_state()
+        req(isTRUE(state$data_available), shared_data$rawData()$data)
+        applied <- state$applied$spec
+        raw_data_list <- shared_data$rawData(); useCols <- applied$selected
         df <- raw_data_list$data %>% dplyr::select(Lipid_Name, all_of(useCols))
         
     # --- Restore Imputation Logic ---
@@ -830,7 +897,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
           return(df)
         }
         
-        if (isTRUE(input$imputeZerosPerFile)) {
+        if (isTRUE(applied$settings$imputeZerosPerFile)) {
           for (cols_in_file in raw_data_list$file_cols) {
             df <- impute_zeros(df, cols_in_file)
           }
@@ -1103,25 +1170,29 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
     # Observe and apply restored outlier treatments
     observe({
       treats <- shared_data$restored_outlier_treatments()
-      if (!is.null(treats) && length(treats) > 0) {
+      if (!is.null(treats)) {
         outlierTreatments(treats)
+        tempOutlierTreatments(treats)
       }
     })
     
-    # Prune treatments when a new raw dataset is loaded, discarding columns that no longer exist
-    observeEvent(shared_data$rawData(), {
-      raw_cols <- isolate(shared_data$all_numeric_columns())
-      if (is.null(raw_cols)) return()
-      current <- isolate(outlierTreatments())
-      if (length(current) == 0) return()
-      
-      valid_treats <- current[names(current) %in% raw_cols]
-      if (!identical(names(valid_treats), names(current))) {
-        outlierTreatments(valid_treats)
-      }
+    # Team starts a new QC review for each dataset. Classic retains decisions
+    # for sample columns still present when a workbook is extended.
+    observeEvent(shared_data$dataset_revision(), {
+      raw <- tryCatch(shared_data$rawData()$data, error = function(e) NULL)
+      available <- if (is.data.frame(raw)) setdiff(names(raw), "Lipid_Name") else character()
+      interface <- lipidomic_interface()
+      outlierTreatments(qc_reconcile_treatments(isolate(outlierTreatments()), available, interface))
+      tempOutlierTreatments(qc_reconcile_treatments(isolate(tempOutlierTreatments()), available, interface))
+      outlierChangesTrigger(isolate(outlierChangesTrigger()) + 1L)
     }, ignoreInit = TRUE)
 
     
+    guided_decisions <- reactiveVal(data.frame(time=character(), sample=character(), action=character(), reason=character(), pca_settings=character(), stringsAsFactors=FALSE))
+    if (identical(lipidomic_interface(), "team")) {
+      sys.source("R/frontends/team/qc-server.R", envir = environment())
+    }
+
     # Open Modal Observer
     observeEvent(input$openOutlierManager, {
       req(outlierScores())
@@ -1941,7 +2012,9 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       }
 
       loadings <- res$load_df
-      if (input$classLabelFormat == "full") {
+      # Auto ZIP restoration may precede the first style input from the browser.
+      # The UI default is short labels; NULL must not terminate the session.
+      if (identical(input$classLabelFormat, "full")) {
         loadings$Class <- get_full_class_name(loadings$Class)
       } else {
         loadings$Class <- get_short_class_name(loadings$Class)
@@ -1949,7 +2022,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       if("Lipid_Name" %in% names(loadings)) { 
         loadings$Label <- loadings$Lipid_Name 
       } else { 
-        if (input$classLabelFormat == "full") {
+        if (identical(input$classLabelFormat, "full")) {
           loadings$Label <- get_full_class_name(loadings$Class)
         } else {
           loadings$Label <- get_short_class_name(loadings$Class) 
@@ -1979,20 +2052,11 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       colorMap_key <- paste(group_cols, collapse = " & ")
       colorMap <- global_color_map()[[colorMap_key]]
       
-      # RStudio console debug outputs
-      cat("\n[DEBUG buildPCA2D_ggplot]\n")
-      cat("  input$colorGrouping: ", paste(input$colorGrouping, collapse=", "), "\n")
-      cat("  group_cols: ", paste(group_cols, collapse=", "), "\n")
-      cat("  colorMap_key: ", colorMap_key, "\n")
-      cat("  Available keys in global_color_map(): ", paste(names(global_color_map()), collapse=", "), "\n")
-      cat("  colorMap exists: ", !is.null(colorMap), "\n")
-      if (!is.null(colorMap)) {
-         cat("  colorMap size: ", length(colorMap), "\n")
-         cat("  colorMap names (head): ", paste(head(names(colorMap)), collapse=", "), "\n")
-      }
-      cat("  scores$ColorGroupVal unique (head): ", paste(head(unique(scores$ColorGroupVal)), collapse=", "), "\n")
-      cat("----------------------------\n")
-      
+      message("[PCA2D] grouping fields: ", length(group_cols),
+              "; color map available: ", !is.null(colorMap),
+              "; mapped groups: ", if (is.null(colorMap)) 0L else length(colorMap),
+              "; plotted groups: ", length(unique(scores$ColorGroupVal)))
+
       req(colorMap)
       
       scores$ColorGroupVal <- factor(scores$ColorGroupVal, levels = names(colorMap))
@@ -2061,20 +2125,11 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       colorMap_key <- paste(group_cols, collapse = " & ")
       colorMap <- global_color_map()[[colorMap_key]]
       
-      # RStudio console debug outputs
-      cat("\n[DEBUG buildPCA3D_plotly]\n")
-      cat("  input$colorGrouping: ", paste(input$colorGrouping, collapse=", "), "\n")
-      cat("  group_cols: ", paste(group_cols, collapse=", "), "\n")
-      cat("  colorMap_key: ", colorMap_key, "\n")
-      cat("  Available keys in global_color_map(): ", paste(names(global_color_map()), collapse=", "), "\n")
-      cat("  colorMap exists: ", !is.null(colorMap), "\n")
-      if (!is.null(colorMap)) {
-         cat("  colorMap size: ", length(colorMap), "\n")
-         cat("  colorMap names (head): ", paste(head(names(colorMap)), collapse=", "), "\n")
-      }
-      cat("  scores$ColorGroupVal unique (head): ", paste(head(unique(scores$ColorGroupVal)), collapse=", "), "\n")
-      cat("----------------------------\n")
-      
+      message("[PCA3D] grouping fields: ", length(group_cols),
+              "; color map available: ", !is.null(colorMap),
+              "; mapped groups: ", if (is.null(colorMap)) 0L else length(colorMap),
+              "; plotted groups: ", length(unique(scores$ColorGroupVal)))
+
       req(colorMap)
       
       scores$ColorGroupVal <- factor(scores$ColorGroupVal, levels = names(colorMap))
@@ -2416,7 +2471,7 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       content = function(file) {
         mat <- buildSampleCorrMatrix()
         req(mat)
-        write.csv(as.data.frame(mat), file, row.names = TRUE)
+        write_spreadsheet_csv(as.data.frame(mat), file, row.names = TRUE)
       }
     )
     
@@ -2431,11 +2486,14 @@ qc_boxplot_server <- function(id, shared_data, global_color_map) {
       )
       
       if (current_tab == "Normalization Check") {
+        state <- shared_data$preparation_state()
+        req(isTRUE(state$data_available))
+        applied <- state$applied$spec$settings
         msg <- paste0(
           msg,
           "1. DATA MATRIX & NORMALIZATION\n",
-          "   - Normalization Method: ", input$normalizationMethod %||% "median", "\n",
-          "   - Missing Imputation:   ", ifelse(isTRUE(input$useImputation), "Yes (QRILC)", "No"), "\n",
+          "   - Normalization Method (applied): ", applied$normalizationMethod, "\n",
+          "   - Missing Imputation (applied): ", ifelse(isTRUE(applied$useImputation), "Yes (QRILC)", "No"), "\n",
           "   - Drop 'Misc' Lipids:   ", ifelse(isTRUE(input$dropMisc), "Yes", "No"), "\n",
           "   - Raw Sample Count:     ", length(shared_data$all_numeric_columns()), " samples\n\n",
           "   - Normalization Calculus:\n",

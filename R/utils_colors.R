@@ -328,3 +328,94 @@ generate_acyl_chain_colors <- function(chains, custom_overrides = NULL) {
 }
 
 
+
+# Named, portable palettes. Keys are context-qualified so equally named groups
+# in different metadata columns can retain different colors.
+COLOR_PALETTE_PRESETS <- list(
+  "Tableau Classic" = c("#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC"),
+  "Ocean & Coral" = c("#155E75", "#0E7490", "#06B6D4", "#0D9488", "#F97373", "#E76F51", "#A8558E", "#F0B45B"),
+  "Earth & Garden" = c("#365314", "#65A30D", "#A3A635", "#B45309", "#C2410C", "#0F766E", "#7C3AED", "#78716C"),
+  "Colorblind Friendly" = c("#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#000000")
+)
+
+palette_hex <- function(value) {
+  is.character(value) && length(value) == 1L && !is.na(value) &&
+    grepl("^#[[:xdigit:]]{6}$", value)
+}
+
+palette_context_key <- function(context, label) paste0(context, "::", label)
+
+palette_validate_colors <- function(colors) {
+  if (is.list(colors)) colors <- unlist(colors, use.names = TRUE)
+  if (!is.character(colors) || is.null(names(colors)) ||
+      anyNA(names(colors)) || any(!nzchar(names(colors))) ||
+      anyDuplicated(names(colors)) || any(!vapply(colors, palette_hex, logical(1)))) {
+    stop("Palette colors must be a named map of #RRGGBB values.", call. = FALSE)
+  }
+  stats::setNames(toupper(colors), names(colors))
+}
+
+palette_validate_record <- function(record, existing = character(), old_name = NULL) {
+  if (!is.list(record)) stop("Invalid palette file.", call. = FALSE)
+  name <- trimws(as.character(record$name %||% ""))
+  if (length(name) != 1L || !nzchar(name) || nchar(name) > 80L ||
+      name %in% c("Default", names(COLOR_PALETTE_PRESETS)) ||
+      (name %in% existing && !identical(name, old_name))) {
+    stop("Choose a unique palette name (1–80 characters).", call. = FALSE)
+  }
+  list(name = name, colors = as.list(palette_validate_colors(record$colors)))
+}
+
+palette_preset_colors <- function(name, contexts) {
+  swatches <- COLOR_PALETTE_PRESETS[[name]]
+  if (is.null(swatches)) stop("Unknown palette preset.", call. = FALSE)
+  out <- character()
+  for (context in names(contexts)) {
+    labels <- sort(unique(as.character(contexts[[context]])))
+    labels <- labels[!is.na(labels) & nzchar(labels)]
+    if (!length(labels)) next
+    vals <- rep(swatches, length.out = length(labels))
+    names(vals) <- vapply(labels, function(x) palette_context_key(context, x), character(1))
+    out <- c(out, vals)
+  }
+  out
+}
+
+palette_resolve <- function(colors, context, label, fallback, legacy = NULL) {
+  key <- palette_context_key(context, label)
+  value <- colors[[key]]
+  if (is.null(value) && !is.null(legacy)) {
+    value <- legacy[[paste0(context, "_", gsub("[^A-Za-z0-9]", "_", label))]] %||%
+      legacy[[label]]
+  }
+  if (palette_hex(value)) toupper(value) else fallback
+}
+
+palette_normalize_registry <- function(registry) {
+  if (is.null(registry)) return(list())
+  if (is.data.frame(registry)) {
+    registry <- lapply(seq_len(nrow(registry)), function(i) as.list(registry[i, , drop = FALSE]))
+  }
+  if (!is.list(registry)) return(list())
+  result <- list()
+  for (record in registry) {
+    normalized <- tryCatch(palette_validate_record(record), error = function(e) NULL)
+    if (!is.null(normalized)) result[[normalized$name]] <- normalized
+  }
+  result
+}
+
+# Shiny input IDs must distinguish labels such as A-B and A_B.
+palette_input_id <- function(label) {
+  paste(sprintf("%02X", as.integer(charToRaw(enc2utf8(as.character(label))))), collapse = "")
+}
+
+palette_combined_groups <- function(metadata, columns = c("Group1", "Group2")) {
+  if (!all(columns %in% names(metadata))) return(character())
+  if (nrow(metadata) == 0L) return(character())
+  apply(metadata[, columns, drop = FALSE], 1, function(row) {
+    vals <- as.character(row)
+    vals <- vals[!is.na(vals) & nzchar(vals) & vals != "Unspecified"]
+    if (length(vals)) paste(vals, collapse = "_") else "Unspecified"
+  })
+}

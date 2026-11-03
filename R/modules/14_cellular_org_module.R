@@ -767,7 +767,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
                 v_base <- var(base_vals,na.rm=T)
                 v_comp <- var(comp_vals,na.rm=T)
                 if(!is.na(v_base) && !is.na(v_comp) && !(v_base == 0 && v_comp == 0)) {
-                  tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+                  tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                   if(!is.na(tt)) {
                     p_val <- tt
                     if(p_val < 0.001) stars <- "***"
@@ -795,7 +795,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
               v_base <- var(base_vals,na.rm=T)
               v_comp <- var(comp_vals,na.rm=T)
               if(!is.na(v_base) && !is.na(v_comp) && !(v_base == 0 && v_comp == 0)) {
-                tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+                tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                 if(!is.na(tt)) {
                   p_val <- tt
                   if(p_val < 0.001) stars <- "***"
@@ -954,7 +954,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
                 v_base <- var(base_vals,na.rm=T)
                 v_comp <- var(comp_vals,na.rm=T)
                 if(!is.na(v_base) && !is.na(v_comp) && !(v_base == 0 && v_comp == 0)) {
-                  tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+                  tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                   if(!is.na(tt)) {
                     p_val <- tt
                     if(p_val < 0.001) stars <- "***"
@@ -982,7 +982,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
               v_base <- var(base_vals,na.rm=T)
               v_comp <- var(comp_vals,na.rm=T)
               if(!is.na(v_base) && !is.na(v_comp) && !(v_base == 0 && v_comp == 0)) {
-                tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+                tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                 if(!is.na(tt)) {
                   p_val <- tt
                   if(p_val < 0.001) stars <- "***"
@@ -1383,7 +1383,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
       filename = function() { paste0("subcellular_stress_metrics_", Sys.Date(), ".csv") },
       content = function(file) {
         df_met <- computed_metrics()
-        write.csv(df_met, file, row.names = FALSE)
+        write_spreadsheet_csv(df_met, file, row.names = FALSE)
       }
     )
     
@@ -1409,7 +1409,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
       filename = function() { paste0("cpi_ferroptosis_vulnerability_", Sys.Date(), ".csv") },
       content = function(file) {
         df_met <- computed_metrics() %>% dplyr::select(Sample, CPI, dplyr::any_of(c("Group1", "Group2", "Group")))
-        write.csv(df_met, file, row.names = FALSE)
+        write_spreadsheet_csv(df_met, file, row.names = FALSE)
       }
     )
     
@@ -1435,7 +1435,7 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
       filename = function() { paste0("phenotypic_polarization_scores_", Sys.Date(), ".csv") },
       content = function(file) {
         df_met <- computed_metrics() %>% dplyr::select(Sample, m1_score, m2_score, m1_scaled, m2_scaled, dplyr::any_of(c("Group1", "Group2", "Group")))
-        write.csv(df_met, file, row.names = FALSE)
+        write_spreadsheet_csv(df_met, file, row.names = FALSE)
       }
     )
     
