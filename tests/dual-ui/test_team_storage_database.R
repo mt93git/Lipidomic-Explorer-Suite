@@ -124,6 +124,17 @@ expect_error(store$delete(project, r2$id), 'Checkpoint not found')
 # Re-saving deleted bytes works again (orphan-safe commit).
 stopifnot(identical(store$save(project, b, 'Back')$sha256, r2$sha256))
 
+# A server whose reads ignore the id filter (as the test mock library does)
+# still resolves exactly the requested checkpoint for load and delete.
+loose_call <- function(service, path, token=NULL, body=NULL, method='GET', raw=FALSE)
+  fake$call(service, if (method == 'GET') sub('&id=eq\\.[^&]*', '', path) else path, token, body, method, raw)
+loose <- team_storage_database(token=function() 'token-v1', call=loose_call)
+stopifnot(length(fake$rows) > 1L)
+first <- fake$rows[[1]]
+stopifnot(identical(digest::digest(file=loose$load(project, first$id), algo='sha256'), first$sha256))
+expect_error(loose$load(project, '30000000-0000-4000-8000-999999999999'), 'Checkpoint not found')
+n <- length(fake$rows); loose$delete(project, first$id); stopifnot(length(fake$rows) == n - 1L)
+
 # Tokens: never global, never shared between session stores, required per call.
 fake2 <- fake_supabase('other-session-token')
 s1 <- team_storage_database(token=function() 'token-v1', call=fake$call)
@@ -144,4 +155,4 @@ if (!is.na(old)) Sys.setenv(LIPIDOMIC_REST_URL=old)
 text <- paste(readLines('R/frontends/team/storage/storage_database.R'), collapse='\n')
 stopifnot(!grepl('SERVICE_KEY|JWT_SECRET|service_role', text))
 unlink(c(a, b, out))
-cat('PASS: database backend over injected fake: list/save/load/delete, idempotent commit, 4 interruption recoveries, sha256 integrity, project isolation, per-session refresh-aware tokens, no globals, denied delete surfaced\n')
+cat('PASS: database backend over injected fake: list/save/load/delete, idempotent commit, 4 interruption recoveries, sha256 integrity, project isolation, per-session refresh-aware tokens, no globals, denied delete surfaced, id filter enforced client-side\n')

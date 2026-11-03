@@ -67,8 +67,13 @@ team_storage_database <- function(token, call = team_library_call) {
       if (is.numeric(row$size_bytes)) row$size_bytes else NA_real_,
       if (team_storage_scalar(row$created_at)) row$created_at else NA_character_)
   }
+  # Keep only the requested row as well, so a server that ignores the id filter
+  # (the test mock library does) cannot turn one checkpoint into "not found".
+  rows_with_id <- function(project, id, tok)
+    Filter(function(r) is.list(r) && identical(r$id, id),
+      call("rest", paste0("/pilot_files?project_id=eq.", project, "&id=eq.", id), tok))
   find_one <- function(project, id, tok) {
-    rows <- call("rest", paste0("/pilot_files?project_id=eq.", project, "&id=eq.", id), tok)
+    rows <- rows_with_id(project, id, tok)
     if (length(rows) != 1L) stop("Checkpoint not found.", call. = FALSE)
     record <- as_record(rows[[1L]], project)
     if (is.null(record)) stop("Invalid checkpoint path.", call. = FALSE)
@@ -104,7 +109,7 @@ team_storage_database <- function(token, call = team_library_call) {
       # Remove the catalog row first: a leftover object is invisible and a later
       # save of the same bytes reuses it through the idempotent commit.
       call("rest", paste0("/pilot_files?project_id=eq.", project, "&id=eq.", id), tok, method = "DELETE")
-      if (length(call("rest", paste0("/pilot_files?project_id=eq.", project, "&id=eq.", id), tok)))
+      if (length(rows_with_id(project, id, tok)))
         stop("Checkpoint could not be deleted. Check your project access.", call. = FALSE)
       tryCatch(call("storage", paste0("/object/case-files/", project, "/", record$sha256), tok, method = "DELETE"),
         error = function(e) warning("Checkpoint removed from the project; its stored object was kept.", call. = FALSE))
