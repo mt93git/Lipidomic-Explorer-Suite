@@ -748,7 +748,9 @@
         if(Object.keys(updates).length) return window.Plotly.relayout(gd,updates);
       }).catch(function () {}).finally(function(){r.squareResizePending=false;
         // Measure the drawn card once: header plus content, with no empty tail.
-        if(r.squareHeatmapFit&&r.node&&content){r.squareHeatmapFit=false;var top=r.node.getBoundingClientRect().top,scale=(window.TeamCanvasViewport&&TeamCanvasViewport.scale)||1,bottom=0;Array.prototype.forEach.call(content.querySelectorAll('*'),function(e){var b=e.getBoundingClientRect();if(b.height>0&&b.width>0)bottom=Math.max(bottom,b.bottom);});if(bottom>top)r.node.style.height=Math.max(420,Math.ceil((bottom-top)/scale+content.scrollTop+20))+'px';arrange();}if(square&&gd.data&&gd.data[0]){r.heatResizePlot=gd;r.heatResizeWidth=r.el.clientWidth;r.heatResizeX=gd.data[0].x.length;r.heatResizeY=gd.data[0].y.length;}});
+        if(r.squareHeatmapFit&&r.node&&content){r.squareHeatmapFit=false;var box=r.node.getBoundingClientRect(),top=box.top,scale=(window.TeamCanvasViewport&&TeamCanvasViewport.scale)||1,bottom=0;
+        // The card's module controls are parked far off to the left (card_figure.css), not hidden: they are not part of the drawn card.
+        Array.prototype.forEach.call(content.querySelectorAll('*'),function(e){var b=e.getBoundingClientRect();if(b.height>0&&b.width>0&&!(b.right<box.left))bottom=Math.max(bottom,b.bottom);});if(bottom>top)r.node.style.height=Math.max(420,Math.ceil((bottom-top)/scale+content.scrollTop+20))+'px';arrange();}if(square&&gd.data&&gd.data[0]){r.heatResizePlot=gd;r.heatResizeWidth=r.el.clientWidth;r.heatResizeX=gd.data[0].x.length;r.heatResizeY=gd.data[0].y.length;}});
     }
     // Shiny uses resize to measure outputs and rerender static plots at their new dimensions.
     if(heightChanged)window.dispatchEvent(new Event('resize'));

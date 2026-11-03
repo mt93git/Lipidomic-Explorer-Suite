@@ -24,5 +24,11 @@ vm.createContext(context);vm.runInContext(code,context);
   assert.equal(copied.node.style.width,'1000px');assert.equal(copied.node.style.height,'1100px');
   const hydrating=make({hydrating:true});context.resize(hydrating);await new Promise(setImmediate);hydrating.hydrating=false;context.resize(hydrating);await new Promise(setImmediate);
   assert.equal(hydrating.node.style.width,'1000px','a frame first seen while hydrating is never fitted');
+  // Parked module controls sit far to the left of the card (card_figure.css); they do not count as drawn content.
+  const parked=make();parked.node.getBoundingClientRect=()=>({top:0,left:0});
+  const map={getBoundingClientRect:()=>({left:20,right:540,bottom:300,width:520,height:242})},chrome={getBoundingClientRect:()=>({left:-100000,right:-99440,bottom:451,width:560,height:182})};
+  parked.node.querySelector=s=>s==='.tc-content'?{scrollTop:0,querySelectorAll:()=>[map,chrome]}:null;
+  context.resize(parked);await new Promise(setImmediate);await new Promise(setImmediate);
+  assert.equal(parked.node.style.height,'420px','parked controls are ignored: the drawn map (300 + 20) sits under the 420 floor');
   console.log('PASS new square heatmap card fits its map once; copied/hydrating frames kept; min-height floor lifted');
 })().catch(e=>{console.error(e);process.exit(1)});
