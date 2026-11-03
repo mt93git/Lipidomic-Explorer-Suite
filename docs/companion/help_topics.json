@@ -186,7 +186,7 @@
    "id": "companion-privacy",
    "title": "What the companion uses",
    "keywords": "ai openai privacy data sent model chat companion offline local",
-   "text": "Tips, chart explanations and answers matched by this guide come from reviewed text stored in the app, with no network call. If the optional AI assistant is enabled on this server, questions the guide cannot answer are sent to OpenAI with personal details stripped, together with the current step, whether data are ready or have pending changes, and the normalization and imputation settings; no data values, sample IDs or files are sent. Settings changes are only proposed; nothing changes until you confirm."
+   "text": "Tips, chart explanations and answers matched by this guide come from reviewed text stored in the app, with no network call. If the optional AI assistant is enabled on this server, questions the guide cannot answer are sent to OpenAI after the server strips study labels, file names, IDs, emails, dates and phone numbers, together with the current step, whether data are ready or have pending changes, and the normalization and imputation settings. The app never attaches your data values, sample IDs or files, so do not paste them into a question. Settings changes are only proposed; nothing changes until you confirm."
   },
   {
    "id": "err-sig-unavailable",
