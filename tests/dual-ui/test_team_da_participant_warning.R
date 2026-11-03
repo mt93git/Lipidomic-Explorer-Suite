@@ -6,7 +6,7 @@
 #  - with repeated IDs under an independent design, the DA "not run" banner slot
 #    and the volcano figure carry the existing participant reason as a warning;
 #  - the volcano's plotted data are identical with and without the warning.
-# Optional: LIPIDOMIC_BASELINE_TREE=<root of the production tree (09eedf4)>
+# Optional: LIPIDOMIC_BASELINE_TREE=<root of the production tree (0cb7e12, paula/deployed-prod)>
 # also compares against that tree's own code.
 suppressPackageStartupMessages({
   library(shiny); library(ggplot2); source('R/global.R')
@@ -65,6 +65,28 @@ check('structural banner unchanged without a reason', identical(fixed('s', list(
 rm(render_de_not_run_banner)
 cap <- team_volcano_warning_caption(ggplot2::ggplot(), list(team_da_participant_reason = function() reasons$repeated, de_results = function() data.frame(x = 1)), 330)
 check('caption is wrapped to a narrow rendered width (330 px)', all(nchar(strsplit(cap$labels$caption, '\n')[[1]]) <= 48L))
+
+# Small figures get the compact caption; it fits the smallest Export Studio page
+# (40 x 40 mm at 7.5 pt): at most 4 lines whose width stays inside the page.
+small <- team_volcano_warning_caption(ggplot2::ggplot(), list(team_da_participant_reason = function() reasons$repeated, de_results = function() data.frame(x = 1)),
+  40 / 25.4 * 72 + 40, size = 7.5)
+small_lines <- strsplit(small$labels$caption, '\n')[[1]]
+check('40 mm export caption is compact and fits the page', length(small_lines) <= 4L &&
+  max(nchar(small_lines)) * 7.5 * 0.6 <= 40 / 25.4 * 72 && grepl('p-values assume independent samples', paste(small_lines, collapse = ' '), fixed = TRUE))
+# The caption width is read reactively: a reactive using it is rebuilt when the
+# Export Studio width changes (and an isolated read works outside reactives).
+check('Export Studio caption width is reactive', {
+  ms <- shiny::MockShinySession$new(); ms$setInputs(width_mm = 89); n <- 0L
+  shiny::withReactiveDomain(ms, {
+    r <- shiny::reactive({ n <<- n + 1L; team_da_export_width_mm() })
+    first <- shiny::isolate(r()); ms$setInputs(width_mm = 40); second <- shiny::isolate(r())
+  })
+  identical(c(first, second), c(89, 40)) && n == 2L
+})
+check('width read outside a reactive context falls back to an isolated read', {
+  ms <- shiny::MockShinySession$new(); ms$setInputs(width_mm = 120)
+  identical(shiny::withReactiveDomain(ms, team_da_export_width_mm()), 120)
+})
 
 walk <- function(node) if (is.call(node)) c(list(node), unlist(lapply(as.list(node), walk), recursive = FALSE)) else
   if (is.expression(node) || is.list(node) || is.pairlist(node)) unlist(lapply(as.list(node), walk), recursive = FALSE) else list()
@@ -129,7 +151,8 @@ built <- function(p) lapply(ggplot2::ggplot_build(p)$data, function(d) d[, setdi
 check('volcano with the warning plots exactly the same layers and data', identical(built(plain), built(warned)) && identical(plain$data, warned$data))
 check('volcano with the warning keeps title and axes', identical(plain$labels$title, warned$labels$title) && identical(plain$labels$x, warned$labels$x))
 check('volcano caption states the warning', grepl('Pseudoreplication warning', warned$labels$caption, fixed = TRUE) &&
-  grepl('4 participant IDs contribute more than one sample', gsub('\n', ' ', warned$labels$caption), fixed = TRUE))
+  grepl('4 participant IDs repeat across the compared samples', gsub('\n', ' ', warned$labels$caption), fixed = TRUE) &&
+  grepl('Consider a paired analysis', gsub('\n', ' ', warned$labels$caption), fixed = TRUE))
 check('volcano without a reason is the unadapted figure', identical(serialize(built(plain), NULL), serialize(built(quiet), NULL)) && is.null(quiet$labels$caption))
 
 # ---- Exports -------------------------------------------------------------------
