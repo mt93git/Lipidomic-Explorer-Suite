@@ -94,7 +94,8 @@
       if (!window.Shiny || typeof Shiny.addCustomMessageHandler !== 'function') return;
       Shiny.addCustomMessageHandler('team-foreground-result', function (message) {
         if (!message || !operations.has(message.id)) return;
-        if (message.ok === false) fail(message.id, 'The operation could not finish. Dismiss this message and review the details in the workspace.');
+        // A refused sign-in is explained inside the card (login_validation.js), not in this modal.
+        if (message.ok === false && operations.get(message.id).action !== 'team_library_login') fail(message.id, 'The operation could not finish. Dismiss this message and review the details in the workspace.');
         else end(message.id);
       });
     }
