@@ -65,6 +65,8 @@
         if (em.textContent !== mark) em.textContent = mark;
         var label = src.getAttribute('aria-label');
         if (label) { if (b.getAttribute('aria-label') !== label) b.setAttribute('aria-label', label); } else b.removeAttribute('aria-label');
+        // A step queued during a busy cycle shows the same pending state here.
+        ['data-tw-queued', 'aria-busy', 'title'].forEach(function (name) { var v = src.getAttribute(name); if (v === null) b.removeAttribute(name); else if (b.getAttribute(name) !== v) b.setAttribute(name, v); });
       });
       var status = document.getElementById('team-autosave-status'), text = status ? status.textContent.trim() : '';
       if (saved.textContent !== text) saved.textContent = text;
@@ -73,7 +75,7 @@
       var state = status && status.getAttribute('data-state') || '';
       if (saved.dataset.state !== state) saved.dataset.state = state;
     }
-    new MutationObserver(syncSteps).observe(original, { attributes: true, subtree: true, attributeFilter: ['aria-current', 'disabled', 'aria-label'] });
+    new MutationObserver(syncSteps).observe(original, { attributes: true, subtree: true, attributeFilter: ['aria-current', 'disabled', 'aria-label', 'data-tw-queued', 'aria-busy', 'title'] });
     var status = document.getElementById('team-autosave-status');
     if (status) new MutationObserver(syncSteps).observe(status, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['data-state'] });
     new MutationObserver(syncSteps).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });

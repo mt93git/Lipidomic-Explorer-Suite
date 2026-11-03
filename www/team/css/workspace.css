@@ -81,3 +81,9 @@ body.team-workspace-app #guide-qc-review>h3,body.team-workspace-app #guide-qc-re
 body.team-workspace-app .tw-qc-help{font-size:13px;margin:0 0 10px;color:#516c77}body.team-workspace-app .tw-qc-help summary{cursor:pointer;color:#286870;font-weight:600}body.team-workspace-app .tw-qc-help p{margin-top:10px}
 /* Keep the mobile companion footprint inside its draggable hit box. */
 @media(max-width:700px){body.team-workspace-app .tw-steps small{display:none}body.team-workspace-app .companion-help-label{display:none!important}body.team-workspace-app .companion-actions{max-width:80px;gap:1px}body.team-workspace-app .companion-actions .assistant-dock-chat{font-size:12px;padding:1px 3px}}
+/* Locked steps pass clicks to the step bar, which queues one during a busy cycle. */
+body.team-workspace-app #team-workspace .tw-steps button:disabled{pointer-events:none}
+body.team-workspace-app #team-workspace .tw-steps button[data-tw-queued]{opacity:1;background:var(--bio-teal-tint,#e9f5f3);color:var(--lab-navy,#14676a);box-shadow:inset 0 2px 4px #0b2b3426,inset 0 0 0 1px #19747a}
+body.team-workspace-app #team-workspace .tw-steps button[data-tw-queued] span{animation:tw-queued-pulse 1.2s ease-in-out infinite}
+@keyframes tw-queued-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){body.team-workspace-app #team-workspace .tw-steps button[data-tw-queued] span{animation:none}}

@@ -28,3 +28,11 @@ Export figure warning shown while any card is not up to date.
 `test_instance_copy_selection.cjs` (same variables; `TEAM_UX_ITERATIONS`, default 20)
 copies the violin plot while its source's server-side lipid selector is cleared
 mid-reload and checks that every copy still gets a lipid and a working CSV.
+
+`test_stepper_queue.cjs` (same variables; optional `TEAM_UX_SHOTS` for a
+screenshot of the pending state) forces a busy window by holding the server's
+busy messages and triggering `shiny:busy`/`shiny:idle`. It checks that a step
+clicked (or Enter on the focused step) while busy-locked shows a pending state
+and is sent exactly once on idle, that Esc and another step cancel it, and that
+a Canvas without prepared data is never queued. The server-rejection path is
+covered offline by `tests/dual-ui/test_team_stepper_queue.cjs`.
