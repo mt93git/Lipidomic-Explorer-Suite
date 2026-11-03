@@ -657,9 +657,22 @@
     // selectors can occupy most of a saved card, so keep the plot usable and
     // let the card scroll instead of shrinking Plotly into its margins.
     var minHeight = isClassHeatmap(r.el.id) ? 750 : sourceKey(r) === 'results_dashboard-plot_heat' ? 420 : 160;
-    if(square){if(r.heatOriginalMinWidth===undefined)r.heatOriginalMinWidth=r.el.style.minWidth;var hm=gd._fullLayout && gd._fullLayout.margin || gd.layout.margin || {};r.el.style.minWidth=Math.max(520,gd.data[0].x.length*16+(hm.l||0)+(hm.r||0))+'px';}
+    if(square){if(r.heatOriginalMinWidth===undefined)r.heatOriginalMinWidth=r.el.style.minWidth;var hm=gd._fullLayout && gd._fullLayout.margin || gd.layout.margin || {};r.el.style.minWidth=Math.max(520,gd.data[0].x.length*16+(hm.l||0)+(hm.r||0))+'px';if(r.el.style.setProperty){r.el.style.setProperty('min-height',(gd.data[0].y.length*16+210)+'px','important');r.heatSquareMinHeight=true;}}
     else if(rectHeat){if(r.heatOriginalMinWidth===undefined)r.heatOriginalMinWidth=r.el.style.minWidth;r.el.style.minWidth=Math.max(800,Number(denseHorizontal?heat.naturalHeight:heat.naturalWidth)||800)+'px';}
     else if(r.heatOriginalMinWidth!==undefined){r.el.style.minWidth=r.heatOriginalMinWidth;delete r.heatOriginalMinWidth;}
+    // The 420px CSS floor protects a first draw; a drawn square map uses its own height.
+    if(!square&&r.heatSquareMinHeight){r.el.style.removeProperty('min-height');delete r.heatSquareMinHeight;}
+    // A small square map draws at its natural 16px cells (about 520x250). A new
+    // card opened at the roomy 1000x1100 heatmap size left it in one corner, so
+    // fit a fresh card to the map once. Saved, restored and copied frames belong
+    // to the user and are never changed here.
+    if(square && !r.squareHeatmapAdapted){
+      r.squareHeatmapAdapted=true;
+      if(!r.hydrating && !applyingRestore && r.node.offsetWidth>=1000 && r.node.offsetHeight>=1100){
+        r.node.style.width=Math.max(620,(parseFloat(r.el.style.minWidth)||520)+40)+'px';
+        r.squareHeatmapFit=true;
+      }
+    }
     var height = square ? gd.data[0].y.length*16+210 : large ? (denseHorizontal?heat.naturalWidth:heat.naturalHeight) : Math.max(minHeight, r.node.clientHeight - plotTop - 24);
     // A canvas zoom never changes a card's logical size, but under CSS zoom borders, text and
     // inner scroll offsets snap to device pixels, so plotTop (and the height derived from it)
@@ -706,7 +719,9 @@
         if(!ydomain || Math.abs(ydomain[0])>1e-5 || Math.abs(ydomain[1]-1)>1e-5) updates['yaxis.domain']=[0,1];
         if(Number(full.height)!==Math.round(height)) updates.height=Math.round(height);
         if(Object.keys(updates).length) return window.Plotly.relayout(gd,updates);
-      }).catch(function () {}).finally(function(){r.squareResizePending=false;if(square&&gd.data&&gd.data[0]){r.heatResizePlot=gd;r.heatResizeWidth=r.el.clientWidth;r.heatResizeX=gd.data[0].x.length;r.heatResizeY=gd.data[0].y.length;}});
+      }).catch(function () {}).finally(function(){r.squareResizePending=false;
+        // Measure the drawn card once: header plus content, with no empty tail.
+        if(r.squareHeatmapFit&&r.node&&content){r.squareHeatmapFit=false;var top=r.node.getBoundingClientRect().top,scale=(window.TeamCanvasViewport&&TeamCanvasViewport.scale)||1,bottom=0;Array.prototype.forEach.call(content.querySelectorAll('*'),function(e){var b=e.getBoundingClientRect();if(b.height>0&&b.width>0)bottom=Math.max(bottom,b.bottom);});if(bottom>top)r.node.style.height=Math.max(420,Math.ceil((bottom-top)/scale+content.scrollTop+20))+'px';arrange();}if(square&&gd.data&&gd.data[0]){r.heatResizePlot=gd;r.heatResizeWidth=r.el.clientWidth;r.heatResizeX=gd.data[0].x.length;r.heatResizeY=gd.data[0].y.length;}});
     }
     // Shiny uses resize to measure outputs and rerender static plots at their new dimensions.
     if(heightChanged)window.dispatchEvent(new Event('resize'));
