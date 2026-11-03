@@ -1593,20 +1593,21 @@
     if(r.statistics&&window.TeamCanvasStatistics)state.statistics=TeamCanvasStatistics.serialize(r);
     return state;
   }
-  // A restored copy saves its saved settings until the browser has really reached them
-  // (or the analyst edits that card): an autosave taken while the copy still showed a
-  // default it was given before its own settings arrived must never replace them.
-  function sameInputValue(a,b){function norm(x){return JSON.stringify((x==null?[]:[].concat(x)).map(String));}return norm(a)===norm(b);}
+  // A restored copy's control can still be empty when a save is taken (its saved value has not
+  // reached the browser yet). For 60 s after it is shown, an empty control saves its saved
+  // value instead, so an autosave never replaces a saved setting with nothing. Any value the
+  // control does have (the analyst's edit or a valid fallback) is saved as it is.
+  function emptyInputValue(x){return x==null||x===''||(Array.isArray(x)&&!x.length);}
   function restoredInputs(r,live){
     var saved=r.savedInputs;if(!saved)return live;
-    var reached=Object.keys(saved).every(function(key){return sameInputValue(live[key],saved[key]);});
-    if(reached){r.savedInputs=null;return live;}
-    return Object.assign({},live,saved);
+    if(Date.now()>r.savedInputsUntil){r.savedInputs=null;return live;}
+    var out=Object.assign({},live);
+    Object.keys(saved).forEach(function(key){if(emptyInputValue(out[key])&&!emptyInputValue(saved[key]))out[key]=saved[key];});
+    return out;
   }
   function trackRestoredInputs(r,saved){
-    r.savedInputs=JSON.parse(JSON.stringify(saved||{}));if(!Object.keys(r.savedInputs).length){r.savedInputs=null;return;}
-    var release=function(){r.savedInputs=null;};
-    [document.getElementById(r.instance.id+'_host'),r.node].forEach(function(el){if(el){el.addEventListener('pointerdown',release,{once:true});el.addEventListener('keydown',release,{once:true});}});
+    r.savedInputs=JSON.parse(JSON.stringify(saved||{}));r.savedInputsUntil=Date.now()+60000;
+    if(!Object.keys(r.savedInputs).length)r.savedInputs=null;
   }
   function collectState() {
     var nodes = Array.from(records.values()).filter(function (r) { return !!r.node; }).map(nodeState).concat(Array.from(illustrations.values()).map(illustrationNodeState));

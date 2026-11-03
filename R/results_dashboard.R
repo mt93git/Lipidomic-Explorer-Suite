@@ -443,7 +443,9 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   })
 
   initial_grouping <- FALSE
-  observeEvent(base(),{if(!initial_grouping){b<-base();updateSelectInput(session,"color_by",selected=if(length(unique(b$groups$Group1))>1)"Group1" else "Group2");initial_grouping<<-TRUE}},ignoreInit=FALSE)
+  # A restored canvas copy brings its own grouping; only a new view picks one from the data.
+  saved_grouping <- if (inherits(input,"team_dashboard_instance_input")) .subset2(input,"saved")$color_by else NULL
+  observeEvent(base(),{if(!initial_grouping){if(!(length(saved_grouping)==1L&&saved_grouping%in%c("Group1","Group2"))){b<-base();updateSelectInput(session,"color_by",selected=if(length(unique(b$groups$Group1))>1)"Group1" else "Group2")};initial_grouping<<-TRUE}},ignoreInit=FALSE)
 
   sample_info <- reactive({
     b <- base()

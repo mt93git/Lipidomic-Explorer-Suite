@@ -146,24 +146,22 @@ team_dashboard_input_defaults <- local({
     cache
   }
 })
-# A copy's server code can run before the browser has sent the copy's saved settings
-# (its data arrives first). Until the browser reports a key's saved value once, that
-# key reads as the saved value, so code such as "keep the selection if it is still a
-# choice, else take the first" keeps the saved selection instead of pushing a default
-# to the browser. After the browser has reported it (or 60 s), the live value wins.
+# A copy's server code can run before the browser has sent the copy's saved settings (its
+# data arrives first). While a key is still empty in the browser, it reads as its saved value,
+# so "keep the selection if it is still a choice, else take the first" keeps the saved
+# selection (or falls back if the saved one no longer exists) instead of pushing the first
+# choice. Once the browser has any value for that key (or after 60 s), the live value wins:
+# a valid fallback chosen by the server or an analyst's edit is never overridden.
 team_dashboard_instance_input <- function(input, saved = list()) {
   state <- new.env(parent = emptyenv()); state$caught <- character(); state$until <- Sys.time() + 60
   structure(list(input=input,defaults=team_dashboard_input_defaults(),saved=saved,state=state),class='team_dashboard_instance_input')
 }
-team_instance_saved_reached <- function(actual, saved) {
-  if (is.numeric(saved)) { a <- suppressWarnings(as.numeric(unlist(actual,use.names=FALSE))); return(length(a)==length(saved)&&!anyNA(a)&&all(a==saved)) }
-  identical(as.character(unlist(actual,use.names=FALSE)),as.character(unlist(saved,use.names=FALSE)))
-}
+team_instance_input_empty <- function(x) is.null(x) || !length(x) || all(is.na(x) | as.character(x) == "")
 `$.team_dashboard_instance_input` <- function(x, name) {
   value <- .subset2(x,'input')[[name]]
   saved <- .subset2(x,'saved')[[name]]; state <- .subset2(x,'state')
-  if (!is.null(saved) && length(saved) && !name %in% state$caught) {
-    if (team_instance_saved_reached(value,saved) || Sys.time() > state$until) state$caught <- c(state$caught,name)
+  if (!team_instance_input_empty(saved) && !name %in% state$caught) {
+    if (!team_instance_input_empty(value) || Sys.time() > state$until) state$caught <- c(state$caught,name)
     else return(saved)
   }
   if (is.null(value)) .subset2(x,'defaults')[[name]] else value
