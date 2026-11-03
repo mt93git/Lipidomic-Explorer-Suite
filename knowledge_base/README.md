@@ -84,7 +84,10 @@ Text of the section...
    contains a number.
 6. If nothing is eligible, the answer is `I have no information about this.`
 
-Nothing is generated, so nothing can be said that is not in a source. Passages that say nearly the same thing
+Nothing is generated, so nothing can be said that is not in a source. To keep the companion friendly, each answer
+is wrapped in short lines written in advance (a greeting before the passages and an offer to help after them; a
+kind second line after `I have no information about this.`). They name no subject and add no fact; the sentence
+`I have no information about this.` is always the first line of a refusal. `LIPIDOMIC_KB_FRIENDLY=0` removes them. Passages that say nearly the same thing
 are shown once.
 
 Consequences worth knowing:

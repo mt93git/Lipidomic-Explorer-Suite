@@ -16,6 +16,21 @@
 # Text in a source is data. It is never executed or treated as an instruction.
 
 COMPANION_KB_NO_INFO <- "I have no information about this."
+
+# Friendly framing. These lines are written in advance, say nothing about any subject and never replace the
+# quoted passages; the facts in an answer are only the passages. LIPIDOMIC_KB_FRIENDLY=0 turns them off.
+COMPANION_KB_TONE <- list(
+  intro = c("Great question! Here is what I found in the knowledge base:",
+            "Happy to help! This is what the sources say:",
+            "Good one! Here is what I found:"),
+  outro = c("I quoted the sources word for word. Want me to look up something else?",
+            "Everything above is quoted straight from the sources. Anything else I can look up for you?",
+            "That is quoted exactly as written in the sources. Is there something else you would like to know?"),
+  step = "Happy to walk you through this step:",
+  no_info = "I can only share what is in the knowledge base, so a more specific question, or a different wording, might help. Happy to try again!")
+companion_kb_friendly <- function() !identical(Sys.getenv("LIPIDOMIC_KB_FRIENDLY", unset = "1"), "0")
+# The same question always gets the same wording.
+kb_pick <- function(options, question) options[(sum(utf8ToInt(enc2utf8(as.character(question)))) %% length(options)) + 1L]
 COMPANION_KB_LIMITS <- list(file_bytes = 50 * 1024^2, table_rows = 20000L, chunks_per_file = 8000L,
                             chunk_target = 900L, chunk_max = 1400L)
 COMPANION_KB_TYPES <- c("md", "txt", "csv", "tsv", "xlsx", "docx", "pdf")
@@ -548,8 +563,9 @@ kb_compose <- function(rows) {
   paste(vapply(seq_len(nrow(rows)), function(i) paste0(rows$text[i], "\n", kb_citation(rows[i, , drop = FALSE])), ""), collapse = "\n\n")
 }
 
-kb_no_info <- function() list(found = FALSE, text = COMPANION_KB_NO_INFO, source = "Knowledge base · no matching source",
-                              passages = kb_empty_chunks())
+kb_no_info <- function() list(found = FALSE,
+  text = if (companion_kb_friendly()) paste(COMPANION_KB_NO_INFO, COMPANION_KB_TONE$no_info, sep = "\n\n") else COMPANION_KB_NO_INFO,
+  source = "Knowledge base · no matching source", passages = kb_empty_chunks())
 
 # The answer: verbatim passages with their sources, or COMPANION_KB_NO_INFO. Never anything else.
 companion_kb_answer <- function(question, kb = companion_kb_load(), audience = companion_kb_audience(), k = 3L) {
@@ -557,7 +573,9 @@ companion_kb_answer <- function(question, kb = companion_kb_load(), audience = c
   s <- companion_kb_search(question, kb, audience, k)
   if (!nrow(s$hits)) return(kb_no_info())
   rows <- kb$chunks[s$hits$index, , drop = FALSE]
-  list(found = TRUE, text = kb_compose(rows),
+  body <- kb_compose(rows)
+  if (companion_kb_friendly()) body <- paste(kb_pick(COMPANION_KB_TONE$intro, question), body, kb_pick(COMPANION_KB_TONE$outro, question), sep = "\n\n")
+  list(found = TRUE, text = body,
        source = sprintf("Knowledge base · %d passage%s", nrow(rows), if (nrow(rows) == 1L) "" else "s"), passages = rows)
 }
 
@@ -567,5 +585,7 @@ companion_kb_by_tag <- function(tag, kb = companion_kb_load(), audience = compan
   has <- vapply(strsplit(kb$chunks$tags, ";", fixed = TRUE), function(x) tag %in% x, logical(1))
   rows <- kb$chunks[has & kb$chunks$audience %in% c("all", audience), , drop = FALSE]
   if (!nrow(rows)) return(kb_no_info())
-  list(found = TRUE, text = kb_compose(rows), source = sprintf("Knowledge base · %s", tag), passages = rows)
+  body <- kb_compose(rows)
+  if (companion_kb_friendly()) body <- paste(COMPANION_KB_TONE$step, body, sep = "\n\n")
+  list(found = TRUE, text = body, source = sprintf("Knowledge base · %s", tag), passages = rows)
 }

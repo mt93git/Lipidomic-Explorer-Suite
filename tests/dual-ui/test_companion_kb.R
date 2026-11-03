@@ -3,6 +3,7 @@ suppressPackageStartupMessages(library(shiny))
 Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE = "1")
 source("R/companion_kb.R")
 Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "1")  # most of this file exercises the seed too; the default (off) is checked below
+Sys.setenv(LIPIDOMIC_KB_FRIENDLY = "0")     # plain answers for the exact-text checks; the friendly framing is checked below
 check <- function(label, cond) if (!isTRUE(cond)) stop("FAILED: ", label, call. = FALSE)
 NO <- "I have no information about this."
 check("refusal text is exactly the requested sentence", identical(COMPANION_KB_NO_INFO, NO))
@@ -147,6 +148,24 @@ real <- companion_kb_load(file.path(root, "emptylib"), companion_kb_seed_dir(), 
 for (aud in c("team", "classic")) for (i in 1:7) check(sprintf("seed has step %d for %s", i, aud), companion_kb_by_tag(paste0("step-", i), real, aud)$found)
 check("seed answers a reviewed topic", grepl("PQN", companion_kb_answer("what is PQN normalization", real, "team")$text, fixed = TRUE))
 check("seed refuses an unrelated question", identical(companion_kb_answer("what is the capital of France", real, "team")$text, NO))
+
+# ---- Friendly framing: pre-written lines around the quoted passages, never new facts -----------
+q <- "how are lipids extracted from the samples"
+plain <- ask(q)$text
+Sys.setenv(LIPIDOMIC_KB_FRIENDLY = "1")
+f <- ask(q)
+i <- which(vapply(COMPANION_KB_TONE$intro, function(x) startsWith(f$text, x), logical(1)))
+j <- which(vapply(COMPANION_KB_TONE$outro, function(x) endsWith(f$text, x), logical(1)))
+check("a friendly answer opens and closes with pre-written lines", length(i) == 1L && length(j) == 1L)
+inner <- substr(f$text, nchar(COMPANION_KB_TONE$intro[i]) + 3L, nchar(f$text) - nchar(COMPANION_KB_TONE$outro[j]) - 2L)
+check("removing the friendly lines leaves exactly the quoted passages", identical(inner, plain))
+check("the same question always gets the same wording", identical(ask(q)$text, f$text))
+n <- ask("what is the capital of France")
+check("no information keeps the exact sentence as its first line", !n$found && startsWith(n$text, paste0(NO, "\n\n")) && endsWith(n$text, COMPANION_KB_TONE$no_info))
+check("the friendly lines name no subject", !any(grepl("lipid|ceramide|gene|enzyme|normaliz|PCA", unlist(COMPANION_KB_TONE), ignore.case = TRUE)))
+check("a step lookup is friendly too", startsWith(companion_kb_by_tag("topic-normalization", companion_kb_load(lib, seed), "team")$text, COMPANION_KB_TONE$step))
+Sys.setenv(LIPIDOMIC_KB_FRIENDLY = "0")
+check("the framing can be switched off", identical(ask(q)$text, plain))
 
 # ---- Default scope: only the fed library answers questions ---------------------------------
 Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "0")
