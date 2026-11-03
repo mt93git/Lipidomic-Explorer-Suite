@@ -1,87 +1,46 @@
 # R/utils_colors.R
 # Color Utilities.
 
+# --- Default Palette ---
+# App-wide default categorical palette (CARTO "Pastel"). Keep in sync with PALETTES["Pastel"] in
+# www/team/js/plot_editor.js and rd_palette in R/results_dashboard.R.
+DEFAULT_PALETTE <- c("#66C5CC", "#F6CF71", "#F89C74", "#DCB0F2", "#87C55F", "#9EB9F3", "#FE88B1", "#B3B3B3")
+
 # --- Hardcoded Palettes ---
-# Every class has its own colour. GP_PA and GP_PE_E previously reused the SP_Cer
-# and SP_SM colours; their values are palette_distinct() variants of those
-# colours (SM/Cer kept). Keep this map identical in R/global.R and R/utils_colors.R.
+# Every class has its own colour, taken from DEFAULT_PALETTE (R/utils_colors.R): the 7 chromatic
+# colours first, then palette_distinct() variants of them; "Misc" is the palette neutral gray.
+# Keep this map identical in R/global.R and R/utils_colors.R.
 CLASS_MAP_COLORS <- c(
-  "GP_CL"="#E28E2B", "GP_LPA"="#A0CBE8", "GP_LPC"="#E15759", "GP_LPE"="#F28E2B",
-  "GP_LPG"="#76B7B2", "GP_LPI"="#59A14F", "GP_LPS"="#A07AA1", "GP_PA"="#C09E00",
-  "GP_PC"="#B07AA1", 
-  "GP_PE"="#FF9DA7", "GP_PE_E"="#744D35", "GP_PE_P"="#BAB0AC", # <- Contiguous PEs!
-  "GP_PG"="#86BCB6", "GP_PI"="#D37295", "GP_PS"="#8CD17D",
-  "FA_ACar"="#4E79A7", "ST_CE"="#C7C7C7", 
-  "SP_Cer"="#EDC948", "SP_Cer_dh"="#B6992D", # <- Contiguous Cer!
-  "SP_GlcCer"="#5C4F3D", "SP_LacCer"="#499894", 
-  "SP_SM"="#9C755F", "SP_SM_dh"="#79706E", # <- Contiguous SM!
-  "GL_DAG"="#FFC300", "GL_TAG"="#2ECC71", 
-  "Misc"="#B0B0B0"
+  "GP_CL"="#66C5CC", "GP_LPA"="#F6CF71", "GP_LPC"="#F89C74", "GP_LPE"="#DCB0F2",
+  "GP_LPG"="#87C55F", "GP_LPI"="#9EB9F3", "GP_LPS"="#FE88B1", "GP_PA"="#249AA1",
+  "GP_PC"="#C9A339", "GP_PE"="#CA7244", "GP_PE_E"="#B184C6", "GP_PE_P"="#5B9A25",
+  "GP_PG"="#718EC7", "GP_PI"="#D15B87", "GP_PS"="#98F2F9", "FA_ACar"="#9D7A00",
+  "ST_CE"="#FFC8A3", "SP_Cer"="#FFD8FF", "SP_Cer_dh"="#B3F290", "SP_GlcCer"="#CBE6FF",
+  "SP_LacCer"="#FFB5DD", "SP_SM"="#007279", "SP_SM_dh"="#735200", "GL_DAG"="#9D4900",
+  "GL_TAG"="#895A9E", "Misc"="#B3B3B3"
 )
 
+# Categories take the same palette; "Misc" is the neutral gray.
 HYPERCLASS_MAP_COLORS <- c(
-  "GP" = "#4E79A7", "FA" = "#59A14F", "ST" = "#9C755F",
-  "SP" = "#B07AA1", "GL" = "#F1C40F", "Misc" = "#B0B0B0",
-  "AA" = "#E15759", "EPA" = "#76B7B2", "DHA" = "#EDC948", "DPA" = "#F28E2B"
+  "GP"="#66C5CC", "FA"="#F6CF71", "ST"="#F89C74", "SP"="#DCB0F2", "GL"="#87C55F",
+  "Misc"="#B3B3B3", "AA"="#9EB9F3", "EPA"="#FE88B1", "DHA"="#249AA1", "DPA"="#C9A339"
 )
 
 #' Initialize Color Map
 #' 
 #' Creates a consistent color mapping for a given set of groups.
-#' Guaranteed to return specific colors for specific known groups if defined,
-#' otherwise assigns from a high-quality qualitative palette.
+#' Groups take DEFAULT_PALETTE in sorted order; beyond 8 groups the palette is
+#' extended with palette_distinct() variants, so no color repeats.
 #'
 #' @param groups Character vector of group names
-#' @param palette_name Name of the RColorBrewer or Viridis palette to use for unknown groups
+#' @param palette_name Kept for compatibility; groups always use the default palette
 #' @return Named character vector of colors
 initialize_color_map <- function(groups, palette_name = "Set1") {
   unique_groups <- sort(unique(groups))
   n <- length(unique_groups)
   if (n == 0) return(character(0))
   
-  overrides <- c(
-    # Combined groups
-    "CCSteadyState1_Control" = "#BDBDBD",
-    "SteadyState1_Exp"       = "#9ECAE1",
-    "SteadyState2_Exp"       = "#3182BD",
-    "PainCrisis1_Exp"        = "#FB6A4A",
-    "PainCrisis2_Exp"        = "#CB181D",
-    
-    # Group1s
-    "CCSteadyState1"         = "#BDBDBD",
-    "SteadyState1"           = "#9ECAE1",
-    "SteadyState2"           = "#3182BD",
-    "PainCrisis1"            = "#FB6A4A",
-    "PainCrisis2"            = "#CB181D"
-  )
-  
-  cols <- sapply(unique_groups, function(g) {
-    if (g %in% names(overrides)) {
-      overrides[[g]]
-    } else {
-      NA_character_
-    }
-  })
-  
-  unmapped_indices <- which(is.na(cols))
-  if (length(unmapped_indices) > 0) {
-    num_unmapped <- length(unmapped_indices)
-    
-    # RColorBrewer palettes have different maximum number of colors (e.g. Set2 is 8, Set1 is 9, Dark2 is 8)
-    max_colors <- 8 # Default fallback
-    if (palette_name %in% rownames(RColorBrewer::brewer.pal.info)) {
-      max_colors <- RColorBrewer::brewer.pal.info[palette_name, "maxcolors"]
-    }
-    
-    fallback_cols <- if (num_unmapped <= max_colors) {
-      RColorBrewer::brewer.pal(n = max(3, num_unmapped), name = palette_name)[1:num_unmapped]
-    } else {
-      colorRampPalette(RColorBrewer::brewer.pal(max_colors, palette_name))(num_unmapped)
-    }
-    cols[unmapped_indices] <- fallback_cols
-  }
-  
-  return(cols)
+  stats::setNames(default_palette_colors(n), unique_groups)
 }
 
 #' Generate Class Colors
@@ -494,4 +453,17 @@ palette_combined_groups <- function(metadata, columns = c("Group1", "Group2")) {
     vals <- vals[!is.na(vals) & nzchar(vals) & vals != "Unspecified"]
     if (length(vals)) paste(vals, collapse = "_") else "Unspecified"
   })
+}
+
+# --- Default palette helpers ---------------------------------------------------
+# n distinct colors: DEFAULT_PALETTE first, then palette_distinct() variants.
+default_palette_colors <- function(n) palette_extend(DEFAULT_PALETTE, n)
+
+# Colors for categories missing from `existing`, never reusing a color already
+# present in it.
+default_palette_fallback <- function(existing, new_names) {
+  if (length(new_names) == 0L) return(character(0))
+  pool <- default_palette_colors(length(existing) + length(new_names) + length(DEFAULT_PALETTE))
+  pool <- pool[!toupper(pool) %in% toupper(as.character(unname(existing)))]
+  stats::setNames(pool[seq_along(new_names)], new_names)
 }

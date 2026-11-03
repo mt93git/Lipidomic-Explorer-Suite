@@ -26,7 +26,7 @@
   function colorFor(s,g,c) {
     var override=s.styles[c]&&s.styles[c].colors[g];if(override)return override;if(s.conditionColors&&colorHex(s.conditionColors[g]))return colorHex(s.conditionColors[g]);
     if (/^healthy(?:$|[_ -])/i.test(g)) return '#7A7A7A';
-    var palette=(window.TeamPlotEditor&&TeamPlotEditor.palettes&&TeamPlotEditor.palettes['Gelato Days'])||['#BCD8EC','#FFCBE1','#D6E5BD','#DCCCEC','#FFDAB4','#F9E1A8'];
+    var palette=(window.TeamPlotEditor&&TeamPlotEditor.palettes&&TeamPlotEditor.palettes['Pastel'])||['#66C5CC','#F6CF71','#F89C74','#DCB0F2','#87C55F','#9EB9F3','#FE88B1','#B3B3B3'];
     return palette[Math.max(0,s.groups.slice().sort().indexOf(g))%palette.length];
   }
   function csv(s) {

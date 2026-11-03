@@ -52,10 +52,11 @@ rd_value <- function(x) if (is.function(x)) tryCatch(x(), error = function(e) NU
 
 # Team condition defaults only; explicit shared maps take precedence by exact ID.
 rd_team_condition_colors <- function(levels, mapping=NULL) {
-  palette<-c('#BCD8EC','#FFCBE1','#D6E5BD','#DCCCEC','#FFDAB4','#F9E1A8')
+  # Default palette (CARTO Pastel); past 8 conditions palette_extend() adds distinct variants.
+  palette<-c('#66C5CC','#F6CF71','#F89C74','#DCB0F2','#87C55F','#9EB9F3','#FE88B1','#B3B3B3')
   # Sort IDs so category display order cannot change their default color.
   ids<-sort(unique(as.character(levels)),method='radix')
-  defaults<-stats::setNames(rep(palette,length.out=length(ids)),ids)
+  defaults<-stats::setNames(palette_extend(palette,length(ids)),ids)
   defaults[grepl('^healthy($|[_ -])',ids,ignore.case=TRUE)]<-'#7A7A7A'
   if(!is.null(mapping) && length(mapping) && !is.null(names(mapping))) {
     colors<-unlist(mapping,use.names=FALSE);keys<-names(mapping)

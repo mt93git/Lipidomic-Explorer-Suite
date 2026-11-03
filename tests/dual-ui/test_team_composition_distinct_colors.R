@@ -33,11 +33,19 @@ stopifnot(!anyDuplicated(preset[startsWith(names(preset), 'Lipid Class::')]),
 # Default maps never share a colour between classes, and the copy in R/global.R
 # (overwritten when R/utils_colors.R is sourced) stays identical.
 stopifnot(!anyDuplicated(toupper(CLASS_MAP_COLORS)), !anyDuplicated(toupper(HYPERCLASS_MAP_COLORS)),
-          CLASS_MAP_COLORS[['SP_SM']] == '#9C755F', CLASS_MAP_COLORS[['SP_Cer']] == '#EDC948')
+          # Default maps are built from DEFAULT_PALETTE: its first 7 colors, then distinct variants; Misc is its gray.
+          identical(unname(CLASS_MAP_COLORS[1:7]), DEFAULT_PALETTE[1:7]), CLASS_MAP_COLORS[['Misc']] == DEFAULT_PALETTE[8],
+          identical(unname(HYPERCLASS_MAP_COLORS[1:5]), DEFAULT_PALETTE[1:5]), HYPERCLASS_MAP_COLORS[['Misc']] == DEFAULT_PALETTE[8],
+          CLASS_MAP_COLORS[['SP_SM']] == '#007279', CLASS_MAP_COLORS[['SP_Cer']] == '#FFD8FF')
+# Groups: default palette in sorted order, distinct past 8, and never a color of another group.
+g <- initialize_color_map(sprintf('G%02d', 12:1))
+stopifnot(identical(names(g), sprintf('G%02d', 1:12)), identical(unname(g[1:8]), DEFAULT_PALETTE), !anyDuplicated(g))
+fb <- default_palette_fallback(c(A = DEFAULT_PALETTE[1], B = DEFAULT_PALETTE[2]), c('x', 'y'))
+stopifnot(length(fb) == 2L, !any(toupper(fb) %in% toupper(DEFAULT_PALETTE[1:2])), !anyDuplicated(fb))
 global_defs <- Filter(function(e) is.call(e) && identical(e[[1]], as.name('<-')) && identical(e[[2]], as.name('CLASS_MAP_COLORS')), as.list(parse('R/global.R', keep.source = FALSE)))
 stopifnot(length(global_defs) == 1L, identical(eval(global_defs[[1]][[3]], baseenv()), CLASS_MAP_COLORS))
 
-# palette_distinct keeps first occurrences and names, replaces repeats (default class map has two).
+# palette_distinct keeps first occurrences and names, replaces repeats (the default class map has none left).
 fixed <- palette_distinct(CLASS_MAP_COLORS)
 stopifnot(!anyDuplicated(fixed), identical(names(fixed), names(CLASS_MAP_COLORS)),
           identical(unname(fixed[!duplicated(toupper(CLASS_MAP_COLORS))]), toupper(unname(CLASS_MAP_COLORS[!duplicated(toupper(CLASS_MAP_COLORS))]))))

@@ -538,7 +538,7 @@ generateHeatmapObject <- function(mat, title,
         matched_cols <- base_cols[names(base_cols) %in% represented_cls]
         missing_cls <- setdiff(represented_cls, names(matched_cols))
         if (length(missing_cls) > 0) {
-           fallback_pal <- scales::hue_pal()(length(missing_cls))
+           fallback_pal <- default_palette_fallback(matched_cols, missing_cls)
            names(fallback_pal) <- missing_cls
            matched_cols <- c(matched_cols, fallback_pal)
         }
@@ -569,7 +569,7 @@ generateHeatmapObject <- function(mat, title,
         matched_cols <- origin_cols[names(origin_cols) %in% represented_cat]
         missing_cat <- setdiff(represented_cat, names(matched_cols))
         if (length(missing_cat) > 0) {
-           fallback_pal <- scales::hue_pal()(length(missing_cat))
+           fallback_pal <- default_palette_fallback(matched_cols, missing_cat)
            names(fallback_pal) <- missing_cat
            matched_cols <- c(matched_cols, fallback_pal)
         }
@@ -587,13 +587,8 @@ generateHeatmapObject <- function(mat, title,
      } else {
         unique_l <- unique(row_ann_df[[single_target]])
         n_l <- length(unique_l)
-        pal_colors <- if (n_l <= 8) {
-          RColorBrewer::brewer.pal(max(3, n_l), "Set2")[1:n_l]
-        } else if (n_l <= 12) {
-          RColorBrewer::brewer.pal(max(3, n_l), "Set3")[1:n_l]
-        } else {
-          scales::hue_pal()(n_l)
-        }
+        # Default palette (distinct variants past 8); very large sets keep an even hue wheel.
+        pal_colors <- if (n_l <= 40) default_palette_colors(n_l) else scales::hue_pal()(n_l)
         names(pal_colors) <- unique_l
         pal_colors
      }
@@ -603,7 +598,7 @@ generateHeatmapObject <- function(mat, title,
         matched_cols <- s_cols[names(s_cols) %in% represented_lipids]
         missing_lipids <- setdiff(represented_lipids, names(matched_cols))
         if (length(missing_lipids) > 0) {
-           fallback_pal <- scales::hue_pal()(length(missing_lipids))
+           fallback_pal <- default_palette_fallback(matched_cols, missing_lipids)
            names(fallback_pal) <- missing_lipids
            matched_cols <- c(matched_cols, fallback_pal)
         }
@@ -1038,7 +1033,7 @@ buildBarPlot <- function(mat, titleText,
           class_colors
        } else {
           lipid_names <- unique(plot_df$fillVal)
-          colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(length(lipid_names)) %>% setNames(lipid_names)
+          default_palette_colors(length(lipid_names)) %>% setNames(lipid_names)
        }
     } else {
        if(!is.null(class_colors)) {
@@ -1061,14 +1056,14 @@ buildBarPlot <- function(mat, titleText,
       used_grps <- unique(plot_df$fillVal)
       missing <- setdiff(used_grps, names(sample_colors))
       if(length(missing)>0) {
-        slack <- colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(length(missing))
+        slack <- default_palette_colors(length(missing))
         names(slack) <- missing
         c(sample_colors, slack)
       } else {
         sample_colors
       }
     } else {
-      colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(dplyr::n_distinct(plot_df$fillVal)) %>% setNames(nm = unique(plot_df$fillVal)) 
+      default_palette_colors(dplyr::n_distinct(plot_df$fillVal)) %>% setNames(nm = unique(plot_df$fillVal)) 
     }
   }
   
@@ -1261,7 +1256,7 @@ buildDonutPlot <- function(mat, titleText,
       fillMap <- sample_colors
     } else {
       unique_slices <- unique(plot_df$SliceGroup)
-      fillMap <- colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(length(unique_slices)) %>% 
+      fillMap <- default_palette_colors(length(unique_slices)) %>% 
         setNames(nm = unique_slices)
     }
   } else {
@@ -1269,7 +1264,7 @@ buildDonutPlot <- function(mat, titleText,
       fillMap <- class_colors
     } else {
       unique_slices <- unique(plot_df$SliceGroup)
-      fillMap <- colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(length(unique_slices)) %>% 
+      fillMap <- default_palette_colors(length(unique_slices)) %>% 
         setNames(nm = unique_slices)
     }
   }
@@ -1334,7 +1329,7 @@ getDownloadFilename <- function(sheetName=NULL, tabName, extension, repMode) {
 #' @param return_list Boolean, whether to return list of raw plots instead of patchwork.
 #' @param color_var Optional dimension strictly overriding plot map colors natively.
 #' 
-plot_logratio_violin <- function(df, target_features, baseline_groups, color_mapping, y_label = "Value", show_baseline = FALSE, return_list = FALSE, color_var = NULL, sig_display_type = "star", show_legend = FALSE, facet_fontsize = 11, sig_threshold = 0.05) {
+plot_logratio_violin <- function(df, target_features, baseline_groups, color_mapping, y_label = "Value", show_baseline = FALSE, return_list = FALSE, color_var = NULL, sig_display_type = "star", show_legend = FALSE, facet_fontsize = 11, sig_threshold = 0.05, style = "classic") {
   req(nrow(df) > 0)
   
   plots <- list()
@@ -1480,7 +1475,21 @@ plot_logratio_violin <- function(df, target_features, baseline_groups, color_map
      }
      
      is_dodged <- (x_var != fill_var) && !all(as.character(sub_df[[x_var]]) == as.character(sub_df[[fill_var]]))
-     if (is_dodged) {
+     is_fd_style <- identical(style, "feature_distribution")
+     if (is_fd_style) {
+        # Feature distributions look: trimmed translucent violin outlined in the group color,
+        # narrow quartile box, every measurement as a dark point over the center.
+        p <- p + ggplot2::aes(color = .data[[fill_var]])
+        if (is_dodged) {
+           p <- p + ggplot2::geom_violin(position = ggplot2::position_dodge(0.8), trim = TRUE, alpha = 0.5, linewidth = 0.5) +
+             ggplot2::geom_boxplot(position = ggplot2::position_dodge(0.8), width = 0.12, fill = "white", alpha = 0.9, outlier.shape = NA, linewidth = 0.4) +
+             ggplot2::geom_point(position = ggplot2::position_jitterdodge(jitter.width = 0.12, jitter.height = 0, dodge.width = 0.8), color = "#162230", size = 1.6, alpha = 0.8, shape = 16)
+        } else {
+           p <- p + ggplot2::geom_violin(trim = TRUE, alpha = 0.5, linewidth = 0.5) +
+             ggplot2::geom_boxplot(width = 0.12, fill = "white", alpha = 0.9, outlier.shape = NA, linewidth = 0.4) +
+             ggplot2::geom_jitter(width = 0.08, height = 0, color = "#162230", size = 1.6, alpha = 0.8, shape = 16)
+        }
+     } else if (is_dodged) {
         p <- p + ggplot2::geom_violin(position = ggplot2::position_dodge(0.8), trim = FALSE, color = "black", linewidth = 0.2, alpha = 0.8) +
           ggplot2::geom_boxplot(position = ggplot2::position_dodge(0.8), width = 0.15, fill = "white", color = "black", outlier.shape = NA, linewidth = 0.2) +
           ggplot2::geom_jitter(position = ggplot2::position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8), shape = 21, color = "black", size = 2, fill="white", stroke=0.8)
@@ -1494,14 +1503,15 @@ plot_logratio_violin <- function(df, target_features, baseline_groups, color_map
         req_lvls <- unique(as.character(sub_df[[fill_var]]))
         missing_lvls <- setdiff(req_lvls, names(color_mapping))
         if (length(missing_lvls) > 0) {
-           pal <- RColorBrewer::brewer.pal(min(9, max(3, length(missing_lvls))), "Set1")
+           pal <- default_palette_fallback(color_mapping, missing_lvls)
            if (length(missing_lvls) > length(pal)) pal <- colorRampPalette(pal)(length(missing_lvls))
            color_mapping <- c(color_mapping, stats::setNames(pal[1:length(missing_lvls)], missing_lvls))
         }
      }
      
      p <- p + ggplot2::scale_fill_manual(values = color_mapping) +
-       ggplot2::scale_x_discrete(limits = all_groups, drop = FALSE) +
+       ggplot2::scale_x_discrete(limits = all_groups, drop = FALSE,
+                                 labels = if (is_fd_style) function(x) gsub("_", " ", x) else ggplot2::waiver()) +
        ggplot2::theme_classic(base_size = 14) +
        ggplot2::theme(
          text = ggplot2::element_text(family = "sans"),
@@ -1521,8 +1531,30 @@ plot_logratio_violin <- function(df, target_features, baseline_groups, color_map
        ggplot2::expand_limits(y = y_ceiling) +
        ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.1, 0.05))) +
        ggplot2::coord_cartesian(clip = "off")
-       
-     facet_vals <- if (has_facets) unique(as.character(sub_df$Facet_Grp)) else character(0)
+
+     if (is_fd_style) {
+        p <- p + ggplot2::scale_color_manual(values = color_mapping, guide = "none") +
+          ggplot2::theme_minimal(base_size = 12) +
+          ggplot2::theme(
+            text = ggplot2::element_text(family = "sans", color = "#52514e"),
+            plot.title = ggplot2::element_text(size = max(12, facet_fontsize + 4), face = "bold", hjust = 0.5, color = "#20323b"),
+            axis.text.x = ggplot2::element_text(size = 11, color = "#52514e"),
+            axis.text.y = ggplot2::element_text(size = 11, color = "#52514e"),
+            axis.title.x = ggplot2::element_blank(),
+            axis.title.y = ggplot2::element_text(size = 12, margin = ggplot2::margin(r = 5)),
+            strip.text = ggplot2::element_text(size = facet_fontsize, face = "bold", color = "#20323b"),
+            panel.grid.major.y = ggplot2::element_line(color = "#ebeae6", linewidth = 0.5),
+            panel.grid.major.x = ggplot2::element_blank(),
+            panel.grid.minor = ggplot2::element_blank(),
+            plot.background = ggplot2::element_rect(fill = "#ffffff", color = NA),
+            panel.background = ggplot2::element_rect(fill = "#ffffff", color = NA),
+            legend.position = if (isTRUE(show_legend)) "right" else "none",
+            aspect.ratio = 0.95,
+            plot.margin = ggplot2::margin(t = 15, r = 10, b = 15, l = 10)
+          )
+     }
+
+     facet_vals <-if (has_facets) unique(as.character(sub_df$Facet_Grp)) else character(0)
      is_duplicate_facet <- has_facets && length(facet_vals) == 1 && (
         gsub("_", " ", facet_vals[1]) == clean_title ||
         facet_vals[1] == clean_title

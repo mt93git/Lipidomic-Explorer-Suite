@@ -338,7 +338,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
     # Use global maps natively assigned or algorithmically bridge
        base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[target]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[target]], error = function(e) NULL)
        if (is.null(base_map) || !all(levels %in% names(base_map))) {
-          pal <- RColorBrewer::brewer.pal(min(9, max(3, length(levels))), "Set1")
+          pal <- default_palette_colors(length(levels))
           if(length(levels) > length(pal)) pal <- colorRampPalette(pal)(length(levels))
           base_map <- stats::setNames(pal[1:length(levels)], levels)
        }
@@ -1124,7 +1124,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
       
       base_map <- (if (!is.null(global_color_map) && is.function(global_color_map)) tryCatch(global_color_map()[[c_var]], error = function(e) NULL) else NULL) %||% tryCatch(shared_data$color_maps()[[c_var]], error = function(e) NULL)
       if (is.null(base_map) || !all(c_levels %in% names(base_map))) {
-         pal <- RColorBrewer::brewer.pal(min(9, max(3, length(c_levels))), "Set1")
+         pal <- default_palette_colors(length(c_levels))
          if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
          base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
       }
@@ -1228,7 +1228,8 @@ logratio_server <- function(id, shared_data, global_color_map) {
                            y_label = y_lab,
                            show_baseline = input$showBaseline %||% FALSE,
                            color_var = c_var,
-                           sig_display_type = input$sigDisplayType %||% "star")
+                           sig_display_type = input$sigDisplayType %||% "star",
+                           style = "feature_distribution")
       if (identical(lipidomic_interface(), "team") && inherits(plot, "patchwork")) {
         plot <- plot + patchwork::plot_layout(ncol = as.integer(input$panelColumns %||% 1))
       }
@@ -1382,7 +1383,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
              val <- input[[paste0("cp_", safe_col, "_", safe_lvl)]]
              if (is.null(val) || !nzchar(trimws(val))) {
                 if (is.null(base_map) || !lvl %in% names(base_map)) {
-                   pal <- RColorBrewer::brewer.pal(min(9, max(3, length(c_levels))), "Set1")
+                   pal <- default_palette_colors(length(c_levels))
                    if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
                    base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
                 }
@@ -1435,7 +1436,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
           fname <- paste0(date_str, "_", safe_feat, "_", sig_str, ".pdf")
           
      # pass only one target_feature
-          p <- plot_logratio_violin(feat_df, target_features = feat, baseline_groups = db_info$baseline_grp, color_mapping = safe_colors, y_label = y_lab, show_baseline = input$showBaseline %||% FALSE, color_var = c_var, sig_display_type = input$sigDisplayType %||% "star")
+          p <- plot_logratio_violin(feat_df, target_features = feat, baseline_groups = db_info$baseline_grp, color_mapping = safe_colors, y_label = y_lab, show_baseline = input$showBaseline %||% FALSE, color_var = c_var, sig_display_type = input$sigDisplayType %||% "star", style = "feature_distribution")
           
           if(!is.null(p)) {
              ggplot2::ggsave(file.path(tmpdir, fname), plot = p, width = 6, height = 5, units = "in", device = "pdf")

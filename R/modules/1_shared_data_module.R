@@ -3898,7 +3898,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
        unknown <- setdiff(classes, names(current_map))
        if (length(unknown) > 0) {
          # Safe Brewer Fallback
-         fallback_colors <- safe_brewer_pal(length(unknown), "Dark2")
+         fallback_colors <- default_palette_fallback(current_map, unknown)
          names(fallback_colors) <- unknown
          current_map <- c(current_map, fallback_colors)
        }
@@ -3923,7 +3923,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
      # Ensure coverage
        unknown <- setdiff(origins, names(current_map))
        if(length(unknown) > 0) {
-           fallback <- safe_brewer_pal(length(unknown), "Set1")
+           fallback <- default_palette_fallback(current_map, unknown)
            names(fallback) <- unknown
            current_map <- c(current_map, fallback)
        }
@@ -4095,7 +4095,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
        unknown <- setdiff(classes, names(current_map))
        if (length(unknown) > 0) {
          # Safe Brewer Fallback
-         fallback_colors <- safe_brewer_pal(length(unknown), "Dark2")
+         fallback_colors <- default_palette_fallback(current_map, unknown)
          names(fallback_colors) <- unknown
          current_map <- c(current_map, fallback_colors)
        }
@@ -4123,7 +4123,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
      # Ensure coverage
        unknown <- setdiff(origins, names(current_map))
        if(length(unknown) > 0) {
-           fallback <- safe_brewer_pal(length(unknown), "Set1")
+           fallback <- default_palette_fallback(current_map, unknown)
            names(fallback) <- unknown
            current_map <- c(current_map, fallback)
        }
@@ -4984,7 +4984,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       finalColors <- CLASS_MAP_COLORS
       unknown <- setdiff(classes, names(finalColors))
       if (length(unknown) > 0) {
-        fallback_colors <- colorRampPalette(brewer.pal(8, "Dark2"))(length(unknown))
+        fallback_colors <- default_palette_fallback(finalColors, unknown)
         names(fallback_colors) <- unknown
         finalColors <- c(finalColors, fallback_colors)
       }

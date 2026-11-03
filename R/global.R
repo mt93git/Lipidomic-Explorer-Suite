@@ -161,22 +161,17 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
 `%||%` <- function(a, b) { if (!is.null(a)) a else b }
 
 # Color maps
-# Color maps
-# Every class has its own colour. GP_PA and GP_PE_E previously reused the SP_Cer
-# and SP_SM colours; their values are palette_distinct() variants of those
-# colours (SM/Cer kept). Keep this map identical in R/global.R and R/utils_colors.R.
+# Every class has its own colour, taken from DEFAULT_PALETTE (R/utils_colors.R): the 7 chromatic
+# colours first, then palette_distinct() variants of them; "Misc" is the palette neutral gray.
+# Keep this map identical in R/global.R and R/utils_colors.R.
 CLASS_MAP_COLORS <- c(
-  "GP_CL"="#E28E2B", "GP_LPA"="#A0CBE8", "GP_LPC"="#E15759", "GP_LPE"="#F28E2B",
-  "GP_LPG"="#76B7B2", "GP_LPI"="#59A14F", "GP_LPS"="#A07AA1", "GP_PA"="#C09E00",
-  "GP_PC"="#B07AA1", 
-  "GP_PE"="#FF9DA7", "GP_PE_E"="#744D35", "GP_PE_P"="#BAB0AC", # <- Contiguous PEs!
-  "GP_PG"="#86BCB6", "GP_PI"="#D37295", "GP_PS"="#8CD17D",
-  "FA_ACar"="#4E79A7", "ST_CE"="#C7C7C7", 
-  "SP_Cer"="#EDC948", "SP_Cer_dh"="#B6992D", # <- Contiguous Cer!
-  "SP_GlcCer"="#5C4F3D", "SP_LacCer"="#499894", 
-  "SP_SM"="#9C755F", "SP_SM_dh"="#79706E", # <- Contiguous SM!
-  "GL_DAG"="#FFC300", "GL_TAG"="#2ECC71", 
-  "Misc"="#B0B0B0"
+  "GP_CL"="#66C5CC", "GP_LPA"="#F6CF71", "GP_LPC"="#F89C74", "GP_LPE"="#DCB0F2",
+  "GP_LPG"="#87C55F", "GP_LPI"="#9EB9F3", "GP_LPS"="#FE88B1", "GP_PA"="#249AA1",
+  "GP_PC"="#C9A339", "GP_PE"="#CA7244", "GP_PE_E"="#B184C6", "GP_PE_P"="#5B9A25",
+  "GP_PG"="#718EC7", "GP_PI"="#D15B87", "GP_PS"="#98F2F9", "FA_ACar"="#9D7A00",
+  "ST_CE"="#FFC8A3", "SP_Cer"="#FFD8FF", "SP_Cer_dh"="#B3F290", "SP_GlcCer"="#CBE6FF",
+  "SP_LacCer"="#FFB5DD", "SP_SM"="#007279", "SP_SM_dh"="#735200", "GL_DAG"="#9D4900",
+  "GL_TAG"="#895A9E", "Misc"="#B3B3B3"
 )
 HYPERCLASS_MAP <- list(
   "GP"=c("GP_CL","GP_LPA","GP_LPC","GP_LPE","GP_LPG","GP_LPI","GP_LPS","GP_PA","GP_PC","GP_PE","GP_PG","GP_PI","GP_PS","GP_PE_P","GP_PE_E", "GP_BMP"),

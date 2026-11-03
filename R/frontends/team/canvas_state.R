@@ -244,7 +244,7 @@ team_canvas_editor <- function(editor) {
   if(!is.null(editor$greyHealthy)) editor$greyHealthy <- team_canvas_boolean(editor$greyHealthy)
   if(!is.null(editor$palette)) {
     editor$palette <- team_canvas_editor_text(editor$palette)
-    if(!editor$palette %in% c("Gelato Days","Lab","Okabe–Ito","Nature (NPG)","Viridis"))team_canvas_fail()
+    if(!editor$palette %in% c("Pastel","Gelato Days","Lab","Okabe–Ito","Nature (NPG)","Viridis"))team_canvas_fail()
   }
   texts <- c("title.text","xaxis.title.text","yaxis.title.text")
   colors <- c("paper_bgcolor","plot_bgcolor","font.color","title.font.color","legend.font.color","legend.bgcolor","xaxis.color","yaxis.color","xaxis.gridcolor","yaxis.gridcolor","xaxis.zerolinecolor","yaxis.zerolinecolor")
