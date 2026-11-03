@@ -262,6 +262,7 @@ scientific_server <- function(input, output, session) {
 
   # The structural_server is called to activate the Structural module.
   structural_server("structural_tab", shared_data, global_color_map)
+  if (is_team) team_suspend_hidden_classic_outputs(output)
   
   # The structural_grid_server is called to activate the Structural Grid module.
   structural_grid_server("structural_grid_tab", shared_data)

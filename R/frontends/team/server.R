@@ -18,6 +18,17 @@ team_missingness_data_adapter <- function(shared_data) {
   view_data$team_compact_distribution <- TRUE
   view_data
 }
+# In Team, a Classic tool's outputs sit in a hidden tab until the analyst opens that tool (or moves
+# one of its plots onto the canvas), and Shiny resumes a suspended output as soon as it is shown.
+# The Structural module keeps these three rendering while hidden for its Classic tab; in Team
+# that re-rendered them, and sent the image to the hidden tab, on every window resize or
+# pixel-ratio change. Their selector UIs keep rendering while hidden: a plot moved to the canvas
+# still needs those inputs. Canvas copies have their own namespaces and are not affected.
+team_hidden_classic_outputs <- c("structural_tab-propPlotPlot", "structural_tab-diffAcylPlot", "structural_tab-diffAcylTable")
+team_suspend_hidden_classic_outputs <- function(output) {
+  for (id in team_hidden_classic_outputs) shiny::outputOptions(output, id, suspendWhenHidden = TRUE)
+  invisible(team_hidden_classic_outputs)
+}
 team_frontend_server <- function(input, output, session, shared_data) {
   if (team_library_enabled() && !team_workspace_enabled()) team_library_server(input, output, session, shared_data)
   # A receipt belongs to this upload, never an unrelated background flush.

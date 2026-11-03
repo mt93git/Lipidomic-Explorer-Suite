@@ -1,9 +1,10 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
 /* The optional Team workspace only. Classic and the legacy Team shell are untouched. */
 body.team-workspace-app{--tw-ink:var(--lab-navy);--tw-muted:var(--lab-muted);--tw-line:var(--lab-line);--tw-accent:var(--lab-blue);background:var(--lab-paper);color:var(--tw-ink)}
 /* bslib-page-main wraps the workspace in production. Limit these gutters to
    the outer main content, leaving analysis-tool sidebars untouched. */
-body.team-workspace-app .bslib-sidebar-layout:has(> #main_sidebar) > .main:has(> .bslib-page-main #team-workspace),
-body.team-workspace-app .bslib-sidebar-layout:has(> #main_sidebar) > .main:has(> #team-workspace){gap:8px;padding:12px 16px!important;min-width:0}
+body.team-workspace-app .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar) > .main:is(.ts-has-workspace-page,#team-workspace.bslib-page-main),
+body.team-workspace-app .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar) > .main:is(.ts-has-workspace-child,#team-workspace){gap:8px;padding:12px 16px!important;min-width:0}
 body.team-workspace-app .navbar{min-height:64px;padding-top:6px;padding-bottom:6px}
 body.team-workspace-app .navbar-brand img{max-height:48px!important}
 body.team-workspace-app #team-workspace{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;width:100%;max-width:1060px;margin:0 auto;padding:0}
@@ -28,7 +29,7 @@ body.team-workspace-app #team-workspace #tw-next{grid-column:1/-1;margin:0;paddi
 body.team-workspace-app .tw-canvas-tabs{grid-column:1/-1;margin:0;gap:6px;min-height:36px}
 body.team-workspace-app .tw-canvas-tabs .guide-button,body.team-workspace-app .tw-canvas-tabs summary{font-size:13px;min-height:36px;padding:6px 12px;border-radius:8px}
 body.team-workspace-app #guide-context{box-sizing:border-box;max-width:1060px;width:100%;margin:0 auto;padding:8px 20px;border:0;background:transparent;box-shadow:none}
-body.team-workspace-app #guide-context:has(> .guide-context-text),body.team-workspace-app #guide-context:has(> #guide_context > .guide-context-text){display:none}
+body.team-workspace-app #guide-context:is(.ts-context-text,.guide-context-text),body.team-workspace-app #guide-context:is(.ts-context-output-text,#guide_context.guide-context-text){display:none}
 body.team-workspace-app #guide-context .guide-run-summary{padding:0;margin:0;background:transparent;border:0;box-shadow:none}
 body.team-workspace-app .guide-page{max-width:1100px;margin:0 auto;padding:8px 20px 24px}
 body.team-workspace-app .guide-panel{background:#fff;border:1px solid var(--tw-line);border-radius:12px;padding:22px;margin-bottom:16px;box-shadow:0 3px 12px #18394704}
@@ -82,7 +83,7 @@ body.team-workspace-app .tc-content .rd-card-head h3{font-size:18px}
 body.team-workspace-app .tc-content .rd-violin-controls{gap:8px;margin-bottom:8px}
 body.team-workspace-app :is(.tw-signout,.tw-steps button,.tc-list button,summary):focus-visible{outline:2px solid var(--lab-blue);outline-offset:3px}
 @media(max-width:700px){
- body.team-workspace-app .main:has(> #team-workspace){padding:10px;gap:6px}
+ body.team-workspace-app .main:is(.ts-has-workspace-child,#team-workspace){padding:10px;gap:6px}
  body.team-workspace-app #team-workspace{width:100%;gap:6px}
  body.team-workspace-app #team-workspace .tw-signout{padding:6px;font-size:12px}
  body.team-workspace-app #team-workspace .tw-steps button{padding:8px 3px;min-height:42px}
@@ -187,7 +188,7 @@ body.team-workspace-app .tw-disconnected-notice button{background:var(--lab-blue
 
 /* Empty output placeholders must not reserve another row between sections. */
 body.team-workspace-app #guide-context:empty,
-body.team-workspace-app #guide-context:has(> #guide_context:empty),
+body.team-workspace-app #guide-context:is(.ts-context-output-empty,#guide_context:empty),
 body.team-workspace-app #team-workspace #tw-next:empty{display:none}
 
 /* A completed clean run stays available without competing with Next. */

@@ -319,6 +319,40 @@
     var target = /^tcinstance_/.test(e.name) && document.getElementById(e.name);
     if (target && !target.tcDrawWatch) { target.tcDrawWatch = true; jQuery(target).on('plotly_afterplot', function () { outputDrawnAt[e.name] = ++messageSequence; }); }
   }).on('shiny:idle', function () { idleAt = ++messageSequence; });
+  // A copy's controls that its module renders on the server (renderUI) first arrive with
+  // the module's defaults while the copy's own settings are already on their way. Binding
+  // that markup sends the defaults too; when the renderUI re-renders the very control it
+  // reads (barchart's column subset), the two values then chase each other indefinitely,
+  // each echo re-rendering the control and re-sending the other value. That loop kept the
+  // server and browser saturated after a reopen, so restored Plotly cards waited behind it.
+  // Writing the copy's settings into the markup before it binds sends one value only.
+  // Only checkbox and radio groups are seeded: their bound value is read from the markup.
+  function seedRenderedControls(html, instance) {
+    if (html.indexOf(instance.id + '-') < 0) return null;
+    var template = document.createElement('template'), changed = false;
+    template.innerHTML = html;
+    Object.keys(instance.inputs || {}).forEach(function (key) {
+      var group = template.content.getElementById(instance.id + '-' + key);
+      if (!group || !(group.classList.contains('shiny-input-checkboxgroup') || group.classList.contains('shiny-input-radiogroup'))) return;
+      var saved = instance.inputs[key], values = (Array.isArray(saved) ? saved : saved == null ? [] : [saved]).map(String);
+      var boxes = Array.from(group.querySelectorAll('input[type=checkbox],input[type=radio]'));
+      if (group.classList.contains('shiny-input-radiogroup') && !boxes.some(function (box) { return values.indexOf(box.value) >= 0; })) return;
+      boxes.forEach(function (box) {
+        var on = values.indexOf(box.value) >= 0;
+        if (box.hasAttribute('checked') === on) return;
+        changed = true;
+        if (on) box.setAttribute('checked', 'checked'); else box.removeAttribute('checked');
+      });
+    });
+    return changed ? template.innerHTML : null;
+  }
+  if (window.jQuery) jQuery(document).on('shiny:value', function (e) {
+    if (!/^tcinstance_/.test(e.name) || !e.value || typeof e.value.html !== 'string') return;
+    var request = instanceRequests.get(e.name.slice(0, e.name.indexOf('-')));
+    if (!request || request.userEdited || !request.instance) return;
+    var html = seedRenderedControls(e.value.html, request.instance);
+    if (html !== null) e.value.html = html;
+  });
   function settleRestored(el, instanceId, generation){
     el.classList.add('tc-restore-settling');
     var start=Date.now();
@@ -1906,8 +1940,15 @@
     new MutationObserver(function (changes) {
       // Reconcile replaced plot nodes even inside the mounted canvas wrapper. This is
       // how renderUI refreshes a nested plot without detaching its bound parent.
-      var duplicate = Array.from(document.querySelectorAll(selector)).some(function (el) {
-        var r = records.get(el.id); return r && r.node && r.el !== el;
+      // A replacement is always an inserted element, so only inserted subtrees are checked
+      // (a whole-document query per mutation batch dominated canvas interactions on slow CPUs).
+      var replaced = function (el) { var r = records.get(el.id); return r && r.node && r.el !== el; };
+      var duplicate = changes.some(function (change) {
+        return Array.prototype.some.call(change.addedNodes, function (node) {
+          if (node.nodeType !== 1 || !node.isConnected) return false;
+          if (node.matches(selector) && replaced(node)) return true;
+          return Array.prototype.some.call(node.querySelectorAll(selector), replaced);
+        });
       });
       if (duplicate) { discover(); return; }
       if (!changes.some(function (change) { return !root.contains(change.target); })) return;

@@ -1,3 +1,4 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
 /* One guided workflow; original module pages and bindings remain mounted. */
 body.guided-app{background:#fafaf8;color:#162230}
 .guided-app .navbar{min-height:70px!important;position:relative!important}
@@ -15,8 +16,8 @@ body.guided-app{background:#fafaf8;color:#162230}
 #guide-analysis-toolbar{padding:12px 24px;gap:12px;align-items:center;display:flex;flex-wrap:wrap;background:#fff}
 #guide-analysis-toolbar .shiny-input-container{width:300px;margin:0}
 .guided-app[data-guide-analysis=false] #guide-analysis-toolbar{display:none}
-.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar){grid-template-columns:minmax(0,1fr)!important}
-.guided-app[data-guide-analysis=false] #main_sidebar,.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar)>.collapse-toggle{display:none!important}
+.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar){grid-template-columns:minmax(0,1fr)!important}
+.guided-app[data-guide-analysis=false] #main_sidebar,.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.collapse-toggle{display:none!important}
 .guided-app .bslib-page-navbar>.container-fluid{padding-top:0!important}
 .guide-page{max-width:1250px;margin:auto;padding:28px 24px 45px}
 .guide-heading{margin-bottom:25px;max-width:800px}
@@ -45,8 +46,8 @@ body.guided-app{background:#fafaf8;color:#162230}
 .guided-app [data-guide-step]:focus-visible,.guided-app [data-guide-tool]:focus-visible{outline:3px solid #78afe0;outline-offset:3px}
 .guided-app[data-guide-analysis=false] #targeted_lipids_top_dock{display:none!important}
 @media(max-width:760px){#guide-navigation{padding:10px;display:block}#guide-navigation nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}#guide-navigation .guide-step{padding:8px 5px;font-size:13px;text-align:left}#guide-navigation .guide-step span{margin-right:4px}.guide-columns,.guide-tool-grid,.guide-goals{grid-template-columns:1fr}.guide-page{padding:22px 14px}.guide-heading h2{font-size:30px}.guide-panel{padding:16px}#guide-context,#guide-analysis-toolbar{padding:12px}#guide-analysis-toolbar .shiny-input-container{width:100%}}
-.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar)>.main{grid-column:1 / -1!important;width:100%!important;margin-left:0!important}
-.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:has(> #main_sidebar){--_sidebar-width:0px!important}
+.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main{grid-column:1 / -1!important;width:100%!important;margin-left:0!important}
+.guided-app[data-guide-analysis=false] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar){--_sidebar-width:0px!important}
 .guided-app[data-guide-analysis=false] [role=separator]{display:none!important}
 
 .guided-app[data-guide-goal=overview] #guide-contrast-controls{display:none!important}
@@ -87,9 +88,9 @@ body.guided-app .navbar #navbar_brand_logo_img{filter:none!important;opacity:1}
 #guide-design-review .guide-field-invalid,#guide-sample-selection .guide-field-invalid{border-color:#b46424;background:#fff9f1}
 .guide-page .guide-field-focus{outline:3px solid #2d5f8a;outline-offset:3px;background:#edf3f7}
 #guide-design-review p[id$=_help]{font-size:13px;color:#526477;margin:0 10px 22px}
-.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.main>.tab-content{flex:0 0 auto!important;min-height:max(600px,calc(100vh - 120px))}
+.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main>.tab-content{flex:0 0 auto!important;min-height:max(600px,calc(100vh - 120px))}
 
-.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.main>.bslib-page-main>.tab-content{flex:0 0 auto!important;min-height:max(600px,calc(100vh - 120px))!important}
+.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main>.bslib-page-main>.tab-content{flex:0 0 auto!important;min-height:max(600px,calc(100vh - 120px))!important}
 #guide-running-status{display:none;background:#edf3f7;padding:16px;border-left:4px solid #2d5f8a;margin:12px 0}
 .guide-preparing #guide-running-status{display:block}
 .guide-preparing #guide_quality_status{display:none}
@@ -103,11 +104,11 @@ body.guided-app .navbar #navbar_brand_logo_img{filter:none!important;opacity:1}
 /* Below 900px the analysis canvas gets the full width. Plot controls remain
    available as a compact off-canvas panel instead of squeezing the plot. */
 @media(max-width:899px){
-  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar){grid-template-columns:minmax(0,1fr)!important}
-  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.main{grid-column:1 / -1!important;min-width:0!important;width:100%!important}
+  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar){grid-template-columns:minmax(0,1fr)!important}
+  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main{grid-column:1 / -1!important;min-width:0!important;width:100%!important}
   .guided-app[data-guide-analysis=true] #main_sidebar{position:fixed!important;z-index:1040!important;top:var(--guide-sidebar-top,70px)!important;left:0!important;width:min(320px,calc(100vw - 24px))!important;min-width:0!important;height:calc(100vh - var(--guide-sidebar-top,70px))!important;height:calc(100dvh - var(--guide-sidebar-top,70px))!important;max-height:none!important;transform:translateX(-105%);transition:transform .2s ease!important;box-shadow:8px 0 24px rgba(22,34,48,.16)!important}
   .guided-app[data-guide-analysis=true].guide-narrow-controls-open #main_sidebar{transform:translateX(0)}
-  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar)>.collapse-toggle{display:none!important}
+  .guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.collapse-toggle{display:none!important}
   .guide-narrow-controls{margin:0 0 0 auto}
   .guided-app[data-guide-analysis=true] .guide-narrow-controls{display:inline-flex}
   .guide-narrow-controls-close{display:block;width:100%;padding:10px 12px;margin:0 0 8px;text-align:right;background:#edf3f7;border:0;border-bottom:1px solid #dce3e9;color:#2d5f8a;font:inherit;cursor:pointer}
@@ -124,14 +125,14 @@ body.guided-app #targeted_lipids_top_dock{z-index:30!important}
 /* Respect bslib's collapsed state: the legacy sticky/min-width rules otherwise
    leave a visible 240px panel inside a zero-width grid column. */
 @media(min-width:900px){
-  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar).sidebar-collapsed > #main_sidebar{
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar).sidebar-collapsed > #main_sidebar{
     visibility:hidden!important;pointer-events:none!important;min-width:0!important;width:0!important;overflow:hidden!important;
   }
-  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar):not(.sidebar-collapsed):not(.sidebar-collapsed-layout){grid-template-columns:var(--_sidebar-width,320px) minmax(0,1fr)!important}
-  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar):not(.sidebar-collapsed):not(.sidebar-collapsed-layout) > #main_sidebar:not(.sidebar-collapsed){
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar):not(.sidebar-collapsed):not(.sidebar-collapsed-layout){grid-template-columns:var(--_sidebar-width,320px) minmax(0,1fr)!important}
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar):not(.sidebar-collapsed):not(.sidebar-collapsed-layout) > #main_sidebar:not(.sidebar-collapsed){
     width:var(--_sidebar-width,320px)!important;min-width:0!important;top:0!important;height:100%!important;max-height:100%!important;
   }
-  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:has(> #main_sidebar) > .main{min-width:0!important}
+  body.guided-app[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar) > .main{min-width:0!important}
 }
 
 /* Compact, readable run status with methods available on demand. */
@@ -156,7 +157,7 @@ body.guided-app .guide-run-next .guide-button{padding:7px 12px;font-size:13px;mi
 .guide-contrast-pair strong{font-size:13px;overflow-wrap:anywhere}
 @media(max-width:760px){body.guided-app #guide-context{padding:12px 14px}.guide-method-details{margin-left:0}.guide-contrast-pair{grid-template-columns:1fr}.guide-run-counts{font-size:15px}}
 
-body.guided-app .bslib-sidebar-layout:has(> #main_sidebar).sidebar-collapsed-layout{grid-template-columns:0 minmax(0,1fr)!important}
+body.guided-app .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar).sidebar-collapsed-layout{grid-template-columns:0 minmax(0,1fr)!important}
 
 /* Quiet tool navigation leaves more room for the figure while keeping global links. */
 body.guided-app[data-guide-analysis=true] #guide-navigation{padding:6px 24px;gap:8px 14px}

@@ -9,6 +9,8 @@ const {chromium}=require('../browser/ci/node_modules/playwright');
   <body class="team-workspace-app" data-team-authenticated="true" data-guide-analysis="false"><div class="bslib-sidebar-layout" id="outer"><aside id="main_sidebar"></aside><div class="main"><div class="bslib-page-main"><section id="team-workspace"><div class="tw-top">Team workspace</div><nav class="tw-steps"><button><span>1</span><strong>Data</strong><small>Upload</small></button></nav><div class="tw-journey"><div class="tw-journey-copy"><h2>Choose your data</h2></div><div class="tw-journey-actions"><button>Next</button></div></div></section><section class="guide-page test-content">Review</section><section id="team-canvas-root" class="test-content">Canvas</section><div class="bslib-sidebar-layout nested"><aside></aside><div class="main">Nested analysis controls</div></div></div></div></div></body>`);
   await page.addStyleTag({path:path.resolve('www/team/css/workspace.css')});
   await page.addStyleTag({path:path.resolve('www/team/css/workspace_minimal.css')});
+  // The Team page loads has_classes.js, which keeps the flag classes behind the :has() stand-ins.
+  await page.addScriptTag({path:path.resolve('www/team/js/has_classes.js')});
   for(const width of [390,1280,1600]) {
    await page.setViewportSize({width,height:900});
    for(const state of ['sidebar-expanded','sidebar-collapsed','sidebar-transitioning']) {

@@ -405,7 +405,19 @@
     if (r) observer.observe(r, { childList: true, subtree: true });
     // Legacy context helpers may replace the floating tip after our frame. Repair
     // its presentation before the next paint; setText makes this idempotent.
-    var helpObserver = new MutationObserver(function () { adaptFloatingBubble(); scheduleRender(); });
+    // The repair runs synchronously only when the tip itself changed; any other page change is
+    // picked up by the next render frame (render -> adaptHelpUI -> adaptFloatingBubble), so canvas
+    // edits do not pay for a full bubble pass on every mutation batch.
+    var touchesSpeech = function (records) {
+      return records.some(function (record) {
+        var target = record.target && record.target.nodeType === 1 ? record.target : record.target && record.target.parentElement;
+        if (target && target.closest('.companion-speech')) return true;
+        return Array.prototype.some.call(record.addedNodes || [], function (node) {
+          return node.nodeType === 1 && (node.matches('.companion-speech') || !!node.querySelector('.companion-speech'));
+        });
+      });
+    };
+    var helpObserver = new MutationObserver(function (records) { if (touchesSpeech(records)) adaptFloatingBubble(); scheduleRender(); });
     if (document.body) helpObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-pressed'], characterData: true });
     if (window.Shiny && typeof window.Shiny.addCustomMessageHandler === 'function') {
       window.Shiny.addCustomMessageHandler('team_companion_workspace_state', onCompanionState);

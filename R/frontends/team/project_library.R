@@ -122,7 +122,7 @@ team_library_login_placeholder <- function() {
     tags$details(class="team-library-activation team-library-login-placeholder",`aria-hidden`="true",tags$summary(tabindex="-1","Activate your invitation or reset your password")))
 }
 team_library_server <- function(input,output,session,shared_data,on_authenticated=NULL) {
-  account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); status<-reactiveVal("Sign in to access saved projects.")
+  account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); files_for<-reactiveVal(NULL); status<-reactiveVal("Sign in to access saved projects.")
   # Credential rotation must not rebuild the project/name inputs while a Canvas
   # checkpoint is awaiting its acknowledgement. Only identity changes affect UI.
   account_identity<-reactiveVal(NULL)
@@ -184,7 +184,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
     if (is.null(bound) && isTRUE(bind)) bound_project(id)
     id
   }
-  refresh_files<-function(){id<-selected_project();files(team_library_call("rest",paste0("/pilot_files?project_id=eq.",id,"&order=created_at.desc"),access()))}
+  refresh_files<-function(){id<-selected_project();files(team_library_call("rest",paste0("/pilot_files?project_id=eq.",id,"&order=created_at.desc"),access()));files_for(id)}
   writable_project <- function(id=selected_project()) {
     a <- isolate(account()); mm <- isolate(members())
     if (is.null(a) || !length(mm) || !any(vapply(mm, function(m) {
@@ -245,13 +245,26 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
       status("Password set. Sign in normally with your email and new password.")
     },finally={activation_busy <<- FALSE})
   }))
-  output$team_library_projects<-renderUI({req(account_identity());pp<-projects();ff<-files();mm<-members()
+  checkpoint_choices<-function(ff){
+    ff<-Filter(function(x)grepl("\\.zip$",x$original_name,ignore.case=TRUE),ff)
+    setNames(vapply(ff,function(x)x$id,""),vapply(ff,function(x)paste(x$original_name,substr(x$created_at,1,19)),""))
+  }
+  # In the Team workspace every autosave adds a checkpoint file to the open project. Re-rendering
+  # the whole library form for that rebuilt and re-bound its inputs and made Shiny re-measure every
+  # output on the page, so a new list for the same project only replaces the checkpoint options.
+  # The form still re-renders whenever the old code did for any other reason: projects, members,
+  # or files of another project (`files_for`), which also recomputes write access. A re-render
+  # without `selected` and an option update both leave the newest checkpoint selected.
+  live_checkpoints<-team_workspace_enabled()
+  rendered_for<-NULL # project whose checkpoint list the rendered form shows
+  output$team_library_projects<-renderUI({req(account_identity());pp<-projects();ff<-if(live_checkpoints) {files_for();isolate(files())} else files();mm<-members()
+    rendered_for<<-NULL
     if(!length(pp))return(p("No projects are shared with this account yet. Ask your project owner for access."))
+    rendered_for<<-isolate(files_for())
     active<-isolate(input$team_library_project);if(is.null(active)||!nzchar(active))active<-pp[[1]]$id
     writable<-any(vapply(mm,function(m)identical(m$project_id,active)&&m$role %in% c("owner","editor"),logical(1)))
     pc<-setNames(vapply(pp,function(x)x$id,""),vapply(pp,function(x)x$name,""))
-    ff<-Filter(function(x)grepl("\\.zip$",x$original_name,ignore.case=TRUE),ff)
-    fc<-setNames(vapply(ff,function(x)x$id,""),vapply(ff,function(x)paste(x$original_name,substr(x$created_at,1,19)),""))
+    fc<-checkpoint_choices(ff)
     draft_label<-isolate(input$team_library_label)
     if(!is.character(draft_label)||length(draft_label)!=1L||is.na(draft_label))draft_label<-"Analysis checkpoint"
     tagList(div(class="team-library-grid",
@@ -259,6 +272,11 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
       div(class="team-library-resume",selectInput("team_library_checkpoint","Saved checkpoint",fc,selectize=FALSE),actionButton("team_library_resume","Resume checkpoint")),
       if(writable) div(class="team-library-save",textInput("team_library_label","New checkpoint name",draft_label),actionButton("team_library_save","Save current analysis")) else p("Read-only access: you can resume checkpoints but cannot save new versions here.")),
       tags$small("A checkpoint stores your files and settings. Resuming opens Review and automatically updates the data table and PCA; AI-proposed scientific changes still require confirmation."))})
+  if(live_checkpoints) observeEvent(files(),{
+    project<-isolate(files_for())
+    if(!is.null(project)&&identical(project,rendered_for)&&!is.null(isolate(account_identity())))
+      updateSelectInput(session,"team_library_checkpoint",choices=checkpoint_choices(files()))
+  },ignoreInit=TRUE)
   output$team_library_status<-renderText(status())
   output$team_library_recovery<-renderUI({
     status() # Recheck the durable queue after a save, recovery or sign-in result.
@@ -283,7 +301,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
       if (is.function(on_authenticated)) on_authenticated()
     }, error=function(e) {
       a<-isolate(account());revoke(a)
-      set_account(NULL);projects(list());members(list());files(list())
+      set_account(NULL);projects(list());members(list());files(list());files_for(NULL)
       # A failed scientific start may already have registered observers. This
       # Shiny session must never be reused for another login attempt.
       if (team_workspace_enabled()) {
@@ -296,7 +314,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
   observeEvent(input$team_library_project,guard(refresh_files()),ignoreInit=TRUE)
   observeEvent(input$team_library_logout,{
     a<-isolate(account());revoke(a)
-    set_account(NULL);projects(list());members(list());files(list());generation<<-generation+1L
+    set_account(NULL);projects(list());members(list());files(list());files_for(NULL);generation<<-generation+1L
     # Reload destroys the scientific session too; a second identity cannot inherit data.
     session$reload()
     if (team_workspace_enabled()) session$onFlushed(function() session$close(), once=TRUE)

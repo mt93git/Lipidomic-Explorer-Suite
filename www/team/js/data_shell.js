@@ -108,6 +108,9 @@
     // Shiny triggers its events through jQuery; native listeners never see them.
     if (window.jQuery) jQuery(document).on('shiny:value', schedule);
     document.addEventListener('change', function (e) { if (e.target && /^team_library_/.test(e.target.id || '')) schedule(); });
+    // The server replaces the checkpoint options in place after a save (no shiny:value); Shiny
+    // announces that update with a jQuery-only change event.
+    if (window.jQuery) jQuery(document).on('change', '#team_library_checkpoint', schedule);
     new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['data-team-authenticated', 'data-team-stage', 'data-tw-screen'] });
     schedule();
   }

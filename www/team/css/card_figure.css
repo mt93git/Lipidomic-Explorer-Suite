@@ -1,3 +1,4 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
 /* Card = figure. Module content parks off-screen (still rendered for Shiny) until the card is selected. */
 body.ts-shell-app .tc-node.tc-figure-card :is(.tc-figure-chrome,.tc-figure-park){position:absolute!important;left:-100000px!important;top:0!important;width:560px!important;pointer-events:none}
 body.ts-shell-app .tc-node.tc-figure-card .rd-card{border:0;box-shadow:none;padding:4px 6px;background:transparent}
@@ -37,6 +38,6 @@ body.ts-shell-app .tc-card-actions>button:hover{background:#eaf1f7!important;col
 #tc-preview-panel .tc-preview-empty h4{margin:0;font-size:16px;font-weight:600}
 #tc-preview-panel .tc-preview-empty p{margin:0;color:#5a6878}
 #tc-preview-panel .tc-preview-empty button{height:34px!important;padding:0 14px!important;border:0!important;border-radius:6px!important;background:#2d5f8a!important;color:#fff!important;font-weight:600;cursor:pointer}
-#tc-preview-panel .tc-document-editor:has(.tc-preview-empty)>:not(.tc-preview-pages){display:none!important}
-#tc-preview-panel .tc-document-editor:has(.tc-preview-empty)>.tc-preview-pages{grid-column:1/-1;width:100%}
+#tc-preview-panel .tc-document-editor:is(.ts-preview-empty,.tc-preview-empty)>:not(.tc-preview-pages){display:none!important}
+#tc-preview-panel .tc-document-editor:is(.ts-preview-empty,.tc-preview-empty)>.tc-preview-pages{grid-column:1/-1;width:100%}
 #tc-preview-panel .tc-shape-menu[open]{position:relative;z-index:1300}
