@@ -8,7 +8,13 @@
     var panel = root.querySelector('#tc-preview-panel'), pages = panel.querySelector('.tc-preview-pages');
     // The shell hides the workspace tabs; keep a visible way back from this view.
     var heading = panel.querySelector('.tc-preview-heading');
-    if (heading && !heading.querySelector('.tc-preview-back')) { var back = document.createElement('button'); back.type = 'button'; back.className = 'tc-preview-back'; back.textContent = '← Back to canvas'; back.addEventListener('click', function () { backToCanvas(); }); heading.prepend(back); }
+    // Two-state switch (Draft canvas | Figure page); the draft half is the way back.
+    if (heading && !heading.querySelector('.tc-preview-back')) {
+      var modeSwitch = document.createElement('div'); modeSwitch.className = 'tc-mode-switch'; modeSwitch.setAttribute('role', 'group'); modeSwitch.setAttribute('aria-label', 'Canvas mode');
+      var back = document.createElement('button'); back.type = 'button'; back.className = 'tc-preview-back tc-mode-option'; back.textContent = '← Back to draft'; back.setAttribute('aria-pressed', 'false'); back.addEventListener('click', function () { backToCanvas(); });
+      var here = document.createElement('span'); here.className = 'tc-mode-option is-current'; here.textContent = 'Figure page'; here.setAttribute('aria-current', 'true');
+      modeSwitch.append(back, here); heading.prepend(modeSwitch);
+    }
     // View navigation is deliberately separate from document coordinates and exports.
     var previewZoom = 1, zoomMode = 'width', zoomFrame = 0;
     var navigation = document.createElement('div'); navigation.className = 'tc-preview-navigation';
@@ -47,6 +53,14 @@
     var documentState = null, restored = false, selected = null, inspectorItemId = null, history = [], future = [], lastSaved = null, replaying = false, aspectLocked = true, guides = false, inspector = document.createElement('div');
     inspector.className = 'tc-free-inspector';inspector.setAttribute('aria-label','Selected object properties');
     var editorBody=document.createElement('div');editorBody.className='tc-document-editor';pages.before(editorBody);editorBody.appendChild(inspector);editorBody.appendChild(pages);var inspectorToggle=document.createElement('button');inspectorToggle.type='button';inspectorToggle.className='tc-inspector-toggle';inspectorToggle.textContent='Object properties';inspectorToggle.setAttribute('aria-expanded','false');editorBody.before(inspectorToggle);inspectorToggle.addEventListener('click',function(){var open=editorBody.classList.toggle('tc-inspector-open');inspectorToggle.setAttribute('aria-expanded',String(open));});
+    var notes=document.createElement('div');notes.className='tc-compose-notes';notes.setAttribute('aria-live','polite');editorBody.before(notes);
+    function noteButton(text,fn){var b=document.createElement('button');b.type='button';b.textContent=text;b.addEventListener('click',fn);return b;}
+    function updateNotes(captured){
+      notes.replaceChildren();
+      if(!captured)return;
+      if(captured.excluded&&captured.excluded.length){var box=document.createElement('p');box.className='tc-compose-note tc-compose-excluded';box.textContent=excludedMessage(captured.excluded)+' Finish '+(captured.excluded.length===1?'it':'them')+' in the draft canvas to place '+(captured.excluded.length===1?'it':'them')+' here; export waits until then. Text and shapes can be added now.';box.appendChild(noteButton('← Back to draft',backToCanvas));notes.appendChild(box);}
+      if(captured.settings.layout==='free'&&!(captured.document.items||[]).some(function(i){return i.type!=='figure';})){var hint=document.createElement('p');hint.className='tc-compose-note tc-compose-empty-hint';hint.textContent='Add a title, text or shapes to this page.';hint.appendChild(noteButton('Add a title or text box',addText));hint.appendChild(noteButton('Choose a shape',function(){shapeMenu.open=true;shapeSummary.focus();}));notes.appendChild(hint);}
+    }
     var pageOptions=panel.querySelector('.tc-preview-options'),pageSettings=document.createElement('details'),pageSummary=document.createElement('summary');
     pageSettings.className='tc-page-settings';pageSummary.textContent='Page setup';pageOptions.before(pageSettings);pageSettings.appendChild(pageSummary);pageSettings.appendChild(pageOptions);pageSettings.addEventListener('toggle',schedulePreviewZoom);
     var renderedState=null, selectionTransition=false;
@@ -65,6 +79,8 @@
         document.getElementById(t.getAttribute('aria-controls')).hidden = !active;
       });
       if (focus) tab.focus();
+      root.classList.toggle('tc-figure-mode', tab.id === 'tc-preview-tab');
+      window.dispatchEvent(new CustomEvent('team-canvas-mode', {detail:{mode: tab.id === 'tc-preview-tab' ? 'figure' : 'draft'}}));
       if (tab.id === 'tc-preview-tab') { restoreDocument(); refresh(); }
       else { generation++;current=null;controls(false);clearTimeout(refreshTimer);window.dispatchEvent(new Event('resize')); }
     }
@@ -102,23 +118,41 @@
         });
       } catch (e) { return false; }
     }
-    function capture() {
+    // The figure page composes the finished, current figures. Live or stale cards
+    // stay on the draft and are listed (excluded) instead of blocking the page, so
+    // text and shapes can always be added; exports still wait for them.
+    var excludedIds=[];
+    function capture(forExport) {
       reconcileIdle();
-      if (!window.TeamCanvas || typeof TeamCanvas.previewState !== 'function') throw new Error('The canvas is not ready. Return to Workspace and try again.');
+      if (!window.TeamCanvas || typeof TeamCanvas.previewState !== 'function') throw new Error('The canvas is not ready. Return to the draft canvas and try again.');
       var result = TeamCanvas.previewState(), state = result && result.state;
       if (!state || !Array.isArray(state.nodes) || state.nodes.length > 50) throw new Error('The figure workspace could not be read.');
-      if (!state.nodes.length && layout.value!=='free') throw new Error('Add plots in Workspace, or choose Free layout to draw with shapes and text.');
-      var live = state.nodes.filter(function (n) { return !n.finished; }).length;
-      if (live) throw new Error('Finish live plots first. ' + live + ' plot' + (live === 1 ? ' is' : 's are') + ' still being edited in Workspace.');
-      if (state.nodes.some(function (n) { return n.finished.stale; })) throw new Error('A finished figure needs review because its analysis changed. Return to Workspace, choose Edit, then finish it again.');
-      if (busy || (window.Shiny && Shiny.shinyapp && document.documentElement.classList.contains('shiny-busy')) || !result.ready) throw new Error(result.message || 'The analysis is updating. Wait for the finished figures before exporting.');
+      if (!state.nodes.length && layout.value!=='free') throw new Error('Add plots in the draft canvas, or choose Free layout to draw with shapes and text.');
+      var settledNow = result.settled !== undefined ? result.settled : result.ready;
+      if (busy || (window.Shiny && Shiny.shinyapp && document.documentElement.classList.contains('shiny-busy')) || !settledNow) throw new Error(result.message || 'The analysis is updating. Wait for the finished figures before exporting.');
+      var allIds = state.nodes.map(function (n) { return n.id; });
+      var usable = Array.isArray(result.usableIds) ? result.usableIds : (result.ready ? allIds : []);
+      var excluded = (Array.isArray(result.unusable) ? result.unusable : []).filter(function (u) { return allIds.indexOf(u.id) >= 0; });
+      // Live or stale nodes are excluded even when the reader did not list them.
+      state.nodes.forEach(function (n) { if ((!n.finished || n.finished.stale) && !excluded.some(function (u) { return u.id === n.id; })) excluded.push({id:n.id,label:n.label,reason:!n.finished?'live':'stale'}); });
+      state.nodes = state.nodes.filter(function (n) { return usable.indexOf(n.id) >= 0 && n.finished && !n.finished.stale; });
+      excludedIds = excluded.map(function (u) { return u.id; });
+      if (!state.nodes.length && layout.value!=='free') throw new Error(excluded.length ? 'Finish a plot in the draft canvas to show it here, or choose Free layout to add text and shapes.' : 'Add plots in the draft canvas, or choose Free layout to draw with shapes and text.');
+      if (forExport && excluded.length) throw new Error(excludedMessage(excluded) + ' Finish or remove ' + (excluded.length === 1 ? 'it' : 'them') + ' in the draft canvas before exporting.');
       state.nodes.forEach(function (n) {
-        if (typeof n.id !== 'string' || typeof n.label !== 'string' || n.label.length > 1000 || !safeImage(n.finished.url) || !['x','y','width','height'].every(function (key) { return typeof n[key] === 'number' && Number.isFinite(n[key]) && n[key] >= 0; }) || n.width < 1 || n.height < 1) throw new Error('A finished figure has invalid image or layout data. Review it in Workspace.');
+        if (typeof n.id !== 'string' || typeof n.label !== 'string' || n.label.length > 1000 || !safeImage(n.finished.url) || !['x','y','width','height'].every(function (key) { return typeof n[key] === 'number' && Number.isFinite(n[key]) && n[key] >= 0; }) || n.width < 1 || n.height < 1) throw new Error('A finished figure has invalid image or layout data. Review it in the draft canvas.');
       });
       var settings = readSettings();
-      if (settings.layout === 'free') syncDocument(state, settings);
-      return {state:state, settings:settings, document:settings.layout === 'free' ? JSON.parse(JSON.stringify(documentState)) : null, archived:result.archived || 0, signature:JSON.stringify([state, settings, settings.layout === 'free' ? documentState : null])};
+      if (settings.layout === 'free') syncDocument(state, settings, allIds);
+      var shown = settings.layout === 'free' ? JSON.parse(JSON.stringify(documentState)) : null;
+      if (shown) shown.items = shown.items.filter(function (i) { return i.type !== 'figure' || excludedIds.indexOf(i.nodeId) < 0; });
+      return {state:state, settings:settings, document:shown, excluded:excluded, archived:result.archived || 0, signature:JSON.stringify([state, settings, settings.layout === 'free' ? documentState : null, excluded])};
     }
+    function excludedMessage(excluded) {
+      var names = excluded.slice(0,3).map(function (u) { return '“' + u.label + '”' + (u.reason === 'live' ? ' (not finished)' : u.reason === 'stale' ? ' (needs review)' : ''); }).join(', ') + (excluded.length > 3 ? ' and ' + (excluded.length - 3) + ' more' : '');
+      return excluded.length + ' plot' + (excluded.length === 1 ? ' is' : 's are') + ' not on the figure page yet: ' + names + '.';
+    }
+    function visibleItems() { return documentState ? documentState.items.filter(function (i) { return i.type !== 'figure' || excludedIds.indexOf(i.nodeId) < 0; }) : []; }
     function readSettings() {
       var settings={layout:['free','arrangement','figure1'].includes(layout.value)?layout.value:'pages',paper:['a4','custom'].includes(paper.value)?paper.value:'letter',orientation:orientation.value==='landscape'?'landscape':'portrait',showPageFurniture:furniture.checked};
       if(settings.paper==='custom'){settings.paperWidth=Number(customWidth.value);settings.paperHeight=Number(customHeight.value);if(!Number.isFinite(settings.paperWidth)||!Number.isFinite(settings.paperHeight)||settings.paperWidth<100||settings.paperWidth>3000||settings.paperHeight<100||settings.paperHeight>3000)throw new Error('Page width and height must be between 100 and 3000 pt.');}return settings;
@@ -141,13 +175,13 @@
         if (['portrait','landscape'].includes(saved.orientation)) orientation.value=saved.orientation; furniture.checked=saved.showPageFurniture!==false;
       }
     }
-    function syncDocument(state, settings) {
+    function syncDocument(state, settings, keepIds) {
       if (!documentState) {
         var saved = window.TeamCanvas && typeof TeamCanvas.getDocument === 'function' ? TeamCanvas.getDocument() : null;
         documentState = saved && saved.version === '1' && Array.isArray(saved.items) ? JSON.parse(JSON.stringify(saved)) : {version:'1',items:[]};
       }
       if(documentState.items.length>80)throw new Error('This document exceeds 80 objects. Remove objects before composing the page.');
-      var dims = size(settings), existing = documentState.items.filter(function(i) { return i && (i.type === 'text' || i.type === 'shape' || (i.type === 'figure' && state.nodes.some(function(n){return n.id === i.nodeId;})));  });
+      var dims = size(settings), existing = documentState.items.filter(function(i) { return i && (i.type === 'text' || i.type === 'shape' || (i.type === 'figure' && (state.nodes.some(function(n){return n.id === i.nodeId;}) || (keepIds && keepIds.indexOf(i.nodeId) >= 0))));  });
       var expanded=false,added=false;
       state.nodes.forEach(function(n,index) {
         if(existing.some(function(i){return i.nodeId===n.id;}))return;
@@ -247,8 +281,8 @@
         if(item.type==='shape')button('Remove shape',function(){documentState.items=documentState.items.filter(function(i){return i.id!==item.id;});selected=null;saveDocument();refresh();},actions);
         if(item.type==='text')button('Remove text',function(){documentState.items=documentState.items.filter(function(i){return i.id!==item.id;});selected=null;saveDocument();refresh();});
       }
-      var layers=element('details','tc-object-layers');layers.open=true;element('summary','', 'Layers · '+(documentState?documentState.items.length:0),layers);var list=element('div','tc-layer-list',undefined,layers);
-      if(documentState)documentState.items.slice().sort(function(a,b){return b.z-a.z;}).forEach(function(layer){var node=itemNode(layer),row=button('',function(){selectItem(layer.id);var target=pages.querySelector('.tc-free-item.selected');if(target)target.scrollIntoView({block:'nearest',inline:'nearest'});},list);row.className='tc-layer-row';row.dataset.layerId=layer.id;row.addEventListener('mouseenter',function(){pages.querySelectorAll('.tc-free-item').forEach(function(el){el.classList.toggle('tc-layer-hover',el.dataset.itemId===layer.id);});});row.addEventListener('mouseleave',function(){pages.querySelectorAll('.tc-layer-hover').forEach(function(el){el.classList.remove('tc-layer-hover');});});row.setAttribute('aria-pressed',String(layer.id===selected));row.setAttribute('aria-label','Select '+itemName(layer));
+      var layers=element('details','tc-object-layers');layers.open=true;element('summary','', 'Layers · '+visibleItems().length,layers);var list=element('div','tc-layer-list',undefined,layers);
+      if(documentState)visibleItems().sort(function(a,b){return b.z-a.z;}).forEach(function(layer){var node=itemNode(layer),row=button('',function(){selectItem(layer.id);var target=pages.querySelector('.tc-free-item.selected');if(target)target.scrollIntoView({block:'nearest',inline:'nearest'});},list);row.className='tc-layer-row';row.dataset.layerId=layer.id;row.addEventListener('mouseenter',function(){pages.querySelectorAll('.tc-free-item').forEach(function(el){el.classList.toggle('tc-layer-hover',el.dataset.itemId===layer.id);});});row.addEventListener('mouseleave',function(){pages.querySelectorAll('.tc-layer-hover').forEach(function(el){el.classList.remove('tc-layer-hover');});});row.setAttribute('aria-pressed',String(layer.id===selected));row.setAttribute('aria-label','Select '+itemName(layer));
         element('span','tc-layer-icon',layer.type==='text'?'T':layer.type==='shape'?'◇':node&&node.kind==='illustration'?'◇':'▥',row);element('span','tc-layer-name',itemName(layer),row);
       });
       var guideLabel=element('label','tc-property-check'),guideInput=document.createElement('input');guideInput.type='checkbox';guideInput.checked=guides;guideLabel.appendChild(guideInput);guideLabel.appendChild(document.createTextNode('Page guides'));guideInput.addEventListener('change',function(){guides=guideInput.checked;if(current)render(current);});
@@ -315,9 +349,10 @@
       });
       showInspector();
       selectionDecorations();
+      updateNotes(captured);
       applyPreviewZoom();
     }
-    function controls(ready) { if(!ready)closePublicationConfirmation(false);panel.querySelectorAll('.tc-add-shape').forEach(function(b){b.disabled=!ready||exporting||layout.value!=='free';}); var publicationTrigger=panel.querySelector('.tc-preview-stephania');if(publicationTrigger)publicationTrigger.disabled=!ready || exporting; panel.querySelector('.tc-preview-svg').disabled = !ready || exporting || layout.value !== 'free'; panel.querySelector('.tc-preview-add-text').disabled = !ready || exporting || layout.value !== 'free'; pdfButton.disabled = !ready || exporting || !(window.jspdf && window.jspdf.jsPDF); printButton.disabled = !ready || exporting; }
+    function controls(ready) { if(!ready)closePublicationConfirmation(false); var held=!!(ready&&current&&current.excluded&&current.excluded.length); ready=ready&&!held||false; var composable=!!(current&&!exporting&&(ready||held));panel.querySelectorAll('.tc-add-shape').forEach(function(b){b.disabled=!composable;}); var publicationTrigger=panel.querySelector('.tc-preview-stephania');if(publicationTrigger)publicationTrigger.disabled=!ready || exporting; panel.querySelector('.tc-preview-svg').disabled = !ready || exporting || layout.value !== 'free'; panel.querySelector('.tc-preview-add-text').disabled = !composable; pdfButton.disabled = !ready || exporting || !(window.jspdf && window.jspdf.jsPDF); printButton.disabled = !ready || exporting; }
     function persistNewPlacement(captured,epoch){
       if(!autoPlacementPending||captured.settings.layout!=='free')return;
       queueMicrotask(function(){
@@ -345,7 +380,7 @@
       try {
         current = capture(); render(current); controls(true); persistNewPlacement(current,generation);
         if(!silent && !errorNotice)tell(placementNotice+(current.settings.layout==='figure1'?'Draft template: illustrations populate A; a finished 2D PCA populates B. C/D remain pending; other plots are omitted. ':'') + model(current).length + ' page' + (model(current).length === 1 ? '' : 's') + ' ready. ' + (current.archived ? (current.settings.layout==='figure1'?'Workspace includes saved checkpoint figures; review the PCA source before use. ':'Includes saved checkpoint figures; edit them to regenerate with current data. ') : '') + (current.settings.layout === 'arrangement' ? 'Canvas positions are preserved on one page. ' : '') + (!(window.jspdf && window.jspdf.jsPDF) ? 'Use Print to save a PDF in your browser.' : ''));
-      } catch (error) { if (!busy) pages.replaceChildren(emptyState(error.message)); controls(false); tell(error.message); }
+      } catch (error) { if (!busy) { pages.replaceChildren(emptyState(error.message)); updateNotes(null); } controls(false); tell(error.message); }
     }
     function invalidate() {
       // Global Shiny output traffic includes click tracing and unrelated controls.
@@ -426,7 +461,7 @@
       if(exporting) return;
       errorNotice=false;var busyToken=exportBusyBegin('Preparing SVG'),busyError=null;
       try {
-        var captured=capture(), epoch=generation; if(captured.settings.layout!=='free') return;
+        var captured=capture(true), epoch=generation; if(captured.settings.layout!=='free') return;
         closePublicationConfirmation(false);exporting=true;controls(false);tell('Preparing SVG…'); var images=await decoded(captured,epoch);unchanged(captured,epoch);
         var page=model(captured)[0], ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg');
         svg.setAttribute('xmlns',ns);svg.setAttribute('width',page.width+'pt');svg.setAttribute('height',page.height+'pt');svg.setAttribute('viewBox','0 0 '+page.width+' '+page.height);
@@ -450,7 +485,7 @@
       errorNotice=false;var busyToken=exportBusyBegin('Preparing PDF'),busyError=null;
       var captured, epoch;
       try {
-        captured = capture(); current = captured; clearTimeout(refreshTimer); epoch = generation; closePublicationConfirmation(false);exporting = true; controls(false); tell('Preparing your figure pages…');
+        captured = capture(true); current = captured; clearTimeout(refreshTimer); epoch = generation; closePublicationConfirmation(false);exporting = true; controls(false); tell('Preparing your figure pages…');
         if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('PDF export is unavailable. Use Print to save a PDF in your browser.');
         var images = await decoded(captured,epoch), collection = model(captured);
         var dimensions=size(captured.settings), pdfFormat=captured.settings.paper==='custom'?dimensions:captured.settings.paper, pdfOrientation=captured.settings.paper==='custom'?(dimensions[0]>dimensions[1]?'landscape':'portrait'):captured.settings.orientation;
@@ -497,7 +532,7 @@
       errorNotice=false;var busyToken=exportBusyBegin('Preparing print'),busyError=null;
       var frame;
       try {
-        var captured = capture(), epoch = generation; closePublicationConfirmation(false);exporting = true; controls(false); tell('Preparing pages for print…');
+        var captured = capture(true), epoch = generation; closePublicationConfirmation(false);exporting = true; controls(false); tell('Preparing pages for print…');
         await decoded(captured,epoch); unchanged(captured,epoch); render(captured);
         frame = document.createElement('iframe'); frame.className = 'tc-print-frame'; frame.title = 'Figure print document'; frame.setAttribute('aria-hidden','true'); document.body.appendChild(frame);
         var doc = frame.contentDocument; doc.open(); doc.write('<!doctype html><html lang="en"><head><title>Figure canvas</title></head><body></body></html>'); doc.close();
@@ -521,6 +556,7 @@
       if(exporting)return;
       closePublicationConfirmation(false);
       var captured;try{captured=capture();}catch(error){tell(error.message);return;}
+      if(captured.excluded.length){tell(excludedMessage(captured.excluded)+' Finish them before using Publication layout, so their placement is kept.');return;}
       var epoch=generation,box=document.createElement('div'),heading=document.createElement('strong'),description=document.createElement('p'),apply=document.createElement('button'),cancel=document.createElement('button');
       box.className='tc-publication-confirmation';box.setAttribute('role','alertdialog');box.setAttribute('aria-modal','false');box.setAttribute('aria-labelledby','tc-publication-confirm-title');box.setAttribute('aria-describedby','tc-publication-confirm-description');box.style.padding='12px 26px';
       heading.id='tc-publication-confirm-title';heading.textContent='Arrange this page for publication?';
@@ -595,16 +631,61 @@
     var shapeMenu=document.createElement('details');shapeMenu.className='tc-shape-menu';var shapeSummary=document.createElement('summary');shapeSummary.textContent='Add shape';shapeMenu.appendChild(shapeSummary);panel.querySelector('.tc-preview-add-text').before(shapeMenu);
     var drawButton=document.createElement('button');drawButton.type='button';drawButton.className='tc-draw-primitives';drawButton.textContent='Shapes & text';drawButton.addEventListener('click',function(){select(root.querySelector('#tc-preview-tab'),false);shapeMenu.open=true;shapeSummary.focus();});var workspaceTools=root.querySelector('.tc-toolbar');if(workspaceTools)workspaceTools.appendChild(drawButton);
     var shapeChoices=document.createElement('div');shapeChoices.className='tc-shape-choices';shapeMenu.appendChild(shapeChoices);
-    [['rectangle','Rectangle','▭'],['rounded','Rounded rectangle','▢'],['ellipse','Circle / ellipse','○'],['line','Line','╱'],['arrow','Arrow','→']].forEach(function(choice){var b=document.createElement('button');b.type='button';b.className='tc-add-shape';b.setAttribute('aria-label','Add '+choice[1]);var icon=document.createElement('span');icon.textContent=choice[2];icon.setAttribute('aria-hidden','true');b.appendChild(icon);b.appendChild(document.createTextNode(choice[1]));b.addEventListener('click',function(){if(layout.value!=='free'||exporting)return;var captured;try{captured=capture();}catch(e){tell(e.message);return;}if(documentState.items.length>=80){tell('A document can contain up to 80 items.');return;}var dims=size(readSettings()),kind=choice[0]==='rounded'?'rectangle':choice[0],w=kind==='ellipse'?64:160,h=kind==='ellipse'?64:['line','arrow'].includes(kind)?30:80;w=Math.min(w,dims[0]-20);h=Math.min(h,dims[1]-20);var item={id:'shape-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),type:'shape',shape:kind,x:Math.min(46,dims[0]-w),y:Math.min(46,dims[1]-h),width:w,height:h,z:Math.min(10000,documentState.items.reduce(function(m,i){return Math.max(m,i.z);},0)+1),fill:['line','arrow'].includes(kind)?'none':'#eaf3f8',stroke:'#315c89',strokeWidth:2};if(!['line','arrow'].includes(kind))item.radius=choice[0]==='rounded'?12:0;documentState.items.push(item);selected=item.id;shapeMenu.open=false;saveDocument();refresh();});shapeChoices.appendChild(b);});
+    [['rectangle','Rectangle','▭'],['rounded','Rounded rectangle','▢'],['ellipse','Circle / ellipse','○'],['line','Line','╱'],['arrow','Arrow','→']].forEach(function(choice){var b=document.createElement('button');b.type='button';b.className='tc-add-shape';b.setAttribute('aria-label','Add '+choice[1]);var icon=document.createElement('span');icon.textContent=choice[2];icon.setAttribute('aria-hidden','true');b.appendChild(icon);b.appendChild(document.createTextNode(choice[1]));b.addEventListener('click',function(){addShape(choice);});shapeChoices.appendChild(b);});
     shapeMenu.addEventListener('keydown',function(e){if(e.key==='Escape'){e.stopPropagation();shapeMenu.open=false;shapeSummary.focus();}});
 
     panel.querySelector('.tc-preview-stephania').addEventListener('click',requestPublicationStyle);
     // New text goes in the first free 220x50 slot, in reading order, that overlaps nothing and stays on the page.
-    function freeTextSlot(items,pageW,pageH){var w=220,h=50,gap=12,m=24,rects=items.map(function(i){return [+i.x||0,+i.y||0,+i.width||0,+i.height||0];}).filter(function(r){return r.every(Number.isFinite);});function fits(x,y){return x>=m&&y>=m&&x+w<=pageW-m&&y+h<=pageH-m&&!rects.some(function(r){return x<r[0]+r[2]+gap&&x+w+gap>r[0]&&y<r[1]+r[3]+gap&&y+h+gap>r[1];});}
+    function freeTextSlot(items,pageW,pageH,boxW,boxH){var w=boxW||220,h=boxH||50,gap=12,m=24,rects=items.map(function(i){return [+i.x||0,+i.y||0,+i.width||0,+i.height||0];}).filter(function(r){return r.every(Number.isFinite);});function fits(x,y){return x>=m&&y>=m&&x+w<=pageW-m&&y+h<=pageH-m&&!rects.some(function(r){return x<r[0]+r[2]+gap&&x+w+gap>r[0]&&y<r[1]+r[3]+gap&&y+h+gap>r[1];});}
       // Candidates are the usual 46pt margin, the page margin and the edges of existing items; the 46pt margin wins when it fits.
       var xs=[46,m],ys=[46,m];rects.forEach(function(r){xs.push(r[0],r[0]+r[2]+gap);ys.push(r[1],r[1]+r[3]+gap);});function uniq(a){return a.filter(function(v,k){return a.indexOf(v)===k;}).sort(function(a,b){return a-b;});}xs=uniq(xs);ys=uniq(ys);
       for(var pass=0;pass<2;pass++)for(var a=0;a<ys.length;a++)for(var b=0;b<xs.length;b++){var x=xs[b],y=ys[a];if(pass===0&&(x<46||y<46))continue;if(fits(x,y))return [Math.round(x),Math.round(y)];}return null;}
-    panel.querySelector('.tc-preview-add-text').addEventListener('click',function(){if(!documentState || documentState.items.length>=80){tell('A document can contain up to 80 items.');return;} var id='text-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); var page=current&&current.settings?size(current.settings):[612,792],slot=freeTextSlot(documentState.items,page[0],page[1]);if(!slot){tell('No free space is left on the page for a new text. Move or resize an item first.');return;}documentState.items.push({id:id,type:'text',x:slot[0],y:slot[1],width:220,height:50,text:'Text',fontSize:16,color:'#172d4b',z:documentState.items.reduce(function(m,i){return Math.max(m,i.z);},0)+1});selected=id;saveDocument();refresh();});
+    // Adding text or a shape must work on the first click: it switches to Free
+    // layout when needed (and says so), waits briefly for a settling analysis,
+    // and otherwise explains why nothing was added.
+    function composable(then) {
+      if (exporting) { tell('Wait for the export to finish, then add it again.'); return; }
+      var note = '';
+      if (layout.value !== 'free') { layout.value = 'free'; layout.dispatchEvent(new Event('change')); note = 'Switched to Free layout so text and shapes can be placed. '; }
+      if (!current) refresh(true);
+      if (current && documentState) { then(note); return; }
+      var tries = 0;
+      (function wait() {
+        if (panel.hidden) return;
+        if (!current) refresh(true);
+        if (current && documentState) { then(note); return; }
+        if (++tries > 40) { var reason = status.textContent; tell('Nothing was added. ' + reason); return; }
+        setTimeout(wait, 250);
+      })();
+    }
+    function nextZ() { return Math.min(10000, documentState.items.reduce(function (m, i) { return Math.max(m, i.z || 0); }, 0) + 1); }
+    function revealNew(id, field) {
+      var target = pages.querySelector('.tc-free-item[data-item-id="' + CSS.escape(id) + '"]');
+      if (target) target.scrollIntoView({block:'nearest', inline:'nearest'});
+      var input = field && inspector.querySelector('[data-item-key="' + field + '"]');
+      if (input) { input.focus({preventScroll:true}); if (input.select) input.select(); }
+    }
+    function addText() {
+      composable(function (note) {
+        if (documentState.items.length >= 80) { tell('A figure page can hold up to 80 objects. Remove one to add text.'); return; }
+        var id = 'text-' + Date.now() + '-' + Math.random().toString(36).slice(2,8), page = size(readSettings()), slot = freeTextSlot(visibleItems(), page[0], page[1]);
+        if (!slot) { tell('No free space is left on the page for a new text. Move or resize an item first.'); return; }
+        documentState.items.push({id:id,type:'text',x:slot[0],y:slot[1],width:220,height:50,text:'Text',fontSize:16,color:'#172d4b',z:nextZ()});
+        selected = id; saveDocument(); refresh(true); tell(note + 'Text added. Type to replace it; drag it on the page to move it.'); revealNew(id, 'text');
+      });
+    }
+    function addShape(choice) {
+      composable(function (note) {
+        if (documentState.items.length >= 80) { tell('A figure page can hold up to 80 objects. Remove one to add a shape.'); return; }
+        var dims = size(readSettings()), kind = choice[0] === 'rounded' ? 'rectangle' : choice[0], w = kind === 'ellipse' ? 64 : 160, h = kind === 'ellipse' ? 64 : ['line','arrow'].includes(kind) ? 30 : 80;
+        w = Math.min(w, dims[0] - 20); h = Math.min(h, dims[1] - 20);
+        var slot = freeTextSlot(visibleItems(), dims[0], dims[1], w, h) || [Math.min(46, dims[0] - w), Math.min(46, dims[1] - h)];
+        var item = {id:'shape-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), type:'shape', shape:kind, x:slot[0], y:slot[1], width:w, height:h, z:nextZ(), fill:['line','arrow'].includes(kind) ? 'none' : '#eaf3f8', stroke:'#315c89', strokeWidth:2};
+        if (!['line','arrow'].includes(kind)) item.radius = choice[0] === 'rounded' ? 12 : 0;
+        documentState.items.push(item); selected = item.id; shapeMenu.open = false; saveDocument(); refresh(true); tell(note + choice[1] + ' added. Drag it to move; use the corner to resize.'); revealNew(item.id);
+      });
+    }
+    panel.querySelector('.tc-preview-add-text').addEventListener('click', addText);
     panel.querySelector('.tc-preview-svg').addEventListener('click',downloadSVG);
     window.addEventListener('team-canvas-changed',invalidate);
     [layout,paper,orientation,customWidth,customHeight,furniture].forEach(function (control) { control.addEventListener('change',function(){ updatePaperControls();refresh(); if(documentState && current){syncDocument(current.state,current.settings);documentState.layout=layout.value;documentState.showPageFurniture=furniture.checked;documentState.paper=paper.value;documentState.orientation=orientation.value;if(paper.value==='custom'){documentState.paperWidth=current.settings.paperWidth;documentState.paperHeight=current.settings.paperHeight;}else{delete documentState.paperWidth;delete documentState.paperHeight;}saveDocument();} }); });
@@ -617,6 +698,15 @@
       clearTimeout(refreshTimer);
       if (!exporting && !panel.hidden) refreshTimer = setTimeout(refresh,80);
     });
+    function figureTab(){return root.querySelector('#tc-preview-tab');}
+    function openFigure(){if(panel.hidden)select(figureTab(),false);}
+    window.TeamCanvasCompose={
+      mode:function(){return panel.hidden?'draft':'figure';},
+      showFigure:openFigure,
+      showDraft:function(){if(!panel.hidden)backToCanvas();},
+      addText:function(){openFigure();addText();},
+      openShapes:function(){openFigure();shapeMenu.open=true;shapeSummary.focus();}
+    };
     var idleReconcilePending=false;
     function setPreviewIdle(){if(!busy)return;busy=false;invalidate();if(current&&!exporting)controls(true);}
     function reconcileIdle(){if(!busy||idleReconcilePending||!window.Shiny||!Shiny.shinyapp)return;idleReconcilePending=true;queueMicrotask(function(){queueMicrotask(function(){idleReconcilePending=false;if(busy&&!document.documentElement.classList.contains('shiny-busy'))setPreviewIdle();});});}

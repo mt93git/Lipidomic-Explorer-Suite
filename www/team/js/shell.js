@@ -183,19 +183,29 @@
     var tools = el('div', 'ts-tools');
     var addPlot = button('ts-tool', '+ Add plot', function () { setLibrary(true); libraryTab('Plots'); paintRail('plots'); var s = root.querySelector('.tc-search'); if (s) s.focus(); });
     var arrange = button('ts-tool', 'Arrange', function () { proxy('.tc-arrange', root); });
-    var text = button('ts-tool', 'Text', function () { proxy('#tc-preview-tab', root); proxy('.tc-preview-add-text', root); });
-    var shapes = button('ts-tool', 'Shapes', function () { proxy('.tc-draw-primitives', root); });
+    // Text and shapes live on the figure page: these open it and add there in one
+    // click (canvas_preview.js explains anything that prevents it).
+    function compose(action) { return function () { var c = window.TeamCanvasCompose; if (c && c[action]) c[action](); else if (action === 'addText') { proxy('#tc-preview-tab', root); proxy('.tc-preview-add-text', root); } else proxy('.tc-draw-primitives', root); }; }
+    var text = button('ts-tool', 'Text', compose('addText'));
+    var shapes = button('ts-tool', 'Shapes', compose('openShapes'));
     function key(redo) { return function (e) { var t = e.currentTarget; t.dispatchEvent(new KeyboardEvent('keydown', { key: redo ? 'Z' : 'z', shiftKey: !!redo, ctrlKey: true, bubbles: true, cancelable: true })); }; }
     var undo = button('ts-tool ts-icon', 'Undo', key(false), '↶');
     var redo = button('ts-tool ts-icon', 'Redo', key(true), '↷');
-    var preview = button('ts-tool', 'Preview', function () {
+    // Two-state mode switch: Draft canvas (here) | Figure page. The figure page
+    // shows the same switch in its heading, where the draft half leads back.
+    var modeSwitch = el('div', 'ts-mode-switch'); modeSwitch.setAttribute('role', 'group'); modeSwitch.setAttribute('aria-label', 'Canvas mode');
+    var draftMode = el('span', 'ts-mode-option is-current', 'Draft'); draftMode.setAttribute('aria-current', 'true');
+    var preview = button('ts-tool ts-mode-option', 'Figure page', function () {
       var p = root.querySelector('#tc-preview-panel');
       proxy(p && !p.hidden ? '#tc-workspace-tab' : '#tc-preview-tab', root);
     });
+    var previewSr = el('span', 'ts-sr-only', ' (print preview)'); preview.appendChild(previewSr);
+    modeSwitch.append(draftMode, preview);
+    var modeHint = el('p', 'ts-mode-hint', 'Draft: edit live plots. Finish a plot to place it on the figure page.');
     function exportItem(label, selector) { return item(label, function () { proxy('#tc-preview-tab', root); setTimeout(function () { proxy(selector, root); }, 0); }); }
     var exportMenu = menuButton('Export figure', [
       exportItem('SVG · vector', '.tc-preview-svg'), exportItem('PDF', '.tc-preview-pdf'), exportItem('Print', '.tc-preview-print'),
-      el('p', 'ts-menu-note', 'Exports the finished figures as composed in Preview.')], 'ts-export');
+      el('p', 'ts-menu-note', 'Exports the figure page as composed (finished plots, text and shapes).')], 'ts-export');
     exportMenu.querySelector('.ts-menu-trigger').classList.add('ts-primary');
     var help = root.querySelector('.tc-save-help');
     var expandItem;
@@ -215,8 +225,8 @@
     menu.querySelector('.ts-menu-trigger').setAttribute('aria-label', 'More canvas actions');
     function sep(secondary) { var s = el('span', 'ts-sep' + (secondary ? ' ts-secondary' : '')); s.setAttribute('aria-hidden', 'true'); return s; }
     [arrange, text, shapes].forEach(function (b) { b.classList.add('ts-secondary'); });
-    tools.append(addPlot, sep(true), arrange, text, shapes, sep(), undo, redo, sep(), preview, exportMenu, menu);
-    toolbar.insertBefore(tools, toolbar.firstChild);
+    tools.append(addPlot, sep(true), arrange, text, shapes, sep(), undo, redo, sep(), modeSwitch, exportMenu, menu);
+    toolbar.insertBefore(tools, toolbar.firstChild); tools.after(modeHint);
     toolbar.setAttribute('aria-label', 'Canvas tools'); toolbar.setAttribute('role', 'toolbar');
     // One row always: when the full toolbar no longer fits the canvas width, Arrange,
     // Text and Shapes move into the ⋯ menu (same actions).
@@ -235,9 +245,7 @@
     function syncTools() {
       var p = root.querySelector('#tc-preview-panel'), inPreview = !!(p && !p.hidden);
       // Write only real changes: this runs from an attribute observer on the same subtree.
-      var label = inPreview ? 'Workspace' : 'Preview';
-      if (preview.textContent !== label) preview.textContent = label;
-      if (preview.getAttribute('aria-pressed') !== String(inPreview)) preview.setAttribute('aria-pressed', String(inPreview));
+      root.classList.toggle('tc-figure-mode', inPreview);
       root.querySelectorAll('.ts-menu-item[data-enabled-from]').forEach(function (b) { var t = root.querySelector(b.dataset.enabledFrom), off = !t || t.disabled; if (b.disabled !== off) b.disabled = off; });
       var focus = root.querySelector('.tc-focus-toggle'), expand = expandItem;
       if (focus && expand.textContent !== focus.textContent) expand.textContent = focus.textContent;

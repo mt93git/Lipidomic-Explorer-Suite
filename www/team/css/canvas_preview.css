@@ -57,3 +57,19 @@
 .tc-document-editor>.tc-free-inspector{border-left:0;border-right:1px solid #dce3ed}
 .tc-inspector-toggle{display:none}
 @media(max-width:850px){.tc-document-editor{grid-template-columns:1fr}.tc-inspector-toggle{display:block;margin:8px 12px}.tc-document-editor>.tc-free-inspector{display:none;max-height:40vh;border:0;border-bottom:1px solid #dce3ed}.tc-document-editor.tc-inspector-open>.tc-free-inspector:not([hidden]){display:block}}
+
+/* Figure page: a distinct "desk" with the paper, its margins, and a mode switch back to the draft. */
+.tc-mode-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;margin:0 0 10px;border:1px solid #d4dde6;border-radius:8px;background:#f4f6f8}
+.tc-preview .tc-mode-switch .tc-mode-option{border:0;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600;background:transparent;color:#345a60;white-space:nowrap}
+.tc-preview .tc-mode-switch .tc-mode-option.is-current{background:#fff;color:#183b68;box-shadow:0 1px 2px #141b2422}
+.tc-preview .tc-mode-hint{max-width:62ch}
+#tc-preview-panel .tc-preview-pages{background:#e3e8ee}
+#tc-preview-panel .tc-paper{box-shadow:0 2px 6px #1b2a3a1f,0 14px 36px #1b2a3a24;border-color:#cfd7e0}
+#tc-preview-panel .tc-paper::before{content:'';position:absolute;inset:5.8% 7.5%;border:1px dashed #b9c7d8;pointer-events:none;z-index:0}
+.tc-compose-notes{display:flex;flex-direction:column;gap:6px;padding:0 26px}
+.tc-compose-notes:empty{display:none}
+.tc-compose-note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0;padding:8px 12px;border-radius:8px;font-size:.8rem;line-height:1.4}
+.tc-compose-excluded{background:#fff7e8;border:1px solid #efd7a6;color:#6b4d16}
+.tc-compose-empty-hint{background:#eef4fb;border:1px dashed #9bb4d3;color:#21456f}
+.tc-compose-note button{margin-left:auto}
+.tc-compose-note button+button{margin-left:0}

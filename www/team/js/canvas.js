@@ -1872,16 +1872,22 @@
         var state=collectState(), nodes=Array.from(records.values()).filter(function (r) { return !!r.node; }).concat(Array.from(illustrations.values()));
         var documentItems=state.document && Array.isArray(state.document.items) ? state.document.items : [];
         var hasContent=nodes.length > 0 || documentItems.length > 0;
-        var ready=!instanceRequests.size && !shinyBusy && !(window.Shiny && Shiny.shinyapp && document.documentElement.classList.contains('shiny-busy')) && !pendingAdds.size && !restorePending.size && hasContent && nodes.every(function (r) {
+        var settled=!instanceRequests.size && !shinyBusy && !(window.Shiny && Shiny.shinyapp && document.documentElement.classList.contains('shiny-busy')) && !pendingAdds.size && !restorePending.size;
+        function usable(r) {
           if (r.kind === 'illustration') return !!r.snapshot && checkedImage(r.snapshot.url);
           if (!r.snapshot || r.snapshot.stale || !checkedImage(r.snapshot.url)) return false;
           var image=r.preview && r.preview.querySelector('img');
           if (!r.preview || !r.preview.isConnected || !image || !r.preview.contains(image) || image.getAttribute('src') !== r.snapshot.url) return false;
           if (r.snapshot.archived) return true;
           return snapshotGuard(r,r.snapshot,activityGeneration);
-        });
+        }
+        // The figure page composes the usable (finished, current) figures; live
+        // or stale cards are reported by id so the page can list them.
+        var usableIds=[], unusable=[];
+        nodes.forEach(function (r) { var id=r.kind==='illustration'?r.id:r.el.id; if (usable(r)) usableIds.push(id); else unusable.push({id:id,label:(r.labelInput&&r.labelInput.value)||r.label||id,reason:!r.snapshot?'live':r.snapshot.stale?'stale':'invalid'}); });
+        var ready=settled && hasContent && !unusable.length;
         var queuedNames=Array.from(pendingAdds.values()).map(function (pending) { return pending.label; });
-        return {state:state,ready:ready,archived:nodes.filter(function (r) { return !!(r.snapshot && r.snapshot.archived); }).length,message:ready?'Finished figures are ready for preview.':instanceRequests.size?'Independent plots are still loading. Wait before opening the preview.':shinyBusy?'The analysis is updating. Wait for it to finish before previewing.':pendingAdds.size?'Queued add' + (queuedNames.length===1?'':'s') + ' not ready: ' + queuedNames.join(', ') + '. Cancel in the catalog or wait up to 90 seconds.':restorePending.size?'Saved plots are waiting for their analysis to load.':!hasContent?'Add a plot or drawing before opening the preview.':nodes.some(function (r) { return !r.snapshot; })?'Finish every canvas plot before opening the preview.':'A finished figure is stale or no longer valid. Review it before previewing.'};
+        return {state:state,ready:ready,settled:settled,blank:!hasContent,usableIds:usableIds,unusable:unusable,archived:nodes.filter(function (r) { return !!(r.snapshot && r.snapshot.archived); }).length,message:ready?'Finished figures are ready for preview.':instanceRequests.size?'Independent plots are still loading. Wait before opening the preview.':shinyBusy?'The analysis is updating. Wait for it to finish before previewing.':pendingAdds.size?'Queued add' + (queuedNames.length===1?'':'s') + ' not ready: ' + queuedNames.join(', ') + '. Cancel in the catalog or wait up to 90 seconds.':restorePending.size?'Saved plots are waiting for their analysis to load.':!hasContent?'Add a plot or drawing before opening the preview.':nodes.some(function (r) { return !r.snapshot; })?'Finish every canvas plot before opening the preview.':'A finished figure is stale or no longer valid. Review it before previewing.'};
       },
       deselect: function () { if (!selectedRecord) return; selectedRecord = null; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:null})); },
       selected: function () { return selectedRecord && selectedRecord.node ? {id:selectedRecord.el.id, title:selectedRecord.displayTitle || selectedRecord.label} : null; },

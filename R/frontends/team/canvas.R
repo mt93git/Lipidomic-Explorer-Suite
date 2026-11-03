@@ -34,7 +34,7 @@ team_canvas_ui <- function() {
     shiny::tags$section(id = "tc-preview-panel", class = "tc-preview", role = "tabpanel", `aria-labelledby` = "tc-preview-tab", hidden = "hidden",
       shiny::tags$div(class = "tc-preview-toolbar",
         shiny::tags$div(class = "tc-preview-heading", shiny::tags$h3("Compose your final figure"),
-          shiny::tags$p("Move figures and text freely on the page. Download SVG for vector editing; PDF preserves the composition as an image.")),
+          shiny::tags$p(class = "tc-mode-hint", "The final layout. Add titles, text, shapes and panel letters, then export. Plots appear here once they are finished in the draft.")),
         shiny::tags$div(class = "tc-preview-actions",
           shiny::tags$button(type = "button", class = "tc-preview-stephania", "Publication layout"),
           shiny::tags$button(type = "button", class = "tc-preview-add-text", "Add text"),
@@ -51,6 +51,6 @@ team_canvas_ui <- function() {
         shiny::tags$label(class = "tc-preview-furniture-label", shiny::tags$input(type = "checkbox", class = "tc-preview-furniture", checked = "checked", `aria-label` = "Show page header and footer"), "Show page header and footer"),
         shiny::tags$label("Orientation", shiny::tags$select(id = "tc-preview-orientation", `aria-label` = "Orientation", class = "tc-preview-orientation",
           shiny::tags$option(value = "portrait", "Portrait"), shiny::tags$option(value = "landscape", "Landscape")))),
-      shiny::tags$p(class = "tc-preview-status", role = "status", `aria-live` = "polite", "Add plots in Workspace, then finish them to build your print preview."),
+      shiny::tags$p(class = "tc-preview-status", role = "status", `aria-live` = "polite", "Finish plots in the draft canvas to place them here. Text and shapes can be added at any time."),
       shiny::tags$div(class = "tc-preview-pages", `aria-label` = "Figure pages")))
 }
