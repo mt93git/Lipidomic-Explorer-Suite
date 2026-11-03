@@ -76,10 +76,15 @@
     document.addEventListener('keydown',function(event){if(event.key==='Escape'&&root.classList.contains('tc-focus-mode')){event.preventDefault();setFocusMode(false);focusButton.focus();}});
     var minus=nav.querySelector('.tc-zoom-out'), plus=nav.querySelector('.tc-zoom-in'), reset=nav.querySelector('.tc-zoom-reset'), map=nav.querySelector('svg'), nodes=nav.querySelector('.tc-map-nodes'), frame=nav.querySelector('.tc-map-window');
     function bounds() { return {w:board.offsetWidth,h:board.offsetHeight}; }
+    // paint() runs on every scroll/drag frame. Write only real changes: on this page any
+    // DOM insertion/removal or text change re-evaluates its many :has() rules, which is a
+    // full-document style recalc (40 ms here, ~150 ms at 4x CPU throttling) per frame.
+    function setStyle(el,prop,value){if(el.style[prop]!==value)el.style[prop]=value;}
+    function setAttr(el,name,value){value=String(value);if(el.getAttribute(name)!==value)el.setAttribute(name,value);}
     function sizeSpace() {
       var b=bounds();
-      spacer.style.width=Math.max(scroll.clientWidth,b.w*scale)+'px';
-      spacer.style.height=Math.max(scroll.clientHeight,b.h*scale)+'px';
+      setStyle(spacer,'width',Math.max(scroll.clientWidth,b.w*scale)+'px');
+      setStyle(spacer,'height',Math.max(scroll.clientHeight,b.h*scale)+'px');
       if(board.style.transform)board.style.removeProperty('transform');
       var zoom=zoomSupported?String(scale):'';if(board.style.zoom!==zoom)board.style.zoom=zoom;
       // Grid tile follows the zoom (22 world px); far out, every 2nd/4th... dot keeps it legible.
@@ -99,21 +104,30 @@
     function paint() {
       queued=false;fitViewport();
       if(catalog && scroll.clientHeight){
-        catalog.style.height=Math.max(180,scroll.clientHeight-12)+'px';
-        var tools=root.querySelector('.tc-toolbar');if(tools)catalog.style.top=(tools.offsetHeight+6)+'px';
+        setStyle(catalog,'height',Math.max(180,scroll.clientHeight-12)+'px');
+        var tools=root.querySelector('.tc-toolbar');if(tools)setStyle(catalog,'top',(tools.offsetHeight+6)+'px');
         var layout=root.querySelector('.tc-layout');if(close && layout && close.parentElement!==layout)layout.insertBefore(close,catalog);
       }
       if(!scroll.clientWidth || !scroll.clientHeight)return;
       if(restoreNeedsFocus&&restorePlan)focusRestoredNode();
       sizeSpace(); var b=bounds(), w=Math.max(b.w,scroll.clientWidth/scale), h=Math.max(b.h,scroll.clientHeight/scale);
-      map.setAttribute('viewBox','0 0 '+w+' '+h); nodes.replaceChildren();
-      board.querySelectorAll('.tc-node').forEach(function(n){
-        var r=document.createElementNS('http://www.w3.org/2000/svg','rect');
-        r.setAttribute('x',n.offsetLeft);r.setAttribute('y',n.offsetTop);r.setAttribute('width',n.offsetWidth);r.setAttribute('height',n.offsetHeight);r.setAttribute('rx',12);
-        var title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent=(n.querySelector('strong')||n).textContent.slice(0,150);r.appendChild(title);nodes.appendChild(r);
+      setAttr(map,'viewBox','0 0 '+w+' '+h);
+      // Minimap rectangles are reused and updated in place; only a change in the number
+      // of cards adds or removes one.
+      var cards=board.querySelectorAll('.tc-node');
+      while(nodes.childElementCount>cards.length)nodes.lastElementChild.remove();
+      while(nodes.childElementCount<cards.length){
+        var rect=document.createElementNS('http://www.w3.org/2000/svg','rect');rect.setAttribute('rx',12);
+        rect.appendChild(document.createElementNS('http://www.w3.org/2000/svg','title'));nodes.appendChild(rect);
+      }
+      cards.forEach(function(n,i){
+        var r=nodes.children[i];
+        setAttr(r,'x',n.offsetLeft);setAttr(r,'y',n.offsetTop);setAttr(r,'width',n.offsetWidth);setAttr(r,'height',n.offsetHeight);
+        var label=(n.querySelector('strong')||n).textContent.slice(0,150);if(r.firstChild.textContent!==label)r.firstChild.textContent=label;
       });
-      frame.setAttribute('x',scroll.scrollLeft/scale);frame.setAttribute('y',scroll.scrollTop/scale);frame.setAttribute('width',Math.min(w,scroll.clientWidth/scale));frame.setAttribute('height',Math.min(h,scroll.clientHeight/scale));
-      reset.textContent=Math.round(scale*100)+'%';minus.disabled=!zoomSupported||scale<=.05;plus.disabled=!zoomSupported||scale>=2;
+      setAttr(frame,'x',scroll.scrollLeft/scale);setAttr(frame,'y',scroll.scrollTop/scale);setAttr(frame,'width',Math.min(w,scroll.clientWidth/scale));setAttr(frame,'height',Math.min(h,scroll.clientHeight/scale));
+      var percent=Math.round(scale*100)+'%';if(reset.textContent!==percent)reset.textContent=percent;
+      var low=!zoomSupported||scale<=.05,high=!zoomSupported||scale>=2;if(minus.disabled!==low)minus.disabled=low;if(plus.disabled!==high)plus.disabled=high;
     }
     function refresh(){if(!queued){queued=true;requestAnimationFrame(paint);}}
     function zoom(next) {

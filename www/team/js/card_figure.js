@@ -97,7 +97,11 @@
     window.addEventListener('resize', schedulePlace);
     // Plotly restyles its own SVG constantly (hover, zoom): those attribute changes never
     // affect what is parked, so only structural changes inside a plot wake the sweep.
-    new MutationObserver(function (records) { if (records.some(function (r) { return r.type === 'childList' || !(r.target.closest && r.target.closest('.js-plotly-plot')); })) schedule(); }).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
+    // Moving a card (drag, arrow keys) only rewrites its own or the board's style: that
+    // moves the toolbar but cannot change what is parked, so re-place instead of a full
+    // sweep of every card on each drag frame.
+    function moveOnly(r) { return r.type === 'attributes' && r.attributeName === 'style' && (r.target === board || r.target.parentElement === board); }
+    new MutationObserver(function (records) { var relevant = records.filter(function (r) { return r.type === 'childList' || !(r.target.closest && r.target.closest('.js-plotly-plot')); }); if (!relevant.length) return; if (relevant.every(moveOnly)) schedulePlace(); else schedule(); }).observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
     window.addEventListener('team-canvas-restored', schedule);
     new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });
     // Shiny triggers its events through jQuery; native listeners never see them.

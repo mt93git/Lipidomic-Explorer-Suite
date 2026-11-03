@@ -119,12 +119,28 @@
       tabList.forEach(function (t) { var on = t.key === activeTab; t.button.setAttribute('aria-selected', String(on)); t.button.tabIndex = on ? 0 : -1; t.panel.hidden = finished || !on; });
       if (focusedControl) edit.focus();
     }
+    // A window 'resize' makes Shiny re-measure and re-theme every output on the page,
+    // including the hidden classic tabs: one 1.7 s task here (about 10 s at 4x CPU
+    // throttling). Opening or closing the inspector rarely changes any size (the shell
+    // reserves its column), so send it only when the canvas viewport changed size or an
+    // output now in the inspector has a size Shiny has not been told about.
+    function canvasSize() { var s = root.querySelector('.tc-scroll'); return s ? s.clientWidth + 'x' + s.clientHeight : ''; }
+    function outputsStale() {
+      var known = window.Shiny && Shiny.shinyapp && Shiny.shinyapp.$inputValues; if (!known) return true;
+      return Array.from(inspector.querySelectorAll('.shiny-image-output[id],.shiny-plot-output[id],.shiny-report-size[id]')).some(function (el) {
+        var r = el.getBoundingClientRect(); if (!r.width && !r.height) return false;
+        var w = known['.clientdata_output_' + el.id + '_width'], h = known['.clientdata_output_' + el.id + '_height'];
+        return !(Math.abs(w - r.width) < 0.5 && Math.abs(h - r.height) < 0.5);
+      });
+    }
+    function resizeIfChanged(before) { if (canvasSize() !== before || outputsStale()) window.dispatchEvent(new Event('resize')); }
     function hide() {
       var focusWasInInspector = inspector.contains(document.activeElement) || (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement)) || movedData.some(function (m) { return m.el.contains(document.activeElement); });
+      var sizeBefore = canvasSize();
       if (floating()) window.TeamCanvasFloatingPanel.close(inspector);
       release(); inspector.hidden = true; layout.classList.remove('tc-inspecting'); trigger.setAttribute('aria-expanded', 'false'); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       if (focusWasInInspector) focusSafe();
-      window.dispatchEvent(new Event('resize'));
+      resizeIfChanged(sizeBefore);
       // Let the companion re-place itself now that the column is free (not a selection change:
       // the shell re-opens the inspector on those).
       window.dispatchEvent(new CustomEvent('team-canvas-inspector-closed'));
@@ -134,6 +150,7 @@
       if (!next || !next.isConnected) return;
       if (node === next && !inspector.hidden) { state(); if (floating()) window.TeamCanvasFloatingPanel.open(inspector, node); if (focusControls) focusFirstControl(); return; }
       var focusWasInMovedControl = (moved && moved.contains(document.activeElement)) || (movedStats && movedStats.contains(document.activeElement)) || movedData.some(function (m) { return m.el.contains(document.activeElement); });
+      var sizeBefore = canvasSize();
       release(); root.querySelectorAll('.tc-node.is-selected').forEach(function (n) { n.classList.remove('is-selected'); });
       node = next; node.classList.add('is-selected');
       moved = node.querySelector(':scope > .tc-settings') || (node.classList.contains('tc-illustration') && node.querySelector('.tc-content > .tc-edit'));
@@ -146,7 +163,7 @@
       inspector.hidden = false; layout.classList.add('tc-inspecting'); trigger.disabled = false; trigger.setAttribute('aria-expanded', 'true'); state(); inspector.scrollTop = 0;
       if (floating()) window.TeamCanvasFloatingPanel.open(inspector, node);
       if (focusControls || focusWasInMovedControl) focusFirstControl();
-      window.dispatchEvent(new Event('resize'));
+      resizeIfChanged(sizeBefore);
     }
     root.addEventListener('pointerdown', function () { pointerActive = true; }, true);
     document.addEventListener('pointerup', function () { setTimeout(function(){pointerActive=false;},0); }, true);

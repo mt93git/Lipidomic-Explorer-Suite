@@ -608,6 +608,18 @@
     else if(rectHeat){if(r.heatOriginalMinWidth===undefined)r.heatOriginalMinWidth=r.el.style.minWidth;r.el.style.minWidth=Math.max(800,Number(denseHorizontal?heat.naturalHeight:heat.naturalWidth)||800)+'px';}
     else if(r.heatOriginalMinWidth!==undefined){r.el.style.minWidth=r.heatOriginalMinWidth;delete r.heatOriginalMinWidth;}
     var height = square ? gd.data[0].y.length*16+210 : large ? (denseHorizontal?heat.naturalWidth:heat.naturalHeight) : Math.max(minHeight, r.node.clientHeight - plotTop - 24);
+    // A canvas zoom never changes a card's logical size, but under CSS zoom borders, text and
+    // inner scroll offsets snap to device pixels, so plotTop (and the height derived from it)
+    // moves between zoom levels: a few pixels, or hundreds for a card whose content scrolls
+    // (group comparison). Each such "change" re-laid out every Plotly card, dispatched a window
+    // resize (Shiny re-measures every output) and re-rendered static plots in R on every zoom
+    // step. So a zoom alone keeps the current height; at a fixed zoom a wobble within one
+    // device pixel is ignored too. Card resizes and content changes still refit.
+    var currentHeight = parseFloat(r.el.style.height), nodeSize = r.node.style.width + 'x' + r.node.style.height;
+    var sameNode = r.fitNodeSize === nodeSize, zoomOnly = sameNode && r.fitScale !== undefined && r.fitScale !== viewScale;
+    var slack = sameNode ? Math.min(12, Math.ceil(1.5 / (viewScale > 0 ? viewScale : 1))) : 0;
+    r.fitNodeSize = nodeSize; r.fitScale = viewScale;
+    if (!square && !large && Number.isFinite(currentHeight) && (zoomOnly || Math.abs(currentHeight - Math.round(height)) <= slack)) height = currentHeight;
     var desired = Math.round(height) + 'px';
     var heightChanged=r.el.style.height !== desired;
     // A figure with a fixed layout size ignores Plots.resize: follow the card frame in both directions.
@@ -842,7 +854,9 @@
     });
     remove.addEventListener('click', function () { restore(r); });
     moveNode(node, head);
-    if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r); changed(); }); r.observer.observe(node); }
+    // The observer also fires when only the canvas zoom changes; that is camera, not a document
+    // change, so it must not start a save (each save re-renders the library panel in Shiny).
+    if (window.ResizeObserver) { r.observer = new ResizeObserver(function () { expandBoard(); resize(r); var size = node.offsetWidth + 'x' + node.offsetHeight; if (size !== r.observedSize) { r.observedSize = size; changed(); } }); r.observer.observe(node); }
     board.classList.add('has-nodes'); expandBoard(); renderList();
     requestAnimationFrame(function () { resize(r); if (!r.hydrating && r.visual && Object.keys(r.visual).length) applyAppearance(r); inheritPaletteWhenReady(r); });
     if(!r.hydrating)presentNewNode(node,r.el.id);
