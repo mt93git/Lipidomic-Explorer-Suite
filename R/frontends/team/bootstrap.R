@@ -1,3 +1,5 @@
+# Team implementations of the shared hooks in R/hooks.R.
+invisible(lapply(sort(list.files("R/frontends/team/hooks", pattern = "\\.R$", full.names = TRUE)), source))
 source("R/frontends/team/sample_metadata_import_module.R")
 source("R/frontends/team/ux_preparation.R")
 source("R/frontends/team/guided_preparation_controls.R")
