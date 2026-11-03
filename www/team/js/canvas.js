@@ -810,8 +810,11 @@
     var node = document.createElement('article'); node.className = 'tc-node'; node.dataset.plotId = r.el.id;
     // Full class names, legends and sample labels need room before raster capture.
     var roomyHeatmap=isClassHeatmap(r.el.id)||sourceKey(r)==='results_dashboard-plot_heat';
-    var initialWidth = roomyHeatmap ? 1000 : 620, initialHeight = roomyHeatmap ? 1100 : 720;
-    if (roomyHeatmap) { node.style.width = initialWidth + 'px'; node.style.height = initialHeight + 'px'; }
+    // Multi-panel stress violins (three panels per row) were designed for an
+    // 840px plot; a 620px card squeezed their panel titles into each other.
+    var widePanels=sourceKey(r)==='cellular_org_tab-stressPlot';
+    var initialWidth = roomyHeatmap ? 1000 : widePanels ? 900 : 620, initialHeight = roomyHeatmap ? 1100 : 720;
+    if (roomyHeatmap || widePanels) { node.style.width = initialWidth + 'px'; node.style.height = initialHeight + 'px'; }
     var index = sequence++, x, y, occupied = Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)'));
     do {
       x = 30 + (index % 2) * (initialWidth + 30); y = 30 + Math.floor(index / 2) * (initialHeight + 30); index++;
