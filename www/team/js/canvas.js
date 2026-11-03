@@ -244,7 +244,7 @@
       host.addEventListener('keydown',function(event){if(event.key==='Escape'&&!event.defaultPrevented){event.stopPropagation();closeInstanceControls(host);}});
     }
     compactDashboardControls(host,r);
-    host.classList.add('is-open');host.style.cssText='display:block';host.inert=false;host.setAttribute('aria-hidden','false');host.setAttribute('role','dialog');host.setAttribute('aria-label','Data & settings · '+r.label);host.dataset.floatingWidth='320';host.dataset.anchorOutput=r.el&&r.el.id||'';
+    host.classList.add('is-open');host.style.cssText='display:block';host.inert=false;host.setAttribute('aria-hidden','false');host.setAttribute('role','dialog');host.setAttribute('aria-label','Data & settings · '+r.label);host.dataset.floatingWidth=host.classList.contains('is-dashboard-compact')?'320':'480';host.dataset.anchorOutput=r.el&&r.el.id||'';
     var anchor=r.node||Array.from(board.querySelectorAll('.tc-node')).find(function(node){return node.dataset.plotId===r.el.id;});
     // A not-yet-configured dynamic output has no canvas node yet. Its temporary
     // settings anchor is the catalog, then switches to its plot once it exists.

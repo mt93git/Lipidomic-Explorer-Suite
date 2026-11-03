@@ -36,3 +36,17 @@ body.team-workspace-app a.tc-export-fallback:focus-visible,body.team-workspace-a
 .tc-node:not(.tc-finished):has(.tc-restore-settling)::after{content:'';position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border:2px solid #c9d3dd;border-top-color:#2d5f8a;border-radius:50%;animation:tc-restore-spin .8s linear infinite;pointer-events:none}
 @keyframes tc-restore-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.tc-node:not(.tc-finished):has(.tc-restore-settling)::after{animation:none;border-color:#2d5f8a}}
+/* Data & settings drawer of an independent copy. The module's sidebar layout
+   (controls | main area) is stacked: in a drawer the main area, which holds the
+   cohort pickers of differential plots, was squeezed to a few pixels and its
+   labels wrapped one letter per line. Plots and tab content stay hidden here. */
+.tc-instance-host.is-open .bslib-sidebar-layout{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;min-height:0!important;height:auto!important}
+.tc-instance-host.is-open .bslib-sidebar-layout>.main{order:-1}
+.tc-instance-host.is-open .bslib-sidebar-layout>.sidebar,.tc-instance-host.is-open .bslib-sidebar-layout>.main{width:100%!important;max-width:100%!important;min-width:0!important;grid-column:auto!important;grid-row:auto!important;transform:none!important;visibility:visible!important}
+.tc-instance-host.is-open .bslib-sidebar-layout>.collapse-toggle{display:none!important}
+.tc-instance-host.is-open .main .nav.shiny-tab-input{display:none!important}
+.tc-instance-host.is-open .selectize-control,.tc-instance-host.is-open .form-group,.tc-instance-host.is-open .shiny-input-container{max-width:100%;min-width:0}
+.tc-instance-host.is-open .selectize-input,.tc-instance-host.is-open .selectize-input>.item,.tc-instance-host.is-open label{white-space:normal;overflow-wrap:break-word;word-break:normal}
+.tc-instance-host.is-open .d-flex{flex-wrap:wrap}
+/* There is no left dock on the canvas; the cohort pickers are in this drawer. */
+.tc-instance-host [data-action="point-de-menu"]{display:none!important}
