@@ -63,6 +63,9 @@ async function finishVisible(p){for(const id of await visible(p)){const done=awa
   await p.locator('.tc-node[data-plot-id="'+violin+'"] .tc-tab-card-action[data-tab-action=move]').evaluate(b=>b.click());
   await p.locator('.tc-tab-picker').getByRole('button',{name:'Scratch'}).click();
   assert.deepEqual(await visible(p),[pca]);assert.deepEqual((await tabs(p))[2].nodes,[violin]);
+  await p.waitForTimeout(300);
+  assert.equal(await p.evaluate(()=>{const s=TeamCanvas.selected();return s&&s.id;}),null,'the moved card is no longer selected');
+  assert.equal(await p.evaluate(()=>[...document.querySelectorAll('[aria-label="Close object properties"]')].some(b=>b.getClientRects().length&&b.closest('[hidden]')===null&&getComputedStyle(b).visibility!=='hidden')),false,'its properties panel closes');
   await shot(p,'moved-violin-to-scratch');
   await p.locator('.ts-tools .ts-tool[aria-label=Undo]').click();assert.deepEqual((await tabs(p))[0].nodes.sort(),[violin,pca].sort(),'undo returns the card');
   await p.locator('.ts-tools .ts-tool[aria-label=Redo]').click();assert.deepEqual((await tabs(p))[2].nodes,[violin],'redo moves it again');

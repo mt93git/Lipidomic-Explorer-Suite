@@ -50,8 +50,14 @@
         if (hide && n.classList.contains('is-selected')) closeSelection = true;
       });
     } finally { applying = false; }
+    var sel = canvasApi().selected ? canvasApi().selected() : null, selNode = sel && nodes().find(function (n) { return n.dataset.plotId === sel.id; });
+    if (selNode && selNode.classList.contains('tc-tab-hidden')) closeSelection = true;
     // A selected card that leaves the view also leaves the inspector.
-    if (closeSelection) { if (canvasApi().deselect) canvasApi().deselect(); var x = root.querySelector('[aria-label="Close object properties"]'); if (x) x.click(); }
+    if (closeSelection) {
+      closeHiddenSelection();
+      // The shell re-opens the inspector a tick after a selection event; check again after it.
+      setTimeout(closeHiddenSelection, 50);
+    }
     if (shell) { shell.setAttribute('aria-labelledby', 'tc-canvas-tab-' + state.active); }
     var empty = board.querySelector('.tc-empty');
     if (empty) empty.classList.toggle('tc-tab-empty', !active.nodes.length && nodes().length > 0);
@@ -59,6 +65,14 @@
     var v = viewport(); if (v && v.refresh) v.refresh();
   }
 
+  function closeHiddenSelection() {
+    var hidden = board && board.querySelector('.tc-node.tc-tab-hidden.is-selected'), sel = canvasApi().selected ? canvasApi().selected() : null;
+    var selHidden = sel && nodes().some(function (n) { return n.dataset.plotId === sel.id && n.classList.contains('tc-tab-hidden'); });
+    if (!hidden && !selHidden) return;
+    if (selHidden && canvasApi().deselect) canvasApi().deselect();
+    var x = root.querySelector('[aria-label="Close object properties"]'); if (x && x.getClientRects().length) x.click();
+    if (hidden) hidden.classList.remove('is-selected');
+  }
   function activate(id, focus) {
     if (id === state.active) { if (focus) focusTab(id); return; }
     saveCamera(state.active);
@@ -216,6 +230,8 @@
     var fresh = el('button', 'tc-tab-picker-new', '+ New tab'); fresh.type = 'button';
     fresh.addEventListener('click', function () { closePicker(); var keep = state.active; before(); var r = M.addTab(state); if (!r.ok) { tell(r.message); return; } state.active = keep; after(); (mode === 'move' ? moveCard : copyCard)(id, r.id); });
     pop.appendChild(fresh);
+    // The picker sits inside the card: keep its clicks from re-selecting the card that just moved.
+    ['click', 'pointerdown', 'mousedown', 'focusin'].forEach(function (type) { pop.addEventListener(type, function (e) { e.stopPropagation(); }); });
     pop.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); closePicker(); anchor.focus(); } });
     pop.addEventListener('focusout', function (e) { if (e.relatedTarget && !pop.contains(e.relatedTarget) && e.relatedTarget !== anchor) closePicker(); });
     anchor.after(pop); picker = pop; var first = pop.querySelector('button'); if (first) first.focus();
