@@ -1,4 +1,6 @@
 # Reviewed guidance and optional server-side AI. Model output never executes scientific changes.
+# Knowledge answers come only from the grounded knowledge base (R/companion_kb.R).
+if (!exists("companion_kb_answer", mode = "function")) source(file.path("R", "companion_kb.R"))
 companion_sanitize_question <- function(question, known_labels = character()) {
   stopifnot(is.character(question), length(question) == 1L, !is.na(question))
   clean <- question
@@ -85,6 +87,7 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     key<-as.character(x$nonce);if(key %in% seen)return(FALSE);seen<<-tail(c(seen,key),200);TRUE
   }
   explain_step <- function(){
+    if(companion_kb_enabled()){a<-companion_kb_by_tag(paste0('step-',step()));reply(a$text,list(nav(step(),'Open this step')),source=a$source);return(invisible())}
     txt<-companion_assistant_step_guidance()
     reply(txt[step()],list(nav(step(),'Open this step')))
   }
@@ -127,7 +130,7 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     log('propose',p,cfg[[p]],value,'awaiting confirmation')
   }
   observe({refresh();cfg<-settings();s<-step();dirty<-isTRUE(safe(shared_data$preparation_dirty,FALSE));ready<-!is.null(safe(shared_data$data_processed));
-    session$sendCustomMessage('assistant_state',list(step=s,ready=ready,dirty=dirty,revision=isolate(revision()),ai_enabled=exists('companion_ai_available')&&companion_ai_available(),normalization=cfg$normalization,imputation=cfg$imputation,
+    session$sendCustomMessage('assistant_state',list(step=s,ready=ready,dirty=dirty,revision=isolate(revision()),ai_enabled=!companion_kb_enabled()&&exists('companion_ai_available')&&companion_ai_available(),normalization=cfg$normalization,imputation=cfg$imputation,
       message=if(dirty)'Settings have changed. Plots still use the last applied run.' else if(s==2&&!isTRUE(safe(guide_workflow$design_ok,FALSE)))'Review your study design before continuing.' else 'Ask about this step or choose a guided action.',
       actions=list(nav(s,'Explain this step'),nav(if(dirty)3 else min(7,s+1),if(dirty)'Review Quality' else 'Next step'))))
   })
@@ -146,6 +149,12 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     if(!is.null(detection_command)){if(detection_command$needs_percent){reply('Please include a percentage for a threshold at or below 1, for example “set minimum detection to 0.8%”.');return()};propose('detection',detection_command$value);return()}
     if(q %in% c('turn imputation on','turn imputation off')){propose('imputation',q=='turn imputation on');return()}
     if(exists('companion_ai_guard')) { guarded<-companion_ai_guard(q); if(!is.null(guarded)){reply(guarded$answer,guarded$actions,source='Local guide · reviewed scientific boundaries');return()} }
+    if(companion_kb_enabled()){
+      # Grounded mode: the answer is verbatim passages of the knowledge base, or no information. No model is called.
+      if(q %in% c('explain this step','help')){explain_step();return()}
+      a<-companion_kb_answer(q);log('kb_reply',status=if(isTRUE(a$found))'answered from knowledge base; question not logged' else 'no information in knowledge base; question not logged')
+      reply(a$text,list(),source=a$source);return()
+    }
     if(exists('companion_ai_available')&&companion_ai_available() && !q %in% c('explain this step','help')) {
       if(ai_busy){reply('Please wait for the current answer.');return()}
       if(ai_count>=60L || as.numeric(difftime(Sys.time(),ai_last,units='secs'))<3){reply('AI request limit reached. Use Explain this step for local guidance.');return()}

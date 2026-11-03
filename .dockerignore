@@ -16,6 +16,9 @@ data/*.log
 Rplots.pdf
 launch_debug.ps1
 
+# Companion knowledge base library: keep fed files out of the image (use a volume or LIPIDOMIC_KB_DIR)
+knowledge_base/library/
+
 # Scratch & development experiments
 scratch/
 
