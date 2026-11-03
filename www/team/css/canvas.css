@@ -50,3 +50,9 @@ body.team-workspace-app a.tc-export-fallback:focus-visible,body.team-workspace-a
 .tc-instance-host.is-open .d-flex{flex-wrap:wrap}
 /* There is no left dock on the canvas; the cohort pickers are in this drawer. */
 .tc-instance-host [data-action="point-de-menu"]{display:none!important}
+/* Cellular organization: the M1/M2 scatter controls (labels, colors, shapes,
+   dot size) only affect the storage-vs-structural map. In a copy of the stress
+   or peroxidation (CPI) plot they changed nothing, so they are not offered. */
+.tc-instance-host:is([data-instance-output=cpiPlot],[data-instance-output=stressPlot]) .accordion-item[data-value="M1/M2 Lipid Proxy"],
+.tc-instance-host:is([data-instance-output=cpiPlot],[data-instance-output=stressPlot]) .shiny-input-container:has(>[id$="-pointSize"]),
+.tc-instance-host:is([data-instance-output=cpiPlot],[data-instance-output=stressPlot]) .form-group:has(>[id$="-pointSize"]){display:none!important}

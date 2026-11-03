@@ -125,7 +125,7 @@ const {chromium} = require('../browser/ci/node_modules/playwright');
     assert.equal(await page.evaluate(id=>TeamCanvas.addPlot(id), 'structural_tab-speciesPlotPlot'),false,'nested renderUI plots cannot be moved from inside an outer dynamic ancestor');
     assert.equal(await page.evaluate(id=>TeamCanvas.queuePlot(id,{tool:'Structural'}),'structural_tab-speciesPlotPlot'),false,'nested renderUI plots cannot be queued for unsafe movement');
     assert.equal((await status('structural_tab-speciesPlotPlot')).available,false);
-    const nestedCard = page.locator('.tc-catalog-item').filter({hasText:'Species composition'});
+    const nestedCard = page.locator('.tc-catalog-item').filter({hasText:'Species structural features'});
     assert.equal(await nestedCard.getByRole('button',{name:'Open analysis'}).isVisible(),true,'nested renderUI output stays available as a route-only catalog item');
     await nestedCard.getByRole('button',{name:'Open analysis'}).click();
     assert.deepEqual(await page.evaluate(()=>routeCalls.at(-1)),['guide_open_tool','Structural']);

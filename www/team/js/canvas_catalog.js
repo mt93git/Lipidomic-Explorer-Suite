@@ -23,7 +23,7 @@
       ['qc_pca_tab-bqcPlot','Batch quality check','Review batch-level quality metrics.','Quality Check'],
       ['qc_pca_tab-bqcDeviationPlot','Batch deviation','Inspect deviations across batches.','Quality Check'],
       ['qc_pca_tab-bqcAbundancePlot','Batch abundance','Compare abundance across batches.','Quality Check'],
-      ['qc_pca_tab-outlierPcaPlot','Outlier PCA','Review the selected outlier in PCA space.','Quality Check'],
+      ['qc_pca_tab-outlierPcaPlot','Outlier PCA','PCA scores with samples marked by outlier flag and staged treatment.','Quality Check'],
       ['qc_pca_tab-guided_qc_plot','Guided quality check','Inspect the plot for the current guided QC step.','Quality Check']
     ]},
     {category:'Composition', icon:'bars', entries:[
@@ -46,9 +46,9 @@
       ['heatmap_barchart_tab-violin_plot_render','Selected-feature distributions','Review selected features on a log2 or linear prepared-abundance scale.','Heatmap']
     ]},
     {category:'Structure', icon:'molecule', entries:[
-      ['structural_tab-summaryPlot','Main class proportions','Compare the proportions of lipid main classes.','Structural'],
-      ['structural_tab-speciesPlotPlot','Species composition','Explore lipid species across samples.','Structural'],
-      ['structural_tab-networkPlot','Species network','Explore relationships among lipid species.','Structural'],
+      ['structural_tab-summaryPlot','Structural remodeling shifts','Per class, the difference in chain length, double bonds or positions between comparison- and reference-enriched lipid species.','Structural'],
+      ['structural_tab-speciesPlotPlot','Species structural features','For one class, a structural feature of each lipid species (each point is a species), split by enrichment direction.','Structural'],
+      ['structural_tab-networkPlot','Correlation network','Classes, chain lengths, double bonds or species joined by strong abundance correlations across samples.','Structural'],
       ['structural_tab-propPlotPlot','Acyl chain proportions','Compare acyl-chain composition by class.','Main Class & Acyl Chain Proportions'],
       ['structural_grid_tab-heatmapPlot','Structural grid · selected class heatmap','Map differential lipid changes across carbon length and unsaturation.','Structural Grid'],
       ['structural_grid_tab-dotplotPlot','Structural grid · selected class dotplot','Compare differential lipid measurements across structural coordinates.','Structural Grid'],
@@ -75,14 +75,14 @@
       ['pathway_tab-pathwayVisNetwork','Interactive pathway network','Explore the live network. Frozen figure capture is not available for this output.','Lipid Pathways']
     ]},
     {category:'Cellular organization', icon:'cell', entries:[
-      ['cellular_org_tab-stressPlot','Membrane stress','Review membrane stress measurements.','Cellular Organization'],
-      ['cellular_org_tab-cpiPlot','Cholesterol–phospholipid index','Compare the cholesterol–phospholipid index.','Cellular Organization'],
-      ['cellular_org_tab-polarPlot','Membrane polarity','Review membrane polarity measurements.','Cellular Organization']
+      ['cellular_org_tab-stressPlot','Organelle stress proxies','Per-sample composition ratios (for example PE/PC, Cer/SM) by group, one panel per index. Compositional proxies.','Cellular Organization'],
+      ['cellular_org_tab-cpiPlot','Peroxidation index (CPI)','Per-sample weighted share of polyunsaturated lipid signal by group, against a reference baseline. A compositional proxy.','Cellular Organization'],
+      ['cellular_org_tab-polarPlot','Storage vs structural map','Each sample placed by its neutral-storage share (x) and membrane structural/ether share (y). Quadrants are a hypothesis aid.','Cellular Organization']
     ]},
     {category:'Cell comparisons', icon:'cell', entries:[
       ['cell_lipid_plot','Selected feature profile','Inspect measurements for the selected lipid feature.','step:6'],
       ['cell_profile_plot','Class profile','Compare the selected lipid class profile.','step:6'],
-      ['cell_class_plot','Lipid class comparison','Compare prepared totals across the selected cohorts.','step:6'],
+      ['cell_class_plot','Class totals · two cohorts','Median per-sample class total for the reference and comparison cohorts. Descriptive.','step:6'],
       ['cell_comparison_plot','Cohort comparison','Compare prepared feature values between cohorts.','step:6']
     ]},
     {category:'Export studio', icon:'page', entries:[
