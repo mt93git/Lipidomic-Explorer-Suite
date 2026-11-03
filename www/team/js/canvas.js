@@ -174,8 +174,6 @@
   }
   function parkInstance(id) { if(window.Shiny && Shiny.setInputValue) Shiny.setInputValue('team_canvas_instance_park',id,{priority:'event'}); }
   function requestInstance(source, copied, saved) {
-    // New adds and pastes only; a saved card still restores.
-    if (!saved && heldPlot(source)) { tell(plotTitle(source) + ' is temporarily unavailable. ' + heldPlot(source).reason); return false; }
     if(!instanceSupported(source)) { tell('Open this dedicated view to configure its data. Independent canvas copies are available for analysis modules.'); return false; }
     if(!window.Shiny||!Shiny.setInputValue)return false;
     if(Array.from(records.values()).filter(function(r){return !!r.node;}).length+illustrations.size+instanceRequests.size>=40){tell('This workspace supports 40 figures. Remove a figure before adding another.');return false;}
@@ -457,7 +455,6 @@
     return wrapper && outputs.length === 1 && isPlotOutput(outputs[0]) && outputs[0] === el ? wrapper : null;
   }
   function blockedPlot(id) { return window.TeamCanvasCatalog && typeof TeamCanvasCatalog.blocked === 'function' ? TeamCanvasCatalog.blocked(id) : null; }
-  function heldPlot(id) { return window.TeamCanvasCatalog && typeof TeamCanvasCatalog.held === 'function' ? TeamCanvasCatalog.held(id) : null; }
   function routeOnlyPlot(id) { var item=window.TeamCanvasCatalog && TeamCanvasCatalog.get(id); return item && item.routeOnly || null; }
   function plotTitle(id) { var item=window.TeamCanvasCatalog && typeof TeamCanvasCatalog.get === 'function' ? TeamCanvasCatalog.get(id) : null; var r=records.get(id); return item && item.title || r && r.label || id; }
   function catalogRoute(id) {
@@ -481,7 +478,6 @@
     pendingAdds.clear(); renderList(); return names;
   }
   function queueAdd(id, route) {
-    if (heldPlot(id)) { tell(plotTitle(id) + ' is temporarily unavailable. ' + heldPlot(id).reason); return false; }
     if (routeOnlyPlot(id)) { tell('Use Open export studio to configure this publication preview.'); return false; }
     var blocked=blockedPlot(id);
     if (blocked) { tell(plotTitle(id) + ' is unavailable. ' + blocked.reason); return false; }
@@ -1936,7 +1932,7 @@
       copyPlotAsInstance:function(id){var copied=copyData(records.get(id));if(!copied)return false;lastInstanceRequest=null;return requestInstance(copied.source,copied)&&lastInstanceRequest?lastInstanceRequest:false;},
       creationOrder:function(){return creationOrder.slice();},pastePlot:pasteRecord,duplicatePlot:function(id){return copyRecord(records.get(id))&&pasteRecord();},
       addPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r = records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
-      addCatalogPlot: function (id) { if (heldPlot(id)) { tell(plotTitle(id) + ' is temporarily unavailable. ' + heldPlot(id).reason); return false; } if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (routeOnlyPlot(id)) { tell('Use Open export studio to configure this publication preview.'); return false; } if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r=records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
+      addCatalogPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (routeOnlyPlot(id)) { tell('Use Open export studio to configure this publication preview.'); return false; } if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r=records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
       queuePlot: function (id, route) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } return queueAdd(id,route); },
       cancelQueuedAdd: function (id) { return clearQueuedAdd(id,'Cancelled queued add for “' + plotTitle(id) + '”.'); },
       previewState: function () {
