@@ -296,25 +296,36 @@ rd_heat_significance_guard <- function(shared_data) {
 
 # Plain-language statement of the criterion significant_lipids() applies
 # (R/modules/1_shared_data_module.R significantLipids), read from the same inputs.
-rd_heat_significance_criterion <- function(settings, contrast, method) {
+rd_heat_significance_criterion <- function(settings, contrast, method, interaction = NULL) {
   fmt <- function(x) format(as.numeric(x), trim = TRUE, drop0trailing = TRUE)
   adjusted <- identical(settings$p_value_type %||% "adjusted", "adjusted")
   test <- switch(sub("^auto_", "", as.character(method %||% "")[1L]),
     limma = "limma moderated t-test", non_parametric = "Wilcoxon rank-sum test", "Differential analysis test")
-  side <- if (identical(settings$mode %||% "direct", "direct") && is.list(contrast) && length(contrast$ref) && length(contrast$comp))
-    sprintf("%s vs %s", paste(contrast$comp, collapse = " + "), paste(contrast$ref, collapse = " + ")) else "Differential analysis interaction contrast"
+  groups <- function(x) if (length(x) > 1L) sprintf("mean of (%s)", paste(x, collapse = ", ")) else as.character(x)
+  side <- if (identical(settings$mode %||% "direct", "direct")) {
+    if (is.list(contrast) && length(contrast$ref) && length(contrast$comp)) sprintf("%s vs %s", groups(contrast$comp), groups(contrast$ref)) else "Differential analysis comparison"
+  } else if (is.list(interaction) && all(vapply(c("comp_t2", "comp_t1", "ref_t2", "ref_t1"), function(k) length(interaction[[k]]) == 1L && nzchar(interaction[[k]]), logical(1))))
+    sprintf("interaction (%s - %s) - (%s - %s)", interaction$comp_t2, interaction$comp_t1, interaction$ref_t2, interaction$ref_t1)
+  else "Differential analysis interaction contrast"
   sprintf("%s; %s %s %s and |log2FC| %s %s (%s on log2 abundance)", side,
     if (adjusted) "Benjamini-Hochberg adjusted p" else "unadjusted p", "\u2264", fmt(settings$p_threshold %||% 0.05),
     "\u2265", fmt(settings$log2fc_threshold %||% 1), test)
 }
 
-rd_heat_significance_result <- function(shared_data) {
+# interaction: the Differential analysis interaction groups (data_hub-int_*),
+# used only to name the contrast.
+rd_heat_significance_result <- function(shared_data, interaction = NULL) {
   res <- rd_value(shared_data$de_results)
   lipids <- rd_value(shared_data$significant_lipids)
   if (!is.data.frame(res) || is.null(lipids)) return(NULL)
+  settings <- rd_value(shared_data$de_settings) %||% list(); method <- rd_value(shared_data$actual_de_method)
+  # The non-parametric engine (R/modules/utils_stats.R perform_non_parametric_analysis)
+  # reads only the first two groups of an interaction formula, so its p-values do
+  # not test the interaction. Refuse rather than label them as interaction results.
+  if (!identical(settings$mode %||% "direct", "direct") && identical(sub("^auto_", "", as.character(method %||% "")[1L]), "non_parametric"))
+    return(list(blocked = "Differential analysis used the Wilcoxon rank-sum route for an interaction comparison; that route does not test the interaction, so its results are not used here."))
   list(lipids = unique(as.character(lipids)),
-       criterion = rd_heat_significance_criterion(rd_value(shared_data$de_settings) %||% list(),
-         rd_value(shared_data$de_contrast_info), rd_value(shared_data$actual_de_method)))
+       criterion = rd_heat_significance_criterion(settings, rd_value(shared_data$de_contrast_info), method, interaction))
 }
 
 # Plotly expands a per-sample constant hover template once per lipid. In Team,
@@ -785,7 +796,11 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   heat_significance <- reactive({
     g <- heat_significance_allowed()
     if (!isTRUE(g$allowed)) return(list(allowed = FALSE, reason = g$reason, lipids = character(), criterion = NULL))
-    r <- rd_heat_significance_result(shared_data)
+    root <- tryCatch(session$rootScope()$input, error = function(e) NULL)
+    interaction <- if (!is.null(root)) lapply(c(comp_t2 = "int_comp_t2", comp_t1 = "int_comp_t1", ref_t2 = "int_ref_t2", ref_t1 = "int_ref_t1"),
+      function(k) root[[paste0("data_hub-", k)]])
+    r <- rd_heat_significance_result(shared_data, interaction)
+    if (!is.null(r$blocked)) return(list(allowed = FALSE, reason = r$blocked, lipids = character(), criterion = NULL))
     if (is.null(r)) return(list(allowed = FALSE, lipids = character(), criterion = NULL,
       reason = "No Differential analysis result is available for the current comparison. Set the comparison in Differential analysis, then try again."))
     c(list(allowed = TRUE, reason = NULL), r)

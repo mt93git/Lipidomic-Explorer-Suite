@@ -63,7 +63,7 @@ hub_for <- function(x, allowed = TRUE, metadata = x$metadata) list(
   data_processed = value(x$data), all_metadata = value(metadata), preparation_audit = value(list()), preparation_dirty = value(FALSE),
   color_maps = value(list()), class_color_map = value(NULL), team_compact_distribution = TRUE,
   inference_allowed = function(paired = FALSE) allowed && !paired,
-  de_results = value(if (allowed) x$de_results), significant_lipids = value(if (allowed) x$significant),
+  de_results = value(if (allowed) x$de_results), significant_lipids = function(...) { de_reads <<- de_reads + 1L; if (allowed) x$significant },
   de_settings = value(x$de_settings), de_contrast_info = value(x$contrast), actual_de_method = value(x$method))
 strip <- function(json) { p <- jsonlite::fromJSON(json, simplifyVector = FALSE); p$x$cur_data <- NULL; p$x$visdat <- NULL; p$x$attrs <- NULL
   jsonlite::toJSON(p, auto_unbox = TRUE, digits = NA, null = 'null') }
@@ -71,8 +71,9 @@ render <- function(server_fn, hub, inputs) {
   out <- NULL
   shiny::testServer(function(input, output, session) { dashboard <- server_fn(input, output, session, hub) }, {
     do.call(session$setInputs, inputs); session$flushReact()
-    csv <- utils::read.csv(output$dl_heat, check.names = FALSE)
-    out <<- list(plot = tryCatch(strip(output$plot_heat), error = function(e) paste('ERROR:', conditionMessage(e))),
+    csv_file <- output$dl_heat; csv <- utils::read.csv(csv_file, check.names = FALSE)
+    csv_bytes <- readBin(csv_file, 'raw', file.info(csv_file)$size)
+    out <<- list(raw_plot = tryCatch(output$plot_heat, error = function(e) ''), csv_bytes = csv_bytes, plot = tryCatch(strip(output$plot_heat), error = function(e) paste('ERROR:', conditionMessage(e))),
       note = tryCatch(as.character(output$note_heat$html), error = function(e) paste('ERROR:', conditionMessage(e))),
       summary = output$heat_selection_summary, csv = csv, h = dashboard$heatmap(),
       status = tryCatch(as.character(output$heat_significance_status$html), error = function(e) ''),
@@ -82,6 +83,7 @@ render <- function(server_fn, hub, inputs) {
 }
 common <- list(color_by = 'Group1', top_n = 30L, heat_group_selection = '__ALL__', heat_lipid_selection = '__ALL__')
 x <- captured[['0.5']]
+de_reads <- 0L
 
 # All lipids: identical to the view without the input (an older checkpoint).
 legacy <- render(results_dashboard_module_server, hub_for(x), common)
@@ -90,6 +92,10 @@ check('All lipids plot equals the pre-feature view', identical(all$plot, legacy$
 check('All lipids note, summary and CSV equal the pre-feature view',
   identical(all$note, legacy$note) && identical(all$summary, legacy$summary) && identical(all$csv, legacy$csv) &&
   !any(c('DE_significant', 'Significance_filter') %in% names(all$csv)))
+check('All lipids never reads the Differential analysis result', de_reads == 0L)
+check('All lipids CSV bytes equal the pre-feature view', identical(all$csv_bytes, legacy$csv_bytes))
+check('All lipids plot JSON differs from the pre-feature view only in htmlwidget random ids',
+  identical(gsub('"[0-9a-f]{8,}"', '"id"', all$raw_plot), gsub('"[0-9a-f]{8,}"', '"id"', legacy$raw_plot)))
 check('All lipids shows the existing default selection (every eligible fixture lipid; LPC(16:0) has a zero)',
   setequal(all$h$lipids_visible, setdiff(fixture$Lipid_Name, 'LPC(16:0)')) && length(all$h$lipids_visible) == 11L)
 baseline <- Sys.getenv('LIPIDOMIC_BASELINE_DASHBOARD')
@@ -97,7 +103,8 @@ if (nzchar(baseline)) {
   old <- new.env(parent = globalenv()); sys.source(baseline, envir = old)
   before <- render(old$results_dashboard_module_server, hub_for(x), common)
   check('All lipids is byte-identical to the baseline dashboard (plot JSON, note, summary, CSV)',
-    identical(all$plot, before$plot) && identical(all$note, before$note) && identical(all$summary, before$summary) && identical(all$csv, before$csv))
+    identical(all$plot, before$plot) && identical(all$note, before$note) && identical(all$summary, before$summary) && identical(all$csv, before$csv) &&
+    identical(all$csv_bytes, before$csv_bytes) && identical(gsub('"[0-9a-f]{8,}"', '"id"', all$raw_plot), gsub('"[0-9a-f]{8,}"', '"id"', before$raw_plot)))
   # A different lipid selection too, so the comparison is not only the default.
   sel <- modifyList(common, list(heat_lipid_selection = '["PC(34:1)","TG(52:2)","LPC(16:0)"]', heat_group_selection = '["Treatment"]'))
   check('All lipids with a custom selection is byte-identical to the baseline',
@@ -156,6 +163,20 @@ check('repeated participant IDs disable Significant only with the pseudoreplicat
   !isTRUE(pseudo$allowed$allowed) && grepl('pseudoreplication', pseudo$allowed$reason, fixed = TRUE) &&
   grepl('data-allowed="false"', pseudo$status, fixed = TRUE) && length(pseudo$h$lipids_visible) == 0L &&
   grepl('pseudoreplication', pseudo$plot, fixed = TRUE))
+
+# Criterion wording for the other Differential analysis settings (same inputs significantLipids reads).
+crit <- rd_heat_significance_criterion(list(p_value_type = 'raw', p_threshold = 0.01, log2fc_threshold = 0, mode = 'direct'),
+  list(ref = c('A', 'B'), comp = 'C'), 'non_parametric')
+check('raw p, multi-group reference and Wilcoxon are stated', identical(crit, 'C vs mean of (A, B); unadjusted p ≤ 0.01 and |log2FC| ≥ 0 (Wilcoxon rank-sum test on log2 abundance)'))
+int <- list(comp_t2 = 'B2', comp_t1 = 'B1', ref_t2 = 'A2', ref_t1 = 'A1')
+crit <- rd_heat_significance_criterion(list(p_value_type = 'adjusted', p_threshold = 0.05, log2fc_threshold = 1, mode = 'interaction'), list(ref = 'X', comp = 'Y'), 'limma', int)
+check('a limma interaction names its four groups', startsWith(crit, 'interaction (B2 - B1) - (A2 - A1); Benjamini-Hochberg adjusted p'))
+inter_hub <- function(method) list(de_results = value(data.frame(Lipid_Name = 'L1')), significant_lipids = value('L1'),
+  de_settings = value(list(mode = 'interaction', p_value_type = 'adjusted', p_threshold = 0.05, log2fc_threshold = 1)),
+  de_contrast_info = value(NULL), actual_de_method = value(method))
+check('a non-parametric interaction result is refused, never labelled as an interaction test',
+  !is.null(rd_heat_significance_result(inter_hub('auto_non_parametric'), int)$blocked) && !is.null(rd_heat_significance_result(inter_hub('non_parametric'), int)$blocked) &&
+  is.null(rd_heat_significance_result(inter_hub('auto_limma'), int)$blocked))
 
 # Checkpoint round trip: the input is a declared, restorable dashboard copy input.
 allowed_ids <- team_plot_instance_input_ids('results_dashboard-plot_heat')
