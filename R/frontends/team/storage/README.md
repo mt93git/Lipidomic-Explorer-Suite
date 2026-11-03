@@ -19,6 +19,30 @@ backend, `LIPIDOMIC_UPLOAD_QUEUE` (the durable checkpoint queue) without the
 control: anyone who can reach the app can list, load and delete every project.
 A shared server must use `database`.
 
+## Sign-in and the project library by backend
+
+The project library (`LIPIDOMIC_PROJECT_LIBRARY=1`, required by the Team
+workspace `LIPIDOMIC_TEAM_WORKSPACE=1`) behaves as follows:
+
+- **`database`**: production behaviour, unchanged. The library shows the
+  sign-in and activation forms; nothing scientific starts until sign-in
+  succeeds (`on_authenticated`). Projects and memberships come from the
+  identity service, write access is rechecked before every save, tokens are
+  refreshed when they expire and live only in the session's `account()`
+  reactive. Saves go through the durable queue (`LIPIDOMIC_UPLOAD_QUEUE` is
+  required, as in production).
+- **`files`**: there is no identity service, so there is no sign-in. The
+  library opens a single local project (`local`, shown as "This computer")
+  owned by the one local user, and the workspace starts immediately. Save,
+  list and resume work exactly as in `database` (Canvas acknowledgement,
+  project binding, records sidecar, sha256 check before import). The durable
+  queue is not used: the files backend writes atomically and there is no
+  remote commit to interrupt, so `LIPIDOMIC_UPLOAD_QUEUE` is ignored by the
+  server. "Sign out" just clears the session. Because anyone who can reach the
+  app gets this access, `files` remains for one local user only.
+
+The UI never offers delete; `store$delete` is available to maintainers only.
+
 ## Contract
 
 `team_storage_session(session, token = access)` creates one store per Shiny
@@ -63,5 +87,6 @@ never blocks the R process. Per account, 5 failed sign-ins are free; after that
 an attempt is refused with `retry_after_seconds` of 1, 2, 4 ... (capped at 60)
 counted from the last failure, and must not reach the identity service. No
 lockout; success resets. `team_library_sign_in()` applies this and
-`team_library_login_wait_message()` renders "Too many attempts. Try again in N s."
+`team_library_login_wait_message()` renders "Too many attempts. Try again in N s.",
+which `team_library_server()` shows as its status without contacting anything.
 `LIPIDOMIC_LOGIN_THROTTLE=off` gives immediate retries.
