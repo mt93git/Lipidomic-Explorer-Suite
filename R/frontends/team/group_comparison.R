@@ -147,6 +147,9 @@ team_group_comparison_participants <- function(shared_data, samples) {
   team_violin_stats_participants(base, "compared")
 }
 
+# What to do instead when participant IDs repeat under an independent design.
+team_pseudoreplication_recommendation <- "Recommendation: analyse these samples as paired or repeated measures (set the study design to Matched or repeated and use a paired comparison), so each participant's samples are compared within that participant."
+
 # Participant reason over every prepared sample that has metadata (the samples
 # the log-ratio module and the Differential analysis engine draw from), or NULL.
 # The same rule as team_group_comparison_guarded_data() below.

@@ -22,8 +22,11 @@ team_da_participant_status <- function(shared_data) {
 team_da_participant_warning_text <- function(reason) {
   text <- sub(" No p-values were computed\\.$", "", reason)
   text <- sub(" and no p-values were computed\\.$", ".", text)
-  paste(text, "Differential analysis p-values here were computed as if these samples were independent; interpret them with caution.")
+  paste(text, "Differential analysis p-values here were computed as if these samples were independent; interpret them with caution.",
+    team_pseudoreplication_recommendation)
 }
+# Plain-text note for exports (ZIP NOTES.txt, R script comment).
+team_da_participant_note <- function(reason) paste0(team_da_participant_warning_title, ". ", team_da_participant_warning_text(reason))
 team_da_participant_warning_title <- "Pseudoreplication warning"
 team_da_participant_warning <- function(reason) {
   shiny::div(class = "team-da-participant-warning alert alert-warning mb-3 shadow-sm", role = "status",
@@ -89,17 +92,42 @@ team_structural_participant_warning_adapter <- function(original) {
 # The volcano figure (main view, Canvas copies and its PDF) carries the warning
 # as a caption wrapped to the rendered width; its points, axes and labels are
 # unchanged.
-team_volcano_warning_caption <- function(plot, shared_data, width_px = NULL) {
+team_volcano_warning_caption <- function(plot, shared_data, width_px = NULL, size = 10) {
   reason <- team_da_participant_status(shared_data)
   if (is.null(reason) || !inherits(plot, "ggplot") || is.null(tryCatch(shared_data$de_results(), error = function(e) NULL))) return(plot)
   width_px <- suppressWarnings(as.numeric(width_px)[1])
   if (length(width_px) != 1L || !is.finite(width_px) || width_px <= 0) width_px <- 800
-  # 10 pt bold at 72 px per inch averages about 6 px per character; keep a margin.
-  chars <- max(28L, as.integer(floor((width_px - 40) / 6.8)))
-  caption <- paste(strwrap(paste0(team_da_participant_warning_title, ". ", team_da_participant_warning_text(reason)), width = chars), collapse = "\n")
+  # Bold text at 72 px per inch averages about 0.6 em per character; keep a margin.
+  chars <- max(28L, as.integer(floor((width_px - 40) / (size * 0.68))))
+  caption <- paste(strwrap(team_da_participant_note(reason), width = chars), collapse = "\n")
   plot + ggplot2::labs(caption = caption) +
-    ggplot2::theme(plot.caption = ggplot2::element_text(colour = "#b45309", hjust = 0, size = 10, face = "bold"),
+    ggplot2::theme(plot.caption = ggplot2::element_text(colour = "#b45309", hjust = 0, size = size, face = "bold"),
                    plot.caption.position = "plot")
+}
+
+# Publication Export Studio, volcano only: the figure (PDF, SVG, PNG, TIFF,
+# preview and ZIP copies) carries the warning as a caption, the reproduction
+# script starts with it as comments, and the Team ZIP writer adds NOTES.txt
+# (art$team_notes). The data table (art$data, the CSV) is never touched.
+team_export_participant_warning_adapter <- function(original) {
+  stopifnot(is.function(original))
+  adapted <- function(figure_key, shared_data, ...) {
+    art <- original(figure_key, shared_data, ...)
+    if (!identical(figure_key, "volcano") || !is.list(art)) return(art)
+    reason <- team_da_participant_status(shared_data)
+    if (is.null(reason) || is.null(tryCatch(shared_data$de_results(), error = function(e) NULL))) return(art)
+    args <- list(...)
+    size <- suppressWarnings(as.numeric(args$base_pt %||% 7.5)[1]); if (!is.finite(size) || size <= 0) size <- 7.5
+    width_mm <- if (exists("team_export_studio_current_width_mm", mode = "function")) team_export_studio_current_width_mm() else 89
+    art$plot <- team_volcano_warning_caption(art$plot, shared_data, width_px = width_mm / 25.4 * 72 + 40, size = size)
+    note <- team_da_participant_note(reason)
+    if (is.character(art$r_script) && length(art$r_script) == 1L)
+      art$r_script <- paste0(paste0("# ", strwrap(note, width = 76), collapse = "\n"), "\n\n", art$r_script)
+    art$team_notes <- note
+    art
+  }
+  attr(adapted, "team_unguarded") <- original
+  adapted
 }
 team_volcano_participant_warning_adapter <- function(original) {
   stopifnot(is.function(original))

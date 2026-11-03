@@ -289,7 +289,7 @@ rd_heat_significance_guard <- function(shared_data) {
     }
     participant <- if (is.function(guarded$participant_reason))
       tryCatch(guarded$participant_reason(), error = function(e) NULL) else NULL
-    if (!is.null(participant)) return(list(allowed = FALSE, reason = participant))
+    if (!is.null(participant)) return(list(allowed = FALSE, reason = participant, participant = TRUE))
     list(allowed = TRUE, reason = NULL)
   }
 }
@@ -827,7 +827,8 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   # currently shows (the card itself only says it could not update when empty).
   output$heat_significance_status<-renderUI({
     g<-heat_significance_allowed()
-    text<-if(!isTRUE(g$allowed)) paste("Significant only is unavailable.",g$reason) else if(identical(input$heat_significance,"significant")){
+    text<-if(!isTRUE(g$allowed)) paste(c("Significant only is unavailable.",g$reason,
+      if(isTRUE(g$participant)&&exists("team_pseudoreplication_recommendation")) team_pseudoreplication_recommendation),collapse=" ") else if(identical(input$heat_significance,"significant")){
       h<-tryCatch(heat_data(),error=function(e)NULL);s<-h$significance;k<-length(h$lipids_visible)
       if(is.null(s)) NULL
       else if(!isTRUE(s$allowed)) paste("Significant only is unavailable.",s$reason)

@@ -234,6 +234,11 @@ team_export_studio_write_bundle <- function(file, art, formats, width_mm, height
     writeLines(script, path)
   })
 
+  # Team warnings about the figure (for example pseudoreplication) travel as a
+  # separate notes file, so the data CSV stays exactly as before.
+  if (is.character(art$team_notes) && length(art$team_notes) == 1L && nzchar(art$team_notes))
+    write_asset("NOTES.txt", "notes", function(path) writeLines(strwrap(art$team_notes, width = 78), path))
+
   spec <- EXPORT_JOURNAL_PRESETS[[preset]]
   if (is.null(spec)) spec <- EXPORT_JOURNAL_PRESETS$nature
   manifest <- list(

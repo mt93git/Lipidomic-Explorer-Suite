@@ -11,7 +11,7 @@
 suppressPackageStartupMessages({
   library(shiny); library(ggplot2); source('R/global.R')
   source('R/frontends/team/server.R'); source('R/frontends/team/violin_statistics.R')
-  source('R/frontends/team/da_participant_warning.R')
+  source('R/frontends/team/da_participant_warning.R'); source('R/frontends/team/export_studio_adapter.R')
 })
 checks <- character()
 check <- function(label, condition) { if (!isTRUE(condition)) stop(paste('FAIL:', label), call. = FALSE); checks <<- c(checks, label) }
@@ -27,6 +27,7 @@ for (k in names(reasons)) {
   check(paste(k, 'reason becomes a warning that does not claim p-values were withheld'),
     !grepl('no p-values were computed', w, ignore.case = TRUE) && grepl('computed as if these samples were independent', w, fixed = TRUE))
 }
+check('warning recommends a paired analysis', grepl('Recommendation: analyse these samples as paired or repeated measures', team_da_participant_warning_text(reasons$repeated), fixed = TRUE))
 check('repeated warning keeps the existing reason text',
   startsWith(team_da_participant_warning_text(reasons$repeated), sub(' No p-values were computed.', '', reasons$repeated, fixed = TRUE)))
 banner <- team_de_banner_participant_warning_adapter(function(sd) 'original banner')
@@ -130,5 +131,46 @@ check('volcano with the warning keeps title and axes', identical(plain$labels$ti
 check('volcano caption states the warning', grepl('Pseudoreplication warning', warned$labels$caption, fixed = TRUE) &&
   grepl('4 participant IDs contribute more than one sample', gsub('\n', ' ', warned$labels$caption), fixed = TRUE))
 check('volcano without a reason is the unadapted figure', identical(serialize(built(plain), NULL), serialize(built(quiet), NULL)) && is.null(quiet$labels$caption))
+
+# ---- Exports -------------------------------------------------------------------
+# Volcano card: PDF uses generateVolcanoPlot (caption checked above); its CSV
+# (downloadTable) writes volcanoData() and is not touched by any adapter.
+check('volcano card CSV handler is not rewritten (only generateVolcanoPlot is)', {
+  a <- deparse(body(adapted)); o <- deparse(body(e$volcano_server))
+  identical(grep('write_spreadsheet_csv', a, value = TRUE), grep('write_spreadsheet_csv', o, value = TRUE))
+})
+# Publication Export Studio, the real volcano artifact on the captured repeated case.
+es2 <- new.env(parent = globalenv()); sys.source('R/modules/99_export_studio_module.R', es2)
+team_art <- team_export_studio_artifacts_adapter(es2$generate_export_artifacts)
+warned_art <- team_export_participant_warning_adapter(team_art)
+x <- rep[['0.5']]
+export_hub <- function(reason) list(inference_allowed = function(paired = FALSE) !paired, de_results = function() x$de_results,
+  de_contrast_info = function() x$de_contrast_info, de_settings = function() x$de_settings, team_da_participant_reason = function() reason)
+prod_art <- shiny::isolate(team_art('volcano', export_hub(rep$team$reason), base_pt = 7.5))
+w_art <- shiny::isolate(warned_art('volcano', export_hub(rep$team$reason), base_pt = 7.5))
+q_art <- shiny::isolate(warned_art('volcano', export_hub(NULL), base_pt = 7.5))
+check('Export Studio volcano data table is identical with the warning', identical(serialize(prod_art$data, NULL), serialize(w_art$data, NULL)))
+check('Export Studio volcano figure keeps its data and layers, and adds the caption',
+  identical(built(prod_art$plot), built(w_art$plot)) && grepl('Pseudoreplication warning', w_art$plot$labels$caption, fixed = TRUE))
+check('Export Studio reproduction script starts with the warning as comments and still parses',
+  startsWith(w_art$r_script, '# Pseudoreplication warning.') && is.expression(parse(text = w_art$r_script)) && grepl(prod_art$r_script, w_art$r_script, fixed = TRUE))
+check('Export Studio artifacts unchanged without a reason',
+  identical(serialize(prod_art[names(prod_art) != 'plot'], NULL), serialize(q_art[names(q_art) != 'plot'], NULL)) &&
+  identical(built(prod_art$plot), built(q_art$plot)) && identical(prod_art$plot$labels, q_art$plot$labels) && is.null(q_art$team_notes))
+stub <- team_export_participant_warning_adapter(function(figure_key, shared_data, ...) list(plot = ggplot2::ggplot(), data = data.frame(a = 1), r_script = 'x <- 1'))
+check('other Export Studio figures are untouched', identical(stub('pca_2d', export_hub(rep$team$reason), base_pt = 7.5), list(plot = ggplot2::ggplot(), data = data.frame(a = 1), r_script = 'x <- 1')) ||
+  is.null(stub('pca_2d', export_hub(rep$team$reason), base_pt = 7.5)$team_notes))
+bundle <- function(art) {
+  f <- tempfile(fileext = '.zip')
+  team_export_studio_write_bundle(f, art, list(pdf = FALSE, svg = FALSE, png = TRUE, tiff = FALSE, csv = TRUE, rscript = TRUE), 89, 89, 300, 7.5, 'nature', 'sans', TRUE)
+  d <- tempfile(); utils::unzip(f, exdir = d); d
+}
+bp <- bundle(prod_art); bw <- bundle(w_art)
+csv_name <- paste0(prod_art$filename_base, '_data.csv')
+check('ZIP: data CSV byte-identical with the warning', identical(unname(tools::md5sum(file.path(bp, csv_name))), unname(tools::md5sum(file.path(bw, csv_name)))))
+check('ZIP: NOTES.txt carries the warning only when warned',
+  !file.exists(file.path(bp, 'NOTES.txt')) && grepl('pseudoreplication', paste(readLines(file.path(bw, 'NOTES.txt')), collapse = ' '), fixed = TRUE) &&
+  grepl('Recommendation:', paste(readLines(file.path(bw, 'NOTES.txt')), collapse = ' '), fixed = TRUE))
+check('ZIP: files are the production set plus NOTES.txt', setequal(list.files(bw), c(list.files(bp), 'NOTES.txt')))
 
 cat(sprintf('PASS (%d checks):\n', length(checks))); cat(paste0(' - ', checks, collapse = '\n'), '\n')

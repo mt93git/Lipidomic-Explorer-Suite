@@ -1358,6 +1358,7 @@ if (identical(lipidomic_interface(), "team")) {
   render_de_not_run_banner <- team_de_banner_participant_warning_adapter(render_de_not_run_banner)
   volcano_server <- team_volcano_participant_warning_adapter(volcano_server)
   structural_server <- team_structural_participant_warning_adapter(structural_server)
+  generate_export_artifacts <- team_export_participant_warning_adapter(generate_export_artifacts)
   source("R/frontends/team/project_library.R")
   source("R/frontends/team/foreground.R")
   source("R/frontends/team/workspace.R")
