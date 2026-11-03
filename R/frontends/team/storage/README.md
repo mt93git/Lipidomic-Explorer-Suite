@@ -11,7 +11,9 @@ configuration at startup; Classic never loads it.
 | `database` (alias `db`) | Supabase project library | `LIPIDOMIC_AUTH_URL`, `LIPIDOMIC_REST_URL`, `LIPIDOMIC_STORAGE_URL`; needs the `httr` package (in Suggests) |
 
 Any other value stops the Team process at startup with an error. So does
-`database` without its three URLs or without `httr` installed.
+`database` without its three URLs or without `httr` installed, and, for either
+backend, `LIPIDOMIC_UPLOAD_QUEUE` (the durable checkpoint queue) without the
+`filelock` package (in Suggests).
 
 **`files` is for a single local user.** It has no accounts and no access
 control: anyone who can reach the app can list, load and delete every project.
@@ -56,7 +58,10 @@ leave an invisible object that a later save of the same bytes reuses.
 
 ## Sign-in throttling
 
-`team_library_login_limiter()` in `../project_library.R` is on by default: per
-account, 5 failed sign-ins without delay, then 1, 2, 4 ... seconds (capped at
-60) counted from the last failure, no lockout, reset on success.
+`team_library_login_limiter()` in `../project_library.R` is on by default and
+never blocks the R process. Per account, 5 failed sign-ins are free; after that
+an attempt is refused with `retry_after_seconds` of 1, 2, 4 ... (capped at 60)
+counted from the last failure, and must not reach the identity service. No
+lockout; success resets. `team_library_sign_in()` applies this and
+`team_library_login_wait_message()` renders "Too many attempts. Try again in N s."
 `LIPIDOMIC_LOGIN_THROTTLE=off` gives immediate retries.

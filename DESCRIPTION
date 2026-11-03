@@ -69,6 +69,7 @@ Suggests:
     openxlsx,
     writexl,
     rstudioapi,
+    filelock,
     httr,
     httr2,
     future,

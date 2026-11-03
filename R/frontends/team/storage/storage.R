@@ -30,7 +30,7 @@ team_storage_backend <- function(value = Sys.getenv("LIPIDOMIC_STORAGE", unset =
 }
 
 # Startup check for the Team process: fail before any session opens.
-# `has_package` is injectable so tests can simulate a missing httr.
+# `has_package` is injectable so tests can simulate missing httr/filelock.
 team_storage_validate_config <- function(backend = team_storage_backend(),
                                          has_package = function(pkg) requireNamespace(pkg, quietly = TRUE)) {
   backend <- team_storage_backend(backend)
@@ -47,6 +47,11 @@ team_storage_validate_config <- function(backend = team_storage_backend(),
     if (file.exists(root) && !dir.exists(root))
       stop("LIPIDOMIC_STORAGE_DIR must name a directory: ", root, call. = FALSE)
   }
+  # The durable checkpoint queue (team_library_queue) is enabled by
+  # LIPIDOMIC_UPLOAD_QUEUE, for either backend, and locks with filelock.
+  if (nzchar(Sys.getenv("LIPIDOMIC_UPLOAD_QUEUE", unset = "")) && !isTRUE(has_package("filelock")))
+    stop("The Team checkpoint queue (LIPIDOMIC_UPLOAD_QUEUE) needs the filelock package. ",
+      "Install it or unset LIPIDOMIC_UPLOAD_QUEUE.", call. = FALSE)
   invisible(backend)
 }
 

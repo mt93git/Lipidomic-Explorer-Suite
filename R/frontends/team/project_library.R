@@ -17,22 +17,25 @@
 
 team_library_enabled <- function() identical(Sys.getenv("LIPIDOMIC_PROJECT_LIBRARY"), "1")
 
-# Sign-in throttle, ON by default. Per account (normalized email): the first 5
-# failed attempts get no delay; after that the next attempt waits 1 s, 2 s, 4 s ...
-# (capped at 60 s) counted from the last failure. There is no lockout, and a
-# successful sign-in resets the account.
-# LIPIDOMIC_LOGIN_THROTTLE=off restores immediate retries: the Team pilot, where
-# Gerardo requested immediate sign-in retries, keeps that behaviour by setting
-# the variable to off at its next deploy. Authentication and project permissions
-# remain enforced by the identity service either way.
+# Sign-in throttle, ON by default and never blocking. Per account (normalized
+# email): the first 5 failed attempts get no wait; after that the next attempt
+# is refused for 1 s, 2 s, 4 s ... (capped at 60 s) counted from the last
+# failure. There is no lockout, and a successful sign-in resets the account.
+# LIPIDOMIC_LOGIN_THROTTLE=off (or 0/false/no) restores immediate retries: the
+# Team pilot, where Gerardo requested immediate sign-in retries, keeps that
+# behaviour by setting the variable to off at its next deploy. Authentication
+# and project permissions remain enforced by the identity service either way.
 #
 # Call shape kept from production: `attempt <- team_library_login_limiter()`.
-#   attempt(email)                     before a sign-in: waits if required
+#   attempt(email)                     before a sign-in; returns list(allowed=TRUE)
+#                                      or list(allowed=FALSE, retry_after_seconds=N).
+#                                      When refused, do NOT contact the identity service.
 #   attempt(email, outcome="failure")  after a failed sign-in
 #   attempt(email, outcome="success")  after a successful sign-in (reset)
-# attempt() with no email is a no-op, as in production. Failure counts are
-# shared by every session of this R process (a reload must not reset them) and
-# are forgotten after 24 h without failures. Only email hashes are kept.
+# attempt() with no email is allowed, as in production. Failure counts are kept
+# per R process, shared by its sessions (a reload does not reset them; a process
+# restart does) and forgotten after 24 h without failures. Only email hashes
+# are kept. team_library_sign_in() below is the guarded flow for the port.
 # Production does not route activation attempts through this limiter.
 team_library_login_state <- new.env(parent=emptyenv())
 team_library_login_throttle_enabled <- function(value=Sys.getenv("LIPIDOMIC_LOGIN_THROTTLE", unset="")) {
@@ -41,13 +44,13 @@ team_library_login_throttle_enabled <- function(value=Sys.getenv("LIPIDOMIC_LOGI
 team_library_login_delay <- function(failures, free=5L, cap=60) {
   if (failures < free) 0 else min(cap, 2^(failures - free))
 }
-team_library_login_limiter <- function(now=function() as.numeric(Sys.time()), sleep=Sys.sleep,
-                                       state=team_library_login_state) {
+team_library_login_limiter <- function(now=function() as.numeric(Sys.time()), state=team_library_login_state) {
   forget_after <- 24 * 3600
+  allowed <- list(allowed=TRUE)
   function(email=NULL, outcome=c("attempt","failure","success")) {
     outcome <- match.arg(outcome)
-    if (!team_library_login_throttle_enabled()) return(invisible(TRUE))
-    if (!is.character(email) || length(email) != 1L || is.na(email)) return(invisible(TRUE))
+    if (!team_library_login_throttle_enabled()) return(allowed)
+    if (!is.character(email) || length(email) != 1L || is.na(email)) return(allowed)
     key <- digest::digest(tolower(trimws(email)), algo="sha256", serialize=FALSE)
     t <- now()
     for (k in ls(state)) if (t - state[[k]]$last > forget_after) rm(list=k, envir=state)
@@ -57,12 +60,29 @@ team_library_login_limiter <- function(now=function() as.numeric(Sys.time()), sl
     } else if (identical(outcome, "failure")) {
       assign(key, list(failures=entry$failures + 1L, last=t), envir=state)
     } else {
-      # The delay counts from the last failure; time already waited is credited.
-      delay <- team_library_login_delay(entry$failures) - (t - entry$last)
-      if (delay > 0) sleep(delay)
+      # The wait counts from the last failure; time already waited is credited.
+      remaining <- team_library_login_delay(entry$failures) - (t - entry$last)
+      if (remaining > 0) return(list(allowed=FALSE, retry_after_seconds=as.integer(ceiling(remaining))))
     }
-    invisible(TRUE)
+    allowed
   }
+}
+team_library_login_wait_message <- function(result) {
+  sprintf("Too many attempts. Try again in %d s.", as.integer(result$retry_after_seconds))
+}
+# Guarded password sign-in for the team_library_server port: a refused attempt
+# never reaches the identity service; outcomes feed the limiter.
+team_library_sign_in <- function(email, password, attempt, call=team_library_call) {
+  gate <- attempt(email)
+  if (!isTRUE(gate$allowed)) stop(team_library_login_wait_message(gate), call.=FALSE)
+  r <- tryCatch(call("auth","/token?grant_type=password",body=list(email=email,password=password),method="POST"),
+    error=function(e) NULL)
+  if (is.null(r) || !is.character(r$access_token) || length(r$access_token) != 1L || !nzchar(r$access_token)) {
+    attempt(email, outcome="failure")
+    stop("Sign-in failed. Check your email and password, or try again later.", call.=FALSE)
+  }
+  attempt(email, outcome="success")
+  r
 }
 
 # One-time setup never authenticates the analysis session. Revoke the temporary

@@ -1,59 +1,82 @@
-# Sign-in throttle: on by default, per account, progressive delay capped at 60 s,
-# no lockout, success resets, LIPIDOMIC_LOGIN_THROTTLE=off disables it.
-# Clock and sleep are injected, so this runs instantly.
+# Sign-in throttle: on by default, non-blocking, per account, retry-after
+# 1, 2, 4 ... s capped at 60 s, no lockout, success resets, off disables.
 for (f in c('storage/storage.R','storage/storage_database.R','project_library.R')) source(file.path('R/frontends/team', f))
+expect_error <- function(expr, pattern) {
+  msg <- tryCatch({force(expr); NULL}, error=conditionMessage)
+  if (is.null(msg) || !grepl(pattern, msg, fixed=TRUE)) stop('Expected error containing: ', pattern, ' got: ', format(msg))
+}
 Sys.unsetenv('LIPIDOMIC_LOGIN_THROTTLE')
-clock <- 1000; slept <- numeric()
-make <- function() team_library_login_limiter(now=function() clock, sleep=function(s) slept <<- c(slept, s), state=new.env())
-waits_for <- function(attempt, email) { slept <<- numeric(); attempt(email); if (length(slept)) sum(slept) else 0 }
+clock <- 1000
+make <- function(state=new.env()) team_library_login_limiter(now=function() clock, state=state)
+wait <- function(attempt, email) { r <- attempt(email); if (isTRUE(r$allowed)) 0L else r$retry_after_seconds }
+allowed <- list(allowed=TRUE)
 
-# On by default (unset), and for any value other than off.
+# Never blocks: no sleeping anywhere in the limiter.
+for (fn in list(team_library_login_limiter, make(), team_library_sign_in))
+  stopifnot(!grepl('sleep', paste(deparse(fn), collapse='\n'), ignore.case=TRUE))
+stopifnot(!'sleep' %in% names(formals(team_library_login_limiter)))
+
+# On by default (unset), and for any value other than off/0/false/no.
 stopifnot(team_library_login_throttle_enabled(''), team_library_login_throttle_enabled('on'))
 for (v in c('off','OFF',' off ','0','false','no')) stopifnot(!team_library_login_throttle_enabled(v))
 
-# No delay through 5 failures, then 1, 2, 4 ... s capped at 60, with no lockout.
+# Retry-after: 0 through 5 failures, then 1, 2, 4 ... s capped at 60, never a lockout.
 attempt <- make()
-observed <- numeric()
-for (i in 1:15) { observed <- c(observed, waits_for(attempt, 'Person@Example.org')); attempt('Person@Example.org', 'failure') }
-stopifnot(identical(observed, c(0,0,0,0,0, 1,2,4,8,16,32, 60,60,60,60)))
-stopifnot(identical(vapply(0:12, team_library_login_delay, 0), c(0,0,0,0,0,1,2,4,8,16,32,60,60)))
-# The delay counts from the last failure: time already waited is credited.
-clock <- clock + 45; stopifnot(waits_for(attempt, 'person@example.org') == 15)
-clock <- clock + 60; stopifnot(waits_for(attempt, 'person@example.org') == 0)
-# Email is normalized (case, whitespace) and never stored in clear text.
-stopifnot(waits_for(attempt, '  PERSON@example.ORG ') == 0)
+observed <- integer()
+for (i in 1:15) { observed <- c(observed, wait(attempt, 'Person@Example.org')); attempt('Person@Example.org', 'failure') }
+stopifnot(identical(observed, c(0L,0L,0L,0L,0L, 1L,2L,4L,8L,16L,32L, 60L,60L,60L,60L)))
+r <- attempt('person@example.org')
+stopifnot(identical(r, list(allowed=FALSE, retry_after_seconds=60L)))
+# Whole seconds rounded up, counted from the last failure.
+clock <- clock + 44.2; stopifnot(identical(attempt('person@example.org')$retry_after_seconds, 16L))
+clock <- clock + 15.8; stopifnot(identical(attempt('person@example.org'), allowed))
+stopifnot(identical(team_library_login_wait_message(list(allowed=FALSE, retry_after_seconds=16L)),
+  'Too many attempts. Try again in 16 s.'))
+# Email normalized and only hashed.
 env <- environment(attempt)$state
 stopifnot(length(ls(env)) == 1L, !grepl('example', ls(env)))
 
-# Success resets that account's counter.
-attempt('person@example.org', 'success')
-stopifnot(length(ls(env)) == 0L)
-for (i in 1:5) { stopifnot(waits_for(attempt, 'person@example.org') == 0); attempt('person@example.org', 'failure') }
-stopifnot(waits_for(attempt, 'person@example.org') == 1)
-
-# Accounts are independent.
-stopifnot(waits_for(attempt, 'other@example.org') == 0)
+# Success resets; accounts are independent.
+attempt('person@example.org', 'success'); stopifnot(length(ls(env)) == 0L)
+for (i in 1:5) { stopifnot(wait(attempt, 'person@example.org') == 0L); attempt('person@example.org', 'failure') }
+stopifnot(wait(attempt, 'person@example.org') == 1L, wait(attempt, 'other@example.org') == 0L)
 for (i in 1:7) attempt('other@example.org', 'failure')
-stopifnot(waits_for(attempt, 'other@example.org') == 4, waits_for(attempt, 'person@example.org') == 1)
+stopifnot(wait(attempt, 'other@example.org') == 4L, wait(attempt, 'person@example.org') == 1L)
 
-# State is shared by limiters (sessions) using the same store: a reload cannot reset it.
-shared <- new.env()
-a1 <- team_library_login_limiter(now=function() clock, sleep=function(s) slept <<- c(slept, s), state=shared)
-a2 <- team_library_login_limiter(now=function() clock, sleep=function(s) slept <<- c(slept, s), state=shared)
+# Shared by sessions in the process; forgotten after 24 h without failures.
+shared <- new.env(); a1 <- make(shared); a2 <- make(shared)
 for (i in 1:6) a1('shared@example.org', 'failure')
-stopifnot(waits_for(a2, 'shared@example.org') == 2)
-# Entries are forgotten after 24 h without failures.
-clock <- clock + 24 * 3600 + 1; stopifnot(waits_for(a2, 'shared@example.org') == 0, length(ls(shared)) == 0L)
+stopifnot(wait(a2, 'shared@example.org') == 2L)
+clock <- clock + 24 * 3600 + 1; stopifnot(wait(a2, 'shared@example.org') == 0L, length(ls(shared)) == 0L)
+stopifnot(identical(environment(team_library_login_limiter())$state, team_library_login_state))
+stopifnot(identical(attempt(), allowed), identical(attempt(NULL), allowed))
 
-# Production call shape attempt() with no email stays a no-op.
-stopifnot(waits_for(attempt, NULL) == 0, isTRUE(attempt()))
+# Guarded sign-in: a refused attempt makes zero transport calls.
+calls <- 0L; good <- FALSE
+fake <- function(service, path, token=NULL, body=NULL, method='GET', raw=FALSE) {
+  calls <<- calls + 1L
+  stopifnot(identical(service, 'auth'), grepl('grant_type=password', path, fixed=TRUE))
+  if (good) list(access_token='synthetic-token', user=list(id='u', email='x')) else stop('invalid credentials')
+}
+gate <- make()
+for (i in 1:5) expect_error(team_library_sign_in('who@example.org', 'wrong', gate, call=fake), 'Sign-in failed')
+stopifnot(calls == 5L)
+expect_error(team_library_sign_in('who@example.org', 'wrong', gate, call=fake), 'Too many attempts. Try again in 1 s.')
+stopifnot(calls == 5L)
+clock <- clock + 1; good <- TRUE
+stopifnot(identical(team_library_sign_in('who@example.org', 'right', gate, call=fake)$access_token, 'synthetic-token'), calls == 6L)
+stopifnot(length(ls(environment(gate)$state)) == 0L) # success reset
+
+# Real clock: a burst of 50 calls inside a 60 s penalty window returns at once.
+real <- team_library_login_limiter(state=new.env())
+for (i in 1:11) real('burst@example.org', 'failure')
+elapsed <- system.time(results <- lapply(1:50, function(i) real('burst@example.org')))[['elapsed']]
+stopifnot(elapsed < 0.5, all(vapply(results, function(r) isFALSE(r$allowed) && r$retry_after_seconds %in% 59:60, logical(1))))
 
 # LIPIDOMIC_LOGIN_THROTTLE=off: immediate retries, nothing recorded.
 Sys.setenv(LIPIDOMIC_LOGIN_THROTTLE='off')
 off <- make()
-for (i in 1:20) { stopifnot(waits_for(off, 'person@example.org') == 0); off('person@example.org', 'failure') }
+for (i in 1:20) { stopifnot(identical(off('person@example.org'), allowed)); off('person@example.org', 'failure') }
 stopifnot(length(ls(environment(off)$state)) == 0L)
 Sys.unsetenv('LIPIDOMIC_LOGIN_THROTTLE')
-# The default limiter uses the process-wide store.
-stopifnot(identical(environment(team_library_login_limiter())$state, team_library_login_state))
-cat('PASS: sign-in throttle on by default; 5 free failures then 1,2,4..60 s per normalized account, no lockout, success resets, accounts independent, shared across sessions, off disables\n')
+cat(sprintf('PASS: non-blocking sign-in throttle (50-call burst %.3fs): on by default, 5 free failures then retry_after 1,2,4..60 s rounded up, refused attempts never reach the transport, exact wait message, success resets, accounts independent, shared per process, 24 h forget, off disables\n', elapsed))
