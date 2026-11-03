@@ -120,7 +120,14 @@
   function icon(name) { return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (iconPaths[name] || iconPaths.grid) + '</g></svg>'; }
   function flatten() { return groups.reduce(function (all, group) { return all.concat(group.entries.map(function (e) { return {id:e[0],title:e[1],description:e[2],route:e[3],blocked:e[4] || null,routeOnly:e[6] || null,category:group.category,icon:e[5] || group.icon}; })); }, []); }
   function get(id) { return flatten().find(function (entry) { return entry.id === id; }) || null; }
-  function blocked(id) { var entry=get(id); return entry && entry.blocked || null; }
+  // Views the module builds only after a comparison has been run: until then the
+  // plot does not exist, so a copy cannot be placed (it timed out without a card).
+  var builtAfterComparison = {'barchart-donutPlotFiltered':1};
+  function blocked(id) {
+    var entry=get(id); if (entry && entry.blocked) return entry.blocked;
+    if (builtAfterComparison[id] && window.TeamCanvas && typeof TeamCanvas.deReady === 'function' && !TeamCanvas.deReady()) return {status:'Needs a comparison', reason:'This view is built only after a differential comparison has been run. Run the comparison in the data step, then add it.'};
+    return null;
+  }
   var renderStates = new WeakMap();
   var shortCategories = {'Differential analysis':'Differential','Distributions & ratios':'Distributions','Cellular organization':'Cellular','Other discovered plots':'Other plots'};
   var openGroups = new Map();
@@ -171,7 +178,8 @@
         var state = document.createElement('span'); state.className = 'tc-catalog-state';
         var tooltipDetail = '';
         var button = document.createElement('button'); button.type = 'button'; button.className = 'tc-catalog-action'; button.dataset.catalogActionId = entry.id;
-        if (entry.blocked) { state.textContent = entry.blocked.status; button.textContent = 'Unavailable'; tooltipDetail = entry.blocked.reason; button.setAttribute('aria-disabled','true'); button.setAttribute('aria-label',entry.blocked.status + ': ' + entry.title); }
+        var block = blocked(entry.id);
+        if (block) { state.textContent = block.status; button.textContent = 'Unavailable'; tooltipDetail = block.reason; button.setAttribute('aria-disabled','true'); button.setAttribute('aria-label',block.status + ': ' + entry.title); }
         else if (entry.routeOnly && route) { state.textContent = entry.routeOnly.status; button.textContent = entry.routeOnly.action; button.setAttribute('aria-label',entry.routeOnly.action); button.addEventListener('click',function(){renderState.args.onRoute(route,'Opened Export studio. Choose a figure and publication size there.');}); }
         else if (args.repeatable && args.repeatable(entry.id)) {state.textContent='Independent copy';button.textContent='Add';button.setAttribute('aria-label','Add independent '+entry.title);button.addEventListener('click',function(){renderState.args.onAdd(entry.id);});}
         else if (r && r.node) { state.textContent = 'Added'; button.textContent = 'Added'; button.disabled = true; button.setAttribute('aria-label','Added: ' + entry.title); }
@@ -186,7 +194,7 @@
         else if (route && r && r.dynamic && !r.wrapper) { state.textContent = 'Requires configuration'; button.textContent = 'Open analysis'; tooltipDetail = 'This plot shares a dynamic panel with other outputs and cannot be moved safely.'; button.addEventListener('click', function () { renderState.args.onRoute(route); }); }
         else if (route) { state.textContent = 'Requires configuration'; button.textContent = 'Add'; tooltipDetail = 'Open the analysis; the canvas will add the plot when its output is ready.'; button.addEventListener('click', function () { renderState.args.onQueue(entry.id, route); }); }
         else { state.textContent = 'Requires configuration'; button.textContent = 'Unavailable'; tooltipDetail = 'Open the analysis and wait for this plot to render before adding it.'; button.setAttribute('aria-disabled','true'); }
-        var requirement = needs(entry.id); if (requirement && !entry.blocked && !entry.routeOnly) tooltipDetail = (tooltipDetail ? tooltipDetail + ' · ' : '') + requirement.reason;
+        var requirement = needs(entry.id); if (requirement && !block && !entry.routeOnly) tooltipDetail = (tooltipDetail ? tooltipDetail + ' · ' : '') + requirement.reason;
         var actionLabel = button.getAttribute('aria-label') || (button.textContent + ' ' + entry.title);
         button.innerHTML = icon(entry.icon || groupIcon);
         // The visible tooltip and accessible description carry the same meaningful context.

@@ -1859,7 +1859,7 @@
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
       Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
-      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){deResultsReady=!!(message&&message.ready);});
+      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){var was=deResultsReady;deResultsReady=!!(message&&message.ready);if(was!==deResultsReady)renderList();});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);
         // A mounted copy whose analysis failed no longer shows a current result.
         if(!request)records.forEach(function(r){if(r.instance&&r.instance.id===message.id&&r.node){r.revision=(r.revision||0)+1;r.renderRevision=null;r.sourceError=true;r.sourceWaiting=false;r.sourceSignature=null;if(r.statistics&&window.TeamCanvasStatistics)TeamCanvasStatistics.sourceChanged(r);if(!r.hydrating)staleSnapshot(r);}});tell(message.message||'Could not create an independent plot.');});
@@ -1928,6 +1928,7 @@
       // Read-only card state for the shell's status chips and export warning.
       cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';if(awaitingInput(r))return 'waiting';return figureCurrent(r)?'current':'updating';},
       catalogSource:function(id){var r=records.get(id);return r?sourceKey(r):null;},
+      deReady:deReady,
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
