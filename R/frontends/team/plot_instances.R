@@ -165,6 +165,12 @@ team_plot_instance_classic_doc <- function(family) {
   }
   NULL
 }
+# Classic-only inputs whose NULL breaks a module observer a copy runs (QC: the
+# loading-plot tab observer compares input$pcaMode). Only these take the Classic
+# default; every other unhosted input stays as the Team source has it (NULL when the
+# Team UI has no control), so copies draw exactly like the Team view. A generic
+# Classic default would give copies settings the Team view never uses.
+team_plot_instance_classic_inputs <- list(qc_pca_tab='pcaMode')
 team_plot_instance_input_defaults <- local({
   cache <- new.env(parent=emptyenv())
   function(family) {
@@ -172,7 +178,8 @@ team_plot_instance_input_defaults <- local({
     out <- team_plot_instance_doc_defaults(team_plot_instance_schema_doc(family))
     if (!family %in% c('team_cell','results_dashboard')) {
       classic <- tryCatch(team_plot_instance_doc_defaults(team_plot_instance_classic_doc(family)),error=function(e)list())
-      for (key in intersect(setdiff(names(classic),names(out)),team_plot_instance_unhosted_ids(family))) out[[key]] <- classic[[key]]
+      keys <- intersect(team_plot_instance_classic_inputs[[family]],team_plot_instance_unhosted_ids(family))
+      for (key in intersect(setdiff(names(classic),names(out)),keys)) out[[key]] <- classic[[key]]
     }
     assign(family,out,cache);out
   }

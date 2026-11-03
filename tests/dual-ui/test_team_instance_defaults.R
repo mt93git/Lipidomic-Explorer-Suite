@@ -12,3 +12,4 @@ check('pcaMode falls back to its Classic default', identical(defaults$pcaMode, '
 check('a hosted control keeps its Team default', identical(defaults$classLabelFormat, 'short'))
 copy_input <- team_plot_instance_fallback_input(shiny::reactiveValues(), defaults)
 check('a copy reads the Classic default before any control reports', identical(shiny::isolate(copy_input$pcaMode), 'omics'))
+check('only allow-listed Classic-only inputs take a Classic default', all(setdiff(intersect(unhosted, names(defaults)), team_plot_instance_classic_inputs$qc_pca_tab) %in% names(team_plot_instance_doc_defaults(team_plot_instance_schema_doc('qc_pca_tab')))))
