@@ -146,6 +146,24 @@ rd_layout <- function(p, ..., margin = list(l = 60, r = 20, t = 10, b = 60)) {
     plotly::config(displaylogo = FALSE, scrollZoom = FALSE, responsive = TRUE, modeBarButtonsToRemove = c("lasso2d", "select2d"))
 }
 
+# Top legend bar for a figure: one dot per item in its color, followed by its label. Returned
+# as plot text (rows joined with <br>, wrapped to `width` px by an estimate of the text width)
+# plus the number of rows, so the figure can reserve room for it.
+rd_legend_bar <- function(labels, colors, width) {
+  labels <- as.character(labels)
+  dots <- paste0('<span style="color:', colors, '">●</span>')
+  entries <- paste0(dots, '&nbsp;', htmltools::htmlEscape(labels))
+  widths <- nchar(labels) * 6.6 + 40
+  rows <- list(); current <- character(); used <- 0
+  for (i in seq_along(entries)) {
+    if (length(current) && used + widths[i] > width) { rows[[length(rows) + 1L]] <- current; current <- character(); used <- 0 }
+    current <- c(current, entries[i]); used <- used + widths[i]
+  }
+  if (length(current)) rows[[length(rows) + 1L]] <- current
+  list(text = paste(vapply(rows, paste, character(1), collapse = '&nbsp;&nbsp;&nbsp;&nbsp;'), collapse = '<br>'),
+       rows = max(1L, length(rows)))
+}
+
 # Thin labels, never observations. Full identifiers remain in hover and CSV.
 rd_ticks <- function(values, budget) {
   if(!length(values))return(values)
@@ -684,16 +702,21 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
           x<-as.character(df$Sample);y<-df$Share_pct
           hover<-paste0(unname(sample_hover()[x]),'<br>Class: ',htmltools::htmlEscape(cl),'<br>Share: ',round(y,2),'%')
         }
-        p<-plotly::add_trace(p,x=x,y=y,type='bar',name=cl,legendgroup=cl,
+        p<-plotly::add_trace(p,x=x,y=y,type='bar',name=cl,legendgroup=cl,textposition='none',
           visible=cl%in%chosen,meta=list(teamSourceKey=paste0('team-composition:',cl)),
           marker=list(color=unname(cols[cl]),line=list(color='#fcfcfb',width=1)),text=hover,hovertemplate='%{text}<extra></extra>')
       }
+      # Lipid classes (the colors of the stacked bars) are named in a legend bar above the figure:
+      # a dot in each class color followed by its name. Conditions stay on the x axis.
+      shown<-lev[lev%in%chosen]
+      bar<-rd_legend_bar(shown,unname(cols[shown]),plot_width('comp')-90)
       axis<-if(group_mode) list(title='Condition / cell type',type='category',tickmode='array',tickvals=x,ticktext=paste0(x,' · n = ',counts)) else sample_axis(x,'comp')
-      return(p |> rd_layout(barmode='stack',bargap=.15,
+      bar_note<-list(list(name='team-class-bar',xref='paper',yref='paper',x=0,y=1,xanchor='left',yanchor='bottom',yshift=10,align='left',showarrow=FALSE,text=bar$text,font=list(size=12,color='#52514e'),bgcolor='#F6F7F9',bordercolor='#D8DCE2',borderwidth=1,borderpad=6))
+      return(p |> rd_layout(barmode='stack',bargap=.15,annotations=bar_note,
         meta=list(teamConditions=unname(sort(sample_info()$levels,method='radix')),teamComposition=list(version=1L,axisMode=if(group_mode)'group' else 'sample',groupInputId=session$ns('comp_group_selection'),groupIds=unique(as.character(d$Group)),estimator='Equal-weight mean of per-sample selected-class signal percentages'),
           teamClassSelection=list(inputId=session$ns('comp_class_selection'),classes=unname(lev),selected=unname(chosen),serverEstimator=TRUE)),
         xaxis=axis,yaxis=list(title=if(group_mode)'Mean share of selected signal (%)' else 'Share of selected signal (%)',range=c(0,100)),
-        showlegend=FALSE,margin=list(l=60,r=15,t=10,b=100)))
+        showlegend=FALSE,margin=list(l=60,r=15,t=26+bar$rows*19,b=100)))
     }
     df<-comp_full();lev<-levels(df$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
     df$Hover<-paste0(unname(sample_hover()[as.character(df$Sample)]),"<br>Class: ",as.character(htmltools::htmlEscape(as.character(df$Class))))

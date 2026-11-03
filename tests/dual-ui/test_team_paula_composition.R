@@ -25,6 +25,12 @@ testServer(server,{
  p<-jsonlite::fromJSON(output$plot_comp,simplifyVector=FALSE)
  stopifnot(p$x$layout$meta$teamComposition$axisMode=='group',is.null(p$x$layout$barnorm),length(p$x$data)==2L,
  p$x$data[[1]]$meta$teamSourceKey=='team-composition:PC')
+ # Lipid classes are named in a top legend bar (dot in the class color + name); no text inside the bars;
+ # conditions stay on the x axis with their n.
+ note<-p$x$layout$annotations[[1]];ticks<-unlist(p$x$layout$xaxis$ticktext)
+ stopifnot(identical(note$name,'team-class-bar'),grepl('PC',note$text,fixed=TRUE),grepl('color:#',note$text,fixed=TRUE),
+ any(grepl('Healthy',ticks)),all(grepl(' · n = ',ticks)),
+ all(vapply(p$x$data,function(t)all(unlist(t$textposition)=='none'),logical(1))))
  html<-output$select_comp$html;stopifnot(grepl('comp_axis_mode',html),grepl('comp_group_selection',html))
  session$setInputs(comp_class_selection='["PC"]',comp_group_selection='["Healthy"]');session$flushReact()
  d<-dashboard$composition_team();stopifnot(all(d$samples$Share_pct[d$samples$Selected]==100),all(d$samples$Group_mean_share_pct[d$samples$Selected]==100),all(!d$samples$Group_visible[d$samples$Group=='SC-Pain']))
