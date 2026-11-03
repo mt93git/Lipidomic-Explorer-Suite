@@ -40,6 +40,31 @@ adapted <- team_volcano_participant_warning_adapter(e$volcano_server)
 check('volcano adapter leaves the shared module body untouched', identical(before, serialize(body(e$volcano_server), NULL)))
 mutant <- function(id, shared_data) shiny::moduleServer(id, function(input, output, session) { generateVolcanoPlot <- function(x) NULL })
 check('volcano adapter fails closed on a changed module', inherits(try(team_volcano_participant_warning_adapter(mutant), silent = TRUE), 'try-error'))
+# Structural: its own "ready" banner and launch button stay, with the warning above.
+es <- new.env(parent = globalenv()); sys.source('R/modules/8_structural_module.R', es)
+check('structural adapter matches the checked-in module', is.function(team_structural_participant_warning_adapter(es$structural_server)))
+mini <- function(id, shared_data) {
+  input <- list(runAnalysis = 0)
+  render_structural_status_banner <- function() {
+    de_banner <- render_de_not_run_banner(shared_data)
+    if (!is.null(de_banner)) return(de_banner)
+    if (input$runAnalysis == 0) return('READY BANNER')
+    NULL
+  }
+  render_structural_status_banner()
+}
+render_de_not_run_banner <- team_de_banner_participant_warning_adapter(function(sd) NULL)
+warned_hub <- list(team_da_participant_reason = function() reasons$repeated, de_results = function() data.frame(x = 1))
+html <- function(x) as.character(htmltools::renderTags(x)$html)
+check('without the adapter the warning would hide the structural ready banner (the defect)', !grepl('READY BANNER', html(mini('s', warned_hub)), fixed = TRUE))
+fixed <- team_structural_participant_warning_adapter(mini)
+check('structural keeps its ready banner and adds the warning above it',
+  grepl('Pseudoreplication warning', html(fixed('s', warned_hub)), fixed = TRUE) && grepl('READY BANNER', html(fixed('s', warned_hub)), fixed = TRUE))
+check('structural banner unchanged without a reason', identical(fixed('s', list(team_da_participant_reason = function() NULL, de_results = function() data.frame(x = 1))), 'READY BANNER'))
+rm(render_de_not_run_banner)
+cap <- team_volcano_warning_caption(ggplot2::ggplot(), list(team_da_participant_reason = function() reasons$repeated, de_results = function() data.frame(x = 1)), 330)
+check('caption is wrapped to a narrow rendered width (330 px)', all(nchar(strsplit(cap$labels$caption, '\n')[[1]]) <= 48L))
+
 walk <- function(node) if (is.call(node)) c(list(node), unlist(lapply(as.list(node), walk), recursive = FALSE)) else
   if (is.expression(node) || is.list(node) || is.pairlist(node)) unlist(lapply(as.list(node), walk), recursive = FALSE) else list()
 server_calls <- vapply(walk(parse('R/server.R')), function(x) paste(deparse(x[[1L]]), collapse = ''), character(1))
