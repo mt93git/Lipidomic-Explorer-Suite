@@ -183,6 +183,9 @@
       setSeries:function(index,visible){var m=info(index);if(!m||!m.condition)return Promise.resolve(false);if(m.feature){var off=s.panelOff[m.feature]||(s.panelOff[m.feature]=new Set());if(visible){s.off.delete(m.condition);off.delete(m.condition);clear(m.feature,m.condition);}else off.add(m.condition);}else{if(visible){s.off.delete(m.condition);s.features.forEach(function(c){if(s.panelOff[c])s.panelOff[c].delete(m.condition);clear(c,m.condition);});}else s.off.add(m.condition);}change(root,s);return Promise.resolve(true);},
       showAll:function(){s.off.clear();s.features.forEach(function(c){s.groups.forEach(function(g){clear(c,g);});});s.panelOff={};change(root,s);return Promise.resolve(true);}};
   };
+  // The comparison is held back until its baseline is confirmed on the card: that is
+  // a decision the card asks for, not a redraw in progress.
+  window.TeamGroupComparison.awaitingConfirmation=function(outputId){var suffix='-comparisonPlot';if(typeof outputId!=='string'||!outputId.endsWith(suffix))return false;var s=states.get(outputId.slice(0,-suffix.length));return !!(s&&s.waiting&&!s.pending&&s.root&&s.root.isConnected);};
   window.TeamGroupComparison.provenance=function(outputId){var suffix='-comparisonPlot';if(typeof outputId!=='string'||!outputId.endsWith(suffix))return null;var s=states.get(outputId.slice(0,-suffix.length));if(!s||s.waiting||s.pending||!s.rows.length||!/^[a-f0-9]{64}$/i.test(s.provenanceSignature||''))return null;var v=s.settings||{}, p={gcTest:v.test||'',gcBaseline:s.baseline.join(', '),gcScale:v.scale||'',gcReference:v.comparison||'',gcAdjustment:'none',gcSignature:s.provenanceSignature};return Object.values(p).every(function(x){return typeof x==='string'&&x.length>0&&x.length<=1000;})?p:null;};
   function start(){if(window.Shiny)Shiny.addCustomMessageHandler('team-group-comparison-data',receive);
     if(window.jQuery)jQuery(document).on('shiny:inputchanged',function(e){

@@ -196,7 +196,38 @@
     Shiny.setInputValue('team_canvas_instance_create',instance,{priority:'event'});lastInstanceRequest=id;
     tell('Creating an independent '+plotTitle(source)+'…'); return true;
   }
+  // bslib's accordion binding accepts only {method,...} messages and rejects anything
+  // else as an unhandled promise rejection ("Method not yet implemented: undefined").
+  // A plain {value} message (how Team replays a saved setting, here and through the
+  // server's sendInputMessage) or {selected} (Shiny's update*Input) means "exactly
+  // these panels open"; apply it as bslib's own "set". Any other method-less message
+  // carries nothing an accordion can use and is ignored instead of thrown.
+  function accordionMessage(data) {
+    if (!data || data.method != null) return data;
+    var has = function (k) { return Object.prototype.hasOwnProperty.call(data, k); };
+    var v = has('value') ? data.value : has('selected') ? data.selected : undefined;
+    if (v === undefined) return null;
+    return {method:'set', values:v == null ? [] : Array.isArray(v) ? v.map(String) : [String(v)]};
+  }
+  function adaptAccordionMessages() {
+    if (!window.Shiny || !Shiny.inputBindings || typeof Shiny.inputBindings.getBindings !== 'function') return false;
+    // Registered as "bslib.accordion", but the registry does not expose names reliably:
+    // recognise the binding by its own accordion methods.
+    var entry = Shiny.inputBindings.getBindings().find(function (b) { var x = b && b.binding; return b && (b.name === 'bslib.accordion' || (x && typeof x._setItems === 'function' && typeof x._getItemInfo === 'function' && typeof x._isAutoClosing === 'function')); });
+    if (!entry) return false;
+    var binding = entry.binding;
+    if (binding.tcValueMessages) return true;
+    var receive = binding.receiveMessage;
+    binding.receiveMessage = function (el, data) {
+      var message = accordionMessage(data);
+      return message ? receive.call(this, el, message) : Promise.resolve();
+    };
+    binding.tcValueMessages = true;
+    return true;
+  }
+  if (!adaptAccordionMessages() && window.jQuery) jQuery(document).one('shiny:connected', adaptAccordionMessages);
   function setInstanceInputs(instance, onlyKeys) {
+    adaptAccordionMessages();
     Object.keys(instance.inputs||{}).forEach(function(key){
       if(onlyKeys && !onlyKeys.includes(key))return;
       var id=instance.id+'-'+key, value=instance.inputs[key], el=document.getElementById(id);
@@ -1039,6 +1070,7 @@
     var need=plotNeeds(r);
     if (need && need.kind==='de' && !deReady()) return true;
     if (shinyBusy || document.documentElement.classList.contains('shiny-busy') || r.el.classList.contains('recalculating')) return false;
+    if (window.TeamGroupComparison && typeof TeamGroupComparison.awaitingConfirmation === 'function' && TeamGroupComparison.awaitingConfirmation(r.el.id)) return true;
     return !!r.sourceWaiting || (!hasRenderedPlot(r.el) && !!r.el.querySelector('.empty-plot-overlay'));
   }
   function figureCurrent(r) { return preparationOK() && !shinyBusy && !(window.Shiny && Shiny.shinyapp && document.documentElement.classList.contains('shiny-busy')) && !r.sourceError && r.renderRevision === preparation.revision; }
@@ -1106,14 +1138,23 @@
     r.equivalentObserver.observe(r.el, {childList:true,subtree:true,attributes:true,attributeFilter:['src']});
     var gd = plotFor(r); if (gd && typeof gd.once === 'function') gd.once('plotly_afterplot', signal);
   }
+  // visNetwork draws into a sized <canvas> inside .vis-network; it has neither Plotly
+  // data nor an <img>, so without this its card stayed "Updating…" after drawing.
+  function networkDrawn(el) {
+    var canvas = el && el.querySelector('.vis-network canvas');
+    return !!(canvas && canvas.width > 0 && canvas.height > 0);
+  }
   function watchRender(r) {
     if (r.renderObserver) r.renderObserver.disconnect();
     var sequence = r.revision, expected = preparation && preparation.revision, signaled = false, settled = false, timer;
     r.renderRevision = null;
     function settle() {
+      // A network draws (or redraws into its card) without a DOM change or event
+      // this watcher hears; once Shiny is idle, its drawn canvas is the current result.
+      if (!signaled && networkDrawn(r.el)) signaled = true;
       if (settled || !signaled || !r.el.isConnected || !preparationOK() || shinyBusy || preparation.revision !== expected || r.revision !== sequence) return;
       var gd = plotFor(r), img = r.el.querySelector('img');
-      if ((gd && gd.data && gd.data.length && gd._fullLayout) || (img && img.complete && img.naturalWidth && img.naturalHeight)) {
+      if ((gd && gd.data && gd.data.length && gd._fullLayout) || (img && img.complete && img.naturalWidth && img.naturalHeight) || networkDrawn(r.el)) {
         settled = true;
         if (r.editorSourceReset && window.TeamPlotEditor && TeamPlotEditor.resetSource) { TeamPlotEditor.resetSource(gd); r.editorSourceReset=false; }
         if (r.plotEditor) r.plotEditor.refresh();
