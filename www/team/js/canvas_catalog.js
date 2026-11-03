@@ -105,6 +105,10 @@
   function flatten() { return groups.reduce(function (all, group) { return all.concat(group.entries.map(function (e) { return {id:e[0],title:e[1],description:e[2],route:e[3],blocked:e[4] || null,routeOnly:e[6] || null,category:group.category,icon:e[5] || group.icon}; })); }, []); }
   function get(id) { return flatten().find(function (entry) { return entry.id === id; }) || null; }
   function blocked(id) { var entry=get(id); return entry && entry.blocked || null; }
+  // Temporary hold (2026-11-03): adding a Quality check plot as a canvas copy ended the Shiny session
+  // (an observer error inside the QC module). Only new adds are held; saved cards still restore.
+  var qcCopyHold = {status: 'Temporarily unavailable', reason: 'Adding Quality check plots to the canvas is paused while a fix is tested, because it could disconnect the session. Your work and saved cards are not affected; the Quality check step still shows these plots.'};
+  function held(id) { return /^qc_pca_tab-/.test(String(id || '')) ? qcCopyHold : null; }
   var renderStates = new WeakMap();
   var shortCategories = {'Differential analysis':'Differential','Distributions & ratios':'Distributions','Cellular organization':'Cellular','Other discovered plots':'Other plots'};
   var openGroups = new Map();
@@ -155,7 +159,8 @@
         var state = document.createElement('span'); state.className = 'tc-catalog-state';
         var tooltipDetail = '';
         var button = document.createElement('button'); button.type = 'button'; button.className = 'tc-catalog-action'; button.dataset.catalogActionId = entry.id;
-        if (entry.blocked) { state.textContent = entry.blocked.status; button.textContent = 'Unavailable'; tooltipDetail = entry.blocked.reason; button.setAttribute('aria-disabled','true'); button.setAttribute('aria-label',entry.blocked.status + ': ' + entry.title); }
+        var stop = entry.blocked || held(entry.id);
+        if (stop) { state.textContent = stop.status; button.textContent = 'Unavailable'; tooltipDetail = stop.reason; button.setAttribute('aria-disabled','true'); button.setAttribute('aria-label',stop.status + ': ' + entry.title); }
         else if (entry.routeOnly && route) { state.textContent = entry.routeOnly.status; button.textContent = entry.routeOnly.action; button.setAttribute('aria-label',entry.routeOnly.action); button.addEventListener('click',function(){renderState.args.onRoute(route,'Opened Export studio. Choose a figure and publication size there.');}); }
         else if (args.repeatable && args.repeatable(entry.id)) {state.textContent='Independent copy';button.textContent='Add';button.setAttribute('aria-label','Add independent '+entry.title);button.addEventListener('click',function(){renderState.args.onAdd(entry.id);});}
         else if (r && r.node) { state.textContent = 'Added'; button.textContent = 'Added'; button.disabled = true; button.setAttribute('aria-label','Added: ' + entry.title); }
@@ -193,5 +198,5 @@
       if (card) { var action = card.querySelector('button:not(:disabled)'); (action || card).focus(); }
     }
   }
-  window.TeamCanvasCatalog = {list:flatten(), get:get, blocked:blocked, render:render};
+  window.TeamCanvasCatalog = {list:flatten(), get:get, blocked:blocked, held:held, render:render};
 })();
