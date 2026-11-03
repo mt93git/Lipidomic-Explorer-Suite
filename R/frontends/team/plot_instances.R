@@ -299,7 +299,11 @@ team_plot_instance_unhosted_ids <- local({
 # container renderUI); a copy of one of them is that view, so it starts with it.
 team_plot_instance_shown_by <- list(
   'heatmap_barchart_tab-heatmapSDPlot'=list(condenseRowsSD=TRUE),
-  'heatmap_barchart_tab-filteredHeatmapSDPlot'=list(condenseRowsSD=TRUE)
+  'heatmap_barchart_tab-filteredHeatmapSDPlot'=list(condenseRowsSD=TRUE),
+  # Team's editable vector views exist only with their "Editable vector view" box
+  # checked (legacy_vector_adapter.R: req(isTRUE(input$team_<plot>_vector))).
+  'qc_pca_tab-pca2dVectorPlot'=list(team_pca2dPlot_vector=TRUE),
+  'qc_pca_tab-load2dVectorPlot'=list(team_load2dPlot_vector=TRUE)
 )
 # Each plot lives in its module's markup, often inside tabs and sometimes inside a
 # renderUI built on the server. Locate it: the renderUI outputs that create it
