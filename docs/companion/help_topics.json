@@ -1,0 +1,252 @@
+{
+ "version": "2026-11-02",
+ "count": 41,
+ "topics": [
+  {
+   "id": "step-data",
+   "title": "Data step",
+   "keywords": "data upload start begin matrix excel csv checkpoint resume open latest file import",
+   "text": "In Data you open a saved checkpoint (Open latest, or choose one under All checkpoints) or upload a new abundance matrix (Excel or CSV) with optional sample metadata. Source files are never changed."
+  },
+  {
+   "id": "step-metadata",
+   "title": "Sample labels and metadata",
+   "keywords": "metadata labels groups sample names participant patient group1 group2 timepoint design",
+   "text": "Sample metadata gives each sample its group and, when relevant, its participant and time point. Check groups before analysis: repeated participants or matched samples change which tests are valid."
+  },
+  {
+   "id": "step-review",
+   "title": "Review step",
+   "keywords": "review step slider pca prepared data summary inspect",
+   "text": "Review shows the prepared data. The detection slider keeps lipids with at least that percentage of positive measurements; the data table and PCA update automatically. Click a PCA point to inspect a sample; exclusions need a reason and can be undone."
+  },
+  {
+   "id": "detection",
+   "title": "Detection threshold",
+   "keywords": "detection threshold minimum detection filter percent positive measured lipids kept removed",
+   "text": "Detection counts positive measured values before imputation. A lipid is kept when it is detected in at least the chosen percentage of samples. A global threshold can remove signals present in only one group."
+  },
+  {
+   "id": "exclude",
+   "title": "Excluding a sample",
+   "keywords": "exclude remove drop outlier sample undo",
+   "text": "Inspect the sample's metadata and QC plots first; a PCA position alone does not make it an outlier. To exclude it, select it, give a reason and confirm. Undo restores it, and the original data stay unchanged."
+  },
+  {
+   "id": "imputation",
+   "title": "Missing values and imputation",
+   "keywords": "missing imputation impute qrilc na zero left censored",
+   "text": "QRILC estimates missing values assuming they are low (left-censored). Imputed values are estimates, not measurements. A high missing-value share makes results less certain."
+  },
+  {
+   "id": "normalization",
+   "title": "Normalization",
+   "keywords": "normalization normalize median pqn scale",
+   "text": "Median normalization centres log2 values and returns linear abundances; PQN works on the linear scale. Neither is automatically best: check controls and distributions. Ask me to propose a change; nothing changes until you confirm."
+  },
+  {
+   "id": "step-canvas",
+   "title": "Canvas step",
+   "keywords": "canvas board arrange cards add plot library layout figure build",
+   "text": "Canvas is your draft board. Add plots from the library, move and resize cards, and style them. A card stays live until you finish it; finished plots are what the figure page uses."
+  },
+  {
+   "id": "add-plot",
+   "title": "Adding a plot",
+   "keywords": "add plot library catalog search requires configuration unavailable queued add to check",
+   "text": "Pick a plot in the library. Ready to add plots appear at once. Add to check adds a plot that has not drawn yet. Requires configuration means its analysis needs settings first: the card is added when the plot is ready. Unavailable plots explain why in their tooltip."
+  },
+  {
+   "id": "select-card",
+   "title": "Selected card",
+   "keywords": "select card inspector properties style data statistics tab",
+   "text": "Selecting a card opens its properties: Data holds the analysis controls and downloads, Style the presentation, and Statistics the tests available for that plot."
+  },
+  {
+   "id": "finish",
+   "title": "Finish and Edit",
+   "keywords": "finish finished snapshot edit stale outdated archived regenerate",
+   "text": "Finish freezes the plot as a snapshot for the figure page. If the analysis later changes, the snapshot is marked as needing review; choose Edit to regenerate the live plot, then finish it again."
+  },
+  {
+   "id": "figure-page",
+   "title": "Draft canvas and figure page",
+   "keywords": "figure page preview print pdf svg export compose draft panel letters layout page",
+   "text": "The canvas is the draft; the figure page is what you export. In the figure page you pick which finished charts (from any tab) go into the figure, arrange them on the page, and add text, panel letters and shapes. Then download PDF or SVG."
+  },
+  {
+   "id": "canvas-tabs",
+   "title": "Canvas tabs",
+   "keywords": "tab tabs organize rename move copy card another tab many charts",
+   "text": "When your Canvas has tabs, use them to organize many charts: rename a tab, and move or copy a card to another tab. Tabs are for organizing the draft; the figure page can take charts from any tab."
+  },
+  {
+   "id": "panel-letters",
+   "title": "Panel letters and text",
+   "keywords": "panel letter label a b c text shape arrow annotation caption",
+   "text": "Add panel letters, text and shapes in the figure page. A publication layout can place panel labels for you; you can also add text objects and move them."
+  },
+  {
+   "id": "title-fonts",
+   "title": "Titles and font size",
+   "keywords": "title font size larger bigger small text label axis legend print",
+   "text": "Select the card, open Style, then Title and fonts to set the plot title and font sizes. Publication style applies Arial text at size 12 on a white background in one click; Undo reverts it."
+  },
+  {
+   "id": "palette",
+   "title": "Colours and palettes",
+   "keywords": "color colour palette colors same repeated legend inherited theme",
+   "text": "Style > Color palette applies a palette to a card's groups. A new card inherits the palette of the cards already on the canvas. Colours change presentation only."
+  },
+  {
+   "id": "export",
+   "title": "Downloads and export size",
+   "keywords": "download export png svg pdf csv size dpi resolution width height",
+   "text": "Each card's Data tab offers its plot and data downloads where the analysis provides them. For the final figure, set the page layout in the figure page and export PDF or SVG; Export studio sets an exact physical size, font size and DPI for single figures."
+  },
+  {
+   "id": "autosave",
+   "title": "Autosave and checkpoints",
+   "keywords": "save autosave checkpoint saved unsaved restore project library",
+   "text": "With a private project, the workspace autosaves. Save & export creates named checkpoints that keep the data, canvas, colours and finished figures. Resume a checkpoint from Data."
+  },
+  {
+   "id": "pca",
+   "title": "PCA",
+   "keywords": "pca principal component pc1 pc2 scores loadings variance explained separation",
+   "text": "PCA places samples by the main directions of variation in the prepared data. It is exploratory: separation is not significance. The dashboard PCA uses log2(x + 1), centred and scaled to unit variance by default."
+  },
+  {
+   "id": "volcano",
+   "title": "Volcano plots",
+   "keywords": "volcano fold change log2fc p value significance up down regulated",
+   "text": "A volcano plot shows log2 fold change against -log10 p for each lipid. The test (limma moderated t or Wilcoxon), the p-value type (BH-adjusted by default) and the thresholds come from Differential analysis."
+  },
+  {
+   "id": "violin",
+   "title": "Violin plots",
+   "keywords": "violin distribution box dots shape",
+   "text": "A violin shows the distribution of values in each group; dots are samples. The shape alone is not a test. On the dashboard, tests run on independent copies of the violin card (Statistics tab)."
+  },
+  {
+   "id": "heatmap",
+   "title": "Heatmaps and z-scores",
+   "keywords": "heatmap z score zscore colour scale red blue rows columns cluster most variable",
+   "text": "Dashboard heatmap cells are group means of per-sample z-scores (log10 values, whole cohort), so colours compare groups within a lipid. The most variable lipids are shown and clustered by default."
+  },
+  {
+   "id": "significant-only",
+   "title": "Significant only",
+   "keywords": "significant only filter show significant unavailable differential",
+   "text": "Significant only reuses the Differential analysis result and its thresholds; it does not run a new test. It is unavailable when the design does not allow independent-sample inference, for example with repeated participants, synthetic samples or an unconfirmed design."
+  },
+  {
+   "id": "correction",
+   "title": "Multiple-testing correction",
+   "keywords": "bh fdr benjamini hochberg holm bonferroni adjusted raw unadjusted correction multiple testing",
+   "text": "Testing many lipids gives false positives by chance. BH controls the false discovery rate; Holm and Bonferroni control the family-wise error. Some plots report raw (unadjusted) p-values; their explanation says so."
+  },
+  {
+   "id": "pseudoreplication",
+   "title": "Pseudoreplication warning",
+   "keywords": "pseudoreplication participant repeated paired independent samples warning same patient",
+   "text": "The warning appears when the same participant contributes more than one sample. Tests that assume independent samples then overstate the evidence. Use a paired or repeated-measures analysis; the app withholds or flags those p-values."
+  },
+  {
+   "id": "paired",
+   "title": "Paired designs",
+   "keywords": "paired matched repeated measures before after time",
+   "text": "Replicate numbers do not establish pairing. Matched or repeated samples need a paired or repeated-measures analysis; a design label does not change the test."
+  },
+  {
+   "id": "composition-share",
+   "title": "Composition shares",
+   "keywords": "composition share percent proportion molar class signal",
+   "text": "Composition plots show shares of summed signal, not molar proportions. When only some classes are selected, shares are of the selected classes."
+  },
+  {
+   "id": "statistics-tab",
+   "title": "Statistics on canvas",
+   "keywords": "statistics test t-test wilcoxon welch effect size hedges cliff holm",
+   "text": "Independent copies of the dashboard violin can add Welch t-tests or Wilcoxon rank-sum tests, with Holm (default), BH, Bonferroni or no correction, and optional Hedges' g or Cliff's delta."
+  },
+  {
+   "id": "insight",
+   "title": "Scientific insight",
+   "keywords": "scientific insight literature pubmed abstract background",
+   "text": "Scientific insight, available below some live plots, summarizes public literature about the lipid classes shown. It does not interpret your data."
+  },
+  {
+   "id": "cell-view",
+   "title": "3D cell view",
+   "keywords": "3d cell membrane nucleus organelle localization",
+   "text": "The 3D cell is an illustrative reference. Bulk lipidomics does not locate lipids inside a cell, and prepared values may include imputed estimates."
+  },
+  {
+   "id": "companion-privacy",
+   "title": "What the companion uses",
+   "keywords": "ai openai privacy data sent model chat companion offline local",
+   "text": "This help is local and reviewed: tips, chart explanations and answers come from text stored in the app, with no network call. Settings changes are only proposed; nothing changes until you confirm."
+  },
+  {
+   "id": "err-sig-unavailable",
+   "title": "Message: Significant only is unavailable",
+   "keywords": "error significant only unavailable statistics need confirmed independent design synthetic",
+   "text": "Statistics need a confirmed independent study design, current prepared data and no synthetic samples. Review the design in Review, then try again."
+  },
+  {
+   "id": "err-requires-config",
+   "title": "Message: Requires configuration",
+   "keywords": "error requires configuration open analysis not visible yet",
+   "text": "The plot's analysis needs settings (for example groups or a baseline) before it can draw. Use Add or Open analysis; the card is added once the plot is ready."
+  },
+  {
+   "id": "err-no-lipids",
+   "title": "Message: No lipids passed significance filters",
+   "keywords": "error no lipids passed significance filters empty",
+   "text": "No lipid met the Differential analysis thresholds for this comparison. This is a result, not an error; check the comparison and thresholds rather than loosening them to obtain hits."
+  },
+  {
+   "id": "err-de-not-run",
+   "title": "Message: Differential analysis not run",
+   "keywords": "error differential analysis not run select comparison groups",
+   "text": "Plots that reuse Differential analysis need its comparison groups to be set. Choose the reference and comparison groups in Differential analysis."
+  },
+  {
+   "id": "err-baseline",
+   "title": "Message: Baseline required",
+   "keywords": "error baseline required reference baseline selection",
+   "text": "Group comparisons and ratio plots compare every group with a baseline. Choose and confirm the baseline group in the plot's settings."
+  },
+  {
+   "id": "err-stale",
+   "title": "Message: needs review / outdated figure",
+   "keywords": "error stale outdated needs review analysis changed export warning not up to date",
+   "text": "A finished figure predates an analysis change. Choose Edit to regenerate it from current data, check it, and finish it again before exporting."
+  },
+  {
+   "id": "err-proposal",
+   "title": "Message: proposal stale or expired",
+   "keywords": "error proposal stale expired token invalid confirm",
+   "text": "A setting proposal expires after five minutes or when the workspace changes. Nothing was changed; ask again for a fresh proposal."
+  },
+  {
+   "id": "err-fallback",
+   "title": "Message: PCA uses the full matrix",
+   "keywords": "error fallback full matrix targeted lipids could not support pca",
+   "text": "The targeted lipid scope could not support PCA, so the plot uses the full prepared matrix. The banner records this; mention it if you use the plot."
+  },
+  {
+   "id": "err-disconnected",
+   "title": "Message: Disconnected",
+   "keywords": "error disconnected offline reconnect",
+   "text": "The connection to the server was lost. Reload the page; with a private project your autosaved workspace can be resumed from Data."
+  },
+  {
+   "id": "err-updating",
+   "title": "Message: Updating",
+   "keywords": "error updating busy waiting slow preparation",
+   "text": "The analysis is recomputing after a change. Wait for it to finish; plots and exports use the new data once it is done."
+  }
+ ]
+}

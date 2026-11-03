@@ -105,6 +105,7 @@
     if (plotNode.classList.contains('tc-stale')) return 'stale';
     return plotNode.classList.contains('tc-finished') ? 'finished' : 'editing';
   }
+  function insightSupported(id) { try { return !!(window.TeamCanvas && typeof window.TeamCanvas.insightSupported === 'function' && window.TeamCanvas.insightSupported(id)); } catch (_) { return false; } }
   function stepDetails() {
     var key = stepCopy[state.substep] ? state.substep : legacyStages[state.legacyStep] === 'canvas' ? 'canvas' : state.legacyStep <= 1 ? 'data-choice' : state.legacyStep <= 4 ? 'review-single' : 'canvas';
     var copy = stepCopy[key];
@@ -120,7 +121,7 @@
         ? 'This archived snapshot predates an analysis change; it is not the current result. Review and prepare the analysis, then choose Edit to regenerate the current plot.'
         : snapshotState === 'finished'
           ? 'This is an archived snapshot of the prepared result at Finish and may differ from current live data. Export this figure here; after review and preparation, choose Edit to regenerate the current plot.'
-          : 'The selected plot is live. Finish captures its current result; autosave keeps your work. Try Scientific insight below the plot for optional literature context.';
+          : 'The selected plot is live. Finish captures its current result; autosave keeps your work.' + (insightSupported(selectedPlot.id) ? ' Try Scientific insight below the plot for optional literature context.' : ' Ask me to explain this chart or suggest improvements.');
       return { key: key, note: 'Selected plot: ' + String(selectedPlot.title || selectedPlot.id).slice(0,120) + '. ' + editCopy, next: 'Ask about selected plot' };
     }
     if (state.stage === 'canvas' && !selectedPlot) {
@@ -129,6 +130,11 @@
       return { key: key, note: 'No additional live plot is currently available to add. Open the source analysis to inspect this output and any download it provides.', next: 'Explain this step' };
     }
     return { key: key, note: copy[0], next: copy[1] };
+  }
+  // The reviewed per-chart guide answers locally; the server question is the fallback.
+  function localExplain() {
+    var local = window.LipidomicCompanionLocal;
+    return !!(local && selectedPlot && selectedPlot.id && local.sourceOf(selectedPlot.id) && local.explain(selectedPlot.id));
   }
   function askFromBubble(question) {
     var p = panel();
@@ -170,6 +176,7 @@
       label = 'Ask about this plot';
       callback = function () {
         var plotName = String(selectedPlot.title || selectedPlot.id).slice(0, 120);
+        if (localExplain()) return;
         askFromBubble('Explain how to read the ' + plotName + ' plot. Describe the method and limitations; do not infer findings that are not in the current analysis context.');
       };
     } else if (state.canNext && window.TeamWorkspace && typeof window.TeamWorkspace.next === 'function') {
@@ -257,6 +264,7 @@
         var primary;
         if (state.stage === 'canvas' && state.legacyStep === 5 && details.key !== 'print' && selectedPlot && selectedPlot.id) {
           primary = actionButton('Ask about selected plot', function () {
+            if (localExplain()) return;
             sendQuestion('Explain how to read the ' + String(selectedPlot.title || selectedPlot.id).slice(0,120) + ' plot. Describe the method and limitations; do not infer findings that are not in the current analysis context.');
           }, false);
         } else if (candidate) {
@@ -274,7 +282,7 @@
         primary.style.flex = '1 0 100%';
         primary.style.minWidth = '0';
         context.appendChild(primary);
-        maybeNudge(context, key, state.stage === 'canvas' && selectedPlot ? 'Want scientific background? Try Scientific insight below a live plot. For a finished figure, choose Edit first.' : details.next ? 'You can ask a question at any point.' : 'I can explain what this screen checks.');
+        maybeNudge(context, key, state.stage === 'canvas' && selectedPlot ? (insightSupported(selectedPlot.id) ? 'Want scientific background? Try Scientific insight below a live plot. For a finished figure, choose Edit first.' : 'Ask about selected plot explains how to read it and what to check.') : details.next ? 'You can ask a question at any point.' : 'I can explain what this screen checks.');
       }
     }
 

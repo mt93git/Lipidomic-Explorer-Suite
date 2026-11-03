@@ -121,7 +121,10 @@
     form = node('form', 'assistant-chat-form'); input = node('input', 'assistant-chat-input'); input.type = 'text'; input.maxLength = 600; input.placeholder = 'Ask about this step…'; input.setAttribute('aria-label', 'Ask the companion a question'); var submit = node('button', 'assistant-send', 'Send'); submit.type = 'submit'; submit.disabled = !connected; form.appendChild(input); form.appendChild(submit); panel.appendChild(form);
     status = node('div', 'assistant-status'); status.setAttribute('role', 'status'); panel.appendChild(status); root.appendChild(panel); document.body.appendChild(root);
     addMessage('No AI model is connected. I can explain this step, point you to the right control, and suggest next actions. I will ask before changing scientific settings.', 'assistant', 'local');
-    form.onsubmit = function (e) { e.preventDefault(); var text = input.value.trim(); if (!text || !connected) return; addMessage(text, 'user'); input.value = ''; send('assistant_request', { text: text, nonce: ++nonce, step: lastStep, revision: revision }); setStatus('Waiting for the assistant…'); };
+    form.onsubmit = function (e) { e.preventDefault(); var text = input.value.trim(); if (!text) return;
+    // Team: answer from the local reviewed guide first; commands and reviewed boundaries still go to the server.
+    var local = window.LipidomicCompanionLocal; if (local && typeof local.answer === 'function') { addMessage(text, 'user'); input.value = ''; if (local.answer(text, {aiEnabled: aiEnabled})) return; if (!connected) { setStatus('Offline mode — reconnect to send this request.'); return; } send('assistant_request', { text: text, nonce: ++nonce, step: lastStep, revision: revision }); setStatus('Waiting for the assistant…'); return; }
+    if (!connected) return; addMessage(text, 'user'); input.value = ''; send('assistant_request', { text: text, nonce: ++nonce, step: lastStep, revision: revision }); setStatus('Waiting for the assistant…'); };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel && !panel.hidden) close(); });
     var bar = document.getElementById('lipidomic-help-bar'); if (bar && !bar.querySelector('.assistant-launcher')) bar.appendChild(launcher);
     registerHandlers();
