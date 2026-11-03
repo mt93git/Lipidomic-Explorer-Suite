@@ -1,3 +1,11 @@
+# Team checkpoint storage (LIPIDOMIC_STORAGE=files|database). Validated here so an
+# invalid backend stops the Team process at startup; Classic never sources it.
+source("R/frontends/team/storage/storage.R")
+source("R/frontends/team/storage/storage_files.R")
+source("R/frontends/team/storage/storage_database.R")
+source("R/frontends/team/project_records.R")
+source("R/frontends/team/project_library.R")
+team_storage_validate_config()
 source("R/frontends/team/sample_metadata_import_module.R")
 source("R/frontends/team/ux_preparation.R")
 source("R/frontends/team/guided_preparation_controls.R")
