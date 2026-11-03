@@ -95,7 +95,7 @@ team_volcano_warning_caption <- function(plot, shared_data, width_px = NULL) {
   width_px <- suppressWarnings(as.numeric(width_px)[1])
   if (length(width_px) != 1L || !is.finite(width_px) || width_px <= 0) width_px <- 800
   # 10 pt bold at 72 px per inch averages about 6 px per character; keep a margin.
-  chars <- max(28L, as.integer(floor((width_px - 30) / 6.2)))
+  chars <- max(28L, as.integer(floor((width_px - 40) / 6.8)))
   caption <- paste(strwrap(paste0(team_da_participant_warning_title, ". ", team_da_participant_warning_text(reason)), width = chars), collapse = "\n")
   plot + ggplot2::labs(caption = caption) +
     ggplot2::theme(plot.caption = ggplot2::element_text(colour = "#b45309", hjust = 0, size = 10, face = "bold"),
