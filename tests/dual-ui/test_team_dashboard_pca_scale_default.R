@@ -22,7 +22,7 @@ check("that default is the dashboard's first (selected) scaling choice",
       grepl('selectInput(ns("pca_scale"), "PCA scaling", c("Unit variance" = "uv", "Centered only" = "none")', src, fixed = TRUE))
 team_src <- paste(readLines(file.path("R", "frontends", "team", "plot_instances.R"), warn = FALSE), collapse = "\n")
 check("dashboard copies are served through the defaulting input",
-      grepl("results_dashboard_module_server(team_dashboard_instance_input(input),output,session,dashboard_data)", team_src, fixed = TRUE))
+      grepl("results_dashboard_module_server(team_dashboard_instance_input(input,value$inputs),output,session,dashboard_data)", team_src, fixed = TRUE))
 
 # 2. The production pca_data reactive on the synthetic fixture.
 fixture <- utils::read.csv(file.path("tests", "browser", "ci", "fixtures", "abundance.csv"), check.names = FALSE, stringsAsFactors = FALSE)

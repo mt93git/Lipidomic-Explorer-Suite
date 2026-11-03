@@ -398,7 +398,7 @@
       var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null};
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
       var csvSource=csvByPlot[request.source];if(csvSource)csvByPlot[el.id]=message.id+(request.source.indexOf('-')<0?'-'+csvSource:csvSource.slice(request.source.indexOf('-')));
-      if(request.saved){settleRestored(el,message.id,message.generation);restorePending.set(el.id,request.saved);hydratePending();}
+      if(request.saved){settleRestored(el,message.id,message.generation);restorePending.set(el.id,request.saved);hydratePending();trackRestoredInputs(r,request.instance.inputs);}
       else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
       var opened=document.getElementById(message.id+'_host');if(opened&&opened.classList.contains('is-open')&&r.node)TeamCanvasFloatingPanel.open(opened,r.node);
       renderList();changed();
@@ -1589,9 +1589,24 @@
     var n = r.node, snap = r.snapshot, finished = null;
     if (snap) { finished = {url:snap.url,createdAt:snap.createdAt,stale:!!snap.stale}; if (snap.provenance) finished.provenance = snap.provenance; }
     var state={id:r.el.id,label:r.labelInput.value || r.label,x:parseFloat(n.style.left)||0,y:parseFloat(n.style.top)||0,width:parseFloat(n.style.width)||parseFloat(getComputedStyle(n).width)||620,height:parseFloat(n.style.height)||parseFloat(getComputedStyle(n).height)||720,visual:Object.assign({},r.visual),finished:finished,insight:r.insight || null};
-    if(r.instance)state.instance={id:r.instance.id,source:r.instance.source,inputs:instanceValues(r.instance.id,r.allowedInputs)};
+    if(r.instance)state.instance={id:r.instance.id,source:r.instance.source,inputs:restoredInputs(r,instanceValues(r.instance.id,r.allowedInputs))};
     if(r.statistics&&window.TeamCanvasStatistics)state.statistics=TeamCanvasStatistics.serialize(r);
     return state;
+  }
+  // A restored copy saves its saved settings until the browser has really reached them
+  // (or the analyst edits that card): an autosave taken while the copy still showed a
+  // default it was given before its own settings arrived must never replace them.
+  function sameInputValue(a,b){function norm(x){return JSON.stringify((x==null?[]:[].concat(x)).map(String));}return norm(a)===norm(b);}
+  function restoredInputs(r,live){
+    var saved=r.savedInputs;if(!saved)return live;
+    var reached=Object.keys(saved).every(function(key){return sameInputValue(live[key],saved[key]);});
+    if(reached){r.savedInputs=null;return live;}
+    return Object.assign({},live,saved);
+  }
+  function trackRestoredInputs(r,saved){
+    r.savedInputs=JSON.parse(JSON.stringify(saved||{}));if(!Object.keys(r.savedInputs).length){r.savedInputs=null;return;}
+    var release=function(){r.savedInputs=null;};
+    [document.getElementById(r.instance.id+'_host'),r.node].forEach(function(el){if(el){el.addEventListener('pointerdown',release,{once:true});el.addEventListener('keydown',release,{once:true});}});
   }
   function collectState() {
     var nodes = Array.from(records.values()).filter(function (r) { return !!r.node; }).map(nodeState).concat(Array.from(illustrations.values()).map(illustrationNodeState));

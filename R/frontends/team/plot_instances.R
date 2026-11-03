@@ -146,9 +146,26 @@ team_dashboard_input_defaults <- local({
     cache
   }
 })
-team_dashboard_instance_input <- function(input) structure(list(input=input,defaults=team_dashboard_input_defaults()),class='team_dashboard_instance_input')
+# A copy's server code can run before the browser has sent the copy's saved settings
+# (its data arrives first). Until the browser reports a key's saved value once, that
+# key reads as the saved value, so code such as "keep the selection if it is still a
+# choice, else take the first" keeps the saved selection instead of pushing a default
+# to the browser. After the browser has reported it (or 60 s), the live value wins.
+team_dashboard_instance_input <- function(input, saved = list()) {
+  state <- new.env(parent = emptyenv()); state$caught <- character(); state$until <- Sys.time() + 60
+  structure(list(input=input,defaults=team_dashboard_input_defaults(),saved=saved,state=state),class='team_dashboard_instance_input')
+}
+team_instance_saved_reached <- function(actual, saved) {
+  if (is.numeric(saved)) { a <- suppressWarnings(as.numeric(unlist(actual,use.names=FALSE))); return(length(a)==length(saved)&&!anyNA(a)&&all(a==saved)) }
+  identical(as.character(unlist(actual,use.names=FALSE)),as.character(unlist(saved,use.names=FALSE)))
+}
 `$.team_dashboard_instance_input` <- function(x, name) {
   value <- .subset2(x,'input')[[name]]
+  saved <- .subset2(x,'saved')[[name]]; state <- .subset2(x,'state')
+  if (!is.null(saved) && length(saved) && !name %in% state$caught) {
+    if (team_instance_saved_reached(value,saved) || Sys.time() > state$until) state$caught <- c(state$caught,name)
+    else return(saved)
+  }
   if (is.null(value)) .subset2(x,'defaults')[[name]] else value
 }
 `[[.team_dashboard_instance_input` <- function(x, i, ...) `$.team_dashboard_instance_input`(x,i)
@@ -199,7 +216,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       insert_host(id, resolved, spec)
       result <- NULL
       if (identical(resolved$family,'results_dashboard')) {
-        dashboard <- shiny::moduleServer(id,function(input,output,session) results_dashboard_module_server(team_dashboard_instance_input(input),output,session,dashboard_data))
+        dashboard <- shiny::moduleServer(id,function(input,output,session) results_dashboard_module_server(team_dashboard_instance_input(input,value$inputs),output,session,dashboard_data))
       } else {
         args <- list(id=id,shared_data=shared_data)
         if (isTRUE(spec$colors)) args$global_color_map <- shiny::reactive(shared_data$color_maps())
