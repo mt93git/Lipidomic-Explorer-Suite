@@ -50,6 +50,10 @@ async function add(p,source,figure=true){
   await p.evaluate(()=>document.getElementById('tc-inspector-tab-appearance')?.click());
   const pal=await p.waitForFunction(()=>{const d=[...document.querySelectorAll('#tc-selection-inspector details')].find(d=>d.querySelector('summary')?.textContent==='Color palette');return d&&{text:d.textContent,apply:[...d.querySelectorAll('button')].some(b=>b.textContent==='Apply palette')};},null,{timeout:20000}).then(h=>h.jsonValue());
   assert.match(pal.text,/continuous colour scale/);assert.equal(pal.apply,false);console.log('PASS a heatmap Style tab explains that palettes do not apply');
+  // The fixture has no confirmed study design: no comparison can run, and the card says so (not "Needs a comparison").
+  const fb=await add(p,'barchart-barPlotFiltered',false);
+  await p.waitForFunction(id=>document.querySelector('.tc-node[data-plot-id="'+id+'"] .tc-card-status-text')?.textContent==='Needs a confirmed study design',fb,{timeout:60000});
+  assert.equal(await p.locator('.tc-node[data-plot-id="'+fb+'"] .tc-card-status button').textContent(),'Study design');console.log('PASS without a confirmed design the card points to Review › Study design');
   // Saved settings are replayed as {value} messages; bslib's accordion takes only {method}.
   const acc=await p.evaluate(async()=>{const el=document.getElementById('heatmap_barchart_tab-heatmap_advanced_aesthetics_accordion');const b=jQuery(el).data('shiny-input-binding');const v=el.querySelector('.accordion-item').dataset.value;
     const wait=()=>new Promise(r=>setTimeout(r,600));const open=()=>[...el.querySelectorAll('.accordion-collapse.show')].length;

@@ -1351,7 +1351,9 @@
           // On a canvas card the data are already prepared, there is no left dock
           // and no "above": say what this plot needs, without the Prepare button.
           var canvasNode = plot.closest('#team-canvas-root .tc-node');
-          var canvasNeed = canvasNode && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && window.TeamCanvas && TeamCanvas.catalogSource ? TeamCanvasCatalog.needs(TeamCanvas.catalogSource(plot.id)) : null;
+          var canvasNeed = canvasNode && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && window.TeamCanvas && TeamCanvas.catalogSource ? TeamCanvasCatalog.needs(TeamCanvas.catalogSource(plot.id), plot.id) : null;
+          // A module defect already explained on the card (Max list) gets no requirement overlay on top.
+          if (canvasNode && plot.classList.contains('tc-known-module-error')) { existingOverlays.forEach(function (el) { el.remove(); }); continue; }
           if (canvasNode) overlayType = canvasNeed ? 'canvas-' + canvasNeed.kind : 'canvas';
 
           // Strictly enforce: AT MOST ONE overlay per plot output! Prevent duplicate stacking loops

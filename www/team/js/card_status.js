@@ -13,7 +13,12 @@
     error: ['Could not update', 'This figure could not be drawn from the current result. Open its Data tab for details.'],
     waiting: ['Needs settings', 'This plot is waiting for a selection or an analysis. Open its Data & settings.']
   };
-  function action(state, node) {
+  // A view that runs only on request (structural analysis): its module button sits in
+  // the card's Data & settings; the chip offers the same click. Same input id, same handler.
+  function runButton(id, button) { return document.getElementById(String(id).split('-')[0] + '-' + button); }
+  function action(state, node, need) {
+    if (state === 'waiting' && need && need.kind === 'run') { var run = runButton(node.dataset.plotId, need.button); if (run) return [need.action, function () { if (window.jQuery) jQuery(run).trigger('click'); else run.click(); }]; }
+    if (state === 'waiting' && need && need.kind === 'design') return ['Study design', function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
     if (state === 'pending') return ['Review', function () { var b = document.querySelector('[data-tw-stage="review"]'); if (b) b.click(); }];
     if (state === 'finished-stale') return ['Edit figure', function () { var b = Array.from(node.querySelectorAll('.tc-node-head > button, .tc-card-actions > button')).find(function (x) { return x.textContent === 'Edit'; }); if (b) b.click(); }];
     return null;
@@ -38,14 +43,16 @@
     else updatingSince.delete(node);
     var chip = chipFor(node); if (!chip) return null;
     chip.hidden = !state; if (!state) return null;
-    if (chip.dataset.state === state) return state;
-    var label = LABELS[state];
-    // A plot with a known requirement names it (catalog: comparison, time points).
-    if (state === 'waiting' && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && TeamCanvas.catalogSource) { var need = TeamCanvasCatalog.needs(TeamCanvas.catalogSource(id)); if (need) label = [need.status, need.reason]; }
-    chip.dataset.state = state; chip.title = label[1];
+    // A plot with a known requirement names it (catalog: study design, comparison, time points,
+    // a structural run). The requirement can change while the card keeps waiting, so it is part of the key.
+    var need = state === 'waiting' && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && TeamCanvas.catalogSource ? TeamCanvasCatalog.needs(TeamCanvas.catalogSource(id), id) : null;
+    var key = state + '|' + (need ? need.status : '');
+    if (chip.dataset.state === state && chip.dataset.need === key) return state;
+    var label = need ? [need.status, need.reason] : LABELS[state];
+    chip.dataset.state = state; chip.dataset.need = key; chip.title = label[1];
     chip.querySelector('.tc-card-status-text').textContent = label[0];
     var old = chip.querySelector('button'); if (old) old.remove();
-    var act = action(state, node);
+    var act = action(state, node, need);
     if (act) { var b = document.createElement('button'); b.type = 'button'; b.textContent = act[0]; b.addEventListener('click', function (e) { e.stopPropagation(); act[1](); }); chip.appendChild(b); }
     return state;
   }

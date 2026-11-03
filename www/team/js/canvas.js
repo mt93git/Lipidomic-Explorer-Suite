@@ -1060,17 +1060,30 @@
   // A plot that drew nothing because its analysis is waiting for an input (a
   // silent req() in the module, or a differential plot without cohorts) is not
   // "Up to date": it needs settings. Shiny's own busy state still reads Updating.
-  var deResultsReady = null;
+  var deResultsReady = null, designReady = null;
   function deReady() {
     if (deResultsReady !== null) return deResultsReady;
     function chosen(id){var el=document.getElementById(id);if(!el)return null;var x=el.selectize?el.selectize.getValue():(window.jQuery?jQuery(el).val():el.value);return Array.isArray(x)?x.length>0:!!x;}
     var ref=chosen('data_hub-deReferenceGroups'),comp=chosen('data_hub-deComparisonGroups');
     return ref===null||comp===null?true:ref&&comp;
   }
-  function plotNeeds(r) { return window.TeamCanvasCatalog && typeof TeamCanvasCatalog.needs === 'function' ? TeamCanvasCatalog.needs(sourceKey(r)) : null; }
+  // Module defects with a known cause (Max list) show an explanation instead of R's raw
+  // message. Shiny writes the error text right after shiny:error, so it is replaced then.
+  var knownErrors = [
+    {source:'barchart-donutPlotFiltered', match:/invalid 'type' \(closure\)/,
+     text:'The filtered donut cannot be drawn yet: a known defect in the composition module stops it before drawing (its column count is never set for the filtered view). The filtered bar chart and the unfiltered donut show the same data. Reported for a fix in the module.'}
+  ];
+  function explainKnownError(r, message) {
+    var known = knownErrors.find(function (k) { return k.source === sourceKey(r) && k.match.test(String(message || '')); });
+    if (!known) return;
+    setTimeout(function () { if (r.el.classList.contains('shiny-output-error')) { r.el.textContent = known.text; r.el.classList.add('tc-known-module-error'); r.el.setAttribute('data-raw-error', String(message).slice(0, 300)); } }, 0);
+  }
+  function plotNeeds(r) { return window.TeamCanvasCatalog && typeof TeamCanvasCatalog.needs === 'function' ? TeamCanvasCatalog.needs(sourceKey(r), r.el.id) : null; }
   function awaitingInput(r) {
     var need=plotNeeds(r);
-    if (need && need.kind==='de' && !deReady()) return true;
+    if (need && (need.kind==='de' || need.kind==='design') && !deReady()) return true;
+    // A view that waits for an explicit run (structural analysis) shows its own message image: it is not up to date.
+    if (need && need.kind==='run') return true;
     if (shinyBusy || document.documentElement.classList.contains('shiny-busy') || r.el.classList.contains('recalculating')) return false;
     if (window.TeamGroupComparison && typeof TeamGroupComparison.awaitingConfirmation === 'function' && TeamGroupComparison.awaitingConfirmation(r.el.id)) return true;
     return !!r.sourceWaiting || (!hasRenderedPlot(r.el) && !!r.el.querySelector('.empty-plot-overlay'));
@@ -1902,7 +1915,7 @@
     if (window.Shiny && Shiny.addCustomMessageHandler) {
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
       Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
-      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){var was=deResultsReady;deResultsReady=!!(message&&message.ready);if(was!==deResultsReady)renderList();});
+      Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){var was=deResultsReady,wasDesign=designReady;deResultsReady=!!(message&&message.ready);designReady=message&&typeof message.design==='boolean'?message.design:null;if(was!==deResultsReady||wasDesign!==designReady)renderList();});
       Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);
         // A mounted copy whose analysis failed no longer shows a current result.
         if(!request)records.forEach(function(r){if(r.instance&&r.instance.id===message.id&&r.node){r.revision=(r.revision||0)+1;r.renderRevision=null;r.sourceError=true;r.sourceWaiting=false;r.sourceSignature=null;if(r.statistics&&window.TeamCanvasStatistics)TeamCanvasStatistics.sourceChanged(r);if(!r.hydrating)staleSnapshot(r);}});tell(message.message||'Could not create an independent plot.');});
@@ -1971,7 +1984,7 @@
       // Read-only card state for the shell's status chips and export warning.
       cardStatus:function(id){var r=records.get(id);if(!r||!r.node)return null;if(r.snapshot)return r.snapshot.stale?'finished-stale':'finished';if(r.sourceError)return 'error';if(!preparationOK())return preparation&&(preparation.running||preparation.restoring)?'updating':'pending';if(awaitingInput(r))return 'waiting';return figureCurrent(r)?'current':'updating';},
       catalogSource:function(id){var r=records.get(id);return r?sourceKey(r):null;},
-      deReady:deReady,
+      deReady:deReady,designReady:function(){return designReady;},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
@@ -2070,6 +2083,7 @@
         return;
       }
       r.revision = (r.revision || 0) + 1; r.renderRevision = null; r.sourceError = true; r.sourceSignature = null;
+      explainKnownError(r, err.message);
     if (r.equivalentObserver) r.equivalentObserver.disconnect();
       if (r.renderObserver) r.renderObserver.disconnect(); r.settleRender = null;
       if (r.statistics && window.TeamCanvasStatistics) TeamCanvasStatistics.sourceChanged(r);

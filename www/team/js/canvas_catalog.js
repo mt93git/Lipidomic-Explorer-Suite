@@ -104,7 +104,47 @@
     'structural_grid_tab-heatmapPlot':'de','structural_grid_tab-dotplotPlot':'de','structural_grid_tab-mergedPlot':'de','structural_grid_tab-diffAllPlot':'de',
     'longitudinal_tab-macroclass_plot':'time','longitudinal_tab-subclass_plot':'time','longitudinal_tab-index_plot':'time','longitudinal_tab-struct_plot':'time','longitudinal_tab-allmetrics_plot':'time'
   };
-  function needs(id) { var kind = needsById[id]; return kind ? Object.assign({kind:kind}, requirements[kind]) : null; }
+  // A comparison-based plot can wait on different things, so its hint follows what
+  // is actually missing (R: shared_data$inference_allowed, de_results, the module's
+  // own req()s): first a confirmed study design, then the comparison, then what the
+  // view needs from that comparison.
+  var design = {status:'Needs a confirmed study design', reason:'No comparison can run until the study design is confirmed. In Review › Study design, set the experimental unit and the sample relationship; the default comparison then runs on its own.'};
+  var afterComparison = {
+    'barchart-barPlotFiltered':{kind:'de-empty', when:/No lipids passed filters/, status:'No significant lipids', reason:'The comparison ran, but no lipid passes the current significance and |log2 fold change| thresholds, so the filtered view is empty. The thresholds are in the Differential settings of the Data step.'},
+    'barchart-donutPlotFiltered':{kind:'de-empty', when:/No lipids passed filters/, status:'No significant lipids', reason:'The comparison ran, but no lipid passes the current significance and |log2 fold change| thresholds, so the filtered view is empty. The thresholds are in the Differential settings of the Data step.'},
+    'structural_tab-summaryPlot':{kind:'run', button:'runAnalysis', action:'Run structural analysis', empty:/No structural shifts detected/, emptyStatus:'No structural shifts found', emptyReason:'The structural analysis ran for this card but found no shifts for the current comparison and thresholds (or too few species to compare). This is a result, not a missing setting.', status:'Needs structural analysis', reason:'Structural shifts are computed only on request. Choose “Run structural analysis” on this card (the module’s “Initiate Structural Analysis”, also in Data & settings). Team has no left sidebar.'},
+    'structural_tab-speciesPlotPlot':{kind:'run', button:'runAnalysis', action:'Run structural analysis', empty:/No structural shifts detected/, emptyStatus:'No structural shifts found', emptyReason:'The structural analysis ran for this card but found no shifts for the current comparison and thresholds (or too few species to compare). This is a result, not a missing setting.', status:'Needs structural analysis', reason:'Structural shifts are computed only on request. Choose “Run structural analysis” on this card (the module’s “Initiate Structural Analysis”, also in Data & settings). Team has no left sidebar.'},
+    'structural_grid_tab-heatmapPlot':{kind:'grid-empty', status:'Nothing to place on the grid', reason:'The grid uses species of the selected lipid class whose chains are resolved (carbons and double bonds per chain). The current class and chain position give none. Choose another class or Position in Data & settings. There is no “Generate Grid Plots” button; the grid updates on its own.'},
+    'structural_grid_tab-dotplotPlot':{kind:'grid-empty', status:'Nothing to place on the grid', reason:'The grid uses species of the selected lipid class whose chains are resolved (carbons and double bonds per chain). The current class and chain position give none. Choose another class or Position in Data & settings. There is no “Generate Grid Plots” button; the grid updates on its own.'}
+  };
+  function shinyValue(key) { var all = window.Shiny && window.Shiny.shinyapp && window.Shiny.shinyapp.$inputValues; if (!all) return undefined; if (key in all) return all[key]; var hit = Object.keys(all).find(function (k) { return k.indexOf(key + ':') === 0; }); return hit ? all[hit] : undefined; }
+  function needs(id, plotId) {
+    var kind = needsById[id]; if (!kind) return null;
+    if (kind === 'time') {
+      // The selectors exist only once the data have time points; the plots are then built
+      // only after the module's "Generate Analysis" (its height reads longitudinal_design(),
+      // an eventReactive on that button, 11_longitudinal_module.R:1341 and :3283).
+      var prefix = String(plotId || id).split('-')[0], all = window.Shiny && window.Shiny.shinyapp && window.Shiny.shinyapp.$inputValues || {};
+      var hasSelection = Object.keys(all).some(function (k) { var v = all[k]; return k.indexOf(prefix + '-selected') === 0 && v != null && v !== '' && !(Array.isArray(v) && !v.length); });
+      if (hasSelection) return shinyValue(prefix + '-submit_longitudinal_btn') ? null : {kind:'run', button:'submit_longitudinal_btn', action:'Generate analysis', status:'Needs Generate Analysis', reason:'The time points are there. Time courses are built only on request: choose “Generate analysis” on this card (the module’s “Generate Analysis”, also in Data & settings).'};
+      return Object.assign({kind:kind}, requirements[kind]);
+    }
+    if (kind !== 'de' || !window.TeamCanvas) return Object.assign({kind:kind}, requirements[kind]);
+    var tc = window.TeamCanvas, designOk = typeof tc.designReady === 'function' ? tc.designReady() : null;
+    var deOk = typeof tc.deReady === 'function' ? tc.deReady() : false;
+    if (designOk === false && !deOk) return Object.assign({kind:'design'}, design);
+    if (!deOk) return Object.assign({kind:kind}, requirements[kind]);
+    var after = afterComparison[id]; if (!after) return null;
+    // Only when the module itself reports that state (its validate() message on the output).
+    if (after.when) { var el = plotId && document.getElementById(plotId); if (!el || !after.when.test(el.textContent || '')) return null; }
+    if (after.kind === 'run') {
+      var runs = shinyValue(String(plotId || id).split('-')[0] + '-' + after.button); if (!runs) return Object.assign({}, after);
+      var drawn = plotId && document.getElementById(plotId);
+      if (after.empty && drawn && after.empty.test(drawn.textContent || '')) return {kind:'de-empty', status:after.emptyStatus, reason:after.emptyReason};
+      return null;
+    }
+    return Object.assign({}, after);
+  }
   var iconPaths = {
     grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     pulse:'<path d="M3 12h4l3-8 4 16 3-8h4"/>', bars:'<path d="M4 20V11h4v9M10 20V4h4v16M16 20v-7h4v7"/>',
@@ -194,7 +234,7 @@
         else if (route && r && r.dynamic && !r.wrapper) { state.textContent = 'Requires configuration'; button.textContent = 'Open analysis'; tooltipDetail = 'This plot shares a dynamic panel with other outputs and cannot be moved safely.'; button.addEventListener('click', function () { renderState.args.onRoute(route); }); }
         else if (route) { state.textContent = 'Requires configuration'; button.textContent = 'Add'; tooltipDetail = 'Open the analysis; the canvas will add the plot when its output is ready.'; button.addEventListener('click', function () { renderState.args.onQueue(entry.id, route); }); }
         else { state.textContent = 'Requires configuration'; button.textContent = 'Unavailable'; tooltipDetail = 'Open the analysis and wait for this plot to render before adding it.'; button.setAttribute('aria-disabled','true'); }
-        var requirement = needs(entry.id); if (requirement && !block && !entry.routeOnly) tooltipDetail = (tooltipDetail ? tooltipDetail + ' · ' : '') + requirement.reason;
+        var requirement = needsById[entry.id] && requirements[needsById[entry.id]]; if (requirement && !block && !entry.routeOnly) tooltipDetail = (tooltipDetail ? tooltipDetail + ' · ' : '') + requirement.reason;
         var actionLabel = button.getAttribute('aria-label') || (button.textContent + ' ' + entry.title);
         button.innerHTML = icon(entry.icon || groupIcon);
         // The visible tooltip and accessible description carry the same meaningful context.
