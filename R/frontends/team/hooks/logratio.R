@@ -15,8 +15,8 @@ lipidomic_hook_register("violin_export_table", team_violin_export_labels)
 
 # --- #7 logratio_shared_data(shared_data) -> shared_data ----------------------
 # Participant-independence rule shared with Violin statistics (production
-# R/frontends/team/violin_statistics.R, copied verbatim; that file defines the
-# same functions identically when it arrives).
+# R/frontends/team/violin_statistics.R, copied verbatim; that file uses these
+# definitions and does not repeat them).
 team_violin_stats_missing_ids <- c("", "NA", "Unspecified", "Unknown")
 
 team_violin_stats_fail <- function(message) {

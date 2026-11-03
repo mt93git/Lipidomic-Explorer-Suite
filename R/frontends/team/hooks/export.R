@@ -5,7 +5,7 @@
 # its bundled CSV and carries the wrapped title. Data (art$data, the CSV) untouched.
 # Only the helpers this hook needs are here; the Team Export Studio server and its
 # ZIP writer (team_export_studio_server, team_export_studio_write_bundle, which also
-# writes NOTES.txt from art$team_notes) belong to a later block.
+# writes NOTES.txt from art$team_notes) are in R/frontends/team/export_studio.R.
 # This file sorts before participant_warning.R, so this registration runs first,
 # matching production's team_export_participant_warning_adapter(team_export_studio_artifacts_adapter(orig)).
 

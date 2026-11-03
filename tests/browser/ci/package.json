@@ -1,0 +1,16 @@
+{
+  "name": "lipidomic-browser-ci",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "python3 prepare-fixture.py && playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  },
+  "private": true
+}

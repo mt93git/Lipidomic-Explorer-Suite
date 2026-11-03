@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
+const {chromium}=require('../browser/ci/node_modules/playwright');
+(async()=>{const b=await chromium.launch();try{
+ const p=await b.newPage({viewport:{width:1500,height:950}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ const markup=execFileSync('Rscript',['--vanilla','-e','source("R/frontends/team/canvas.R");cat(as.character(team_canvas_ui()))'],{encoding:'utf8'});
+ await p.setContent(markup);await p.addStyleTag({path:'www/team/css/canvas_preview.css'});
+ await p.evaluate(()=>{window.doc=null;window.TeamCanvas={previewState:()=>({state:{version:'1',nodes:[]},ready:true}),getDocument:()=>doc,setDocument:d=>{doc=structuredClone(d);}};window.exports=[];URL.createObjectURL=blob=>{window.lastBlob=blob;return 'blob:test';};HTMLAnchorElement.prototype.click=function(){exports.push(this.download);};window.jspdf={jsPDF:function(){this.addImage=(image)=>{window.pdfImage=image;};this.save=()=>{};}};});
+ await p.addScriptTag({path:'www/team/js/canvas_preview.js'});await p.getByRole('tab',{name:'Print preview',exact:true}).click();
+ for(const name of ['Rectangle','Rounded rectangle','Circle / ellipse','Line','Arrow']){await p.locator('.tc-shape-menu>summary').click();await p.getByRole('button',{name:'Add '+name,exact:true}).click();}
+ assert.equal(await p.locator('.tc-paper-shape').count(),5);assert.equal(await p.locator('.tc-object-name').textContent(),'Arrow');
+ await p.getByLabel('Border width (pt)',{exact:true}).fill('4');await p.getByLabel('Border width (pt)',{exact:true}).press('Tab');
+ await p.getByRole('button',{name:'Duplicate',exact:true}).click();assert.equal(await p.locator('.tc-paper-shape').count(),6);
+ await p.getByRole('button',{name:'Remove shape',exact:true}).click();assert.equal(await p.locator('.tc-paper-shape').count(),5);
+ await p.getByRole('button',{name:'Undo',exact:true}).click();assert.equal(await p.locator('.tc-paper-shape').count(),6);
+ await p.getByRole('button',{name:'Redo',exact:true}).click();assert.equal(await p.locator('.tc-paper-shape').count(),5);
+ await p.getByRole('button',{name:'Select Ellipse',exact:true}).click();
+ await p.getByLabel('Shape fill',{exact:true}).fill('#efcf86');
+ await p.getByLabel('X (pt)',{exact:true}).fill('80');await p.getByLabel('X (pt)',{exact:true}).press('Tab');
+ await p.getByRole('button',{name:'Send backward',exact:true}).click();
+ assert.equal(await p.evaluate(()=>doc.items.find(i=>i.shape==='ellipse').fill),'#efcf86');
+ await p.getByRole('button',{name:'Add text',exact:true}).click();await p.getByLabel('Text',{exact:true}).fill('Phospholipids < & α');await p.getByLabel('Text',{exact:true}).press('Tab');
+ assert.equal(await p.locator('.tc-paper-text').textContent(),'Phospholipids < & α');
+ const saved=await p.evaluate(()=>structuredClone(doc));
+ await p.evaluate(()=>window.dispatchEvent(new Event('team-document-restored')));assert.equal(await p.locator('.tc-paper-shape').count(),5);assert.deepEqual(await p.evaluate(()=>doc),saved);
+ await p.getByRole('button',{name:'Download SVG',exact:true}).click();await p.waitForFunction(()=>exports.length>0);const svg=await p.evaluate(()=>lastBlob.text());assert(svg.includes('Phospholipids &lt; &amp; α'));assert(!svg.includes('tc-selection-label'));
+ const parity=await p.evaluate(async()=>{const svg=await lastBlob.text();let image=new Image();image.src='data:image/svg+xml,'+encodeURIComponent(svg);await image.decode();let c=document.createElement('canvas');c.width=612*3;c.height=792*3;c.getContext('2d').drawImage(image,0,0,c.width,c.height);window.svgPixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data;return true;});assert(parity);
+ await p.getByRole('button',{name:'Download PDF',exact:true}).click();await p.waitForFunction(()=>!!window.pdfImage);
+ const difference=await p.evaluate(async()=>{let image=new Image();image.src=pdfImage;await image.decode();let c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;c.getContext('2d').drawImage(image,0,0);let px=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<px.length;i+=4)if(Math.max(Math.abs(px[i]-svgPixels[i]),Math.abs(px[i+1]-svgPixels[i+1]),Math.abs(px[i+2]-svgPixels[i+2]))>30)n++;return n/(px.length/4);});assert(difference<.01,'SVG/PDF raster difference below 1% including text antialiasing');
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({shapes:5,text:1,restored:true,svgPdfPixelDifference:difference,errors},null,2));console.log('PASS primitive insertion, fill/border, positioning, layering, duplicate/delete, undo/redo, text escaping, restore, SVG/PDF parity');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

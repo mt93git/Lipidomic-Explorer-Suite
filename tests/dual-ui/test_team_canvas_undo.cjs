@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict');
+const {execFileSync}=require('node:child_process');
+const {chromium}=require('../browser/ci/node_modules/playwright');
+(async()=>{const browser=await chromium.launch({headless:true});try{
+ const p=await browser.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ const markup=execFileSync('Rscript',['--vanilla','-e','source("R/frontends/team/canvas.R");cat(as.character(team_canvas_ui()))'],{encoding:'utf8'});
+ await p.setContent('<input id="outside"><body class="team-workspace-app">'+markup+'<div class="rd-card"><h3>PCA</h3><div id="results_dashboard-plot_pca" class="shiny-plot-output"><img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3C/svg%3E"></div></div></body>');
+ assert.match(await p.locator('.tc-shortcut-help').textContent(),/Ctrl\+Z.*Cmd\+Z.*keeps the new figure below it/);
+ await p.addStyleTag({path:'www/team/css/canvas.css'});await p.addScriptTag({path:'www/team/js/canvas.js'});
+ await p.evaluate(()=>TeamCanvas.addPlot('results_dashboard-plot_pca'));await p.waitForTimeout(100);
+ const geometry=()=>p.locator('.tc-node').evaluate(n=>({left:n.style.left,top:n.style.top,width:n.style.width,height:n.style.height}));
+ const initial=await geometry();const head=p.locator('.tc-node-head');await head.focus();await head.press('ArrowRight');const moved=await geometry();assert.notDeepEqual(moved,initial);
+ await head.press('Control+z');assert.deepEqual(await geometry(),initial);
+ await head.press('Control+Shift+z');assert.deepEqual(await geometry(),moved);
+ await head.press('Meta+z');assert.deepEqual(await geometry(),initial);
+ await head.press('Control+y');assert.deepEqual(await geometry(),moved);
+ const before=await p.evaluate(()=>TeamCanvas.serialize());
+ await p.locator('.tc-search').focus();await p.keyboard.press('Control+z');assert.deepEqual(await geometry(),moved,'native input undo is not intercepted');
+ await p.locator('#outside').focus();await p.keyboard.press('Control+z');assert.deepEqual(await geometry(),moved,'outside canvas is not intercepted');
+ await head.focus();await head.press('Control+z');await head.press('ArrowDown');const branched=await geometry();await head.press('Control+y');assert.deepEqual(await geometry(),branched,'new edit clears redo');
+ await p.locator('.tc-node').evaluate(n=>{n.style.width='800px';n.style.height='850px';});await p.waitForTimeout(100);const resized=await geometry();assert.notEqual(resized.width,branched.width);await head.press('Control+z');assert.deepEqual(await geometry(),branched,'resize restores both dimensions');
+ const after=await p.evaluate(()=>TeamCanvas.serialize());assert.deepEqual(after.nodes[0].visual,before.nodes[0].visual);assert.deepEqual(after.nodes[0].instance,before.nodes[0].instance);assert.deepEqual(errors,[]);
+ console.log('PASS canvas undo: move/resize, Ctrl/Cmd undo, Shift+Z/Y redo, branch, editable/outside isolation, unchanged scientific settings');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

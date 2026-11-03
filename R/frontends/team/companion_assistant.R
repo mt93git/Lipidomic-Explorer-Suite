@@ -21,6 +21,43 @@ companion_sanitize_question <- function(question, known_labels = character()) {
   clean
 }
 
+# Preserve the seven internal workflow sections while presenting the three
+# stages exposed by the optional Team workspace.
+companion_assistant_step_guidance <- function(team_workspace = identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")) {
+  if (!isTRUE(team_workspace)) return(c(
+    "Upload abundance files or restore a session ZIP. Original files stay unchanged.",
+    "Review sample labels, selected samples and independent or matched design. Only you can confirm the design review.",
+    "Review detection, missing values and normalization. Prepare data only after reviewing these choices; previous plots keep the applied run until then.",
+    "Choose the biological question. A study description does not automatically change the statistical model.",
+    "Explore PCA, class profiles, volcano and violin plots. Hover over points and export the CSV behind each plot.",
+    "Select a lipid and measurement to inspect prepared abundances. Anatomy is interpreted reference biology; bulk signals do not establish subcellular lipid locations. No dynamic simulation is enabled.",
+    "Export results, methods and decisions, sample labels and a session ZIP. Also save the companion action log; it is session-local."
+  ))
+  c(
+    "In Data, upload an abundance matrix or restore a saved session ZIP. Resume a private project checkpoint here when available; original input files remain unchanged.",
+    "In Review, inspect sample labels, selected samples and independent or matched design. Only you can confirm the design review.",
+    "In Review, inspect detection, missing values and normalization. Detection changes update prepared data automatically; confirm any proposed AI change before it applies and review other pending settings.",
+    "In Review, choose the biological question and comparison. A study description does not automatically change the statistical model.",
+    "In Canvas, explore PCA, class profiles, volcano and violin plots. Workspace changes autosave when the private project is available. Save & export offers named checkpoints, whole-Canvas SVG and per-plot downloads; CSV is available when the source provides it.",
+    "In Canvas, use the 3D cell as an illustrative reference view. Prepared abundance may include imputed estimates; bulk signals do not establish subcellular locations. No dynamic simulation is enabled.",
+    "In Save & export, create named checkpoints and download a whole-Canvas SVG or available per-plot exports. Workspace changes autosave when the private project is available; resume a checkpoint from Data. Finished figures are archived snapshots and may differ from current live data; Edit regenerates the current plot. After resuming, review the restored data and settings. Preserve methods, decisions and source files separately."
+  )
+}
+
+# Parse only the reviewed, exact detection-setting command forms. Natural
+# language requests continue through the normal guide/AI path.
+companion_parse_detection_command <- function(question) {
+  if (!is.character(question) || length(question) != 1L || is.na(question)) return(NULL)
+  q <- tolower(trimws(question))
+  if (identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset="0"), "1"))
+    q <- sub("^set the detection threshold to ", "set detection to ", q)
+  match <- regexec("^set (minimum detection|detection|threshold) to ([0-9]+(?:\\.[0-9]+)?)(%?)[.!]?$", q, perl = TRUE)
+  parts <- regmatches(q, match)[[1L]]
+  if (!length(parts)) return(NULL)
+  value <- as.numeric(parts[[3L]])
+  list(value = value, has_percent = identical(parts[[4L]], "%"), needs_percent = value <= 1 && !identical(parts[[4L]], "%"))
+}
+
 companion_assistant_server <- function(input, output, session, shared_data, guide_workflow) {
   ai_busy <- FALSE; ai_count <- 0L; ai_last <- as.POSIXct(0,origin='1970-01-01'); ai_closed <- FALSE
   session$onSessionEnded(function(){ai_closed<<-TRUE})
@@ -48,16 +85,21 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     key<-as.character(x$nonce);if(key %in% seen)return(FALSE);seen<<-tail(c(seen,key),200);TRUE
   }
   explain_step <- function(){
-    txt<-c('Upload abundance files or restore a session ZIP. Original files stay unchanged.',
-    'Review sample labels, selected samples and independent or matched design. Only you can confirm the design review.',
-    'Review detection, missing values and normalization. Prepare data only after reviewing these choices; previous plots keep the applied run until then.',
-    'Choose the biological question. A study description does not automatically change the statistical model.',
-    'Explore PCA, class profiles, volcano and violin plots. Hover over points and export the CSV behind each plot.',
-    'Select a lipid and measurement to inspect prepared abundances. Anatomy is interpreted reference biology; bulk signals do not establish subcellular lipid locations. No dynamic simulation is enabled.',
-    'Export results, methods and decisions, sample labels and a session ZIP. Also save the companion action log; it is session-local.')
+    txt<-companion_assistant_step_guidance()
     reply(txt[step()],list(nav(step(),'Open this step')))
   }
   local_guidance <- function(q) {
+    if (identical(Sys.getenv('LIPIDOMIC_TEAM_WORKSPACE',unset='0'),'1')) {
+      if(grepl('\\b(imput[a-z]*|missing|qrilc)\\b',q)){reply('QRILC estimates missing values under a left-censoring assumption. Missingness alone does not establish that assumption; estimates are not measurements.',list(nav(3,'Open Review')));return()}
+      if(grepl('\\b(normal[a-z]*|pqn|median)\\b',q)){reply('Median normalization uses the log scale; PQN uses the linear scale. Choose based on assay controls. Request one change and explicitly confirm the proposal; review any other pending settings.',list(nav(3,'Open Review')));return()}
+      if(grepl('\\b(filter[a-z]*|detect[a-z]*|threshold)\\b',q)){reply('Detection counts positive measurements. Global filtering may remove group-specific signals. Request one threshold change and confirm it; Review then updates prepared data automatically.',list(nav(3,'Open Review')));return()}
+      if(grepl('violin',q)){reply('Violin plots show distributions of a selected lipid. Shapes alone are not statistical tests.',list(nav(5,'Open Canvas')));return()}
+      if(grepl('pca',q)){reply('PCA summarizes variation, not significance or causality. Match samples, lipids, transformation and scaling when comparing plots.',list(nav(5,'Open Canvas')));return()}
+      if(grepl('\\b(volcano|fold|signific[a-z]*)\\b',q)){reply('Check the comparison direction, test, multiple-testing correction and independent experimental units; a paired label does not convert an unpaired test.',list(nav(5,'Open Canvas'),nav(2,'Open Review')));return()}
+      if(grepl('\\b(3d|cells?|membrane|nucleus|granules?|simulat[a-z]*)\\b',q)){reply('The cell is an illustrative reference. Bulk lipidomics does not establish subcellular localization, and no dynamic simulation is enabled.',list(nav(6,'Open Canvas')));return()}
+      if(grepl('\\b(steps?|workflow|start|begin|next|help)\\b',q)){explain_step();return()}
+      reply('I can explain detection, missingness, normalization and available plots. Review study-specific conclusions with the analyst.',list(nav(step(),'Open current step'),nav(3,'Open Review')));return()
+    }
     if(grepl('\\b(imput[a-z]*|missing|qrilc)\\b',q)){reply('QRILC estimates missing values under a left-censoring assumption. Missingness alone does not establish that assumption. Imputed values are estimates, not measurements. Turning it off retains missing values; some tools require complete data.',list(nav(3,'Open Quality')));return()}
     if(grepl('\\b(normal[a-z]*|pqn|median)\\b',q)){if(grepl('^(does|is|are|why|how|what|can i)\\b',q)){reply('Changing a normalization control updates the proposed Quality setting, but it does not change the currently applied plots until you review Quality and run preparation.');return()};reply('Median normalization uses the log scale; PQN uses the linear scale. The appropriate choice depends on the assay and controls. To request a change, type “set normalization to pqn”. Review and confirm it before preparing data.',list(nav(3,'Open Quality')));return()}
     if(grepl('\\b(filter[a-z]*|detect[a-z]*|threshold)\\b',q)){reply('Only positive measurements count as detected. Global filtering may remove signals specific to one group. Review the detection scope and controls. To propose a threshold, type “set detection to 80”. Nothing changes until you confirm.',list(nav(3,'Review Quality')));return()}
@@ -78,7 +120,10 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     token<-digest::digest(list(session$token,counter,Sys.time(),fingerprint()),algo='sha256')
     pending(list(token=token,parameter=p,value=value,previous=cfg[[p]],fingerprint=fingerprint(),expires=Sys.time()+300))
     label<-function(v)if(p=='normalization')unname(norm_names[as.character(v)]) else if(p=='imputation')if(isTRUE(v))'QRILC on' else 'Imputation off' else paste0(v,'%')
-    session$sendCustomMessage('assistant_preview',list(token=token,title=paste('Change',p,'?'),current=label(cfg[[p]]),proposed=label(value),reason='This changes a preparation setting. Existing plots remain on the previous applied run. Review Quality and click Prepare data yourself to recompute. This proposal expires in five minutes.'))
+    team <- identical(Sys.getenv('LIPIDOMIC_TEAM_WORKSPACE',unset='0'),'1')
+    title <- if(team && p=='detection') 'Change minimum detection?' else paste('Change',p,'?')
+    reason <- if(team && p=='detection') 'Nothing changes until you confirm. Review updates prepared data automatically after confirmation; any other pending changes may require review. This proposal expires in five minutes.' else if(team) 'Nothing changes until you confirm. Review any pending preparation changes before applying them. This proposal expires in five minutes.' else 'This changes a preparation setting. Existing plots remain on the previous applied run. Review Quality and click Prepare data yourself to recompute. This proposal expires in five minutes.'
+    session$sendCustomMessage('assistant_preview',list(token=token,title=title,current=label(cfg[[p]]),proposed=label(value),reason=reason,confirmLabel=if(team) 'Confirm change' else 'Update Quality setting'))
     log('propose',p,cfg[[p]],value,'awaiting confirmation')
   }
   observe({refresh();cfg<-settings();s<-step();dirty<-isTRUE(safe(shared_data$preparation_dirty,FALSE));ready<-!is.null(safe(shared_data$data_processed));
@@ -93,11 +138,12 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
       reply('Hello! I can explain this step, help you find a plot, or guide you through the workflow. What would you like to do?',list(nav(step(),'Explore this step'),nav(1,'Start an experiment')),source='Local welcome');return()
     }
     if(grepl('^(thanks|thank you|gracias)[!., ]*$',q)){reply('You’re welcome. I’m here whenever you want to review a method or find your next step.',list(nav(step(),'Return to this step')),source='Local welcome');return()}
-    if(grepl('^(please )?(set|switch|change|turn).*(and|then).*(prepare|run|apply)\\b',q)){reply('I can propose one scientific setting at a time, but I will not prepare or run the analysis from chat. Ask separately to change a setting, confirm it, then review Quality and click Prepare data yourself.');return()}
+    if(grepl('^(please )?(set|switch|change|turn).*(and|then).*(prepare|run|apply)\\b',q)){if(identical(Sys.getenv('LIPIDOMIC_TEAM_WORKSPACE',unset='0'),'1')) reply('I can propose one scientific setting at a time. Ask separately to change the setting and confirm the proposal. In Review, detection changes update prepared data automatically after confirmation; other pending changes may require review and confirmation.') else reply('I can propose one scientific setting at a time, but I will not prepare or run the analysis from chat. Ask separately to change a setting, confirm it, then review Quality and click Prepare data yourself.');return()}
     if(grepl('^set normalization to (median|pqn|none)[.!]?$',q)){propose('normalization',sub('[.!]$','',sub('^set normalization to ','',q)));return()}
     if(grepl('^please switch normalization from (median|pqn|none) to (median|pqn|none) for me[.!]?$',q)){m<-regexec('^please switch normalization from (median|pqn|none) to (median|pqn|none)',q);z<-regmatches(q,m)[[1]];propose('normalization',z[3]);return()}
     if(grepl('^can you switch to (median|pqn|none)[.!?]?$',q)){propose('normalization',sub('[.!?]$','',sub('^can you switch to ','',q)));return()}
-    if(grepl('^set (detection|threshold) to [0-9]+(\\.[0-9]+)?%?[.!]?$',q)){raw<-sub('^set (detection|threshold) to ','',q);n<-as.numeric(sub('[%!.]+$','',raw));if(n<=1&&!grepl('%',raw)){reply('Please include a percentage for a threshold at or below 1, for example “set detection to 0.8%”.');return()};propose('detection',n);return()}
+    detection_command<-companion_parse_detection_command(q)
+    if(!is.null(detection_command)){if(detection_command$needs_percent){reply('Please include a percentage for a threshold at or below 1, for example “set minimum detection to 0.8%”.');return()};propose('detection',detection_command$value);return()}
     if(q %in% c('turn imputation on','turn imputation off')){propose('imputation',q=='turn imputation on');return()}
     if(exists('companion_ai_guard')) { guarded<-companion_ai_guard(q); if(!is.null(guarded)){reply(guarded$answer,guarded$actions,source='Local guide · reviewed scientific boundaries');return()} }
     if(exists('companion_ai_available')&&companion_ai_available() && !q %in% c('explain this step','help')) {
@@ -144,9 +190,10 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     if(isTRUE(safe(shared_data$is_restoring,FALSE))||Sys.time()>p$expires||!identical(fingerprint(),p$fingerprint)){log('confirm',p$parameter,p$previous,p$value,'rejected stale or expired');reply('This proposal is stale or expired. No change was made. Request it again.');return()}
     if(p$parameter=='normalization')updateSelectInput(session,ids[[p$parameter]],selected=p$value)
     if(p$parameter=='detection')updateSliderInput(session,ids[[p$parameter]],value=p$value)
+    if(p$parameter=='detection' && identical(Sys.getenv('LIPIDOMIC_TEAM_WORKSPACE',unset='0'),'1')) session$sendCustomMessage('team-review-confirmed-detection',list(threshold=p$value))
     if(p$parameter=='imputation')updateCheckboxInput(session,ids[[p$parameter]],value=p$value)
     log('confirm',p$parameter,p$previous,p$value,'setting update sent')
-    reply('Confirmed: the setting update was sent to Quality. Review it there and click Prepare data to apply it. Existing plots have not been recomputed.')
+    if(identical(Sys.getenv('LIPIDOMIC_TEAM_WORKSPACE',unset='0'),'1')) reply(if(p$parameter=='detection') 'Confirmed: the detection control was updated. Review updates prepared data automatically; other pending changes may require confirmation.' else 'Confirmed: the setting update was sent to Review. Review any pending changes before applying them.') else reply('Confirmed: the setting update was sent to Quality. Review it there and click Prepare data to apply it. Existing plots have not been recomputed.')
   },ignoreInit=TRUE)
   observeEvent(input$assistant_cancel,{r<-input$assistant_cancel;if(!valid_event(r))return();p<-isolate(pending());if(is.null(p)||!scalar(r$token)||!identical(r$token,p$token)){log('cancel','','','','rejected wrong token');reply('That cancellation token is invalid.');return()};pending(NULL);log('cancel',p$parameter,p$previous,p$value,'cancelled');session$sendCustomMessage('assistant_preview',list());reply('Proposal cancelled. Your settings were kept.')},ignoreInit=TRUE)
   output$companion_actions_csv<-downloadHandler(filename=function()'companion-actions.csv',content=function(file)write_spreadsheet_csv(audit(),file,row.names=FALSE))

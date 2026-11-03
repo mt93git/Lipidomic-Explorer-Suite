@@ -1,11 +1,11 @@
-guided_preparation_controls <- function(id) {
+guided_preparation_controls <- function(id, compact=FALSE) {
   ns <- NS(id)
   tagList(
     h3('1. Keep sufficiently detected lipids'),
     checkboxInput(ns('dropNonDetected'),'Exclude entirely undetected lipids before imputation',TRUE),
-    sliderInput(ns('minDetectionPct'),'Minimum detection (%)',min=0,max=100,value=0,step=5),
+    if(!compact) sliderInput(ns('minDetectionPct'),'Minimum detection (%)',min=0,max=100,value=0,step=5),
     selectInput(ns('detectionScope'),'Where must a lipid be detected?',c('Across selected samples'='global','In at least one condition × tissue group'='group')),
-    uiOutput(ns('detectionPreview')),
+    if(!compact) uiOutput(ns('detectionPreview')),
     helpText('Only positive measured values count as detected. At 0%, the separate “Exclude entirely undetected lipids” option still removes lipids absent from every selected sample. A global threshold may remove tissue-specific signals.'),
     h3('2. Handle missing measurements'),
     checkboxInput(ns('useImputation'),'Estimate missing values with QRILC',TRUE),

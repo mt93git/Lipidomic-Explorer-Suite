@@ -245,6 +245,7 @@ server <- function(input, output, session) {
 
   # The structural_server is called to activate the Structural module.
   structural_server("structural_tab", shared_data, global_color_map)
+  lipidomic_hook("structural_server_started")(output)
   
   # The structural_grid_server is called to activate the Structural Grid module.
   structural_grid_server("structural_grid_tab", shared_data)
@@ -298,8 +299,14 @@ server <- function(input, output, session) {
   # =========================================================================
   # PHASE 5: Publication Export Studio
   # =========================================================================
-  export_studio_server("export_studio", shared_data = shared_data)
+  lipidomic_hook("export_studio_server", function(id, shared_data, ...)
+    export_studio_server(id, shared_data = shared_data))("export_studio", shared_data,
+    input = input, output = output, session = session)
 
   cat("\n[MAIN SERVER] ALL MODULE SERVERS INITIALIZED!\n", file = stderr())
 }
 
+# Optional frontends may wrap the session entry point (Team workspace: the
+# project-library sign-in gate). Classic registers nothing, so `server` is
+# unchanged.
+server <- lipidomic_hook("server_entry")(server)

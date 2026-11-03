@@ -1,0 +1,29 @@
+/* Per-card status chip and the Export figure warning. */
+.tc-card-status{display:inline-flex;align-items:center;gap:6px;margin:0 8px;padding:2px 8px;border-radius:999px;font:500 11.5px/1.6 system-ui,sans-serif;background:#eef1f4;color:#3b4855;white-space:nowrap}
+.tc-card-status[hidden]{display:none}
+.tc-card-status>i{width:7px;height:7px;border-radius:50%;background:#8a96a3;flex:none}
+.tc-card-status[data-state=current]>i{background:#2e8b57}
+.tc-card-status[data-state=updating]>i{background:#c99a2e}
+.tc-card-status[data-state=pending],.tc-card-status[data-state=finished-stale]{background:#fff4e0;color:#7a4b00}
+.tc-card-status[data-state=pending]>i,.tc-card-status[data-state=finished-stale]>i{background:#d98b00}
+.tc-card-status[data-state=error]{background:#fdecea;color:#8a1f11}
+.tc-card-status[data-state=error]>i{background:#c0392b}
+.tc-card-status[data-state=waiting]{background:#e8f1fb;color:#1f4f7a}
+.tc-card-status[data-state=waiting]>i{background:#3b78b5}
+.tc-card-status>button{border:0;background:transparent;color:inherit;font:inherit;font-weight:600;text-decoration:underline;padding:0;cursor:pointer}
+.ts-export-warning{margin:0 0 6px;padding:8px 10px;border-radius:6px;background:#fff4e0;color:#7a4b00;font-size:12.5px;line-height:1.4;max-width:320px}
+.ts-export.has-stale .ts-menu-trigger{position:relative}
+.ts-export.has-stale .ts-menu-trigger::after{content:'';position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#f0a92b;box-shadow:0 0 0 2px #fff}
+/* Keep the top of the canvas clear of the floating toolbar so card heads and their status stay readable. */
+#team-canvas-root.ts-shell .tc-scroll{padding-top:12px}
+/* Canvas status as a transient notice, not a permanent bottom strip. */
+/* Top centre, under the floating toolbar: clear of the minimap at every width. */
+/* Notices have their own fixed-height line (two text lines, longer ones scroll) between the toolbar and the
+   canvas, kept even when empty, so they never cover a card or resize the canvas. */
+#team-canvas-root.ts-shell .tc-status{position:relative!important;order:1;align-self:center;left:auto!important;top:auto!important;bottom:auto!important;right:auto!important;transform:none;max-width:min(560px,calc(100% - 24px))!important;width:max-content!important;display:flex!important;align-items:center;min-height:48px!important;height:48px!important;max-height:48px!important;overflow-y:auto!important;box-sizing:border-box;white-space:normal!important;overflow-wrap:anywhere;margin:0 auto 4px!important;padding:6px 14px!important;border-radius:8px!important;background:#162230!important;color:#e9eff4!important;font-size:12.5px!important;line-height:1.4;box-shadow:none;z-index:26;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s;border:0!important}
+#team-canvas-root.ts-shell .tc-status.is-visible{opacity:1;visibility:visible;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){#team-canvas-root.ts-shell .tc-status{transition:none}}
+body.ts-shell-app .modal-header .ts-modal-close{margin-left:auto;opacity:.85}
+body.ts-shell-app .ts-saved[data-state=saving]::before{background:#d9a12b}
+body.ts-shell-app .ts-saved:is([data-state=error],[data-state=offline])::before{background:#e0634f}
+body.ts-shell-app .ts-saved:is([data-state=error],[data-state=offline]){color:#f4c7bd;border-color:#7a3d34}

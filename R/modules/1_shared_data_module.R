@@ -411,6 +411,10 @@ shared_data_ui <- function(id) {
 team_restore_seed_input <- function(inputs, seed, policy) {
   if (is.null(inputs)) inputs <- list()
   if (!is.list(inputs)) stop("Invalid saved controls.")
+  # Team restore always lands on its single Review screen. A saved legacy tab
+  # such as Share can otherwise arrive after the route observer and move the
+  # server step away from Review while the Team workspace still shows Review.
+  if (identical(policy, "team")) inputs$main_navbar <- NULL
   id <- "qc_pca_tab-imputationSeed"
   if (identical(policy, "team") && is.null(inputs[[id]]) && !is.null(seed))
     inputs[[id]] <- preparation_settings(list(imputationSeed=seed))$imputationSeed
@@ -419,6 +423,10 @@ team_restore_seed_input <- function(inputs, seed, policy) {
 
 shared_data_server <- function(id, external_settings = reactive(NULL), welcome_load_demo_trigger = NULL, root_session = NULL, design_check = NULL, preparation_policy = "classic", inference_check = NULL, qrilc_imputer = NULL) {
   preparation_policy <- match.arg(preparation_policy, c("classic", "team"))
+  # Team restore validates its metadata with Team-only helpers. Classic never
+  # loads them; a Team-policy server loads them if its frontend has not.
+  if (identical(preparation_policy, "team") && !exists("team_metadata_validate_ids", mode = "function"))
+    source("R/frontends/team/metadata_state.R")
   moduleServer(id, function(input, output, session) {
     
     SHAPE_CHOICES <- c("Circle"=16, "Square"=15, "Triangle"=17, "Diamond"=18, "Plus"=3, "Cross"=4, "Star"=8)
@@ -584,6 +592,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         showNotification("Review and confirm the study design in Guided workflow before preparing data.", type="warning")
         return()
       }
+      if (identical(preparation_policy, "team")) team_review_preparation_issue(NULL)
       awaiting_restore_review(FALSE)
       if (identical(preparation_policy, "team")) restored_inputs(list())
       restore_initial_spec(NULL)
@@ -606,13 +615,92 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     }
     observeEvent(input$runAnalysis, request_preparation_run())
 
+    # Team Review is invoked only by an explicit browser intent or a confirmed
+    # sample decision. It shares the manual run trigger and controller guards.
+    team_review_preparation_issue <- reactiveVal(NULL)
+    team_review_requested_id <- NULL
+    request_team_review_preparation <- function(kind="entry", expected_threshold=NULL, expected_id=NULL) isolate({
+      request <- NULL
+      reject <- function(message,confirmation=FALSE) {
+        changes <- NULL
+        if(confirmation && !is.null(request)) {
+          old <- preparation$state()$applied$spec$settings; new <- request$spec$settings
+          keys <- union(names(old),names(new)); keys <- keys[!vapply(keys,function(k) identical(old[[k]],new[[k]]),logical(1))]
+          describe <- function(x) {
+            if(is.null(x) || !length(x)) return("None")
+            if(is.logical(x)) return(paste(ifelse(x,"Enabled","Disabled"),collapse=", "))
+            if(is.list(x) && !is.null(names(x))) return(paste(names(x),vapply(x,as.character,character(1)),sep=": ",collapse=", "))
+            paste(as.character(x),collapse=", ")
+          }
+          changes <- data.frame(Setting=keys,Applied=vapply(keys,function(k) describe(old[[k]]),character(1)),Pending=vapply(keys,function(k) describe(new[[k]]),character(1)),stringsAsFactors=FALSE)
+          labels <- c(minDetectionPct="Minimum detection (%)",dropNonDetected="Exclude undetected lipids",detectionScope="Detection scope",useImputation="QRILC imputation",normalizationMethod="Normalization",imputeZerosPerFile="Entirely missing lipids per file to zero",imputeRemainingNAtoZero="Remaining missing values to zero",outlierTreatments="Sample decisions",imputationSeed="Imputation seed")
+          matched <- match(changes$Setting,names(labels)); changes$Setting[!is.na(matched)] <- unname(labels[matched[!is.na(matched)]])
+          previous_spec <- preparation$state()$applied$spec; next_spec <- request$spec
+          for(field in c("selected","use_average","data_id","metadata_id")) if(!identical(previous_spec[[field]],next_spec[[field]])) {
+            label <- switch(field,selected="Selected samples",use_average="Synthetic averaged samples",data_id="Source data",metadata_id="Sample labels and metadata")
+            before <- if(field %in% c("data_id","metadata_id")) "Previous version" else describe(previous_spec[[field]])
+            after <- if(field %in% c("data_id","metadata_id")) "Current version shown in Review" else describe(next_spec[[field]])
+            changes <- rbind(changes,data.frame(Setting=label,Applied=before,Pending=after,stringsAsFactors=FALSE))
+          }
+        }
+        team_review_preparation_issue(list(message=message,confirmation=confirmation,changes=changes,request_id=if(!is.null(request)) request$id else NULL))
+        FALSE
+      }
+      if (!identical(preparation_policy,"team") || !exists("team_workspace_enabled") ||
+          !isTRUE(team_workspace_enabled()) || !isTRUE(kind %in% c("entry","detection","exclusion","undo","confirmed"))) return(FALSE)
+      if(isTRUE(is_restoring())) return(reject("The saved session is still loading. Wait for it to finish, then continue from Data to Review."))
+      if(!length(rv$uploads)) return(reject("No dataset is loaded. Add your abundance data in Data, then continue to Review."))
+      if (!is.null(design_check) && !isTRUE(design_check())) return(reject("Review the selected samples and study design before preparing data."))
+      request <- tryCatch(pending_preparation(),error=function(e) NULL)
+      if (is.null(request)) return(reject("Preparation is unavailable. Review the loaded data and sample selection."))
+      current <- request$spec
+      if(identical(kind,"confirmed") && !identical(expected_id,request$id)) return(reject("The pending changes changed. Review the current differences before confirming.",TRUE))
+      if (identical(kind,"detection") &&
+          (length(expected_threshold)!=1L || !is.numeric(expected_threshold) || !is.finite(expected_threshold) ||
+           !identical(as.numeric(expected_threshold),as.numeric(current$settings$minDetectionPct)))) return(reject("The detection setting changed before the update arrived. Adjust the slider again to use its current value."))
+      applied <- preparation$state()$applied
+      if (!is.null(applied) && !identical(kind,"confirmed")) {
+        old <- applied$spec
+        allowed <- switch(kind,detection="minDetectionPct",exclusion="outlierTreatments",undo="outlierTreatments",character())
+        old_settings <- old$settings; new_settings <- current$settings
+        old_settings[allowed] <- NULL; new_settings[allowed] <- NULL
+        # Clicking Undo or changing detection never authorizes unrelated settings.
+        if (!identical(old_settings,new_settings)) return(reject("Other preparation settings are pending. Inspect Study design and preparation options, then confirm those settings before applying them.",TRUE))
+        if (!identical(kind,"entry")) {
+          old$settings <- NULL; current$settings <- NULL
+          if (!identical(old,current)) return(reject("The data or selected samples changed. Return to Data and continue to Review to prepare the current selection."))
+        }
+        if (identical(request$id,applied$request_id) && identical(preparation$state()$status,"ready")) {team_review_preparation_issue(NULL);return(TRUE)}
+      } else if (is.null(applied) && !kind %in% c("entry","confirmed")) {
+        # Establish a reviewed baseline before changing one scientific parameter.
+        return(reject("Open Review from Data to prepare the initial dataset before changing preparation settings."))
+      }
+      if(identical(team_review_requested_id,request$id)) return(TRUE)
+      team_review_requested_id <<- request$id
+      # The shared controller computes synchronously during the next reactive
+      # flush. Coalesce duplicate intents until that flush has completed.
+      queued_id <- request$id
+      session$onFlushed(function() {
+        if(identical(team_review_requested_id,queued_id)) team_review_requested_id <<- NULL
+      },once=TRUE)
+      team_review_preparation_issue(NULL)
+      awaiting_restore_review(FALSE)
+      restored_inputs(list())
+      rv$lipidomics_confirmed <- TRUE
+      metadata_trigger(isolate(metadata_trigger()) + 1)
+      analysis_is_fresh(TRUE)
+      run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
+      session$sendCustomMessage("pipelineExecutionActive",list(status="running"))
+      TRUE
+    })
+
     observeEvent(input$ensure_analysis_run, {
       if (isTRUE(awaiting_restore_review())) {
-        showNotification(if (preparation_policy == "team") "Review the restored session and click Prepare data." else "Review the restored session and click Run Analysis explicitly.",type="message")
+        showNotification(if (preparation_policy == "team") "Resume the saved session, then open Review from Data to rebuild the prepared results." else "Review the restored session and click Run Analysis explicitly.",type="message")
         return()
       }
       if (!is.null(design_check)) {
-        showNotification(if (preparation_policy == "team") "Use Prepare data in Quality after confirming the study design." else "Use Run Analysis in Quality after confirming the study design.",type="message")
+        showNotification(if (preparation_policy == "team") "Continue from Data to Review to prepare the selected data." else "Use Run Analysis in Quality after confirming the study design.",type="message")
         return() # Guided navigation never prepares data implicitly.
       }
       if (length(rv$uploads) == 0) {
@@ -2319,7 +2407,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                 choices = c("Group1", "Group2", "Replicate", "PatientNumber", "TimePoint", "Ignore"),
                 selected = selected_sel
               ),
-              conditionalPanel(
+              # Team mounts one shared embedded-timepoint editor (standard_embedded_tp_ui);
+              # a second per-component checkbox would duplicate its input ids.
+              if (!identical(preparation_policy, "team")) conditionalPanel(
                 condition = sprintf("input['%s'] != 'Ignore' && input['%s'] != 'TimePoint'", 
                                     session$ns(paste0("schema_", comp_name)), 
                                     session$ns(paste0("schema_", comp_name))),
@@ -3040,7 +3130,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                       selected = if (!is.null(isolate(input$nomenclature_standard_align)) && isolate(input$nomenclature_standard_align) %in% c("Yes", "No")) isolate(input$nomenclature_standard_align) else "Yes",
                       inline = TRUE
                     ),
-                    uiOutput(session$ns("standard_embedded_tp_ui"))
+                    if (!identical(preparation_policy, "team")) uiOutput(session$ns("standard_embedded_tp_ui"))
                   )
                 )
               ),
@@ -3072,6 +3162,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                   )
                 )
               ),
+              # Team: one embedded-timepoint editor is shared by both naming modes.
+              # Hidden conditional panels remain mounted, so duplicate inputs are unsafe.
+              if (identical(preparation_policy, "team")) uiOutput(session$ns("standard_embedded_tp_ui")),
               # Moved outside conditional panels so they are always visible
               uiOutput(session$ns("timepoint_condition_association_ui")),
               tags$details(
@@ -3176,6 +3269,11 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
     
     annotationData <- reactive({
+      # Restoring freezes inputs. A reactive evaluated while frozen caches a
+      # silent error, and thawing alone does not invalidate that cache. Team's
+      # explicit completion signal refreshes annotation and its dependent
+      # lipid filters after hydration, even when saved controls are unchanged.
+      if (preparation_policy == "team") is_restoring()
       req(baseLipidAnnotation())
       base_anno <- baseLipidAnnotation()
       
@@ -4130,6 +4228,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     })
 
   # --- UI Rendering for Panel 8 ---
+  # Classic Panel 8 must not replace the Team palette editor.
+  if (preparation_policy == "classic") {
     output$classColorUI <- renderUI({
       anno <- annotationData(); req(anno)
       mode <- input$colorEditMode # Current Dropdown Selection
@@ -4166,6 +4266,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       )
     })
     
+  }
+
   # Backward Compatibility Wrapper
     global_class_color_map <- map_lipid_class
 
@@ -5156,11 +5258,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     }
     
-    output$export_session_btn <- downloadHandler(
-      filename = function() {
-        paste0("Lipidomic_Explorer_Session_", format(Sys.time(), "%Y%m%d_%H%M"), ".zip")
-      },
-      content = function(file) {
+    export_session_path <- function(file) {
         # Create a temp directory
         tmp_dir <- tempfile("session_export_")
         dir.create(tmp_dir)
@@ -5174,9 +5272,21 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         if (length(uploads) > 0) {
           data_files_dir <- file.path(tmp_dir, "data_files")
           dir.create(data_files_dir)
-          for (name in names(uploads)) {
+          for (i in seq_along(uploads)) {
+            name <- names(uploads)[[i]]
             path <- uploads[[name]]
-            if (file.exists(path)) {
+            if (identical(preparation_policy, "team")) {
+              if (!file.exists(path)) stop("A required source dataset is unavailable; the checkpoint cannot be exported.")
+              # Restored files live at temporary paths. Never copy those growing
+              # temp basenames into the next ZIP: repeated restore/export cycles
+              # used to nest `dataset-...` prefixes until extraction failed.
+              archive_name <- session_archive_dataset_name(name, path, i, preparation_policy)
+              dest <- file.path(data_files_dir, archive_name)
+              if (!file.copy(path, dest, overwrite = FALSE)) stop("Could not add a required source dataset to the checkpoint.")
+              # Keep the user's original upload name in the state map while the
+              # ZIP uses a short, portable, deterministic internal filename.
+              state_list$uploads[[name]] <- file.path("data_files", archive_name)
+            } else if (file.exists(path)) {
               dest <- file.path(data_files_dir, basename(path))
               file.copy(path, dest, overwrite = TRUE)
               # Update state.json references to be relative to the zip archive
@@ -5195,11 +5305,24 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         
         # Zip relative to the private staging directory without changing process cwd.
         files_to_zip <- c("state.json", "shared-state-v1.json")
+        if (identical(preparation_policy, "team") && is.function(root_session$userData$team_canvas_export)) {
+          canvas <- root_session$userData$team_canvas_export(provenance = preparation$state()$applied)
+          if (!is.null(canvas)) {
+            canvas <- team_canvas_validate(canvas)
+            writeLines(team_canvas_json(canvas), file.path(tmp_dir, "team-canvas-v1.json"), useBytes = TRUE)
+            files_to_zip <- c(files_to_zip, "team-canvas-v1.json")
+          }
+        }
         if (dir.exists(file.path(tmp_dir, "data_files"))) {
           files_to_zip <- c(files_to_zip, "data_files")
         }
         zip::zipr(file, files = files_to_zip, root = tmp_dir, recurse = TRUE)
+    }
+    output$export_session_btn <- downloadHandler(
+      filename = function() {
+        paste0("Lipidomic_Explorer_Session_", format(Sys.time(), "%Y%m%d_%H%M"), ".zip")
       },
+      content = export_session_path,
       contentType = "application/zip"
     )
     
@@ -5548,7 +5671,17 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       ids <- isolate(all_numeric_columns())
       if (!is.data.frame(snapshot$data) || !identical(as.character(snapshot$data$FullName), as.character(ids)))
         stop("Saved sample metadata does not match the active abundance matrix.")
-      prior <- tryCatch(isolate(allParsedMetadata()), error=function(e) NULL)
+      # On restore, retain the validated canonical fields from this archive.
+      # Without a sidecar, refresh the restored legacy labels before consulting
+      # them; the previous session's eventReactive cache is not restoration data.
+      direct <- isolate(external_metadata())
+      if (isTRUE(isolate(is_restoring())) && !is.null(direct)) {
+        team_metadata_validate_ids(direct, as.character(ids))
+        prior <- direct$scientific_metadata
+      } else {
+        if (isTRUE(isolate(is_restoring()))) metadata_trigger(isolate(metadata_trigger()) + 1L)
+        prior <- tryCatch(isolate(allParsedMetadata()), error=function(e) NULL)
+      }
       original_snapshot <- snapshot
       x <- snapshot$data
       if ("SampleID" %in% names(x)) {
@@ -5705,8 +5838,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             restored_bqc_manual_exclusions(as.character(state_data$outliers$bqcManualExclusions))
           }
           
+          if (preparation_policy == "team") team_metadata_validate_ids(isolate(external_metadata()), isolate(all_numeric_columns()))
           if (team_metadata_snapshot_present(state_data$metadata$external_sample_metadata)) {
-            if (preparation_policy == "team") { external_metadata(NULL); external_metadata(canonical_team_metadata(state_data$metadata$external_sample_metadata)) }
+            if (preparation_policy == "team") external_metadata(canonical_team_metadata(state_data$metadata$external_sample_metadata))
             else restored_team_snapshot(validated_team_snapshot(state_data$metadata$external_sample_metadata))
           }
           metadata_restored(TRUE)
@@ -5779,12 +5913,15 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       }
     })
     
-    observeEvent(input$import_session_file, {
-      req(input$import_session_file)
+    import_session_path <- function(path) {
       if (!identical(preparation_policy, "classic")) restore_generation(isolate(restore_generation())+1L)
       import_status("Processing session import...")
       
-      archive <- tryCatch(read_session_archive(input$import_session_file$datapath),
+      # Team archives may carry the figure canvas; Classic reads exactly as before.
+      include_canvas <- identical(preparation_policy, "team") && is.function(root_session$userData$team_canvas_import)
+      archive <- tryCatch(if (identical(preparation_policy, "team"))
+          read_session_archive(path, include_team_canvas = include_canvas, metadata_decoder = team_metadata_sidecar_decode)
+        else read_session_archive(path),
         error=function(e) {import_status(paste("Error:",conditionMessage(e)));NULL})
       if (is.null(archive)) return()
       extract_dir <- archive$directory
@@ -5874,7 +6011,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             }
             
             if (!is.null(target_path)) {
-              dest_path <- tempfile("dataset-",tmpdir=dest_dir,fileext=paste0("-",basename(target_path)))
+              # Team uses only a validated extension; Classic keeps its historical name.
+              dest_path <- session_restored_dataset_path(dest_dir,target_path,preparation_policy)
               if (!file.copy(target_path, dest_path, overwrite = FALSE)) stop("Could not restore dataset.")
               new_uploads[[name]] <- dest_path
             }
@@ -5999,8 +6137,9 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             rv$multiomics_cohort_map <- as.list(state_data$multiomics_cohort_map)
           }
           
+          if (preparation_policy == "team") team_metadata_validate_ids(isolate(external_metadata()), isolate(all_numeric_columns()))
           if (team_metadata_snapshot_present(state_data$metadata$external_sample_metadata)) {
-            if (preparation_policy == "team") { external_metadata(NULL); external_metadata(canonical_team_metadata(state_data$metadata$external_sample_metadata)) }
+            if (preparation_policy == "team") external_metadata(canonical_team_metadata(state_data$metadata$external_sample_metadata))
             else restored_team_snapshot(validated_team_snapshot(state_data$metadata$external_sample_metadata))
           }
           metadata_restored(TRUE)
@@ -6104,6 +6243,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
                 run_analysis_trigger_val(isolate(run_analysis_trigger_val()) + 1)
               }
               session_restored(TRUE)
+              if (include_canvas) root_session$userData$team_canvas_import(archive$canvas,
+                provenance = archive$shared$applied)
               just_restored(TRUE)
               session$onFlushed(function() {
                 restore_initial_spec(NULL)
@@ -6122,6 +6263,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         }, once = TRUE)
         
       }, once = TRUE)
+    }
+    observeEvent(input$import_session_file, {
+      req(input$import_session_file)
+      import_session_path(input$import_session_file$datapath)
     })
     
     observe({
@@ -6146,6 +6291,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
     
     return(
       list(
+        export_session_path = export_session_path,
+        import_session_path = import_session_path,
         loaded_files = reactive(names(rv$uploads)),
         dataset_revision = reactive(preparation_data_id()),
         load_local_workbook = function(path) {
@@ -6225,6 +6372,8 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         annotationData = annotationData,
         multiomics_cohort_map = reactive({ rv$multiomics_cohort_map }),
         run_analysis_trigger = reactive({ run_analysis_trigger_val() }),
+        request_team_review_preparation = request_team_review_preparation,
+        team_review_preparation_issue = reactive(team_review_preparation_issue()),
         aesthetics = reactive({
           list(
             color_group = get_setting("colorGrouping", "Group1"), 

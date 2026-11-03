@@ -1,0 +1,38 @@
+const os=require('node:os');
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),{execFileSync}=require('node:child_process');
+const {chromium}=require('../browser/ci/node_modules/playwright');
+(async()=>{const browser=await chromium.launch({headless:true});try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const markup=execFileSync('Rscript',['--vanilla','-e','source("R/frontends/team/canvas.R");cat(as.character(team_canvas_ui()))'],{encoding:'utf8'});
+ await page.setContent('<!doctype html><html><body style="font-family:Arial,sans-serif;background:#fafaf8">'+markup+'</body></html>');
+ for(const file of ['canvas','workspace_minimal','canvas_catalog','canvas_preview','canvas_viewport','illustrations'])await page.addStyleTag({path:path.resolve('www/team/css/'+file+'.css')});
+ for(const file of ['illustrations','canvas_catalog','canvas_viewport','canvas','illustration_library','canvas_preview'])await page.addScriptTag({path:path.resolve('www/team/js/'+file+'.js')});
+ const layout = await page.evaluate(()=>{const root=document.querySelector('.tc-catalog'),close=root.querySelector('.tc-library-close'), tabs=[...root.querySelectorAll('.tc-library-tabs button')];return {width:root.getBoundingClientRect().width,close:close.getBoundingClientRect().toJSON(),tabs:tabs.map(t=>({rect:t.getBoundingClientRect().toJSON(),scroll:t.scrollWidth,client:t.clientWidth}))};});
+ if(process.env.TEAM_LIBRARY_SCREENSHOT)await page.locator('.tc-catalog').screenshot({path:process.env.TEAM_LIBRARY_SCREENSHOT});
+ assert.equal(layout.width,172,'catalog uses the compact rail width');
+ for(const tab of layout.tabs){assert.ok(tab.rect.top>=layout.close.bottom,'tab sits below close control');assert.ok(tab.scroll<=tab.client,'tab label is not clipped');}
+ await page.getByRole('tab',{name:'Illustrations',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Close library'}).isVisible(),true,'close remains available on Illustrations');
+ assert.equal(await page.locator('.tc-illustration-choice').count(),16);
+ assert.equal(await page.getByRole('searchbox',{name:'Search plots',exact:true}).isVisible(),false);
+ await page.getByRole('searchbox',{name:'Search illustrations'}).fill('cell');assert.equal(await page.locator('.tc-illustration-choice').count(),2);
+ await page.getByRole('searchbox',{name:'Search illustrations'}).fill('');
+ for(const name of ['Donor / participant','Serum / plasma vial','LC–MS instrument'])await page.getByRole('button',{name:'Add illustration: '+name,exact:true}).click();
+ assert.equal(await page.locator('.tc-illustration').count(),3);
+ for(let i=0;i<3;i++)await page.locator('.tc-illustration').nth(i).getByRole('button',{name:'Finish',exact:true}).click();
+ const fits=await page.locator('.tc-illustration').evaluateAll(nodes=>nodes.every(n=>{const a=n.getBoundingClientRect(),b=n.querySelector('.tc-snapshot>button').getBoundingClientRect();return b.bottom<=a.bottom&&b.top>=a.top;}));assert.ok(fits,'SVG buttons fit in default illustration cards');
+ const before=await page.evaluate(()=>TeamCanvas.serialize());
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'team-illustration-'));const input=path.join(directory,'state.json');fs.writeFileSync(input,JSON.stringify(before));
+ const normalized=JSON.parse(execFileSync('Rscript',['--vanilla','-e','source("R/frontends/team/canvas_state.R");cat(team_canvas_json(team_canvas_read(commandArgs(TRUE)[1])))',input],{encoding:'utf8'}));
+ await page.evaluate(s=>TeamCanvas.restore(s),normalized);const after=await page.evaluate(()=>TeamCanvas.serialize());
+ assert.deepEqual(after.nodes.map(n=>[n.assetId,n.assetVersion,n.label,n.color,n.finished.createdAt,n.finished.url]),before.nodes.map(n=>[n.assetId,n.assetVersion,n.label,n.color,n.finished.createdAt,n.finished.url]));fs.rmSync(directory,{recursive:true,force:true});
+ await page.getByRole('tab',{name:'Print preview',exact:true}).click();
+ await page.locator('.tc-page-settings>summary').click();
+ await page.getByLabel('Layout',{exact:true}).selectOption('figure1');
+ assert.equal(await page.locator('.tc-paper img').count(),3);assert.equal(await page.locator('.tc-paper-placeholder').count(),9);
+ assert.match(await page.locator('.tc-paper-draft-legend').textContent(),/schematic, not to scale/);
+ await page.getByRole('tab',{name:'Workspace',exact:true}).click();
+ await page.getByRole('tab',{name:'Illustrations',exact:true}).focus();await page.keyboard.press('ArrowLeft');assert.equal(await page.getByRole('tab',{name:'Plots',exact:true}).getAttribute('aria-selected'),'true');
+ assert.deepEqual(errors,[]);
+ console.log('PASS: library16assets, search, keyboardtabs, add/finish3illustrations, Figure1A and provenance');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

@@ -1591,5 +1591,9 @@ logratio_server <- function(id, shared_data, global_color_map) {
       show_statistics_modal(session = parent_sess, shared_data = shared_data, origin_tab_name = "Violin Plots")
     })
     
+    # Hook "logratio_result"(NULL, input =, shared_data =, processed_db =) -> the
+    # module's return value. Classic: NULL (no caller reads it). Team's Group
+    # comparison card reads this instance's prepared data and settings.
+    lipidomic_hook("logratio_result")(NULL, input = input, shared_data = shared_data, processed_db = processed_db)
   })
 }

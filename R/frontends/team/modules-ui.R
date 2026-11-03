@@ -181,10 +181,14 @@ heatmap_ui <- function(id) {
             navset_card_tab(
                id = ns("heatmap_tabs"),
                nav_panel("Unfiltered Heatmap",
-                  uiOutput(ns("unfiltered_heatmap_container"))
+                  tagList(uiOutput(ns("unfiltered_heatmap_container")),
+                    uiOutput(ns("unfiltered_heatmap_container_average")),
+                    uiOutput(ns("unfiltered_heatmap_container_sd")))
                 ),
                 nav_panel("Filtered Heatmap",
-                   uiOutput(ns("filtered_heatmap_container"))
+                   tagList(uiOutput(ns("filtered_heatmap_container")),
+                    uiOutput(ns("filtered_heatmap_container_average")),
+                    uiOutput(ns("filtered_heatmap_container_sd")))
                 ),
                 nav_panel("Violin View", icon = icon("scale-unbalanced"),
                    uiOutput(ns("violin_view_container"))

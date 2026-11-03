@@ -1,0 +1,41 @@
+const assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
+const {chromium}=require('../browser/ci/node_modules/playwright');
+(async()=>{const browser=await chromium.launch({headless:true});try{
+ const p=await browser.newPage({viewport:{width:1512,height:806}});
+ const markup=execFileSync('Rscript',['--vanilla','-e','source("R/frontends/team/canvas.R");cat(as.character(team_canvas_ui()))'],{encoding:'utf8'});
+ await p.setContent('<body>'+markup+'</body>');
+ await p.addStyleTag({path:'www/team/css/canvas_preview.css'});
+ await p.addStyleTag({content:'body{margin:0;font:14px Arial}#team-canvas-root{width:100%;box-sizing:border-box}#tc-workspace-panel[hidden]{display:none}'});
+ await p.evaluate(()=>{let url='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="#315c89"/></svg>');window.fixture={state:{version:'1',nodes:Array.from({length:3},(_,i)=>({id:'plot'+i,label:'Plot '+i,x:0,y:i*500,width:400,height:400,finished:{url,stale:false}}))},ready:true};window.savedDoc=null;window.TeamCanvas={previewState:()=>structuredClone(fixture),setDocument:d=>{window.savedDoc=structuredClone(d);}};});
+ await p.addScriptTag({path:'www/team/js/canvas_preview.js'});
+ await p.getByRole('tab',{name:'Print preview',exact:true}).click();
+
+ await p.getByRole('button',{name:'Select Plot 0',exact:true}).click();
+ assert.equal(await p.locator('.tc-object-name').textContent(),'Plot 0');
+ assert.equal(await p.locator('.tc-free-item.selected').getAttribute('data-object-name'),'Plot 0');
+ assert.equal(await p.getByRole('button',{name:'Select Plot 0',exact:true}).getAttribute('aria-pressed'),'true');
+ await p.getByLabel('Caption',{exact:true}).fill('Caption only for first plot');
+ await p.getByRole('button',{name:'Select Plot 1',exact:true}).click();
+ assert.equal(await p.locator('.tc-object-name').textContent(),'Plot 1');
+ assert.equal(await p.getByLabel('Caption',{exact:true}).inputValue(),'Plot 1');
+ let doc=await p.evaluate(()=>savedDoc);assert.equal(doc.items.find(i=>i.nodeId==='plot0').caption,'Caption only for first plot');assert.equal(doc.items.find(i=>i.nodeId==='plot1').caption,'Plot 1');
+ await p.getByRole('button',{name:'Undo',exact:true}).click();
+ doc=await p.evaluate(()=>savedDoc);assert.equal(doc.items.find(i=>i.nodeId==='plot0').caption,'Plot 0');assert.equal(await p.locator('.tc-object-name').textContent(),'Plot 1');
+ await p.getByRole('button',{name:'Redo',exact:true}).click();
+ const before=await p.evaluate(()=>savedDoc.items.find(i=>i.nodeId==='plot1').x);
+ await p.locator('.tc-free-item.selected').focus();await p.keyboard.press('ArrowRight');
+ assert.equal(await p.evaluate(()=>savedDoc.items.find(i=>i.nodeId==='plot1').x),before+1);
+ await p.keyboard.press('Escape');assert.equal(await p.locator('.tc-free-item.selected').count(),0);assert.equal(await p.locator('.tc-object-name').textContent(),'Select an object');
+ await p.getByRole('button',{name:'Select Plot 0',exact:true}).click();
+ // Selecting changes presentation only, and selection decorations cannot enter print.
+ await p.evaluate(()=>{window.printResult=null;const append=document.body.appendChild.bind(document.body);document.body.appendChild=function(el){const result=append(el);if(el.tagName==='IFRAME'){el.contentWindow.focus=()=>{};el.contentWindow.print=()=>{window.printResult={labels:el.contentDocument.querySelectorAll('.tc-selection-label,.tc-free-resize').length,width:el.contentDocument.querySelector('.tc-paper').getBoundingClientRect().width};};}return result;};});
+ await p.getByRole('button',{name:'Print',exact:true}).click();await p.waitForFunction(()=>window.printResult!==null);const printed=await p.evaluate(()=>printResult);assert.equal(printed.labels,0);assert(Math.abs(printed.width-816)<1);
+ await p.setViewportSize({width:390,height:844});
+ const toggle=p.getByRole('button',{name:'Object properties',exact:true}),inspector=p.locator('.tc-free-inspector');
+ assert.equal(await toggle.isVisible(),true);assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await inspector.isVisible(),false);
+ await toggle.click();assert.equal(await toggle.getAttribute('aria-expanded'),'true');assert.equal(await inspector.isVisible(),true);assert.equal(await p.locator('.tc-object-name').textContent(),'Plot 0');
+ const mobile=await p.evaluate(()=>{let a=document.querySelector('.tc-preview-pages').getBoundingClientRect(),b=document.querySelector('.tc-free-inspector').getBoundingClientRect();return{page:a.toJSON(),inspector:b.toJSON(),width:innerWidth,scroll:document.documentElement.scrollWidth}});assert(mobile.inspector.bottom<=mobile.page.top);assert(mobile.inspector.height<=844*.4+1);assert(mobile.scroll<=mobile.width);
+ await toggle.click();assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert.equal(await inspector.isVisible(),false);assert.equal(await p.locator('.tc-paper').isVisible(),true);
+ console.log(JSON.stringify({selection:'plot0',crossObjectWrite:'prevented',undoSelection:'preserved',keyboard:'nudge and Escape',printed,mobile},null,2));
+ console.log('PASS contextual selection, layer/header/page synchronization, blur edit target, undo/redo, keyboard, mobile layout and clean print');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -14,8 +14,8 @@
 # The structural banner (#13) reuses team_da_participant_warning_prepend and
 # team_de_banner_without_warning from this file.
 
-# Canonical home is production R/frontends/team/group_comparison.R (not yet ported);
-# defined here only when absent so the warning text is complete. Same text.
+# From production R/frontends/team/group_comparison.R (same text); Group
+# comparison (R/frontends/team/group_comparison.R) reuses this definition.
 if (!exists("team_pseudoreplication_recommendation", inherits = TRUE))
   team_pseudoreplication_recommendation <- "Recommendation: analyse these samples as paired or repeated measures (set the study design to Matched or repeated and use a paired comparison), so each participant's samples are compared within that participant."
 

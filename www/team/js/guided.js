@@ -9,6 +9,7 @@
     var attempts=0;
     function reveal(){
       var el=document.getElementById(id);
+      if(el && document.getElementById('team-workspace')){var ancestor=el.parentElement;while(ancestor){if(ancestor.tagName==='DETAILS')ancestor.open=true;ancestor=ancestor.parentElement;}}
       if(el){var collapse=el.closest('.accordion-collapse');if(collapse&&!collapse.classList.contains('show')){collapse.classList.add('show');var toggle=el.closest('.accordion-item').querySelector('.accordion-button');if(toggle){toggle.classList.remove('collapsed');toggle.setAttribute('aria-expanded','true');}}}
       var fileField=el&&el.matches('input[type="file"]')?el.closest('.shiny-input-container'):null;
       var visibleTarget=fileField&&(fileField.querySelector('.btn-file, label.btn, button')||fileField);
