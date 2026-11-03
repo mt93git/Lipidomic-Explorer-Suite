@@ -1,0 +1,102 @@
+/* Palette editor: the category is the label; the color is a clickable control. */
+.palette-editor .palette-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  min-height: 2.2rem;
+  align-items: center;
+  margin: -.35rem 0 .75rem;
+}
+.palette-editor .palette-preview-chip {
+  display: inline-block;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: .42rem;
+  background: var(--palette-color);
+  border: 1px solid rgba(15,23,42,.2);
+  box-shadow: 0 1px 3px rgba(15,23,42,.12);
+}
+.palette-editor .palette-color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .6rem;
+  margin: .55rem 0 1rem;
+}
+.palette-editor .palette-color-field {
+  min-width: 0;
+  padding: .6rem .7rem;
+  border: 1px solid #dbe3ea;
+  border-radius: .7rem;
+  background: #fff;
+}
+.palette-editor .palette-color-label {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #334155;
+  font-size: .82rem;
+  font-weight: 600;
+  margin-bottom: .42rem;
+}
+.palette-editor .palette-color-control { position: relative; overflow: visible; }
+.palette-editor .palette-swatch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  width: 100%;
+  min-height: 2.65rem;
+  padding: .38rem .62rem;
+  border: 1px solid #cbd5e1;
+  border-radius: .55rem;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: .8rem;
+  text-align: left;
+  cursor: pointer;
+}
+.palette-editor .palette-swatch-button:hover { background: #f1f5f9; border-color: #64748b; }
+.palette-editor .palette-swatch-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.palette-editor .palette-swatch-mark {
+  flex: 0 0 1.65rem;
+  height: 1.65rem;
+  border-radius: .42rem;
+  background: var(--palette-color);
+  border: 1px solid rgba(15,23,42,.22);
+}
+/* Keep the existing colourpicker mounted and anchored to the visible swatch. */
+.palette-editor:not(.palette-show-hex) .palette-color-input {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.palette-editor:not(.palette-show-hex) .palette-color-input .shiny-input-container,
+.palette-editor:not(.palette-show-hex) .palette-color-input input {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+.palette-editor:not(.palette-show-hex) .palette-color-input input,
+.palette-editor:not(.palette-show-hex) .palette-color-input .input-group-addon {
+  opacity: 0;
+}
+.palette-editor:not(.palette-show-hex) .palette-color-input .colourpicker-input-container {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.palette-editor .colourpicker-panel,
+.palette-editor .sp-container {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1060;
+  max-width: calc(100vw - 2rem);
+}
+.palette-editor .palette-color-input .control-label { display: none; }
+.palette-editor.palette-show-hex .palette-color-input { margin-top: .45rem; }
+.palette-editor.palette-show-hex .palette-color-input .shiny-input-container { width: 100%; margin-bottom: 0; }
+@media (max-width: 600px) {
+  .palette-editor .palette-color-grid { grid-template-columns: 1fr; }
+  .palette-editor .palette-swatch-button { min-height: 3rem; }
+  .palette-editor .colourpicker-panel { left: auto !important; right: 0 !important; }
+}
