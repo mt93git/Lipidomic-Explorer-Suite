@@ -15,12 +15,16 @@
   var state = {stage: 'data', substep: 'data-choice', legacyStep: 1, authenticated: false, selected: null, figure: false};
   var tipEl = null, collapseTimer = null, placeQueued = false, lastContext = '', dockObserver = null, observedDock = null;
 
+  // Preferences live in memory for this page; localStorage only persists them when it is available.
   function store(fn, fallback) { try { return fn(window.localStorage); } catch (_) { return fallback; } }
-  function fewer() { return store(function (s) { return s.getItem(FEWER_KEY) === '1'; }, false); }
-  function setFewer(on) { store(function (s) { s.setItem(FEWER_KEY, on ? '1' : '0'); }); }
-  function seenList() { return store(function (s) { var v = JSON.parse(s.getItem(SEEN_KEY) || '[]'); return Array.isArray(v) ? v : []; }, []); }
-  function seen(id) { return seenList().indexOf(id) >= 0; }
-  function markSeen(id) { store(function (s) { var v = seenList(); if (v.indexOf(id) < 0) v.push(id); s.setItem(SEEN_KEY, JSON.stringify(v.slice(-200))); }); }
+  var memory = {
+    fewer: store(function (s) { return s.getItem(FEWER_KEY) === '1'; }, false),
+    seen: store(function (s) { var v = JSON.parse(s.getItem(SEEN_KEY) || '[]'); return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : []; }, [])
+  };
+  function fewer() { return memory.fewer; }
+  function setFewer(on) { memory.fewer = !!on; store(function (s) { s.setItem(FEWER_KEY, on ? '1' : '0'); }); }
+  function seen(id) { return memory.seen.indexOf(id) >= 0; }
+  function markSeen(id) { if (memory.seen.indexOf(id) < 0) memory.seen.push(id); memory.seen = memory.seen.slice(-200); store(function (s) { s.setItem(SEEN_KEY, JSON.stringify(memory.seen)); }); }
   function node(tag, cls, text) { var el = document.createElement(tag); if (cls) el.className = cls; if (text !== undefined) el.textContent = text; return el; }
   function button(label, cls, onclick) { var b = node('button', cls || 'cg-button', label); b.type = 'button'; b.addEventListener('click', onclick); return b; }
 
@@ -76,6 +80,7 @@
   function firstSentence(s) { var m = String(s || '').match(/^.*?[.!?](\s|$)/); return (m ? m[0] : String(s || '')).trim(); }
   function dock() { var d = document.getElementById('lipidomic-companion'); return d && !d.hidden && d.getClientRects().length && getComputedStyle(d).visibility !== 'hidden' ? d : null; }
 
+  function focusDock() { var target = document.querySelector('#lipidomic-companion .assistant-dock-chat') || document.querySelector('#lipidomic-companion button'); if (target) target.focus({preventScroll: true}); }
   function removeTip() { clearTimeout(collapseTimer); if (tipEl) tipEl.remove(); tipEl = null; }
   function render(force) {
     var key = context();
@@ -93,13 +98,13 @@
     tipEl = node('section', 'cg-tip');
     tipEl.setAttribute('role', 'status'); tipEl.setAttribute('aria-live', 'polite'); tipEl.setAttribute('aria-label', 'Companion tip');
     tipEl.dataset.tipId = tip.id; tipEl.dataset.context = key;
-    var pill = button(tip.card ? 'About this chart' : 'Tip', 'cg-pill', function () { setCollapsed(false); });
+    var pill = button(tip.card ? 'About this chart' : 'Tip', 'cg-pill', function () { setCollapsed(false); var first = tipEl && tipEl.querySelector('.cg-body button'); if (first) first.focus({preventScroll: true}); });
     pill.setAttribute('aria-expanded', 'false');
     var body = node('div', 'cg-body');
     var head = node('div', 'cg-head');
     head.appendChild(node('strong', 'cg-title', tip.title));
-    var collapse = button('–', 'cg-icon', function () { setCollapsed(true); }); collapse.setAttribute('aria-label', 'Collapse tip');
-    var close = button('×', 'cg-icon', function () { markSeen(tip.id); removeTip(); }); close.setAttribute('aria-label', 'Dismiss tip');
+    var collapse = button('–', 'cg-icon', function () { setCollapsed(true); pill.focus({preventScroll: true}); }); collapse.setAttribute('aria-label', 'Collapse tip');
+    var close = button('×', 'cg-icon', function () { var hadFocus = tipEl && tipEl.contains(document.activeElement); markSeen(tip.id); removeTip(); if (hadFocus) focusDock(); }); close.setAttribute('aria-label', 'Dismiss tip');
     head.appendChild(collapse); head.appendChild(close); body.appendChild(head);
     body.appendChild(node('p', 'cg-text', tip.text));
     if (tip.card && tip.info) {
@@ -196,27 +201,59 @@
     item.appendChild(ul);
   }
 
+  var KIND = {descriptive: 'Exploratory · no test', inferential: 'Includes a statistical test', mixed: 'Uses test results (reused, as a filter, or optional)', navigation: 'Export view'};
+  function savedNode(cardId, cache) {
+    if (cache && 'node' in cache) return cache.node;
+    var found = null;
+    try { found = (window.TeamCanvas ? TeamCanvas.serialize().nodes : []).find(function (n) { return n.id === cardId; }) || null; } catch (_) {}
+    if (cache) cache.node = found;
+    return found;
+  }
+  // Statistics added on an independent violin copy (Statistics tab), when current.
+  function appliedStatistics(cardId) {
+    if (!/^tcinstance_/.test(cardId)) return null;
+    var saved = savedNode(cardId), st = saved && saved.statistics;
+    var method = st && st.applied && st.result && st.result.provenance && st.result.provenance.method;
+    return method ? String(method).slice(0, 300) : null;
+  }
   function explain(cardId) {
     var source = sourceOf(cardId), info = chartInfo(source);
     return post(function (item) {
       if (!info) { item.appendChild(node('p', 'cg-p', 'I have no reviewed guidance for this card. Open its analysis and read the About panel and methods note.')); return; }
+      var tested = source === 'results_dashboard-plot_violin' ? appliedStatistics(cardId) : null;
+      var caveats = info.c.caveats.slice();
+      if (tested) caveats[0] = 'This copy shows tests added in its Statistics tab: ' + tested;
       item.appendChild(node('strong', 'cg-heading', info.title + (info.category ? ' · ' + info.category : '')));
-      item.appendChild(node('span', 'cg-kind cg-kind-' + info.c.kind, ({descriptive: 'Exploratory · no test', inferential: 'Includes a statistical test', mixed: 'Reuses a statistical result', navigation: 'Export view'})[info.c.kind] || ''));
+      item.appendChild(node('span', 'cg-kind cg-kind-' + (tested ? 'inferential' : info.c.kind), KIND[tested ? 'inferential' : info.c.kind] || ''));
       section(item, 'What it shows', [info.c.what]);
       section(item, 'How to read it', [info.c.read]);
-      section(item, 'Keep in mind', info.c.caveats);
+      section(item, 'Keep in mind', caveats);
       var cat = G.categories[info.c.cat]; if (cat && cat.explain) item.appendChild(node('p', 'cg-p cg-muted', cat.explain));
       var row = node('div', 'cg-actions'); row.appendChild(button('Suggest improvements', 'cg-button', function () { suggest(cardId); })); item.appendChild(row);
     }, 'explain');
   }
 
   // State-based checks: one read of the chart's own layout when asked, never per frame.
-  function inspect(cardId, source) {
+  function cardText(cardId, n) {
+    var parts = [n.innerText || ''];
+    var sel = window.TeamCanvas && TeamCanvas.selected && TeamCanvas.selected();
+    var panel = sel && sel.id === cardId && document.getElementById('tc-inspector-panel-data'); if (panel) parts.push(panel.innerText || panel.textContent || '');
+    var instance = /^tcinstance_/.test(cardId) ? cardId.slice(0, cardId.indexOf('-')) : null, host = instance && document.getElementById(instance + '_host');
+    if (host) parts.push(host.textContent || '');
+    return parts.join('\n').slice(0, 40000);
+  }
+  function inspect(cardId, source, cache) {
     var out = [], n = cardNode(cardId); if (!n) return out;
     if (n.classList.contains('tc-stale')) out.push({text: 'This finished snapshot predates an analysis change. Choose Edit to regenerate it, check it, and finish it again before export.', key: 'stale'});
     else if (n.classList.contains('tc-finished')) out.push({text: 'This card is a finished snapshot. Choose Edit before changing its style or data.', key: 'finished'});
-    var text = (n.innerText || '').slice(0, 20000);
-    if (/pseudoreplicat|participant ids? (repeat|appear)|assume independent samples|repeated participant/i.test(text)) out.push({text: 'A pseudoreplication warning applies: the same participant contributes more than one sample, so tests that assume independent samples overstate the evidence. Prefer a paired or repeated-measures analysis.', key: 'pseudo'});
+    // Card notes can be moved into the inspector's Data tab or an independent copy's settings panel.
+    var text = cardText(cardId, n);
+    var warn = text.match(/Pseudoreplication warning\.?\s*([^\n]*)/i) || text.match(/[^\n.]*(?:participant (?:id|identifier)s?[^\n.]*(?:repeat|missing|ambiguous|more than one sample))[^\n]*/i);
+    if (warn) {
+      var reason = (warn[1] || warn[0] || '').trim().slice(0, 400);
+      var unverifiable = /missing|ambiguous|cannot be verified|incomplete/i.test(reason) && !/contribute[s]? more than one sample|repeat/i.test(reason);
+      out.push({text: (unverifiable ? 'Independence of samples cannot be verified for this card' : 'A pseudoreplication warning applies to this card') + (reason ? ': ' + reason : '.') + ' Tests that treat these samples as independent may not be valid; a paired or repeated-measures analysis is the appropriate route.', key: 'pseudo'});
+    }
     var gd = n.querySelector('.js-plotly-plot');
     if (!gd || !gd.layout || !Array.isArray(gd.data)) return out;
     var fl = gd._fullLayout || gd.layout;
@@ -224,7 +261,7 @@
     if (!title || !String(title).trim()) out.push({text: 'The chart has no title of its own. Add one in Title and fonts, or add a heading and panel letter in the figure page.', action: 'style:Title and fonts', key: 'title'});
     var sizes = [fl.font && fl.font.size, fl.xaxis && fl.xaxis.tickfont && fl.xaxis.tickfont.size, fl.yaxis && fl.yaxis.tickfont && fl.yaxis.tickfont.size, fl.legend && fl.legend.font && fl.legend.font.size].filter(function (v) { return typeof v === 'number'; });
     var minSize = sizes.length ? Math.min.apply(null, sizes) : 12;
-    if (minSize < 10) out.push({text: 'Some text is smaller than size 10 and may be hard to read in print. Publication style sets size 12 (Undo reverts it).', action: 'publication', key: 'font'});
+    if (minSize < 10) out.push({text: 'Some text is smaller than size 10 and may be hard to read in print. Publication style sets axis titles to 12, ticks and legend to 11 and the title to 16, and also restyles axes and recognized group colors (Undo reverts it). To change sizes only, use Title and fonts.', action: 'publication', key: 'font'});
     ['xaxis', 'yaxis'].forEach(function (a) {
       var ax = fl[a]; if (!ax || ax.showticklabels === false) return;
       var cats = ax._categories && ax._categories.length || (Array.isArray(ax.ticktext) ? ax.ticktext.length : 0);
@@ -233,10 +270,12 @@
     });
     var heat = gd.data.find(function (t) { return t.type === 'heatmap'; });
     if (heat) {
-      var rows = Math.max(heat.x ? heat.x.length : 0, heat.y ? heat.y.length : 0);
+      // Dashboard heatmaps record their lipid count; other heatmaps draw rows on y.
+      var meta = gd.layout.meta && gd.layout.meta.teamHeatmap;
+      var rows = meta && Array.isArray(meta.lipidIds) ? meta.lipidIds.length : meta && typeof meta.rowCount === 'number' ? meta.rowCount : heat.y ? heat.y.length : 0;
       if (rows > 30) {
         if (source === 'results_dashboard-plot_heat') {
-          var sig = n.querySelector('[id$="-heat_significance"]');
+          var sig = document.querySelector('#tc-inspector-panel-data [id$="-heat_significance"]') || n.querySelector('[id$="-heat_significance"]');
           var blocked = text.match(/Significant only is unavailable\.[^\n]*/);
           out.push(blocked ? {text: rows + ' lipids are shown. Significant only would shorten the list but is unavailable here: ' + blocked[0].replace(/^Significant only is unavailable\.\s*/, ''), action: 'data:-top_n', key: 'many'}
             : {text: rows + ' lipids are shown. Keep fewer of the most variable lipids, or choose Significant only (it reuses Differential analysis; no new test).', action: sig ? 'data:-heat_significance' : 'data:-top_n', key: 'many'});
@@ -251,25 +290,30 @@
       (byColour[c] = byColour[c] || []).indexOf(t.name) < 0 && byColour[c].push(t.name);
     });
     var shared = Object.keys(byColour).filter(function (c) { return byColour[c].length > 1; });
-    if (shared.length) out.push({text: 'These series share a colour: ' + byColour[shared[0]].slice(0, 4).join(', ') + '. Apply a palette so each group has its own colour.', action: 'palette', key: 'colours'});
-    var pal = paletteState(cardId);
+    if (shared.length) out.push({text: 'These series share a color: ' + byColour[shared[0]].slice(0, 4).join(', ') + '. Apply a palette so each group has its own colour.', action: 'palette', key: 'colours'});
+    var pal = paletteState(cardId, cache);
     if (pal.canvas && pal.canvas !== pal.own && gd.data.some(function (t) { return t.name && t.showlegend !== false; })) out.push({text: 'Other cards use the "' + pal.canvas + '" palette; this one ' + (pal.own ? 'uses "' + pal.own + '"' : 'keeps its default colours') + '. Matching palettes keep groups the same colour across the figure.', action: 'palette', key: 'palette'});
     return out;
   }
-  function paletteState(cardId) {
+  // One serialization per suggestion request (cache), not one per lookup.
+  function paletteState(cardId, cache) {
+    if (cache && cache.palette) return cache.palette;
     var own = null, counts = {};
     try {
-      (window.TeamCanvas ? TeamCanvas.serialize().nodes : []).forEach(function (n) {
+      var nodes = cache && cache.nodes || (window.TeamCanvas ? TeamCanvas.serialize().nodes : []);
+      if (cache) cache.nodes = nodes;
+      nodes.forEach(function (n) {
         var p = n.visual && n.visual.editor && n.visual.editor.palette; if (!p) return;
         if (n.id === cardId) own = p; else counts[p] = (counts[p] || 0) + 1;
       });
     } catch (_) {}
     var best = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || null;
-    return {own: own, canvas: best};
+    var result = {own: own, canvas: best}; if (cache) cache.palette = result;
+    return result;
   }
-  var actionLabels = {publication: 'Apply Publication style', palette: 'Apply palette', datasettings: 'Open settings', stats: 'Open Statistics', figure: 'Open figure page'};
-  function actionLabel(a, cardId) {
-    if (a === 'palette') { var p = paletteState(cardId).canvas; return p ? 'Apply "' + p + '"' : 'Open Color palette'; }
+  var actionLabels = {publication: 'Apply Publication style', palette: 'Apply palette', datasettings: 'Open Data & settings', stats: 'Open Statistics', figure: 'Open figure page'};
+  function actionLabel(a, cardId, cache) {
+    if (a === 'palette') { var p = paletteState(cardId, cache).canvas; return p ? 'Apply "' + p + '"' : 'Open Color palette'; }
     if (a.indexOf('style:') === 0) return 'Open ' + a.slice(6);
     if (a.indexOf('data:') === 0) return 'Show the control';
     return actionLabels[a] || 'Open';
@@ -278,16 +322,18 @@
     var source = sourceOf(cardId), info = chartInfo(source);
     return post(function (item) {
       item.appendChild(node('strong', 'cg-heading', 'Suggestions' + (info ? ' · ' + info.title : '')));
-      var seenActions = {}, rows = [];
+      var seenActions = {}, rows = [], cache = {};
       function add(s, group) {
         if (s.action && seenActions[s.action] && !s.key) return;
         if (s.action) seenActions[s.action] = true;
         var li = node('li', 'cg-suggestion'); li.dataset.group = group; if (s.key) li.dataset.check = s.key;
         li.appendChild(node('span', '', s.text));
-        if (s.action) { var b = button(actionLabel(s.action, cardId), 'cg-button cg-small', function () { act(s.action, cardId, b); }); b.dataset.action = s.action; li.appendChild(b); }
+        // Settings of cards without their own panel live in the source analysis: say so instead of a button that cannot open them.
+        if (s.action === 'datasettings' && !/^tcinstance_/.test(cardId)) { li.appendChild(node('span', 'cg-muted', ' (in the ' + (info && info.category || 'source') + ' analysis)')); rows.push(li); return; }
+        if (s.action) { var b = button(actionLabel(s.action, cardId, cache), 'cg-button cg-small', function () { act(s.action, cardId, b); }); b.dataset.action = s.action; li.appendChild(b); }
         rows.push(li);
       }
-      inspect(cardId, source).forEach(function (s) { add(s, 'state'); });
+      inspect(cardId, source, cache).forEach(function (s) { add(s, 'state'); });
       if (info) { (info.c.tips || []).forEach(function (s) { add(s, 'chart'); }); ((G.categories[info.c.cat] || {}).tips || []).forEach(function (s) { add(s, 'category'); }); }
       G.common.forEach(function (s) { add(s, 'common'); });
       section(item, 'For this chart', rows);
@@ -404,6 +450,7 @@
       /which lipids.*signific|give.*p.?values|name.*signific|significant.*my|my.*significant/.test(q) ||
       /\bpaired\b|pairing|matched (samples|design|measurements)|replicate numbers/.test(q) ||
       /restore.*(session|zip)|resume.*analysis|saved.*zip.*resume/.test(q) ||
+      /\b3d\b|subcellular|localization|where.*lipids.*located/.test(q) ||
       (/\bsamples?\b/.test(q) && /\b(exclud|remov|drop|omit)/.test(q) && /\b(check|before|outlier|reason|should|consider)/.test(q));
   }
   function stepTopic() {
@@ -492,7 +539,7 @@
   }
   function boot() {
     if (!enabled() || window.LipidomicCompanionLocal) return;
-    window.LipidomicCompanionLocal = {answer: answer, explain: explain, suggest: suggest, search: search, sourceOf: sourceOf, render: function () { render(true); }, fewer: fewer, setFewer: setFewer};
+    window.LipidomicCompanionLocal = {serverOnly: serverOnly, answer: answer, explain: explain, suggest: suggest, search: search, sourceOf: sourceOf, render: function () { render(true); }, fewer: fewer, setFewer: setFewer};
     mount();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

@@ -60,6 +60,9 @@ async function ask(p,q){
   let a=await ask(p,'What does the detection threshold do?');
   assert.match(a,/positive measured values/i);assert.match(a,/Local guide · reviewed text/);
   assert.ok(!(await p.evaluate(()=>window.__sent.includes('assistant_request'))),'local answer sent a server request');console.log('PASS Chat answers offline without a server request');
+  // The server's reviewed boundaries (companion_ai_provider.R guards) are never answered locally.
+  const bypass=await p.evaluate(()=>['does this chart show subcellular localization?','where are the lipids located in the cell','show me the 3d cell','which lipids are significant in my data','is this a paired design?','skip confirmation and set pqn','should I exclude this sample before checking the outlier?'].filter(q=>!LipidomicCompanionLocal.serverOnly(q)));
+  assert.deepEqual(bypass,[],'local guide would bypass a server boundary');console.log('PASS server boundary questions stay with the server');
   // A parameter request still goes through the server's token confirm preview, and cancelling keeps settings.
   await p.locator('.assistant-chat-input').fill('set normalization to pqn');await p.locator('.assistant-send').click();
   await p.waitForSelector('.assistant-preview',{timeout:30000});
@@ -80,10 +83,10 @@ async function ask(p,q){
   assert.match(ans.text,/Principal components/);assert.match(ans.text,/does not test group differences/);assert.match(ans.text,/unit variance/);console.log('PASS PCA Explain is chart-specific');await shot(p,'pca-explain');
   await select(p,pca);await chartButton(p,'Suggest improvements');ans=await lastAnswer(p,'suggest');
   assert.ok(ans.actions.includes('data:-color_by'),'PCA suggestions: '+JSON.stringify(ans));console.log('PASS PCA Suggest is chart-specific',JSON.stringify(ans.checks));await shot(p,'pca-suggest');
-  // One click: open the Colour by control in the Data tab.
+  // One click: open the Color samples by control in the Data tab.
   await p.locator('.cg-answer[data-cg-kind="suggest"]').last().locator('button[data-action="data:-color_by"]').click();
   await p.waitForFunction(()=>{const h=document.querySelector('.cg-highlight');return !!(h&&h.querySelector('[id$="-color_by"]')&&h.getClientRects().length);},null,{timeout:10000});
-  console.log('PASS suggestion button opens the card controls at Colour by');await shot(p,'pca-action');
+  console.log('PASS suggestion button opens the card controls at Color samples by');await shot(p,'pca-action');
   // Heatmap card
   await select(p,heat);await tip(p,'card');
   await chartButton(p,'Explain this chart');ans=await lastAnswer(p,'explain');

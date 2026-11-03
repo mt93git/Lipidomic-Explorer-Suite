@@ -1,5 +1,5 @@
 {
- "version": "2026-11-02",
+ "version": "2026-11-03",
  "count": 41,
  "topics": [
   {
@@ -18,19 +18,19 @@
    "id": "step-review",
    "title": "Review step",
    "keywords": "review step slider pca prepared data summary inspect",
-   "text": "Review shows the prepared data. The detection slider keeps lipids with at least that percentage of positive measurements; the data table and PCA update automatically. Click a PCA point to inspect a sample; exclusions need a reason and can be undone."
+   "text": "Review shows the prepared data. The detection slider keeps lipids with at least that percentage of positive measurements; the data table and PCA update automatically. Click a PCA point to inspect a sample; Exclude applies the exclusion (the reason is optional but worth recording) and Undo restores it."
   },
   {
    "id": "detection",
    "title": "Detection threshold",
    "keywords": "detection threshold minimum detection filter percent positive measured lipids kept removed",
-   "text": "Detection counts positive measured values before imputation. A lipid is kept when it is detected in at least the chosen percentage of samples. A global threshold can remove signals present in only one group."
+   "text": "Detection counts positive measured values before imputation. A lipid is kept when it is detected in at least the chosen percentage of samples. In Team, lipids not detected in any sample are dropped by default. A global threshold can remove signals present in only one group."
   },
   {
    "id": "exclude",
    "title": "Excluding a sample",
    "keywords": "exclude remove drop outlier sample undo",
-   "text": "Inspect the sample's metadata and QC plots first; a PCA position alone does not make it an outlier. To exclude it, select it, give a reason and confirm. Undo restores it, and the original data stay unchanged."
+   "text": "Inspect the sample's metadata and QC plots first; a PCA position alone does not make it an outlier. To exclude it in Review, click its point and choose Exclude in the popover. The reason field is optional, but record why. Undo restores it, and the original data stay unchanged."
   },
   {
    "id": "imputation",
@@ -42,7 +42,7 @@
    "id": "normalization",
    "title": "Normalization",
    "keywords": "normalization normalize median pqn scale",
-   "text": "Median normalization centres log2 values and returns linear abundances; PQN works on the linear scale. Neither is automatically best: check controls and distributions. Ask me to propose a change; nothing changes until you confirm."
+   "text": "Median normalization centers log2 values and returns linear abundances; PQN works on the linear scale. Neither is automatically best: check controls and distributions. Ask me to propose a change; nothing changes until you confirm."
   },
   {
    "id": "step-canvas",
@@ -90,13 +90,13 @@
    "id": "title-fonts",
    "title": "Titles and font size",
    "keywords": "title font size larger bigger small text label axis legend print",
-   "text": "Select the card, open Style, then Title and fonts to set the plot title and font sizes. Publication style applies Arial text at size 12 on a white background in one click; Undo reverts it."
+   "text": "Select the card, open Style, then Title and fonts to set the plot title and font sizes. Publication style applies a preset in one click: Arial on white (title 16, axis titles 12, ticks and legend 11), plain axes and standard colors for recognized group names. Undo reverts it."
   },
   {
    "id": "palette",
-   "title": "Colours and palettes",
-   "keywords": "color colour palette colors same repeated legend inherited theme",
-   "text": "Style > Color palette applies a palette to a card's groups. A new card inherits the palette of the cards already on the canvas. Colours change presentation only."
+   "title": "Colors and palettes",
+   "keywords": "color palette colors same repeated legend inherited theme",
+   "text": "Style > Color palette applies a palette to a card's groups. A new card inherits the palette of the cards already on the canvas. Colors change presentation only."
   },
   {
    "id": "export",
@@ -108,13 +108,13 @@
    "id": "autosave",
    "title": "Autosave and checkpoints",
    "keywords": "save autosave checkpoint saved unsaved restore project library",
-   "text": "With a private project, the workspace autosaves. Save & export creates named checkpoints that keep the data, canvas, colours and finished figures. Resume a checkpoint from Data."
+   "text": "With a private project, the workspace autosaves. Save & export creates named checkpoints that keep the data, canvas, colors and finished figures. Resume a checkpoint from Data."
   },
   {
    "id": "pca",
    "title": "PCA",
    "keywords": "pca principal component pc1 pc2 scores loadings variance explained separation",
-   "text": "PCA places samples by the main directions of variation in the prepared data. It is exploratory: separation is not significance. The dashboard PCA uses log2(x + 1), centred and scaled to unit variance by default."
+   "text": "PCA places samples by the main directions of variation in the prepared data. It is exploratory: separation is not significance. The dashboard PCA uses log2(x + 1), centered and scaled to unit variance by default."
   },
   {
    "id": "volcano",
@@ -131,8 +131,8 @@
   {
    "id": "heatmap",
    "title": "Heatmaps and z-scores",
-   "keywords": "heatmap z score zscore colour scale red blue rows columns cluster most variable",
-   "text": "Dashboard heatmap cells are group means of per-sample z-scores (log10 values, whole cohort), so colours compare groups within a lipid. The most variable lipids are shown and clustered by default."
+   "keywords": "heatmap z score zscore color scale red blue rows columns cluster most variable",
+   "text": "Dashboard heatmap cells are group means of per-sample z-scores (log10 values, whole cohort), so colors compare groups within a lipid. The most variable lipids are shown by default."
   },
   {
    "id": "significant-only",
@@ -144,13 +144,13 @@
    "id": "correction",
    "title": "Multiple-testing correction",
    "keywords": "bh fdr benjamini hochberg holm bonferroni adjusted raw unadjusted correction multiple testing",
-   "text": "Testing many lipids gives false positives by chance. BH controls the false discovery rate; Holm and Bonferroni control the family-wise error. Some plots report raw (unadjusted) p-values; their explanation says so."
+   "text": "Testing many lipids gives false positives by chance. Benjamini-Hochberg (BH) controls the false discovery rate; Holm and Bonferroni control the family-wise error. Some plots report raw (unadjusted) p-values; their explanation says so."
   },
   {
    "id": "pseudoreplication",
    "title": "Pseudoreplication warning",
    "keywords": "pseudoreplication participant repeated paired independent samples warning same patient",
-   "text": "The warning appears when the same participant contributes more than one sample. Tests that assume independent samples then overstate the evidence. Use a paired or repeated-measures analysis; the app withholds or flags those p-values."
+   "text": "The warning appears when participant IDs repeat (the same participant contributes more than one sample), or when IDs are missing or ambiguous so independence cannot be verified. Tests that assume independent samples may then be invalid. Group comparison, log-ratio and dashboard violin statistics withhold their p-values; Differential analysis plots keep them with this warning; Significant only becomes unavailable. A paired or repeated-measures analysis is the appropriate route."
   },
   {
    "id": "paired",
@@ -168,7 +168,7 @@
    "id": "statistics-tab",
    "title": "Statistics on canvas",
    "keywords": "statistics test t-test wilcoxon welch effect size hedges cliff holm",
-   "text": "Independent copies of the dashboard violin can add Welch t-tests or Wilcoxon rank-sum tests, with Holm (default), BH, Bonferroni or no correction, and optional Hedges' g or Cliff's delta."
+   "text": "Independent copies of the dashboard violin can add Welch t-tests or Wilcoxon rank-sum tests, with Holm (default), BH, Bonferroni or no correction across the displayed lipid and comparisons, and optional Hedges' g or Cliff's delta."
   },
   {
    "id": "insight",
@@ -186,7 +186,7 @@
    "id": "companion-privacy",
    "title": "What the companion uses",
    "keywords": "ai openai privacy data sent model chat companion offline local",
-   "text": "This help is local and reviewed: tips, chart explanations and answers come from text stored in the app, with no network call. Settings changes are only proposed; nothing changes until you confirm."
+   "text": "Tips, chart explanations and answers matched by this guide come from reviewed text stored in the app, with no network call. If the optional AI assistant is enabled on this server, questions the guide cannot answer are sent to OpenAI with personal details stripped, together with the current step, whether data are ready or have pending changes, and the normalization and imputation settings; no data values, sample IDs or files are sent. Settings changes are only proposed; nothing changes until you confirm."
   },
   {
    "id": "err-sig-unavailable",

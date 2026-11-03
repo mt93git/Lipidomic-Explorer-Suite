@@ -20,7 +20,9 @@ const texts=catalog.map(e=>G.charts[e.id].what);assert.equal(new Set(texts).size
 G.topics.forEach(t=>{assert.ok(t.id&&t.title&&t.k&&t.text.length>=40,'topic '+t.id);});
 assert.equal(new Set(G.topics.map(t=>t.id)).size,G.topics.length,'duplicate topic ids');
 Object.values(G.tips).flat().forEach(t=>assert.ok(t.id&&t.text,'tip'));
-// Reviewed text never claims a network model or an action it cannot take.
-const all=JSON.stringify([G.charts,G.categories,G.common,G.tips,G.topics.map(t=>t.text),G.fallback]);assert.ok(!/openai|gpt|fetch\(|https?:\/\//i.test(all),'guidance mentions a network/model');
+// Reviewed text never claims a network model or an action it cannot take. The privacy
+// topic is the one place that must name the optional provider and what it receives.
+const privacy=G.topics.find(t=>t.id==='companion-privacy');assert.ok(/OpenAI/.test(privacy.text)&&/no data values, sample IDs or files/.test(privacy.text),'privacy topic must disclose the optional provider');
+const all=JSON.stringify([G.charts,G.categories,G.common,G.tips,G.topics.filter(t=>t!==privacy).map(t=>t.text),G.fallback]);assert.ok(!/openai|gpt|fetch\(|https?:\/\//i.test(all),'guidance mentions a network/model');
 console.log('PASS 59 catalog charts have specific reviewed guidance;',G.topics.length,'help topics');
 execFileSync(process.execPath,[path.join(__dirname,'export_companion_guidance.cjs'),'--check'],{stdio:'inherit'});
