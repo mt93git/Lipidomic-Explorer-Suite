@@ -30,6 +30,10 @@ assert.match(needs('structural_grid_tab-heatmapPlot','tcinstance_c-heatmapPlot')
 // significant-only) still gets the Generate analysis button.
 state.tp=true;{const n=needs('longitudinal_tab-allmetrics_plot','tcinstance_e-allmetrics_plot');assert.equal(n.kind,'run');assert.equal(n.button,'submit_longitudinal_btn');assert.equal(n.action,'Generate analysis');}
 state.tp=false;assert.equal(needs('longitudinal_tab-allmetrics_plot','tcinstance_e-allmetrics_plot').kind,'time','metadata without two time points');
+// A card whose module built its selector from another time variable (e.g. Group2) keeps
+// Generate analysis even when the TimePoint column has no time points.
+state.inputs['tcinstance_f-selectedMacroclass']='GL';{const n=needs('longitudinal_tab-macroclass_plot','tcinstance_f-macroclass_plot');assert.equal(n.kind,'run','selector built from another time variable');}
+delete state.inputs['tcinstance_f-selectedMacroclass'];
 state.tp=null;
 assert.equal(needs('longitudinal_tab-macroclass_plot').kind,'time','no selector yet: the data lack time points');
 state.inputs['tcinstance_d-selectedMacroclass']='GL';const run=needs('longitudinal_tab-macroclass_plot','tcinstance_d-macroclass_plot');

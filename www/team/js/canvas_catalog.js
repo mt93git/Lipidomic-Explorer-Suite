@@ -135,9 +135,11 @@
       // an eventReactive on that button, 11_longitudinal_module.R:1341 and :3283).
       // Time points come from the metadata (R: team_canvas_timepoints_available), not from
       // the selectors: some exist only after a run (all metrics, significant-only).
+      // A built selector also counts: the module accepts other time variables (Timepoint,
+      // Group2; 11_longitudinal_module.R:795-829) that the metadata check does not read.
       var prefix = String(plotId || id).split('-')[0], all = window.Shiny && window.Shiny.shinyapp && window.Shiny.shinyapp.$inputValues || {};
       var tp = window.TeamCanvas && typeof window.TeamCanvas.timePointsReady === 'function' ? window.TeamCanvas.timePointsReady() : null;
-      var hasSelection = tp === true || (tp === null && Object.keys(all).some(function (k) { var v = all[k]; return k.indexOf(prefix + '-selected') === 0 && v != null && v !== '' && !(Array.isArray(v) && !v.length); }));
+      var hasSelection = tp === true || (Object.keys(all).some(function (k) { var v = all[k]; return k.indexOf(prefix + '-selected') === 0 && v != null && v !== '' && !(Array.isArray(v) && !v.length); }));
       if (hasSelection) return shinyValue(prefix + '-submit_longitudinal_btn') ? null : {kind:'run', button:'submit_longitudinal_btn', action:'Generate analysis', status:'Needs Generate Analysis', reason:'The time points are there. Time courses are built only on request: choose “Generate analysis” on this card (the module’s “Generate Analysis”, also in Data & settings).'};
       return Object.assign({kind:kind}, requirements[kind]);
     }
