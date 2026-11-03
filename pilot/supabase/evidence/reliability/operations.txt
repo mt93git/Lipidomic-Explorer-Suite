@@ -1,0 +1,17 @@
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.033s
+
+OK
+Result=success
+ExecMainStatus=0
+NEXT                            LEFT LAST PASSED UNIT                         ACTIVATES
+Wed 2026-10-28 03:30:00 EDT 5h 41min -         - lipidomic-pilot-backup.timer lipidomic-pilot-backup.service
+
+1 timers listed.
+Pass --all to see loaded but inactive timers, too.
+Linger=yes
+MainPID=1715767
+               total        used        free      shared  buff/cache   available
+Mem:           31945       27129        2814         179        2630        4816
+Swap:           8192        7907         284

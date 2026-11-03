@@ -1,0 +1,9 @@
+/* Quiet, persistent status; never covers analysis controls. */
+.tw-account-actions {display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+#team-autosave-status {font-size:12px;color:#526576;max-width:260px;line-height:1.4}
+#team-autosave-status[data-state="error"],#team-autosave-status[data-state="offline"] {color:#875f31}
+#team-autosave-status[data-state="saving"] {color:#2d5d82}
+@media(max-width:600px){.tw-account-actions{gap:8px;max-width:55%}#team-autosave-status{font-size:11px}}
+body.team-workspace-app #team-workspace .tw-top>.tw-account-actions{display:flex;grid-column:2;grid-row:1;align-self:center}
+body.team-workspace-app[data-tw-screen='canvas'] #team-workspace .tw-top>.tw-account-actions{display:flex;grid-column:3}
+@media(max-width:900px){body.team-workspace-app #team-workspace .tw-top>.tw-account-actions{max-width:none;grid-column:2}#team-autosave-status{max-width:155px}}

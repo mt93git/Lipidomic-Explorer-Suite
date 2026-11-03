@@ -1,0 +1,13 @@
+[Unit]
+OnFailure=lipidomic-pilot-monitor.service
+Description=Encrypted backup of isolated Lipidomic Supabase pilot
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/lipidomic-supabase-pilot
+ExecStart=/usr/bin/sg docker -c "/usr/bin/python3 %h/lipidomic-supabase-pilot/backup.py"
+ExecStopPost=/usr/bin/sg docker -c "cd %h/lipidomic-supabase-pilot && docker compose -p lipidomic-pilot -f compose.yml up -d --wait rest storage auth"
+UMask=0077
+Nice=10
+MemoryMax=256M
+TimeoutStartSec=15min

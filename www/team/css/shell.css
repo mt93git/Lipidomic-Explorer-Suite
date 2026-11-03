@@ -1,0 +1,172 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
+/* Team workspace shell: one 48px bar, fixed canvas zones. Team workspace only. */
+body.ts-shell-app{--ts-navy:#162230;--ts-line:#e3e7ec;--ts-muted:#5a6878;--ts-ink:#141b24;--ts-accent:#2d5f8a;--ts-tint:#eaf1f7;--ts-bar:48px;--ts-rail:56px;--ts-inspector:290px;--ts-library:264px}
+
+/* ---- One top bar ---------------------------------------------------------- */
+body.ts-shell-app .navbar{position:sticky;top:0;z-index:1030;height:var(--ts-bar)!important;min-height:var(--ts-bar)!important;max-height:var(--ts-bar);padding:0 16px!important;background:var(--ts-navy)!important;border:0;box-shadow:none;box-sizing:border-box}
+body.ts-shell-app .navbar>.container-fluid{height:100%;flex-wrap:nowrap;gap:16px;padding:0;min-height:0}
+html body.ts-shell-app nav.navbar .navbar-toggler,html body.ts-shell-app nav.navbar>.container-fluid>.navbar-collapse{display:none!important}
+body.ts-shell-app .navbar-brand{margin:0;padding:0;display:flex;align-items:center;height:100%}
+body.ts-shell-app .guide-brand-lockup{display:flex;align-items:center;gap:10px}
+/* The Libreros Lab logo as before, at the height the baseline used on the Canvas bar. */
+body.ts-shell-app .guide-brand-lockup #navbar_brand_logo_img{display:block!important;height:38px!important;max-height:38px!important;width:auto!important;max-width:150px!important;object-fit:contain;filter:none!important;opacity:1}
+body.ts-shell-app .guide-brand-lockup .guide-app-name{font:600 13px/1 'Nunito Sans',system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:#fff!important;border:0!important;padding:0!important;margin:0!important;white-space:nowrap}
+body.ts-shell-app .ts-topbar-extras{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;flex:1 1 auto;min-width:0;height:100%}
+body.ts-shell-app .ts-project{justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent;border:0;border-left:1px solid #3a4a5a;color:#c4d1dc;font:12.5px/1 'Nunito Sans',system-ui,sans-serif;padding:6px 0 6px 16px;cursor:pointer}
+body.ts-shell-app .ts-project:hover:not(:disabled){color:#fff}
+body.ts-shell-app .ts-project:disabled{cursor:default}
+body.ts-shell-app .ts-steps{display:flex;gap:2px}
+body.ts-shell-app .ts-step{display:flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:0;border-radius:6px;background:transparent;color:#b9c7d3;font:12.5px/1 'Nunito Sans',system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+body.ts-shell-app .ts-step:hover:not(:disabled){color:#fff}
+body.ts-shell-app .ts-step:disabled{opacity:.5;cursor:default}
+body.ts-shell-app .ts-step em{font:normal 500 10.5px/1 ui-monospace,Menlo,monospace;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid #5b6d7e}
+body.ts-shell-app .ts-step.is-done em{background:#2a3b4c;border-color:#2a3b4c;color:#cfe0ee}
+body.ts-shell-app .ts-step.is-current{background:#26394b;color:#fff;font-weight:500}
+body.ts-shell-app .ts-step.is-current em{background:#78afe0;border-color:#78afe0;color:var(--ts-navy)}
+body.ts-shell-app .ts-topbar-right{justify-self:end;display:flex;align-items:center;gap:10px;min-width:0}
+body.ts-shell-app .ts-saved{max-width:210px;overflow:hidden;text-overflow:ellipsis;display:inline-block;height:28px;box-sizing:border-box;padding:0 10px;border:1px solid #3a4a5a;border-radius:999px;color:#c4d1dc;font:12px/26px 'Nunito Sans',system-ui,sans-serif;white-space:nowrap}
+body.ts-shell-app .ts-saved[hidden]{display:none}
+body.ts-shell-app .ts-saved::before{content:'';display:inline-block;vertical-align:middle;margin:-2px 7px 0 0;width:7px;height:7px;border-radius:50%;background:#2f8a57}
+body.ts-shell-app .ts-signout{white-space:nowrap;height:28px;padding:0 6px;border:0;background:transparent;color:#c4d1dc;font:12px/1 'Nunito Sans',system-ui,sans-serif;cursor:pointer}
+body.ts-shell-app .ts-signout:hover{color:#fff}
+body.ts-shell-app .ts-avatar{width:28px;height:28px;border-radius:50%;background:#78afe0;color:var(--ts-navy);display:grid;place-items:center;font:600 12px/1 system-ui}
+body.ts-shell-app .ts-avatar[hidden]{display:none}
+body.ts-shell-app:not([data-team-authenticated=true]) :is(.ts-steps,.ts-signout,.ts-saved){display:none}
+/* The originals stay in #team-workspace for workspace.js; the bar mirrors them. */
+body.ts-shell-app #team-workspace .tw-steps,body.ts-shell-app #team-workspace .tw-top{display:none!important}
+
+/* ---- Canvas screen: the bar is the only chrome above the canvas ------------ */
+body.ts-shell-app[data-tw-screen=canvas] #team-workspace :is(.tw-journey,.tw-choice-card,#tw-next){display:none!important}
+body.ts-shell-app[data-tw-screen=canvas] .tw-canvas-tabs{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body.ts-shell-app[data-tw-screen=canvas] .tw-canvas-tabs details[open]{position:fixed!important;width:auto;height:auto;clip:auto;overflow:visible;top:60px;right:300px;z-index:1050;background:#fff;border:1px solid var(--ts-line);border-radius:8px;padding:10px;box-shadow:0 8px 24px #14243114}
+body.ts-shell-app[data-tw-screen=canvas] #guide-context{display:none!important}
+body.ts-shell-app[data-tw-screen=canvas] .bslib-sidebar-layout>.main,body.ts-shell-app[data-tw-screen=canvas] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main:is(.ts-has-workspace-page,#team-workspace.bslib-page-main),body.ts-shell-app[data-tw-screen=canvas] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main:is(.ts-has-workspace-child,#team-workspace){padding:0!important;gap:0!important}
+body.ts-shell-app[data-tw-screen=canvas] .bslib-page-main{padding:0!important;gap:0!important}
+body.ts-shell-app[data-tw-screen=canvas] #team-workspace{margin:0;gap:0}
+#team-canvas-root.ts-shell{padding:0!important;margin:0!important;width:100%}
+#team-canvas-root.ts-shell .tc-intro,#team-canvas-root.ts-shell>.tc-mode-tabs{display:none!important}
+#team-canvas-root.ts-shell .tc-layout,#team-canvas-root.ts-shell.tc-contextual-editing .tc-layout.tc-inspecting{display:grid!important;grid-template-columns:var(--ts-rail) auto minmax(0,1fr) var(--ts-inspector);gap:0!important;height:calc(100dvh - var(--ts-bar));min-height:520px;align-items:stretch}
+#team-canvas-root.ts-shell .tc-library-edge-toggle,#team-canvas-root.ts-shell .tc-library-toggle{display:none!important}
+#team-canvas-root.ts-shell .ts-rail{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0;background:#fff;border-right:1px solid var(--ts-line);min-width:0}
+#team-canvas-root.ts-shell .ts-rail-item{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;border:0;background:transparent;color:#4b5a69;padding:0;cursor:pointer}
+#team-canvas-root.ts-shell .ts-rail-item svg{width:18px;height:18px}
+#team-canvas-root.ts-shell .ts-rail-item:hover{background:#f1f4f7}
+#team-canvas-root.ts-shell .ts-rail-item.is-active{background:var(--ts-tint);color:var(--ts-accent)}
+#team-canvas-root.ts-shell .tc-catalog,#team-canvas-root.ts-shell.tc-contextual-editing .tc-inspecting:not(.tc-library-hidden)>.tc-catalog{grid-column:2;grid-row:1;display:block!important;width:var(--ts-library);box-sizing:border-box;border-radius:0!important;border:0;border-right:1px solid var(--ts-line);box-shadow:none!important;overflow:auto;max-height:none;position:static}
+#team-canvas-root.ts-shell .tc-library-hidden>.tc-catalog,#team-canvas-root.ts-shell.tc-contextual-editing .tc-inspecting.tc-library-hidden>.tc-catalog{display:none!important}
+#team-canvas-root.ts-shell .tc-main{grid-column:3;grid-row:1;position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;border:0;border-radius:0!important;box-shadow:none!important;background:#f3f5f7}
+#team-canvas-root.ts-shell .tc-viewport-shell{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+#team-canvas-root.ts-shell .tc-scroll{flex:1;min-height:0!important;max-height:none!important;height:auto!important;border:0;border-radius:0}
+#team-canvas-root.ts-shell.tc-focus-mode .tc-layout{height:100dvh}
+
+/* Floating toolbar */
+#team-canvas-root.ts-shell .tc-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:2px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px);min-height:0!important;padding:4px!important;background:#fff;border:1px solid var(--ts-line);border-radius:8px;box-shadow:0 1px 2px #141b240f}
+#team-canvas-root.ts-shell .tc-toolbar>:not(.ts-tools):not(.tc-restore-retry):not([class*=retry]){display:none!important}
+#team-canvas-root.ts-shell .ts-tools{display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap;row-gap:2px}
+#team-canvas-root.ts-shell .ts-tool{border:0;background:transparent;color:#3b4855;border-radius:5px;padding:5px 9px;font:12.5px/1.2 'Nunito Sans',system-ui,sans-serif;white-space:nowrap;min-height:28px;cursor:pointer}
+#team-canvas-root.ts-shell .ts-tool:hover:not(:disabled){background:#f1f4f7}
+#team-canvas-root.ts-shell .ts-tool:disabled{opacity:.45;cursor:default}
+#team-canvas-root.ts-shell .ts-tool.ts-icon{font-size:15px;padding:3px 8px}
+#team-canvas-root.ts-shell .ts-tool[aria-pressed=true]{background:var(--ts-tint);color:var(--ts-accent)}
+#team-canvas-root.ts-shell .ts-tool.ts-primary{background:var(--ts-accent);color:#fff;font-weight:600}
+#team-canvas-root.ts-shell .ts-tool.ts-primary:hover{background:#244e72}
+#team-canvas-root.ts-shell .ts-sep{width:1px;height:18px;background:var(--ts-line);margin:0 4px}
+#team-canvas-root.ts-shell .ts-menu-wrap{position:relative}
+#team-canvas-root.ts-shell .ts-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:210px;max-width:320px;max-height:60vh;overflow:auto;background:#fff;border:1px solid var(--ts-line);border-radius:8px;box-shadow:0 8px 24px #14243118;padding:4px;z-index:40}
+#team-canvas-root.ts-shell .ts-menu[data-open=true]{display:grid}
+#team-canvas-root.ts-shell .ts-menu-item{text-align:left;border:0;background:transparent;border-radius:5px;padding:7px 10px;font:12.5px/1.3 'Nunito Sans',system-ui,sans-serif;color:var(--ts-ink);cursor:pointer}
+#team-canvas-root.ts-shell .ts-menu-item:hover:not(:disabled){background:#f1f4f7}
+#team-canvas-root.ts-shell .ts-menu-item:disabled{color:#a5afba;cursor:default}
+#team-canvas-root.ts-shell .ts-menu-note{margin:4px 10px 6px;font-size:11.5px;color:var(--ts-muted)}
+#team-canvas-root.ts-shell .ts-menu .tc-save-help{display:block!important;padding:6px 10px;border-top:1px solid var(--ts-line);margin-top:4px;font-size:12px;color:var(--ts-muted)}
+#team-canvas-root.ts-shell .ts-menu .tc-save-help .tc-help-content{max-width:290px}
+
+/* Minimap and zoom: bottom-left inside the canvas */
+#team-canvas-root.ts-shell .tc-navigation{position:absolute!important;left:12px!important;right:auto!important;bottom:12px!important;top:auto!important;z-index:25;width:196px;box-sizing:border-box;margin:0!important}
+#team-canvas-root.ts-shell .tc-status{margin:0;padding:6px 14px;font-size:12px;border-top:1px solid var(--ts-line);background:#fff}
+
+/* Fixed inspector column with the companion's reserved home at its foot */
+#team-canvas-root.ts-shell .ts-inspector-column{grid-column:4;grid-row:1;display:flex;flex-direction:column;min-height:0;background:#fff;border-left:1px solid var(--ts-line)}
+/* The column holds the inspector in place: it stays visible when its card is panned out of view. */
+#team-canvas-root.ts-shell .tc-selection-inspector{visibility:visible!important;position:static!important;top:auto!important;left:auto!important;right:auto!important;width:auto!important;max-width:none;flex:1;min-height:0;max-height:none!important;overflow:auto;border:0!important;border-radius:0!important;box-shadow:none!important;z-index:auto}
+#team-canvas-root.ts-shell .ts-inspector-empty{flex:1;padding:16px;color:var(--ts-muted);font-size:13px}
+#team-canvas-root.ts-shell .ts-inspector-empty .ts-label{display:block;font:500 10.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+#team-canvas-root.ts-shell .ts-inspector-column:has(>.tc-selection-inspector:not([hidden]))>.ts-inspector-empty{display:none}
+#team-canvas-root.ts-shell .tc-companion-home{flex:0 0 236px;border-top:1px solid var(--ts-line);background:linear-gradient(#fff,#fbfcfd)}
+body.ts-shell-app #lipidomic-companion{z-index:1020}
+body.ts-shell-app #lipidomic-assistant-panel{box-sizing:border-box}
+@media (max-width:1366px){body.ts-shell-app .ts-saved{max-width:150px}}
+
+@media (max-width:900px){
+ #team-canvas-root.ts-shell .tc-layout,#team-canvas-root.ts-shell.tc-contextual-editing .tc-layout.tc-inspecting{grid-template-columns:var(--ts-rail) auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;height:auto;min-height:calc(100dvh - var(--ts-bar))}
+ #team-canvas-root.ts-shell .ts-inspector-column{grid-column:1/-1;grid-row:2;max-height:45dvh;border-left:0;border-top:1px solid var(--ts-line)}
+ #team-canvas-root.ts-shell .tc-toolbar{overflow:visible;flex-wrap:wrap;max-width:calc(100% - 16px)}
+ #team-canvas-root.ts-shell .ts-tools{flex-wrap:wrap;row-gap:2px}
+ body.ts-shell-app .ts-step span,body.ts-shell-app .ts-project{display:none}
+}
+
+/* First paint: the page arrives as the classic layout and the Team scripts restyle it on
+   DOMContentLoaded (shell.js) and when the guided layout first paints (guided.js). Keep it out of
+   sight until both have run, so the sign-in screen is the first thing shown. The gate is a class
+   set by an inline script in <head> (R/frontends/team/ui.R) that also lifts it after 4 s, so a
+   failing Team script cannot leave the page blank (a CSS animation would be switched off by the
+   reduced-motion rule in libreros.css). Opacity, not visibility: visibility is inherited, so
+   buttons with `transition: all` would fade in late on their own. */
+html.ts-gate body:not(.ts-shell-app.guided-app){opacity:0;pointer-events:none}
+/* Stand-in for the sign-in form until the server renders the real one (same size, not usable). */
+.team-library-login-placeholder{pointer-events:none;user-select:none}
+/* Shiny dims outputs while they wait for the server; the stand-in must look exactly like the form. */
+#team_library_account.recalculating:is(.ts-has-login-placeholder,.team-library-login-placeholder),
+#team_library_account.recalculating:is(.ts-has-login-placeholder,.team-library-login-placeholder)>*,
+body:not([data-team-authenticated=true]) #team_library_status.recalculating{opacity:1!important;transition:none!important}
+/* Styled here rather than by the body classes the scripts add, so it is already blue on first paint. */
+.team-library-login-placeholder button{width:100%;margin-top:10px;background:#2d5f8a;border-color:#2d5f8a;color:#fff;transition:none}
+
+/* Sign-in: full-screen mass-spectrum illustration behind the login card (Team only). */
+/* The Data step-1 matrix rides as a hidden bottom layer: it is loaded and decoded before the Data screen
+   appears, so it never pops in after the content. The solid layer above it keeps it hidden even while the
+   spectrum is still loading or fails to load. */
+body.ts-shell-app .bslib-sidebar-layout:is(.ts-has-library-login,.team-library-login){background:url("team/img/login-spectrum.svg") center/cover no-repeat,linear-gradient(#fafaf8,#fafaf8),url("team/img/data-matrix.svg") center/cover no-repeat!important}
+body.ts-shell-app .team-library:is(.ts-has-library-login,.team-library-login){background:rgba(255,255,255,.96)!important;box-shadow:0 18px 50px rgba(22,34,48,.18),0 2px 6px rgba(22,34,48,.08)!important}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app .bslib-sidebar-layout:is(.ts-has-library-login,.team-library-login){background-image:url("team/img/login-spectrum-static.svg"),linear-gradient(#fafaf8,#fafaf8),url("team/img/data-matrix-static.svg")!important}}
+
+/* Data step 1 ("Choose how to begin"), signed in only: full-screen abundance matrix dissolving into the page.
+   Static variant for reduced motion; no other screen (sign-in included) shows it. */
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] .bslib-sidebar-layout:is(.ts-has-library,.team-library):not(.ts-has-library-login){background:#fafaf8 url("team/img/data-matrix.svg") center/cover no-repeat!important}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] .bslib-sidebar-layout:is(.ts-has-library,.team-library):not(.ts-has-library-login){background-image:url("team/img/data-matrix-static.svg")!important}}
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] :is(.team-library.ts-data-library,.guide-page>details.guide-panel){box-shadow:0 14px 40px rgba(22,34,48,.10),0 2px 6px rgba(22,34,48,.05)}
+
+/* The floating toolbar takes the width it needs (centred, never wider than the canvas);
+   separators stay hairlines. At narrow widths secondary tools move into the ⋯ menu. */
+#team-canvas-root.ts-shell .tc-toolbar{width:max-content;max-width:calc(100% - 24px)}
+#team-canvas-root.ts-shell .ts-sep{flex:0 0 1px}
+#team-canvas-root.ts-shell .ts-menu-item.ts-compact-only{display:none}
+#team-canvas-root.ts-shell.ts-tools-compact .ts-menu-item.ts-compact-only{display:block}
+#team-canvas-root.ts-shell.ts-tools-compact .ts-secondary{display:none!important}
+/* The plot library lives in the shell's side panel, so the canvas needs no left gutter for it. */
+#team-canvas-root.ts-shell .tc-layout:not(.tc-library-hidden) .tc-viewport-shell{margin-left:0}
+
+/* The toolbar is docked above the canvas (not floating over it): it can never cover a card's header or buttons. */
+#team-canvas-root.ts-shell .tc-toolbar{position:relative;order:0;top:auto;left:auto;transform:none;align-self:center;margin:8px auto 6px;flex:0 0 auto}
+#team-canvas-root.ts-shell .tc-viewport-shell{order:2}
+/* The empty-canvas hint is centred in the visible canvas, not in the wider board. */
+#team-canvas-root.ts-shell .tc-scroll{container-type:inline-size}
+#team-canvas-root.ts-shell .tc-empty{right:auto;width:100cqw;padding:0 16px;box-sizing:border-box}
+/* A step clicked during a busy cycle: pressed, pending, with its status beneath. */
+body.ts-shell-app .ts-step:disabled{pointer-events:none}
+body.ts-shell-app .ts-step{position:relative}
+body.ts-shell-app .ts-step[data-tw-queued]{opacity:1;background:#26394b;color:#fff;box-shadow:inset 0 2px 4px #0006,inset 0 0 0 1px #78afe0}
+body.ts-shell-app .ts-step[data-tw-queued] em{border-color:#78afe0;border-top-color:transparent;color:transparent;animation:ts-step-queued .9s linear infinite}
+body.ts-shell-app .ts-step[data-tw-queued]::after{content:attr(title);position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);z-index:1040;padding:6px 10px;border-radius:6px;background:var(--ts-navy);color:#fff;font:12px/1.2 'Nunito Sans',system-ui,sans-serif;white-space:nowrap;box-shadow:0 6px 18px #14243133;pointer-events:none}
+@keyframes ts-step-queued{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){body.ts-shell-app .ts-step[data-tw-queued] em{animation:none;border-top-color:#78afe0}}
+
+/* Mode switch: Draft canvas | Figure page, with a one-line hint under the tools. */
+#team-canvas-root.ts-shell .ts-mode-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;border:1px solid var(--ts-line);border-radius:7px;background:#f6f8fa}
+#team-canvas-root.ts-shell .ts-mode-option{border-radius:5px;padding:4px 9px;font:600 12.5px/1.2 'Nunito Sans',system-ui,sans-serif;white-space:nowrap;min-height:24px;display:inline-flex;align-items:center}
+#team-canvas-root.ts-shell .ts-mode-option.is-current{background:#fff;color:var(--ts-accent);box-shadow:0 1px 2px #141b2422}
+#team-canvas-root.ts-shell .ts-mode-switch .ts-tool.ts-mode-option{color:#4b5a69;min-height:24px}
+#team-canvas-root.ts-shell .ts-mode-switch .ts-tool.ts-mode-option::after{content:'→';margin-left:5px;opacity:.7}
+#team-canvas-root.ts-shell .tc-toolbar>.ts-mode-hint.ts-mode-hint.ts-mode-hint{display:block!important;flex-basis:100%;margin:0;padding:1px 8px 2px;text-align:center;font:11.5px/1.3 'Nunito Sans',system-ui,sans-serif;color:#66737f}
+#team-canvas-root.ts-shell.ts-tools-compact .tc-toolbar>.ts-mode-hint.ts-mode-hint.ts-mode-hint{display:none!important}
+.ts-sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

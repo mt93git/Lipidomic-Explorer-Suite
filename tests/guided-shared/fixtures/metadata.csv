@@ -1,0 +1,9 @@
+SampleID,Condition,Tissue,SubjectID,ReplicateID,TimePoint,Batch,SampleType
+S01,Control,Reference tissue,P01,1,Visit 1,Run A,study
+S02,Control,Reference tissue,P02,1,Visit 1,Run A,study
+S03,Control,Reference tissue,P03,1,Visit 1,Run A,study
+S04,Control,Reference tissue,P04,1,Visit 1,Run A,study
+S05,Treatment,Reference tissue,P05,1,Visit 1,Run A,study
+S06,Treatment,Reference tissue,P06,1,Visit 1,Run A,study
+S07,Treatment,Reference tissue,P07,1,Visit 1,Run A,study
+S08,Treatment,Reference tissue,P08,1,Visit 1,Run A,study

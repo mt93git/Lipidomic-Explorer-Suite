@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly isolated Lipidomic backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 America/New_York
+Persistent=true
+RandomizedDelaySec=300
+Unit=lipidomic-pilot-backup.service
+
+[Install]
+WantedBy=timers.target

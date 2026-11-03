@@ -1393,7 +1393,13 @@
           }
         });
 
+        // bslib may emit shown.bs.collapse synchronously during resize.
+        // Do not redispatch resize from that nested notification.
+        var handlingShownLayout = false;
         $(document).on('shown.bs.tab shown.bs.collapse', function(e) {
+          if (handlingShownLayout) return;
+          handlingShownLayout = true;
+          try {
           tagDownloadButtons();
           var targetTab = $(e.target).attr('href') || $(e.target).data('bs-target');
           if (targetTab) {
@@ -1413,7 +1419,9 @@
             adjustResizableContainer($(this));
           });
           window.dispatchEvent(new Event('resize'));
-          $(window).trigger('resize');
+          } finally {
+            handlingShownLayout = false;
+          }
         });
         $(document).on('shiny:connected shiny:value shiny:idle', tagDownloadButtons);
       }

@@ -1,0 +1,11 @@
+candidate_root: /home/gjb47/dual-ui-max-alignment-dfcbba4-git
+candidate_commit: dfcbba4bace5e924a946e9775d37c2c57d314b2c
+baseline_root: /home/gjb47/lipidomic-block2-preparation-20261026-baseline
+baseline_commit: unavailable
+started_at: 2026-10-27 12:21:08 EDT
+R: R version 4.4.3 (2025-02-28)
+platform: x86_64-conda-linux-gnu
+system: Linux / 5.15.167.4-microsoft-standard-WSL2 / x86_64
+interface_selector: unset
+No dependencies are installed by this runner.
+

@@ -1,0 +1,6 @@
+source('R/modules/10_fla_module.R',local=TRUE)
+source('R/frontends/team/fla_palette_adapter.R')
+original<-fla_server;adapted<-team_fla_palette_adapter(original)
+stopifnot(!identical(body(adapted),body(original)),identical(body(original),body(fla_server)))
+broken<-original;body(broken)<-quote({NULL});stopifnot(inherits(try(team_fla_palette_adapter(broken),silent=TRUE),'try-error'))
+cat('PASS: Team palette adapter strictly targets one FLA renderer; original Classic body unchanged\n')

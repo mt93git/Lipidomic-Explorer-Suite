@@ -26,9 +26,11 @@ Imports:
     colourpicker,
     RColorBrewer,
     stringr,
+    stringi,
     purrr,
     zip,
     jsonlite,
+    xml2,
     nipals,
     htmltools,
     htmlwidgets,
@@ -67,4 +69,7 @@ Suggests:
     BiocManager,
     openxlsx,
     writexl,
-    rstudioapi
+    rstudioapi,
+    httr2,
+    future,
+    promises

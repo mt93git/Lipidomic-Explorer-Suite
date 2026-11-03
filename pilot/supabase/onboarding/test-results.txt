@@ -1,0 +1,13 @@
+test_case_insensitive_duplicate_rejected (test_prepare.Gates.test_case_insensitive_duplicate_rejected) ... ok
+test_credentials_rejected (test_prepare.Gates.test_credentials_rejected) ... ok
+test_no_owner_rejected (test_prepare.Gates.test_no_owner_rejected) ... ok
+test_pilot_project_rejected (test_prepare.Gates.test_pilot_project_rejected) ... ok
+test_plan_has_no_side_effect_actions (test_prepare.Gates.test_plan_has_no_side_effect_actions) ... ok
+test_service_role_rejected (test_prepare.Gates.test_service_role_rejected) ... ok
+test_test_domain_rejected (test_prepare.Gates.test_test_domain_rejected) ... ok
+test_unapproved_member_rejected (test_prepare.Gates.test_unapproved_member_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.000s
+
+OK

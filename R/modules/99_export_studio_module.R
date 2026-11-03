@@ -117,6 +117,10 @@ get_publication_theme <- function(base_pt = 7.5, font_family = "sans") {
 # ==============================================================================
 
 generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, font_family = "sans", hybrid_mode = TRUE) {
+  if (is.function(shared_data$preparation_dirty)) {
+    shiny::validate(shiny::need(!isTRUE(shared_data$preparation_dirty()),
+      "Update prepared data before exporting figures from this analysis."))
+  }
   pub_theme <- get_publication_theme(base_pt = base_pt, font_family = font_family)
 
   if (figure_key == "pca_2d") {
@@ -124,26 +128,48 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
     # 1. PCA 2D Score Plot
     # --------------------------------------------------------------------------
     pca_res <- tryCatch(shared_data$pca_results(), error = function(e) NULL)
-    if (is.null(pca_res) || is.null(pca_res$scores)) {
-      # Fallback mock for safety
-      df_plot <- data.frame(PC1 = c(-0.2, 0.1, 0.3, -0.1), PC2 = c(0.1, -0.2, 0.2, -0.1), Group1 = c("A", "B", "A", "B"))
-      var_exp <- c(49.0, 13.2)
-    } else {
-      df_plot <- as.data.frame(pca_res$scores)
-      meta <- tryCatch(shared_data$grouped_metadata(), error = function(e) NULL)
-      if (!is.null(meta) && "FullName" %in% names(meta) && "FullName" %in% names(df_plot)) {
-        df_plot <- dplyr::left_join(df_plot, meta, by = "FullName")
-      }
-      var_exp <- if (!is.null(pca_res$var_explained)) round(pca_res$var_explained * 100, 1) else c(49.0, 13.2)
+    shiny::validate(shiny::need(is.list(pca_res) && is.data.frame(pca_res$score_df) &&
+      all(c("PC1", "PC2", "FullName") %in% names(pca_res$score_df)) &&
+      length(pca_res$var_PC) >= 2 && all(is.finite(pca_res$var_PC[1:2])),
+      "Run PCA with at least two components before exporting this figure."))
+    df_plot <- as.data.frame(pca_res$score_df)
+    shiny::validate(shiny::need(nrow(df_plot) > 0 &&
+      all(is.finite(df_plot$PC1) & is.finite(df_plot$PC2)),
+      "PCA scores are unavailable or nonfinite."))
+    if ("Group1" %in% names(df_plot) &&
+        !any(!is.na(df_plot$Group1) & nzchar(trimws(as.character(df_plot$Group1))))) {
+      df_plot$Group1 <- NULL
     }
+    meta <- tryCatch(shared_data$grouped_metadata(), error = function(e) NULL)
+    if (is.data.frame(meta) && "FullName" %in% names(meta)) {
+      missing_metadata <- setdiff(names(meta), names(df_plot))
+      if (length(missing_metadata)) {
+        new_metadata <- dplyr::distinct(meta[c("FullName", missing_metadata)], FullName, .keep_all = TRUE)
+        df_plot <- dplyr::left_join(df_plot, new_metadata, by = "FullName")
+      }
+    }
+    var_exp <- as.numeric(pca_res$var_PC[1:2])
 
-    color_col <- if ("Group1" %in% names(df_plot)) "Group1" else names(df_plot)[1]
+    color_col <- if ("Group1" %in% names(df_plot) &&
+      any(!is.na(df_plot$Group1) & nzchar(trimws(as.character(df_plot$Group1))))) "Group1" else "FullName"
+    df_plot[[color_col]] <- as.character(df_plot[[color_col]])
+    color_levels <- unique(as.character(df_plot[[color_col]]))
+    color_levels <- color_levels[!is.na(color_levels) & nzchar(color_levels)]
+    shiny::validate(shiny::need(length(color_levels) > 0,
+      "PCA scores have no group or sample labels to color."))
+    custom_colors <- tryCatch(shared_data$color_maps()[[color_col]], error = function(e) NULL)
+    colors <- if (!is.null(custom_colors) && all(color_levels %in% names(custom_colors)) &&
+      all(!is.na(custom_colors[color_levels]) & nzchar(custom_colors[color_levels]))) {
+      custom_colors[color_levels]
+    } else {
+      stats::setNames(grDevices::hcl.colors(length(color_levels), palette = "Viridis"), color_levels)
+    }
     
     p <- ggplot(df_plot, aes(x = PC1, y = PC2, color = .data[[color_col]])) +
       geom_hline(yintercept = 0, linetype = "dashed", color = "#cbd5e1", linewidth = 0.4) +
       geom_vline(xintercept = 0, linetype = "dashed", color = "#cbd5e1", linewidth = 0.4) +
       geom_point(size = 2.8, alpha = 0.9) +
-      scale_color_brewer(palette = "Set2") +
+      scale_color_manual(values = colors, drop = FALSE) +
       labs(
         title = "PCA 2D Score Plot",
         x = paste0("PC1 (", var_exp[1], "%)"),
@@ -157,11 +183,16 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
       "# Global Lipidomic Explorer - Standalone Figure Reproduction: PCA 2D Score Plot\n",
       "# ==============================================================================\n",
       "library(ggplot2)\n\n",
-      "data <- read.csv('figure_pca_2d_data.csv')\n",
+      "data <- read.csv('figure_pca_2d_data.csv', colClasses = ",
+      paste(capture.output(dput(stats::setNames(rep("character", length(unique(c("FullName", color_col)))),
+                                                 unique(c("FullName", color_col))))), collapse = "\n"),
+      ", na.strings = character())\n",
+      "colors <- ", paste(capture.output(dput(colors)), collapse = "\n"), "\n",
       "p <- ggplot(data, aes(x = PC1, y = PC2, color = ", color_col, ")) +\n",
       "  geom_hline(yintercept = 0, linetype = 'dashed', color = '#cbd5e1', linewidth = 0.4) +\n",
       "  geom_vline(xintercept = 0, linetype = 'dashed', color = '#cbd5e1', linewidth = 0.4) +\n",
       "  geom_point(size = 2.8, alpha = 0.9) +\n",
+      "  scale_color_manual(values = colors, drop = FALSE) +\n",
       "  labs(title = 'PCA 2D Score Plot', x = 'PC1 (", var_exp[1], "%)', y = 'PC2 (", var_exp[2], "%)') +\n",
       "  theme_bw(base_size = ", base_pt, ") +\n",
       "  theme(panel.grid.minor = element_blank())\n\n",
@@ -181,18 +212,14 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
     # --------------------------------------------------------------------------
     # 2. Volcano Plot
     # --------------------------------------------------------------------------
-    de_res <- tryCatch(shared_data$de_results(), error = function(e) NULL)
-    if (is.null(de_res) || nrow(de_res) == 0) {
-      de_res <- data.frame(
-        Lipid_Name = c("PC(34:1)", "PE(36:2)", "SM(d18:1/16:0)", "TAG(52:2)", "Cer(d18:1/24:0)"),
-        log2FC = c(2.1, -1.8, 0.4, 1.5, -0.3),
-        p_raw = c(0.0001, 0.0004, 0.25, 0.005, 0.45),
-        p_adj_bh = c(0.002, 0.005, 0.45, 0.02, 0.60),
-        Regulation = c("Up", "Down", "NS", "Up", "NS")
-      )
-    } else {
-      de_res <- as.data.frame(de_res)
+    if (is.function(shared_data$inference_allowed)) {
+      shiny::validate(shiny::need(isTRUE(shared_data$inference_allowed(paired = FALSE)),
+        "Volcano export requires a confirmed independent design with measured samples."))
     }
+    de_res <- tryCatch(shared_data$de_results(), error = function(e) NULL)
+    shiny::validate(shiny::need(is.data.frame(de_res) && nrow(de_res) > 0,
+      "Run differential expression analysis before exporting a volcano plot."))
+    de_res <- as.data.frame(de_res)
 
     # Robust detection of log2FC column
     if (!"log2FC" %in% names(de_res)) {
@@ -200,7 +227,8 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
       if (!is.na(fc_cand)) {
         de_res$log2FC <- as.numeric(de_res[[fc_cand]])
       } else {
-        de_res$log2FC <- 0
+        shiny::validate(shiny::need(FALSE,
+          "Volcano export needs a fold-change column from differential expression results."))
       }
     } else {
       de_res$log2FC <- as.numeric(de_res$log2FC)
@@ -209,12 +237,18 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
     # Robust detection of P-value column
     p_col <- intersect(c("p_adj_bh", "adj.P.Val", "padj", "p_raw", "P.Value", "pValue"), names(de_res))[1]
     if (is.na(p_col) || is.null(p_col)) {
-      p_col <- "p_adj_bh"
-      p_vals <- rep(0.05, nrow(de_res))
+      shiny::validate(shiny::need(FALSE,
+        "Volcano export needs a P-value column from differential expression results."))
     } else {
       p_vals <- as.numeric(de_res[[p_col]])
     }
-    p_vals[!is.finite(p_vals) | is.na(p_vals) | p_vals <= 0] <- 1.0
+    valid_rows <- is.finite(de_res$log2FC) & is.finite(p_vals) &
+      p_vals >= 0 & p_vals <= 1
+    shiny::validate(shiny::need(any(valid_rows),
+      "Volcano export needs finite fold changes and P-values between 0 and 1."))
+    de_res <- de_res[valid_rows, , drop = FALSE]
+    p_vals <- p_vals[valid_rows]
+    # A computed P-value can underflow to zero; clamp only its plotted log scale.
     de_res$negLog10P <- -log10(pmax(p_vals, 1e-12))
     
     # Robust computation of Regulation status if missing
@@ -283,13 +317,14 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
     df_proc <- tryCatch(shared_data$data_processed(), error = function(e) NULL)
     anno <- tryCatch(shared_data$annotationData(), error = function(e) NULL)
     
-    if (is.null(df_proc) || is.null(anno)) {
-      df_bar <- data.frame(
-        Class = c("PC", "PE", "SM", "TAG", "Cer", "LPC"),
-        MeanAbundance = c(45000, 32000, 18000, 75000, 9500, 12000)
-      )
-    } else {
+    shiny::validate(shiny::need(is.data.frame(df_proc) && is.data.frame(anno) &&
+      "Lipid_Name" %in% names(df_proc) && all(c("Lipid_Name", "subclass") %in% names(anno)),
+      "Prepared data and class annotations are required for class export."))
+    {
       num_cols <- setdiff(names(df_proc), "Lipid_Name")
+      shiny::validate(shiny::need(length(num_cols) > 0 &&
+        all(vapply(df_proc[num_cols], is.numeric, logical(1))),
+        "Prepared sample columns must be numeric."))
       df_m <- df_proc %>%
         dplyr::left_join(anno %>% dplyr::select(Lipid_Name, subclass), by = "Lipid_Name")
       sub_col <- if ("subclass" %in% names(df_m)) "subclass" else "Class"
@@ -300,6 +335,9 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
         dplyr::rename(Class = 1) %>%
         dplyr::arrange(dplyr::desc(MeanAbundance)) %>%
         head(12)
+      shiny::validate(shiny::need(nrow(df_bar) > 0 &&
+        any(is.finite(df_bar$MeanAbundance)),
+        "No finite class abundances are available for export."))
     }
 
     p <- ggplot(df_bar, aes(x = reorder(Class, MeanAbundance), y = MeanAbundance, fill = Class)) +
@@ -342,18 +380,27 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
     # 4. Default / Heatmap Representation
     # --------------------------------------------------------------------------
     df_proc <- tryCatch(shared_data$data_processed(), error = function(e) NULL)
-    if (is.null(df_proc)) {
-      mat_data <- matrix(rnorm(100), nrow = 10, ncol = 10, dimnames = list(paste0("Lipid_", 1:10), paste0("Sample_", 1:10)))
-    } else {
-      num_cols <- setdiff(names(df_proc), "Lipid_Name")[1:min(8, ncol(df_proc)-1)]
+    shiny::validate(shiny::need(is.data.frame(df_proc) && "Lipid_Name" %in% names(df_proc),
+      "Prepared data are required for heatmap export."))
+    {
+      all_numeric <- setdiff(names(df_proc), "Lipid_Name")
+      shiny::validate(shiny::need(length(all_numeric) >= 2 &&
+        all(vapply(df_proc[all_numeric], is.numeric, logical(1))),
+        "The heatmap needs at least two numeric sample columns."))
+      num_cols <- head(all_numeric, 8)
       sub_df <- head(df_proc, 20)
       mat_data <- as.matrix(sub_df[, num_cols, drop = FALSE])
       rownames(mat_data) <- sub_df$Lipid_Name
     }
+    shiny::validate(shiny::need(nrow(mat_data) >= 2 && all(is.finite(mat_data)),
+      "The heatmap needs at least two finite lipids with variation across samples."))
+    variable_rows <- apply(mat_data, 1, stats::var) > 0
+    mat_data <- mat_data[variable_rows, , drop = FALSE]
+    shiny::validate(shiny::need(nrow(mat_data) >= 2,
+      "The heatmap needs at least two lipids with variation across samples."))
 
     # Standardize row z-scores for heatmap
     mat_z <- t(scale(t(mat_data)))
-    mat_z[is.na(mat_z)] <- 0
 
     df_heat <- as.data.frame(mat_z)
     df_heat$Lipid_Name <- rownames(mat_z)
@@ -814,7 +861,7 @@ export_studio_server <- function(id, shared_data, preselected_figure = NULL) {
       },
       content = function(file) {
         art <- current_artifacts()
-        write.csv(art$data, file, row.names = FALSE)
+        write_spreadsheet_csv(art$data, file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
@@ -890,7 +937,7 @@ export_studio_server <- function(id, shared_data, preselected_figure = NULL) {
         if (isTRUE(input$inc_csv)) {
           csv_path <- file.path(tmp_dir, paste0(base_name, "_data.csv"))
           tryCatch({
-            write.csv(art$data, csv_path, row.names = FALSE)
+            write_spreadsheet_csv(art$data, csv_path, row.names = FALSE)
           }, error = function(e) NULL)
         }
 

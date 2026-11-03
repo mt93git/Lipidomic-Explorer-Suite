@@ -1,0 +1,38 @@
+source('R/results_dashboard.R')
+source('R/frontends/team/plot_instances.R')
+source('R/frontends/team/canvas_state.R')
+messages <- list()
+shiny::testServer(function(input,output,session) team_canvas_server(input,output,session,list()), {
+ session$sendCustomMessage <- function(type,message) messages[[length(messages)+1L]] <<- list(type=type,message=message)
+ node <- list(id='results_dashboard-plot_pca',label='Saved',x=10,y=10,width=620,height=720,visual=list(),finished=NULL)
+ original <- list(version='1',libraryHidden=FALSE,nodes=list(node))
+ empty <- list(version='1',libraryHidden=FALSE,nodes=list())
+ session$userData$team_canvas_import(original);session$flushReact()
+ token <- tail(messages,1)[[1]]$message$restoreToken
+ stopifnot(is.character(token),length(token)==1L)
+ session$setInputs(team_canvas_state=list(token='empty-before-restore',state=empty))
+ stopifnot(is.null(session$userData$team_canvas_acked_token()),length(session$userData$team_canvas_export()$nodes)==1L)
+ session$setInputs(team_canvas_restore_complete=list(ok=TRUE,token='wrong'))
+ session$setInputs(team_canvas_state=list(token='empty-after-wrong',state=empty))
+ stopifnot(is.null(session$userData$team_canvas_acked_token()),length(session$userData$team_canvas_export()$nodes)==1L)
+ session$setInputs(team_canvas_restore_complete=list(ok=TRUE,token=token))
+ session$setInputs(team_canvas_state=list(token='after-restore',state=original))
+ stopifnot(identical(session$userData$team_canvas_acked_token(),'after-restore'))
+ instance <- node; instance$id <- 'tcinstance_test-plot_violin';instance$instance <- list(id='tcinstance_test',source='results_dashboard-plot_violin',inputs=list())
+ broken <- list(version='1',libraryHidden=FALSE,nodes=list(instance))
+ session$userData$team_canvas_instances_create <- function(x) stop('fixture failure')
+ stopifnot(inherits(tryCatch(session$userData$team_canvas_import(broken),error=identity),'error'))
+ session$setInputs(team_canvas_state=list(token='after-create-failure',state=empty))
+ stopifnot(is.null(session$userData$team_canvas_acked_token()),length(session$userData$team_canvas_export()$nodes)==1L,
+           identical(session$userData$team_canvas_export()$nodes[[1]]$id,instance$id),
+           any(vapply(messages,function(m) identical(m$type,'team-canvas-restore-status') && identical(m$message$status,'failed'),logical(1))))
+ failed_token <- tail(Filter(function(m) identical(m$type,'team-canvas-restore-status') && identical(m$message$status,'failed'),messages),1)[[1]]$message$token
+ session$userData$team_canvas_instances_create <- function(x) invisible(NULL)
+ session$setInputs(team_canvas_restore_retry=list(token=failed_token));session$flushReact()
+ retry_token <- tail(Filter(function(m) identical(m$type,'team-canvas-restore'),messages),1)[[1]]$message$restoreToken
+ stopifnot(!identical(retry_token,failed_token),identical(session$userData$team_canvas_export()$nodes[[1]]$id,instance$id))
+ session$setInputs(team_canvas_restore_complete=list(ok=TRUE,token=retry_token))
+ session$setInputs(team_canvas_state=list(token='after-retry',state=broken))
+ stopifnot(identical(session$userData$team_canvas_acked_token(),'after-retry'))
+})
+cat('PASS: pending restore rejects empty state and wrong receipt; valid receipt permits later checkpoint\n')

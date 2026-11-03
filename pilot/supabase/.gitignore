@@ -1,0 +1,7 @@
+.env
+data/
+inputs/
+backup/
+__pycache__/
+
+test-accounts.json

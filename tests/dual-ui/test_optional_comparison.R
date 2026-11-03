@@ -1,0 +1,6 @@
+source('R/ux_preparation.R')
+missing <- tempfile()
+stopifnot(!ux_comparison_available(missing))
+stopifnot(identical(ux_comparison_server(NULL,NULL,NULL),FALSE))
+stopifnot(!dir.exists('www/study'))
+cat('PASS: Team starts without private saved-comparison assets\n')

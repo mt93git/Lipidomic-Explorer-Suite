@@ -1,0 +1,1 @@
+{"source_commit": "dfcbba4bace5e924a946e9775d37c2c57d314b2c", "exit_code": 0, "command": "Rscript --vanilla pipeline_math_proof_stacked.R", "cwd": "/home/gjb47/dual-ui-max-standalone-dfcbba4"}

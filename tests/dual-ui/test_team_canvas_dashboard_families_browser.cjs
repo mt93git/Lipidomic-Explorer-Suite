@@ -1,0 +1,6 @@
+// Focused synthetic Shiny fixture, not the private Paula dataset.
+const {chromium}=require('../browser/ci/node_modules/playwright');const assert=require('node:assert/strict');
+(async()=>{const b=await chromium.launch();try{const p=await b.newPage({viewport:{width:1600,height:1000}});p.setDefaultTimeout(20000);await p.goto('http://127.0.0.1:43999');await p.waitForFunction(()=>window.TeamCanvas&&window.Shiny?.shinyapp?.$inputValues['results_dashboard-violin_lipid']);await p.evaluate(()=>window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:true,pending:false,running:false,revision:1}})));
+for(const name of ['plot_pca','plot_dist','plot_comp','plot_heat']){await p.evaluate(name=>TeamCanvas.addCatalogPlot('results_dashboard-'+name),name);await p.waitForFunction(name=>[...document.querySelectorAll('.tc-node')].some(n=>n.dataset.plotId?.endsWith('-'+name)),name);}
+const ids=await p.locator('.tc-node').evaluateAll(ns=>ns.map(n=>n.dataset.plotId));assert.equal(ids.length,4);await p.waitForFunction(ids=>ids.every(id=>document.getElementById(id)?.data?.length>0),ids);console.log('PASS synthetic dashboard PCA, distribution, composition, heatmap: four independent live plots',JSON.stringify(ids));
+}finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

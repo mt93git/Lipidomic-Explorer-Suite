@@ -1,0 +1,1 @@
+(function(){'use strict';function bind(){if(!window.Shiny)return;Shiny.addCustomMessageHandler('team-project-records-changed',function(message){if(window.TeamAutosave)TeamAutosave.schedule('methods and decisions updated');});}if(window.Shiny)bind();else document.addEventListener('shiny:connected',bind,{once:true});})();

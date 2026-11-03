@@ -1,0 +1,26 @@
+{
+  "before_upload": {
+    "first_response_reconciled": false,
+    "retry_passed": true,
+    "repeated_retry_single_record": true,
+    "bytes_verified": true
+  },
+  "after_upload": {
+    "first_response_reconciled": true,
+    "retry_passed": true,
+    "repeated_retry_single_record": true,
+    "bytes_verified": true
+  },
+  "before_catalog": {
+    "first_response_reconciled": false,
+    "retry_passed": true,
+    "repeated_retry_single_record": true,
+    "bytes_verified": true
+  },
+  "after_catalog": {
+    "first_response_reconciled": true,
+    "retry_passed": true,
+    "repeated_retry_single_record": true,
+    "bytes_verified": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "format": "AES-256-GCM",
+  "created_utc": "20261028T014250.383403Z",
+  "encrypted_sha256": "493cd998a2935277c7731599f371446cfcdca0086beee6dd71c1dcad2656fe52",
+  "encrypted_bytes": 3645476,
+  "authenticated_roundtrip": true,
+  "scope": "pilot database, auth, memberships, storage objects and recovery environment",
+  "key_location": "separate backup-keys directory; copy separately off host"
+}

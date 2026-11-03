@@ -1,5 +1,8 @@
 # R/global.R
 # Global setup.
+source("R/frontends/interface.R")
+source("R/frontends/classic/server.R")
+source("R/frontends/team/server.R")
 
 
 
@@ -20,7 +23,8 @@ suppressPackageStartupMessages({
 })
 
 # Dynamic graceful load and recovery for visNetwork
-if (!requireNamespace("visNetwork", quietly = TRUE)) {
+if (!requireNamespace("visNetwork", quietly = TRUE) &&
+    identical(Sys.getenv("LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL", unset = "0"), "1")) {
   tryCatch({
     message("[GLOBAL RECOVERY] 'visNetwork' not found. Attempting on-the-fly binary installation...")
     install.packages("visNetwork", type = "binary", quiet = TRUE)
@@ -105,20 +109,21 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
     "ERROR"   = "!!! [FATAL ERROR]"
   )
   
-  banner <- sprintf("[INGESTION TRACE] %s | STAGE: %s | %s | %s", ts, stage, status_tag, message_text)
-  
-  detail_lines <- ""
-  if (length(details) > 0) {
-    formatted_details <- sapply(names(details), function(k) {
-      val <- details[[k]]
-      if (is.null(val)) val <- "<NULL>"
-      else if (is.atomic(val) && length(val) > 1) val <- paste0("[", paste(head(val, 8), collapse = ", "), if(length(val) > 8) sprintf("... +%d more", length(val) - 8) else "", "]")
-      else if (is.data.frame(val)) val <- sprintf("DataFrame [%d rows x %d cols]", nrow(val), ncol(val))
-      sprintf("    - %s: %s", k, as.character(val))
-    })
-    detail_lines <- paste0("\n", paste(formatted_details, collapse = "\n"))
-  }
-  
+  # This process-wide trace can outlive a session. Persist only fixed stage and
+  # bounded numerical diagnostics; message_text and arbitrary details may contain
+  # filenames, sample IDs, or filesystem paths.
+  safe_stage <- gsub("[^A-Za-z0-9_]", "_", as.character(stage)[1])
+  banner <- sprintf("[INGESTION TRACE] %s | STAGE: %s | %s", ts, safe_stage, status_tag)
+  safe_keys <- intersect(names(details), c(
+    "file_size_mb", "sheet_count", "duplicates_count", "lipid_count",
+    "sample_column_count", "total_lipids", "total_samples", "retained",
+    "excluded", "sample_count", "row_count", "column_count"
+  ))
+  safe_keys <- safe_keys[vapply(details[safe_keys], function(x)
+    is.numeric(x) && length(x) == 1L && is.finite(x), logical(1))]
+  detail_lines <- if (length(safe_keys)) paste0("\n", paste(vapply(safe_keys,
+    function(k) sprintf("    - %s: %s", k, as.character(details[[k]])), character(1)), collapse = "\n")) else ""
+
   full_output <- paste0(banner, detail_lines, "\n")
   
   # 1. Output to stderr (Shiny log stream) and stdout (RStudio console stream)
@@ -157,11 +162,14 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
 
 # Color maps
 # Color maps
+# Every class has its own colour. GP_PA and GP_PE_E previously reused the SP_Cer
+# and SP_SM colours; their values are palette_distinct() variants of those
+# colours (SM/Cer kept). Keep this map identical in R/global.R and R/utils_colors.R.
 CLASS_MAP_COLORS <- c(
   "GP_CL"="#E28E2B", "GP_LPA"="#A0CBE8", "GP_LPC"="#E15759", "GP_LPE"="#F28E2B",
-  "GP_LPG"="#76B7B2", "GP_LPI"="#59A14F", "GP_LPS"="#A07AA1", "GP_PA"="#EDC948",
+  "GP_LPG"="#76B7B2", "GP_LPI"="#59A14F", "GP_LPS"="#A07AA1", "GP_PA"="#C09E00",
   "GP_PC"="#B07AA1", 
-  "GP_PE"="#FF9DA7", "GP_PE_E"="#9C755F", "GP_PE_P"="#BAB0AC", # <- Contiguous PEs!
+  "GP_PE"="#FF9DA7", "GP_PE_E"="#744D35", "GP_PE_P"="#BAB0AC", # <- Contiguous PEs!
   "GP_PG"="#86BCB6", "GP_PI"="#D37295", "GP_PS"="#8CD17D",
   "FA_ACar"="#4E79A7", "ST_CE"="#C7C7C7", 
   "SP_Cer"="#EDC948", "SP_Cer_dh"="#B6992D", # <- Contiguous Cer!
@@ -1295,8 +1303,14 @@ assign("render_tab_intro_card", render_tab_intro_card, envir = .GlobalEnv)
 # Load Modules
 source("R/utils_lipid_genes.R")
 source("R/utils_data.R")
+source("R/utils_preparation.R")
+source("R/utils_sample_metadata.R")
+source("R/utils_csv_export.R")
+source("R/utils_session_archive.R")
+source("R/frontends/team/metadata_state.R")
 source("R/utils_colors.R")
 source("R/utils_vis.R")
+source("R/utils_plot_events.R")
 source("R/modules/utils_stats.R")
 source("R/modules/utils_targeted_lipids.R")
 source("R/utils_memento.R")
@@ -1320,3 +1334,54 @@ source("R/modules/99_export_studio_module.R")
 
 
 
+
+if (identical(lipidomic_interface(), "team")) {
+  source("R/frontends/team/export_studio_adapter.R")
+  generate_export_artifacts <- team_export_studio_artifacts_adapter(generate_export_artifacts)
+  source("R/frontends/team/heatmap_scale_adapter.R")
+  heatmap_server <- team_heatmap_scale_adapter(heatmap_server)
+  source("R/frontends/team/heatmap_canvas_boundaries_adapter.R")
+  heatmap_server <- team_heatmap_canvas_boundaries_adapter(heatmap_server)
+  source("R/frontends/team/qc_3d_labels_adapter.R")
+  qc_boxplot_server <- team_qc_3d_labels_adapter(qc_boxplot_server)
+  source("R/frontends/team/legacy_vector_adapter.R")
+  qc_boxplot_server <- team_qc_vector_adapter(qc_boxplot_server)
+  source("R/frontends/team/descriptive_inference_labels_adapter.R")
+  logratio_server <- team_violin_export_labels_adapter(logratio_server)
+  logratio_server <- team_logratio_participant_guard_adapter(logratio_server)
+  source("R/frontends/team/inferential_network_adapter.R")
+  structural_server <- team_inferential_network_adapter(structural_server,"structural")
+  fla_server <- team_inferential_network_adapter(fla_server,"fla")
+  source("R/frontends/team/fla_palette_adapter.R")
+  fla_server <- team_fla_palette_adapter(fla_server)
+  source("R/frontends/team/da_participant_warning.R")
+  render_de_not_run_banner <- team_de_banner_participant_warning_adapter(render_de_not_run_banner)
+  volcano_server <- team_volcano_participant_warning_adapter(volcano_server)
+  structural_server <- team_structural_participant_warning_adapter(structural_server)
+  generate_export_artifacts <- team_export_participant_warning_adapter(generate_export_artifacts)
+  source("R/frontends/team/project_library.R")
+  source("R/frontends/team/foreground.R")
+  source("R/frontends/team/workspace.R")
+  source("R/frontends/team/canvas.R")
+  source("R/frontends/team/canvas_state.R")
+  source("R/frontends/team/violin_statistics.R")
+  session_persistent_inputs <- team_violin_stats_input_filter(session_persistent_inputs)
+  source("R/frontends/team/companion_workspace.R")
+  source("R/sample_metadata_import.R")
+  source("R/frontends/team/sample_metadata_import_module.R")
+  source("R/ux_preparation.R")
+  source("R/guided_preparation_controls.R")
+  source("R/results_dashboard.R")
+  source("R/frontends/team/scientific_insight_context.R")
+  source("R/frontends/team/scientific_insight.R")
+  source("R/cell_show.R")
+  source("R/guided_workflow.R")
+  source("R/frontends/team/hub-ui.R")
+  source("R/frontends/team/qc-ui.R")
+  source("R/frontends/team/modules-ui.R")
+  source("R/companion_assistant.R")
+  companion_env <- Sys.getenv("LIPIDOMIC_COMPANION_ENV", unset = "")
+  if (nzchar(companion_env) && file.exists(companion_env)) readRenviron(companion_env)
+  source("R/companion_ai_provider.R", local = TRUE)
+  if (companion_ai_available()) future::plan(future::multisession, workers = 2)
+}

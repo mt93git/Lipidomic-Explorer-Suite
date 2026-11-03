@@ -1,0 +1,13 @@
+.gc-root { min-width: 0; background: white; }
+.gc-controls { display: grid; gap: .5rem; padding: .5rem; font-size: .85rem; }
+.gc-section { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.gc-section > strong { flex-basis: 100%; }
+.gc-section details { flex-basis: 100%; }
+.gc-section label { display: inline-flex; align-items: center; gap: .2rem; margin: .2rem; }
+.gc-section input[type=color] { width: 2rem; height: 1.5rem; padding: 0; }
+.tc-node .gc-root button.tc-chip[aria-pressed=true] { background: #203d75 !important; color: white !important; }
+.gc-root button.tc-chip[aria-pressed=false] { background: white; color: #222; }
+.gc-plot { min-height: 380px; width: 100%; }
+.gc-report { max-height: 18rem; overflow: auto; white-space: pre-wrap; font-size: .8rem; }
+.gc-analysis-settings .btn-show-stats { display: none !important; }
+.gc-status:not(:empty) { padding: .6rem; background: #fff6d8; color: #493800; }

@@ -849,7 +849,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
             p_val <- NA
             stars <- "ns"
             if(length(na.omit(base_vals))>=2 && length(na.omit(comp_vals))>=2) {
-               tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+               tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                if(!is.na(tt)) {
                   p_val <- tt
                   if(p_val < 0.001) stars <- "***"
@@ -1285,7 +1285,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                            "non_parametric"
                         }
                         
-                        pval <- tryCatch(compute_local_p_val(log_v1, log_v2, method = resolved_method, paired = FALSE), error=function(e) NA)
+                        pval <- tryCatch(guided_local_p_value(log_v1, log_v2, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                         
                         m1 <- mean(vals_1, na.rm=TRUE)
                         m2 <- mean(vals_2, na.rm=TRUE)
@@ -1304,7 +1304,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                 }
             }
         }
-        write.csv(ledger_out, file, row.names=FALSE)
+        write_spreadsheet_csv(ledger_out, file, row.names=FALSE)
       }
     )
     
@@ -1510,7 +1510,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
         content = function(file) {
             obj <- volcano_plot_obj()
             req(obj)
-            write.csv(obj$data, file, row.names = FALSE)
+            write_spreadsheet_csv(obj$data, file, row.names = FALSE)
         }
     )
     
@@ -1803,7 +1803,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
       content = function(file) {
         df <- correlation_data()
         req(df)
-        write.csv(df, file, row.names = FALSE)
+        write_spreadsheet_csv(df, file, row.names = FALSE)
       }
     )
     
