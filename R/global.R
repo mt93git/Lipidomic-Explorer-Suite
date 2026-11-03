@@ -170,11 +170,14 @@ log_ingestion_event <- function(stage, status = c("INFO", "START", "SUCCESS", "W
 
 # Color maps
 # Color maps
+# Every class has its own colour. GP_PA and GP_PE_E previously reused the SP_Cer
+# and SP_SM colours; their values are palette_distinct() variants of those
+# colours (SM/Cer kept). Keep this map identical in R/global.R and R/utils_colors.R.
 CLASS_MAP_COLORS <- c(
   "GP_CL"="#E28E2B", "GP_LPA"="#A0CBE8", "GP_LPC"="#E15759", "GP_LPE"="#F28E2B",
-  "GP_LPG"="#76B7B2", "GP_LPI"="#59A14F", "GP_LPS"="#A07AA1", "GP_PA"="#EDC948",
+  "GP_LPG"="#76B7B2", "GP_LPI"="#59A14F", "GP_LPS"="#A07AA1", "GP_PA"="#C09E00",
   "GP_PC"="#B07AA1", 
-  "GP_PE"="#FF9DA7", "GP_PE_E"="#9C755F", "GP_PE_P"="#BAB0AC", # <- Contiguous PEs!
+  "GP_PE"="#FF9DA7", "GP_PE_E"="#744D35", "GP_PE_P"="#BAB0AC", # <- Contiguous PEs!
   "GP_PG"="#86BCB6", "GP_PI"="#D37295", "GP_PS"="#8CD17D",
   "FA_ACar"="#4E79A7", "ST_CE"="#C7C7C7", 
   "SP_Cer"="#EDC948", "SP_Cer_dh"="#B6992D", # <- Contiguous Cer!
