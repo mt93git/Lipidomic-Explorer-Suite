@@ -99,8 +99,9 @@ team_plot_instance_source <- function(source) {
 # Read literal IDs from server-owned view-control constructors too: legacy
 # modules build selectors inside renderUI after seeing the data. Action buttons,
 # file inputs, arbitrary event names and computed user identifiers are excluded.
+team_plot_instance_family_files <- c(results_dashboard='R/results_dashboard.R',qc_pca_tab='R/modules/2_qc_boxplot_module.R',barchart='R/modules/5_barchart_module.R',heatmap_barchart_tab='R/modules/4_heatmap_module.R',volcano_tab='R/modules/6_volcano_module.R',lsea_tab='R/modules/7_lsea_module.R',structural_tab='R/modules/8_structural_module.R',structural_grid_tab='R/modules/12_structural_grid_module.R',logratio_tab='R/modules/9_logratio_module.R',fla_tab='R/modules/10_fla_module.R',longitudinal_tab='R/modules/11_longitudinal_module.R',pathway_tab='R/modules/13_pathway_module.R',cellular_org_tab='R/modules/14_cellular_org_module.R')
 team_plot_instance_dynamic_ids <- function(family) {
-  files <- c(results_dashboard='R/results_dashboard.R',qc_pca_tab='R/modules/2_qc_boxplot_module.R',barchart='R/modules/5_barchart_module.R',heatmap_barchart_tab='R/modules/4_heatmap_module.R',volcano_tab='R/modules/6_volcano_module.R',lsea_tab='R/modules/7_lsea_module.R',structural_tab='R/modules/8_structural_module.R',structural_grid_tab='R/modules/12_structural_grid_module.R',logratio_tab='R/modules/9_logratio_module.R',fla_tab='R/modules/10_fla_module.R',longitudinal_tab='R/modules/11_longitudinal_module.R',pathway_tab='R/modules/13_pathway_module.R',cellular_org_tab='R/modules/14_cellular_org_module.R')
+  files <- team_plot_instance_family_files
   controls <- c('selectInput','selectizeInput','numericInput','textInput','textAreaInput','sliderInput','radioButtons','checkboxInput','checkboxGroupInput','dateInput','dateRangeInput','colourInput')
   paths <- if (identical(family,'group_comparison_tab')) c(files[['logratio_tab']],'R/frontends/team/group_comparison.R') else files[[family]]
   text <- paste(unlist(lapply(paths,readLines,warn=FALSE),use.names=FALSE),collapse='\n')
@@ -108,15 +109,33 @@ team_plot_instance_dynamic_ids <- function(family) {
   matches <- regmatches(text,gregexpr(pattern,text,perl=TRUE))[[1L]]
   unique(sub('.*ns\\(\\s*[\"\']([^\"\']+)[\"\']$','\\1',matches,perl=TRUE))
 }
+# A copy's host holds its module's own UI. Quality check shows two of its plots
+# outside that UI (the outlier dialog and the Review step), so their copies get a
+# plain output slot for the module's existing renderers.
+team_plot_instance_host_ui <- function(family, spec, id) {
+  ui <- get(spec$ui,mode='function')(id)
+  if (identical(family,'structural_tab')) ui <- shiny::tagList(ui,structural_proportions_ui(id))
+  if (identical(family,'qc_pca_tab')) ui <- shiny::tagList(ui,shiny::tags$div(class='tc-instance-extra-outputs',shiny::plotOutput(shiny::NS(id,'outlierPcaPlot'),height='480px'),plotly::plotlyOutput(shiny::NS(id,'guided_qc_plot'),height='380px')))
+  ui
+}
+# The static markup of a family's controls, rendered once under a fixed schema
+# namespace. Shiny generates fresh tab ids per render, so relations between tabs
+# and panes are only read within one rendering.
+team_plot_instance_schema_doc <- local({
+  cache <- new.env(parent=emptyenv())
+  function(family) {
+    if (exists(family,cache,inherits=FALSE)) return(get(family,cache))
+    spec <- if (identical(family,'team_cell')) list(ui='team_cell_instance_ui') else team_plot_instance_families[[family]]
+    doc <- xml2::read_html(htmltools::renderTags(team_plot_instance_host_ui(family,spec,'tcinstance_schema'))$html)
+    assign(family,doc,cache);doc
+  }
+})
 team_plot_instance_input_ids <- local({
   cache <- new.env(parent=emptyenv())
   function(source) {
     family <- team_plot_instance_source(source)$family
     if (exists(family,cache,inherits=FALSE)) return(get(family,cache))
-    spec <- if (identical(family,'team_cell')) list(ui='team_cell_instance_ui') else team_plot_instance_families[[family]]
-    ui <- get(spec$ui,mode='function')('tcinstance_schema')
-    if (identical(family,'structural_tab')) ui <- shiny::tagList(ui,structural_proportions_ui('tcinstance_schema'))
-    doc <- xml2::read_html(htmltools::renderTags(ui)$html)
+    doc <- team_plot_instance_schema_doc(family)
     fields <- xml2::xml_find_all(doc,"//select[@id] | //textarea[@id] | //input[@id and not(@type='file') and not(@type='button') and not(@type='submit')] | //*[@id and (contains(concat(' ',@class,' '),' shiny-input-radiogroup ') or contains(concat(' ',@class,' '),' shiny-input-checkboxgroup ') or contains(concat(' ',@class,' '),' shiny-tab-input '))]")
     ids <- xml2::xml_attr(fields,'id');ids <- substring(ids[startsWith(ids,'tcinstance_schema-')],19L)
     ids <- unique(c(ids,if (!identical(family,'team_cell')) team_plot_instance_dynamic_ids(family) else character()))
@@ -124,6 +143,212 @@ team_plot_instance_input_ids <- local({
     assign(family,ids,cache);ids
   }
 })
+# A copy's module server starts in the same flush that inserts its controls, so
+# its first reactive pass reads every static control as NULL until the browser
+# binds it. Some modules branch on those values without a guard (QC's PCA
+# `plot_data` reads `if (input$classLabelFormat == "full")`), and an error in an
+# observer ends the whole Shiny session. Until a control reports its own value,
+# the copy reads the value it is about to receive: its saved/copied setting, or
+# else the default written in the module's own UI markup (never restated here).
+# Controls that the module builds on the server (renderUI) are left alone.
+team_plot_instance_input_defaults <- local({
+  cache <- new.env(parent=emptyenv())
+  function(family) {
+    if (exists(family,cache,inherits=FALSE)) return(get(family,cache))
+    doc <- team_plot_instance_schema_doc(family); prefix <- 'tcinstance_schema-'
+    attr_of <- function(node,name) xml2::xml_attr(node,name)
+    has_class <- function(node,cls) { value <- attr_of(node,'class'); !is.na(value) && grepl(paste0('(^|\\s)',cls,'(\\s|$)'),value) }
+    out <- list()
+    put <- function(id,value) { if (is.na(id) || !startsWith(id,prefix) || is.null(value) || !length(value) || anyNA(value)) return(); key <- substring(id,nchar(prefix)+1L); if (is.null(out[[key]])) out[[key]] <<- value }
+    for (node in xml2::xml_find_all(doc,'//select[@id]')) {
+      options <- xml2::xml_find_all(node,'.//option'); if (!length(options)) next
+      values <- xml2::xml_attr(options,'value'); values[is.na(values)] <- xml2::xml_text(options)[is.na(values)]
+      chosen <- values[!is.na(xml2::xml_attr(options,'selected'))]
+      multiple <- !is.na(attr_of(node,'multiple'))
+      put(attr_of(node,'id'),if (length(chosen)) (if (multiple) chosen else chosen[[1L]]) else if (multiple) NULL else values[[1L]])
+    }
+    for (node in xml2::xml_find_all(doc,"//input[@id and @type='checkbox']")) put(attr_of(node,'id'),!is.na(attr_of(node,'checked')))
+    for (node in xml2::xml_find_all(doc,"//input[@id and @type='number']")) { v <- suppressWarnings(as.numeric(attr_of(node,'value'))); if (length(v)==1L && is.finite(v)) put(attr_of(node,'id'),v) }
+    for (node in xml2::xml_find_all(doc,"//input[@id and contains(concat(' ',@class,' '),' js-range-slider ')]")) {
+      type <- attr_of(node,'data-data-type'); if (!is.na(type) && !identical(type,'number')) next
+      from <- suppressWarnings(as.numeric(attr_of(node,'data-from'))); to <- suppressWarnings(as.numeric(attr_of(node,'data-to')))
+      put(attr_of(node,'id'),if (length(to)==1L && is.finite(to)) c(from,to) else from)
+    }
+    for (node in xml2::xml_find_all(doc,"//input[@id and @type='text' and not(contains(concat(' ',@class,' '),' js-range-slider '))]")) {
+      v <- if (has_class(node,'shiny-colour-input')) attr_of(node,'data-init-value') else attr_of(node,'value')
+      put(attr_of(node,'id'),if (is.na(v)) '' else v)
+    }
+    for (node in xml2::xml_find_all(doc,'//textarea[@id]')) put(attr_of(node,'id'),xml2::xml_text(node))
+    for (node in xml2::xml_find_all(doc,"//*[@id and contains(concat(' ',@class,' '),' shiny-input-radiogroup ')]")) {
+      v <- xml2::xml_attr(xml2::xml_find_all(node,".//input[@type='radio' and @checked]"),'value'); if (length(v)) put(attr_of(node,'id'),v[[1L]])
+    }
+    for (node in xml2::xml_find_all(doc,"//*[@id and contains(concat(' ',@class,' '),' shiny-input-checkboxgroup ')]")) {
+      v <- xml2::xml_attr(xml2::xml_find_all(node,".//input[@type='checkbox' and @checked]"),'value'); if (length(v)) put(attr_of(node,'id'),v)
+    }
+    for (node in xml2::xml_find_all(doc,"//*[@id and contains(concat(' ',@class,' '),' shiny-tab-input ')]")) {
+      links <- xml2::xml_find_all(node,'.//*[@data-value]'); if (!length(links)) next
+      classes <- xml2::xml_attr(links,'class'); classes[is.na(classes)] <- ''
+      active <- links[grepl('(^|\\s)active(\\s|$)',classes)]
+      put(attr_of(node,'id'),xml2::xml_attr(if (length(active)) active[[1L]] else links[[1L]],'data-value'))
+    }
+    assign(family,out,cache);out
+  }
+})
+# Read-only view of a copy's inputs that falls back until a control has reported.
+team_plot_instance_fallback_input <- function(input, fallback) {
+  x <- unclass(input); x$team_fallback <- fallback
+  structure(x,class=c('team_plot_instance_input',class(input)))
+}
+team_plot_instance_fallback_value <- function(x, name, value) {
+  if (!is.null(value) || !is.character(name) || length(name)!=1L) return(value)
+  fallback <- .subset2(x,'team_fallback')[[name]]
+  if (is.null(fallback)) return(NULL)
+  # A control that reported NULL (e.g. every checkbox cleared) keeps NULL.
+  reported <- tryCatch(isTRUE(.subset2(x,'impl')$.values$containsKey(.subset2(x,'ns')(name))),error=function(e)TRUE)
+  if (reported) NULL else fallback
+}
+`$.team_plot_instance_input` <- function(x, name) team_plot_instance_fallback_value(x,name,NextMethod())
+`[[.team_plot_instance_input` <- function(x, i, ...) team_plot_instance_fallback_value(x,i,NextMethod())
+# Literal ids passed to ns()/session$ns() anywhere inside an expression.
+team_plot_instance_present <- function(x) !vapply(x,function(e) missing(e) || identical(e,quote(expr=)),logical(1))
+team_plot_instance_ns_targets <- function(x) {
+  found <- character()
+  walk <- function(e) {
+    if (!is.call(e)) return()
+    head <- paste(deparse(e[[1L]]),collapse='')
+    if (head %in% c('ns','session$ns') && length(e)>=2L && team_plot_instance_present(list(e[[2L]])) && is.character(e[[2L]])) found <<- c(found,e[[2L]])
+    parts <- as.list(e)[-1L]; for (part in parts[team_plot_instance_present(parts)]) walk(part)
+  }
+  walk(x); unique(found)
+}
+# Saved or copied settings for controls that a copy can never show. A new copy
+# starts from every input its source namespace ever reported. That includes the
+# controls of the module's own (Classic) UI that the Team UI replaces, such as
+# Quality check's shared preparation settings, and controls the module builds in
+# a renderUI whose slot exists only elsewhere in Team (QC's guided sample picker
+# lives in the Review step). No control for them exists in the copy, so the
+# browser waited for them forever and the card never came. Dropped: ids that
+# appear only in that replaced UI function or only inside renderUI outputs that
+# have no slot in the copy's markup. Ids used anywhere else are kept.
+team_plot_instance_unhosted_ids <- local({
+  cache <- new.env(parent=emptyenv())
+  function(family) {
+    if (exists(family,cache,inherits=FALSE)) return(get(family,cache))
+    out <- character()
+    path <- team_plot_instance_family_files[family]; spec <- team_plot_instance_families[[family]]
+    if (!is.na(path) && file.exists(path) && !is.null(spec$ui)) {
+      classic <- character(); other <- character()
+      present <- team_plot_instance_present
+      # ns() ids outside every renderUI body (their own wrappers excluded).
+      outside <- function(e) {
+        if (!is.call(e) || team_plot_instance_is_render_ui(e)) return()
+        head <- paste(deparse(e[[1L]]),collapse='')
+        if (head %in% c('ns','session$ns') && length(e)>=2L && present(list(e[[2L]])) && is.character(e[[2L]])) other <<- c(other,e[[2L]])
+        parts <- as.list(e)[-1L]; for (part in parts[present(parts)]) outside(part)
+      }
+      for (e in parse(path,keep.source=FALSE)) {
+        own_ui <- is.call(e) && length(e)==3L && paste(deparse(e[[1L]]),collapse='') %in% c('<-','=') && identical(e[[2L]],as.name(spec$ui))
+        if (own_ui) classic <- c(classic,team_plot_instance_ns_targets(e)) else outside(e)
+      }
+      doc <- team_plot_instance_schema_doc(family)
+      ids <- xml2::xml_attr(xml2::xml_find_all(doc,'//*[@id]'),'id'); reachable <- substring(ids[startsWith(ids,'tcinstance_schema-')],19L)
+      edges <- team_plot_instance_wrappers(family)
+      repeat {
+        grown <- unique(c(reachable,names(edges)[vapply(edges,function(w)any(w %in% reachable),logical(1))]))
+        if (length(grown)==length(reachable)) break
+        reachable <- grown
+      }
+      out <- setdiff(unique(c(classic,names(edges))),c(reachable,other))
+    }
+    assign(family,out,cache);out
+  }
+})
+# Plots that their module draws only while a display switch is on. The class
+# standard-deviation heatmaps exist only with "Condense Rows (Class Standard
+# Deviation)" checked (`show_sd <- isTRUE(input$condenseRowsSD)` in the heatmap
+# container renderUI); a copy of one of them is that view, so it starts with it.
+team_plot_instance_shown_by <- list(
+  'heatmap_barchart_tab-heatmapSDPlot'=list(condenseRowsSD=TRUE),
+  'heatmap_barchart_tab-filteredHeatmapSDPlot'=list(condenseRowsSD=TRUE)
+)
+# Each plot lives in its module's markup, often inside tabs and sometimes inside a
+# renderUI built on the server. Locate it: the renderUI outputs that create it
+# (read from the module source) and the tab panes around it (read from the UI).
+team_plot_instance_is_render_ui <- function(e) is.call(e) && length(e)==3L && paste(deparse(e[[1L]]),collapse='') %in% c('<-','=') && is.call(e[[2L]]) && identical(e[[2L]][[1L]],as.name('$')) && identical(e[[2L]][[2L]],as.name('output')) && is.call(e[[3L]]) && paste(deparse(e[[3L]][[1L]]),collapse='') %in% c('renderUI','shiny::renderUI')
+team_plot_instance_wrappers <- local({
+  cache <- new.env(parent=emptyenv())
+  function(family) {
+    if (exists(family,cache,inherits=FALSE)) return(get(family,cache))
+    edges <- list()
+    visit <- function(e) {
+      if (!is.call(e)) return()
+      if (team_plot_instance_is_render_ui(e)) {
+        wrapper <- as.character(e[[2L]][[3L]])
+        for (target in team_plot_instance_ns_targets(e[[3L]])) edges[[target]] <<- unique(c(edges[[target]],wrapper))
+      }
+      parts <- as.list(e)[-1L]; for (part in parts[team_plot_instance_present(parts)]) visit(part)
+    }
+    path <- team_plot_instance_family_files[family]
+    if (!is.na(path) && file.exists(path)) for (e in parse(path,keep.source=FALSE)) visit(e)
+    # Team adapters rewrite some servers at startup (the heatmap renderUI is split
+    # into per-plot boundaries), so the live server body is read as well.
+    server <- team_plot_instance_families[[family]]$server
+    if (!is.null(server) && exists(server,mode='function')) visit(body(get(server,mode='function')))
+    assign(family,edges,cache);edges
+  }
+})
+team_plot_instance_layout <- local({
+  cache <- new.env(parent=emptyenv())
+  function(source) {
+    if (exists(source,cache,inherits=FALSE)) return(get(source,cache))
+    resolved <- team_plot_instance_source(source); family <- resolved$family
+    doc <- team_plot_instance_schema_doc(family); prefix <- 'tcinstance_schema-'
+    find <- function(key) xml2::xml_find_first(doc,sprintf("//*[@id='%s%s']",prefix,key))
+    edges <- if (identical(family,'team_cell')) list() else team_plot_instance_wrappers(family)
+    # Walk outwards from the plot through the renderUI outputs that build it
+    # until one of them is part of the static markup.
+    wrappers <- character(); frontier <- resolved$output; anchor <- NULL
+    for (depth in seq_len(5L)) {
+      hits <- Filter(function(key) !inherits(find(key),'xml_missing'),frontier)
+      if (length(hits)) { anchor <- find(hits[[1L]]); break }
+      frontier <- setdiff(unique(unlist(edges[frontier],use.names=FALSE)),c(wrappers,resolved$output))
+      if (!length(frontier)) break
+      wrappers <- c(wrappers,frontier)
+    }
+    if (is.null(anchor)) wrappers <- character()
+    tabs <- list()
+    if (!is.null(anchor)) for (pane in rev(xml2::xml_find_all(anchor,"ancestor::*[contains(concat(' ',@class,' '),' tab-pane ')]"))) {
+      pane_id <- xml2::xml_attr(pane,'id'); if (is.na(pane_id)) next
+      link <- xml2::xml_find_first(doc,sprintf("//*[@data-value and (@data-bs-target='#%1$s' or @href='#%1$s' or @data-target='#%1$s')]",pane_id))
+      if (inherits(link,'xml_missing')) next
+      set <- xml2::xml_find_first(link,"ancestor::*[@id and contains(concat(' ',@class,' '),' shiny-tab-input ')][1]")
+      if (inherits(set,'xml_missing')) next
+      set_id <- xml2::xml_attr(set,'id'); if (!startsWith(set_id,prefix)) next
+      tabs[[substring(set_id,nchar(prefix)+1L)]] <- xml2::xml_attr(link,'data-value')
+    }
+    out <- list(wrappers=wrappers,tabs=tabs)
+    assign(source,out,cache);out
+  }
+})
+# Run a copy's server in a domain whose errors stay inside that copy. Shiny ends
+# the session on any observer error; inside this domain an error is printed and
+# reported for this copy only, and the rest of the session keeps working.
+team_plot_instance_guarded <- function(session, id, fallback, on_error, expr) {
+  proxy <- tryCatch(get('createSessionProxy',envir=asNamespace('shiny'),inherits=FALSE),error=function(e)NULL)
+  if (!is.function(proxy)) return(shiny::withReactiveDomain(session,expr))
+  report <- function(e, close = TRUE) on_error(e)
+  guard <- function(scope, namespace) {
+    if (!is.environment(scope) || !inherits(scope,'session_proxy') || !exists('overrides',envir=scope,inherits=FALSE)) return(scope)
+    overrides <- get('overrides',envir=scope,inherits=FALSE)
+    make <- overrides$makeScope
+    overrides$unhandledError <- report
+    if (is.function(make)) overrides$makeScope <- function(inner) guard(make(inner),NULL)
+    if (identical(namespace,id) && length(fallback) && inherits(overrides$input,'reactivevalues')) overrides$input <- team_plot_instance_fallback_input(overrides$input,fallback)
+    assign('overrides',overrides,envir=scope);scope
+  }
+  domain <- proxy(session,unhandledError=report,makeScope=function(namespace) guard(session$makeScope(namespace),namespace))
+  shiny::withReactiveDomain(domain,expr)
+}
 # A new dashboard copy's server starts in the same flush that inserts its
 # controls, so its first PCA render reads `pca_scale` before the browser has
 # bound that select (NULL: `Scaling = NULL` breaks the result data.frame and
@@ -202,17 +427,50 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     entry$watcher <- NULL;assign(id,entry,settling);invisible()
   }
   insert_host <- function(id, resolved, spec) {
-    ui <- get(spec$ui,mode='function')(id)
-    if (identical(resolved$family,'structural_tab')) ui <- shiny::tagList(ui,structural_proportions_ui(id))
-    shiny::insertUI(selector='body',where='beforeEnd',ui=shiny::tags$div(id=paste0(id,'_host'),class='tc-instance-host',`data-instance-id`=id,`aria-hidden`='true',inert='',style='position:absolute;left:-100000px;top:0;width:900px',ui),immediate=TRUE,session=session)
+    ui <- team_plot_instance_host_ui(resolved$family,spec,id)
+    shiny::insertUI(selector='body',where='beforeEnd',ui=shiny::tags$div(id=paste0(id,'_host'),class='tc-instance-host',`data-instance-id`=id,`data-instance-output`=resolved$output,`aria-hidden`='true',inert='',style='position:absolute;left:-100000px;top:0;width:900px',ui),immediate=TRUE,session=session)
   }
   create <- function(value) {
     value <- team_plot_instance_validate(value)
     resolved <- team_plot_instance_source(value$source); spec <- resolved$spec; id <- value$id
+    # Show the tab that holds this plot. A copy starts from its source view's
+    # settings, whose open tab is usually another one; modules render only the
+    # open tab, so the copy's own plot (or the renderUI that builds it) never came.
+    layout <- tryCatch(team_plot_instance_layout(value$source),error=function(e)list(wrappers=character(),tabs=list()))
+    for (key in names(layout$tabs)) value$inputs[[key]] <- layout$tabs[[key]]
+    for (key in names(team_plot_instance_shown_by[[value$source]])) value$inputs[[key]] <- team_plot_instance_shown_by[[value$source]][[key]]
+    # Composition donuts accept only percentage value modes: the module rewrites
+    # an intensity mode on its Donutplot tab (R/modules/5_barchart_module.R, the
+    # barValueMode observer: Normalized* -> "Normalized (%)", else "Absolute (%)").
+    # A copy started from the bar view carried the intensity mode, which its
+    # control can never take, so it never settled. Apply the module's own rule.
+    if (identical(resolved$family,'barchart') && startsWith(resolved$output,'donutPlot')) {
+      mode <- value$inputs$barValueMode; if (is.list(mode)) mode <- unlist(mode,use.names=FALSE)
+      if (is.character(mode) && length(mode)==1L && !mode %in% c('Absolute (%)','Normalized (%)')) value$inputs$barValueMode <- if (grepl('Normalized',mode)) 'Normalized (%)' else 'Absolute (%)'
+    }
+    if (!resolved$family %in% c('team_cell','results_dashboard')) {
+      unhosted <- tryCatch(team_plot_instance_unhosted_ids(resolved$family),error=function(e)character())
+      value$inputs <- value$inputs[!names(value$inputs) %in% unhosted]
+    }
     if (!exists(id,active,inherits=FALSE)) {
       if(length(ls(active))>=160L)stop('This session has created 160 independent plots. Save the workspace and reopen it to continue.',call.=FALSE)
       insert_host(id, resolved, spec)
       result <- NULL
+      fallback <- list()
+      if (!identical(resolved$family,'results_dashboard')) {
+        fallback <- tryCatch(team_plot_instance_input_defaults(resolved$family),error=function(e)list())
+        for (key in intersect(names(value$inputs),names(fallback))) {
+          saved <- value$inputs[[key]]; if (is.list(saved)) saved <- unlist(saved,use.names=FALSE)
+          fallback[[key]] <- if (length(saved)) saved else NULL
+        }
+      }
+      reported <- FALSE
+      on_error <- function(e) {
+        if (reported) return(invisible())
+        reported <<- TRUE
+        session$sendCustomMessage('team-canvas-instance-error',list(id=id,message=paste0('An independent plot stopped after an error in its analysis (',conditionMessage(e),'). Other plots and the session keep working; remove it or add it again.')))
+      }
+      team_plot_instance_guarded(session,id,fallback,on_error,{
       if (identical(resolved$family,'results_dashboard')) {
         dashboard <- shiny::moduleServer(id,function(input,output,session) results_dashboard_module_server(team_dashboard_instance_input(input,value$inputs),output,session,dashboard_data))
       } else {
@@ -220,6 +478,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         if (isTRUE(spec$colors)) args$global_color_map <- shiny::reactive(shared_data$color_maps())
         result <- do.call(get(spec$server,mode='function'),args)
       }
+      })
       assign(id,list(source=value$source,dashboard=if(identical(resolved$family,'results_dashboard'))dashboard else NULL,result=result,parked=FALSE),active)
     } else if (!identical(get(id,active)$source,value$source)) stop('Canvas instance namespace already belongs to another plot.',call.=FALSE)
     else if (isTRUE(get(id,active)$parked)) { entry <- get(id,active); insert_host(id,resolved,spec); entry$parked <- FALSE; assign(id,entry,active) }
@@ -228,6 +487,9 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     # even when the browser last reported the parked source as hidden. Sibling
     # family outputs retain Shiny's normal suspension policy.
     shiny::outputOptions(output,paste0(id,'-',resolved$output),suspendWhenHidden=FALSE)
+    # The renderUI outputs that build this plot sit in panes the settings drawer
+    # keeps hidden; they must run for the plot to exist at all.
+    for (wrapper in layout$wrappers) tryCatch(shiny::outputOptions(output,paste0(id,'-',wrapper),suspendWhenHidden=FALSE),error=function(e)NULL)
     # Seed the saved settings into the new host's controls in this same flush, so
     # the browser's first values for the copy are its own (never the UI defaults)
     # and each output is computed once from them. The browser still checks and
@@ -289,10 +551,17 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         !grepl('^tcinstance_[a-z0-9_]{1,80}$',id) || !exists(id,active,inherits=FALSE)) return()
     entry <- get(id,active,inherits=FALSE); resolved <- team_plot_instance_source(entry$source)
     shiny::outputOptions(output,paste0(id,'-',resolved$output),suspendWhenHidden=TRUE)
+    for (wrapper in tryCatch(team_plot_instance_layout(entry$source)$wrappers,error=function(e)character())) tryCatch(shiny::outputOptions(output,paste0(id,'-',wrapper),suspendWhenHidden=TRUE),error=function(e)NULL)
     shiny::removeUI(selector=paste0('#',id,'_host'),immediate=TRUE,session=session)
     entry$parked <- TRUE; assign(id,entry,active); stop_settling(id)
   },ignoreInit=TRUE)
   session$userData$team_canvas_instances_create <- create
+  # Differential plots draw a "select cohorts" placeholder until the shared
+  # differential analysis has results; the canvas chip reports that state.
+  if (is.function(shared_data$de_results)) shiny::observe({
+    ready <- tryCatch(!is.null(shared_data$de_results()),error=function(e)FALSE)
+    session$sendCustomMessage('team-canvas-de-state',list(ready=isTRUE(ready)))
+  })
   shiny::observeEvent(input$team_canvas_instance_create,{
     request <- input$team_canvas_instance_create
     tryCatch({
