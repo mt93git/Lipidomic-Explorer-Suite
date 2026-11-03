@@ -5,6 +5,8 @@ find_assignment <- function(node, target) {
   if (is.call(node) && identical(node[[1]], as.name('<-')) &&
       is.call(node[[2]]) && identical(node[[2]][[1]], as.name('$')) &&
       identical(as.character(node[[2]][[3]]), target)) return(node)
+  if (is.call(node) && identical(node[[1]], as.name('<-')) &&
+      is.symbol(node[[2]]) && identical(as.character(node[[2]]), target)) return(node)
   if (is.recursive(node)) {
     for (index in seq_along(node)) {
       child <- tryCatch(node[[index]], error = function(e) NULL)
@@ -24,6 +26,7 @@ render_container <- function(avg, sd) {
   env$input <- list(condenseRows = avg, condenseRowsSD = sd)
   env$ns <- shiny::NS('heatmap')
   env$shared_data <- list(de_contrast_info = function() list(ref = 'control', comp = 'treated'))
+  eval(find_assignment(module_expr, 'filtered_heatmap_ui'), envir = env)
   htmltools::renderTags(eval(container_body, envir = env))$html
 }
 for (frontend in c('R/modules/4_heatmap_module.R', 'R/frontends/team/modules-ui.R')) {

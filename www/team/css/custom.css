@@ -1,3 +1,4 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
 /* ==============================================================================
    DOMAIN-ANCHORED BIOLOGICAL DESIGN SYSTEM TOKENS (OPTION 1)
    ============================================================================== */
@@ -267,7 +268,7 @@
       /* Dedicated Scrollable Viewport for Structural Module (Dot Plots, Violin Plots, etc.) */
       /* Match only the Structural viewport owned by this layout.
          A descendant match also clips the app shell while this module is hidden. */
-      .bslib-sidebar-layout > .main:has(> .structural-main-scroll-viewport) {
+      .bslib-sidebar-layout > .main:is(.ts-has-structural-viewport,.structural-main-scroll-viewport) {
         overflow: hidden !important;
         padding-bottom: 8px !important;
       }

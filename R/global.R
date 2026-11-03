@@ -1306,6 +1306,7 @@ assign("render_tab_intro_card", render_tab_intro_card, envir = .GlobalEnv)
 
 # --- 3. SOURCE MODULES & OTHER R FILES ---
 # Load Modules
+source("R/core/hooks.R")
 source("R/utils_lipid_genes.R")
 source("R/utils_data.R")
 source("R/utils_preparation.R")

@@ -9,6 +9,8 @@ end <- grep('^    import_status <- reactiveVal',txt)
 stopifnot(length(start)==1L,length(end)==1L,start<end)
 env <- new.env(parent=globalenv())
 env$all_numeric_columns <- function() c('S1','S2')
+env$external_metadata <- function() NULL
+env$is_restoring <- function() FALSE
 env$allParsedMetadata <- function() data.frame(FullName=c('S1','S2'),Group1=c('old1','old2'),Group2='old tissue',Replicate='1',PatientNumber='none',TimePoint='none',stringsAsFactors=FALSE)
 eval(parse(text=paste(txt[start:(end-1L)],collapse='\n')),env)
 stopifnot(!env$team_metadata_snapshot_present(NULL), !env$team_metadata_snapshot_present(list()),

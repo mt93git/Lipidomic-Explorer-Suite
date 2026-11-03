@@ -30,6 +30,7 @@ Imports:
     purrr,
     zip,
     jsonlite,
+    xml2,
     nipals,
     htmltools,
     htmlwidgets,
@@ -69,6 +70,8 @@ Suggests:
     openxlsx,
     writexl,
     rstudioapi,
+    filelock,
+    httr,
     httr2,
     future,
     promises

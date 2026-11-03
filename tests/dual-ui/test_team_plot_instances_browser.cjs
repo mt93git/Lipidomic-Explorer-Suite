@@ -1,0 +1,37 @@
+// Run against the focused real Shiny fixture: Rscript tests/dual-ui/fixture_team_plot_instances_app.R
+const {chromium}=require('../browser/ci/node_modules/playwright');const assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch();const page=await browser.newPage({viewport:{width:1600,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));try{
+ await page.goto('http://127.0.0.1:43999');await page.waitForFunction(()=>window.TeamCanvas&&window.Shiny?.shinyapp?.$inputValues['results_dashboard-violin_lipid']);
+ await page.evaluate(()=>{window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:true,pending:false,running:false,revision:1}}));Shiny.setInputValue('results_dashboard-top_n',15);document.getElementById('results_dashboard-top_n').value='15';});
+ await page.evaluate(()=>TeamCanvas.addCatalogPlot('results_dashboard-plot_violin'));
+ await page.waitForFunction(()=>document.querySelectorAll('.tc-node[data-plot-id*="tcinstance_"]').length===1);
+ let id=await page.locator('.tc-node').first().getAttribute('data-plot-id');let ns=id.slice(0,id.indexOf('-'));
+ assert.match(await page.locator('.tc-node .rd-violin-card').textContent(),/Choose the sample grouping in Data & settings/,'canvas copy points to its own controls');
+ await page.waitForFunction(id=>document.getElementById(id)?.data?.length>0,id);
+ await page.locator(`.tc-node[data-plot-id="${id}"]`).locator('.tc-settings summary').click();
+ await page.locator(`.tc-node[data-plot-id="${id}"]`).getByLabel('Plot title',{exact:true}).fill('Copied appearance');
+ await page.waitForFunction(id=>document.getElementById(id)?._fullLayout?.title?.text==='Copied appearance',id);
+ const original=await page.evaluate(()=>({input:Shiny.shinyapp.$inputValues['results_dashboard-violin_lipid'],data:document.getElementById('results_dashboard-plot_violin').data}));
+ await page.evaluate(id=>TeamCanvas.duplicatePlot(id),id);await page.waitForFunction(()=>document.querySelectorAll('.tc-node').length===2);
+ const id2=await page.locator('.tc-node').nth(1).getAttribute('data-plot-id'),ns2=id2.slice(0,id2.indexOf('-'));
+ await page.waitForFunction(id=>document.getElementById(id)?.data?.length>0,id2);
+ await page.waitForFunction(id=>document.getElementById(id)?._fullLayout?.title?.text==='Copied appearance',id2);
+ await page.locator(`.tc-node[data-plot-id="${id2}"]`).getByRole('button',{name:'Data & settings',exact:true}).click();
+ assert.equal(await page.locator('.tc-instance-host.is-open').getAttribute('data-instance-id'),ns2);
+ await page.evaluate(ns=>{let el=document.getElementById(ns+'-violin_lipid');el.selectize.setValue('PE(36:2)');},ns2);
+ await page.waitForFunction(id=>document.getElementById(id)?.data?.some(t=>t.y?.some(y=>Math.abs(y-Math.log10(50))<1e-10)),id2);
+ let state=await page.evaluate(()=>TeamCanvas.serialize());assert.equal(state.nodes.length,2);assert.equal(state.nodes[0].instance.inputs.top_n,15);assert.equal(state.nodes[0].visual.plotTitle,'Copied appearance');assert.equal(state.nodes[1].instance.inputs.violin_lipid,'PE(36:2)');assert.equal(state.nodes[0].instance.inputs.violin_lipid,'PC(34:1)');
+ const current=await page.evaluate(()=>({input:Shiny.shinyapp.$inputValues['results_dashboard-violin_lipid'],data:document.getElementById('results_dashboard-plot_violin').data}));assert.deepEqual(current,original);
+ await page.evaluate(state=>TeamCanvas.restore(state),state);await page.waitForFunction(()=>document.querySelectorAll('.tc-node').length===2);await page.waitForTimeout(800);
+ let restored=await page.evaluate(()=>TeamCanvas.serialize());assert.equal(restored.nodes[1].instance.inputs.violin_lipid,'PE(36:2)');assert.equal(restored.nodes[0].instance.inputs.violin_lipid,'PC(34:1)');
+ await page.reload();await page.waitForFunction(()=>window.TeamCanvas&&window.Shiny?.shinyapp?.$inputValues['results_dashboard-violin_lipid']);
+ await page.evaluate(state=>{window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:true,pending:false,running:false,revision:1}}));TeamCanvas.restore(state);},state);
+ await page.waitForFunction(()=>document.querySelectorAll('.tc-node').length===2);
+ await page.waitForFunction(ids=>ids.every(id=>document.getElementById(id)?.data?.length>0),[id,id2]);
+ const reopened=await page.evaluate(()=>TeamCanvas.serialize());assert.equal(reopened.nodes[1].instance.inputs.violin_lipid,'PE(36:2)');assert.equal(reopened.nodes[0].instance.inputs.violin_lipid,'PC(34:1)');
+ await page.evaluate(id=>TeamCanvas.duplicatePlot(id),id2);await page.waitForFunction(()=>document.querySelectorAll('.tc-node').length===3);
+ const id3=await page.locator('.tc-node').nth(2).getAttribute('data-plot-id');
+ await page.waitForFunction(id=>document.getElementById(id)?.data?.some(t=>t.y?.some(y=>Math.abs(y-Math.log10(50))<1e-10)),id3);
+ const duplicate=await page.evaluate(()=>TeamCanvas.serialize());assert.equal(duplicate.nodes[2].instance.inputs.violin_lipid,'PE(36:2)');
+ assert.equal(errors.length,0,errors.join(';'));console.log('PASS real browser Add, Duplicate, independent violin input/data, in-canvas settings panel, copied appearance, numeric settings, original unchanged, checkpoint restore in current and fresh sessions',JSON.stringify(restored.nodes.map(n=>({id:n.id,lipid:n.instance.inputs.violin_lipid}))));
+ }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

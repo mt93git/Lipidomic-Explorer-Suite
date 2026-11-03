@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const src=fs.readFileSync('www/team/js/canvas.js','utf8');
+const fn=src.slice(src.indexOf('  function preparationSnapshotStatus('),src.indexOf('  function logicalOutputDimension('));
+let valid=true;const c={guard:()=>valid};vm.createContext(c);vm.runInContext(fn,c);
+const caption={textContent:'Frozen figure from the current prepared result.'},buttons=[{disabled:false},{disabled:false}],classes=new Set();
+const r={snapshot:{stale:false,archived:false,preparationRevision:1,preparationGeneration:1,renderGeneration:1},node:{classList:{add:x=>classes.add(x),remove:x=>classes.delete(x)}},preview:{querySelector:()=>caption,querySelectorAll:()=>buttons},visual:{editor:{layout:{'title.text':'kept'}}}};
+c.preparationSnapshotStatus(r,false);assert(classes.has('tc-stale'));assert(buttons.every(x=>x.disabled));assert.match(caption.textContent,/pending changes/);assert(!r.snapshot.stale);
+c.preparationSnapshotStatus(r,true);assert(!classes.has('tc-stale'));assert(buttons.every(x=>!x.disabled));assert.equal(caption.textContent,'Frozen figure from the current prepared result.');assert.equal(r.visual.editor.layout['title.text'],'kept');
+c.preparationSnapshotStatus(r,false);r.snapshot.stale=true;valid=false;c.preparationSnapshotStatus(r,true);assert(classes.has('tc-stale'));assert(buttons.every(x=>x.disabled));
+console.log('PASS pending preparation visibly disables frozen export; unchanged cancellation restores it; stale result stays blocked');

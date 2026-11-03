@@ -28,6 +28,16 @@ for (ui_name in names(modules)) {
                                  warn = FALSE), collapse = '\n')
   matches <- regmatches(server_text, gregexpr(server_pattern, server_text, perl = TRUE))[[1]]
   provided <- if (length(matches)) unique(sub(server_pattern, '\\1', matches, perl = TRUE)) else character()
+  if (identical(ui_name, 'heatmap_ui')) {
+    # Team's "heatmap_container_outputs" hook (hooks/heatmap.R) adds the
+    # <name>_average and <name>_sd cards for each container the module passes it.
+    hook_pattern <- 'lipidomic_hook\\("heatmap_container_outputs"\\)\\(output,\\s*"([[:alnum:]_]+)"'
+    hooked <- sub(hook_pattern, '\\1', regmatches(server_text, gregexpr(hook_pattern, server_text, perl = TRUE))[[1]], perl = TRUE)
+    team_hook <- paste(readLines('R/frontends/team/hooks/heatmap.R', warn = FALSE), collapse = '\n')
+    stopifnot(length(hooked) == 2L, grepl('paste0(name, "_average")', team_hook, fixed = TRUE),
+      grepl('paste0(name, "_sd")', team_hook, fixed = TRUE))
+    provided <- c(provided, paste0(hooked, '_average'), paste0(hooked, '_sd'))
+  }
   missing <- setdiff(requested, provided)
   if (length(missing)) stop(ui_name, ': missing server outputs: ', paste(missing, collapse = ', '))
 }

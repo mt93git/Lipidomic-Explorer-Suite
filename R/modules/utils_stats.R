@@ -994,7 +994,7 @@ get_stats_console_method_summary <- function(shared_data) {
 #'
 #' @param shared_data Reactive shared data object
 #' @return Shiny tagList or NULL
-render_de_not_run_banner <- function(shared_data) {
+render_de_not_run_banner_base <- function(shared_data) {
   # Case 1: Differential Expression has not been run or comparison groups not chosen
   if (is.null(shared_data$de_results()) || is.null(shared_data$de_contrast_info())) {
     choices <- tryCatch(
@@ -1302,6 +1302,11 @@ render_de_not_run_banner <- function(shared_data) {
   }
   
   return(NULL)
+}
+
+# Hook "de_banner"(banner, shared_data = ) -> banner. Classic: the banner above, unchanged.
+render_de_not_run_banner <- function(shared_data) {
+  lipidomic_hook("de_banner")(render_de_not_run_banner_base(shared_data), shared_data = shared_data)
 }
 
 

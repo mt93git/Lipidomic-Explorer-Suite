@@ -1,0 +1,54 @@
+.tw-simple-review #guide-run-controls { display:none; }
+.tw-review-pca-summary { display:grid; grid-template-columns:minmax(0,2fr) minmax(240px,1fr); gap:20px; align-items:start; }
+.tw-review-plot-wrap { position:relative; min-width:0; }
+.tw-review-popover { position:absolute; z-index:20; left:var(--review-popover-left,12px); top:var(--review-popover-top,24px); width:min(280px,calc(100% - 24px)); padding:16px; border:1px solid #dce2e5; border-radius:12px; background:#fff; color:#253b47; box-shadow:0 8px 28px #253b4729; }
+.tw-review-popover p { font-size:12px; line-height:1.45; margin:8px 0; }
+.tw-review-popover .shiny-input-container { width:100%; }
+.tw-review-popover-actions { display:flex; gap:8px; }
+.tw-review-statistics { padding:14px; background:#f6f9fa; border:1px solid #e2e9ec; border-radius:10px; }
+.tw-review-statistics h4 { font-size:15px; margin:0 0 10px; }
+.tw-review-statistics h5 { font-size:13px; margin:14px 0 6px; }
+.tw-review-stats-table { width:100%; font-size:12px; border-collapse:collapse; }
+.tw-review-stats-table th,.tw-review-stats-table td { padding:6px 4px; border-bottom:1px solid #e2e9ec; }
+.tw-review-stats-table th { text-align:left; font-weight:500; }
+.tw-review-stats-table td { text-align:right; }
+.tw-review-stats-scale { font-size:11px; line-height:1.4; margin-top:8px; }
+@media(max-width:800px) { .tw-review-pca-summary {grid-template-columns:1fr;} }
+
+/* Team Review: one visual workspace; data and methods are secondary disclosures. */
+body.team-workspace-app[data-tw-screen="review-single"] #team-workspace{max-width:1280px}
+body.team-workspace-app .tw-simple-review{max-width:1320px;width:100%;padding:0 20px 24px;gap:10px}
+body.team-workspace-app .tw-review-board{display:grid;grid-template-columns:minmax(270px,300px) minmax(0,1fr);gap:16px;align-items:start;min-width:0}
+body.team-workspace-app .tw-review-board>.guide-panel{margin:0;padding:18px 20px;min-width:0}
+body.team-workspace-app .tw-review-board .tw-review-detection{display:block}
+body.team-workspace-app .tw-review-board .tw-review-detection>.shiny-input-container{max-width:none;width:100%!important;margin:0}
+body.team-workspace-app .tw-review-board .tw-review-statistics{margin-top:18px;padding:16px 0 0;border:0;border-top:1px solid var(--lab-line,#dce4eb);border-radius:0;background:#fff}
+body.team-workspace-app .tw-review-board .tw-review-statistics h4{font-size:14px;margin:0 0 8px}
+body.team-workspace-app .tw-review-board .tw-review-stats-table th,body.team-workspace-app .tw-review-board .tw-review-stats-table td{padding:5px 0}
+body.team-workspace-app .tw-review-board .tw-review-stats-table th{padding-right:8px}
+body.team-workspace-app .tw-review-board .tw-review-pca>h3{margin:0 0 8px;font-size:17px}
+body.team-workspace-app .tw-review-board #qc_pca_tab-guided_qc_status p{font-size:12px;line-height:1.4;margin:4px 0 8px}
+body.team-workspace-app .tw-review-board .plot-export-bar{margin:4px 0;padding:0}
+body.team-workspace-app .tw-review-board .tw-review-pca details{margin-top:8px}
+body.team-workspace-app .tw-simple-review>.tw-review-table,body.team-workspace-app .tw-simple-review>.tw-review-advanced{padding:12px 18px}
+body.team-workspace-app .tw-review-table>summary,body.team-workspace-app .tw-review-advanced>summary{min-height:24px;color:var(--lab-blue,#2d5f8a);font-size:13px;cursor:pointer}
+body.team-workspace-app .tw-review-table[open]>summary{margin-bottom:14px}
+body.team-workspace-app[data-tw-screen="review-single"] #team-workspace .tw-journey{margin:0;padding:4px 0 6px}
+body.team-workspace-app[data-tw-screen="review-single"] #team-workspace .tw-journey-copy h2{font-size:26px;margin:2px 0 4px}
+body.team-workspace-app[data-tw-screen="review-single"] #team-workspace .tw-journey-copy p{margin:0;font-size:13px;max-width:640px}
+@media(max-width:1023px){
+ body.team-workspace-app .tw-review-board{grid-template-columns:1fr}
+ body.team-workspace-app .tw-review-board .tw-review-rail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+ body.team-workspace-app .tw-review-board .tw-review-statistics{margin:0;padding:0 0 0 20px;border-top:0;border-left:1px solid var(--lab-line,#dce4eb)}
+}
+@media(max-width:600px){
+ body.team-workspace-app .tw-simple-review{padding:0 0 20px}
+ body.team-workspace-app .tw-review-board .tw-review-rail{display:block}
+ body.team-workspace-app .tw-review-board .tw-review-statistics{margin:16px 0 0;padding:14px 0 0;border-left:0;border-top:1px solid var(--lab-line,#dce4eb)}
+ body.team-workspace-app .tw-review-board>.guide-panel{padding:16px}
+ body.team-workspace-app .tw-review-table>summary,body.team-workspace-app .tw-review-advanced>summary{min-height:44px;display:flex;align-items:center}
+}
+body.team-workspace-app .tw-review-table #guide_review_data{width:100%;max-width:100%;min-width:0;overflow-x:auto}
+
+body.team-workspace-app .tw-review-board .tw-review-stats-scale{font-size:11px;line-height:1.4;margin:8px 0}
+body.team-workspace-app .tw-review-board .tw-review-statistics h5{font-family:inherit;font-size:12px;margin:10px 0 4px}

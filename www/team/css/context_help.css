@@ -1,3 +1,4 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
 .lipid-help-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 24px;background:#fafaf8;border-bottom:1px solid #dce3e9;color:#162230}
 .help-companion{width:44px;height:44px;object-fit:contain;flex:none}
 .help-companion[hidden]{display:none!important}
@@ -106,3 +107,5 @@ body.companion-page-hidden .help-companion{animation-play-state:paused!important
 .companion-dock.is-yielding:not(.is-dragging) .companion-actions,.companion-dock.is-yielding:not(.is-dragging) .companion-help-label{opacity:0}
 @keyframes speech-arrive{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.companion-speech,.companion-launcher,.companion-dock.is-yielding .companion-launcher{animation:none!important;transition:none!important}}
+/* Expanded Team canvas is a fixed layer; keep the companion above it. */
+body.team-workspace-app:is(.ts-canvas-focus,#team-canvas-root.tc-focus-mode) #lipidomic-companion{z-index:10050}
