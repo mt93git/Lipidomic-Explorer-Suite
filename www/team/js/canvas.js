@@ -739,7 +739,7 @@
     else if(creationOrder.indexOf(id)<0)creationOrder.push(id);
   }
   function arrange() {
-    var nodes=Array.from(board.querySelectorAll('.tc-node')).sort(function(a,b){return creationOrder.indexOf(a.dataset.canvasOrderId)-creationOrder.indexOf(b.dataset.canvasOrderId);});
+    var nodes=Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)')).sort(function(a,b){return creationOrder.indexOf(a.dataset.canvasOrderId)-creationOrder.indexOf(b.dataset.canvasOrderId);});
     var scroll=board.closest('.tc-scroll'), scale=window.TeamCanvasViewport&&Number(window.TeamCanvasViewport.scale)>0?Number(window.TeamCanvasViewport.scale):1;
     var available=scroll?scroll.clientWidth:1320;
     if(scroll){
@@ -1578,6 +1578,8 @@
     });
     var result={version:'1',libraryHidden:state.libraryHidden,nodes:nodes};
     if (state.document != null) result.document=validateDocument(state.document,nodes);
+    // Optional canvas tabs (versioned). A bad or unknown field falls back to one tab.
+    if (state.tabs != null && window.TeamCanvasTabsModel) { var tabs=TeamCanvasTabsModel.serialize(TeamCanvasTabsModel.validate(state.tabs,nodes.map(function(n){return n.id;})),nodes.map(function(n){return n.id;})); if (tabs) result.tabs=tabs; }
     return result;
   }
   function nodeState(r) {
@@ -1592,7 +1594,9 @@
     var nodes = Array.from(records.values()).filter(function (r) { return !!r.node; }).map(nodeState).concat(Array.from(illustrations.values()).map(illustrationNodeState));
     restorePending.forEach(function (n) { nodes.push(n); });
     nodes.sort(function(a,b){return creationOrder.indexOf(a.id)-creationOrder.indexOf(b.id);});
-    var result = validateState({version:'1', libraryHidden:root.querySelector('.tc-layout').classList.contains('tc-library-hidden'), nodes:nodes, document:documentForNodes(documentState,nodes)});
+    var raw = {version:'1', libraryHidden:root.querySelector('.tc-layout').classList.contains('tc-library-hidden'), nodes:nodes, document:documentForNodes(documentState,nodes)};
+    var tabs = window.TeamCanvasTabs ? TeamCanvasTabs.serialize(nodes.map(function(n){return n.id;})) : null; if (tabs) raw.tabs = tabs;
+    var result = validateState(raw);
     if (new TextEncoder().encode(JSON.stringify(result)).length > 24 * 1024 * 1024) throw new Error('The figure workspace is too large to save. Remove or resize a saved figure.');
     return result;
   }
@@ -1600,12 +1604,14 @@
   // prepared data, frozen-image validity, or server restore messages.
   var geometryPast = [], geometryFuture = [], geometryLast = null, geometryReplay = false, geometryGesture = false;
   function geometryState() {
-    return Array.from(board.querySelectorAll('.tc-node')).map(function(node) {
+    var state=Array.from(board.querySelectorAll('.tc-node')).map(function(node) {
       return {node:node, left:node.style.left, top:node.style.top, width:node.style.width, height:node.style.height};
     });
+    state.tabs=window.TeamCanvasTabs?TeamCanvasTabs.snapshot():null;
+    return state;
   }
   function sameGeometry(a,b) {
-    return a.length===b.length && a.every(function(value,i) { return value.node===b[i].node && ['left','top','width','height'].every(function(key){return value[key]===b[i][key];}); });
+    return a.tabs===b.tabs && a.length===b.length && a.every(function(value,i) { return value.node===b[i].node && ['left','top','width','height'].every(function(key){return value[key]===b[i][key];}); });
   }
   function rememberGeometry() {
     if (!board || geometryReplay || geometryGesture) return;
@@ -1625,6 +1631,7 @@
     if (!from.length) return false;
     var next=from.pop(); to.push(geometryLast); geometryReplay=true;
     try {
+      if(next.tabs && window.TeamCanvasTabs && next.tabs!==geometryLast.tabs)TeamCanvasTabs.applySnapshot(next.tabs);
       next.forEach(function(value){['left','top','width','height'].forEach(function(key){value.node.style[key]=value[key];});});
       // New figures remain alive when undoing the layout change caused by an
       // addition. Park them in free rows below all restored surviving cards.
@@ -1633,7 +1640,7 @@
       geometryState().forEach(function(value){if(retained.has(value.node))return;value.node.style.left='30px';value.node.style.top=bottom+'px';bottom+=value.node.offsetHeight+30;});
       geometryLast=geometryState(); expandBoard(); records.forEach(function(record){if(record.node)resize(record);}); changed();
     } finally { geometryReplay=false; }
-    tell(redo?'Redid canvas position or size.':'Undid canvas position or size.'); return true;
+    tell(redo?'Redid the last canvas change.':'Undid the last canvas change.'); return true;
   }
   function changed() {
     if (applyingRestore) return;
@@ -1739,7 +1746,9 @@
     state.nodes.forEach(function(n){if(n.instance)requestInstance(n.instance.source,null,n);});
     syncEpoch++; hydratePending(); expandBoard();
     // Saved geometry lets the viewport frame the workspace before the plots arrive.
-    window.dispatchEvent(new CustomEvent('team-canvas-restored', {detail:{nodes:state.nodes.map(function (n) { return {x:n.x, y:n.y, width:n.width, height:n.height}; })}}));
+    // Tabs first: the camera frames the active tab's cards only (all cards without tabs).
+    var shownFirst = window.TeamCanvasTabs ? TeamCanvasTabs.restore(state.tabs || null, state.nodes.map(function (n) { return n.id; })) : null;
+    window.dispatchEvent(new CustomEvent('team-canvas-restored', {detail:{nodes:state.nodes.filter(function (n) { return !shownFirst || shownFirst.indexOf(n.id) >= 0; }).map(function (n) { return {x:n.x, y:n.y, width:n.width, height:n.height}; })}}));
     window.dispatchEvent(new Event('team-document-restored'));
     state.nodes.filter(function (n) { return n.kind === 'illustration'; }).forEach(function (n) { restorePending.delete(n.id); if(!addIllustration(n.assetId,n)) restoreStatus('failed'); });
     restoreBuilding = false;
@@ -1889,6 +1898,9 @@
         var queuedNames=Array.from(pendingAdds.values()).map(function (pending) { return pending.label; });
         return {state:state,ready:ready,settled:settled,blank:!hasContent,usableIds:usableIds,unusable:unusable,archived:nodes.filter(function (r) { return !!(r.snapshot && r.snapshot.archived); }).length,message:ready?'Finished figures are ready for preview.':instanceRequests.size?'Independent plots are still loading. Wait before opening the preview.':shinyBusy?'The analysis is updating. Wait for it to finish before previewing.':pendingAdds.size?'Queued add' + (queuedNames.length===1?'':'s') + ' not ready: ' + queuedNames.join(', ') + '. Cancel in the catalog or wait up to 90 seconds.':restorePending.size?'Saved plots are waiting for their analysis to load.':!hasContent?'Add a plot or drawing before opening the preview.':nodes.some(function (r) { return !r.snapshot; })?'Finish every canvas plot before opening the preview.':'A finished figure is stale or no longer valid. Review it before previewing.'};
       },
+      // Canvas tabs: snapshot before a tab edit, then save (navigation only saves).
+      tabsWillChange: function () { rememberGeometry(); },
+      tabsChanged: function (navigation) { if (navigation) { if (!applyingRestore) { syncEpoch++; window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:{epoch:syncEpoch}})); if (!checkpointActive) { clearTimeout(syncTimer); syncTimer = setTimeout(function () { sendBackground(); }, 350); } } return; } changed(); },
       deselect: function () { if (!selectedRecord) return; selectedRecord = null; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:null})); },
       selected: function () { return selectedRecord && selectedRecord.node ? {id:selectedRecord.el.id, title:selectedRecord.displayTitle || selectedRecord.label} : null; },
       getInsight: function(id){var r=records.get(id),saved=restorePending.get(id),note=saved?saved.insight:r?r.insight:undefined;return note?validateInsight(note):saved||r?null:undefined;},

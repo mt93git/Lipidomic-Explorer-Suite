@@ -1,5 +1,16 @@
 # Optional Team workspace. All plot outputs remain in the existing Shiny session.
 team_canvas_ui <- function() {
+  # Canvas tabs ship with the canvas markup so the shared page wiring stays untouched.
+  shiny::tagList(team_canvas_section(), team_canvas_tabs_assets())
+}
+
+team_canvas_tabs_assets <- function() {
+  if (!file.exists("www/team/js/canvas_tabs.js")) return(NULL)
+  shiny::tagList(shiny::includeCSS("www/team/css/canvas_tabs.css"),
+    shiny::includeScript("www/team/js/canvas_tabs_model.js"), shiny::includeScript("www/team/js/canvas_tabs.js"))
+}
+
+team_canvas_section <- function() {
   shiny::tags$section(id = "team-canvas-root", class = "tc-workspace", `aria-label` = "Figure canvas",
     shiny::tags$div(class = "tc-intro",
       shiny::tags$div(shiny::tags$h2("Your figure canvas"),

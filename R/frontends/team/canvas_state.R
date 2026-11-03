@@ -378,6 +378,39 @@ team_canvas_document <- function(document,node_ids) {
   document
 }
 
+# Optional canvas tabs (presentation only). Lenient by design: an unknown version
+# or a malformed field is dropped, so the workspace opens as one tab with every
+# card in place instead of failing. Mirrors www/team/js/canvas_tabs_model.js.
+team_canvas_tabs <- function(value, node_ids) {
+  tryCatch({
+    value <- team_canvas_object(value, c("version", "active", "tabs", "figure"), c("version", "active", "tabs"))
+    if (!identical(value$version, "1")) return(NULL)
+    if (!is.list(value$tabs) || !is.null(names(value$tabs)) || !length(value$tabs) || length(value$tabs) > 20L) return(NULL)
+    ids <- function(x) {
+      if (is.null(x)) return(list())
+      if (!is.list(x) || !is.null(names(x)) || length(x) > team_canvas_limits$nodes) team_canvas_fail()
+      out <- character()
+      for (id in x) { id <- team_canvas_string(id, 160L, FALSE); if (id %in% node_ids && !id %in% out) out <- c(out, id) }
+      as.list(out)
+    }
+    seen <- character(); owned <- character()
+    tabs <- lapply(value$tabs, function(tab) {
+      tab <- team_canvas_object(tab, c("id", "name", "nodes"), c("id", "name", "nodes"))
+      id <- team_canvas_string(tab$id, 44L, FALSE)
+      if (!grepl("^tab-[A-Za-z0-9_-]{1,40}$", id) || id %in% seen) team_canvas_fail()
+      seen <<- c(seen, id)
+      name <- trimws(team_canvas_string(tab$name, 40L, FALSE)); if (!nzchar(name)) team_canvas_fail()
+      nodes <- Filter(function(n) !n %in% owned, ids(tab$nodes)); owned <<- c(owned, unlist(nodes))
+      list(id = id, name = name, nodes = nodes)
+    })
+    missing <- setdiff(node_ids, owned)
+    if (length(missing)) tabs[[1]]$nodes <- c(tabs[[1]]$nodes, as.list(missing))
+    active <- team_canvas_string(value$active, 44L, FALSE); if (!active %in% seen) active <- seen[[1]]
+    figure <- if (is.null(value$figure)) list() else team_canvas_object(value$figure, c("deselected", "order"))
+    list(version = "1", active = active, tabs = tabs, figure = list(deselected = ids(figure$deselected), order = ids(figure$order)))
+  }, error = function(e) NULL)
+}
+
 # Per-figure literature notes are presentation metadata, never analysis inputs.
 team_canvas_insight <- function(value) {
   fields <- c("paragraph", "context_label", "searched_at", "fingerprint", "sources", "stale")
@@ -493,7 +526,7 @@ team_canvas_statistics <- function(value) {
 }
 
 team_canvas_validate <- function(state, image_cache = NULL) {
-  state <- team_canvas_object(state, c("version", "libraryHidden", "nodes", "document"), c("version", "libraryHidden", "nodes"))
+  state <- team_canvas_object(state, c("version", "libraryHidden", "nodes", "document", "tabs"), c("version", "libraryHidden", "nodes"))
   if (!identical(state$version, "1") && !identical(state$version, 1) && !identical(state$version, 1L)) team_canvas_fail("Unsupported figure canvas version.")
   hidden <- team_canvas_boolean(state$libraryHidden)
   if (!is.list(state$nodes) || !is.null(names(state$nodes)) || length(state$nodes) > team_canvas_limits$nodes) team_canvas_fail("A canvas supports at most 40 figures.")
@@ -573,6 +606,7 @@ team_canvas_validate <- function(state, image_cache = NULL) {
   })
   result <- list(version = "1", libraryHidden = hidden, nodes = unname(nodes))
   if (!is.null(state$document)) result$document <- team_canvas_document(state$document,ids)
+  if (!is.null(state$tabs)) { tabs <- team_canvas_tabs(state$tabs, ids); if (!is.null(tabs)) result$tabs <- tabs }
   if (nchar(team_canvas_json(result), type = "bytes") > team_canvas_limits$bytes) team_canvas_fail("Figure canvas state exceeds 24 MiB.")
   result
 }

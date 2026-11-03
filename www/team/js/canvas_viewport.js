@@ -114,7 +114,7 @@
       setAttr(map,'viewBox','0 0 '+w+' '+h);
       // Minimap rectangles are reused and updated in place; only a change in the number
       // of cards adds or removes one.
-      var cards=board.querySelectorAll('.tc-node');
+      var cards=board.querySelectorAll('.tc-node:not(.tc-tab-hidden)');
       while(nodes.childElementCount>cards.length)nodes.lastElementChild.remove();
       while(nodes.childElementCount<cards.length){
         var rect=document.createElementNS('http://www.w3.org/2000/svg','rect');rect.setAttribute('rx',12);
@@ -141,7 +141,7 @@
     // deliberately an imperative operation: restoring a checkpoint must retain
     // its saved positions and must not steal focus one node at a time.
     function focusNode(node, options) {
-      if (!node || !node.isConnected || !scroll.clientWidth || !scroll.clientHeight) return;
+      if (!node || !node.isConnected || node.classList.contains('tc-tab-hidden') || !scroll.clientWidth || !scroll.clientHeight) return;
       board.querySelectorAll('.tc-node.tc-camera-target').forEach(function(other){other.classList.remove('tc-camera-target');});
       node.classList.add('tc-camera-target');
       var body=node.querySelector('.tc-content');
@@ -212,12 +212,12 @@
         }
         reveal(); return;
       }
-      var target=board.querySelector('.tc-node.is-selected') || board.querySelector('.tc-node');
+      var target=board.querySelector('.tc-node.is-selected') || board.querySelector('.tc-node:not(.tc-tab-hidden)');
       if (!target) { reveal(); return; }
       restoreNeedsFocus=false;
       // Several figures: open showing all of them. Cards settle their size as
       // plots render, so fit again once unless the user has moved the view.
-      if (board.querySelectorAll('.tc-node').length > 1 && !board.querySelector('.tc-node.is-selected')) {
+      if (board.querySelectorAll('.tc-node:not(.tc-tab-hidden)').length > 1 && !board.querySelector('.tc-node.is-selected')) {
         fitAll(); userMoved=false;
         setTimeout(function(){ if(!userMoved) fitAll(); }, 2500);
         reveal(); return;
@@ -255,7 +255,7 @@
     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
     // Height covered at the top of the viewport by the floating toolbar plus room for its notices.
     function toolbarReserve(){var bar=root.querySelector('.tc-toolbar');return bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+48:16;}
-    function nodeRects(){return Array.from(board.querySelectorAll('.tc-node')).map(function(n){return {x:n.offsetLeft,y:n.offsetTop,width:n.offsetWidth,height:n.offsetHeight};});}
+    function nodeRects(){return Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)')).map(function(n){return {x:n.offsetLeft,y:n.offsetTop,width:n.offsetWidth,height:n.offsetHeight};});}
     function fitAll(){fitRects(nodeRects());}
     function fitRects(items){
       if(!scroll.clientWidth||!scroll.clientHeight)return;
