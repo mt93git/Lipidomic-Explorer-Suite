@@ -22,7 +22,7 @@ rd_team_heatmap_view <- function(z, group_n) {
       colorbar=list(title='Mean z-score',orientation='h',x=0,xanchor='left',y=1.02,yanchor='bottom',lenmode='pixels',len=250,thickness=10),
       xaxis=list(title='',type='category',tickmode='array',tickvals=rownames(z),ticktext=rownames(z),
         tickangle=-90,tickfont=list(size=9),domain=c(0,nrow(z)*16/(width-230)),constrain='domain',automargin=FALSE),
-      yaxis=list(title=list(text='Sample group',standoff=20),type='category',tickmode='array',tickvals=colnames(z),ticktext=paste0(htmltools::htmlEscape(colnames(z)),' (n=',group_n,')'),
+      yaxis=list(title=list(text='Sample group',standoff=6),type='category',tickmode='array',tickvals=colnames(z),ticktext=paste0(htmltools::htmlEscape(colnames(z)),' (n=',group_n,')'),
         scaleanchor='x',scaleratio=1,constrain='domain',automargin=FALSE),margin=list(l=210,r=20,t=70,b=140,autoexpand=FALSE))
   } else {
     # Preserve a usable row height instead of compressing the entire catalog
@@ -757,8 +757,11 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     p
   })
   output$note_dist <- renderUI({
+    # Read the reactives first: inside S4 generics (BiocGenerics' format/nrow) a validate()
+    # stop is re-raised as a plain error and logged, instead of staying a silent validation.
+    d <- dist_data(); b <- base()
     sprintf("%s positive values shown; %s missing or nonpositive values omitted.",
-            format(nrow(dist_data()), big.mark = ","), format(sum(is.na(base()$log)), big.mark = ","))
+            format(nrow(d), big.mark = ","), format(sum(is.na(b$log)), big.mark = ","))
   })
 
   # Full eligible catalog. The historical __ALL__ token keeps its original

@@ -25,7 +25,7 @@ wrapped_small<-rd_team_heatmap_view(labels[1:3,,drop=FALSE],c(17L,34L))
 stopifnot(!any(grepl('<br>',wrapped_small$yaxis$ticktext,fixed=TRUE)),grepl('&lt;&amp;&gt;',wrapped_small$yaxis$ticktext[2],fixed=TRUE))
 small<-z[1:3,,drop=FALSE];v<-rd_team_heatmap_view(small,c(34L,32L))
 stopifnot(abs((v$width-v$margin$l-v$margin$r)*diff(v$xaxis$domain)/nrow(small)-16)<1e-10,
- (v$height-v$margin$t-v$margin$b)/ncol(small)==16,v$colorbar$orientation=='h',v$margin$l==210,v$yaxis$title$standoff==20)
+ (v$height-v$margin$t-v$margin$b)/ncol(small)==16,v$colorbar$orientation=='h',v$margin$l==210,v$yaxis$title$standoff==6)
 stopifnot(v$squares,identical(v$z,t(small)),identical(dim(v$text),c(2L,3L)),
  grepl('PC(3)',v$text[2,3],fixed=TRUE),grepl('SC-Pain',v$text[2,3]),
  identical(v$x,rownames(small)),identical(v$y,colnames(small)),v$yaxis$scaleanchor=='x',v$yaxis$scaleratio==1)
