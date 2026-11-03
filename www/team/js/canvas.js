@@ -339,7 +339,8 @@
       if (!group || !(group.classList.contains('shiny-input-checkboxgroup') || group.classList.contains('shiny-input-radiogroup'))) return;
       var saved = instance.inputs[key], values = (Array.isArray(saved) ? saved : saved == null ? [] : [saved]).map(String);
       var boxes = Array.from(group.querySelectorAll('input[type=checkbox],input[type=radio]'));
-      if (group.classList.contains('shiny-input-radiogroup') && !boxes.some(function (box) { return values.indexOf(box.value) >= 0; })) return;
+      // A transient render whose choices share nothing with the saved value is left alone (radio: always; checkbox: unless the saved subset is empty).
+      if ((group.classList.contains('shiny-input-radiogroup') || values.length) && !boxes.some(function (box) { return values.indexOf(box.value) >= 0; })) return;
       boxes.forEach(function (box) {
         var on = values.indexOf(box.value) >= 0;
         if (box.hasAttribute('checked') === on) return;

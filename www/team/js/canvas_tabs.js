@@ -17,6 +17,9 @@
   function tell(message) { if (status) { status.textContent = message; status.classList.add('is-visible'); } }
   // Uses the card's own Remove (or Return) action, so canvas.js cleans up as usual.
   function removeCard(id) { var n = nodeFor(id), b = n && Array.from(n.querySelectorAll('button')).find(function (x) { return /^(Remove|Return)$/.test(x.textContent.trim()); }); if (b) b.click(); }
+  // Returns the ids still on the board: a library plot whose original view changed cannot go back
+  // (canvas.js restore keeps it), so it stays on the canvas and apply() adopts it into the active tab.
+  function removeCards(ids) { ids.forEach(removeCard); return ids.filter(function (id) { return !!nodeFor(id); }); }
   function canvasApi() { return window.TeamCanvas || {}; }
   function canonical() { var c = canvasApi(); return c.creationOrder ? c.creationOrder() : nodeIds(); }
   // Picker edits (selection, order) and navigation are saved but kept out of the canvas undo.
@@ -174,10 +177,10 @@
       var moveTo = !count || (keep && keep.checked) ? (moveSelect ? moveSelect.value : others[0].id) : null;
       saveCamera(state.active); before(); var r = M.deleteTab(state, id, moveTo); if (!r.ok) { tell(r.message); closeDialog(id); return; }
       closeDialog(); delete cameras[id];
-      r.removed.forEach(removeCard);
+      var kept = removeCards(r.removed);
       if (moveTo) t.nodes.forEach(function (nid) { var n = nodeFor(nid); if (n) placeAtEnd(n, moveTo); });
       apply(); after(); requestAnimationFrame(function () { loadCamera(state.active); }); focusTab(state.active);
-      tell('Deleted tab “' + t.name + '”.' + (count ? (moveTo ? ' Its cards moved to “' + M.tabOf(state, moveTo).name + '”.' : ' Its cards were removed from the canvas.') : ''));
+      tell('Deleted tab “' + t.name + '”.' + (count ? (moveTo ? ' Its cards moved to “' + M.tabOf(state, moveTo).name + '”.' : kept.length ? ' ' + (count - kept.length) + ' of its ' + count + ' cards were removed; ' + kept.length + ' could not be returned and moved to “' + M.tabOf(state, state.active).name + '”.' : ' Its cards were removed from the canvas.') : ''));
     });
     no.addEventListener('click', function () { closeDialog(id); });
     dialog.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeDialog(id); } });
@@ -314,7 +317,7 @@
     state: function () { return M.clone(state); },
     activate: function (id) { activate(id, false); },
     add: addTab, rename: function (id, name) { before(); var r = M.rename(state, id, name); if (r.ok) after(); return r; },
-    remove: function (id, moveTo) { saveCamera(state.active); before(); var r = M.deleteTab(state, id, moveTo || null); if (r.ok) { r.removed.forEach(removeCard); apply(); after(); } return r; },
+    remove: function (id, moveTo) { saveCamera(state.active); before(); var r = M.deleteTab(state, id, moveTo || null); if (r.ok) { r.kept = removeCards(r.removed); apply(); after(); } return r; },
     duplicate: duplicate, reorder: reorder, moveCard: moveCard, copyCard: copyCard,
     // Figure page: groups by tab, the default/custom order and the selection.
     groups: function () { var ids = nodeIds(), order = canonical(); return state.tabs.map(function (t) { return {id: t.id, name: t.name, nodes: M.tabNodes(t, order).filter(function (n) { return ids.indexOf(n) >= 0; })}; }); },

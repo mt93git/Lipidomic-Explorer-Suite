@@ -108,6 +108,7 @@
   function deleteTab(state, id, moveTo) {
     if (state.tabs.length <= 1) return {ok: false, message: 'The last canvas tab cannot be deleted.'};
     var at = state.tabs.findIndex(function (t) { return t.id === id; }); if (at < 0) return {ok: false, message: 'That tab no longer exists.'};
+    if (moveTo && (moveTo === id || !state.tabs.some(function (t) { return t.id === moveTo; }))) return {ok: false, message: 'The tab chosen for the cards no longer exists.'};
     var gone = state.tabs.splice(at, 1)[0], removed = [];
     if (moveTo && moveTo !== id && state.tabs.some(function (t) { return t.id === moveTo; })) tabOf(state, moveTo).nodes.push.apply(tabOf(state, moveTo).nodes, gone.nodes);
     else removed = gone.nodes.slice();

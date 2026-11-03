@@ -31,6 +31,7 @@ const dup=r.id;
 r=M.deleteTab(s,t3,'tab-1');assert.ok(r.ok);assert.deepEqual(r.removed,[]);assert.deepEqual(M.tabOf(s,'tab-1').nodes,['plot_a','plot_c','plot_d','plot_b','plot_e']);
 M.moveNode(s,'plot_e',dup);r=M.deleteTab(s,dup,null);assert.deepEqual(r.removed,['plot_e']);
 assert.equal(M.deleteTab(M.initial(ids),'tab-1').ok,false,'the last tab cannot be deleted');
+{const z=M.initial(ids);const t2=M.addTab(z,'Two');const tid=t2.id||z.tabs[1].id;M.moveNode(z,'plot_a',tid);const r2=M.deleteTab(z,tid,'tab-gone');assert.equal(r2.ok,false,'a stale moveTo fails instead of deleting the cards');assert.ok(M.tabOf(z,tid).nodes.includes('plot_a'));}
 // Figure page: tab order then card order; custom order; selection per card and per tab.
 s=M.initial(ids);r=M.addTab(s,'Second');M.moveNode(s,'plot_a',r.id);
 assert.deepEqual(M.figureOrder(s),['plot_b','plot_c','plot_a']);

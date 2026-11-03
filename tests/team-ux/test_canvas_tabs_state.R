@@ -33,4 +33,10 @@ for (bad in list(list(version = "2", active = "tab-1", tabs = list()), list(vers
 # A tabs field without "active" opens on its first tab instead of being dropped.
 x <- old; x$tabs <- list(version = "1", tabs = list(list(id = "tab-1", name = "A", nodes = list()), list(id = "tab-2", name = "B", nodes = list())))
 na <- team_canvas_validate(x)$tabs; stopifnot(identical(na$active, "tab-1"), length(na$tabs) == 2L)
+# Names are repaired like the JS model (control characters, 40 characters); a bad figure is dropped on its own.
+x <- old; x$tabs <- list(version = "1", active = "tab-2", tabs = list(list(id = "tab-1", name = paste(rep("é", 45), collapse = ""), nodes = list()),
+  list(id = "tab-2", name = "Line\tbreak", nodes = list("results_dashboard-plot_violin"))), figure = "oops")
+rp <- team_canvas_validate(x)$tabs
+stopifnot(nchar(rp$tabs[[1]]$name) == 40L, identical(rp$tabs[[2]]$name, "Line break"), identical(rp$active, "tab-2"),
+  identical(rp$figure, list(deselected = list(), order = list())))
 cat("PASS canvas tabs state: old checkpoints unchanged, tabs round-trip, bad fields fall back to one tab\n")

@@ -399,15 +399,20 @@ team_canvas_tabs <- function(value, node_ids) {
       id <- team_canvas_string(tab$id, 44L, FALSE)
       if (!grepl("^tab-[A-Za-z0-9_-]{1,40}$", id) || id %in% seen) team_canvas_fail()
       seen <<- c(seen, id)
-      name <- trimws(team_canvas_string(tab$name, 40L, FALSE)); if (!nzchar(name)) team_canvas_fail()
+      # Same repair as cleanName() in the JS model: control characters become spaces, trim, 40 characters.
+      name <- tab$name
+      if (!is.character(name) || length(name) != 1L || is.na(name) || nchar(name, type = "bytes") > 4000L || is.na(iconv(name, to = "UTF-8"))) team_canvas_fail()
+      name <- trimws(substr(trimws(gsub("[[:cntrl:]]", " ", name)), 1L, 40L)); if (!nzchar(name)) team_canvas_fail()
       nodes <- Filter(function(n) !n %in% owned, ids(tab$nodes)); owned <<- c(owned, unlist(nodes))
       list(id = id, name = name, nodes = nodes)
     })
     missing <- setdiff(node_ids, owned)
     if (length(missing)) tabs[[1]]$nodes <- c(tabs[[1]]$nodes, as.list(missing))
     active <- if (is.character(value$active) && length(value$active) == 1L && value$active %in% seen) value$active else seen[[1]]
-    figure <- if (is.null(value$figure)) list() else team_canvas_object(value$figure, c("deselected", "order"))
-    list(version = "1", active = active, tabs = tabs, figure = list(deselected = ids(figure$deselected), order = ids(figure$order)))
+    # A malformed figure selection is dropped on its own; the tabs survive (as in the JS model).
+    figure <- tryCatch(if (is.null(value$figure)) list() else team_canvas_object(value$figure, c("deselected", "order")), error = function(e) list())
+    figure <- list(deselected = tryCatch(ids(figure$deselected), error = function(e) list()), order = tryCatch(ids(figure$order), error = function(e) list()))
+    list(version = "1", active = active, tabs = tabs, figure = figure)
   }, error = function(e) NULL)
 }
 
