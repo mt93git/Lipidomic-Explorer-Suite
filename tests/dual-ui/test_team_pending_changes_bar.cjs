@@ -112,10 +112,10 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     assert.equal(await page.locator('#shiny-notification-guard').isVisible(), true, 'a fresh design-guard warning survives the step change');
     assert.equal(await page.locator('#shiny-notification-prog').isVisible(), true, 'a progress toast survives the step change');
     await page.evaluate(() => ['guard','prog'].forEach(id => document.getElementById('shiny-notification-' + id).remove()));
-    // The kept texts are the guards' own: each one is shown by R/guided_workflow.R.
+    // The kept texts are the guards' own: each one is shown by R/frontends/team/guided_workflow.R.
     const guardsSrc = /var GUARDS=\[([\s\S]*?)\];/.exec(fs.readFileSync(path.resolve('www/team/js/pending_changes_bar.js'), 'utf8'))[1];
     const guards = [...guardsSrc.matchAll(/'([^']+)'/g)].map(m => m[1]);
-    const workflow = fs.readFileSync(path.resolve('R/guided_workflow.R'), 'utf8');
+    const workflow = fs.readFileSync(path.resolve('R/frontends/team/guided_workflow.R'), 'utf8');
     assert.equal(guards.length, 5);
     for (const g of guards) assert.ok(workflow.includes("showNotification('" + g), 'guard text is shown by guided_workflow.R: ' + g);
 

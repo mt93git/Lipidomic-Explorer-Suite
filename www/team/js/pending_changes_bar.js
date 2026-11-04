@@ -4,7 +4,7 @@
 (function(){
   'use strict';
   var SUPPRESSED=['Exclusion scheduled','Sample restored for the next preparation'];
-  // The guided design guards (R/guided_workflow.R) show one of these warnings and move the step in the
+  // The guided design guards (R/frontends/team/guided_workflow.R) show one of these warnings and move the step in the
   // same handler: a fresh one explains the step change and stays. Every other notification goes.
   var GUARDS=['Choose an existing workbook or upload abundance files in Experiment first.',
     'Statistical comparisons are unavailable because this prepared run includes synthetic averaged samples.',
