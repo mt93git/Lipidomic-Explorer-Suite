@@ -15,9 +15,6 @@ data/*.log
 data/user_uploads/*
 !data/user_uploads/.gitkeep
 
-# Companion knowledge base: files fed by the team may be copyrighted or private
-knowledge_base/library/*
-!knowledge_base/library/.gitkeep
 
 # Development Scratch & Author-Only Internal Folders (Never Push)
 scratch/
