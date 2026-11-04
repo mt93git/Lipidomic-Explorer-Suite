@@ -606,7 +606,20 @@ kb_shorten <- function(x, max_chars = 340L) {
   if (nchar(out) > max_chars + 120L) NA_character_ else out
 }
 
-kb_source_label <- function(source) paste0(sub("^.*/", "", source), "/", Sys.getenv("LIPIDOMIC_KB_ORIGIN", unset = COMPANION_KB_ORIGIN))
+# Lab transcriptions are cited as <file>/<origin>. Published literature (.pdf) is cited in APA format, taken from
+# knowledge_base/references.csv (columns file, apa); a PDF without an entry there is cited by its file name.
+kb_apa <- function() {
+  p <- file.path("knowledge_base", "references.csv")
+  if (!file.exists(p)) return(character())
+  r <- tryCatch(utils::read.csv(p, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
+  if (is.null(r) || !all(c("file", "apa") %in% names(r))) return(character())
+  stats::setNames(r$apa, r$file)
+}
+kb_source_label <- function(source) {
+  f <- sub("^.*/", "", source)
+  if (grepl("\\.pdf$", f, ignore.case = TRUE)) { a <- kb_apa(); return(if (f %in% names(a)) unname(a[[f]]) else f) }
+  paste0(f, "/", Sys.getenv("LIPIDOMIC_KB_ORIGIN", unset = COMPANION_KB_ORIGIN))
+}
 
 kb_digest <- function(rows, question) {
   q <- unique(kb_tokens(question))
@@ -615,6 +628,8 @@ kb_digest <- function(rows, question) {
     ls <- unlist(strsplit(rows$text[i], "\n+"))
     ls <- trimws(sub("^\\s*([-*+]|[0-9]+[.)])\\s+", "", ls))
     ls <- ls[nzchar(ls) & !grepl("^Diagram labels:", ls)]
+    # book text: drop figure/table captions and bibliography entries (DOI, "Nat Biotechnol 36, 316-320 (2018)")
+    ls <- ls[!grepl("^(Figure|Fig\\.|Table)\\s*[0-9]", ls) & !grepl("doi\\.org|doi:|\\([12][0-9]{3}\\)\\.?\\s*(https?:|$)", ls)]
     ls <- vapply(ls, kb_shorten, character(1), USE.NAMES = FALSE); ls <- ls[!is.na(ls) & nchar(ls) >= 25L]
     if (!length(ls)) next
     sec <- tolower(rows$section[i])
