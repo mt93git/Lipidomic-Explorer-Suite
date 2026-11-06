@@ -2959,7 +2959,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       updateCheckboxGroupInput(session, "custom_delimiters", selected = active_delims)
       
       # Perform Jaro-Winkler hierarchical clustering on column headers (Phase 2)
-      num_threads <- tryCatch({ parallel::detectCores() }, error = function(e) 1)
+      num_threads <- tryCatch({ n <- suppressWarnings(as.integer(Sys.getenv("LIPIDOMIC_STRINGDIST_THREADS", "4"))); min(parallel::detectCores(), if (is.na(n) || n < 1L) 4L else n) }, error = function(e) 1)
       if (length(unique_cols) >= 2) {
         d_mat <- stringdist::stringdistmatrix(unique_cols, method = "jw", p = 0.1, nthread = num_threads)
         hc <- hclust(d_mat, method = "ward.D2")
