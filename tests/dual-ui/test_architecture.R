@@ -74,6 +74,9 @@ team_scientific_insight_server <- record_hook("insight")
 cell_show_server <- record_hook("cell")
 companion_assistant_server <- record_hook("companion")
 team_plot_instance_arm_prewarm <- record_hook("prewarm") # plot_instances.R (W6a Canvas copy prewarm)
+# Upload interceptors (sciex_import.R, upload_formats.R, sheet_picker.R) run before the shared data module.
+team_sciex_server <- record_hook("sciex"); team_upload_formats_server <- record_hook("upload_formats")
+team_sheet_picker_server <- record_hook("sheet_picker")
 sentinel_hub <- structure(list(data_processed = function() "strict matrix",
   data_processed_allow_missing = function() "targeted prepared matrix",
   data_processed_unfiltered = function() "full applied matrix",
