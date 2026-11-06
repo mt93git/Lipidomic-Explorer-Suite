@@ -124,7 +124,7 @@
       if (host.hidden) close();
       syncHistory();
       proxies.forEach(function (p) {
-        var source = find(p.selector), disabled = !source || !!source.disabled;
+        var source = find(p.selector), disabled = !source || !!source.disabled || !!(source.closest && source.closest('.tc-free-inspector[hidden]'));
         if (p.button.disabled !== disabled) p.button.disabled = disabled;
         if (p.check) p.button.setAttribute('aria-pressed', String(!!(source && source.checked)));
       });

@@ -10,5 +10,15 @@ const assert=require('node:assert/strict');const {execFileSync}=require('node:ch
  await p.getByRole('button',{name:'Finish plot',exact:true}).click();await p.waitForSelector('.tc-snapshot');assert.equal((await state()).finished.stale,false);
  await prep({ready:true,pending:true,running:true,revision:1});assert.equal((await state()).finished.stale,false,'busy toggles do not permanently stale frozen figures');await prep({ready:true,pending:false,running:false,revision:1});assert.equal((await state()).finished.stale,false);
  await render(4);assert.equal((await state()).finished.stale,false,'size-only static render keeps snapshot valid');
- await prep({ready:true,pending:false,running:false,revision:2});assert.equal((await state()).finished.stale,true,'real revision change invalidates snapshot');await render(5);current=await state();assert.equal(current.label,'My scientific label','scientific changes preserve user label');assert.deepEqual(current.visual,{},'real revision clears static appearance');assert.deepEqual(errors,[]);console.log('PASS static render resize/undo presentation preservation, transient busy snapshot validity, real revision invalidation');
+ await prep({ready:true,pending:false,running:false,revision:2});assert.equal((await state()).finished.stale,true,'real revision change invalidates snapshot');await render(5);current=await state();assert.equal(current.label,'My scientific label','scientific changes preserve user label');assert.deepEqual(current.visual,{},'real revision clears static appearance');assert.deepEqual(errors,[]);
+ // (Astra round 3, P1) A static image has no Plotly signature: a new image B is never taken as
+ // equivalent to A. An export of A started before B no longer publishes, and A's kept link is withdrawn.
+ await p.waitForTimeout(400);
+ const tokenA=await p.evaluate(()=>{const el=document.getElementById('results_dashboard-plot_pca');const t=TeamCanvas.exportRevision(el);const a=document.createElement('a');a.className='plot-export-fallback';a.dataset.cardId=t.cardId;a.dataset.revision=t.revision;a.id='kept-a';document.body.appendChild(a);return t;});
+ assert.ok(tokenA&&await p.evaluate(t=>TeamCanvas.exportCurrent(t),tokenA),'the token of A is current before B');
+ await render(6);await p.waitForTimeout(50);
+ assert.equal(await p.evaluate(t=>TeamCanvas.exportCurrent(t),tokenA),false,'a new static image B breaks the export token of A');
+ assert.equal(await p.evaluate(()=>!!document.getElementById('kept-a')),false,'and withdraws the kept link of A');
+ assert.deepEqual(errors,[]);
+ console.log('PASS static render resize/undo presentation preservation, transient busy snapshot validity, real revision invalidation, a new static image breaks earlier export tokens and withdraws their links');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -49,7 +49,8 @@ const measure = page => page.evaluate(() => {
       m = await measure(page);
       assert.ok(m.map, `${tag}: the minimap is shown when zoomed out on overflowing figures`);
       assert.ok(m.dock && Math.round(m.dock.width) === 80, `${tag}: the companion is the small 80 px dock on Canvas ${JSON.stringify(m.dock)}`);
-      assert.ok(m.dock.left >= m.shell.right - 1 && m.dock.bottom >= height - 24, `${tag}: the companion rests bottom-right, right of the canvas ${JSON.stringify([m.dock, m.shell])}`);
+      // ux27: the companion is anchored to the canvas viewport's bottom-right corner (inside it, not in a strip beside it).
+      assert.ok(m.dock.right <= m.shell.right + 1 && m.shell.right - m.dock.right <= 48 && m.dock.bottom >= height - 24, `${tag}: the companion rests at the canvas viewport's bottom-right ${JSON.stringify([m.dock, m.shell])}`);
       for (const part of ['nav', 'map', 'pill']) assert.equal(meets(m[part], m.dock), false, `${tag}: ${part} is not under the companion ${JSON.stringify([m[part], m.dock])}`);
       assert.ok(m.nav.left - m.shell.left <= 24 && m.shell.bottom - m.nav.bottom <= 24, `${tag}: the zoom/minimap cluster is docked bottom-left ${JSON.stringify([m.nav, m.shell])}`);
       assert.ok(m.pill.height <= 34, `${tag}: the zoom pill is one slim line (${m.pill.height}px)`);

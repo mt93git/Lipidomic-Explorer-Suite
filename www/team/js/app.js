@@ -17,6 +17,8 @@
   // 1. Universal Click Interceptor for buttons, tabs, accordions, and controls
   $(document).on('click', 'button, .btn, .action-button, .dock-segment-btn, a.nav-link, .nav-tabs a, .nav-pills a, input[type="file"], input[type="checkbox"], input[type="radio"], select, .dropdown-item, .accordion-button, .sidebar-btn-centered', function(e) {
     var $el = $(this);
+    // Team: Canvas zoom/minimap clicks are camera moves, not interactions worth a server round trip.
+    if ($el.closest('#team-canvas-root .tc-navigation').length) return;
     var id = $el.attr('id') || $el.attr('name') || $el.data('dock-target') || $el.data('bs-target') || '';
     var label = $el.text().trim().replace(/\s+/g, ' ');
     if (!label && $el.attr('title')) label = $el.attr('title');
@@ -1300,7 +1302,7 @@
         });
         $(document).on('shiny:connected shiny:value shiny:idle', tagDownloadButtons);
       }
-      setInterval(tagDownloadButtons, 3000);
+      // Team: no 3 s poll; the Shiny events above and tab shows retag new download links.
 
       // Dynamic Empty Plot Overlays with Tab-Aware Launch Analysis Trigger
       function injectEmptyPlotOverlays() {
@@ -1677,7 +1679,16 @@
           }
         });
       }
-      setInterval(injectEmptyPlotOverlays, 3000);
+      // Team: no 3 s poll while the page is idle. Plot outputs only gain or lose media when
+      // Shiny delivers a value or finishes a flush, a tab is shown, or the canvas changes:
+      // re-check then, at most once per 250 ms burst.
+      var _overlayTimer = null;
+      function scheduleEmptyPlotOverlays() {
+        if (_overlayTimer) return;
+        _overlayTimer = setTimeout(function () { _overlayTimer = null; injectEmptyPlotOverlays(); }, 250);
+      }
+      if (window.jQuery) $(document).on('shiny:value shiny:idle shiny:error', scheduleEmptyPlotOverlays);
+      window.addEventListener('team-canvas-changed', scheduleEmptyPlotOverlays);
 
       // -------------------------------------------------------------------------
       // Brand Logo & Navbar Lock: Permanent Stable Dimensions (No Layout Shifts)
@@ -3366,7 +3377,9 @@
 
         $(document).on('shiny:value shiny:idle', function() {
           applyDockCategoryTints();
-          updateDockSwitcherLayout();
+          // Team: the dock switcher is not on the Canvas; its layout read forced a style recalculation
+          // after every server round trip there. Its ResizeObserver still follows real size changes.
+          if (document.body.dataset.teamStage !== 'canvas') updateDockSwitcherLayout();
           setupDockResizeObserver();
         });
 

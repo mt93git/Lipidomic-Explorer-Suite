@@ -147,7 +147,7 @@ const full=n=>({id:n.id,label:n.label,x:n.x,y:n.y,width:n.width,height:n.height,
    await page.waitForFunction(()=>document.querySelectorAll('.tc-node').length>=1,null,{timeout:60000});
    const before=await page.evaluate(()=>({progress:TeamCanvas.restoreProgress(),last:restoreEvents[restoreEvents.length-1]}));
    assert.ok(before.progress.queued+before.progress.loading>0&&before.last==='pending','Reset while restored cards are still queued or loading '+JSON.stringify(before));
-   await page.evaluate(()=>document.querySelector('.tc-reset').click());
+   await page.evaluate(()=>{document.querySelector('.tc-reset').click();const y=document.querySelector('.tc-reset-yes');if(y)y.click();});
    await page.waitForFunction(()=>restoreEvents[restoreEvents.length-1]==='success',null,{timeout:5000}).catch(()=>{});
    const after=await page.evaluate(()=>({events:restoreEvents.slice(),progress:TeamCanvas.restoreProgress(),nodes:TeamCanvas.serialize().nodes.length,retry:document.querySelector('.tc-restore-retry').hidden}));
    assert.deepEqual(after.events,['pending','success'],'Reset completed the pending restore: nothing was left to mount');
@@ -324,7 +324,7 @@ const full=n=>({id:n.id,label:n.label,x:n.x,y:n.y,width:n.width,height:n.height,
    const page=await open(false);
    assert.equal(await page.evaluate(()=>TeamCanvas.addCatalogPlot('results_dashboard-plot_violin')),true);
    const id=await page.evaluate(()=>sentInputs.find(x=>x.name==='team_canvas_instance_create').value.id);
-   await page.evaluate(()=>document.querySelector('.tc-reset').click());
+   await page.evaluate(()=>{document.querySelector('.tc-reset').click();const y=document.querySelector('.tc-reset-yes');if(y)y.click();});
    await page.waitForTimeout(4000);
    assert.equal(await mounted(page),0,'Reset cancelled the loading copy: it never mounts');
    assert.ok(await page.evaluate(id=>sentInputs.some(x=>x.name==='team_canvas_instance_park'&&x.value===id),id),'the cancelled copy was parked on the server');

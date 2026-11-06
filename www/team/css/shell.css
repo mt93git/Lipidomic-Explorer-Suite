@@ -193,3 +193,9 @@ body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion
 body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-actions{padding-top:20px;gap:2px}
 body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-actions button{width:24px;min-width:24px;height:28px}
 body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-actions .assistant-dock-chat{min-width:0;padding:0 3px;font-size:10px}
+/* ux27: on Canvas the companion glides to its new place when the canvas viewport's edge moves (inspector or
+   Plots panel opened or closed, window resized); never while it is dragged, never with reduced motion. */
+body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-dragging){transition:left .22s ease,top .22s ease}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion{transition:none}}
+/* ux27: Figure-page-only tools (text, shapes) are not offered in the Draft: they would switch mode. */
+#team-canvas-root.ts-shell:not(.tc-figure-mode) [data-figure-only=true]{display:none!important}

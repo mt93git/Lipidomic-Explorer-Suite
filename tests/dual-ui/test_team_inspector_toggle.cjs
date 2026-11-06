@@ -13,6 +13,12 @@
 // boxes and menus, and with a modifier), Edit on a card shows a hidden column and focuses its tabs,
 // per-account persistence read from the real signed-in markup (project_library.R),
 // default hidden from 901 to 1279 px (at <= 900 the column stacks and stays shown), storage failures, the drawer case and the guided pages untouched.
+// ux27 re-baseline: the column is hidden by default wherever it is a side column (> 900 px), the choice is
+// kept for the browser tab only (sessionStorage), and on Canvas the companion's home is a small box at the
+// canvas viewport's bottom-right (left of the shown inspector; at the canvas's right edge when it is
+// hidden, the canvas then taking the whole width). Wide, the production-equivalence checks of the resting
+// mascot, its home, the inspector's obstacles and the chat dock are replaced by those anchoring checks; at
+// 390 px, the hand-placed mascot, the navigation box and the toolbar they are still production's.
 // Fixtures: tests/dual-ui/fixture_team_overlay_pages.cjs (real Team CSS/JS in wiring order).
 'use strict';
 const fs = require('node:fs');
@@ -60,7 +66,7 @@ function extractProduction() {
   PF = require(path.join(prodRoot, 'tests/dual-ui/fixture_team_overlay_pages.cjs'));
 }
 // manual: a position the user dragged the mascot to (context_help.js reads it from sessionStorage when it loads).
-// preset: localStorage entries written just before inspector_toggle.js loads (a later visit's storage).
+// preset: sessionStorage entries written just before inspector_toggle.js loads (a reload in the same tab).
 // applike: the fixture's <main> padding and workspace header push the layout 60 px below the viewport,
 // so the mascot is clamped off its home; one rule ends the layout at the viewport's bottom, as in the app.
 const APP_LIKE = '#team-canvas-root.ts-shell .tc-layout{height:calc(100dvh - 108px)!important;min-height:0!important}';
@@ -72,7 +78,7 @@ async function open(browser, viewport, production, manual, preset, applike, init
     if (manual && o && o.path && /context_help\.js$/.test(o.path)) await page.evaluate(m => sessionStorage.setItem('lipidomic-companion-position', JSON.stringify(m)), manual);
     if (preset && o && o.path && /inspector_toggle\.js$/.test(o.path)) await page.evaluate(p => {
       const box = document.createElement('div'); box.id = 'team_library_account'; box.innerHTML = '<p data-team-account="visit@lab.org">Signed in as visit@lab.org</p>'; document.querySelector('main').prepend(box);
-      for (const [k, v] of Object.entries(p)) localStorage.setItem(k, v); }, preset);
+      for (const [k, v] of Object.entries(p)) sessionStorage.setItem(k, v); }, preset);
     return orig(o); }; }
   const fx = production ? PF : F;
   if (production) process.chdir(prodRoot);
@@ -158,7 +164,8 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       const a = await open(browser, vp, false);
       let s = await state(a.page);
       check(s.exists && s.shown === wide, `${tag}: toggle ${wide ? 'shown' : 'not offered (column stacks under the canvas)'} (${JSON.stringify(s)})`);
-      if (wide && s.hidden) { await clickToggle(a.page); s = await state(a.page); } // 1280 starts shown; kept generic
+      check(s.hidden === wide, `${tag}: first open ${wide ? 'hides' : 'keeps'} the inspector (${JSON.stringify(s)})`);
+      if (wide && s.hidden) { await clickToggle(a.page); s = await state(a.page); }
       check(!s.hidden && s.expanded === 'true' && s.label === 'Hide inspector' && s.controlsColumn && !s.inert, `${tag}: shown state aria ${JSON.stringify(s)}`);
       const gShown = await geometry(a.page), mShown = await mainRect(a.page), cShown = await chat(a.page);
       await a.page.close();
@@ -177,28 +184,20 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       if (wide) {
         // The canvas takes the column's track up to the reserved companion strip (the narrowed home), and
         // is what is under the column's left part.
-        const gain = r1(mHidden.width - mShown.width), homeLeft = gHidden.home[0];
-        check(gain > 40 && Math.abs(mHidden.right - homeLeft) <= 1, `${tag}: canvas ${mShown.width}→${mHidden.width} px does not reach the companion strip at ${homeLeft}`);
-        notes.push(`${tag}: canvas ${r1(mShown.width)} → ${r1(mHidden.width)} px (+${gain} px; companion strip ${gHidden.home[2]} px kept)`);
+        const gain = r1(mHidden.width - mShown.width), colRight = gHidden.column[0] + gHidden.column[2];
+        check(gain >= gHidden.column[2] - 1 && Math.abs(mHidden.right - colRight) <= 1, `${tag}: canvas ${mShown.width}→${mHidden.width} px does not take the whole width (column right ${colRight})`);
+        notes.push(`${tag}: canvas ${r1(mShown.width)} → ${r1(mHidden.width)} px (+${gain} px; nothing reserved)`);
         const top = await b.page.evaluate(() => { const c = document.querySelector('#team-canvas-root .ts-inspector-column').getBoundingClientRect(); const n = document.elementFromPoint(c.left + 20, c.top + 80); return !!n && !!n.closest('.tc-main') && !n.closest('.ts-inspector-column'); });
         check(top, `${tag}: the canvas is not what is under the hidden column's left part`);
-        // Pan a card's footer to the canvas's bottom-right corner: the mascot's home stays outside the
-        // canvas viewport, so no card (or its buttons) can be under it.
-        const pan = await b.page.evaluate(() => {
-          const scroll = document.querySelector('#team-canvas-root .tc-scroll'), node = document.querySelector('#team-canvas-root .tc-node[data-plot-id="p2"]') || document.querySelector('#team-canvas-root .tc-node');
-          const foot = node.querySelector('.tc-card-actions, .tc-card-foot') || node;
-          const view = () => { const r = scroll.getBoundingClientRect(); return {left: r.left, top: r.top, right: r.left + scroll.clientWidth, bottom: r.top + scroll.clientHeight}; };
-          let v = view(), f = foot.getBoundingClientRect();
-          scroll.scrollLeft += f.right - v.right + 4; scroll.scrollTop += f.bottom - v.bottom + 4;
-          v = view(); f = foot.getBoundingClientRect();
-          const h = document.querySelector('#team-canvas-root .tc-companion-home').getBoundingClientRect(), sr = scroll.getBoundingClientRect();
-          const meets = (a, q) => a.left < q.right && a.right > q.left && a.top < q.bottom && a.bottom > q.top;
-          // Sampled inside the viewport (the fixture's layout ends below it).
-          const under = document.elementsFromPoint(h.left + h.width / 2, Math.min(h.bottom, innerHeight) - 40).some(n => n.closest && n.closest('.tc-node'));
-          return {footAtCorner: Math.abs(f.right - v.right) <= 8 && Math.abs(f.bottom - v.bottom) <= 8, homeMeetsCanvas: meets(h, sr), cardUnderHome: under,
-            home: [h.left, h.top, h.right, h.bottom].map(Math.round), canvas: [sr.left, sr.top, sr.right, sr.bottom].map(Math.round), foot: [f.left, f.top, f.right, f.bottom].map(Math.round)};
+        // ux27: hidden, the home and the resting mascot sit at the canvas viewport's bottom-right corner.
+        const anchor = await b.page.evaluate(() => {
+          const r = n => { const q = n.getBoundingClientRect(); return {left: q.left, top: q.top, right: q.right, bottom: q.bottom}; };
+          const scroll = r(document.querySelector('#team-canvas-root .tc-scroll')), main = r(document.querySelector('#team-canvas-root .tc-layout>.tc-main'));
+          const home = r(document.querySelector('#team-canvas-root .tc-companion-home')), dock = r(document.getElementById('lipidomic-companion'));
+          return {scroll, main, home, dock};
         });
-        check(pan.footAtCorner && !pan.homeMeetsCanvas && !pan.cardUnderHome, `${tag}: card footer panned to the bottom-right corner ${JSON.stringify(pan)}`);
+        check(Math.abs(anchor.home.right - anchor.main.right) <= 1 && anchor.dock.right <= anchor.scroll.right + 1 && anchor.scroll.right - anchor.dock.right <= 48 && anchor.dock.left >= anchor.scroll.left,
+          `${tag}: hidden, the companion is anchored at the canvas viewport's bottom-right ${JSON.stringify(anchor)}`);
         // Collapsed: the toolbar is centred on the wider canvas, so it moves; that is the one difference from
         // production this new state is allowed (accepted by design: production has no collapsed state). It
         // is still a rectangle the mascot avoids (context_help.js lists .tc-toolbar), and the mascot's
@@ -212,6 +211,18 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       await b.page.close();
 
       for (const [name, g] of [['shown', gShown], ['hidden', gHidden]]) {
+        if (wide) {
+          // ux27: the mascot keeps production's size, z-index and look; its home is the small box at the
+          // live column edge (left of the shown inspector; the canvas's right edge when hidden).
+          const m = g.mascot, p = gProd.mascot, colLeft = g.column[0], colRight = g.column[0] + g.column[2];
+          check(m.rect && same([m.z, m.size, m.visibility, m.mini], [p.z, p.size, p.visibility, p.mini]), `${tag}: mascot ${name} look ${JSON.stringify(m)} != production ${JSON.stringify(p)}`);
+          const edge = name === 'shown' ? colLeft : colRight;
+          check(g.home && Math.abs(g.home[0] + g.home[2] - edge) <= 1 && m.rect[0] + m.rect[2] <= edge + 1, `${tag}: home/mascot ${name} at the column edge ${edge} ${JSON.stringify([g.home, m.rect])}`);
+          check(g.nav && same(g.nav, gProd.nav) && same(g.column, gProd.column), `${tag}: .tc-navigation / column ${name} ${JSON.stringify([g.nav, g.column])} != production ${JSON.stringify([gProd.nav, gProd.column])}`);
+          const n = g.nav, r = m.rect;
+          check(!(r[0] < n[0] + n[2] && r[0] + r[2] > n[0] && r[1] < n[1] + n[3] && r[1] + r[3] > n[1]), `${tag}: mascot ${name} over the navigation box ${JSON.stringify([r, n])}`);
+          continue;
+        }
         check(same(g.mascot, gProd.mascot), `${tag}: mascot ${name} ${JSON.stringify(g.mascot)} != production ${JSON.stringify(gProd.mascot)}`);
         // Hidden (wide), the home narrows to the companion strip around the same centre and keeps its top
         // and bottom: context_help.js centres the mascot in it, companion_assistant.js docks above its top.
@@ -220,7 +231,10 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
         check(same(g.obstacles, gProd.obstacles), `${tag}: mascot obstacles ${name} ${JSON.stringify(g.obstacles)} != production ${JSON.stringify(gProd.obstacles)}`);
         check(g.nav && same(g.nav, gProd.nav), `${tag}: .tc-navigation ${name} ${JSON.stringify(g.nav)} != production ${JSON.stringify(gProd.nav)}`);
       }
-      check(same(gShown.toolbar, gProd.toolbar), `${tag}: .tc-toolbar shown ${JSON.stringify(gShown.toolbar)} != production ${JSON.stringify(gProd.toolbar)}`);
+      // The Draft toolbar no longer offers the Figure-page-only Text / Shapes (ux27), so where it does not
+      // wrap it is narrower: its top, height and right edge are production's.
+      const tbSame = (a, b) => !!a && !!b && a[1] === b[1] && a[3] === b[3] && Math.abs((a[0] + a[2]) - (b[0] + b[2])) <= 0.5;
+      check(tbSame(gShown.toolbar, gProd.toolbar), `${tag}: .tc-toolbar shown ${JSON.stringify(gShown.toolbar)} != production ${JSON.stringify(gProd.toolbar)}`);
       // The mascot put by hand next to the navigation box (just above it; right of it, bottom-aligned):
       // the same place as in production, with the column shown and hidden.
       if (gProd.nav && gProd.mascot.rect) {
@@ -239,7 +253,15 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
         }
       }
       check(gProd.mascot.rect && gProd.mascot.visibility === 'visible', `${tag}: production mascot is shown (${JSON.stringify(gProd.mascot)})`);
-      for (const [name, c] of [['shown', cShown], ['hidden', cHidden]]) check(same(c, cProd), `${tag}: chat dock ${name} ${JSON.stringify(c)} != production ${JSON.stringify(cProd)}`);
+      // ux27: shown, the chat docks over the column as in production; hidden (the column invisible), it
+      // stays inside the window.
+      for (const [name, c, g] of [['shown', cShown, gShown], ['hidden', cHidden, gHidden]]) {
+        if (!wide) { check(same(c, cProd), `${tag}: chat dock ${name} ${JSON.stringify(c)} != production ${JSON.stringify(cProd)}`); continue; }
+        // Shown: production's rect (its max height follows the lower home, so it may be taller).
+        if (name === 'shown') { check(c.dockRect && cProd.dockRect && same(c.dockRect.rect, cProd.dockRect.rect) && parseFloat(c.dockRect.maxHeight) >= parseFloat(cProd.dockRect.maxHeight), `${tag}: chat dock shown ${JSON.stringify(c)} != production ${JSON.stringify(cProd)}`); continue; }
+        const d = c.dockRect;
+        check(d && d.rect[0] >= 0 && d.rect[0] + d.rect[2] <= vp.width + 1, `${tag}: chat dock ${name} ${JSON.stringify(c)} (column ${JSON.stringify(g.column)})`);
+      }
     }
 
     // The toggle is in the rail (a rectangle the mascot avoids, its size as in production): a mascot put by
@@ -269,147 +291,58 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       const inside = r => !!r && r[0] >= 0 && r[1] >= 0 && r[0] + r[2] <= vp.width && r[1] + r[3] <= vp.height;
       const inHome = (r, h) => !!r && !!h && r[0] >= h[0] - 0.5 && r[0] + r[2] <= h[0] + h[2] + 0.5 && r[1] >= h[1] - 0.5 && r[1] + r[3] <= h[1] + h[3] + 0.5;
       check(inside(gp.mascot.rect) && inHome(gp.mascot.rect, gp.home), `${tag}: production mascot rests in its home inside the viewport ${JSON.stringify([gp.mascot.rect, gp.home])}`);
-      check(same(gs.mascot, gp.mascot) && same(gh.mascot, gp.mascot), `${tag}: mascot shown/hidden ${JSON.stringify([gs.mascot.rect, gh.mascot.rect])} != production ${JSON.stringify(gp.mascot.rect)}`);
-      check(same(gs.nav, gp.nav) && same(gs.obstacles, gp.obstacles) && same(gs.toolbar, gp.toolbar) && same(gs.home, gp.home), `${tag}: shown geometry != production`);
-      check(inHome(gh.mascot.rect, gh.home), `${tag}: hidden, the mascot rests inside the companion strip ${JSON.stringify([gh.mascot.rect, gh.home])}`);
+      // ux27: shown, the mascot rests in its home left of the inspector; hidden, at the canvas's right edge.
+      check(inside(gs.mascot.rect) && inHome(gs.mascot.rect, gs.home) && gs.mascot.rect[0] + gs.mascot.rect[2] <= gs.column[0] + 1, `${tag}: shown, the mascot rests left of the inspector ${JSON.stringify([gs.mascot.rect, gs.home, gs.column])}`);
+      check(same(gs.nav, gp.nav) && !!gs.toolbar && !!gp.toolbar && gs.toolbar[1] === gp.toolbar[1] && Math.abs((gs.toolbar[0] + gs.toolbar[2]) - (gp.toolbar[0] + gp.toolbar[2])) <= 0.5, `${tag}: shown geometry != production ${JSON.stringify([gs.nav, gs.toolbar, gp.nav, gp.toolbar])}`);
+      check(inside(gh.mascot.rect) && inHome(gh.mascot.rect, gh.home), `${tag}: hidden, the mascot rests inside its home ${JSON.stringify([gh.mascot.rect, gh.home])}`);
+      // Hidden, the mascot is over the canvas viewport's bottom-right corner (inside it), clear of the navigation box.
       const probe = await cand.page.evaluate(() => {
-        const scroll = document.querySelector('#team-canvas-root .tc-scroll'), d = document.getElementById('lipidomic-companion').getBoundingClientRect();
-        const node = document.querySelector('#team-canvas-root .tc-node[data-plot-id="p2"]'), foot = node.querySelector('.tc-card-actions, .tc-card-foot') || node;
-        // Pan the footer's right end toward the mascot's centre (as far as the canvas lets it go).
-        let f = foot.getBoundingClientRect(); scroll.scrollLeft += f.right - (d.left + d.width / 2); scroll.scrollTop += f.bottom - (d.top + d.height / 2);
-        f = foot.getBoundingClientRect(); const sr = scroll.getBoundingClientRect();
-        const hits = [];
-        for (let x = d.left + 4; x < d.right - 2; x += 8) for (let y = d.top + 4; y < Math.min(d.bottom, innerHeight) - 2; y += 8) if (document.elementsFromPoint(x, y).some(n => n.closest && n.closest('.tc-node'))) hits.push([Math.round(x), Math.round(y)]);
-        return {hits: hits.length, footRight: Math.round(f.right), canvasRight: Math.round(sr.right), mascotLeft: Math.round(d.left), meets: d.left < sr.right && d.right > sr.left && d.top < sr.bottom && d.bottom > sr.top};
+        const sr = document.querySelector('#team-canvas-root .tc-scroll').getBoundingClientRect(), d = document.getElementById('lipidomic-companion').getBoundingClientRect();
+        const n = document.querySelector('#team-canvas-root .tc-navigation').getBoundingClientRect();
+        return {scrollRight: Math.round(sr.right), scrollBottom: Math.round(sr.bottom), mascot: [d.left, d.top, d.right, d.bottom].map(Math.round), overNav: d.left < n.right && d.right > n.left && d.top < n.bottom && d.bottom > n.top};
       });
-      check(!probe.hits && !probe.meets, `${tag}: hidden, a card panned toward the mascot is never under it ${JSON.stringify(probe)}`);
+      check(probe.mascot[2] <= probe.scrollRight + 1 && probe.scrollRight - probe.mascot[2] <= 48 && !probe.overNav, `${tag}: hidden, the mascot sits at the canvas viewport's bottom-right ${JSON.stringify(probe)}`);
       check(!cand.errors.length, `${tag}: page errors ${cand.errors.join(' | ')}`);
       await cand.page.close();
     }
-    // The extension into the column holds only while the chat is closed and the mascot's current rect is
-    // clear of it (inspector_toggle.js). The page is scrolled to its end, so the layout's bottom is the
-    // viewport's (as in the app, where the layout fills the window under the top bar).
+    // ux27: hidden, the canvas takes the whole width whatever the chat or a hand-placed mascot does (no
+    // extension zone any more: inspector_toggle.js's ts-inspector-extended class no longer changes the layout).
     const toEnd = async page => { await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await F.settle(page); };
-    const ext = page => page.evaluate(() => {
-      const q = s => { const n = document.querySelector(s); if (!n || !n.getClientRects().length) return null; const b = n.getBoundingClientRect(); return {left: b.left, top: b.top, right: b.right, bottom: b.bottom}; };
-      const layout = document.querySelector('#team-canvas-root .tc-layout'), panel = document.getElementById('lipidomic-assistant-panel');
-      return {extended: layout.classList.contains('ts-inspector-extended'), collapsed: layout.classList.contains('ts-inspector-collapsed'), main: q('#team-canvas-root .tc-layout>.tc-main'),
-        scroll: q('#team-canvas-root .tc-scroll'), column: q('#team-canvas-root .ts-inspector-column'), home: q('#team-canvas-root .tc-companion-home'), mascot: q('#lipidomic-companion'),
-        chat: panel && !panel.hidden ? q('#lipidomic-assistant-panel') : null};
-    });
-    const meets = (a, b) => !!a && !!b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-    const panToCorner = page => page.evaluate(() => {
-      const scroll = document.querySelector('#team-canvas-root .tc-scroll'), node = document.querySelector('#team-canvas-root .tc-node[data-plot-id="p2"]');
-      const foot = node.querySelector('.tc-card-actions, .tc-card-foot') || node;
-      const v = () => { const r = scroll.getBoundingClientRect(); return {right: r.left + scroll.clientWidth, bottom: r.top + scroll.clientHeight}; };
-      let f = foot.getBoundingClientRect(), w = v(); scroll.scrollLeft += f.right - w.right + 4; scroll.scrollTop += f.bottom - w.bottom + 4;
-      f = foot.getBoundingClientRect(); w = v();
-      const d = document.getElementById('lipidomic-companion').getBoundingClientRect();
-      const under = [[d.left + d.width / 2, d.top + d.height / 2], [d.left + 6, d.bottom - 6], [d.left + 6, d.top + 6]].some(([x, y]) => document.elementsFromPoint(x, y).some(n => n.closest && n.closest('.tc-node')));
-      return {atCorner: Math.abs(f.right - w.right) <= 8 && Math.abs(f.bottom - w.bottom) <= 8, cardUnderMascot: under};
+    const full = page => page.evaluate(() => {
+      const m = document.querySelector('#team-canvas-root .tc-layout>.tc-main').getBoundingClientRect(), c = document.querySelector('#team-canvas-root .ts-inspector-column').getBoundingClientRect();
+      const panel = document.getElementById('lipidomic-assistant-panel');
+      return {mainRight: m.right, colRight: c.right, chat: !!panel && !panel.hidden};
     });
     for (const vp of [{width: 901, height: 800}, {width: 1024, height: 800}, {width: 1280, height: 800}, {width: 1440, height: 800}]) {
       const tag = `${vp.width}x${vp.height}`;
       const {page, errors} = await open(browser, vp, false);
       await toEnd(page);
-      if (!(await state(page)).hidden) await clickToggle(page);
-      let e = await ext(page);
-      check(e.collapsed && e.extended && Math.abs(e.main.right - e.home.left) <= 1 && !meets(e.mascot, {left: e.column.left, right: e.home.left, top: e.column.top, bottom: e.column.bottom}), `${tag}: chat closed, mascot at home: canvas extended to the strip ${JSON.stringify(e)}`);
+      check((await state(page)).hidden, `${tag}: starts hidden`);
+      let e = await full(page);
+      check(Math.abs(e.mainRight - e.colRight) <= 1, `${tag}: chat closed: canvas takes the whole width ${JSON.stringify(e)}`);
       await F.openCompanionChat(page); await F.settle(page);
-      e = await ext(page);
-      check(e.chat && !e.extended && e.main.right <= e.column.left + 1 && !meets(e.chat, e.scroll) && !meets(e.chat, e.main), `${tag}: chat open while collapsed: chat and canvas do not meet ${JSON.stringify(e)}`);
+      e = await full(page);
+      check(e.chat && Math.abs(e.mainRight - e.colRight) <= 1, `${tag}: chat open: canvas keeps the whole width ${JSON.stringify(e)}`);
       await page.keyboard.press('Escape'); await F.settle(page);
-      e = await ext(page);
-      check(!e.chat && e.extended, `${tag}: chat closed again: canvas extended again ${JSON.stringify(e)}`);
-      // The mascot put by hand inside the extension zone (over the home's left part, clear of the inspector).
-      const manual = {x: Math.round(e.column.left + 10), y: Math.round(e.home.top + 5)};
+      e = await full(page);
+      check(!e.chat && Math.abs(e.mainRight - e.colRight) <= 1, `${tag}: chat closed again: whole width ${JSON.stringify(e)}`);
       check(!errors.length, `${tag}: page errors ${errors.join(' | ')}`);
       await page.close();
-      const m = await open(browser, vp, false, manual);
-      await toEnd(m.page);
-      if (!(await state(m.page)).hidden) await clickToggle(m.page);
-      e = await ext(m.page);
-      check(meets(e.mascot, {left: e.column.left, right: e.column.left + 1 + (e.column.right - e.column.left - 1 - 136) / 2, top: e.column.top, bottom: e.column.bottom}), `${tag}: hand-placed mascot is inside the extension zone ${JSON.stringify([manual, e.mascot])}`);
-      check(!e.extended && e.main.right <= e.column.left + 1 && !meets(e.mascot, e.scroll), `${tag}: mascot in the extension zone: canvas not extended, mascot clear of it ${JSON.stringify(e)}`);
-      const pan = await panToCorner(m.page);
-      check(pan.atCorner && !pan.cardUnderMascot, `${tag}: card footer panned to the corner is not under the hand-placed mascot ${JSON.stringify(pan)}`);
-      // The mascot moved away (its grip, keyboard): the canvas extends again.
-      await m.page.locator('#lipidomic-companion .companion-grip').focus();
-      for (let i = 0; i < 5; i++) await m.page.keyboard.press('Shift+ArrowLeft');
-      await F.settle(m.page);
-      e = await ext(m.page);
-      const zoneNow = {left: e.column.left, right: e.column.left + 1 + (e.column.right - e.column.left - 1 - 136) / 2, top: e.column.top, bottom: e.column.bottom};
-      check(meets(e.mascot, zoneNow) ? !e.extended : e.extended, `${tag}: mascot moved: extension follows its rect ${JSON.stringify(e)}`);
-      check(!m.errors.length, `${tag}: page errors ${m.errors.join(' | ')}`);
-      await m.page.close();
     }
-    // Anti-flap with delayed feedback: a model mascot is moved into the extension zone whenever the canvas
-    // extends and out of it whenever it retracts, each time after a delay. The slow model's transitions
-    // before the freeze come 600 ms and 2500 ms apart, longer than the former 2 s window, so a time-window
-    // guard oscillates forever here; the count bound must stop after two reversals at production's track and
-    // stay there. A script's synthetic pointerup / keyup on the mascot keeps the freeze; a user action (a
-    // real pointer released on the mascot) re-enables the extension.
-    const runModel = (page, delays, ms) => page.evaluate(([delays, ms]) => new Promise(done => {
-      const layout = document.querySelector('#team-canvas-root .tc-layout'), fake = document.getElementById('lipidomic-companion'), col = document.querySelector('#team-canvas-root .ts-inspector-column');
-      let step = 0, last = layout.classList.contains('ts-inspector-extended'); const log = [last], at = [];
-      const t0 = performance.now();
-      const place = ext => { const c = col.getBoundingClientRect(); if (ext) { fake.style.left = (c.left + 4) + 'px'; fake.style.top = (c.top + 40) + 'px'; } else { fake.style.left = '20px'; fake.style.top = '20px'; } };
-      const feedback = ext => { const d = delays[Math.min(step, delays.length - 1)]; step++; setTimeout(() => place(ext), d); };
-      const mo = new MutationObserver(() => { const ext = layout.classList.contains('ts-inspector-extended'); if (ext === last) return; last = ext; log.push(ext); at.push(Math.round(performance.now() - t0)); feedback(ext); });
-      mo.observe(layout, {attributes: true, attributeFilter: ['class']});
-      feedback(last);
-      setTimeout(() => {
-        // Is the model mascot clear of the zone at the end (so an unguarded toggle would extend again)?
-        mo.disconnect();  // the model stops here; the user's later action is judged on its own
-        const c = col.getBoundingClientRect(), r = fake.getBoundingClientRect();
-        done({log, at, extended: layout.classList.contains('ts-inspector-extended'), clear: r.right <= c.left || r.left >= c.right || r.bottom <= c.top || r.top >= c.bottom});
-      }, ms);
-    }), [delays, ms]);
-    const isExtended = page => page.evaluate(() => document.querySelector('#team-canvas-root .tc-layout').classList.contains('ts-inspector-extended'));
-    const fakeDock = page => page.evaluate(() => {
-      const real = document.getElementById('lipidomic-companion'); if (real) real.remove();
-      const fake = document.createElement('div'); fake.id = 'lipidomic-companion'; fake.style.cssText = 'position:fixed;width:60px;height:60px;left:20px;top:20px;z-index:2000;background:#cde';
-      document.body.appendChild(fake);
-    });
-    for (const [name, delays, ms] of [['slow', [600, 2500, 2500, 2500, 2500], 11000], ['fast', [16, 16, 16, 16, 16], 2500]]) {
-      const {page, errors} = await open(browser, {width: 1440, height: 900}, false);
-      await toEnd(page);
-      await fakeDock(page);
-      await clickToggle(page);
-      const model = await runModel(page, delays, ms);
-      notes.push(`anti-flap ${name} model: ${JSON.stringify(model)}`);
-      // log[0] is the state right after the toggle (extended); every later entry is a reversal it caused.
-      const reversals = model.log.length - 1;
-      check(model.log[0] === true && reversals >= 1 && reversals <= 2 && !model.extended, `${name} delayed feedback converges within 2 reversals at production's track ${JSON.stringify(model)}`);
-      check(model.clear, `${name}: the next reversal was asked (model mascot clear of the zone) and refused ${JSON.stringify(model)}`);
-      if (name === 'slow') check(model.at[0] >= 550, `slow: the first reversal came after the 600 ms feedback ${JSON.stringify(model.at)}`);
-      const still = await page.evaluate(() => new Promise(r => setTimeout(() => r(document.querySelector('#team-canvas-root .tc-layout').classList.contains('ts-inspector-extended')), 3000)));
-      check(!still, `${name} frozen: no further flip without a user action`);
-      // Synthetic events on the mascot (not the user) keep the freeze.
-      await page.evaluate(() => { const f = document.getElementById('lipidomic-companion'); f.dispatchEvent(new PointerEvent('pointerup', {bubbles: true})); f.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true, key: 'ArrowLeft'})); window.dispatchEvent(new Event('resize')); });
-      await F.settle(page); await page.waitForTimeout(150);
-      check(!(await isExtended(page)), `${name}: synthetic pointerup / keyup on the mascot and a synthetic resize keep the freeze`);
-      // The user releases a pointer on the model mascot (already out of the way): the extension comes back.
-      await page.mouse.click(40, 40); await F.settle(page);
-      check(await isExtended(page), `${name}: a user action (pointer released on the mascot) re-enables the extension`);
-      check(!errors.length, `flap page errors ${errors.join(' | ')}`);
-      await page.close();
-    }
-    // The tools drawer opening and closing is a user action, not layout feedback: two drawer cycles with
-    // the column hidden (real mascot, clear of the zone at 1440) end extended and unlocked.
+    // The tools drawer opening and closing: the canvas gives the track back while it is open and takes the
+    // whole width again when it closes (three cycles).
     {
       const {page, errors} = await open(browser, {width: 1440, height: 900}, false);
       await toEnd(page);
-      await clickToggle(page);
-      const before = await isExtended(page);
       const cycles = [];
       for (let i = 0; i < 3; i++) {
         await page.locator('#team-canvas-root .ts-analysis-trigger').click(); await F.settle(page);
-        const open = await page.evaluate(() => document.querySelector('#team-canvas-root .tc-layout').classList.contains('ttd-open')) && !(await isExtended(page));
+        const open = await page.evaluate(() => document.querySelector('#team-canvas-root .tc-layout').classList.contains('ttd-open'));
         await page.evaluate(() => window.TeamToolsDrawer.close()); await F.settle(page);
-        cycles.push([open, await isExtended(page)]);
+        const e = await full(page);
+        cycles.push([open, Math.abs(e.mainRight - e.colRight) <= 1]);
       }
-      check(before && cycles.every(([o, e]) => o && e), `hide, open tools, close tools (x3): the canvas ends extended each time, not locked ${JSON.stringify({before, cycles})}`);
+      check(cycles.every(([o, w]) => o && w), `hidden, open tools, close tools (x3): the canvas ends at the whole width each time ${JSON.stringify(cycles)}`);
       check(!errors.length, `drawer-cycle page errors ${errors.join(' | ')}`);
       await page.close();
     }
@@ -475,6 +408,9 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       // Signed in as start@lab.org (the signed-in markup project_library.R renders), so choices are saved.
       await page.evaluate(() => { const box = document.createElement('div'); box.id = 'team_library_account'; box.className = 'shiny-html-output'; box.innerHTML = '<p data-team-account="start@lab.org">Signed in as start@lab.org</p><button id="team_library_logout" type="button">Sign out and clear this session</button>'; document.querySelector('main').prepend(box); });
       await F.settle(page);
+      // ux27: it opens hidden; show it first (an explicit choice) so the sequence below starts shown.
+      check(await hidden(), 'keyboard: first open is hidden at 1440 px');
+      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
       await page.locator('#team-canvas-root .ts-inspector-toggle').focus();
       await page.keyboard.press('Enter'); await F.settle(page);
       check(await hidden(), 'Enter on the toggle hides the inspector');
@@ -533,7 +469,7 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       // Persistence: per account, read from the signed-in markup project_library.R renders in
       // #team_library_account ("Signed in as <email>" + Sign out; the email field is gone), read back when
       // Shiny re-renders it or data-team-authenticated changes.
-      check(await page.evaluate(k => localStorage.getItem(k), KEY + acct('start@lab.org')) === '1', 'hidden state saved for this account');
+      check(await page.evaluate(k => sessionStorage.getItem(k), KEY + acct('start@lab.org')) === '1', 'hidden state saved for this account');
       const signIn = (address, tagged) => page.evaluate(([a, t]) => {
         let box = document.getElementById('team_library_account');
         if (!box) { box = document.createElement('div'); box.id = 'team_library_account'; box.className = 'shiny-html-output'; document.querySelector('main').prepend(box); }
@@ -547,54 +483,56 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       // Signed in, no address readable (the account paragraph not rendered yet): no key at all. The signed-out
       // ('anonymous', hidden) and start@lab.org (hidden) choices are neither read nor overwritten; the width
       // default applies (shown at 1440).
-      await page.evaluate(k => localStorage.setItem(k, '1'), KEY + 'anonymous');
+      await page.evaluate(k => sessionStorage.setItem(k, '1'), KEY + 'anonymous');
       await page.evaluate(() => { document.getElementById('team_library_account').innerHTML = ''; }); await F.settle(page);
-      check(!(await hidden()), 'signed in without a readable address: width default (shown), not the anonymous or previous choice');
+      check(await hidden(), 'signed in without a readable address: the default (hidden), not the previous choice');
       await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
-      const keys = await page.evaluate(k => Object.keys(localStorage).filter(x => x.startsWith(k)).sort().map(x => x.slice(k.length) + '=' + localStorage.getItem(x)).join(','), KEY);
-      check(await hidden() && keys === [acct('start@lab.org') + '=1', 'anonymous=1'].sort().join(','), `signed in without a readable address: a click is saved nowhere (${keys})`);
+      const keys = await page.evaluate(k => Object.keys(sessionStorage).filter(x => x.startsWith(k)).sort().map(x => x.slice(k.length) + '=' + sessionStorage.getItem(x)).join(','), KEY);
+      check(!(await hidden()) && keys === [acct('start@lab.org') + '=1', 'anonymous=1'].sort().join(','), `signed in without a readable address: a click is saved nowhere (${keys})`);
       await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
       await signIn('Someone@Lab.org', true); await F.settle(page);
-      check(!(await hidden()), 'another account without a saved choice gets the default (shown at 1440)');
-      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
-      check(await page.evaluate(k => localStorage.getItem(k), KEY + acct('someone@lab.org')) === '0', 'the account key is the hash of the signed-in email');
-      check(await page.evaluate(() => Object.keys(localStorage).every(k => !/@/.test(k) && !/someone/i.test(k))), 'no email in clear in any storage key');
-      await page.evaluate(k => localStorage.setItem(k, '0'), KEY + acct('other@lab.org'));
+      check(await hidden(), 'another account without a saved choice gets the default (hidden at 1440)');
+      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
+      check(await page.evaluate(k => sessionStorage.getItem(k), KEY + acct('someone@lab.org')) === '0', 'the account key is the hash of the signed-in email');
+      check(await page.evaluate(() => Object.keys(sessionStorage).every(k => !/@/.test(k) && !/someone/i.test(k))), 'no email in clear in any storage key');
+      await page.evaluate(k => sessionStorage.setItem(k, '0'), KEY + acct('other@lab.org'));
       await signOut(); await F.settle(page);
       check(await hidden(), 'sign-out: the signed-out (anonymous) choice applies again (hidden)');
       await signIn('other@lab.org', true); await F.settle(page);
       check(!(await hidden()), 'a saved choice is restored for its account (other: shown)');
-      await page.evaluate(k => localStorage.setItem(k, '1'), KEY + acct('other@lab.org'));
+      await page.evaluate(k => sessionStorage.setItem(k, '1'), KEY + acct('other@lab.org'));
       await signIn('Someone@Lab.org', true); await F.settle(page);
       check(!(await hidden()), 'user change without sign-out: someone\'s own choice (shown)');
       await signIn('other@lab.org', true); await F.settle(page);
       check(await hidden(), 'user change back: other\'s own choice (hidden)');
       // ar@lab.org and c0@lab.org share their 32-bit djb2 hash; the 64-bit key keeps them apart.
       check(legacyAcct('ar@lab.org') === legacyAcct('c0@lab.org') && acct('ar@lab.org') !== acct('c0@lab.org') && /^[0-9a-f]{16}$/.test(acct('ar@lab.org')), 'djb2 collision pair has distinct 64-bit keys');
-      await page.evaluate(([a, c]) => { localStorage.setItem(a, '1'); localStorage.setItem(c, '0'); }, [KEY + acct('ar@lab.org'), KEY + acct('c0@lab.org')]);
+      await page.evaluate(([a, c]) => { sessionStorage.setItem(a, '1'); sessionStorage.setItem(c, '0'); }, [KEY + acct('ar@lab.org'), KEY + acct('c0@lab.org')]);
       await signIn('ar@lab.org', true); await F.settle(page);
       check(await hidden(), 'ar@lab.org: its own choice (hidden)');
       await signIn('c0@lab.org', true); await F.settle(page);
       check(!(await hidden()), 'c0@lab.org (same djb2 hash): its own choice (shown)');
       // 8-hex keys of the earlier build are ignored: a stale one (here shared by the colliding pair) is never
       // read, so neither account inherits it, and an explicit choice is never overridden by it.
-      await page.evaluate(([old, a, c]) => { localStorage.setItem(old, '1'); localStorage.removeItem(a); localStorage.removeItem(c); }, [KEY + legacyAcct('ar@lab.org'), KEY + acct('ar@lab.org'), KEY + acct('c0@lab.org')]);
-      await signIn('c0@lab.org', true); await F.settle(page);
-      check(!(await hidden()), 'c0@lab.org does not inherit the stale shared 8-hex key (default shown at 1440)');
+      await page.evaluate(([old, a, c]) => { sessionStorage.setItem(old, '1'); sessionStorage.removeItem(a); sessionStorage.removeItem(c); }, [KEY + legacyAcct('ar@lab.org'), KEY + acct('ar@lab.org'), KEY + acct('c0@lab.org')]);
+      await page.evaluate(([old, c]) => { sessionStorage.setItem(old, '0'); sessionStorage.removeItem(c); }, [KEY + legacyAcct('ar@lab.org'), KEY + acct('c0@lab.org')]);
+      await signIn('ar@lab.org', true); await signIn('c0@lab.org', true); await F.settle(page);
+      check(await hidden(), 'c0@lab.org does not inherit the stale shared 8-hex key "0" (default hidden at 1440)');
+      await page.evaluate(([old, a]) => { sessionStorage.setItem(old, '1'); sessionStorage.removeItem(a); }, [KEY + legacyAcct('ar@lab.org'), KEY + acct('ar@lab.org')]);
       await signIn('ar@lab.org', true); await F.settle(page);
-      check(!(await hidden()), 'ar@lab.org does not read the stale 8-hex key either (default shown at 1440)');
-      check(await page.evaluate(k => localStorage.getItem(k), KEY + legacyAcct('ar@lab.org')) === '1', 'the stale 8-hex key is left alone (never read, moved or deleted)');
-      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
-      check(await page.evaluate(k => localStorage.getItem(k), KEY + acct('ar@lab.org')) === '0', 'explicit shown choice saved under the 64-bit key');
+      check(await hidden(), 'ar@lab.org: no own choice, the default (hidden at 1440)');
+      check(await page.evaluate(k => sessionStorage.getItem(k), KEY + legacyAcct('ar@lab.org')) === '1', 'the stale 8-hex key is left alone (never read, moved or deleted)');
+      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
+      check(await page.evaluate(k => sessionStorage.getItem(k), KEY + acct('ar@lab.org')) === '0', 'explicit shown choice saved under the 64-bit key');
       await signIn('c0@lab.org', true); await signIn('ar@lab.org', true); await F.settle(page);
       check(!(await hidden()), 'explicit "0" re-read after a user change: shown, the stale "1" ignored');
       // Markup without the data attribute (the "Signed in as" text alone) still names the account.
-      await page.evaluate(k => localStorage.removeItem(k), KEY + acct('third@lab.org'));
+      await page.evaluate(k => sessionStorage.removeItem(k), KEY + acct('third@lab.org'));
       await signIn('third@lab.org', false); await F.settle(page);
-      check(!(await hidden()), 'text-only signed-in markup: third has no saved choice, default shown at 1440');
-      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
-      check(await page.evaluate(k => localStorage.getItem(k), KEY + acct('third@lab.org')) === '0', 'text-only signed-in markup: key is the hash of its email');
-      await page.evaluate(k => localStorage.removeItem(k), KEY + acct('third@lab.org'));
+      check(await hidden(), 'text-only signed-in markup: third has no saved choice, default hidden at 1440');
+      await page.locator('#team-canvas-root .ts-inspector-toggle').click(); await F.settle(page);
+      check(await page.evaluate(k => sessionStorage.getItem(k), KEY + acct('third@lab.org')) === '0', 'text-only signed-in markup: key is the hash of its email');
+      await page.evaluate(k => sessionStorage.removeItem(k), KEY + acct('third@lab.org'));
       await signIn('Someone@Lab.org', true); await signIn('third@lab.org', true); await F.settle(page);
       await page.setViewportSize({width: 1200, height: 900}); await F.settle(page);
       check(await hidden(), 'no saved choice: hidden at 1200 px');
@@ -604,20 +542,19 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       await page.setViewportSize({width: 1200, height: 900}); await F.settle(page);
       check(await hidden(), 'no saved choice: hidden again at 1200 px');
       await page.setViewportSize({width: 1440, height: 900}); await F.settle(page);
-      check(!(await hidden()), 'no saved choice: shown again at 1440 px');
+      check(await hidden(), 'no saved choice: hidden again at 1440 px');
       check(!errors.length, `keyboard page errors ${errors.join(' | ')}`);
       await page.close();
     }
-    // A saved explicit choice survives a new visit (a reload rebuilds the page with this storage): "0" at
-    // 1024 px (default hidden) loads shown, "1" at 1440 px (default shown) loads hidden; a stale 8-hex key
-    // for the same account changes nothing.
-    for (const [w, value, expectHidden] of [[1024, '0', false], [1440, '1', true]]) {
+    // A saved explicit choice survives a reload in the same tab (sessionStorage, ux27): "0" loads shown at
+    // 1024 and 1440 px (default hidden); a stale 8-hex key for the same account changes nothing.
+    for (const [w, value, expectHidden] of [[1024, '0', false], [1440, '0', false]]) {
       const {page} = await open(browser, {width: w, height: 800}, false, null, {[KEY + acct('visit@lab.org')]: value, [KEY + legacyAcct('visit@lab.org')]: value === '0' ? '1' : '0'});
-      check((await state(page)).hidden === expectHidden, `saved "${value}" restored on a new visit at ${w} px`);
+      check((await state(page)).hidden === expectHidden, `saved "${value}" restored on a reload at ${w} px`);
       await page.close();
     }
-    // Default below 1280 px and at 1280 px, on first load.
-    for (const [w, expectHidden] of [[390, false], [901, true], [1279, true], [1280, false]]) {
+    // Default on first load (ux27): hidden wherever the column is a side column, shown where it stacks.
+    for (const [w, expectHidden] of [[390, false], [901, true], [1279, true], [1280, true], [1440, true]]) {
       const {page} = await open(browser, {width: w, height: 800}, false);
       check((await state(page)).hidden === expectHidden, `first load at ${w} px: ${expectHidden ? 'hidden' : 'shown'}`);
       await page.close();
@@ -634,7 +571,12 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
       const focus = await page.evaluate(() => { const a = document.activeElement, col = document.querySelector('#team-canvas-root .ts-inspector-column'); return {inColumn: !!a && col.contains(a), tab: !!a && a.matches('.tc-inspector-tab, .tc-inspector-header button, .tc-inspector-locked button'), inertAncestor: !!a && !!a.closest('[inert]'), opacity: getComputedStyle(col).opacity}; });
       check(!st.hidden && !st.inert && st.expanded === 'true', `edit: hidden column shown ${JSON.stringify(st)}`);
       check(focus.inColumn && focus.tab && !focus.inertAncestor && focus.opacity === '1', `edit: focus on the inspector tab ${JSON.stringify(focus)}`);
-      check(await page.evaluate(k => Object.keys(localStorage).filter(x => x.startsWith(k)).length, KEY) === 0, 'edit: showing the column for Edit is not saved as a choice');
+      check(await page.evaluate(k => Object.keys(sessionStorage).filter(x => x.startsWith(k)).length, KEY) === 0, 'edit: showing the column for Edit is not saved as a choice');
+      // Hidden again after Edit: the card inspector (forced visible by shell.css) is not measured either, so
+      // the mascot returns to the canvas viewport's bottom-right.
+      await clickToggle(page); await page.waitForTimeout(400);
+      const back = await page.evaluate(() => { const v = n => n && getComputedStyle(n).visibility, s = document.querySelector('#team-canvas-root .tc-scroll').getBoundingClientRect(), d = document.getElementById('lipidomic-companion').getBoundingClientRect(); return {sel: v(document.querySelector('#team-canvas-root .tc-selection-inspector')), gap: Math.round(s.right - d.right)}; });
+      check(back.sel !== 'visible' && back.gap >= 0 && back.gap <= 48, `edit, then hide: inspector not measured, mascot at the canvas's right edge ${JSON.stringify(back)}`);
       check(!errors.length, `edit page errors ${errors.join(' | ')}`);
       await page.close();
     }
@@ -666,9 +608,9 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
         document.querySelector('main').prepend(box);
       }, KEY);
       await F.settle(page);
-      check(!(await state(page)).hidden, 'throwing storage: default state at 1440 px');
+      check((await state(page)).hidden, 'throwing storage: default state at 1440 px');
       await clickToggle(page);
-      check((await state(page)).hidden && !errors.length, `throwing storage: toggle still works ${errors.join(' | ')}`);
+      check(!(await state(page)).hidden && !errors.length, `throwing storage: toggle still works ${errors.join(' | ')}`);
       await page.close();
     }
     // Guided pages: not wired there; even loaded by mistake, nothing mounts and the companion does not move.
@@ -689,5 +631,5 @@ const blur = page => page.evaluate(() => { if (document.activeElement && documen
   } finally { await browser.close(); if (prodRoot && path.basename(prodRoot).startsWith('team-inspector-prod-') && prodRoot.startsWith(os.tmpdir())) fs.rmSync(prodRoot, {recursive: true, force: true}); }
   notes.forEach(n => console.log('  ' + n));
   if (fails.length) { console.log(fails.join('\n')); console.log(`FAIL: ${fails.length} failed, ${pass} passed`); process.exit(1); }
-  console.log(`PASS: ${pass} checks: inspector toggle at ${VIEWPORTS.map(v => v.width).join(', ')} px; mascot (default and put by hand), home, obstacles, navigation box and chat dock identical shown / hidden / production ${PRODUCTION}`);
+  console.log(`PASS: ${pass} checks: inspector toggle at ${VIEWPORTS.map(v => v.width).join(', ')} px; hidden by default, whole-width canvas, companion anchored at the canvas viewport's bottom-right (left of the shown inspector), mascot look, navigation box and hand-placed mascot as production ${PRODUCTION}`);
 })().catch(e => { console.error(e); process.exit(1); });

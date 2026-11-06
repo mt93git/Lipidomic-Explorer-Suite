@@ -407,7 +407,8 @@ const COEXIST = [
       const overlap = drawerOpen && ix[0] < ix[2] && ix[1] < ix[3];
       const settingsOnTop = own(s, sr.left + sr.width / 2, sr.top + sr.height / 2) && (!overlap || own(s, (ix[0] + ix[2]) / 2, (ix[1] + ix[3]) / 2));
       const a = document.activeElement, focus = !!a && s.contains(a);
-      return {ok: settingsOnTop && focus, focus, detail: {drawerStillOpen: drawerOpen, overlap, settingsOnTop, focused: a && (a.id || a.className || a.tagName)}};
+      const c = document.elementFromPoint(sr.left + sr.width / 2, sr.top + sr.height / 2), under = c && !s.contains(c) ? (c.closest('[id]') ? '#' + c.closest('[id]').id + ' ' : '') + (c.className && c.className.baseVal === undefined ? String(c.className) : c.tagName) : null;
+      return {ok: settingsOnTop && focus, focus, detail: {drawerStillOpen: drawerOpen, overlap, settingsOnTop, under, focused: a && (a.id || a.className || a.tagName)}};
     })}
 ];
 
@@ -482,7 +483,13 @@ function shot(page, name) {
     await F.install(page);
     const setup = async (kind, opts) => {
       if (kind === 'guided') await F.setupGuided(page, 'quality-pending', {companion: 'default'});
-      else await F.setupWorkspace(page, {companion: 'default', ...opts});
+      else {
+        await F.setupWorkspace(page, {companion: 'default', ...opts});
+        // ux27: the Canvas inspector opens hidden; these layers are checked with it shown, as the user's
+        // Show inspector (the rail toggle) leaves it.
+        const toggle = page.locator('#team-canvas-root .ts-rail .ts-inspector-toggle');
+        if (await toggle.isVisible() && await page.evaluate(() => document.querySelector('#team-canvas-root .tc-layout').classList.contains('ts-inspector-collapsed'))) { await toggle.click(); await F.settle(page); }
+      }
       if (NO_TOKENS) await page.evaluate(() => document.querySelectorAll('style').forEach(s => { if (/--z-canvas-expanded\s*:/.test(s.textContent)) s.remove(); }));
       await helpers(page);
     };
@@ -545,7 +552,7 @@ function shot(page, name) {
 // itself are reported as 'frozen (as d814775)', not as FAIL. A control the RESTING mascot covers still FAILS.
     // The mascot's settings panel (#lipidomic-help-panel, context_help.css z 1041) sits under the expanded
     // Canvas exactly as on d814775.
-    for (const r of results) if (r.status === 'FAIL' && r.mode === 'expanded' && /^(companion-settings|settings-over-drawer)$/.test(r.name) && r.focus !== 'LOST' && !/setup|did not open|not shown|absent/i.test(r.note || '') && (/tc-focus-mode|team-canvas-root|ts-inspector|tc-node|tc-main|#p\d/.test(JSON.stringify(r.hit || '')) || (r.detail && r.detail.settingsOnTop === false && r.detail.overlap === true))) Object.assign(r, {status: 'frozen', note: 'frozen (as d814775): ' + (r.note || '')});
+    for (const r of results) if (r.status === 'FAIL' && r.mode === 'expanded' && /^(companion-settings|settings-over-drawer)$/.test(r.name) && r.focus !== 'LOST' && !/setup|did not open|not shown|absent/i.test(r.note || '') && (/tc-focus-mode|team-canvas-root|ts-inspector|tc-node|tc-main|#p\d/.test(JSON.stringify(r.hit || '')) || (r.detail && r.detail.settingsOnTop === false && (r.detail.overlap === true || /tc-focus-mode|team-canvas-root|ts-inspector|tc-node|tc-main|tc-board|tc-scroll/.test(r.detail.under || ''))))) Object.assign(r, {status: 'frozen', note: 'frozen (as d814775): ' + (r.note || '')});
     const extra = F.extraAssets();
     console.log(`\nwave-2 assets loaded by the fixtures: ${extra.length ? extra.join(', ') : 'none (base)'}`);
     console.log('\nkind     case                         width mode      result  layering  focus / note');

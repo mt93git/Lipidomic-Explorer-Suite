@@ -224,6 +224,15 @@
       sync:function(){return syncPlot(r);}
     };}
   };
-  function start(){document.addEventListener('click',click);document.addEventListener('input',search);new MutationObserver(function(changes){if(changes.some(function(m){return m.type==='childList'||m.target.classList&&m.target.classList.contains('tc-node');}))schedule();}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});['team-canvas-restored','team-document-restored'].forEach(function(name){root.addEventListener(name,schedule);});if(root.jQuery)root.jQuery(document).on('shiny:value.teamDashboardSelection shiny:connected.teamDashboardSelection',schedule);scan();}
+  // Plotly's own redraws and hover labels rewrite nodes inside a drawn plot many times a second while
+  // the Canvas pans or zooms: they never add a selection or a plot, so they do not rescan the page.
+  // (A plot's first draw inserts into the plot element itself and still rescans: firstDraw.)
+  function plotInternal(target){var up=target&&target.parentElement;return !!(up&&up.closest&&up.closest('.js-plotly-plot'));}
+  // Only added or removed selections and plots change what scan() finds; other page churn (status
+  // text, companion, toolbars) rescanned every selection on each pan/zoom frame.
+  var WATCHED='[data-selection-input],.js-plotly-plot,.html-widget-output.plotly';
+  function firstDraw(target){return !!(target.classList&&target.classList.contains('js-plotly-plot'));}
+  function relevant(nodes){for(var i=0;i<nodes.length;i++){var n=nodes[i];if(n.nodeType===1&&(n.matches(WATCHED)||n.querySelector(WATCHED)))return true;}return false;}
+  function start(){document.addEventListener('click',click);document.addEventListener('input',search);new MutationObserver(function(changes){if(changes.some(function(m){return (m.type==='childList'&&!plotInternal(m.target)&&(firstDraw(m.target)||relevant(m.addedNodes)||relevant(m.removedNodes)))||m.target.classList&&m.target.classList.contains('tc-node');}))schedule();}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});['team-canvas-restored','team-document-restored'].forEach(function(name){root.addEventListener(name,schedule);});if(root.jQuery)root.jQuery(document).on('shiny:value.teamDashboardSelection shiny:connected.teamDashboardSelection',schedule);scan();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })(window);

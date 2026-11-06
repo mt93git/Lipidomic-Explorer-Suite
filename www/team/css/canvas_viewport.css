@@ -1,6 +1,6 @@
 /* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
 /* Team viewport controls float over the canvas; zoom never changes world coordinates. */
-.tc-world-space{position:relative;overflow:hidden;flex:none}.tc-board.tc-world-board{position:absolute;left:0;top:0;transform-origin:0 0}.tc-viewport-shell{position:relative;min-width:0}.tc-navigation{position:absolute;right:12px;bottom:12px;z-index:12;color:#172d4b;background:#fff;border:1px solid #dce3eb;border-radius:9px;padding:8px;box-shadow:0 5px 20px #172d4b20}.tc-zoom-controls{display:flex;align-items:center;gap:4px;margin-top:6px}.tc-navigation button,.tc-focus-toggle{border:1px solid #dce3eb;border-radius:6px;background:#fff;color:#315c89;min-width:32px;min-height:32px;padding:5px 7px;font:600 13px system-ui;cursor:pointer}.tc-navigation button:hover:not(:disabled),.tc-focus-toggle:hover{background:#eff4f8}.tc-navigation button:disabled{opacity:.4;cursor:default}.tc-zoom-reset{min-width:48px!important;font-variant-numeric:tabular-nums}.tc-map{width:178px}.tc-map summary{font:600 13px system-ui;color:#607285;cursor:pointer;margin-bottom:5px}.tc-map svg{display:block;width:178px;height:80px;border:1px solid #dce3eb;border-radius:5px;background:#f5f7fa;cursor:crosshair;touch-action:none}.tc-map-nodes rect{fill:#cbd9e7;stroke:#6889a8;stroke-width:1;vector-effect:non-scaling-stroke}.tc-map-window{fill:#315c8915;stroke:#315c89;stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none}
+.tc-world-space{position:relative;overflow:hidden;flex:none}.tc-board.tc-world-board{position:absolute;left:0;top:0;transform-origin:0 0}.tc-viewport-shell{position:relative;min-width:0;min-height:0;box-sizing:border-box;isolation:isolate}.tc-navigation{position:absolute;right:12px;bottom:12px;z-index:12;color:#172d4b;background:#fff;border:1px solid #dce3eb;border-radius:9px;padding:8px;box-shadow:0 5px 20px #172d4b20}.tc-zoom-controls{display:flex;align-items:center;gap:4px;margin-top:6px}.tc-navigation button,.tc-focus-toggle{border:1px solid #dce3eb;border-radius:6px;background:#fff;color:#315c89;min-width:32px;min-height:32px;padding:5px 7px;font:600 13px system-ui;cursor:pointer}.tc-navigation button:hover:not(:disabled),.tc-focus-toggle:hover{background:#eff4f8}.tc-navigation button:disabled{opacity:.4;cursor:default}.tc-zoom-reset{min-width:48px!important;font-variant-numeric:tabular-nums}.tc-map{width:178px}.tc-map summary{font:600 13px system-ui;color:#607285;cursor:pointer;margin-bottom:5px}.tc-map svg{display:block;width:178px;height:80px;border:1px solid #dce3eb;border-radius:5px;background:#f5f7fa;cursor:crosshair;touch-action:none}.tc-map-nodes rect{fill:#cbd9e7;stroke:#6889a8;stroke-width:1;vector-effect:non-scaling-stroke}.tc-map-window{fill:#315c8915;stroke:#315c89;stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none}
 #team-canvas-root.tc-focus-mode{position:fixed;inset:0;z-index:var(--z-canvas-expanded,10000);background:#fff;margin:0;padding:12px;overflow:auto;display:flex;flex-direction:column;box-sizing:border-box}#team-canvas-root.tc-focus-mode .tc-intro{display:none}#team-canvas-root.tc-focus-mode #tc-workspace-panel{flex:1;min-height:0}#team-canvas-root.tc-focus-mode .tc-layout{height:100%;min-height:0}#team-canvas-root.tc-focus-mode .tc-main{display:flex;flex-direction:column;min-height:0}#team-canvas-root.tc-focus-mode .tc-viewport-shell{flex:1;min-height:0}#team-canvas-root.tc-focus-mode .tc-scroll{height:100%!important;max-height:none;min-height:0}
 @media(max-width:720px){.tc-navigation{right:6px;bottom:6px;padding:6px}.tc-map,.tc-map svg{width:145px}.tc-map svg{height:65px}.tc-navigation button{min-width:28px;padding:4px}.tc-navigation .tc-zoom-reset{min-width:43px!important}#team-canvas-root.tc-focus-mode{padding:6px}#team-canvas-root.tc-focus-mode .tc-layout{display:flex;flex-direction:column}#team-canvas-root.tc-focus-mode .tc-main{flex:1}#team-canvas-root.tc-focus-mode .tc-catalog{max-height:25vh;overflow:auto}}
 body.team-workspace-app[data-tw-screen="canvas"] .tc-scroll:is(.ts-has-world,.tc-world-space){min-height:300px;height:calc(100dvh - 220px);max-height:none}
@@ -86,13 +86,26 @@ body.team-workspace-app #team-canvas-root .tc-viewport-shell>.tc-scroll{--tc-gri
 /* While a restored workspace is being framed, keep the camera out of sight so it appears
    already at its final zoom and position. canvas_viewport.js lifts this class itself and
    with a timer; no CSS animation (libreros.css turns animations off for reduced motion). */
-#team-canvas-root .tc-viewport-shell.tc-camera-pending>.tc-scroll,#team-canvas-root .tc-viewport-shell.tc-camera-pending>.tc-navigation{opacity:0!important;pointer-events:none;transition:none!important}
-/* The minimap appears only when zoomed out on figures larger than the viewport (canvas_viewport.js
-   sets .tc-map-off otherwise); zoom controls stay. Its summary collapses it and is remembered. */
-.tc-navigation.tc-map-off .tc-map{display:none}
+#team-canvas-root .tc-viewport-shell.tc-camera-pending>.tc-scroll{opacity:0!important;pointer-events:none;transition:none!important}
+/* The minimap stays available at every camera scale; <details> preserves the user's choice. */
 .tc-map summary:focus-visible{border-radius:3px}
 /* The navigation box is never hidden and never over a card's header or actions: canvas_viewport.js
    shows it in a free corner, or, when none is free, in a band it reserves under the board
    (.tc-nav-inset sets the shell's padding-bottom; the board's view ends above it). */
 #team-canvas-root .tc-viewport-shell.tc-nav-inset{background:#f5f7fa}
 #team-canvas-root .tc-viewport-shell.tc-nav-inset>.tc-scroll{border-bottom:1px solid #dce3eb}
+
+/* World overflow belongs to the scrollport, never to the overlay's containing block. */
+#team-canvas-root .tc-viewport-shell>.tc-scroll{min-width:0;min-height:0}
+#team-canvas-root.ts-shell .tc-viewport-shell>.tc-scroll{flex-basis:0}
+/* ux40 gesture mode (canvas_viewport.js): while wheel, pinch or pan moves the camera, a plot with a current bitmap
+   shows it in place of its live DOM, and card toolbars and resize grips are hidden. Only the transform changes. */
+#team-canvas-root.tc-gesturing .tc-world-board{will-change:transform}
+#team-canvas-root.tc-gesturing .tc-node .js-plotly-plot.tc-has-bitmap{visibility:hidden}
+#team-canvas-root.tc-gesturing .tc-node .js-plotly-plot.tc-has-bitmap::before{content:'';position:absolute;left:0;top:0;z-index:1;width:var(--tc-bitmap-w);height:var(--tc-bitmap-h);background:var(--tc-bitmap) 0 0/100% 100% no-repeat;visibility:visible;pointer-events:none}
+#team-canvas-root.tc-gesturing .tc-card-actions,#team-canvas-root.tc-gesturing .tc-node-resize{visibility:hidden!important}
+/* The docked footer bar is forced visible (card_frame.css): hidden during the gesture all the same. */
+body.ts-shell-app #team-canvas-root.tc-gesturing .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions.tc-card-docked{visibility:hidden!important}
+/* Explicit logical-coordinate resize handle. */
+#team-canvas-root .tc-world-board>.tc-node{resize:none}
+#team-canvas-root .tc-node>.tc-node-resize{position:absolute;right:0;bottom:0;z-index:6;width:16px;height:16px;min-width:0;min-height:0;padding:0;border:0;border-radius:0 0 8px 0;background:linear-gradient(135deg,transparent 50%,#6889a8 51%,#6889a8 58%,transparent 59%,transparent 70%,#6889a8 71%,#6889a8 78%,transparent 79%);cursor:nwse-resize;touch-action:none}

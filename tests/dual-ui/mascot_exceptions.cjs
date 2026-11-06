@@ -102,8 +102,21 @@ function withoutApprovedDockPerf(buf) {
   return prod && sha(prod) === APPROVED_CONTEXT_HELP.production ? prod : buf;
 }
 
+// context_help.js (Gerardo, 2026-11-05, triage F-24/F-25, focus only): closing help focuses a visible control when its
+// opener is hidden, and pointercancel clears the drag's click suppression. Exactly these two sites are taken back out.
+const APPROVED_HELP_FOCUS = [
+  ["if(restore&&prev.isConnected){if(prev.getClientRects().length)prev.focus();else{var alt=document.querySelector('.help-bar-settings');if(alt&&alt.getClientRects().length)alt.focus();}}}}",
+    "if(restore&&prev.isConnected)prev.focus();}}"],
+  ["target.onpointercancel=function(e){suppressClick=false;endDrag(e);};", "target.onpointercancel=endDrag;"]];
+function withoutApprovedHelpFocus(buf) {
+  let text = buf.toString('utf8');
+  if (APPROVED_HELP_FOCUS.some(([now]) => text.split(now).length !== 2)) return buf;
+  for (const [now, prod] of APPROVED_HELP_FOCUS) text = text.replace(now, prod);
+  return Buffer.from(text, 'utf8');
+}
+
 const STRIP = {
-  'www/team/js/context_help.js': withoutApprovedDockPerf,
+  'www/team/js/context_help.js': buf => withoutApprovedDockPerf(withoutApprovedHelpFocus(buf)),
   'www/team/js/companion_assistant.js': withoutApprovedFormatAnswer,
   'www/team/js/companion_guidance.js': withoutApprovedGroundedYield,
   'www/team/js/companion_guidance_data.js': withoutApprovedSessionText,

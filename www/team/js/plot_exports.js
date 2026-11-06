@@ -25,7 +25,11 @@
     }
     return null;
   }
-  async function exportPlot(gd,format,name,bar){
+  // token: the Canvas card's revision when the export started (TeamCanvas.exportRevision); the
+  // file is published only if it is unchanged. Returns false when the export was dropped.
+  async function exportPlot(gd,format,name,bar,token){
+    // Test mode (canvas.js lazy mount): throws if gd is a Canvas card not mounted and clean.
+    if(window.TeamCanvas&&typeof window.TeamCanvas.assertClean==='function')window.TeamCanvas.assertClean(gd);
     var size=plotSize(gd),width=size.width,height=size.height;
     if(format==='PDF'){
       installPdfMinusFix();
@@ -36,22 +40,26 @@
       if(docSvg.nodeName!=='svg')throw new Error('Invalid SVG');
       var pdf=new window.jspdf.jsPDF({orientation:width>=height?'landscape':'portrait',unit:'pt',format:[width,height]});
       await pdf.svg(docSvg,{x:0,y:0,width:width,height:height});
-      saveBlob(pdf.output('blob'),name+'.pdf',bar);
+      return saveBlob(pdf.output('blob'),name+'.pdf',bar,token);
     }else{
       var imageUrl=await Plotly.toImage(gd,{format:format==='JPG'?'jpeg':format.toLowerCase(),width:width,height:height,scale:format==='SVG'?1:Math.min(3,30000/width,30000/height)});
       var imageBlob=await (await fetch(imageUrl)).blob();
-      saveBlob(imageBlob,name+(format==='JPG'?'.jpg':'.'+format.toLowerCase()),bar);
+      return saveBlob(imageBlob,name+(format==='JPG'?'.jpg':'.'+format.toLowerCase()),bar,token);
     }
   }
-  function saveBlob(blob,name,bar){
+  function saveBlob(blob,name,bar,token){
+    if(token&&window.TeamCanvas&&typeof window.TeamCanvas.exportCurrent==='function'&&!window.TeamCanvas.exportCurrent(token)){
+      var st=bar.querySelector('.plot-export-status');if(st)st.textContent='Plot changed \u2014 export again.';return false;
+    }
     var old=bar.querySelector('.plot-export-fallback');
     if(old){URL.revokeObjectURL(old.href);old.remove();}
     var url=URL.createObjectURL(blob),link=document.createElement('a');
-    link.href=url;link.download=name;link.textContent='Save '+name.split('.').pop().toUpperCase()+' file';link.className='plot-export-fallback plot-export-button';
+    link.href=url;link.download=name;if(token){link.dataset.cardId=token.cardId;link.dataset.revision=token.revision;}link.textContent='Save '+name.split('.').pop().toUpperCase()+' file';link.className='plot-export-fallback plot-export-button';
     // Keep a real, accessible user-clickable link beside this plot. Browser
     // policy may suppress automatic downloads after asynchronous rendering.
     bar.appendChild(link);link.click();
     setTimeout(function(){link.remove();URL.revokeObjectURL(url);},600000);
+    return true;
   }
   function plotName(widget){
     var card=widget.closest('.rd-card');
@@ -92,12 +100,11 @@
       button.onclick=async function(){
         var gd=visiblePlot(widget),image=widget.querySelector('img');
         if(!gd&&!image){status.textContent='Wait for the plot to finish loading.';return;}
-        var buttons=bar.querySelectorAll('button:not(.ts-export-trigger)');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
+        var token=window.TeamCanvas&&typeof window.TeamCanvas.exportRevision==='function'?window.TeamCanvas.exportRevision(widget):null;var buttons=bar.querySelectorAll('button:not(.ts-export-trigger)');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
         var name='lipidomic-'+widget.id.replace(/[^a-z0-9_-]/gi,'-');
         try{
           if(gd&&window.Plotly){
-            await exportPlot(gd,format,name,bar);
-            status.textContent=format+' is ready. If the download did not start, use Save '+format+' file.';
+            if(await exportPlot(gd,format,name,bar,token))status.textContent=format+' is ready. If the download did not start, use Save '+format+' file.';
             return;
           }
           if(gd)throw new Error('Plotly is unavailable');
@@ -114,18 +121,18 @@
               if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('PDF export library is unavailable');
               var pageWidth=width*.75,pageHeight=height*.75;
               var pdf=new window.jspdf.jsPDF({orientation:width>=height?'landscape':'portrait',unit:'pt',format:[pageWidth,pageHeight]});
-              pdf.addImage(png,'PNG',0,0,pageWidth,pageHeight,'','FAST');saveBlob(pdf.output('blob'),name+'.pdf',bar);
+              pdf.addImage(png,'PNG',0,0,pageWidth,pageHeight,'','FAST');var saved=saveBlob(pdf.output('blob'),name+'.pdf',bar,token);
             }else{
               var svg='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'"><image width="'+width+'" height="'+height+'" href="'+png+'" xlink:href="'+png+'"/></svg>';
-              saveBlob(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),name+'.svg',bar);
+              var saved=saveBlob(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),name+'.svg',bar,token);
             }
           }else{
             var mime=format==='JPG'?'image/jpeg':'image/png';
             var blob=await new Promise(function(resolve){canvas.toBlob(resolve,mime,format==='JPG'?.95:undefined);});
             if(!blob)throw new Error('Could not encode plot image');
-            saveBlob(blob,name+(format==='JPG'?'.jpg':'.png'),bar);
+            var saved=saveBlob(blob,name+(format==='JPG'?'.jpg':'.png'),bar,token);
           }
-          status.textContent=format+' download ready'+(format==='SVG'||format==='PDF'?' (raster image).':'.');
+          if(saved)status.textContent=format+' download ready'+(format==='SVG'||format==='PDF'?' (raster image).':'.');
         }catch(error){status.textContent='Export failed. Wait for the plot to load or try PNG.';}
         finally{buttons.forEach(function(b){b.disabled=false;});}
       };bar.appendChild(button);
@@ -134,7 +141,8 @@
   }
   function mount(){
     document.querySelectorAll('.shiny-plot-output').forEach(mountStatic);
-    document.querySelectorAll('.plotly.html-widget-output').forEach(function(widget){
+    // A Canvas copy waiting to mount (canvas.js lazy mount) keeps its bar: its exports mount it first.
+    document.querySelectorAll('.plotly.html-widget-output,.plotly.tc-lazy-unbound').forEach(function(widget){
       if(!widget.id||widget.dataset.exportsMounted)return;
       widget.dataset.exportsMounted='true';
       var bar=document.createElement('div');bar.className='plot-export-bar';bar.setAttribute('role','group');bar.setAttribute('aria-label','Download '+plotName(widget));
@@ -145,11 +153,10 @@
         button.onclick=async function(){
           var gd=widget.classList.contains('js-plotly-plot')?widget:widget.querySelector('.js-plotly-plot');
           if(!gd||!gd.data||!window.Plotly){status.textContent='Wait for the plot to finish loading.';return;}
-          var buttons=bar.querySelectorAll('button:not(.ts-export-trigger)');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
+          var token=window.TeamCanvas&&typeof window.TeamCanvas.exportRevision==='function'?window.TeamCanvas.exportRevision(widget):null;var buttons=bar.querySelectorAll('button:not(.ts-export-trigger)');buttons.forEach(function(b){b.disabled=true;});status.textContent='Preparing '+format+'…';
           var name='lipidomic-'+widget.id.replace(/[^a-z0-9_-]/gi,'-');
           try{
-            await exportPlot(gd,format,name,bar);
-            status.textContent=format+' is ready. If the download did not start, use Save '+format+' file.';
+            if(await exportPlot(gd,format,name,bar,token))status.textContent=format+' is ready. If the download did not start, use Save '+format+' file.';
           }catch(error){status.textContent='Export failed. Please try SVG or PNG, or reload this plot.';}
           finally{buttons.forEach(function(b){b.disabled=false;});}
         };bar.appendChild(button);

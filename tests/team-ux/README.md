@@ -56,3 +56,18 @@ server code (`R/frontends/team/sheet_picker.R`): sheet listing, the 50 MB cap, t
 that a chosen sheet reads `identical()` to the same sheet saved alone, and the refusals.
 `test_sheet_picker_browser.cjs` runs `www/team/js/sheet_picker.js` in Chromium against
 `sheet_picker_harness/app.R` (no Team library needed; `RSCRIPT=` points at Rscript).
+`test_canvas_remove_feedback.cjs` (same variables; optional `TEAM_CHECKPOINT` name prefix,
+`TEAM_UX_SHOTS`, `TEAM_SERVER_LOG` = the Team server's log file, `PLAYWRIGHT`) clicks Remove /
+Return like a person (card ⋯ menu, real mouse) on an independent copy, a library plot and an
+illustration. It checks that the open ⋯ menu never moves under the pointer (also after zooming
+out), that the card fades out with a toast shown at the click, that the saved canvas equals the
+old path's, and that Undo brings back the same saved node, creation order and tab. It also covers
+the refusal toast (original view gone), a copy whose hidden host is gone, a teardown step that
+throws, a re-added finished plot staying live (F-02), the empty state after the last card (F-13)
+and the rate-limited browser error diagnostic.
+`test_canvas_undo_validity_browser.cjs` (no Team library; Rscript for the shiny/plotly assets)
+checks that a finished figure brought back by Undo (Return, Return all, nested, pending) is always
+stale, never an archived checkpoint figure: export is refused until Edit, then Finish plot. It also
+checks the figure-page item comes back only when it still fits the page, that a pending Return never
+removes a card restored meanwhile, and that the browser error diagnostic sends only a message's first
+line and this page's script locations.

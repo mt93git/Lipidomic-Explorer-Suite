@@ -93,7 +93,8 @@ const rect = n => { if (!n || !n.getClientRects().length) return null; const b =
     // ---- Draft ----------------------------------------------------------------------------------------
     const draft = await measure();
     assert.equal(await page.evaluate(() => TeamCanvasCompose.mode()), 'draft');
-    assert.ok(draft.home && draft.home.height > 200, 'the Draft reserves the companion home');
+    // ux27: the home is a small box anchored at the column's edge (no reserved strip); same rect in both modes below.
+    assert.ok(draft.home && draft.home.height >= 150 && draft.home.width > 0, 'the Draft has the companion home box');
     assert.ok(draft.main && draft.rail, 'Draft canvas and rail shown');
     assert.equal(draft.figureColumn, null, '#tc-figure-column is not shown in the Draft');
 
@@ -152,6 +153,10 @@ const rect = n => { if (!n || !n.getClientRects().length) return null; const b =
     await tool('Export figure ▾').click();
     for (const name of ['SVG', 'PDF', 'Print']) assert.ok(await tool(name).isVisible(), name + ' in Export figure');
     await page.keyboard.press('Escape');
+    // ux27: the inspector starts hidden on Canvas; on the Figure page the user shows it with the rail's
+    // inspector toggle (I) to reach the page settings.
+    const railToggle = root.locator('.ts-rail .ts-inspector-toggle');
+    if (await page.evaluate(() => document.querySelector('#team-canvas-root .tc-layout').classList.contains('ts-inspector-collapsed'))) { await railToggle.click(); await fixture.settle(page); }
     await root.locator('#tc-figure-column [role=tab]', {hasText: 'Page'}).click();
     assert.ok(await root.locator('.tc-page-settings>summary').isVisible(), 'Page setup in the Page tab');
     // Zoom: + then the reset label, Fit width, Fit page.
@@ -208,7 +213,10 @@ const rect = n => { if (!n || !n.getClientRects().length) return null; const b =
     await page.evaluate(() => window.scrollTo(0, 0));
     const again = await measure();
     assert.ok(again.main && again.rail && !again.panel && !again.figureColumn, 'Draft restored: board, rail, no figure page or column');
-    same(draft.home, again.home, 'companion home after returning', 0.5);
+    // ux27: the inspector was shown on the Figure page (an explicit choice, kept), so the home now sits at the
+    // column's left edge instead of the canvas's right edge: same size and height, anchored to the column.
+    for (const k of ['top', 'width', 'height']) assert.ok(Math.abs(draft.home[k] - again.home[k]) <= 0.5, `companion home after returning ${k}: ${draft.home[k]} vs ${again.home[k]}`);
+    assert.ok(Math.abs(again.home.left + again.home.width - again.column.left) <= 1, `companion home sits left of the shown inspector ${JSON.stringify([again.home, again.column])}`);
     assert.equal(await page.evaluate(() => document.getElementById('tc-workspace-panel').hidden), false, 'the shell grid stays shown');
     await page.evaluate(() => TeamCanvasCompose.showFigure());
     await page.locator('#tc-preview-panel .tc-paper').first().waitFor();

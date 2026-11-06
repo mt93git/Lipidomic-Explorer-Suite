@@ -61,6 +61,31 @@ const path = require('node:path');
     await page.getByLabel('Plot title').press('Tab');
     await page.waitForFunction(() => !document.querySelector('.gtitle')?.textContent, {timeout:4000});
     assert.equal(await page.evaluate(() => document.getElementById('results_dashboard-plot_pca').layout.margin.t), 10);
+    // Real Plotly hover and PNG bytes under the production persistent transform camera.
+    // PNG avoids Plotly's fresh SVG namespace ids, which are not image-content differences.
+    const camera=await browser.newPage({viewport:{width:1440,height:900},acceptDownloads:true});
+    await camera.setContent('<section id="team-canvas-root"><div class="tc-scroll" style="width:100%;height:700px"><div class="tc-board" style="width:2000px;height:1600px"><div class="tc-node" style="left:40px;top:40px;width:620px;height:440px"><div id="camera-plot" class="plotly html-widget-output" style="width:580px;height:380px"></div></div></div></div></section>');
+    await camera.addStyleTag({path:path.resolve('www/team/css/canvas_viewport.css')});
+    await camera.addStyleTag({content:'.tc-scroll{overflow:auto}.tc-node{position:absolute}'});
+    await camera.addScriptTag({path:plotly});
+    await camera.evaluate(()=>Plotly.newPlot('camera-plot',[{type:'scatter',mode:'markers',x:[1,2,3],y:[2,1,3]}],{width:580,height:380,autosize:false,margin:{t:20}}));
+    await camera.addScriptTag({path:path.resolve('www/team/js/canvas_viewport.js')});
+    await camera.addScriptTag({path:path.resolve('www/team/js/plot_exports.js')});
+    await camera.evaluate(()=>{const root=document.getElementById('team-canvas-root');TeamCanvasViewport.mount(root,root.querySelector('.tc-board'));window.lastHover=null;document.getElementById('camera-plot').on('plotly_hover',e=>lastHover=e.points[0].pointNumber);});
+    const png=[];
+    for(const z of [.5,1,1.5]){
+      await camera.evaluate(z=>{TeamCanvasViewport.setScale(z);const s=document.querySelector('.tc-scroll');s.scrollLeft=0;s.scrollTop=0;lastHover=null;},z);
+      await camera.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+      const point=await camera.locator('#camera-plot .point').first().boundingBox();
+      await camera.mouse.move(1,1);await camera.mouse.move(point.x+point.width/2,point.y+point.height/2);
+      await camera.waitForFunction(()=>lastHover===0);
+      const downloadPromise=camera.waitForEvent('download');
+      await camera.evaluate(()=>document.querySelector('.plot-export-bar button[aria-label^="Download PNG"]').click());
+      const download=await downloadPromise;
+      png.push(require('node:fs').readFileSync(await download.path()));
+    }
+    assert(png.every(b=>b.equals(png[0])),'real Plotly PNG export bytes identical at 50/100/150%');
+    await camera.close();
     console.log('PASS: real Plotly title appears, has margin, and clears to the original layout');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode = 1;});

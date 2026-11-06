@@ -29,16 +29,16 @@ await page.locator('.tc-zoom-reset').click();assert.equal(await page.locator('.t
 await page.getByRole('button',{name:'Fit all',exact:true}).click();await page.waitForTimeout(50);
 const fit=await page.evaluate(()=>{const s=document.querySelector('.tc-scroll'),b=document.querySelector('.tc-node').getBoundingClientRect();return {sw:s.clientWidth,sh:s.clientHeight,w:b.width,h:b.height};});assert(fit.w<=fit.sw&&fit.h<=fit.sh);assert(await page.evaluate(()=>TeamCanvasViewport.scale)>.3,'fit should use figure bounds instead of empty board');
 await page.locator('.tc-zoom-reset').click();await page.waitForTimeout(50);const map=page.locator('.tc-map svg');
-assert.equal(await page.locator('.tc-map').isVisible(),false,'no minimap at 100% when the figure fits');assert(await page.locator('.tc-zoom-reset').isVisible(),'zoom controls stay available');
+assert.equal(await page.locator('.tc-map').isVisible(),true,'minimap stays available at 100% when the figure fits');assert(await page.locator('.tc-zoom-reset').isVisible(),'zoom controls stay available');
 await page.evaluate(()=>{const n=document.querySelector('.tc-node');n.style.width='1600px';n.style.height='1200px';});await page.waitForTimeout(50);
-assert.equal(await page.locator('.tc-map').isVisible(),false,'no minimap at 100% even for a large figure');
+assert.equal(await page.locator('.tc-map').isVisible(),true,'minimap stays available at 100% for a large figure');
 await page.getByRole('button',{name:'Zoom out',exact:true}).click();await page.waitForTimeout(50);
 assert.equal(await map.isVisible(),true,'minimap appears when zoomed out on a figure larger than the viewport');
-// Zoomed out until the drawn figure fits the viewport: the minimap goes away; zooming back in brings it back.
+// The minimap stays available both when figures fit and when they overflow.
 const fits=()=>page.evaluate(()=>{const s=document.querySelector('.tc-scroll'),n=document.querySelector('.tc-node'),z=TeamCanvasViewport.scale;return (n.offsetLeft+n.offsetWidth)*z<=s.clientWidth&&(n.offsetTop+n.offsetHeight)*z<=s.clientHeight;});
 let outs=0;while(!(await fits())&&outs<12){await page.getByRole('button',{name:'Zoom out',exact:true}).click();outs++;}await page.waitForTimeout(50);
 assert(await fits()&&await page.evaluate(()=>TeamCanvasViewport.scale)<1,'zoomed out until the figure fits');
-assert.equal(await page.locator('.tc-map').isVisible(),false,'no minimap once the zoomed-out figure fits the viewport');
+assert.equal(await page.locator('.tc-map').isVisible(),true,'minimap stays available once the zoomed-out figure fits the viewport');
 for(let i=0;i<outs;i++)await page.getByRole('button',{name:'Zoom in',exact:true}).click();await page.waitForTimeout(50);
 assert.equal(await map.isVisible(),true,'minimap returns when zooming back in makes the figure overflow');const mb=await map.boundingBox();await page.mouse.click(mb.x+mb.width-5,mb.y+mb.height-5);await page.waitForTimeout(50);
 const pos=await page.locator('.tc-scroll').evaluate(s=>({x:s.scrollLeft,y:s.scrollTop}));assert(pos.x>0&&pos.y>0);
@@ -59,13 +59,12 @@ assert.equal(await page.evaluate(()=>TeamCanvas.serialize().libraryHidden),true,
 await page.locator('.tc-library-toggle').click();
 await page.evaluate(()=>{const n=document.querySelector('.tc-node');n.style.width='1000px';n.style.height='1100px';TeamCanvasViewport.focusNode(n,{readable:true});});await page.waitForTimeout(80);
 const reading=await page.locator('.tc-node').evaluate(n=>({width:n.getBoundingClientRect().width,top:n.getBoundingClientRect().top,viewportTop:n.closest('.tc-scroll').getBoundingClientRect().top,viewportWidth:n.closest('.tc-scroll').clientWidth}));assert(reading.width>=Math.min(1000,reading.viewportWidth-64)-2,'readable mode fits width instead of shrinking tall chart to viewport height '+JSON.stringify(reading));assert(reading.top>=reading.viewportTop+8,'readable mode starts at chart header');
-// Fit all on a figure that fits at 100% (only once the minimap's usual height is not held back) stays at 100%.
-// At 100% (minimap hidden) its height leaves 40 px spare under the zoom controls: less than the minimap's ~96 px.
-await page.locator('.tc-zoom-reset').click();await page.waitForTimeout(50);assert.equal(await page.locator('.tc-map').isVisible(),false);
+// Fit all reserves the minimap height, and stays at 100% when the card fits above it.
+await page.locator('.tc-zoom-reset').click();await page.waitForTimeout(50);assert.equal(await page.locator('.tc-map').isVisible(),true);
 await page.evaluate(()=>{const n=document.querySelector('.tc-node'),s=document.querySelector('.tc-scroll'),nav=document.querySelector('.tc-navigation');n.style.width='500px';n.style.height=(s.clientHeight-32-16-(nav.offsetHeight+12)-40)+'px';});await page.waitForTimeout(50);
 await page.getByRole('button',{name:'Fit all',exact:true}).click();await page.waitForTimeout(50);
-assert.equal(await page.locator('.tc-zoom-reset').innerText(),'100%','Fit all does not reserve room for a minimap that will stay hidden');
-assert.equal(await page.locator('.tc-map').isVisible(),false,'no minimap after fitting a figure that fits');
+assert.equal(await page.locator('.tc-zoom-reset').innerText(),'100%','Fit all reserves room for the visible minimap');
+assert.equal(await page.locator('.tc-map').isVisible(),true,'minimap stays available after Fit');
 // Back to the large figure in reading mode (zoomed out) for the mobile minimap checks below.
 await page.evaluate(()=>{const n=document.querySelector('.tc-node');n.style.width='1000px';n.style.height='1100px';TeamCanvasViewport.focusNode(n,{readable:true});});await page.waitForTimeout(80);
 await page.setViewportSize({width:390,height:844});await page.addStyleTag({content:'.tc-layout{display:block}.tc-scroll{width:100%!important;height:450px!important}.tc-main{width:100%!important}body{margin:8px}'});await page.waitForTimeout(100);
@@ -81,15 +80,13 @@ await yp.addScriptTag({path:path.resolve('www/team/js/canvas_viewport.js')});
 await yp.evaluate(()=>{const root=document.getElementById('team-canvas-root');TeamCanvasViewport.mount(root,root.querySelector('.tc-board'));TeamCanvasViewport.setScale(.5);});
 const frames=()=>yp.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(r)))));await frames();
 assert.equal(await yp.locator('.tc-map').isVisible(),true,'minimap shows below 100% with overflowing content');
-// "Minimap still visible at 100% after Reset" (22% -> 100%): Reset hides it, and so does a fitted
-// zoom that the Reset button already shows as 100%. The scroll is ~850 px tall here (fitViewport sizes it
-// to the window), so at 22% this 2630x2300 figure fits and rightly has no minimap: widen it for this check.
+// Reset and rounded percentages must never hide navigation.
 await yp.evaluate(()=>{const n=document.getElementById('big');n.style.width='5000px';n.style.height='4200px';TeamCanvasViewport.setScale(.22);});await frames();
 assert.equal(await yp.locator('.tc-map').isVisible(),true,'minimap at 22% on overflowing content');
 await yp.locator('.tc-zoom-reset').click();await frames();
-assert.equal(await yp.locator('.tc-zoom-reset').innerText(),'100%');assert.equal(await yp.locator('.tc-map').isVisible(),false,'no minimap after Reset to 100%');
+assert.equal(await yp.locator('.tc-zoom-reset').innerText(),'100%');assert.equal(await yp.locator('.tc-map').isVisible(),true,'minimap stays available after Reset to 100%');
 await yp.evaluate(()=>TeamCanvasViewport.setScale(.996));await frames();
-assert.equal(await yp.locator('.tc-zoom-reset').innerText(),'100%');assert.equal(await yp.locator('.tc-map').isVisible(),false,'no minimap at a zoom shown as 100%');
+assert.equal(await yp.locator('.tc-zoom-reset').innerText(),'100%');assert.equal(await yp.locator('.tc-map').isVisible(),true,'minimap stays available at a zoom shown as 100%');
 await yp.evaluate(()=>{const n=document.getElementById('big');n.style.width='2600px';n.style.height='2000px';TeamCanvasViewport.setScale(.5);const s=document.querySelector('.tc-scroll');s.scrollLeft=0;s.scrollTop=0;});await frames();
 // Invariant, checked after every step: the box is shown and usable; no visible part of any card header
 // lies under it; elementFromPoint at every visible badge and action centre reaches that card.
@@ -105,22 +102,21 @@ const audit=()=>yp.evaluate(()=>{
   return {bad,shown:cs.visibility==='visible'&&cs.pointerEvents!=='none'&&b.width>0&&b.height>0,box:{left:Math.round(b.left),right:Math.round(b.right),top:Math.round(b.top),bottom:Math.round(b.bottom)},inset:nav.parentElement.classList.contains('tc-nav-inset'),scrollBottom:Math.round(s.bottom)};
 });
 const clean=(a,label)=>{assert(a.shown,label+': the navigation box stays shown '+JSON.stringify(a));assert.deepEqual(a.bad,[],label+': '+JSON.stringify(a));};
+const shown=(a,label)=>assert(a.shown,label+': the navigation box stays shown '+JSON.stringify(a));
 const home0=(await audit()).box;clean(await audit(),'start');
-// Pan (scroll the canvas) so that the UNSELECTED card's header, with its status badge and actions, lies where the box is.
+// Hotfix 36: the box is fixed in its own corner (bottom-left). Cards panned, hovered, selected or zoomed under it
+// never make it hop to another corner or into a band; only an open ⋯ menu moves it aside (below).
 await yp.evaluate(()=>{const s=document.querySelector('.tc-scroll'),nr=document.querySelector('.tc-navigation').getBoundingClientRect(),r=document.getElementById('low').getBoundingClientRect();s.scrollLeft+=r.left-(nr.left-100);s.scrollTop+=r.top-(nr.top+30);});await frames();
 assert(await yp.evaluate(h=>{const r=document.querySelector('#low .tc-node-head').getBoundingClientRect();return r.left<h.right&&r.right>h.left&&r.top<h.bottom&&r.bottom>h.top&&!document.getElementById('low').classList.contains('is-selected');},home0),'fixture: the unselected card header now lies where the box was');
-let st=await audit();clean(st,'unselected card panned under the box');
-assert.notDeepEqual(st.box,home0,'the box moved to a free corner '+JSON.stringify([st.box,home0]));assert.equal(st.inset,false,'a free corner was enough');
-await yp.hover('#low .tc-node-head strong');clean(await audit(),'hovering the unselected card');
-await yp.evaluate(()=>document.getElementById('low').classList.add('is-selected'));await frames();clean(await audit(),'the same card selected');
+let st=await audit();shown(st,'unselected card panned under the box');assert.deepEqual(st.box,home0,'the box stays in its corner '+JSON.stringify([st.box,home0]));assert.equal(st.inset,false,'no band is reserved');
+await yp.hover('#low .tc-node-head strong');assert.deepEqual((await audit()).box,home0,'hovering a card does not move the box');
+await yp.evaluate(()=>document.getElementById('low').classList.add('is-selected'));await frames();assert.deepEqual((await audit()).box,home0,'selecting a card does not move the box');
 await yp.evaluate(()=>document.getElementById('low').classList.remove('is-selected'));
-// Zoom, Reset, Fit and move stay keyboard reachable while the box has moved.
-for(const sel of ['.tc-zoom-out','.tc-zoom-reset','.tc-zoom-in','.tc-zoom-fit','.tc-map-grip','.tc-map svg'])assert.equal(await yp.evaluate(sel=>{const b=document.querySelector(sel);b.focus();return document.activeElement===b;},sel),true,sel+' takes keyboard focus while the box is moved');
-const zBefore=await yp.evaluate(()=>TeamCanvasViewport.scale);await yp.locator('.tc-zoom-out').focus();await yp.keyboard.press('Enter');assert(await yp.evaluate(()=>TeamCanvasViewport.scale)<zBefore,'Zoom out works from the keyboard');await frames();clean(await audit(),'after zooming out');
-// Panning the card away brings the box back to its own place.
+for(const sel of ['.tc-zoom-out','.tc-zoom-reset','.tc-zoom-in','.tc-zoom-fit','.tc-map-grip','.tc-map svg'])assert.equal(await yp.evaluate(sel=>{const b=document.querySelector(sel);b.focus();return document.activeElement===b;},sel),true,sel+' takes keyboard focus over a card');
+const zBefore=await yp.evaluate(()=>TeamCanvasViewport.scale);await yp.locator('.tc-zoom-out').focus();await yp.keyboard.press('Enter');assert(await yp.evaluate(()=>TeamCanvasViewport.scale)<zBefore,'Zoom out works from the keyboard');await frames();assert.deepEqual((await audit()).box,home0,'zooming does not move the box');
 await yp.evaluate(()=>{TeamCanvasViewport.setScale(.5);const s=document.querySelector('.tc-scroll');s.scrollLeft=0;s.scrollTop=0;});await frames();
-st=await audit();clean(st,'card panned away');assert.deepEqual(st.box,home0,'the box is back in its own place');
-// Every corner holds a card header: the canvas reserves a band for the box, cards end above it.
+st=await audit();clean(st,'card panned away');assert.deepEqual(st.box,home0,'the box is in its own place');
+// Every corner holds a card header: still no band and no move.
 await yp.evaluate(()=>{TeamCanvasViewport.setScale(.5);const s=document.querySelector('.tc-scroll');s.scrollLeft=200;s.scrollTop=200;});await frames();
 await yp.evaluate(()=>{
   const sc=document.querySelector('.tc-scroll'),s=sc.getBoundingClientRect(),sh=document.querySelector('.tc-viewport-shell').getBoundingClientRect(),nav=document.querySelector('.tc-navigation'),w=nav.offsetWidth,h=nav.offsetHeight,z=TeamCanvasViewport.scale,board=document.querySelector('.tc-board');
@@ -129,11 +125,9 @@ await yp.evaluate(()=>{
   const cr=s.left+sc.clientWidth;
   mk('tl',sh.left,sh.top+12+h/2,w+60);mk('tr',cr-w-70,sh.top+12+h/2,w+60);mk('bl',sh.left,sh.bottom-12-h/2,w+60);mk('br',cr-w-70,sh.bottom-12-h/2,w+60);
 });await frames();await frames();
-st=await audit();clean(st,'every corner taken');
-assert.equal(st.inset,true,'no free corner: a band is reserved '+JSON.stringify(st));assert(st.box.top>=st.scrollBottom-1,'the box sits in the band below the cards '+JSON.stringify(st));
-for(const sel of ['.tc-zoom-out','.tc-zoom-reset','.tc-zoom-in','.tc-zoom-fit','.tc-map-grip'])assert.equal(await yp.evaluate(sel=>{const b=document.querySelector(sel);b.focus();return document.activeElement===b;},sel),true,sel+' takes keyboard focus in the band');
+st=await audit();shown(st,'every corner taken');assert.equal(st.inset,false,'no band is reserved');assert.deepEqual(st.box,home0,'the box stays in its corner');
 await yp.evaluate(()=>document.querySelectorAll('.tc-corner').forEach(n=>n.remove()));await frames();await frames();
-st=await audit();clean(st,'corners free again');assert.equal(st.inset,false,'the band goes once a corner is free');
+st=await audit();clean(st,'corners free again');assert.deepEqual(st.box,home0);
 // FIXR1B item 2: an open card popover (RC4's ⋯ menu, above the card's footer and outside the bar's box) is
 // an obstacle too. A card whose header and footer stay clear of the box, but whose open menu reaches into
 // it: the box moves aside while the menu is open and comes back when it closes. Card rectangles are cached
@@ -162,7 +156,7 @@ await yp.evaluate(()=>{const s=document.querySelector('.tc-scroll');s.scrollTop-
 assert.deepEqual((await audit()).box,homeBox,'the box returns once the menu closes');
 await yp.evaluate(()=>document.getElementById('menu-card').remove());await frames();
 await yp.close();
-// Browsers without CSS zoom stay at 100%: no minimap there either, even for an overflowing figure.
+// CSS zoom support is unnecessary; transform navigation works without currentCSSZoom.
 const noZoom=await browser.newPage({viewport:{width:1200,height:900}});
 await noZoom.setContent('<section id="team-canvas-root"><div class="tc-layout"><div class="tc-main" style="width:850px"><div class="tc-scroll" style="width:100%;height:500px"><div class="tc-board"><div class="tc-node" style="position:absolute;left:30px;top:30px;width:1600px;height:1200px"><strong>PCA</strong></div></div></div></div></div></section>');
 await noZoom.addStyleTag({path:path.resolve('www/team/css/canvas.css')});await noZoom.addStyleTag({path:path.resolve('www/team/css/canvas_viewport.css')});
@@ -170,9 +164,9 @@ await noZoom.evaluate(()=>Object.defineProperty(Element.prototype,'currentCSSZoo
 await noZoom.addScriptTag({path:path.resolve('www/team/js/canvas_viewport.js')});
 await noZoom.evaluate(()=>{const root=document.getElementById('team-canvas-root');TeamCanvasViewport.mount(root,root.querySelector('.tc-board'));});
 await noZoom.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-assert.equal(await noZoom.locator('.tc-zoom-fit').isDisabled(),true,'zoom is treated as unsupported');
+assert.equal(await noZoom.locator('.tc-zoom-fit').isDisabled(),false,'transform zoom works without currentCSSZoom');
 assert.equal(await noZoom.locator('.tc-zoom-reset').innerText(),'100%');
-assert.equal(await noZoom.locator('.tc-map').isVisible(),false,'no minimap at 100% without CSS zoom, even when the figure overflows');
+assert.equal(await noZoom.locator('.tc-map').isVisible(),true,'minimap works without CSS zoom support');
 assert(await noZoom.locator('.tc-zoom-reset').isVisible(),'zoom controls stay');
-console.log('PASS: zoom limits/reset/fit, unchanged checkpoint, scaled node drag, minimap click/keyboard, floating minimap, expanded mode, mobile width/collapse, minimap hides once the zoomed-out figure fits, Fit keeps no reserve for a hidden minimap, no minimap at 100% without CSS zoom, no minimap after Reset from 22% or at a zoom shown as 100%, the navigation box stays shown and never covers an unselected or selected card header, badge or actions (free corner, or a reserved band when every corner is taken), its controls stay keyboard reachable');
+console.log('PASS: zoom limits/reset/fit; unchanged checkpoints; scaled drag; minimap at all scales; navigation bounds, fixed box (moves only off an open ⋯ menu); keyboard accessibility; CSS zoom fallback');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

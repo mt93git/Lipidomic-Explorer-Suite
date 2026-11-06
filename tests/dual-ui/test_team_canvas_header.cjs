@@ -140,7 +140,7 @@ const menuItems = (page, cls) => page.evaluate(cls => Array.from(document.queryS
 
     // ---- One control style across the bar ------------------------------------------------------
     const list = await controls(page);
-    for (const name of ['Canvas 1 (1 card)', 'Add canvas tab', 'Tab actions', '+ Add plot', 'Arrange', 'Text', 'Shapes', 'Undo', 'Redo', 'Draft', 'Figure page (print preview)', 'Analysis tools', 'Export figure', 'More canvas actions'])
+    for (const name of ['Canvas 1 (1 card)', 'Add canvas tab', 'Tab actions', '+ Add plot', 'Tidy up', 'Text', 'Shapes', 'Undo', 'Redo', 'Draft', 'Figure page (print preview)', 'Analysis tools', 'Export figure', 'More canvas actions'])
       assert.ok(list.some(c => c.name === name), `${name} is in the bar (${list.map(c => c.name).join(', ')})`);
     const styles = [...new Set(list.map(c => c.style))];
     assert.equal(styles.length, 1, `a single control style in the bar: ${styles.join('  //  ')}`);
@@ -157,7 +157,7 @@ const menuItems = (page, cls) => page.evaluate(cls => Array.from(document.queryS
       const here = await page.evaluate(() => document.activeElement.closest('.tc-tabbar,.tc-toolbar') ? __name(document.activeElement) : null);
       if (!here) break; order.push(here);
     }
-    assert.deepEqual(order, ['Canvas 1 (1 card)', 'Add canvas tab', 'Tab actions', '+ Add plot', 'Arrange', 'Text', 'Shapes', 'Undo', 'Redo', 'Figure page (print preview)', 'Analysis tools', 'Export figure', 'More canvas actions'], 'Tab walks every header action in visual order');
+    assert.deepEqual(order, ['Canvas 1 (1 card)', 'Add canvas tab', 'Tab actions', '+ Add plot', 'Tidy up', 'Text', 'Shapes', 'Undo', 'Redo', 'Figure page (print preview)', 'Analysis tools', 'Export figure', 'More canvas actions'], 'Tab walks every header action in visual order');
     const analysis = page.locator('.ts-analysis > .ts-analysis-trigger'), onTrigger = () => page.evaluate(() => document.activeElement.matches('.ts-analysis > .ts-analysis-trigger'));
     const openTool = async name => { await analysis.focus(); await page.keyboard.press('Enter'); await page.waitForSelector('#team-tools-drawer:not([hidden])'); await page.focus(`#team-tools-drawer .ttd-open[aria-label="Open ${name}"]`); await page.keyboard.press('Enter'); await page.waitForTimeout(50); };
     await analysis.focus(); await page.keyboard.press('Enter');
@@ -233,7 +233,7 @@ const menuItems = (page, cls) => page.evaluate(cls => Array.from(document.queryS
     // ---- The inspector open, on the normal and on the expanded Canvas (RC1): the canvas column narrows;
     // the header stays one row because groups move into ⋯ when needed (shell.js fitTools levels), and
     // every action stays reachable exactly once. The companion is the floating dock: no column here.
-    const ACTIONS = {'+ Add plot': ['+ Add plot'], 'Arrange': ['Arrange'], 'Text': ['Text'], 'Shapes': ['Shapes'], 'Undo': ['Undo'], 'Redo': ['Redo'],
+    const ACTIONS = {'+ Add plot': ['+ Add plot'], 'Tidy up': ['Tidy up'], 'Text': ['Text'], 'Shapes': ['Shapes'], 'Undo': ['Undo'], 'Redo': ['Redo'],
       'Analysis tools': ['Analysis tools…'], 'Export figure': ['Export figure: SVG · vector', 'Export figure: PDF', 'Print figure']};
     for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768]]) for (const expanded of [false, true]) {
       const {page: pg, errors: errs} = await open(browser, width, height);
@@ -298,7 +298,7 @@ const menuItems = (page, cls) => page.evaluate(cls => Array.from(document.queryS
     const rows = [...new Set(small.filter(c => c.rect.top >= h.bar.top - 1).map(c => Math.round(c.rect.top)))];
     assert.equal(rows.length, 1, `one toolbar row at 390 (control tops ${rows.join(', ')})`);
     assert.ok(h.bar.height <= 44, `the toolbar is one row high at 390 (${h.bar.height})`);
-    for (const name of ['Arrange', 'Text', 'Shapes']) assert.ok(names.includes(name) || compact.includes(name), `${name} is reachable at 390`);
+    for (const name of ['Tidy up', 'Text', 'Shapes']) assert.ok(names.includes(name) || compact.includes(name), `${name} is reachable at 390`);
     for (const name of ['+ Add plot', 'Figure page (print preview)', 'More canvas actions']) assert.ok(names.includes(name), `${name} is in the bar at 390`);
     // The rest of the bar is offered in ⋯ (the same actions).
     for (const name of ['Undo', 'Redo', 'Analysis tools…', 'Export figure: SVG · vector', 'Export figure: PDF', 'Print figure']) assert.ok(compact.includes(name), `${name} is in ⋯ at 390 (${compact.join(', ')})`);

@@ -102,7 +102,7 @@
   // what no observer reports (an inline style, `hidden` or an ancestor/body class exposing an
   // inactive pane) within a second, at O(parked) with style reads cached per pass.
   function sweep() {
-    if (!parked.length || !screenOn()) return;
+    if (!parked.length || document.hidden || !screenOn()) return;
     dirty = false;
     try { if (revalidate()) recheck(); } catch (e) { stats.errors++; release(); }
   }
