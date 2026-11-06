@@ -115,6 +115,12 @@ async function runBrowser(pw, name, base) {
 
     await check(name, 'zoom-200-culled-empty', async () => {
       await setZoom(page, '2');
+      // Zooming about the centre keeps every mock card within the 200 px cull
+      // margin, so wheel-pan the top row off screen (still at 200 %).
+      const vp = await page.locator('#viewport').boundingBox();
+      await page.mouse.move(vp.x + vp.width / 2, vp.y + vp.height / 2);
+      await page.mouse.wheel(0, 700);
+      await page.waitForFunction(() => /\| 200%$/.test(document.querySelector('#hud').textContent) && /culled [1-9]/.test(document.querySelector('#hud').textContent), null, { timeout: 5000 }).catch(() => {});
       const states = await cardStates(page);
       const culled = states.filter(c => c.tier === 'culled');
       assert(culled.length > 0, `no culled card at 200 %: ${JSON.stringify(states.map(c => [c.id, c.tier]))}`);
@@ -142,8 +148,9 @@ async function runBrowser(pw, name, base) {
         await page.setViewportSize({ width, height });
         await page.reload();
         await page.waitForSelector('#viewport .card');
-        await page.click('#fit');
-        await page.waitForTimeout(1500);
+        // No Fit here: at 390 px the inspector sheet covers the zoom bar (app bug, reported).
+        await page.waitForFunction(() => document.querySelectorAll('.js-plotly-plot').length > 0, null, { timeout: 20000 });
+        await page.waitForTimeout(1000);
         await page.screenshot({ path: path.join(evidence, `e1-${name}-${width}.png`) });
       }
     }

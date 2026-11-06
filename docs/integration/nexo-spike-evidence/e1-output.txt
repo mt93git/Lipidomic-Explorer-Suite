@@ -1,0 +1,13 @@
+PASS E1 chromium cards-equal-nodes
+PASS E1 chromium live-plots-have-traces-at-100
+PASS E1 chromium zoom-25-frozen
+PASS E1 chromium zoom-200-culled-empty
+PASS E1 chromium fit-click-inspector-live
+PASS E1 chromium no-console-errors-or-failed-requests
+PASS E1 webkit cards-equal-nodes
+PASS E1 webkit live-plots-have-traces-at-100
+PASS E1 webkit zoom-25-frozen
+PASS E1 webkit zoom-200-culled-empty
+PASS E1 webkit fit-click-inspector-live
+PASS E1 webkit no-console-errors-or-failed-requests
+E1 OK
