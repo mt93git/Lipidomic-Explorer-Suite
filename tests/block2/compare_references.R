@@ -134,6 +134,7 @@ write.csv(do.call(rbind,routing),file.path(out,'routing-checks.csv'),row.names=F
 prod$pca_opts<-list(pcaMode='omics',maxPCs=3,mergeReplicates=FALSE)
 prod$allParsedMetadata<-function() meta
 prod$annotationData<-function() data.frame(Lipid_Name=parsed$Lipid_Name,subclass=parsed$subclass)
+sys.source('R/core/hooks.R',prod) # run_pca_calc consults the pca_cache hook (none registered here)
 load_assignments('R/modules/1_shared_data_module.R','run_pca_calc',prod)
 actual_pca<-prod$run_pca_calc(data.frame(Lipid_Name=rownames(raw),proof_linear,check.names=FALSE))
 actual_scores<-as.matrix(actual_pca$score_df[,paste0('PC',1:3)]);rownames(actual_scores)<-actual_pca$score_df$FullName

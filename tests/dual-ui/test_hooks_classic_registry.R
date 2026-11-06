@@ -5,9 +5,9 @@ suppressPackageStartupMessages(library(shiny))
 invisible(capture.output(source("R/global.R"), type = "message"))
 stopifnot(identical(lipidomic_hook_registered(), character()))
 
-# Every hook a module calls has a Team implementation, and Team registers no
+# Every hook the shared code (modules, server.R, global.R) calls has a Team implementation, and Team registers no
 # hook that the shared code never calls.
-called <- unique(unlist(lapply(c(list.files("R/modules", "\\.R$", full.names = TRUE), "R/server.R"),
+called <- unique(unlist(lapply(c(list.files("R/modules", "\\.R$", full.names = TRUE), "R/server.R", "R/global.R"),
   function(f) regmatches(readLines(f, warn = FALSE),
     gregexpr('lipidomic_hook\\("[a-z_0-9]+"', readLines(f, warn = FALSE))))))
 called <- sort(unique(sub('^lipidomic_hook\\("', "", sub('"$', "", called))))

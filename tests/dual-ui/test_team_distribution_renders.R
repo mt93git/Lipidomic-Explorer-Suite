@@ -8,7 +8,7 @@ check <- function(label, ok) if (!isTRUE(ok)) stop(label, call. = FALSE) else ca
 suppressPackageStartupMessages(library(shiny))
 `%||%` <- function(a,b) if(is.null(a)) b else a
 lipidomic_plotly_event <- function(...) NULL
-source('R/sample_metadata_import.R'); source('R/results_dashboard.R'); source('R/frontends/team/plot_instances.R')
+source('R/sample_metadata_import.R'); source('R/frontends/team/results_dashboard.R'); source('R/frontends/team/plot_instances.R')
 value <- function(x) {force(x); function(...)x}
 set.seed(7)
 df <- data.frame(Lipid=paste0('PC(',seq_len(40),':1)'),matrix(runif(40*12,1,100),ncol=12),check.names=FALSE)

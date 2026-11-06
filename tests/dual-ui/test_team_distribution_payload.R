@@ -4,7 +4,7 @@
 suppressPackageStartupMessages(library(shiny))
 `%||%` <- function(a,b) if(is.null(a)) b else a
 lipidomic_plotly_event <- function(...) NULL
-source('R/sample_metadata_import.R'); source('R/results_dashboard.R')
+source('R/sample_metadata_import.R'); source('R/frontends/team/results_dashboard.R')
 value <- function(x) {force(x); function(...)x}
 set.seed(123)
 df <- data.frame(Lipid=paste0('PC(',seq_len(120),':1)'),matrix(runif(120*67,1,100),ncol=67),check.names=FALSE)
@@ -12,7 +12,7 @@ names(df)[-1] <- paste0('S',seq_len(67))
 meta <- data.frame(FullName=names(df)[-1],Group1=rep(c('A','B','C'),length.out=67),Group2='X')
 hub <- list(data_processed=value(df),all_metadata=value(meta),color_maps=value(list()),class_color_map=value(list()),preparation_dirty=value(FALSE),team_compact_distribution=TRUE)
 render <- function(drop) {
-  if (!drop) { built <- plotly_build.team_compact_distribution; body(built) <- quote({ class(p) <- setdiff(class(p), 'team_compact_distribution'); p <- plotly::plotly_build(p, ...); p$x$data <- lapply(p$x$data, function(trace) { h <- trace$hovertemplate; if (is.character(h) && length(h) > 1L && !anyNA(h) && all(h == h[[1L]])) trace$hovertemplate <- h[[1L]]; trace }); p }); assign('plotly_build.team_compact_distribution', built, envir = globalenv()); on.exit(source('R/results_dashboard.R')) }
+  if (!drop) { built <- plotly_build.team_compact_distribution; body(built) <- quote({ class(p) <- setdiff(class(p), 'team_compact_distribution'); p <- plotly::plotly_build(p, ...); p$x$data <- lapply(p$x$data, function(trace) { h <- trace$hovertemplate; if (is.character(h) && length(h) > 1L && !anyNA(h) && all(h == h[[1L]])) trace$hovertemplate <- h[[1L]]; trace }); p }); assign('plotly_build.team_compact_distribution', built, envir = globalenv()); on.exit(source('R/frontends/team/results_dashboard.R')) }
   result <- NULL
   shiny::testServer(function(input,output,session) results_dashboard_module_server(input,output,session,hub),{
     session$setInputs(color_by='Group1',n_class=7L,top_n=10L);session$flushReact(); result <<- output$plot_dist })

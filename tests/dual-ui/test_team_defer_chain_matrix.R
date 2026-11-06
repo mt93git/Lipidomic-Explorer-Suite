@@ -15,8 +15,11 @@ server <- readLines('R/server.R', warn = FALSE)
 stopifnot(any(grepl('outputOptions(output, "prop_chain_matrix_ui", suspendWhenHidden = FALSE)', module, fixed = TRUE)),
           any(grepl('outputOptions(output, "prop_matrix_status_badge", suspendWhenHidden = FALSE)', module, fixed = TRUE)))
 reg <- grep('structural_server("structural_tab"', server, fixed = TRUE)
-ovr <- grep('team_suspend_hidden_classic_outputs(output)', server, fixed = TRUE)
+# On integration R/server.R calls the "structural_server_started" hook right after the module;
+# Team's implementation (hooks/server_wiring.R) runs team_suspend_hidden_classic_outputs(output).
+ovr <- grep('lipidomic_hook("structural_server_started")(output)', server, fixed = TRUE)
 stopifnot(length(reg) == 1L, length(ovr) == 1L, ovr > reg)
+stopifnot(any(grepl('team_suspend_hidden_classic_outputs(output)', readLines('R/frontends/team/hooks/server_wiring.R', warn = FALSE), fixed = TRUE)))
 testServer(function(input, output, session) {
   for (id in c(deferred, team_hidden_classic_outputs, team_hidden_metadata_previews)) output[[id]] <- renderUI(NULL)
 }, {

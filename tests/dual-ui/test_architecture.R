@@ -73,6 +73,7 @@ results_dashboard_server <- record_hook("dashboard", dashboard_sentinel)
 team_scientific_insight_server <- record_hook("insight")
 cell_show_server <- record_hook("cell")
 companion_assistant_server <- record_hook("companion")
+team_plot_instance_arm_prewarm <- record_hook("prewarm") # plot_instances.R (W6a Canvas copy prewarm)
 sentinel_hub <- structure(list(data_processed = function() "strict matrix",
   data_processed_allow_missing = function() "targeted prepared matrix",
   data_processed_unfiltered = function() "full applied matrix",
