@@ -2,8 +2,8 @@ sample_metadata_import_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     shiny::h4("Sample metadata"),
-    shiny::p("Add a CSV or XLSX table with one row per sample. Sample identifiers must exactly match the abundance matrix column names, including case and leading zeros."),
-    shiny::fileInput(ns("file"), "Sample metadata file", accept = c(".csv", ".xlsx")),
+    shiny::p("Add a CSV, TSV, TXT or XLSX table with one row per sample. Sample identifiers must exactly match the abundance matrix column names, including case and leading zeros."),
+    shiny::fileInput(ns("file"), "Sample metadata file", accept = c(".csv", ".tsv", ".txt", ".xlsx")),
     shiny::uiOutput(ns("identifier_ui")),
     shiny::uiOutput(ns("mapping_ui")),
     shiny::uiOutput(ns("match_summary")),
@@ -23,7 +23,7 @@ sample_metadata_import_server <- function(id, sample_ids, on_confirm = NULL) {
     metadata <- shiny::reactive({
       f <- input$file
       shiny::req(f)
-      read_sample_metadata_file(f$datapath, f$name)
+      team_read_sample_metadata_file(f$datapath, f$name)
     })
 
     output$identifier_ui <- shiny::renderUI({

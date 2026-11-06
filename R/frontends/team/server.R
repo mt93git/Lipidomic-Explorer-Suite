@@ -49,6 +49,12 @@ team_frontend_server <- function(input, output, session, shared_data) {
         session$onFlushed(function() session$sendCustomMessage("team-foreground-result",list(id=token,ok=TRUE)),once=TRUE)
     },ignoreInit=TRUE,priority=-1000)
   })
+  # SCIEX results exports (.txt) are converted to a wide .csv here before they reach the shared data module.
+  team_sciex_server(input, session)
+  # .txt/.tsv uploads are converted to .csv here before they reach the shared data module.
+  team_upload_formats_server(input, session)
+  # Excel workbooks: size cap and sheet choice before the shared data module sees them.
+  team_sheet_picker_server(input, session)
   view_data <- team_missingness_data_adapter(shared_data)
   if (team_workspace_enabled()) view_data <- team_review_foreground_adapter(input, session, view_data)
   guide_workflow <- if(team_workspace_enabled()) team_project_guided_server(input, output, session, view_data) else guided_workflow_server(input, output, session, view_data)
@@ -61,6 +67,8 @@ team_frontend_server <- function(input, output, session, shared_data) {
   if (team_workspace_enabled()) team_companion_workspace_server(session, view_data)
   # Group colours for the PCA: workspace Review (review_shell.js) and guided Quality (qw_pca_groups.js).
   if (!is.null(session)) team_review_shell_server(session, view_data)
+  # Review "Edit groups": edited labels go through the metadata upload confirmation path.
+  if (team_workspace_enabled() && !is.null(session)) team_group_editor_server(input, session, view_data, guide_workflow$step)
   team_pending_changes_bar_server(output, shared_data)
   invisible(guide_workflow)
 }

@@ -1,0 +1,15 @@
+/* Team Excel sheet picker dialog (sheet_picker.js): progress, refusals and the sheet choice. */
+#team-sheet-dialog{color:#141b24;background:#fff;border:1px solid #e3e7ec;border-radius:10px;padding:20px 22px;width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;box-sizing:border-box;box-shadow:0 18px 60px #14243130;font:14px/1.5 'Nunito Sans',system-ui,sans-serif;z-index:2147483646}
+#team-sheet-dialog::backdrop{background:rgba(23,45,75,.28)}
+#team-sheet-dialog h2{font:600 16px/1.35 'Nunito Sans',system-ui,sans-serif;margin:0 0 10px;color:#141b24;overflow-wrap:anywhere}
+#team-sheet-dialog p{margin:0 0 8px;font-size:14px;color:#3d4b5c;overflow-wrap:anywhere}
+#team-sheet-dialog fieldset{border:1px solid #e3e7ec;border-radius:8px;padding:8px 12px;margin:0 0 12px;max-height:280px;overflow:auto}
+#team-sheet-dialog legend{font-size:13px;font-weight:600;color:#5a6878;padding:0 4px;width:auto;float:none;margin:0}
+#team-sheet-dialog label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;padding:3px 0;margin:0;cursor:pointer;overflow-wrap:anywhere}
+#team-sheet-dialog label.tsp-all{border-top:1px solid #e3e7ec;margin-top:4px;padding-top:7px;color:#5a6878}
+#team-sheet-dialog input[type=radio]{accent-color:#2d5f8a;flex:none}
+#team-sheet-dialog .tsp-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+#team-sheet-dialog .tsp-actions button{min-height:34px;padding:6px 16px;border-radius:6px;font:600 13px/1 'Nunito Sans',system-ui,sans-serif;cursor:pointer}
+#team-sheet-dialog .tsp-primary{background:#2d5f8a;color:#fff;border:1px solid #2d5f8a}
+#team-sheet-dialog .tsp-secondary{background:#fff;color:#2d5f8a;border:1px solid #e3e7ec}
+#team-sheet-dialog button:focus-visible{outline:2px solid #2d5f8a;outline-offset:2px}

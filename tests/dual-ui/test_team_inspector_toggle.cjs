@@ -53,6 +53,10 @@ function extractProduction() {
   prodRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'team-inspector-prod-'));
   const tar = execFileSync('git', ['archive', '--format=tar', PRODUCTION, '--', 'www/team', 'R/frontends/team', 'tests/dual-ui'], {cwd: ROOT, maxBuffer: 512 * 1024 * 1024});
   execFileSync('tar', ['-x', '-C', prodRoot], {input: tar});
+  // Re-baseline (ux18, approved by the owner 2026-11-05): production plus the ux18 Canvas layer, i.e. the
+  // slim zoom pill / minimap cluster and the small companion pinned bottom-right on Canvas. Only its www/team
+  // presentation files (canvas.js's restore-only change is left out: this fixture does not load canvas.js).
+  execFileSync('git', ['apply', path.join(ROOT, 'tests/dual-ui/ux18_canvas_layer.patch')], {cwd: prodRoot});
   PF = require(path.join(prodRoot, 'tests/dual-ui/fixture_team_overlay_pages.cjs'));
 }
 // manual: a position the user dragged the mascot to (context_help.js reads it from sessionStorage when it loads).

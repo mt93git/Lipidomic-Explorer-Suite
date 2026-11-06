@@ -1,0 +1,24 @@
+/* Team SCIEX import dialog (sciex_import.js): summary, choices, preview, status and errors. */
+#team-sciex-dialog{color:#141b24;background:#fff;border:1px solid #e3e7ec;border-radius:10px;padding:20px 22px;width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;box-sizing:border-box;box-shadow:0 18px 60px #14243130;font:14px/1.5 'Nunito Sans',system-ui,sans-serif;z-index:2147483646}
+#team-sciex-dialog::backdrop{background:rgba(23,45,75,.28)}
+#team-sciex-dialog h2{font:600 16px/1.35 'Nunito Sans',system-ui,sans-serif;margin:0 0 10px;color:#141b24;overflow-wrap:anywhere}
+#team-sciex-dialog p{margin:0 0 8px;font-size:14px;color:#3d4b5c;overflow-wrap:anywhere}
+#team-sciex-dialog .tsx-muted{font-size:13px;color:#5a6878}
+#team-sciex-dialog .tsx-warn{font-size:13px;color:#8a4b00;background:#fff6e8;border:1px solid #f1dcb6;border-radius:6px;padding:6px 10px}
+#team-sciex-dialog .tsx-error{font-size:13px;color:#8f1d1d;background:#fdf0f0;border:1px solid #f0caca;border-radius:6px;padding:6px 10px}
+#team-sciex-dialog fieldset{border:1px solid #e3e7ec;border-radius:8px;padding:8px 12px;margin:0 0 12px}
+#team-sciex-dialog legend{font-size:13px;font-weight:600;color:#5a6878;padding:0 4px;width:auto;float:none;margin:0}
+#team-sciex-dialog label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;padding:3px 0;margin:0;cursor:pointer}
+#team-sciex-dialog label.tsx-disabled{color:#9aa5b1;cursor:not-allowed}
+#team-sciex-dialog input[type=radio],#team-sciex-dialog input[type=checkbox]{accent-color:#2d5f8a}
+#team-sciex-dialog .tsx-scroll{overflow:auto;max-height:200px;margin:0 0 10px}
+#team-sciex-dialog table{border-collapse:collapse;width:100%;font-size:12px}
+#team-sciex-dialog th,#team-sciex-dialog td{border:1px solid #e3e7ec;padding:3px 7px;text-align:left;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+#team-sciex-dialog th{background:#f5f7f9;font-weight:600;color:#3d4b5c}
+#team-sciex-dialog .tsx-type{font-weight:400;color:#8a4b00}
+#team-sciex-dialog td.tsx-na{background:#fafbfc}
+#team-sciex-dialog .tsx-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+#team-sciex-dialog .tsx-actions button{min-height:34px;padding:6px 16px;border-radius:6px;font:600 13px/1 'Nunito Sans',system-ui,sans-serif;cursor:pointer}
+#team-sciex-dialog .tsx-primary{background:#2d5f8a;color:#fff;border:1px solid #2d5f8a}
+#team-sciex-dialog .tsx-secondary{background:#fff;color:#2d5f8a;border:1px solid #e3e7ec}
+#team-sciex-dialog button:focus-visible{outline:2px solid #2d5f8a;outline-offset:2px}

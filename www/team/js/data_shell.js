@@ -44,7 +44,7 @@
       shell.innerHTML = '<div class="ts-data-list" role="list" aria-label="Your projects"></div><aside class="ts-data-side" aria-label="Selected project"></aside>';
       library.insertBefore(shell, library.querySelector('#team_library_projects'));
       var matrix = el('div', 'ts-data-new');
-      matrix.innerHTML = '<div><h5>New matrix</h5><p>Abundance (.xlsx, .csv) and optional sample metadata. Files stay in your private library.</p></div>';
+      matrix.innerHTML = '<div><h5>New matrix</h5><p>Abundance (.xlsx, .csv, .tsv, .txt) and optional sample metadata. Files stay in your private library.</p></div>';
       var upload = el('button', 'ts-data-upload', 'Choose files'); upload.type = 'button';
       upload.addEventListener('click', function () { var b = document.querySelector('[data-tw-choice="matrix"]'); if (b) b.click(); });
       matrix.appendChild(upload); library.appendChild(matrix);

@@ -37,3 +37,22 @@ clicked (or Enter on the focused step) while busy-locked shows a pending state
 and is sent exactly once on idle, that Esc and another step cancel it, and that
 a Canvas without prepared data is never queued. The server-rejection path is
 covered offline by `tests/dual-ui/test_team_stepper_queue.cjs`.
+
+`test_conditional_park.cjs` (same variables; optional `TEAM_CHECKPOINT`) checks that on
+Review and Canvas the conditionalPanels inside hidden (inactive) tab panes are parked so
+Shiny's page-wide conditional re-check no longer finds them, that a control changed while
+its panel is parked is honoured once restored, that opening a parked tab pane restores it
+at once, that leaving Canvas restores every panel with exactly Shiny's own shown state, and
+that panels left live (Canvas card copies; on Review, which has no conditionalPanel of its
+own, every panel outside a hidden pane) still follow their checkbox in the same pass.
+
+`test_busy_lipid_scene.cjs` (no server; `SHOTS=<dir>` saves screenshots and frames)
+checks the lipid scene of the busy dialog: Team shell only, micelle while preparing and
+bilayer once Review is reached, transform/opacity animations only, nothing running while
+closed, in error or under reduced motion, 375 px fit, and no open-to-close regression.
+
+`test_sheet_picker.R` (R only, from the repository root) checks the Team Excel sheet picker
+server code (`R/frontends/team/sheet_picker.R`): sheet listing, the 50 MB cap, the row cap,
+that a chosen sheet reads `identical()` to the same sheet saved alone, and the refusals.
+`test_sheet_picker_browser.cjs` runs `www/team/js/sheet_picker.js` in Chromium against
+`sheet_picker_harness/app.R` (no Team library needed; `RSCRIPT=` points at Rscript).

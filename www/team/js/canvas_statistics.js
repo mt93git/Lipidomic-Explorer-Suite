@@ -219,30 +219,69 @@
     }
     return {shapes: shapes, annotations: annotations, range: [lowest, upper]};
   }
-  function draw(r) {
+  // Ranges are compared with a tolerance: a relayout, a JSON round trip or a capture-size
+  // freeze may hand back the same range as a different float.
+  function near(a, b) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== 2 || b.length !== 2) return false;
+    var x0 = Number(a[0]), x1 = Number(a[1]), tol = Math.max(Math.abs(b[1] - b[0]), 1e-12) * 1e-6;
+    return Number.isFinite(x0) && Number.isFinite(x1) && Math.abs(x0 - b[0]) <= tol && Math.abs(x1 - b[1]) <= tol;
+  }
+  // Identity of the drawn values along the value axis and of the violin extent settings
+  // that drive Plotly's autorange, independent of orientation and of trace visibility.
+  // The baseline is remembered for exactly these values.
+  function dataKey(gd) {
+    var swap = horizontal(gd), type = gd._fullLayout && gd._fullLayout[swap ? 'xaxis' : 'yaxis'];
+    return JSON.stringify([type && type.type || null].concat((gd.data || []).map(function (t) {
+      var vs = values(swap ? t.x : t.y), cs = values(swap ? t.y : t.x), points = [];
+      for (var i = 0; i < vs.length; i++) points.push([String(cs.length === 1 ? cs[0] : cs[i]), Number(vs[i])]);
+      return [t.type || '', t.spanmode || null, t.span == null ? null : t.span, t.bandwidth == null ? null : t.bandwidth, points];
+    })));
+  }
+  // The baseline is the value axis as Plotly first drew these values, before any of our
+  // annotations, shapes or padding existed. It is never re-read from a range that already
+  // carries them: Plotly's autorange includes data-referenced annotations and shapes, so
+  // re-reading it after an autoscale, resize or freeze added the n-label padding again on
+  // every redraw and the axis grew without bound.
+  function draw(r, cleaned) {
     var s = r && r.statistics, gd = s && s.ctx.plot();
     if (!s || !gd || !gd.data || !gd.layout || !global.Plotly) return Promise.resolve();
+    if (s.cleaning) return s.cleaning.then(function () { if (r.statistics === s) return draw(r); });
     var valueAxis=horizontal(gd)?'xaxis':'yaxis',y = gd.layout[valueAxis] || {}, full = gd._fullLayout && gd._fullLayout[valueAxis];
-    var touched = !!s.drawnRange && y.autorange === false && Array.isArray(y.range) && y.range[0] === s.drawnRange[0] && y.range[1] === s.drawnRange[1];
-    if (!touched) {
-      if (!full || !Array.isArray(full.range) || !full.range.every(Number.isFinite)) return Promise.resolve();
-      s.baseline = {range: full.range.slice(), autorange: y.autorange !== false};
-      s.drawnRange = null;
-    }
     var annotations = (gd.layout.annotations || []).filter(function (a) { return !ours(a); }), shapes = (gd.layout.shapes || []).filter(function (x) { return !ours(x); });
-    var hadOurs = annotations.length !== (gd.layout.annotations || []).length || shapes.length !== (gd.layout.shapes || []).length || touched;
+    var oursShown = annotations.length !== (gd.layout.annotations || []).length || shapes.length !== (gd.layout.shapes || []).length;
+    var ownRange = !!s.drawnRange && y.autorange === false && near(y.range, s.drawnRange);
+    var key = dataKey(gd);
+    if (!s.baseline || s.baseline.key !== key) {
+      // New values while our padding is still in the figure: remove it, let Plotly lay the
+      // axis out on the data alone, then read that range.
+      if ((oursShown || ownRange) && !cleaned) {
+        var clean = {annotations: annotations, shapes: shapes}; clean[valueAxis+'.autorange'] = true;
+        s.drawnRange = null;
+        var pending = s.cleaning = s.drawing = Promise.resolve(global.Plotly.relayout(gd, clean)).catch(function () {}).then(function () { if (s.cleaning === pending) s.cleaning = null; if (s.drawing === pending) s.drawing = null; });
+        return pending.then(function () { if (r.statistics === s) return draw(r, true); });
+      }
+      if (!full || !Array.isArray(full.range) || full.range.length !== 2 || !full.range.every(Number.isFinite)) return Promise.resolve();
+      s.baseline = {range: full.range.slice(), autorange: y.autorange !== false, key: key};
+      s.drawnRange = null; ownRange = false;
+    }
+    // A range set by someone else on the same values (a zoom) is the person's view: keep it,
+    // and still place the labels from the data baseline.
+    var zoomed = !ownRange && !!s.drawnRange && y.autorange === false && Array.isArray(y.range) && !near(y.range, s.baseline.range);
     var show = s.status === 'current' && s.result && s.applied && s.presentation.show;
     var groups = s.describe && s.ctx.current() ? s.describe.groups : show ? s.result.groups : [];
     var annotationsState = Object.assign({}, s, {result: {rows: show ? s.result.rows : [], groups: groups}});
     var spec = show || groups.length && s.presentation.nDisplay !== 'hidden' ? layoutFor(gd, annotationsState) : null;
-    if (!spec && !hadOurs) return Promise.resolve();
+    var astray = !!s.drawnRange && !ownRange && !zoomed;
+    if (!spec && !oursShown && !ownRange && !astray) return Promise.resolve();
     var update = {annotations: annotations.concat(spec ? spec.annotations : []), shapes: shapes.concat(spec ? spec.shapes : [])};
-    if (spec) { s.drawnRange = spec.range.slice(); update[valueAxis+'.range'] = spec.range; update[valueAxis+'.autorange'] = false; }
-    else if (touched) {
+    if (spec && !zoomed) { s.drawnRange = spec.range.slice(); update[valueAxis+'.range'] = spec.range.slice(); update[valueAxis+'.autorange'] = false; }
+    else if (!spec && !zoomed && (ownRange || astray)) {
       s.drawnRange = null;
       if (s.baseline.autorange) update[valueAxis+'.autorange'] = true; else update[valueAxis+'.range'] = s.baseline.range.slice();
-    }
-    return Promise.resolve(global.Plotly.relayout(gd, update)).catch(function () {});
+    } else if (!spec && !zoomed) s.drawnRange = null;
+    // Finish and exports wait while this draw is still being laid out (see busy()).
+    var drawing = s.drawing = Promise.resolve(global.Plotly.relayout(gd, update)).catch(function () {}).then(function () { if (s.drawing === drawing) s.drawing = null; });
+    return drawing;
   }
 
   // ---- Server bridge --------------------------------------------------------
@@ -614,7 +653,7 @@
     if (!s.needsVerify) send(r, 'check', {dataFingerprint: s.result.dataFingerprint});
     render(r);
   }
-  function busy(r) { var s = r && r.statistics; return !!(s && (s.requests.describe || s.requests.apply || s.requests.check || s.status === 'computing' || s.status === 'verifying' || s.status === 'checking')); }
+  function busy(r) { var s = r && r.statistics; return !!(s && (s.cleaning || s.drawing || s.requests.describe || s.requests.apply || s.requests.check || s.status === 'computing' || s.status === 'verifying' || s.status === 'checking')); }
   function provenance(r) {
     var s = r && r.statistics; if (!s) return null;
     var current = s.status === 'current' && s.result;

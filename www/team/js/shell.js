@@ -359,6 +359,15 @@
     var x = document.createElement('button'); x.type = 'button'; x.className = 'btn-close btn-close-white ts-modal-close'; x.setAttribute('data-bs-dismiss', 'modal'); x.setAttribute('data-dismiss', 'modal'); x.setAttribute('aria-label', 'Close');
     header.appendChild(x);
   });
+  // Canvas: the companion does not open its automatic screen tip over the figures (a tip asked for from
+  // its menu still shows). Uses the assistant's public nudge gate; the companion's own code is unchanged.
+  (function quietCanvasNudges(tries) {
+    var a = window.LipidomicAssistant;
+    if (!a || typeof a.isNudgeBlocked !== 'function') { if (tries < 240) setTimeout(function () { quietCanvasNudges(tries + 1); }, 250); return; }
+    if (a.isNudgeBlocked.teamCanvasQuiet) return;
+    var base = a.isNudgeBlocked, gate = function () { return document.body.dataset.twScreen === 'canvas' || base.apply(this, arguments); };
+    gate.teamCanvasQuiet = true; a.isNudgeBlocked = gate;
+  })(0);
   window.TeamShell = { mounted: function () { var r = document.getElementById('team-canvas-root'); return !!(r && r.dataset.tsShell === 'true'); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
