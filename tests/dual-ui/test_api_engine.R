@@ -8,7 +8,8 @@ local({
   df <- shiny::isolate(loaded$hub$data_processed())
   # Inspected the archived CSV: 12 lipid rows, Lipid_Name + 8 samples.
   stopifnot(nrow(df) == 12L, ncol(df) == 9L)
-  cat("PASS U1 synthetic 12x9\n")
+  stopifnot(identical(loaded$preparation_check, "matches archived receipt"))
+  cat("PASS U1 synthetic 12x9, matches archived receipt\n")
   directory <- tempfile(); dir.create(directory)
   legacy <- tempfile(fileext = ".zip")
   on.exit(unlink(c(directory, legacy), recursive = TRUE))
@@ -21,6 +22,7 @@ local({
   zip::zipr(legacy, list.files(directory, full.names = TRUE))
   old <- api_load_session(legacy)
   stopifnot(identical(old$applied$spec$settings, preparation_settings(list(), "team")))
+  stopifnot(grepl("legacy", old$preparation_check))
   cat("PASS U1 legacy defaults\n")
   for (id in c("pca", "violin", "dist", "comp", "heat")) {
     figure <- api_render_plot(loaded$hub, id, loaded$inputs)

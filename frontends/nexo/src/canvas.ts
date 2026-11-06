@@ -6,6 +6,8 @@ export function mountCanvas(root: HTMLElement, session: Session) {
   root.innerHTML = `<header class="top"><strong>Nexo v0</strong><span>Read-only canvas</span><button id="library-toggle">Library</button><button id="select" aria-pressed="true">Select</button><button id="hand" aria-pressed="false">Pan</button><button id="inspect">Inspector</button></header><main><section class="stage"><div id="viewport" tabindex="0" aria-label="Canvas"><div id="world"></div><div id="marquee"></div></div><nav id="library" hidden aria-label="Plot library"></nav><div class="zoom"><button id="out" aria-label="Zoom out">−</button><select id="zoom" aria-label="Zoom"><option value="0.25">25%</option><option value="0.5">50%</option><option value="1" selected>100%</option><option value="2">200%</option></select><button id="in" aria-label="Zoom in">+</button><button id="fit">Fit</button></div><svg id="minimap" aria-label="Minimap" role="img" preserveAspectRatio="none"></svg><output id="hud"></output></section><aside id="inspector" aria-label="Read-only inspector"></aside></main>`;
   const $ = <T extends HTMLElement>(id: string) => root.querySelector<T>(`#${id}`)!;
   const vp = $('viewport'), world = $('world'), inspector = $('inspector'), marquee = $('marquee');
+  // Under 900 px the inspector is a bottom sheet over the zoom bar: start closed.
+  if (matchMedia('(max-width: 899px)').matches) inspector.hidden = true;
   const map = root.querySelector<SVGSVGElement>('#minimap')!;
   const camera = { x: 24, y: 24, scale: 1 };
   let selected = new Set<Card>(), hand = false, space = false, wheelTimer = 0, wheelActive = false;

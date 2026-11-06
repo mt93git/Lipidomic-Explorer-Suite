@@ -52,6 +52,17 @@ Manual nginx steps (printed only):
   sudo nginx -t && sudo systemctl reload nginx
 NGINX_STEPS
 
+# The Nexo locations inherit the server-level auth_basic: without credentials
+# they must answer 401 (only meaningful once the nginx snippet is installed).
+for path in /nexo/ /api/v1/health; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3880$path")
+    printf 'nginx %s without credentials: %s\n' "$path" "$code"
+    if [[ "$code" != 401 && "$code" != 404 ]]; then
+        echo "[ERROR] $path must require basic auth (expected 401, got $code)." >&2
+        exit 1
+    fi
+done
+
 team_status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3952/)
 printf 'Production Team (:3952) HTTP status: %s\n' "$team_status"
 if [[ "$team_status" != 200 ]]; then

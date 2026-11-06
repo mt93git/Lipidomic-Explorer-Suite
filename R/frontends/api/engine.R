@@ -34,13 +34,26 @@ api_load_session <- function(zip) {
       hub[[key]] <- value(api[[key]]())
     hub$preparation_dirty <- shiny::reactiveVal(FALSE)
     hub$team_compact_distribution <- TRUE
-    hub$inference_allowed <- function(...) FALSE
+    # Same inference policy as Team's shared_data, evaluated while the session lives.
+    allowed <- c(unpaired = isTRUE(api$inference_allowed(FALSE)), paired = isTRUE(api$inference_allowed(TRUE)))
+    hub$inference_allowed <- function(paired = FALSE) allowed[[if (isTRUE(paired)) "paired" else "unpaired"]]
+    # The ZIP keeps the original matrix; the prepared one is recomputed. Like
+    # guide_completed_run_record() in Team, refuse a recomputation whose lipids
+    # or samples differ from the archived receipt.
+    recomputed <- api$preparation_state()$applied
+    check <- "no archived receipt (legacy checkpoint)"
+    if (!is.null(saved$output_lipids) || !is.null(saved$output_samples)) {
+      same <- identical(as.character(unlist(recomputed$output_lipids)), as.character(unlist(saved$output_lipids))) &&
+        identical(as.character(unlist(recomputed$output_samples)), as.character(unlist(saved$output_samples)))
+      if (!same) api_abort("api_unprocessable", "The recomputed preparation does not match the archived receipt.")
+      check <- "matches archived receipt"
+    }
     inputs <- archive$state$inputs[startsWith(names(archive$state$inputs), "results_dashboard-")]
     names(inputs) <- sub("^results_dashboard-", "", names(inputs))
     inputs <- inputs[!startsWith(names(inputs), "plotly_")]
     defaults <- list(color_by = "Group1", n_class = 7L, top_n = 10L,
       pca_transform = "log2", pca_scale = "uv", violin_lipid = as.character(df[[1]][1]))
-    result <<- list(hub = hub, canvas = archive$canvas, applied = api$preparation_state()$applied,
+    result <<- list(hub = hub, canvas = archive$canvas, applied = recomputed, preparation_check = check,
       inputs = utils::modifyList(defaults, inputs), samples = ncol(df) - 1L, lipids = nrow(df))
   })
   result

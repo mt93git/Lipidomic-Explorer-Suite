@@ -6,7 +6,7 @@ import dist from './mock/dist.json';
 import comp from './mock/comp.json';
 import heat from './mock/heat.json';
 export interface Node { kind: 'plot' | 'illustration'; id: string; label: string; x: number; y: number; width: number; height: number; visual?: { plotTitle?: string }; finished?: { url: string; createdAt?: string; stale?: boolean; provenance?: unknown } | null; assetId?: string; assetVersion?: string; color?: string; instance?: unknown }
-export interface Session { sessionId: string; samples: unknown; lipids: unknown; preparation: unknown; inputs: Record<string, unknown>; canvas: { nodes: Node[] } }
+export interface Session { sessionId: string; checkpointSha256?: string; preparationCheck?: string; samples: unknown; lipids: unknown; preparation: unknown; inputs: Record<string, unknown>; canvas: { nodes: Node[] } }
 export interface Figure { data: unknown[]; layout: Record<string, unknown> }
 export interface PlotResult { figure: Figure; provenance: unknown }
 export const plots = { pca, violin, dist, comp, heat };

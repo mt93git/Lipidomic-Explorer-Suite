@@ -59,16 +59,19 @@ function(req, res) api_exclusive(res, {
   if (!nzchar(directory) || !file.exists(path) || dir.exists(path)) {
     api_error(res, 404L, "not_found", "Unknown checkpoint.")
   } else {
-    key <- normalizePath(path, mustWork = TRUE)
+    # Keyed by content: a replaced ZIP gets a new session, never stale data.
+    key <- digest::digest(file = path, algo = "sha256")
     if (!exists(key, api_checkpoints, inherits = FALSE)) {
       loaded <- api_load_session(path)
+      loaded$checkpoint_sha256 <- key
       session_id <- paste0("s", length(ls(api_sessions, all.names = TRUE)) + 1L)
       assign(session_id, loaded, api_sessions)
       assign(key, session_id, api_checkpoints)
     }
     session_id <- get(key, api_checkpoints, inherits = FALSE)
     loaded <- get(session_id, api_sessions, inherits = FALSE)
-    list(sessionId = session_id, samples = loaded$samples, lipids = loaded$lipids,
+    list(sessionId = session_id, checkpointSha256 = loaded$checkpoint_sha256,
+      preparationCheck = loaded$preparation_check, samples = loaded$samples, lipids = loaded$lipids,
       preparation = loaded$applied, inputs = loaded$inputs, canvas = loaded$canvas)
   }
 })
@@ -87,6 +90,7 @@ function(id, output, req, res) api_exclusive(res, {
       api_abort("api_bad_request", "Inputs must be a named object.")
     width <- if (is.null(body$width)) 900 else body$width
     list(figure = api_render_plot(loaded$hub, output, utils::modifyList(loaded$inputs, inputs), width),
-      provenance = list(commit = api_commit, preparation = loaded$applied, hooks = "team"))
+      provenance = list(commit = api_commit, checkpointSha256 = loaded$checkpoint_sha256,
+        preparationCheck = loaded$preparation_check, preparation = loaded$applied, hooks = "team"))
   }
 })

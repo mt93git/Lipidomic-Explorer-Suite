@@ -23,7 +23,8 @@ local({
   opened <- post("/sessions", list(checkpointId = "synthetic"))
   stopifnot(httr::status_code(opened) == 200L)
   session <- httr::content(opened)
-  stopifnot(nzchar(session$sessionId))
+  stopifnot(nzchar(session$sessionId), nchar(session$checkpointSha256) == 64L,
+    identical(session$preparationCheck, "matches archived receipt"))
   again <- httr::content(post("/sessions", list(checkpointId = "synthetic")))
   stopifnot(identical(session$sessionId, again$sessionId))
   cat("PASS I1 sessions 200 cached\n")
