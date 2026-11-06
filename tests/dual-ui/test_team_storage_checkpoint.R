@@ -22,7 +22,7 @@ stub <- function(service, path, token=NULL, body=NULL, method='GET', ...) {
   invisible(NULL)
 }
 msg <- tryCatch({team_library_activate(' Person@Example.org ', strrep('a', 64), 'invite', 'long password 123', 'long password 123', call=stub); NULL}, error=conditionMessage)
-stopifnot(!is.null(msg), !grepl('SECRET|temporary-secret', msg), identical(calls, c('/verify','/user','/logout')))
+stopifnot(!is.null(msg), !grepl('SECRET|temporary-secret', msg), identical(calls, c('/verify','/user','/logout?scope=local')))
 
 # Session ZIP + archived records sidecar, saved and resumed through the files backend.
 root <- tempfile('team-ckpt-'); store <- team_storage_files(root)

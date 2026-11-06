@@ -7,7 +7,8 @@ for (f in files) {
  if (length(paths)) stopifnot(all(file.exists(file.path('www',paths))))
 }
 for (f in list.files('www/team/js',pattern='[.]js$',full.names=TRUE)) {
- text <- paste(readLines(f,warn=FALSE),collapse='\n')
+ # Comments may name the current Run comparison tool page; only code is checked.
+ text <- paste(grep('^\\s*//',readLines(f,warn=FALSE),value=TRUE,invert=TRUE),collapse='\n')
  stopifnot(!grepl('Run comparison|saved bone preparation sensitivity study',text))
 }
 stopifnot(file.exists('www/team/models/LICENSE.txt'))

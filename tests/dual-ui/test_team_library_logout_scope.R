@@ -2,7 +2,9 @@
 # logout would sign out every other session of the same account, e.g. a second
 # tab or a concurrent run, and their later saves would be denied.
 library(shiny)
-scope<-new.env(parent=globalenv());sys.source('R/frontends/team/project_library.R',scope)
+Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY='1',LIPIDOMIC_STORAGE='database',LIPIDOMIC_LOGIN_THROTTLE='off')
+scope<-new.env(parent=globalenv())
+for(f in c('storage/storage.R','storage/storage_files.R','storage/storage_database.R','project_library.R'))sys.source(file.path('R/frontends/team',f),scope)
 scope$team_workspace_enabled<-function()TRUE
 scope$team_library_queue<-function(...)NULL
 calls<-new.env();calls$log<-list()
