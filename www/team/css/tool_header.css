@@ -1,0 +1,51 @@
+/* R4: one header in the analysis tools opened from Team (body.guided-app[data-guide-analysis=true]).
+   www/team/js/tool_header.js puts one Team bar at the top of the tool card: the tool name, View (the
+   Classic sub-tabs), Lipids (the Analytical Ensemble scope), About this view (Tab info) and Shortcuts
+   (the quick-access rows). Each of its buttons clicks the original control. An original is hidden
+   only while its .r4-* gate class says the bar offers it, so a bar that never mounts hides nothing.
+   No overlay and no z-index: the bar is in the page flow. */
+
+/* ---- Classic chrome the bar offers ------------------------------------------------------------ */
+body.guided-app[data-guide-analysis=true] #tertiary_subsubtab_bar.r4-proxied,
+body.guided-app[data-guide-analysis=true] #targeted_lipids_top_dock.r4-proxied,
+body.guided-app[data-guide-analysis=true] .tab-intro-wrapper.r4-intro-proxied>.tab-intro-permanent-header,
+body.guided-app[data-guide-analysis=true].r4-shortcuts:not(.r4-shortcuts-open) .tab-pane .quick-access-strip{display:none!important}
+/* The wrapper keeps the Tab info drawer, which opens right under the bar; its own mb-2 spaces the card. */
+body.guided-app[data-guide-analysis=true] .tab-intro-wrapper.r4-intro-proxied{padding:0!important}
+/* A tool whose own tab headers are hidden keeps only a frame around its chart card; drop it, as
+   custom.css already does for the QC and Structural tools. */
+body.guided-app[data-guide-analysis=true] .hide-redundant-nav-tabs>.card{border:0!important;background:transparent!important;box-shadow:none!important}
+body.guided-app[data-guide-analysis=true] .hide-redundant-nav-tabs>.card>.card-body{padding:0!important}
+
+/* ---- The bar: Team typography, one control style (the RC1 Canvas bar's) ------------------------ */
+body.guided-app .r4-tool-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;min-height:36px;margin:0;padding:4px 0 0;font:600 13px/1.2 'Nunito Sans',Arial,sans-serif;color:#141b24}
+body.guided-app .r4-tool-head .r4-tool-title{margin:0;font:500 24px/1.15 'Cormorant Garamond',Georgia,serif;color:#162230;letter-spacing:0;text-transform:none}
+body.guided-app .r4-tool-head .r4-group{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;max-width:100%}
+body.guided-app .r4-tool-head .r4-group-label{font:600 13px/1.2 'Nunito Sans',Arial,sans-serif;color:#5a6878}
+body.guided-app .r4-tool-head .r4-seg-set{display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px;max-width:100%;padding:2px;border:1px solid #e3e7ec;border-radius:7px;background:#f6f8fa}
+body.guided-app .r4-tool-head .r4-btn{box-sizing:border-box;display:inline-flex;align-items:center;height:30px;min-height:30px;margin:0;padding:0 10px;border:1px solid transparent;border-radius:6px;background:transparent;color:#3b4855;font:600 13px/1 'Nunito Sans',Arial,sans-serif;letter-spacing:0;text-transform:none;white-space:nowrap;box-shadow:none;cursor:pointer}
+body.guided-app .r4-tool-head .r4-btn:hover{background:#eef2f6}
+body.guided-app .r4-tool-head .r4-seg[aria-pressed=true]{background:#fff;border-color:#d3dee7;color:#2d5f8a}
+body.guided-app .r4-tool-head .r4-end{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;margin-left:auto}
+body.guided-app .r4-tool-head .r4-end .r4-btn{color:#2d5f8a}
+body.guided-app .r4-tool-head .r4-end .r4-btn[aria-expanded=true]{background:#eaf1f7}
+/* Floating legend notes on the proportion plots used the system font. */
+body.guided-app[data-guide-analysis=true] .prop-hover-tooltip{font-family:var(--lab-body,'Nunito Sans',Arial,sans-serif)}
+
+/* ---- Guided (non-Canvas) tool pages: the Team rows above the tool read as one compact header ----
+   The workspace shell already has a single 48 px bar and no gaps (shell.css). Phones keep their
+   44 px targets. */
+@media(min-width:761px){
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main,
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.main>.bslib-page-main{row-gap:0!important;padding-top:0!important}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) .navbar{min-height:48px!important;padding-top:4px!important;padding-bottom:4px!important}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) .navbar .navbar-brand{min-height:0!important}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) .navbar #navbar_brand_logo_img{height:38px!important;max-height:38px!important}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) #guide-navigation{padding-top:4px;padding-bottom:4px}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) #guide-navigation .guide-button{margin-top:0;margin-bottom:0}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) #guide-context{padding-top:4px;padding-bottom:4px}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) #guide-context .guide-method-details summary{padding-top:2px;padding-bottom:2px}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) .lipid-help-bar{padding-top:0;padding-bottom:0}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) #guide-analysis-toolbar{padding-top:4px;padding-bottom:4px}
+  body.guided-app[data-guide-analysis=true]:not(.team-workspace-app) #guide-analysis-toolbar .guide-button{min-height:36px;margin-top:0;margin-bottom:0;padding:6px 12px}
+}

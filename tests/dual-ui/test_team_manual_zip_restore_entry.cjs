@@ -11,14 +11,15 @@ const {chromium}=require('../browser/ci/node_modules/playwright');const path=req
  const chooser=page.waitForEvent('filechooser');await page.locator('#data_hub-import_session_file').click();const zipPath=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'team-zip-fixture-')),'session.zip');fs.writeFileSync(zipPath,'synthetic fixture, no upload endpoint');await(await chooser).setFiles(zipPath);fs.rmSync(path.dirname(zipPath),{recursive:true});
  assert.equal(await page.evaluate(()=>events.at(-1).trusted),true,'browser file chooser must exercise the real trusted change gate');
  assert.equal(await page.evaluate(()=>sent.filter(x=>x.id==='team_review_prepare').length),0);
+ // Server-ready + Review sends the guarded preparation at once, even while Shiny is busy.
  await page.evaluate(()=>{document.documentElement.classList.add('shiny-busy');jqueryEvents['shiny:busy']();handlers['team-review-restore-ready']({ready:true,generation:2});document.body.dataset.guideStep='3';});
- await page.waitForTimeout(40);assert.equal(await page.evaluate(()=>sent.filter(x=>x.id==='team_review_prepare').length),0);
- await page.evaluate(()=>{document.documentElement.classList.remove('shiny-busy');jqueryEvents['shiny:idle']();});
  await page.waitForFunction(()=>sent.filter(x=>x.id==='team_review_prepare').length===1);
+ await page.evaluate(()=>{document.documentElement.classList.remove('shiny-busy');jqueryEvents['shiny:idle']();});await page.waitForTimeout(40);
+ assert.equal(await page.evaluate(()=>sent.filter(x=>x.id==='team_review_prepare').length),1);
  const intents=await page.evaluate(()=>sent.filter(x=>x.id==='team_review_prepare'));
  assert.deepEqual(intents[0].value,{kind:'entry',source:'human',token:1});
  await page.evaluate(()=>{handlers['team-review-restore-ready']({ready:true,generation:2});jqueryEvents['shiny:idle']();});await page.waitForTimeout(40);
  assert.equal(await page.evaluate(()=>sent.filter(x=>x.id==='team_review_prepare').length),1,'repeated readiness must not duplicate preparation');
  assert.equal(await page.evaluate(()=>sent.some(x=>/normalization|minDetection|outlier|guided_qc_propose/.test(x.id))),false,'restore changes no scientific parameter or exclusion');
- console.log('PASS trusted native ZIP selection requests one existing guarded entry preparation only after restored idle Review; untrusted input/repeated readiness do nothing; no parameter/outlier writes.');
+ console.log('PASS trusted native ZIP selection requests one existing guarded entry preparation once server-ready Review is reached (busy or idle); untrusted input/repeated readiness do nothing; no parameter/outlier writes.');
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});

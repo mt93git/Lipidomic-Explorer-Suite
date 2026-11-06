@@ -11,7 +11,7 @@ let now=0,next=0;const jobs=new Map(),mounted=[],messages=[];
 const ID_RE=/^tcinstance_[a-z0-9_]+$/;
 function output(name){return {id:name,isConnected:true,parentElement:{closest:()=>({id:'scrollable_plot_ui'})},classList:{contains:()=>false}};}
 const dom={};
-const ctx={instanceRequests:new Map(),records:new Map(),illustrations:new Map(),csvByPlot:{},window:{Shiny:{},jQuery:null},
+const ctx={instanceRequests:new Map(),figureCount:()=>0,instanceRequestSequence:0,dropStaleHost(){},records:new Map(),illustrations:new Map(),csvByPlot:{},window:{Shiny:{},jQuery:null},
   Shiny:{setInputValue(){},shinyapp:{$inputValues:{}}},
   document:{documentElement:{classList:{contains:()=>false}},getElementById:id=>dom[id]||null},
   shinyBusy:false,instanceSupported:()=>true,heldPlot:()=>null,instanceValues:()=>({scaleMode:'log2fc'}),cellSourceValues:()=>({}),plotTitle:()=> 'Violin distributions',
@@ -26,7 +26,7 @@ assert(ctx.requestInstance('logratio_tab-logratioPlot'));
 const req=[...ctx.instanceRequests.values()][0],id=req.instance.id;assert(ID_RE.test(id));
 dom[id+'_host']={addEventListener(){},classList:{contains:()=>false}};dom[id+'-scaleMode']={};const first=output(id+'-logratioPlot');dom[first.id]=first;
 ctx.Shiny.shinyapp.$inputValues[id+'-scaleMode']='other';
-ctx.__ready({id,source:req.source,inputs:{scaleMode:'log2fc'},allowedInputs:['scaleMode'],generation:1},0);
+ctx.__ready({id,source:req.source,request:req.token,inputs:{scaleMode:'log2fc'},allowedInputs:['scaleMode'],generation:1},0);
 advance(300);
 // renderUI replaces the plot output while the copy's settings are still arriving.
 first.isConnected=false;const second=output(id+'-logratioPlot');dom[second.id]=second;
@@ -41,7 +41,7 @@ assert(!ctx.instanceRequests.has(id),'the request completed');
 assert(ctx.requestInstance('logratio_tab-logratioPlot'));
 const req2=[...ctx.instanceRequests.values()][0],id2=req2.instance.id;dom[id2+'_host']={addEventListener(){},classList:{contains:()=>false}};dom[id2+'-scaleMode']={};
 const a=output(id2+'-logratioPlot');dom[a.id]=a;ctx.Shiny.shinyapp.$inputValues[id2+'-scaleMode']='log2fc';
-ctx.__ready({id:id2,source:req2.source,inputs:{scaleMode:'log2fc'},allowedInputs:['scaleMode'],generation:1},0);
+ctx.__ready({id:id2,source:req2.source,request:req2.token,inputs:{scaleMode:'log2fc'},allowedInputs:['scaleMode'],generation:1},0);
 advance(50);a.isConnected=false;delete dom[a.id];advance(1500);
 assert(ctx.instanceRequests.has(id2),'a temporarily absent output keeps the request pending');
 const b=output(id2+'-logratioPlot');dom[b.id]=b;advance(1500);
@@ -50,7 +50,7 @@ assert.equal(mounted[mounted.length-1],b,'the re-rendered output is mounted');as
 assert(ctx.requestInstance('logratio_tab-logratioPlot'));
 const req3=[...ctx.instanceRequests.values()][0],id3=req3.instance.id;dom[id3+'_host']={addEventListener(){},classList:{contains:()=>false}};dom[id3+'-scaleMode']={};
 const c=output(id3+'-logratioPlot');dom[c.id]=c;ctx.Shiny.shinyapp.$inputValues[id3+'-scaleMode']='log2fc';
-ctx.__ready({id:id3,source:req3.source,inputs:{scaleMode:'log2fc'},allowedInputs:['scaleMode'],generation:1},0);
+ctx.__ready({id:id3,source:req3.source,request:req3.token,inputs:{scaleMode:'log2fc'},allowedInputs:['scaleMode'],generation:1},0);
 advance(50);c.isConnected=false;delete dom[c.id];advance(1500);assert(ctx.instanceRequests.get(id3)===req3,'waiting for the output');
 const replacement={instance:req3.instance,source:req3.source,timer:null};ctx.instanceRequests.set(id3,replacement);
 const mountedBefore=mounted.length;const d=output(id3+'-logratioPlot');dom[d.id]=d;advance(1500);

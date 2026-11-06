@@ -16,7 +16,7 @@
       modeSwitch.append(back, here); heading.prepend(modeSwitch);
     }
     // View navigation is deliberately separate from document coordinates and exports.
-    var previewZoom = 1, zoomMode = 'width', zoomFrame = 0;
+    var previewZoom = 1, zoomMode = 'width', zoomFrame = 0, embedded = false, renderScroll = null;
     var navigation = document.createElement('div'); navigation.className = 'tc-preview-navigation';
     navigation.setAttribute('role','group'); navigation.setAttribute('aria-label','Print preview zoom');
     function zoomButton(label, text, action) { var button=document.createElement('button');button.type='button';button.setAttribute('aria-label',label);button.textContent=text;button.addEventListener('click',action);navigation.appendChild(button);return button; }
@@ -30,13 +30,22 @@
     function applyPreviewZoom(value) {
       if(panel.hidden)return;
       var sheets=Array.from(pages.querySelectorAll('.tc-paper'));if(!sheets.length)return;
-      var old=previewZoom, left=pages.scrollLeft, top=pages.scrollTop;
+      // After a re-render (render() empties the desk first, which clamps its scroll) the camera is the one
+      // render() read before emptying it.
+      var old=previewZoom, left=renderScroll?renderScroll.left:pages.scrollLeft, top=renderScroll?renderScroll.top:pages.scrollTop;renderScroll=null;
       // A concrete scroll box makes its complete content reachable, including in focus mode.
-      pages.style.height=Math.max(260,Math.min(850,window.innerHeight-pages.getBoundingClientRect().top-24))+'px';if(inspector)inspector.style.maxHeight=window.innerWidth>850?pages.style.height:'40dvh';
+      // In the shell grid (embedInShell) the canvas cell gives the desk its height from 901 px; below,
+      // the cell grows with its content, so the desk keeps the window-based height. The inspector
+      // scrolls with the right column there, without a height of its own.
+      if(embedded&&window.innerWidth>900)pages.style.height='';
+      else pages.style.height=Math.max(260,Math.min(850,window.innerHeight-pages.getBoundingClientRect().top-24))+'px';
+      if(inspector)inspector.style.maxHeight=embedded?'':window.innerWidth>850?pages.style.height:'40dvh';
       var width=Math.max.apply(null,sheets.map(function(e){return Number(e.dataset.previewWidth);}));
       var height=Math.max.apply(null,sheets.map(function(e){return Number(e.dataset.previewHeight);}));
-      var fitWidth=Math.max(.02,(pages.clientWidth-48)/(width*4/3));
-      previewZoom=zoomMode==='page'?Math.min(fitWidth,Math.max(.02,(pages.clientHeight-48)/(height*4/3))):zoomMode==='width'?Math.min(1,fitWidth):(value||previewZoom);
+      // The embedded desk leaves room under the page for the zoom box: fit its real padding.
+      var pad=[48,48];if(embedded){var cs=getComputedStyle(pages);pad=[(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0),(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0)];}
+      var fitWidth=Math.max(.02,(pages.clientWidth-pad[0])/(width*4/3));
+      previewZoom=zoomMode==='page'?Math.min(fitWidth,Math.max(.02,(pages.clientHeight-pad[1])/(height*4/3))):zoomMode==='width'?Math.min(1,fitWidth):(value||previewZoom);
       sheets.forEach(function(sheet){sheet.style.width=(Number(sheet.dataset.previewWidth)*4/3*previewZoom)+'px';sheet.style.height=(Number(sheet.dataset.previewHeight)*4/3*previewZoom)+'px';});
       zoomReset.textContent=Math.round(previewZoom*100)+'%';zoomOut.disabled=previewZoom<=.10001;zoomIn.disabled=previewZoom>=2.9999;
       pages.scrollLeft=left*previewZoom/old;pages.scrollTop=top*previewZoom/old;
@@ -110,7 +119,8 @@
     function select(tab, focus) {
       tabs.forEach(function (t) {
         var active = t === tab; t.setAttribute('aria-selected', String(active)); t.tabIndex = active ? 0 : -1;
-        document.getElementById(t.getAttribute('aria-controls')).hidden = !active;
+        // Embedded in the shell, the figure page sits in the draft's grid: that panel stays shown.
+        var target = document.getElementById(t.getAttribute('aria-controls')); target.hidden = !active && !(embedded && target !== panel && target.contains(panel));
       });
       if (focus) tab.focus();
       root.classList.toggle('tc-figure-mode', tab.id === 'tc-preview-tab');
@@ -197,7 +207,7 @@
       var settings={layout:['free','arrangement','figure1'].includes(layout.value)?layout.value:'pages',paper:['a4','custom'].includes(paper.value)?paper.value:'letter',orientation:orientation.value==='landscape'?'landscape':'portrait',showPageFurniture:furniture.checked};
       if(settings.paper==='custom'){settings.paperWidth=Number(customWidth.value);settings.paperHeight=Number(customHeight.value);if(!Number.isFinite(settings.paperWidth)||!Number.isFinite(settings.paperHeight)||settings.paperWidth<100||settings.paperWidth>3000||settings.paperHeight<100||settings.paperHeight>3000)throw new Error('Page width and height must be between 100 and 3000 pt.');}return settings;
     }
-    function updatePaperControls(){panel.querySelectorAll('.tc-preview-custom-size').forEach(function(el){el.hidden=paper.value!=='custom';});orientation.disabled=paper.value==='custom';}
+    function updatePaperControls(){root.querySelectorAll('.tc-preview-custom-size').forEach(function(el){el.hidden=paper.value!=='custom';});orientation.disabled=paper.value==='custom';}
     updatePaperControls();
     function size(settings) {
       if(settings.paper==='custom')return [settings.paperWidth,settings.paperHeight];
@@ -355,6 +365,7 @@
     }
     function render(captured) {
       renderedState=captured.state;
+      if(!panel.hidden&&pages.querySelector('.tc-paper'))renderScroll={left:pages.scrollLeft,top:pages.scrollTop};
       pages.replaceChildren();
       model(captured).forEach(function (page, pageIndex, collection) {
         var sheet = document.createElement('article'); sheet.className = 'tc-paper'+(page.draft?' tc-paper-draft':''); sheet.style.aspectRatio = page.width + ' / ' + page.height; sheet.dataset.previewWidth=page.width;sheet.dataset.previewHeight=page.height;
@@ -371,8 +382,8 @@
             figure.addEventListener('dblclick',function(event){if(item.type!=='text')return;event.preventDefault();selectItem(item.id);var field=inspector.querySelector('[data-item-key="text"]');if(!field)return;field.dataset.draft='1';var original=field.value;function cancelText(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();field.blur();return;}if(e.key!=='Escape')return;e.preventDefault();e.stopPropagation();field.value=original;delete field.dataset.draft;field.removeEventListener('keydown',cancelText);pages.focus({preventScroll:true});}field.addEventListener('keydown',cancelText);field.addEventListener('blur',function(){delete field.dataset.draft;field.removeEventListener('keydown',cancelText);},{once:true});field.focus();field.select();});
             figure.addEventListener('keydown',function(event){var delta=event.shiftKey?10:1, dx=event.key==='ArrowLeft'?-delta:event.key==='ArrowRight'?delta:0, dy=event.key==='ArrowUp'?-delta:event.key==='ArrowDown'?delta:0; if(dx||dy){event.preventDefault(); var live=documentState.items.find(function(i){return i.id===item.id;}); if(selected!==item.id){selected=item.id;showInspector(true);}live.x+=dx; editItem(live,'y',live.y+dy);var active=pages.querySelector('.tc-free-item.selected');if(active)active.focus({preventScroll:true});}});
             figure.addEventListener('pointerdown',function(event){ if(event.button!==0)return;commitPendingField(); event.preventDefault(); selected=item.id;pages.querySelectorAll('.tc-free-item').forEach(function(el){el.classList.toggle('selected',el===figure);});showInspector(true);selectionDecorations(); var live=documentState.items.find(function(i){return i.id===item.id;}), startX=event.clientX,startY=event.clientY, x=live.x,y=live.y,w=live.width,h=live.height, resize=event.target.classList.contains('tc-free-resize'), rect=sheet.getBoundingClientRect(); figure.setPointerCapture(event.pointerId);
-              function move(e){live=documentState.items.find(function(i){return i.id===item.id;});if(!live)return;var dx=(e.clientX-startX)*page.width/rect.width,dy=(e.clientY-startY)*page.height/rect.height; if(resize){if(live.type==='figure' && aspectLocked){var scale=Math.max(20/w,20/h,Math.min((page.width-x)/w,(page.height-y)/h,1+dx/w));live.width=w*scale;live.height=h*scale;}else{live.width=Math.max(20,Math.min(page.width-x,w+dx));live.height=Math.max(20,Math.min(page.height-y,h+dy));}}else{live.x=Math.max(0,Math.min(page.width-w,x+dx));live.y=Math.max(0,Math.min(page.height-h,y+dy));} figure.style.left=live.x/page.width*100+'%';figure.style.top=live.y/page.height*100+'%';figure.style.width=live.width/page.width*100+'%';figure.style.height=live.height/page.height*100+'%';}
-              function up(){figure.removeEventListener('pointermove',move);figure.removeEventListener('pointerup',up);figure.removeEventListener('pointercancel',up);if(live && (live.x!==x||live.y!==y||live.width!==w||live.height!==h)){saveDocument();refresh();}} figure.addEventListener('pointermove',move);figure.addEventListener('pointerup',up);figure.addEventListener('pointercancel',up);
+              function move(e){if(e.pointerId!==dragPointer)return;live=documentState.items.find(function(i){return i.id===item.id;});if(!live)return;var dx=(e.clientX-startX)*page.width/rect.width,dy=(e.clientY-startY)*page.height/rect.height; if(resize){if(live.type==='figure' && aspectLocked){var scale=Math.max(20/w,20/h,Math.min((page.width-x)/w,(page.height-y)/h,1+dx/w));live.width=w*scale;live.height=h*scale;}else{live.width=Math.max(20,Math.min(page.width-x,w+dx));live.height=Math.max(20,Math.min(page.height-y,h+dy));}}else{live.x=Math.max(0,Math.min(page.width-w,x+dx));live.y=Math.max(0,Math.min(page.height-h,y+dy));} figure.style.left=live.x/page.width*100+'%';figure.style.top=live.y/page.height*100+'%';figure.style.width=live.width/page.width*100+'%';figure.style.height=live.height/page.height*100+'%';}
+              var done=false,dragPointer=event.pointerId;function up(e){if(done||(e&&e.pointerId!==undefined&&e.pointerId!==dragPointer))return;done=true;document.removeEventListener('pointerup',up,true);document.removeEventListener('pointercancel',up,true);figure.removeEventListener('lostpointercapture',up);figure.removeEventListener('pointermove',move);figure.removeEventListener('pointerup',up);figure.removeEventListener('pointercancel',up);if(live && (live.x!==x||live.y!==y||live.width!==w||live.height!==h)){saveDocument();refresh();}} figure.addEventListener('pointermove',move);figure.addEventListener('pointerup',up);figure.addEventListener('pointercancel',up);figure.addEventListener('lostpointercapture',up);/* A re-render during the drag removes this node: the release is still seen (and saved) by the document. */document.addEventListener('pointerup',up,true);document.addEventListener('pointercancel',up,true);
             });
           }
           if(item.type==='shape'){figure.classList.add('tc-paper-shape');figure.appendChild(shapeSVG(item));}else if(item.type==='text'){var text=document.createElement('div');text.className='tc-paper-text';text.textContent=wrapText(item).join('\n');text.style.fontSize=(item.fontSize/page.width*100)+'cqw';text.style.color=item.color;figure.appendChild(text);} else {
@@ -390,9 +401,9 @@
       showInspector();
       selectionDecorations();
       updateNotes(captured);
-      applyPreviewZoom();
+      applyPreviewZoom();renderScroll=null;
     }
-    function controls(ready) { if(!ready)closePublicationConfirmation(false); var held=!!(ready&&current&&current.excluded&&current.excluded.length); ready=ready&&!held||false; var composable=!!(current&&!exporting&&(ready||held));panel.querySelectorAll('.tc-add-shape').forEach(function(b){b.disabled=!composable;}); var publicationTrigger=panel.querySelector('.tc-preview-stephania');if(publicationTrigger)publicationTrigger.disabled=!ready || exporting; panel.querySelector('.tc-preview-svg').disabled = !ready || exporting || layout.value !== 'free'; panel.querySelector('.tc-preview-add-text').disabled = !composable; pdfButton.disabled = !ready || exporting || !(window.jspdf && window.jspdf.jsPDF); printButton.disabled = !ready || exporting; }
+    function controls(ready) { if(!ready)closePublicationConfirmation(false); var held=!!(ready&&current&&current.excluded&&current.excluded.length); ready=ready&&!held||false; var composable=!!(current&&!exporting&&(ready||held));root.querySelectorAll('.tc-add-shape').forEach(function(b){b.disabled=!composable;}); var publicationTrigger=root.querySelector('.tc-preview-stephania');if(publicationTrigger)publicationTrigger.disabled=!ready || exporting; root.querySelector('.tc-preview-svg').disabled = !ready || exporting || layout.value !== 'free'; root.querySelector('.tc-preview-add-text').disabled = !composable; pdfButton.disabled = !ready || exporting || !(window.jspdf && window.jspdf.jsPDF); printButton.disabled = !ready || exporting; }
     function persistNewPlacement(captured,epoch){
       if(!autoPlacementPending||captured.settings.layout!=='free')return;
       queueMicrotask(function(){
@@ -589,7 +600,7 @@
     var publicationConfirmation=null;
     function closePublicationConfirmation(focusTrigger){
       if(publicationConfirmation){publicationConfirmation.remove();publicationConfirmation=null;}
-      var trigger=panel.querySelector('.tc-preview-stephania');
+      var trigger=root.querySelector('.tc-preview-stephania');
       if(focusTrigger){if(trigger&&trigger.isConnected&&!trigger.disabled)trigger.focus();else{status.setAttribute('tabindex','-1');status.focus();}}
     }
     function requestPublicationStyle(){
@@ -605,7 +616,8 @@
       apply.addEventListener('click',function(){if(exporting){closePublicationConfirmation(true);tell('Wait for the export to finish before arranging the page.');return;}closePublicationConfirmation(false);try{unchanged(captured,epoch);stephaniaStyle();}catch(error){tell(error.message);}closePublicationConfirmation(true);});
       cancel.addEventListener('click',function(){closePublicationConfirmation(true);});
       box.addEventListener('keydown',function(event){if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closePublicationConfirmation(true);}});
-      box.append(heading,description,apply,cancel);status.before(box);publicationConfirmation=box;cancel.focus();
+      // Under the toolbar, above the page; embedded, the status line is in the page strip.
+      box.append(heading,description,apply,cancel);(embedded?editorBody:status).before(box);publicationConfirmation=box;cancel.focus();
     }
     function stephaniaStyle() {
       if(exporting)return;
@@ -747,8 +759,66 @@
       showFigure:openFigure,
       showDraft:function(){if(!panel.hidden)backToCanvas();},
       addText:function(){openFigure();addText();},
-      openShapes:function(){openFigure();shapeMenu.open=true;shapeSummary.focus();}
+      openShapes:function(){openFigure();shapeMenu.open=true;shapeSummary.focus();},
+      // The figure document's history, whatever the layout (the Object inspector, which carries its own
+      // Undo / Redo buttons, exists only in Free layout): figure_toolbar.js reads and drives it here.
+      history:function(){return {undo:!exporting&&!!documentState&&history.length>0,redo:!exporting&&!!documentState&&future.length>0};},
+      undo:function(){return replayDocument(false);},
+      redo:function(){return replayDocument(true);}
     };
+    // Figure page as the second mode of the shell grid (UX3/F Option A): once shell.js has built the
+    // rail and the right column, this panel takes the canvas cell. A page strip stands where the draft's
+    // tab row is and holds the status line (still the aria-live node); the zoom box sits where the
+    // draft's navigation box does; the right column swaps the card inspector for #tc-figure-column and
+    // keeps .tc-companion-home in place. Every node is moved, none recreated, so handlers stay. Until
+    // the figure column has its tabs, the page tools (heading, actions, Page setup, notes, plot picker,
+    // object inspector) wait in .tc-figure-side under it; the side hides once nothing in it is shown.
+    function embedInShell(){
+      if(embedded)return true;
+      var layout=root.querySelector('.tc-layout'),column=layout&&layout.querySelector(':scope>.ts-inspector-column'),home=column&&column.querySelector(':scope>.tc-companion-home');
+      if(!root.classList.contains('ts-shell')||!home)return false;
+      embedded=true;
+      var main=layout.querySelector(':scope>.tc-main');if(main)main.after(panel);else column.before(panel);
+      var workspacePanel=root.querySelector('#tc-workspace-panel');if(workspacePanel&&workspacePanel.contains(panel))workspacePanel.hidden=false;
+      panel.classList.add('tc-preview-embedded');
+      var strip=document.createElement('div');strip.className='tc-figure-strip';
+      var stripTitle=document.createElement('span');stripTitle.className='tc-figure-strip-title';
+      strip.append(stripTitle,status);panel.prepend(strip);
+      var slot=root.querySelector('#tc-figure-toolbar-slot');if(!slot){slot=document.createElement('div');slot.id='tc-figure-toolbar-slot';}strip.after(slot);
+      var figureColumn=root.querySelector('#tc-figure-column');if(!figureColumn){figureColumn=document.createElement('div');figureColumn.id='tc-figure-column';}
+      var side=document.createElement('div');side.className='tc-preview tc-figure-side';
+      home.before(figureColumn,side);
+      // Nodes figure_column.js already holds in its tabs stay there.
+      [panel.querySelector('.tc-preview-toolbar'),pageSettings,notes,picker,inspector].forEach(function(n){if(n&&!figureColumn.contains(n))side.appendChild(n);});
+      // figure_column.js may have filled the column while it waited in the panel: let it re-place itself.
+      if(window.TeamFigureColumn&&typeof window.TeamFigureColumn.mount==='function')window.TeamFigureColumn.mount();
+      function stripText(){
+        var n=pages.querySelectorAll(':scope>.tc-paper').length,option=paper.options[paper.selectedIndex],turn=orientation.options[orientation.selectedIndex];
+        var parts=['Figure page',paper.value==='custom'?'Custom '+customWidth.value+' × '+customHeight.value+' pt':(option?option.text:paper.value)];
+        if(paper.value!=='custom')parts.push(turn?turn.text:orientation.value);
+        if(n)parts.push(n+' page'+(n===1?'':'s'));
+        var text=parts.join(' · ');if(stripTitle.textContent!==text){stripTitle.textContent=text;stripTitle.title=text;}
+        // The empty page shows its own message; an inspector with nothing to edit hides then.
+        inspector.classList.toggle('tc-figure-idle',!!pages.querySelector(':scope>.tc-preview-empty'));
+      }
+      new MutationObserver(stripText).observe(pages,{childList:true});
+      [paper,orientation,customWidth,customHeight].forEach(function(c){c.addEventListener('change',stripText);});
+      stripText();
+      // The strip shows the status truncated; the full line stays readable on hover.
+      function statusTitle(){var t=status.textContent.trim();if(status.title!==t)status.title=t;}
+      new MutationObserver(statusTitle).observe(status,{childList:true,characterData:true,subtree:true});statusTitle();
+      function sideState(){var used=Array.prototype.some.call(side.children,function(c){return !c.hidden;});if(side.classList.contains('is-empty')===used)side.classList.toggle('is-empty',!used);}
+      new MutationObserver(sideState).observe(side,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});sideState();
+      // The page opens at Fit page under the toolbar; the zoom box keeps any later choice.
+      zoomMode='page';
+      // The desk's own height changes when the toolbar slot and its hint line fill in (figure_toolbar.js
+      // mounts after this) or the confirmation opens above it, without the panel resizing: refit then.
+      if(window.ResizeObserver)new ResizeObserver(schedulePreviewZoom).observe(pages);
+      if(!panel.hidden)root.classList.add('tc-figure-mode');
+      schedulePreviewZoom();
+      return true;
+    }
+    if(!embedInShell()){var shellWatch=new MutationObserver(function(){if(embedInShell())shellWatch.disconnect();});shellWatch.observe(root,{attributes:true,attributeFilter:['class','data-ts-shell']});}
     var idleReconcilePending=false;
     function setPreviewIdle(){if(!busy)return;busy=false;invalidate();if(current&&!exporting)controls(true);}
     function reconcileIdle(){if(!busy||idleReconcilePending||!window.Shiny||!Shiny.shinyapp)return;idleReconcilePending=true;queueMicrotask(function(){queueMicrotask(function(){idleReconcilePending=false;if(busy&&!document.documentElement.classList.contains('shiny-busy'))setPreviewIdle();});});}

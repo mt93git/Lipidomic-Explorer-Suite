@@ -60,21 +60,45 @@
   // and anchored just above the card's top edge, or below the header when the
   // card's top is at the canvas edge. Never over the title.
   function setStyle(el, prop, value) { if (el.style.getPropertyValue(prop) !== value) el.style.setProperty(prop, value); }
+  // RC4's framed cards (card_frame.js) paint this toolbar as their footer, Edit · Duplicate · ⋯. It stays
+  // screen-size at every Canvas zoom: docked in the card's footer (absolute, card_frame.css) while that
+  // footer is tall and wide enough for it on screen, otherwise floating at screen size over the card's
+  // lower edge, shown on hover, selection or keyboard focus like the plain toolbar.
+  var DOCK_ZOOM = 0.9, DOCK_WIDTH = 240;
   function place(node, view) {
     var bar = node.querySelector(':scope > .tc-node-head > .tc-card-actions');
     if (!bar) return;
-    var nr = node.getBoundingClientRect();
-    if (!nr.width || !view || nr.right <= view.left || nr.left >= view.right || nr.bottom <= view.top || nr.top >= view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
     // CSSOM rounds zoom when serialising it back: compare the requested value,
     // or every sweep would rewrite the style and wake the board observer again.
     var zoom = node.currentCSSZoom || 1, counter = Math.round(1e4 / zoom) / 1e4;
     if (bar._tcZoom !== counter) { bar._tcZoom = counter; bar.style.zoom = counter === 1 ? '' : String(counter); }
+    var nr = node.getBoundingClientRect(), framed = node.classList.contains('tc-card-framed');
+    // Docked only while the card's footer is inside the canvas view: a card larger than the view (high
+    // zoom) or partly scrolled out keeps its actions floating at the view's lower edge, still reachable.
+    var dockable = framed && zoom >= DOCK_ZOOM - 0.005 && nr.width >= DOCK_WIDTH;
+    var docked = dockable && (!view || (nr.bottom <= view.bottom + 0.5 && nr.bottom - 40 >= view.top));
+    // No room to float it in view (only the card's top shows, or the view is short): keep it in the footer,
+    // where scrolling the card into view reaches it.
+    if (dockable && !docked) {
+      var hb = node.querySelector(':scope > .tc-node-head').getBoundingClientRect();
+      if (nr.bottom <= view.top || nr.top >= view.bottom || Math.max(hb.bottom, view.top) + 2 + 34 > view.bottom) docked = true;
+    }
+    if (bar.classList.contains('tc-card-docked') !== docked) bar.classList.toggle('tc-card-docked', docked);
+    if (docked) { ['left', 'top', 'max-width', 'visibility'].forEach(function (p) { setStyle(bar, p, ''); }); return; }
+    if (!nr.width || !view || nr.right <= view.left || nr.left >= view.right || nr.bottom <= view.top || nr.top >= view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
     // A toolbar wider than the canvas wraps instead of running under the inspector.
     setStyle(bar, 'max-width', Math.max(120, Math.floor(view.right - view.left - 8)) + 'px');
     var br = bar.getBoundingClientRect(), head = node.querySelector(':scope > .tc-node-head').getBoundingClientRect();
-    var left = Math.min(nr.right - br.width, view.right - br.width - 4); left = Math.max(left, view.left + 4);
-    var top = nr.top - br.height;
-    if (top < view.top + 2) top = Math.max(head.bottom, view.top) + 2;
+    var left, top;
+    if (framed) {
+      // The footer's place: over the card's lower edge (as much of it as is in view), never over the title.
+      left = Math.max(view.left + 4, Math.min(nr.left + 4, view.right - br.width - 4));
+      top = Math.max(Math.min(nr.bottom, view.bottom) - br.height - 4, Math.max(head.bottom, view.top) + 2);
+    } else {
+      left = Math.min(nr.right - br.width, view.right - br.width - 4); left = Math.max(left, view.left + 4);
+      top = nr.top - br.height;
+      if (top < view.top + 2) top = Math.max(head.bottom, view.top) + 2;
+    }
     if (top + br.height > view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
     setStyle(bar, 'visibility', '');
     setStyle(bar, 'left', Math.round(left) + 'px'); setStyle(bar, 'top', Math.round(top) + 'px');
@@ -84,9 +108,10 @@
     if (!board) return;
     var queued = false;
     var scroll = board.closest('.tc-scroll') || board, placing = false;
+    function view() { var v = scroll.getBoundingClientRect(); return { left: Math.max(0, v.left), top: Math.max(0, v.top), right: Math.min(window.innerWidth, v.right), bottom: Math.min(window.innerHeight, v.bottom) }; }
     function placeAll() {
       placing = false;
-      var v = scroll.getBoundingClientRect(); v = { left: Math.max(0, v.left), top: Math.max(0, v.top), right: Math.min(window.innerWidth, v.right), bottom: Math.min(window.innerHeight, v.bottom) };
+      var v = view();
       board.querySelectorAll(':scope > .tc-node').forEach(function (n) { place(n, v); });
     }
     function schedulePlace() { if (!placing) { placing = true; requestAnimationFrame(placeAll); } }
@@ -95,6 +120,8 @@
     // Panning (canvas or page) and window resizes move cards on screen without a DOM change.
     document.addEventListener('scroll', schedulePlace, { capture: true, passive: true });
     window.addEventListener('resize', schedulePlace);
+    // The navigation box's band (canvas_viewport.js) moves the view's lower edge without either.
+    window.addEventListener('team-canvas-nav-inset', schedulePlace);
     // Plotly restyles its own SVG constantly (hover, zoom): those attribute changes never
     // affect what is parked, so only structural changes inside a plot wake the sweep.
     // Moving a card (drag, arrow keys) only rewrites its own or the board's style: that
@@ -107,7 +134,10 @@
     // Shiny triggers its events through jQuery; native listeners never see them.
     if (window.jQuery) jQuery(document).on('shiny:value', schedule);
     schedule();
-    window.TeamCardFigure = { chrome: function (node) { mark(node); return Array.from(node.querySelectorAll('.' + CHROME)); }, refresh: schedule };
+    // place: card_frame.js frames a card in its own frame, after this file's sweep of that frame; it
+    // places the bar at once, so a new framed card is docked (or floating) from its first painted frame.
+    window.TeamCardFigure = { chrome: function (node) { mark(node); return Array.from(node.querySelectorAll('.' + CHROME)); }, refresh: schedule,
+      place: function (node) { if (node && node.parentElement === board) place(node, view()); } };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

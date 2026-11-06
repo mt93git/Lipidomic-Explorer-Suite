@@ -27,11 +27,25 @@ async function add(p,source,figure=true){
   await p.waitForFunction(id=>document.querySelector('.tc-node[data-plot-id="'+id+'"] .tc-card-status')?.dataset.state==='current',v,{timeout:120000});console.log('PASS a drawn card says Up to date');
   const warn=()=>p.evaluate(()=>{const w=document.querySelector('.ts-export-warning');return w&&!w.hidden?w.textContent:'';});
   assert.equal(await warn(),'','export warns while every card is current');console.log('PASS no export warning when all cards are current');
-  // Simulate a card falling behind; the chip, its action and the export warning follow.
-  await p.evaluate(id=>{const real=TeamCanvas.cardStatus;TeamCanvas.cardStatus=x=>x===id?'pending':real(x);},v);
+  // The badge sits in the card header next to the title; no global strip while nothing waits.
+  const place=await p.evaluate(id=>{const c=document.querySelector('.tc-node[data-plot-id="'+id+'"] .tc-card-status');return {head:c.parentElement.classList.contains('tc-node-head'),afterTitle:c.previousElementSibling?.tagName==='STRONG'};},v);
+  assert.deepEqual(place,{head:true,afterTitle:true});console.log('PASS the badge is in the card header after the title');
+  assert.equal(await p.evaluate(()=>{const s=document.querySelector('.tc-global-wait');return !!s&&!s.hidden;}),false,'global strip while nothing waits');console.log('PASS no global strip while every card is current');
+  // The canvas notice takes no room once its message fades: no permanent strip above or below the canvas.
+  await p.waitForFunction(()=>!document.querySelector('#team-canvas-root .tc-status')?.classList.contains('is-visible'),null,{timeout:15000});
+  assert.equal(await p.evaluate(()=>document.querySelector('#team-canvas-root .tc-status').offsetHeight),0);console.log('PASS the canvas notice line collapses when empty');
+  // Simulate a card falling behind; the badge, its action, the global strip and the export warning follow.
+  await p.evaluate(id=>{const real=TeamCanvas.cardStatus;window.__realCardStatus=real;TeamCanvas.cardStatus=x=>x===id?'pending':real(x);},v);
   await p.waitForFunction(id=>document.querySelector('.tc-node[data-plot-id="'+id+'"] .tc-card-status')?.dataset.state==='pending',v,{timeout:10000});
   assert.equal(await p.locator('.tc-node[data-plot-id="'+v+'"] .tc-card-status button').textContent(),'Review');console.log('PASS a pending card offers Review');
+  assert.equal(await p.locator('.tc-node[data-plot-id="'+v+'"] .tc-card-status-text').textContent(),'Changes pending');
+  const a11y=await p.evaluate(id=>{const b=document.querySelector('.tc-node[data-plot-id="'+id+'"] .tc-card-status button');const d=document.getElementById(b.getAttribute('aria-describedby'));b.focus();return {desc:d?.textContent||'',focused:document.activeElement===b};},v);
+  assert.ok(a11y.desc.length>20&&!/instance|payload|module/i.test(a11y.desc),'badge explanation');assert.equal(a11y.focused,true);console.log('PASS the badge action is focusable and described in plain language');
+  const strip=await p.evaluate(()=>{const s=document.querySelector('.tc-global-wait');return s&&!s.hidden?{text:s.querySelector('.tc-global-wait-text').textContent,buttons:s.querySelectorAll('button').length,label:s.querySelector('button').textContent}:null;});
+  assert.ok(strip,'global strip while data changes wait');assert.equal(strip.buttons,1);assert.match(strip.label,/Review/);console.log('PASS one global strip with one action while data changes wait');
   assert.match(await warn(),/1 figure is not up to date/);console.log('PASS Export figure warns about the stale card');
+  await p.evaluate(()=>{TeamCanvas.cardStatus=window.__realCardStatus;});
+  await p.waitForFunction(()=>{const s=document.querySelector('.tc-global-wait');return !s||s.hidden;},null,{timeout:10000});console.log('PASS the global strip leaves once nothing waits');
   // visNetwork draws into a <canvas>, not Plotly or an <img>: its card must still settle.
   const net=await add(p,'pathway_tab-pathwayVisNetwork');
   await p.waitForFunction(id=>document.querySelector('.tc-node[data-plot-id="'+id+'"] .vis-network canvas')?.width>0,net,{timeout:120000});

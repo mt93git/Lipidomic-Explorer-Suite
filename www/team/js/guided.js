@@ -105,6 +105,9 @@
     if(detail&&toolbar&&detail.previousElementSibling!==toolbar)toolbar.after(detail);
     var hasPlotControls=!!current.tool&&!['Publication Export Studio','App Info','Lexicon','About & Citation'].includes(current.tool);
     document.body.dataset.guideAnalysis=hasPlotControls?'true':'false';
+    // A tool page without plot controls (App Info, Lexicon, About & Citation, Run comparison): the Team
+    // workspace shows it in place of the figure canvas instead of leaving the link without effect.
+    document.body.dataset.guideToolPage=!!current.tool&&!hasPlotControls&&Number(current.step)===5?'true':'false';
     document.querySelectorAll('#guide-navigation [data-guide-step]').forEach(function(b){
       b.setAttribute('aria-current',Number(b.dataset.guideStep)===Number(current.step)?'step':'false');
     });

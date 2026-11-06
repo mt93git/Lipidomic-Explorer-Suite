@@ -135,10 +135,13 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     await page.locator('#team_library_resume').click();
     await page.evaluate(() => {document.documentElement.classList.add('shiny-busy');fireJQueryEvent('shiny:busy');document.body.dataset.guideStep='3';handlers['team-review-restore-ready']({ready:true,generation:1});});
     await page.waitForFunction(() => TeamWorkspace.state().stage === 'review');
-    assert.notEqual(await page.evaluate(() => sent.at(-1)?.[0]), 'team_review_prepare', 'restore readiness does not start while Shiny is still visibly busy');
-    await page.evaluate(() => document.documentElement.classList.remove('shiny-busy'));
-    await page.waitForFunction(() => sent.at(-1)?.[0] === 'team_review_prepare');
-    assert.deepEqual(await page.evaluate(() => sent.at(-1)), ['team_review_prepare',{kind:'entry',source:'human',token:2}], 'a trusted Resume request waits for restored data at Review');
+    // Restore readiness at Review sends the guarded preparation at once, even while
+    // Shiny is busy (the server queues it); it no longer waits for idle.
+    await page.waitForFunction(() => sent.some(x => x[0] === 'team_review_prepare' && x[1].token === 2));
+    assert.deepEqual(await page.evaluate(() => sent.filter(x => x[0] === 'team_review_prepare').at(-1)), ['team_review_prepare',{kind:'entry',source:'human',token:2}], 'a trusted Resume request waits for restored data at Review');
+    await page.evaluate(() => { document.documentElement.classList.remove('shiny-busy'); fireJQueryEvent('shiny:idle'); });
+    await page.waitForTimeout(40);
+    assert.equal(await page.evaluate(() => sent.filter(x => x[0] === 'team_review_prepare' && x[1].token >= 2).length), 1, 'idle after readiness does not repeat the preparation');
     console.log('PASS: Team workspace has one review screen, current preparation gate, race-safe navigation, and keyboard focus');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error);process.exitCode=1;});

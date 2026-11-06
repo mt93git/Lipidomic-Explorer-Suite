@@ -8,6 +8,7 @@
    their local z-index there. Modals keep the values www/team/css/custom.css already gives them,
    far above the canvas; toasts sit above modals, as in stock Shiny. */
 :root{
+  --z-backdrop:-1; /* decorative page illustration (step_backdrop.css), under all content */
   --z-canvas-expanded:10000;
   --z-panel:10100;
   --z-popover:10200;

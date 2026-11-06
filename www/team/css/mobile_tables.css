@@ -1,0 +1,27 @@
+/* Phones (<= 600 px): tables on the guided and workspace pages scroll inside their own
+   container, never the page, and keep the Sample column fixed. www/team/js/mobile_tables.js
+   marks each table root in scope (guided pages; the Team workspace's Data and Review pages and
+   dialogs, not the Canvas) with .tw-mobile-table and data-tw-sticky-col, its output box with
+   .tw-mobile-table-host, and sets the tw-scroll-* classes on its scroll host. */
+@media (max-width:600px){
+  .guide-page .dataTables_wrapper,.guide-page .shiny-html-output,.dataTables_wrapper.tw-mobile-table,.tw-mobile-table-host{max-width:100%;min-width:0}
+  /* DataTables with scrollX already scroll in .dataTables_scrollBody; plain renderTable()
+     output becomes its own horizontal scroller. */
+  .guide-page table.shiny-table,table.shiny-table.tw-mobile-table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Fixed Sample column (header and body). The opaque background keeps scrolled cells from
+     showing through; the 1px line on its right edge separates it from the moving columns. */
+  .tw-mobile-table[data-tw-sticky-col="1"] :is(thead,tbody,tfoot)>tr>:nth-child(1),
+  .tw-mobile-table[data-tw-sticky-col="2"] :is(thead,tbody,tfoot)>tr>:nth-child(2),
+  .tw-mobile-table[data-tw-sticky-col="3"] :is(thead,tbody,tfoot)>tr>:nth-child(3),
+  .tw-mobile-table[data-tw-sticky-col="4"] :is(thead,tbody,tfoot)>tr>:nth-child(4),
+  .tw-mobile-table[data-tw-sticky-col="5"] :is(thead,tbody,tfoot)>tr>:nth-child(5),
+  .tw-mobile-table[data-tw-sticky-col="6"] :is(thead,tbody,tfoot)>tr>:nth-child(6){position:sticky;left:0;background-color:#fff;background-image:linear-gradient(to left,#c9d6df 1px,transparent 1px)}
+
+  /* Right-edge shadow while more columns are hidden to the right. */
+  .tw-scroll-cue{position:relative}
+  .tw-scroll-cue.tw-scroll-right::after{content:'';position:absolute;top:0;right:0;bottom:0;width:18px;pointer-events:none;background:linear-gradient(to left,rgba(22,34,48,.18),rgba(22,34,48,0))}
+
+  /* Long values in the preparation summaries wrap instead of widening the page. */
+  .guide-method-copy p,.guide-run-summary,.tw-review-stats-table :is(th,td){overflow-wrap:break-word;min-width:0}
+}

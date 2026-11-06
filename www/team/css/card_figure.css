@@ -8,11 +8,11 @@ body.ts-shell-app .tc-inspector-data :is(.rd-card-head,.rd-violin-controls){disp
 body.ts-shell-app .tc-inspector-data :is(.rd-card-head,.rd-violin-controls)>*{width:100%!important;max-width:100%!important;min-width:0}
 body.ts-shell-app .tc-inspector-data .rd-card-head :is(h1,h2,h3,h4,h5){font-size:15px;font-weight:600;line-height:1.3;margin:0}
 body.ts-shell-app .tc-inspector-data .shiny-input-container{width:100%!important}
-body.ts-shell-app .tc-inspector-data .rd-card-sub,body.ts-shell-app .tc-inspector-data .rd-card-note{font-size:12.5px;color:#5a6878}
+body.ts-shell-app .tc-inspector-data .rd-card-sub,body.ts-shell-app .tc-inspector-data .rd-card-note{font-size:13px;color:#5a6878}
 body.ts-shell-app .tc-inspector-data .plot-export-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 body.ts-shell-app .tc-inspector-data .selectize-control,body.ts-shell-app .tc-inspector-data select{width:100%!important}
 body.ts-shell-app .tc-inspector-data-settings{justify-self:start;height:34px;padding:0 12px;border:1px solid #cbd7e3;border-radius:6px;background:#fff;color:#2d5f8a;font-weight:600;cursor:pointer}
-body.ts-shell-app .tc-inspector-data-note{font-size:12.5px;color:#5a6878;margin:0}
+body.ts-shell-app .tc-inspector-data-note{font-size:13px;color:#5a6878;margin:0}
 /* One-line card header: title (ellipsis) + status; actions in a hover/selection toolbar. */
 body.ts-shell-app .tc-node .tc-node-head{display:flex!important;flex-wrap:nowrap!important;align-items:center;gap:8px;position:relative;min-height:36px;overflow:visible}
 body.ts-shell-app .tc-node .tc-node-head>strong{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -22,7 +22,7 @@ body.ts-shell-app .tc-card-actions{position:fixed;left:0;top:0;display:flex;gap:
 /* Hidden actions take no clicks (a tap on the header must not hit an invisible Remove). */
 body.ts-shell-app .tc-card-actions{pointer-events:none}
 body.ts-shell-app .tc-node:hover .tc-card-actions,body.ts-shell-app .tc-node.is-selected .tc-card-actions,body.ts-shell-app .tc-node:focus-within .tc-card-actions{opacity:1;pointer-events:auto}
-body.ts-shell-app .tc-card-actions>button{border:0!important;background:transparent!important;font-size:12px!important;padding:3px 8px!important;border-radius:4px!important;color:#3b4855!important;min-height:0!important;height:auto!important;margin:0!important;white-space:nowrap}
+body.ts-shell-app .tc-card-actions>button{border:0!important;background:transparent!important;font-size:13px!important;padding:3px 8px!important;border-radius:4px!important;color:#3b4855!important;min-height:0!important;height:auto!important;margin:0!important;white-space:nowrap}
 body.ts-shell-app .tc-card-actions>button:hover{background:#eaf1f7!important;color:#2d5f8a!important}
 @media (prefers-reduced-motion:reduce){body.ts-shell-app .tc-card-actions{transition:none}}
 /* Compact, movable minimap. */

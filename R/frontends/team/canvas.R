@@ -63,5 +63,9 @@ team_canvas_section <- function() {
         shiny::tags$label("Orientation", shiny::tags$select(id = "tc-preview-orientation", `aria-label` = "Orientation", class = "tc-preview-orientation",
           shiny::tags$option(value = "portrait", "Portrait"), shiny::tags$option(value = "landscape", "Landscape")))),
       shiny::tags$p(class = "tc-preview-status", role = "status", `aria-live` = "polite", "Finish plots in the draft canvas to place them here. Text and shapes can be added at any time."),
+      # Figure page in the shell grid (canvas_preview.js embedInShell): the toolbar slot stays above the
+      # page, the column moves to the right column above the companion's home. Both start empty.
+      shiny::tags$div(id = "tc-figure-toolbar-slot"),
+      shiny::tags$div(id = "tc-figure-column"),
       shiny::tags$div(class = "tc-preview-pages", `aria-label` = "Figure pages")))
 }

@@ -22,8 +22,9 @@ team_missingness_data_adapter <- function(shared_data) {
 # still needs those inputs. Canvas copies have their own namespaces and are not affected.
 team_hidden_classic_outputs <- c("structural_tab-propPlotPlot", "structural_tab-diffAcylPlot", "structural_tab-diffAcylTable")
 team_suspend_hidden_classic_outputs <- function(output) {
-  for (id in team_hidden_classic_outputs) shiny::outputOptions(output, id, suspendWhenHidden = TRUE)
-  invisible(team_hidden_classic_outputs)
+  ids <- c(team_hidden_classic_outputs, team_hidden_metadata_previews)
+  for (id in ids) shiny::outputOptions(output, id, suspendWhenHidden = TRUE)
+  invisible(ids)
 }
 team_frontend_server <- function(input, output, session, shared_data) {
   # Production called these from R/server.R just before this function; same order.

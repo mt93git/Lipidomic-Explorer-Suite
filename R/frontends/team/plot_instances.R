@@ -224,18 +224,29 @@ team_plot_instance_doc_defaults <- function(doc) {
     }
     out
 }
+# Arm (restored creation: its saved keys read their saved values until each reports
+# a value or the copy settles) or end (any other creation) a copy's NULL tracking.
+team_plot_instance_track <- function(seen, value, restored) {
+  if (!is.environment(seen)) return(NULL)
+  rm(list=ls(seen,all.names=TRUE),envir=seen)
+  assign('.keys',if (isTRUE(restored)) names(value$inputs) else character(),seen)
+  if (!isTRUE(restored)) assign('.settled',TRUE,seen)
+  seen
+}
 # Read-only view of a copy's inputs that falls back until a control has reported.
-team_plot_instance_fallback_input <- function(input, fallback) {
-  x <- unclass(input); x$team_fallback <- fallback
+team_plot_instance_fallback_input <- function(input, fallback, pending = NULL) {
+  x <- unclass(input); x$team_fallback <- fallback; x$team_pending <- pending
   structure(x,class=c('team_plot_instance_input',class(input)))
 }
 team_plot_instance_fallback_value <- function(x, name, value) {
   if (!is.null(value) || !is.character(name) || length(name)!=1L) return(value)
   fallback <- .subset2(x,'team_fallback')[[name]]
   if (is.null(fallback)) return(NULL)
-  # A control that reported NULL (e.g. every checkbox cleared) keeps NULL.
+  # A control that reported NULL (e.g. every checkbox cleared) keeps NULL, except
+  # the first NULL a restored copy's control reports before taking its saved value.
   reported <- tryCatch(isTRUE(.subset2(x,'impl')$.values$containsKey(.subset2(x,'ns')(name))),error=function(e)TRUE)
-  if (reported) NULL else fallback
+  pending <- .subset2(x,'team_pending')
+  if (reported && !(is.function(pending) && isTRUE(pending(name)))) NULL else fallback
 }
 `$.team_plot_instance_input` <- function(x, name) team_plot_instance_fallback_value(x,name,NextMethod())
 `[[.team_plot_instance_input` <- function(x, i, ...) team_plot_instance_fallback_value(x,i,NextMethod())
@@ -405,7 +416,7 @@ team_plot_instance_layout <- local({
 # Run a copy's server in a domain whose errors stay inside that copy. Shiny ends
 # the session on any observer error; inside this domain an error is printed and
 # reported for this copy only, and the rest of the session keeps working.
-team_plot_instance_guarded <- function(session, id, fallback, on_error, expr) {
+team_plot_instance_guarded <- function(session, id, fallback, on_error, expr, pending = NULL) {
   proxy <- tryCatch(get('createSessionProxy',envir=asNamespace('shiny'),inherits=FALSE),error=function(e)NULL)
   if (!is.function(proxy)) return(shiny::withReactiveDomain(session,expr))
   report <- function(e, close = TRUE) on_error(e)
@@ -415,7 +426,7 @@ team_plot_instance_guarded <- function(session, id, fallback, on_error, expr) {
     make <- overrides$makeScope
     overrides$unhandledError <- report
     if (is.function(make)) overrides$makeScope <- function(inner) guard(make(inner),NULL)
-    if (identical(namespace,id) && length(fallback) && inherits(overrides$input,'reactivevalues')) overrides$input <- team_plot_instance_fallback_input(overrides$input,fallback)
+    if (identical(namespace,id) && length(fallback) && inherits(overrides$input,'reactivevalues')) overrides$input <- team_plot_instance_fallback_input(overrides$input,fallback,pending)
     assign('overrides',overrides,envir=scope);scope
   }
   domain <- proxy(session,unhandledError=report,makeScope=function(namespace) guard(session$makeScope(namespace),namespace))
@@ -526,7 +537,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     ui <- team_plot_instance_host_ui(resolved$family,spec,id)
     shiny::insertUI(selector='body',where='beforeEnd',ui=shiny::tags$div(id=paste0(id,'_host'),class='tc-instance-host',`data-instance-id`=id,`data-instance-output`=resolved$output,`aria-hidden`='true',inert='',style='position:absolute;left:-100000px;top:0;width:900px',ui),immediate=TRUE,session=session)
   }
-  create <- function(value) {
+  create <- function(value, request_token = NULL, restored = FALSE) {
     value <- team_plot_instance_validate(value)
     resolved <- team_plot_instance_source(value$source); spec <- resolved$spec; id <- value$id
     # Show the tab that holds this plot. A copy starts from its source view's
@@ -544,6 +555,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       mode <- value$inputs$barValueMode; if (is.list(mode)) mode <- unlist(mode,use.names=FALSE)
       if (is.character(mode) && length(mode)==1L && !mode %in% c('Absolute (%)','Normalized (%)')) value$inputs$barValueMode <- if (grepl('Normalized',mode)) 'Normalized (%)' else 'Absolute (%)'
     }
+    seen <- NULL
     unhosted_values <- list()
     if (!resolved$family %in% c('team_cell','results_dashboard')) {
       unhosted <- tryCatch(team_plot_instance_unhosted_ids(resolved$family),error=function(e)character())
@@ -553,7 +565,12 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       value$inputs <- value$inputs[!names(value$inputs) %in% unhosted]
     }
     if (!exists(id,active,inherits=FALSE)) {
-      if(length(ls(active))>=160L)stop('This session has created 160 independent plots. Save the workspace and reopen it to continue.',call.=FALSE)
+      # A restored checkpoint's copies are created progressively (canvas.js), not at
+      # restore time: their saved namespaces still waiting for creation keep their
+      # places, so a new copy cannot take the last one (the eager restore created
+      # them first, and the new copy was the one refused).
+      reserved <- if (isTRUE(restored) || !is.function(session$userData$team_canvas_restored_pending)) character() else setdiff(session$userData$team_canvas_restored_pending(), c(ls(active), id))
+      if(length(ls(active))+length(reserved)>=160L)stop('This session has created 160 independent plots. Save the workspace and reopen it to continue.',call.=FALSE)
       insert_host(id, resolved, spec)
       result <- NULL
       fallback <- list()
@@ -565,6 +582,17 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
           fallback[[key]] <- if (length(saved)) saved else NULL
         }
       }
+      # A restored copy is created once the analysis it reads is ready (canvas.js
+      # requests it progressively); the eager restore created it before, so it never
+      # computed from the NULL a control reports while it is still taking its saved
+      # value (QC's classLabelFormat: `if (input$classLabelFormat == "full")` in
+      # plot_data). Until the copy settles, a saved key that has reported only NULL
+      # reads its saved value; a NULL reported after a value is kept. The tracking
+      # state lives with the instance: every later creation of this namespace (a
+      # parked copy placed again, a second restore) re-arms or ends it, and its
+      # settle watcher records into it, so the module's view never goes stale.
+      seen <- team_plot_instance_track(new.env(parent=emptyenv()),value,restored)
+      pending <- function(name) !exists('.settled',seen,inherits=FALSE) && name %in% get('.keys',seen,inherits=FALSE) && !exists(name,seen,inherits=FALSE)
       # One message per error burst: a failing observer can rerun many times. A
       # parked copy that is placed again reports anew (see `rearm` below).
       reported <- FALSE
@@ -572,7 +600,10 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
       on_error <- function(e) {
         if (reported) return(invisible())
         reported <<- TRUE
-        session$sendCustomMessage('team-canvas-instance-error',list(id=id,message=paste0('An independent plot stopped after an error in its analysis (',conditionMessage(e),'). Other plots and the session keep working; remove it or add it again.')))
+        # The token of this copy's latest creation request (see `request_token` below),
+        # so the browser matches the error to the request it belongs to.
+        latest <- if (exists(id,active,inherits=FALSE)) get(id,active)$request_token else request_token
+        session$sendCustomMessage('team-canvas-instance-error',c(list(id=id,message=paste0('An independent plot stopped after an error in its analysis (',conditionMessage(e),'). Other plots and the session keep working; remove it or add it again.')),if(!is.null(latest))list(request=latest)))
       }
       team_plot_instance_guarded(session,id,fallback,on_error,{
       if (identical(resolved$family,'results_dashboard')) {
@@ -582,10 +613,11 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         if (isTRUE(spec$colors)) args$global_color_map <- shiny::reactive(shared_data$color_maps())
         result <- do.call(get(spec$server,mode='function'),args)
       }
-      })
-      assign(id,list(source=value$source,dashboard=if(identical(resolved$family,'results_dashboard'))dashboard else NULL,result=result,parked=FALSE,rearm=rearm),active)
+      },pending=pending)
+      assign(id,list(source=value$source,dashboard=if(identical(resolved$family,'results_dashboard'))dashboard else NULL,result=result,parked=FALSE,rearm=rearm,request_token=request_token,seen=seen),active)
     } else if (!identical(get(id,active)$source,value$source)) stop('Canvas instance namespace already belongs to another plot.',call.=FALSE)
-    else if (isTRUE(get(id,active)$parked)) { entry <- get(id,active); insert_host(id,resolved,spec); entry$parked <- FALSE; if (is.function(entry$rearm)) entry$rearm(); assign(id,entry,active) }
+    else if (isTRUE(get(id,active)$parked)) { entry <- get(id,active); insert_host(id,resolved,spec); entry$parked <- FALSE; if (is.function(entry$rearm)) entry$rearm(); entry$request_token <- request_token; seen <- team_plot_instance_track(entry$seen,value,restored); assign(id,entry,active) }
+    else { entry <- get(id,active); entry$request_token <- request_token; seen <- team_plot_instance_track(entry$seen,value,restored); assign(id,entry,active) }
     # A restored workspace can be hidden while preparation completes. Keep only
     # this instance's selected output active, so its pending render is delivered
     # even when the browser last reported the parked source as hidden. Sibling
@@ -615,17 +647,22 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         identical(as.character(unlist(actual,use.names=FALSE)),as.character(unlist(saved,use.names=FALSE)))
       }
       watcher <- shiny::observe({
-        ok <- all(vapply(names(expected),function(key)same(input[[paste0(id,'-',key)]],expected[[key]]),logical(1)))
-        if (ok) { session$sendCustomMessage('team-canvas-instance-settled',list(id=id,generation=generation));stop_settling(id) }
+        actual <- lapply(stats::setNames(names(expected),names(expected)),function(key)input[[paste0(id,'-',key)]])
+        if (is.environment(seen)) for (key in names(actual)) if (!is.null(actual[[key]])) assign(key,TRUE,seen)
+        ok <- all(vapply(names(expected),function(key)same(actual[[key]],expected[[key]]),logical(1)))
+        if (ok) { if (is.environment(seen)) assign('.settled',TRUE,seen); session$sendCustomMessage('team-canvas-instance-settled',list(id=id,generation=generation));stop_settling(id) }
       },priority=-100)
       assign(id,list(generation=generation,watcher=watcher),settling)
     } else {
+      if (is.environment(seen)) assign('.settled',TRUE,seen)
       assign(id,list(generation=generation,watcher=NULL),settling)
       session$sendCustomMessage('team-canvas-instance-settled',list(id=id,generation=generation))
     }
     # Send within the current reactive flush. A message enqueued from onFlushed
     # can otherwise wait indefinitely for an unrelated subsequent flush.
-    session$sendCustomMessage('team-canvas-instance-ready',c(value,list(allowedInputs=team_plot_instance_input_ids(value$source),generation=generation)))
+    reply <- list(allowedInputs=team_plot_instance_input_ids(value$source),generation=generation)
+    if (!is.null(request_token)) reply$request <- request_token
+    session$sendCustomMessage('team-canvas-instance-ready',c(value,reply))
     invisible(value)
   }
   session$userData$team_canvas_instance_context <- function(output_id) {
@@ -676,11 +713,22 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
   })
   shiny::observeEvent(input$team_canvas_instance_create,{
     request <- input$team_canvas_instance_create
+    # The browser's request token is echoed in the reply (ready or error), so a
+    # reply to an earlier request for the same id never initializes a newer one.
+    token <- if (is.list(request) && is.character(request$request) && length(request$request)==1L && grepl('^[A-Za-z0-9_]{1,40}$',request$request)) request$request else NULL
+    if (is.list(request)) request$request <- NULL
     tryCatch({
-      allowed <- team_plot_instance_input_ids(request$source)
-      request$inputs <- request$inputs[names(request$inputs) %in% allowed]
-      create(request)
-    },error=function(e)session$sendCustomMessage('team-canvas-instance-error',list(id=if(is.list(request))request$id else NULL,message=conditionMessage(e))))
+      # A card of a restored checkpoint is created from the server's validated
+      # copy of its saved instance (what the restore itself used to create), not
+      # from the browser's echo of it.
+      restored <- session$userData$team_canvas_restored_instance
+      saved <- if (is.function(restored) && is.list(request)) restored(request$id, request$source) else NULL
+      if (!is.null(saved)) create(saved, token, restored=TRUE) else {
+        allowed <- team_plot_instance_input_ids(request$source)
+        request$inputs <- request$inputs[names(request$inputs) %in% allowed]
+        create(request, token)
+      }
+    },error=function(e)session$sendCustomMessage('team-canvas-instance-error',c(list(id=if(is.list(request))request$id else NULL,message=conditionMessage(e)),if(!is.null(token))list(request=token))))
   },ignoreInit=TRUE)
   # Violin statistics read only this session's registered independent copies.
   if (exists('team_violin_stats_server',mode='function'))

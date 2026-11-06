@@ -160,7 +160,7 @@
   }
 
   var paletteSignatures=new WeakMap(),applySerial=0;
-  var PALETTES={'Gelato Days':['#BCD8EC','#FFCBE1','#D6E5BD','#DCCCEC','#FFDAB4','#F9E1A8'],'Lab':['#377EB8','#E41A1C','#4DAF4A','#984EA3','#FF7F00','#A65628'],'Okabe–Ito':['#E69F00','#56B4E9','#009E73','#F0E442','#0072B2','#D55E00','#CC79A7'],'Nature (NPG)':['#E64B35','#4DBBD5','#00A087','#3C5488','#F39B7F','#8491B4','#91D1C2'],'Viridis':['#440154','#414487','#2A788E','#22A884','#7AD151','#FDE725']};
+  var PALETTES={'Gelato Days':['#BCD8EC','#FFCBE1','#D6E5BD','#DCCCEC','#FFDAB4','#F9E1A8'],'Lab':['#377EB8','#E41A1C','#4DAF4A','#984EA3','#FF7F00','#A65628'],'Okabe–Ito':['#E69F00','#56B4E9','#009E73','#F0E442','#0072B2','#D55E00','#CC79A7'],'Nature (NPG)':['#E64B35','#4DBBD5','#00A087','#3C5488','#F39B7F','#8491B4','#91D1C2'],'Viridis':['#440154','#414487','#2A788E','#22A884','#7AD151','#FDE725'],'Pastel':['#66C5CC','#F6CF71','#F89C74','#DCB0F2','#87C55F','#9EB9F3','#FE88B1','#B3B3B3']};
   function darker(c,f){return '#'+[1,3,5].map(function(i){return Math.round(parseInt(c.slice(i,i+2),16)*(1-f)).toString(16).padStart(2,'0');}).join('');}
   function paletteStyle(gd,state,name,greyHealthy,recordAction){
     var next=resolveTraceAliases(gd,state),source=baseline(gd),colors=PALETTES[name];if(!colors)return next;

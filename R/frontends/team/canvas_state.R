@@ -79,10 +79,16 @@ team_canvas_svg <- function(svg) {
     "color", "display", "visibility", "overflow", "vector-effect", "paint-order", "background", "background-color",
     "shape-rendering", "text-rendering", "image-rendering", "pointer-events")
   if (length(elements) > 50000L || any(!xml2::xml_name(elements) %in% allowed_elements)) team_canvas_fail("Unsafe saved SVG figure.")
-  for (element in elements) {
-    namespaces <- as.character(xml2::xml_ns(element))
+  # xml2::xml_ns(element) is xml_ns(xml_root(element)): every namespace declared
+  # anywhere in the document, the same value for each element. Rebuilding it per
+  # element cost seconds on large Plotly SVGs. It is computed once and checked
+  # where the first element's check ran, so the same SVGs fail with the same message.
+  if (length(elements)) {
+    namespaces <- as.character(xml2::xml_ns(elements[[1L]]))
     if (any(!namespaces %in% c("http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/XML/1998/namespace")))
       team_canvas_fail("Unsafe saved SVG namespace.")
+  }
+  for (element in elements) {
     attributes <- xml2::xml_attrs(element)
     attribute_names <- names(attributes)
     namespace_attributes <- attribute_names == "xmlns" | startsWith(attribute_names, "xmlns:")
@@ -244,7 +250,7 @@ team_canvas_editor <- function(editor) {
   if(!is.null(editor$greyHealthy)) editor$greyHealthy <- team_canvas_boolean(editor$greyHealthy)
   if(!is.null(editor$palette)) {
     editor$palette <- team_canvas_editor_text(editor$palette)
-    if(!editor$palette %in% c("Gelato Days","Lab","Okabe–Ito","Nature (NPG)","Viridis"))team_canvas_fail()
+    if(!editor$palette %in% c("Pastel","Gelato Days","Lab","Okabe–Ito","Nature (NPG)","Viridis"))team_canvas_fail()
   }
   texts <- c("title.text","xaxis.title.text","yaxis.title.text")
   colors <- c("paper_bgcolor","plot_bgcolor","font.color","title.font.color","legend.font.color","legend.bgcolor","xaxis.color","yaxis.color","xaxis.gridcolor","yaxis.gridcolor","xaxis.zerolinecolor","yaxis.zerolinecolor")
@@ -665,6 +671,20 @@ team_canvas_server <- function(input, output, session, shared_data) {
   }
   image_cache <- team_canvas_image_cache()
   team_canvas_image_cache_on_session_end(session, image_cache)
+  restored_instances <- new.env(parent = emptyenv())
+  # The validated saved instance for a creation request from the restored canvas,
+  # once: NULL when the id is not awaiting creation. A request for a namespace
+  # awaiting creation with another source is refused (the eager restore had created
+  # that namespace, so such a request failed: it already belongs to another plot).
+  session$userData$team_canvas_restored_instance <- function(id, source) {
+    if (!is.character(id) || length(id) != 1L || is.na(id) || !exists(id, envir = restored_instances, inherits = FALSE)) return(NULL)
+    value <- get(id, envir = restored_instances, inherits = FALSE)
+    if (!identical(value$source, source)) stop('Canvas instance namespace already belongs to another plot.', call. = FALSE)
+    rm(list = id, envir = restored_instances)
+    value
+  }
+  # Saved namespaces still awaiting creation (plot_instances.R reserves their places).
+  session$userData$team_canvas_restored_pending <- function() ls(restored_instances, all.names = TRUE)
   session$userData$team_canvas_acked_token <- function() shiny::isolate(accepted_token())
   session$userData$team_canvas_export <- function(provenance = NULL) {
     state <- shiny::isolate(current())
@@ -681,14 +701,22 @@ team_canvas_server <- function(input, output, session, shared_data) {
     token <- paste0('restore-', restore_sequence)
     restore_token(token); current(validated); accepted_token(NULL)
     session$sendCustomMessage('team-canvas-restore-status', list(status='pending', token=token))
-    create <- session$userData$team_canvas_instances_create
+    # Independent copies are created progressively by the browser after the
+    # restore (canvas.js requests them in idle time, sooner once the Canvas is
+    # shown), not here: creating every live card while Review is shown rendered
+    # all of them before Review's own preparation.
+    # Keep each validated instance so that request creates it from exactly this
+    # copy of its saved settings; a newer restore replaces the whole set.
+    rm(list = ls(restored_instances, all.names = TRUE), envir = restored_instances)
+    # (The first node of a namespace owns it, as in canvas.js and the eager restore.)
+    if (!is.null(validated)) for (node in validated$nodes) if (!is.null(node$instance) && !exists(node$instance$id, envir = restored_instances, inherits = FALSE))
+      assign(node$instance$id, node$instance, envir = restored_instances)
     tryCatch({
       # Old checkpoints can contain the original logratio output rather than
       # an independent copy. Its renderUI parent is normally suspended while
       # Violin Plots is hidden, so mount that parent without navigating or
       # changing any scientific settings. Keep it active while the card exists.
       set_legacy_logratio_active(validated)
-      if (is.function(create) && !is.null(validated)) for (node in validated$nodes) if (!is.null(node$instance)) create(node$instance)
     }, error=function(e) {
       session$sendCustomMessage('team-canvas-restore-status', list(status='failed', token=token))
       stop(e)

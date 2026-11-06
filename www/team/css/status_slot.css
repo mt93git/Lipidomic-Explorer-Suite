@@ -1,0 +1,14 @@
+/* W3A: the workspace status line (#tw-next) under the screen heading keeps a
+   fixed slot. workspace.css/workspace_minimal.css hide it with :empty, which
+   removed the grid row (line + 10px gap) on every busy/idle cycle and made the
+   page jump. The slot now stays in place, empty or not; long text is clipped
+   (the full text stays in the live region and in the title tooltip).
+   Canvas still hides the line via shell.css (display:none!important). Review keeps production's
+   behaviour (empty line removed): the frozen mascot is placed from .ts-review-home, which this
+   slot would move. */
+body.team-workspace-app:not([data-tw-screen=review-single]) #team-workspace #tw-next,
+body.team-workspace-app:not([data-tw-screen=review-single]) #team-workspace #tw-next:empty{display:block;box-sizing:content-box;height:20px;padding-top:0;padding-bottom:0;line-height:20px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;overflow-anchor:none;contain:layout paint}
+@media(max-width:900px){
+ body.team-workspace-app:not([data-tw-screen=review-single]) #team-workspace #tw-next,
+ body.team-workspace-app:not([data-tw-screen=review-single]) #team-workspace #tw-next:empty{height:40px;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+}

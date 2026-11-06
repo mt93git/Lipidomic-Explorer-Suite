@@ -45,7 +45,7 @@
     'Longitudinal':['Explore measurements across time points.','At least two mapped time points and the correct independent or repeated design.','Different animals at different times are independent cohorts, not repeated measurements of one animal.'],
     'Math Proof':['Trace the processing calculations and intermediate quantities.','Select a measurement and inspect the corresponding transformation.','Showing a formula does not validate the experimental design or the scientific conclusion.'],
     'Lexicon':['Look up lipid terminology and abbreviations.','Use it alongside the tool-specific methods and annotations.','A definition does not confirm that a lipid was identified in your experiment.'],
-    'App Info':['Review the application workflow and available methods.','Use the seven-step navigation to return to your analysis.','Documentation does not replace review of the applied run and module-specific statistics.'],
+    'App Info':['Review the application workflow and available methods.','Use the Data · Review · Canvas steps at the top of the workspace to return to your analysis.','Documentation does not replace review of the applied run and module-specific statistics.'],
     'About & Citation':['Find authorship and method citations.','Retain citations when sharing results and reports.','Citing the software does not replace reporting your own preparation and design decisions.'],
     'Publication Export Studio':['Export an existing result with figure settings.','Open the result first, then select its figure in the studio.','Check the file, contrast, units and preparation version before sharing. The studio does not rerun preparation.']
   };

@@ -483,17 +483,21 @@
       section(item, 'What it shows', [info.c.what]); section(item, 'How to read it', [info.c.read]); section(item, 'Keep in mind', info.c.caveats);
     }, 'explain');
   }
+  // Grounded mode only (kb_grounded; approved extension of the mascot exception, 2026-11-04): a question that names
+  // a library term (kb_terms, whole words) goes to the knowledge base, unless the guide's strong match uses that word itself (spelling variants count; short abbreviations such as PC must match verbatim), or the question asks how to do something in the app ("how do I…") and that match covers at least half of it.
+  function namesLibraryTerm(q, terms, top) { if (!Array.isArray(terms)) return false; var named = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(function (w) { return w.length > 1 && (terms.indexOf(w) >= 0 || terms.indexOf(w.replace(/s$/, '')) >= 0); }); if (!named.length) return false; if (!top || top.score < 1.6 || top.coverage < 0.34) return true; var seen = [].concat.apply([], top.doc.fields.map(function (f) { return f[0]; })); var unmatched = named.some(function (w) { var t = w.length > 3 ? (tokens(w)[0] || w) : w, b = t.replace(/s$/, ''); return seen.indexOf(t) < 0 && seen.indexOf(b) < 0 && seen.indexOf(b + 's') < 0; }); if (!unmatched) return false; return !/^(how (do|can|should|would) (i|we)|how to)\b/.test(q) || top.coverage < 0.5; }
   // Returns true when the question was answered locally.
   function answer(text, opts) {
     var q = String(text || '').toLowerCase().trim();
     if (!q || serverOnly(q)) return false;
     var sel = state.selected && state.stage === 'canvas' ? state.selected : null;
+    var kbYield = !!(opts && opts.kbGrounded === true && namesLibraryTerm(q, opts.kbTerms, search(q)[0]));
     var aboutThis = /\b(this|selected|the|my) (chart|plot|graph|figure|card|heatmap|pca|violin|volcano)\b|\bhow (do i|to|should i) (read|interpret)\b|\bwhat does (it|this) (show|mean)\b/.test(q);
-    if (sel && aboutThis && /improv|better|suggest|publication|print|nicer|polish|clearer/.test(q)) { suggest(sel.id); return true; }
-    if (sel && aboutThis) { explain(sel.id); return true; }
+    if (sel && aboutThis && !kbYield && /improv|better|suggest|publication|print|nicer|polish|clearer/.test(q)) { suggest(sel.id); return true; }
+    if (sel && aboutThis && !kbYield) { explain(sel.id); return true; }
     if (/^(explain this step|help|what (do i do|should i do) (now|next|here)|where am i)[?.!]*$/.test(q)) { answerTopic(topicById(stepTopic())); return true; }
     var results = search(q), top = results[0];
-    if (top && top.score >= 1.6 && top.coverage >= 0.34) {
+    if (top && top.score >= 1.6 && top.coverage >= 0.34 && !kbYield) {
       var related = results.slice(1, 3).filter(function (r) { return r.score >= Math.max(1.5, top.score * 0.6); });
       if (top.doc.kind === 'topic') answerTopic(top.doc.ref, related); else { explainCatalog(top.doc.ref.id); }
       return true;

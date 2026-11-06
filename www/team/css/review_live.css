@@ -2,17 +2,17 @@
 .tw-review-pca-summary { display:grid; grid-template-columns:minmax(0,2fr) minmax(240px,1fr); gap:20px; align-items:start; }
 .tw-review-plot-wrap { position:relative; min-width:0; }
 .tw-review-popover { position:absolute; z-index:20; left:var(--review-popover-left,12px); top:var(--review-popover-top,24px); width:min(280px,calc(100% - 24px)); padding:16px; border:1px solid #dce2e5; border-radius:12px; background:#fff; color:#253b47; box-shadow:0 8px 28px #253b4729; }
-.tw-review-popover p { font-size:12px; line-height:1.45; margin:8px 0; }
+.tw-review-popover p { font-size:13px; line-height:1.45; margin:8px 0; }
 .tw-review-popover .shiny-input-container { width:100%; }
 .tw-review-popover-actions { display:flex; gap:8px; }
 .tw-review-statistics { padding:14px; background:#f6f9fa; border:1px solid #e2e9ec; border-radius:10px; }
 .tw-review-statistics h4 { font-size:15px; margin:0 0 10px; }
 .tw-review-statistics h5 { font-size:13px; margin:14px 0 6px; }
-.tw-review-stats-table { width:100%; font-size:12px; border-collapse:collapse; }
+.tw-review-stats-table { width:100%; font-size:13px; border-collapse:collapse; }
 .tw-review-stats-table th,.tw-review-stats-table td { padding:6px 4px; border-bottom:1px solid #e2e9ec; }
 .tw-review-stats-table th { text-align:left; font-weight:500; }
 .tw-review-stats-table td { text-align:right; }
-.tw-review-stats-scale { font-size:11px; line-height:1.4; margin-top:8px; }
+.tw-review-stats-scale { font-size:13px; line-height:1.4; margin-top:8px; }
 @media(max-width:800px) { .tw-review-pca-summary {grid-template-columns:1fr;} }
 
 /* Team Review: one visual workspace; data and methods are secondary disclosures. */
@@ -27,7 +27,7 @@ body.team-workspace-app .tw-review-board .tw-review-statistics h4{font-size:14px
 body.team-workspace-app .tw-review-board .tw-review-stats-table th,body.team-workspace-app .tw-review-board .tw-review-stats-table td{padding:5px 0}
 body.team-workspace-app .tw-review-board .tw-review-stats-table th{padding-right:8px}
 body.team-workspace-app .tw-review-board .tw-review-pca>h3{margin:0 0 8px;font-size:17px}
-body.team-workspace-app .tw-review-board #qc_pca_tab-guided_qc_status p{font-size:12px;line-height:1.4;margin:4px 0 8px}
+body.team-workspace-app .tw-review-board #qc_pca_tab-guided_qc_status p{font-size:13px;line-height:1.4;margin:4px 0 8px}
 body.team-workspace-app .tw-review-board .plot-export-bar{margin:4px 0;padding:0}
 body.team-workspace-app .tw-review-board .tw-review-pca details{margin-top:8px}
 body.team-workspace-app .tw-simple-review>.tw-review-table,body.team-workspace-app .tw-simple-review>.tw-review-advanced{padding:12px 18px}
@@ -50,5 +50,5 @@ body.team-workspace-app[data-tw-screen="review-single"] #team-workspace .tw-jour
 }
 body.team-workspace-app .tw-review-table #guide_review_data{width:100%;max-width:100%;min-width:0;overflow-x:auto}
 
-body.team-workspace-app .tw-review-board .tw-review-stats-scale{font-size:11px;line-height:1.4;margin:8px 0}
-body.team-workspace-app .tw-review-board .tw-review-statistics h5{font-family:inherit;font-size:12px;margin:10px 0 4px}
+body.team-workspace-app .tw-review-board .tw-review-stats-scale{font-size:13px;line-height:1.4;margin:8px 0}
+body.team-workspace-app .tw-review-board .tw-review-statistics h5{font-family:inherit;font-size:13px;margin:10px 0 4px}

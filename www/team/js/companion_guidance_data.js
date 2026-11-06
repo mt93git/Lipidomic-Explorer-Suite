@@ -439,7 +439,8 @@
   // ------------------------------------------------------------- Step tips
   // Shown proactively, once each, unless the person chose Fewer tips.
   var tips = {
-    'data-choice': [{id: 'data-choice-1', title: 'Choose how to begin', text: 'Open latest resumes your most recent checkpoint. To start fresh, choose a new abundance matrix; your source files stay unchanged.'}],
+    // Read at display time: the session-only flag is set later in the page body.
+    'data-choice': [{id: 'data-choice-1', title: 'Choose how to begin', get text() { return window.LIPIDOMIC_TEAM_SESSION_ONLY === true ? 'This is a local session: nothing is saved to a private library. Upload a new abundance matrix, or resume a session ZIP you saved earlier; your source files stay unchanged.' : 'Open latest resumes your most recent checkpoint. To start fresh, choose a new abundance matrix; your source files stay unchanged.'; }}],
     'data-matrix': [{id: 'data-matrix-1', title: 'Add your abundance matrix', text: 'Upload an Excel or CSV matrix of lipid abundances, not raw instrument files. You can add sample metadata next.'}],
     'data-metadata': [{id: 'data-metadata-1', title: 'Add sample labels', text: 'Check that each sample has the right group. If the same participant appears more than once, record it: repeated participants change which tests are valid.'}],
     'review': [{id: 'review-1', title: 'Review your data', text: 'Move the detection slider to keep lipids measured in enough samples; the PCA updates. Click a point to inspect a sample before excluding it.'}],
@@ -448,7 +449,7 @@
       {id: 'canvas-tabs-1', title: 'Organize with tabs', text: 'Use Canvas tabs to group many charts: rename a tab, and move or copy a card to another tab. The figure page picks charts from any tab.', requires: 'canvas-tabs'}],
     'card': [{id: 'card-1', title: 'Tip', text: 'I can explain how to read this chart and suggest improvements.'}],
     'figure': [{id: 'figure-1', title: 'Figure page', text: 'This is the page you export. Pick which finished charts go in, then add text, panel letters and shapes. Edit the plots themselves back on the canvas.'}],
-    'save': [{id: 'save-1', title: 'Save a checkpoint', text: 'Name the checkpoint so you can find it later; it keeps the data, canvas, colors and finished figures.'}],
+    'save': [{id: 'save-1', title: 'Save a checkpoint', get text() { return window.LIPIDOMIC_TEAM_SESSION_ONLY === true ? 'This local session is not saved automatically and has no checkpoints. Download a session ZIP here to keep the data, settings and canvas, and export your figures before closing the tab.' : 'Name the checkpoint so you can find it later; it keeps the data, canvas, colors and finished figures.'; }}],
     'cell': [{id: 'cell-1', title: 'Cell view', text: 'The cell is an illustrative reference. Bulk lipidomics does not show where lipids are inside a cell.'}]
   };
 
@@ -456,7 +457,7 @@
   // `k` are search keywords; `go` names a stage or action shown as a button.
   var topics = [
     {id: 'step-data', title: 'Data step', k: 'data upload start begin matrix excel csv checkpoint resume open latest file import', go: 'data',
-      text: 'In Data you open a saved checkpoint (Open latest, or choose one under All checkpoints) or upload a new abundance matrix (Excel or CSV) with optional sample metadata. Source files are never changed.'},
+      get text() { return window.LIPIDOMIC_TEAM_SESSION_ONLY === true ? 'In Data you upload a new abundance matrix (Excel or CSV) with optional sample metadata, or resume a session ZIP you saved earlier. Source files are never changed.' : 'In Data you open a saved checkpoint (Open latest, or choose one under All checkpoints) or upload a new abundance matrix (Excel or CSV) with optional sample metadata. Source files are never changed.'; }},
     {id: 'step-metadata', title: 'Sample labels and metadata', k: 'metadata labels groups sample names participant patient group1 group2 timepoint design', go: 'data',
       text: 'Sample metadata gives each sample its group and, when relevant, its participant and time point. Check groups before analysis: repeated participants or matched samples change which tests are valid.'},
     {id: 'step-review', title: 'Review step', k: 'review step slider pca prepared data summary inspect', go: 'review',
@@ -490,7 +491,7 @@
     {id: 'export', title: 'Downloads and export size', k: 'download export png svg pdf csv size dpi resolution width height', go: 'figure',
       text: 'Each card\'s Data tab offers its plot and data downloads where the analysis provides them. For the final figure, set the page layout in the figure page and export PDF or SVG; Export studio sets an exact physical size, font size and DPI for single figures.'},
     {id: 'autosave', title: 'Autosave and checkpoints', k: 'save autosave checkpoint saved unsaved restore project library', go: 'data',
-      text: 'With a private project, the workspace autosaves. Save & export creates named checkpoints that keep the data, canvas, colors and finished figures. Resume a checkpoint from Data.'},
+      get text() { return window.LIPIDOMIC_TEAM_SESSION_ONLY === true ? 'This local session has no private project: nothing autosaves and there are no checkpoints. Save & export downloads a session ZIP that keeps the data, settings and canvas; resume it from Data. Export figures separately.' : 'With a private project, the workspace autosaves. Save & export creates named checkpoints that keep the data, canvas, colors and finished figures. Resume a checkpoint from Data.'; }},
     {id: 'pca', title: 'PCA', k: 'pca principal component pc1 pc2 scores loadings variance explained separation',
       text: 'PCA places samples by the main directions of variation in the prepared data. It is exploratory: separation is not significance. The dashboard PCA uses log2(x + 1), centered and scaled to unit variance by default.'},
     {id: 'volcano', title: 'Volcano plots', k: 'volcano fold change log2fc p value significance up down regulated',

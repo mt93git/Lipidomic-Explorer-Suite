@@ -20,17 +20,27 @@ shiny::testServer(function(input,output,session) team_canvas_server(input,output
  stopifnot(identical(session$userData$team_canvas_acked_token(),'after-restore'))
  instance <- node; instance$id <- 'tcinstance_test-plot_violin';instance$instance <- list(id='tcinstance_test',source='results_dashboard-plot_violin',inputs=list())
  broken <- list(version='1',libraryHidden=FALSE,nodes=list(instance))
- session$userData$team_canvas_instances_create <- function(x) stop('fixture failure')
- stopifnot(inherits(tryCatch(session$userData$team_canvas_import(broken),error=identity),'error'))
- session$setInputs(team_canvas_state=list(token='after-create-failure',state=empty))
+ # Restoring does not create independent copies (canvas.js requests them when the
+ # Canvas is first shown); the server keeps each validated instance for that request.
+ session$userData$team_canvas_instances_create <- function(x) stop('restore must not create instances')
+ session$userData$team_canvas_import(broken);session$flushReact()
+ pending_token <- tail(Filter(function(m) identical(m$type,'team-canvas-restore'),messages),1)[[1]]$message$restoreToken
+ session$setInputs(team_canvas_state=list(token='before-instance-restore',state=empty))
  stopifnot(is.null(session$userData$team_canvas_acked_token()),length(session$userData$team_canvas_export()$nodes)==1L,
            identical(session$userData$team_canvas_export()$nodes[[1]]$id,instance$id),
-           any(vapply(messages,function(m) identical(m$type,'team-canvas-restore-status') && identical(m$message$status,'failed'),logical(1))))
- failed_token <- tail(Filter(function(m) identical(m$type,'team-canvas-restore-status') && identical(m$message$status,'failed'),messages),1)[[1]]$message$token
- session$userData$team_canvas_instances_create <- function(x) invisible(NULL)
- session$setInputs(team_canvas_restore_retry=list(token=failed_token));session$flushReact()
+           !any(vapply(messages,function(m) identical(m$type,'team-canvas-restore-status') && identical(m$message$status,'failed'),logical(1))))
+ lookup <- session$userData$team_canvas_restored_instance
+ # A request for the pending namespace with another source is refused (not created as a new copy).
+ claimed <- tryCatch(lookup('tcinstance_test','results_dashboard-plot_pca'),error=conditionMessage)
+ stopifnot(identical(claimed,'Canvas instance namespace already belongs to another plot.'),is.null(lookup('tcinstance_other','results_dashboard-plot_violin')),
+           identical(session$userData$team_canvas_restored_pending(),'tcinstance_test'))
+ # A retry re-imports the server copy under a new token and re-arms the instance.
+ session$setInputs(team_canvas_restore_retry=list(token=pending_token));session$flushReact()
  retry_token <- tail(Filter(function(m) identical(m$type,'team-canvas-restore'),messages),1)[[1]]$message$restoreToken
- stopifnot(!identical(retry_token,failed_token),identical(session$userData$team_canvas_export()$nodes[[1]]$id,instance$id))
+ stopifnot(!identical(retry_token,pending_token),identical(session$userData$team_canvas_export()$nodes[[1]]$id,instance$id))
+ stopifnot(identical(lookup('tcinstance_test','results_dashboard-plot_violin'),
+                     session$userData$team_canvas_export()$nodes[[1]]$instance),
+           is.null(lookup('tcinstance_test','results_dashboard-plot_violin')))
  session$setInputs(team_canvas_restore_complete=list(ok=TRUE,token=retry_token))
  session$setInputs(team_canvas_state=list(token='after-retry',state=broken))
  stopifnot(identical(session$userData$team_canvas_acked_token(),'after-retry'))

@@ -49,12 +49,11 @@
   border-radius: .55rem;
   background: #f8fafc;
   color: #1e293b;
-  font-size: .8rem;
+  font-size: .8125rem;
   text-align: left;
   cursor: pointer;
 }
 .palette-editor .palette-swatch-button:hover { background: #f1f5f9; border-color: #64748b; }
-.palette-editor .palette-swatch-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 .palette-editor .palette-swatch-mark {
   flex: 0 0 1.65rem;
   height: 1.65rem;
@@ -89,7 +88,7 @@
 .palette-editor .sp-container {
   opacity: 1;
   pointer-events: auto;
-  z-index: 1060;
+  z-index: var(--z-popover, 10200);
   max-width: calc(100vw - 2rem);
 }
 .palette-editor .palette-color-input .control-label { display: none; }

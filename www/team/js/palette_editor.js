@@ -26,15 +26,17 @@
     const activeField = active && active.closest('.palette-color-field');
     document.querySelectorAll('.palette-color-field').forEach(function (field) {
       const button = field.querySelector('.palette-swatch-button');
-      if (button && button.hasAttribute('aria-expanded')) {
+      // palette_swatches.js owns the swatch button state once it has taken over the editor.
+      if (button && button.hasAttribute('aria-expanded') && !field.closest('.tx-swatches')) {
         setExpanded(button, field === activeField);
       }
     });
   }
   document.addEventListener('click', function (event) {
+    if (event.target.closest('.tx-swatches .palette-swatch-button, .tx-swatch-pop')) return;
     const button = event.target.closest('.palette-swatch-button');
     const popup = event.target.closest('.colourpicker-panel, .sp-container');
-    document.querySelectorAll('.palette-swatch-button[aria-expanded="true"]').forEach(function (openButton) {
+    document.querySelectorAll('.palette-editor:not(.tx-swatches) .palette-swatch-button[aria-expanded="true"]').forEach(function (openButton) {
       if (openButton === button || (!button && popup)) return;
       const field = openButton.closest('.palette-color-field');
       const input = pickerInput(field);

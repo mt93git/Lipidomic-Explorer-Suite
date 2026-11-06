@@ -1,4 +1,7 @@
 # Reviewed guidance and optional server-side AI. Model output never executes scientific changes.
+# Grounded knowledge base (R/frontends/team/companion_kb.R): the only source of free answers unless LIPIDOMIC_COMPANION_KB=0, which
+# restores the previous behaviour (scripted guide and optional external AI). An unusable library fails closed.
+if (!exists("companion_kb_answer", mode = "function")) source(file.path("R", "frontends", "team", "companion_kb.R"))
 companion_sanitize_question <- function(question, known_labels = character()) {
   stopifnot(is.character(question), length(question) == 1L, !is.na(question))
   clean <- question
@@ -84,8 +87,20 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     if(!is.list(x)||!scalar(x$nonce,'double')&&!scalar(x$nonce,'integer')&&!scalar(x$nonce))return(FALSE)
     key<-as.character(x$nonce);if(key %in% seen)return(FALSE);seen<<-tail(c(seen,key),200);TRUE
   }
+  # A knowledge-base error (an unreadable fed file, a regex over odd text) must not end the Shiny session:
+  # the question gets a polite reply and the error goes to the server log only.
+  kb_safely <- function(expr) tryCatch(expr, error = function(e) {
+    if (exists('companion_kb_failed', mode = 'function') && companion_kb_failed()) NULL   # already logged by the availability check
+    else if (exists('kb_log_once', mode = 'function')) kb_log_once(paste0('[COMPANION KB] lookup failed: ', substr(conditionMessage(e), 1L, 200L)))
+    else message('[COMPANION KB] lookup failed: ', substr(conditionMessage(e), 1L, 200L))
+    list(found = FALSE, failed = TRUE, source = 'Knowledge base · unavailable',
+      text = 'Sorry, I could not search the knowledge base just now. Please try again in a moment, or use Explain this step for the reviewed guidance.')
+  })
   explain_step <- function(){
+    # A frontend may mark steps whose guidance must win over the knowledge base (attribute local_steps),
+    # e.g. a Team local session, where nothing autosaves: the reviewed seed describes the project library.
     txt<-companion_assistant_step_guidance()
+    if(companion_kb_enabled()&&!step() %in% attr(txt,'local_steps')){a<-kb_safely(companion_kb_by_tag(paste0('step-',step())));if(isTRUE(a$found)){reply(a$text,list(nav(step(),'Open this step')),source=a$source);return(invisible())}}
     reply(txt[step()],list(nav(step(),'Open this step')))
   }
   local_guidance <- function(q) {
@@ -126,10 +141,34 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     session$sendCustomMessage('assistant_preview',list(token=token,title=title,current=label(cfg[[p]]),proposed=label(value),reason=reason,confirmLabel=if(team) 'Confirm change' else 'Update Quality setting'))
     log('propose',p,cfg[[p]],value,'awaiting confirmation')
   }
-  observe({refresh();cfg<-settings();s<-step();dirty<-isTRUE(safe(shared_data$preparation_dirty,FALSE));ready<-!is.null(safe(shared_data$data_processed));
-    session$sendCustomMessage('assistant_state',list(step=s,ready=ready,dirty=dirty,revision=isolate(revision()),ai_enabled=exists('companion_ai_available')&&companion_ai_available(),normalization=cfg$normalization,imputation=cfg$imputation,
+  # ai_enabled is the flag the (frozen) browser uses to forward questions its local guide cannot answer to the
+  # server. In grounded mode it is TRUE so those questions reach the knowledge base below; the external AI
+  # branch is never reached in grounded mode (it returns first), so no model is called.
+  # kb_grounded (sent only when TRUE, so the state message is unchanged without a knowledge base) tells the browser
+  # that answers come only from the knowledge base and nothing reaches an outside AI service, so its header and
+  # welcome can say so. It is TRUE exactly when the grounded branch below answers every free question, which it
+  # does before (and instead of) the external AI branch, whether or not an outside AI service is configured. Only
+  # LIPIDOMIC_COMPANION_KB=0 turns it off; an emptied or broken library keeps it on in the fail-closed error state.
+  # The two flags are rechecked every LIPIDOMIC_KB_RECHECK_SECONDS (default 30), so a library fed (or emptied) after
+  # the page opened reaches an idle browser without any user action. The reactiveVal only invalidates the state
+  # observer when a flag actually changes, so the timer adds no assistant_state traffic otherwise.
+  kb_recheck_ms <- function() { t <- suppressWarnings(as.numeric(Sys.getenv('LIPIDOMIC_KB_RECHECK_SECONDS', unset = '30'))); if (length(t) != 1L || !is.finite(t) || t <= 0) t <- 30; t * 1000 }
+  # kb_grounded follows grounded mode alone: while it is on, the grounded branch below answers every free question
+  # and returns before the external AI branch, so no question reaches an outside AI service even when one is
+  # configured. kb_terms (grounded only) is the library's routing vocabulary (companion_kb_terms in R/frontends/team/companion_kb.R).
+  kb_flags_now <- function() { grounded <- isTRUE(companion_kb_enabled()); ai <- exists('companion_ai_available') && isTRUE(companion_ai_available())
+    terms <- if (grounded && exists('companion_kb_terms', mode = 'function')) tryCatch(companion_kb_terms(), error = function(e) character()) else character()
+    list(ai_enabled = grounded || (ai && companion_kb_ai_allowed()), kb_grounded = grounded, kb_terms = terms) }
+  kb_flags <- reactiveVal(kb_flags_now()); terms_sent <- NULL
+  observe({ invalidateLater(kb_recheck_ms()); kb_flags(kb_flags_now()) })
+  observe({refresh();cfg<-settings();s<-step();dirty<-isTRUE(safe(shared_data$preparation_dirty,FALSE));ready<-!is.null(safe(shared_data$data_processed));flags<-kb_flags()
+    state<-list(step=s,ready=ready,dirty=dirty,revision=isolate(revision()),ai_enabled=flags$ai_enabled,normalization=cfg$normalization,imputation=cfg$imputation,
       message=if(dirty)'Settings have changed. Plots still use the last applied run.' else if(s==2&&!isTRUE(safe(guide_workflow$design_ok,FALSE)))'Review your study design before continuing.' else 'Ask about this step or choose a guided action.',
-      actions=list(nav(s,'Explain this step'),nav(if(dirty)3 else min(7,s+1),if(dirty)'Review Quality' else 'Next step'))))
+      actions=list(nav(s,'Explain this step'),nav(if(dirty)3 else min(7,s+1),if(dirty)'Review Quality' else 'Next step')))
+    # kb_terms (~190 KB for the committed library) is sent only when it changed since the last state message to this
+    # session (hash); the browser keeps the last list it received while kb_grounded stays on.
+    if(isTRUE(flags$kb_grounded)){state$kb_grounded<-TRUE;h<-digest::digest(flags$kb_terms);if(!identical(h,terms_sent)){state$kb_terms<-as.list(flags$kb_terms);terms_sent<<-h}} else terms_sent<<-NULL
+    session$sendCustomMessage('assistant_state',state)
   })
   observeEvent(input$assistant_request,{
     r<-input$assistant_request;if(!valid_event(r))return();q<-r$text
@@ -146,7 +185,14 @@ companion_assistant_server <- function(input, output, session, shared_data, guid
     if(!is.null(detection_command)){if(detection_command$needs_percent){reply('Please include a percentage for a threshold at or below 1, for example “set minimum detection to 0.8%”.');return()};propose('detection',detection_command$value);return()}
     if(q %in% c('turn imputation on','turn imputation off')){propose('imputation',q=='turn imputation on');return()}
     if(exists('companion_ai_guard')) { guarded<-companion_ai_guard(q); if(!is.null(guarded)){reply(guarded$answer,guarded$actions,source='Local guide · reviewed scientific boundaries');return()} }
-    if(exists('companion_ai_available')&&companion_ai_available() && !q %in% c('explain this step','help')) {
+    if(companion_kb_enabled()){
+      # Grounded mode: the answer is verbatim passages of the knowledge base, or no information. No model is called.
+      if(q %in% c('explain this step','help')){explain_step();return()}
+      a<-kb_safely(companion_kb_answer(q));log('kb_reply',status=if(isTRUE(a$failed))'knowledge base unavailable; question not logged' else if(isTRUE(a$found))'answered from knowledge base; question not logged' else 'no information in knowledge base; question not logged')
+      reply(a$text,list(),source=a$source);return()
+    }
+    # Structural fail-closed rule (R/frontends/team/companion_kb.R): the external AI only when LIPIDOMIC_COMPANION_KB is explicitly "0".
+    if(companion_kb_ai_allowed()&&exists('companion_ai_available')&&companion_ai_available() && !q %in% c('explain this step','help')) {
       if(ai_busy){reply('Please wait for the current answer.');return()}
       if(ai_count>=60L || as.numeric(difftime(Sys.time(),ai_last,units='secs'))<3){reply('AI request limit reached. Use Explain this step for local guidance.');return()}
       # Only the question and an explicit small context cross the provider boundary.

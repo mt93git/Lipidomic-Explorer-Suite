@@ -11,6 +11,8 @@
   --bio-teal-text:#204663; --orchid-mauve-text:#204663; --amber-ochre-text:#204663;
   --bio-teal-border:#c8d9e5; --orchid-mauve-border:#c8d9e5; --amber-ochre-border:#c8d9e5;
   --bio-teal-tint:#eff4f8; --orchid-mauve-tint:#eff4f8; --amber-ochre-tint:#eff4f8;
+  /* RC5: the one Team focus ring (rule below). Components change it only through these tokens. */
+  --lab-focus:var(--lab-blue); --lab-focus-width:3px; --lab-focus-offset:3px;
 }
 html,body {font-family:var(--lab-body)!important;color:var(--lab-ink);background:var(--lab-paper)!important;}
 body {font-size:14px;line-height:1.55;}
@@ -20,35 +22,35 @@ body {font-size:14px;line-height:1.55;}
 .navbar .navbar-nav {gap:4px!important;}
 .navbar .navbar-nav .nav-link {color:#c8d7e4!important;font-family:var(--lab-body)!important;font-size:13px!important;font-weight:600!important;padding:11px 13px!important;border-radius:5px!important;background:transparent!important;border:1px solid transparent!important;box-shadow:none!important;white-space:nowrap;}
 .navbar .navbar-nav .nav-link:hover,.navbar .navbar-nav .nav-link.active {background:#253c51!important;color:#fff!important;border-color:#436882!important;}
-.navbar .nav-link i {color:inherit!important;font-size:12px!important;margin-right:5px;}
+.navbar .nav-link i {color:inherit!important;font-size:13px!important;margin-right:5px;}
 .navbar-toggler {background:#d8e6f2!important;border-color:#78afe0!important;}
 .secondary-horizontal-subnavbar {height:auto!important;min-height:45px!important;background:#fff!important;padding:6px 20px!important;border-bottom:1px solid var(--lab-line)!important;box-shadow:none!important;}
 .tertiary-horizontal-subsubnavbar {height:auto!important;min-height:42px!important;background:#f1f5f8!important;padding:6px 20px!important;border-bottom:1px solid var(--lab-line)!important;}
-.subnavbar-category-indicator,.subsubnavbar-category-label {font-family:var(--lab-mono)!important;color:var(--lab-muted)!important;font-size:10px!important;letter-spacing:.08em!important;}
-.subtab-pill,.subsubtab-pill {border-radius:4px!important;box-shadow:none!important;color:#33495d!important;font-size:12px!important;padding:6px 10px!important;background:transparent!important;border:1px solid transparent!important;}
+.subnavbar-category-indicator,.subsubnavbar-category-label {font-family:var(--lab-mono)!important;color:var(--lab-muted)!important;font-size:13px!important;letter-spacing:.08em!important;}
+.subtab-pill,.subsubtab-pill {border-radius:4px!important;box-shadow:none!important;color:#33495d!important;font-size:13px!important;padding:6px 10px!important;background:transparent!important;border:1px solid transparent!important;}
 body #secondary_subtab_bar .subtab-pill.active,body #tertiary_subsubtab_bar .subsubtab-pill.active {background:#e3edf5!important;border-color:#b7cbdc!important;color:#204663!important;box-shadow:none!important;}
 body #secondary_subtab_bar i,body #tertiary_subsubtab_bar i {color:inherit!important;}
 .bslib-sidebar-layout {background:var(--lab-paper)!important;}
 aside.sidebar,#main_sidebar {background:#f2f5f7!important;border-right:1px solid var(--lab-line)!important;}
 #main_sidebar_container {padding:14px 12px!important;}
 .dock-segmented-switcher {position:relative!important;top:auto!important;padding:4px!important;margin:0 0 18px!important;background:#e4ebf0!important;border:0!important;border-radius:6px!important;box-shadow:none!important;gap:2px!important;}
-.dock-segment-btn {font-size:12px!important;min-height:36px!important;padding:8px 10px!important;border:0!important;border-radius:4px!important;color:#43566a!important;background:transparent!important;}
+.dock-segment-btn {font-size:13px!important;min-height:36px!important;padding:8px 10px!important;border:0!important;border-radius:4px!important;color:#43566a!important;background:transparent!important;}
 .dock-segmented-switcher .dock-segment-btn.active {background:#fff!important;box-shadow:0 1px 3px #16223015!important;color:#204663!important;border:0!important;}
 .dock-segment-btn i {color:inherit!important;}
 .dock-section {background:#fff!important;border:1px solid var(--lab-line)!important;border-radius:8px!important;padding:14px!important;margin-bottom:14px!important;box-shadow:none!important;}
-.dock-section-title,.dock-group-label {font-family:var(--lab-mono)!important;font-size:10px!important;letter-spacing:.07em!important;line-height:1.5!important;color:var(--lab-muted)!important;text-transform:uppercase;}
+.dock-section-title,.dock-group-label {font-family:var(--lab-mono)!important;font-size:13px!important;letter-spacing:.07em!important;line-height:1.5!important;color:var(--lab-muted)!important;text-transform:uppercase;}
 .dock-section-title i {display:none;}
-.dock-section .btn,.sidebar .btn {font-size:12px!important;min-height:36px;border-radius:5px!important;white-space:normal!important;box-shadow:none!important;}
+.dock-section .btn,.sidebar .btn {font-size:13px!important;min-height:36px;border-radius:5px!important;white-space:normal!important;box-shadow:none!important;}
 .btn-primary,.btn-run-analysis {background:var(--lab-blue)!important;border:1px solid var(--lab-blue)!important;color:white!important;box-shadow:none!important;}
 .btn-primary:hover,.btn-run-analysis:hover {background:#214968!important;}
 .btn-outline-primary,.btn-metadata-mapping,.btn-export-session,.btn-download-post-na {background:#fff!important;border:1px solid #c8d4de!important;color:#284b67!important;box-shadow:none!important;}
 .btn-secondary {background:#eef3f7!important;border:1px solid #c8d4de!important;color:#284b67!important;}
 .btn-outline-primary:hover,.btn-metadata-mapping:hover,.btn-export-session:hover {background:#e7f0f7!important;}
 .form-control:not(.shiny-colour-input),.form-select,.selectize-input {font-family:var(--lab-body)!important;font-size:13px!important;min-height:36px;border:1px solid #b9c8d3!important;border-radius:4px!important;box-shadow:none!important;background:#fff!important;color:#152b3b!important;}
-label.control-label,.shiny-input-container label {font-family:var(--lab-body)!important;font-size:12px!important;line-height:1.45!important;letter-spacing:0!important;}
+label.control-label,.shiny-input-container label {font-family:var(--lab-body)!important;font-size:13px!important;line-height:1.45!important;letter-spacing:0!important;}
 .shiny-input-container {max-width:100%;}
 input[type=checkbox],input[type=radio] {accent-color:var(--lab-blue);}
-.accordion-button {background:#f5f8fa!important;color:#284b67!important;border-radius:3px!important;font-size:12px!important;box-shadow:none!important;min-height:40px;}
+.accordion-button {background:#f5f8fa!important;color:#284b67!important;border-radius:3px!important;font-size:13px!important;box-shadow:none!important;min-height:40px;}
 .accordion-button:not(.collapsed) {background:#e6eef5!important;border-bottom:1px solid var(--lab-line)!important;}
 .accordion-item {border:1px solid var(--lab-line)!important;border-radius:5px!important;margin-bottom:8px!important;box-shadow:none!important;}
 .accordion-body {background:white!important;padding:13px!important;}
@@ -60,30 +62,30 @@ input[type=checkbox],input[type=radio] {accent-color:var(--lab-blue);}
 .tab-intro-drawer-card {border-color:var(--lab-blue)!important;}
 .quick-access-strip {background:transparent!important;border:none!important;border-bottom:1px solid var(--lab-line)!important;border-radius:0!important;padding:0 0 12px!important;gap:5px!important;box-shadow:none!important;}
 .quick-access-label {display:none!important;}
-.btn-quick-access {background:#fff!important;border:1px solid #d3dee7!important;color:#39566d!important;font-size:11px!important;border-radius:4px!important;box-shadow:none!important;padding:6px 9px!important;}
+.btn-quick-access {background:#fff!important;border:1px solid #d3dee7!important;color:#39566d!important;font-size:13px!important;border-radius:4px!important;box-shadow:none!important;padding:6px 9px!important;}
 .btn-quick-access:hover {background:#eaf2f8!important;}
 .nav-tabs,.nav-pills {gap:3px;}
-.nav-tabs .nav-link,.nav-pills .nav-link {font-size:12px!important;color:#3b566d!important;border-radius:4px!important;box-shadow:none!important;}
+.nav-tabs .nav-link,.nav-pills .nav-link {font-size:13px!important;color:#3b566d!important;border-radius:4px!important;box-shadow:none!important;}
 .nav-tabs .nav-link.active,.nav-pills .nav-link.active {background:#e6eef5!important;border-color:#bfd0de!important;color:#1b4768!important;}
 .shiny-plot-output {border:0!important;background:white!important;min-width:0!important;max-width:100%;}
-.pipeline-status-badge {font-size:12px!important;line-height:1.6!important;padding:9px!important;border-radius:4px!important;flex-wrap:wrap;gap:5px;}
+.pipeline-status-badge {font-size:13px!important;line-height:1.6!important;padding:9px!important;border-radius:4px!important;flex-wrap:wrap;gap:5px;}
 .targeted-lipids-top-dock {background:var(--lab-paper)!important;padding:10px 20px!important;margin-bottom:0!important;border-bottom:1px solid var(--lab-line);}
-.targeted-lipids-top-dock .btn {box-shadow:none!important;font-size:11px!important;}
+.targeted-lipids-top-dock .btn {box-shadow:none!important;font-size:13px!important;}
 .modal-content {border-radius:10px!important;border:1px solid var(--lab-line)!important;box-shadow:0 16px 50px #16223030!important;}
 .modal-header {background:var(--lab-navy)!important;color:#f0f4f8!important;}
 .modal-title,.modal-title h4 {font-family:var(--lab-heading)!important;font-size:27px!important;color:#f0f4f8!important;}
 .modal-body {background:var(--lab-paper)!important;}
 .modal-footer {background:#f2f5f7!important;}
-table.dataTable {font-family:var(--lab-body);font-size:12px!important;}
-table.dataTable thead th {background:#eaf0f5!important;color:#284b67!important;font-size:11px!important;border-bottom:1px solid #b9cbd9!important;}
+table.dataTable {font-family:var(--lab-body);font-size:13px!important;}
+table.dataTable thead th {background:#eaf0f5!important;color:#284b67!important;font-size:13px!important;border-bottom:1px solid #b9cbd9!important;}
 .dataTables_wrapper {max-width:100%;overflow-x:auto;}
 .ui-resizable-s {background:#f1f5f8!important;border:0!important;height:9px!important;z-index:2!important;}
 .ui-resizable-se {z-index:3!important;}
-.ux-eyebrow {font-family:var(--lab-mono);font-size:10px;font-weight:500;letter-spacing:.12em;color:var(--lab-muted);display:block;margin-bottom:8px;}
+.ux-eyebrow {font-family:var(--lab-mono);font-size:13px;font-weight:500;letter-spacing:.12em;color:var(--lab-muted);display:block;margin-bottom:8px;}
 .ux-prep-summary {border-top:1px solid var(--lab-line);border-bottom:1px solid var(--lab-line);padding:12px 0;margin:12px 0;}
 .ux-prep-summary strong {font-family:var(--lab-heading);font-size:22px;font-weight:600;color:#203b50;}
-.ux-prep-summary p,.ux-prep-note {font-size:11px;line-height:1.6;color:#526477;margin:7px 0;}
-.ux-pending {border:1px solid #d7b880;background:#fff6e6;color:#78531d;padding:9px 11px;border-radius:5px;font-size:12px;line-height:1.5;margin:10px 0;}
+.ux-prep-summary p,.ux-prep-note {font-size:13px;line-height:1.6;color:#526477;margin:7px 0;}
+.ux-pending {border:1px solid #d7b880;background:#fff6e6;color:#78531d;padding:9px 11px;border-radius:5px;font-size:13px;line-height:1.5;margin:10px 0;}
 .ux-page-heading {padding:24px 0 18px;max-width:830px;}
 .ux-page-heading h2 {font-family:var(--lab-heading);font-size:38px;font-weight:500;line-height:1.14;margin:10px 0 14px;color:#162230;}
 .ux-page-heading p,.ux-method-note p {font-size:14px;color:#526477;line-height:1.7;}
@@ -91,15 +93,26 @@ table.dataTable thead th {background:#eaf0f5!important;color:#284b67!important;f
 .ux-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0 0 22px;}
 .ux-metric {border:1px solid var(--lab-line);background:white;border-radius:8px;padding:19px 22px;}
 .ux-metric strong {font-family:var(--lab-heading);font-size:38px;font-weight:500;line-height:1.15;color:#254f70;display:block;}
-.ux-metric p {font-size:12px;color:#526477;margin:10px 0 0;}
+.ux-metric p {font-size:13px;color:#526477;margin:10px 0 0;}
 .ux-panel {background:white;border:1px solid var(--lab-line);border-radius:9px;padding:20px;margin-bottom:20px;}
 .ux-panel h3,.ux-method-note h4 {font-family:var(--lab-heading);font-size:27px;font-weight:500;color:#203b50;}
 .ux-study-image {width:100%;height:auto;display:block;}
 .ux-method-note {border-left:3px solid var(--lab-blue);padding:10px 20px;margin:24px 0;max-width:920px;}
-:focus-visible {outline:3px solid #3a7ca5!important;outline-offset:3px!important;}
+/* RC5: the single Team :focus-visible rule. `:not(#lab-focus-ring)` (an id that never exists) only lifts
+   the specificity above the legacy `outline:none!important` input rules in custom.css, so every focused
+   control shows this ring. Contexts set --lab-focus / --lab-focus-width / --lab-focus-offset instead of
+   writing their own outline: the light ring on the navy surfaces, inset rings inside clipping boxes.
+   `transition:none`: custom.css gives .btn, .navbar .dropdown-item and ~50 other controls
+   `transition:all …!important`, which would fade the ring in from currentColor, medium and offset 0
+   over 0.15-0.3 s. The ring appears at once, in the token colour, on every control. */
+html:not(#lab-focus-ring) :focus-visible {outline:var(--lab-focus-width,3px) solid var(--lab-focus,#2d5f8a)!important;outline-offset:var(--lab-focus-offset,3px)!important;transition:none!important;}
+:is(.navbar,#guide-navigation,.modal-header,.lipid-help-heading,.cell-cinematic-dialog,.cell-stage-wrap:fullscreen,.cell-layout:fullscreen,.cell-presentation-fallback) {--lab-focus:var(--lab-light,#78afe0);}
+:is(.navbar,#guide-navigation) :is(.dropdown-menu,.tw-compact-steps-menu) {--lab-focus:var(--lab-blue,#2d5f8a);}
+/* Inset ring where an outer ring would be cut: scroll boxes, tab strips and full-width menu rows. */
+:is(.tc-preview-pages,.tc-inspector-tab,.tw-compact-steps-menu,.tc-canvas-tablist,.tc-tab-picker,.ts-menu,.dropdown-menu) {--lab-focus-offset:-3px;}
 @media(max-width:1100px) {
  .navbar {padding:8px 12px!important;}
- .navbar .navbar-nav .nav-link {padding:9px 8px!important;font-size:12px!important;}
+ .navbar .navbar-nav .nav-link {padding:9px 8px!important;font-size:13px!important;}
  .navbar .navbar-brand {margin-right:8px!important;padding-right:8px!important;}
  .navbar #navbar_brand_logo_img {max-width:110px!important;}
  .ux-metric {padding:14px;}
@@ -138,7 +151,7 @@ body #main_sidebar .dock-segment-btn[data-dock-target].active {background:white!
 body #dock_panel_pipeline .btn-file {background:#e7eff6!important;color:#254f70!important;border:1px solid #b9cede!important;box-shadow:none!important;}
 body #secondary_subtab_bar .subtab-pill.active,body .tertiary-horizontal-subsubnavbar .subsubtab-pill.active {color:#204663!important;background:#e3edf5!important;border:1px solid #b7cbdc!important;}
 
-.ux-run-strip {font-size:11px;color:#526477;line-height:1.6;display:block;margin-right:auto;}
+.ux-run-strip {font-size:13px;color:#526477;line-height:1.6;display:block;margin-right:auto;}
 .ux-run-strip strong {color:#284b67;font-weight:700;}
 .ux-run-pending {color:#805616;font-weight:700;}
 #targeted_lipids_top_dock {gap:16px;flex-wrap:wrap;}
@@ -189,7 +202,13 @@ body.guided-app .selectize-control.multi .selectize-input>div.item{background:#e
 body.guided-app select:focus-visible,
 body.guided-app .selectize-input.focus,
 body.guided-app #dock_panel_cohorts .selectize-input.focus,
-body.guided-app #dock_panel_plot_controls .selectize-input.focus{outline:2px solid #2d5f8a!important;outline-offset:2px!important;border-color:#2d5f8a!important;box-shadow:none!important}
+body.guided-app #dock_panel_plot_controls .selectize-input.focus{border-color:#2d5f8a!important;box-shadow:none!important}
+/* RC5: Selectize marks focus with a class on its box, not :focus-visible, so the box draws the token
+   ring itself; the typing input inside it opts out (width 0) so the ring is not drawn twice. */
+body.guided-app .selectize-input.focus,
+body.guided-app #dock_panel_cohorts .selectize-input.focus,
+body.guided-app #dock_panel_plot_controls .selectize-input.focus{outline:var(--lab-focus-width,3px) solid var(--lab-focus,#2d5f8a)!important;outline-offset:var(--lab-focus-offset,3px)!important}
+body.guided-app .selectize-input>input{--lab-focus-width:0px}
 body.guided-app select:hover,body.guided-app .selectize-input:hover{border-color:#6588a2!important}
 body.guided-app select:disabled,body.guided-app .selectize-input.disabled{background-color:#edf1f4!important;color:#657586!important;cursor:not-allowed;opacity:1}
 body.guided-app select option{background:#fff;color:#162230}
@@ -215,3 +234,13 @@ body.guided-app #dock_panel_plot_controls .selectize-dropdown .active{background
 #main_sidebar .shiny-input-radiogroup .shiny-options-group > .radio { flex:1 1 105px !important; min-width:0 !important; }
 #main_sidebar .shiny-input-radiogroup .shiny-options-group > .radio label,
 #main_sidebar .shiny-input-radiogroup .shiny-options-group > .radio label span { word-break:normal !important; overflow-wrap:normal !important; }
+
+/* RC5 13 px floor (FIXR3B item 4) for text the shared modules size relative to the 14 px body: Bootstrap's
+   .small / <small> and .form-text (0.875em = 12.25 px), the BS3-compat .help-block, badges (0.75em) and the
+   xs buttons (0.75rem = 12 px: the Quality page's All / None). Their own proportions stay where they already
+   clear 13 px; a more specific Team rule still wins. Inline module styles on xs buttons are overridden too. */
+body :is(.small,small,.form-text,.help-block) {font-size:max(13px,.875em);}
+body .badge {font-size:max(13px,.75em);}
+body :is(.btn-xs,.btn-group-xs>.btn) {font-size:max(13px,.75rem)!important;}
+/* Small link buttons with an inline module size (Quality's "Restore all", 2_qc_boxplot_module.R: inline 0.75rem). */
+body .btn.small[style*="font-size"] {font-size:max(13px,.75rem)!important;}

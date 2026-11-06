@@ -64,8 +64,10 @@ ui <- page_navbar(
       includeScript("www/team/js/violin_display.js"),
       includeScript("www/team/js/plot_exports.js"),
       includeScript("www/team/js/palette_editor.js"),
+      includeCSS("www/team/css/palette_swatches.css"), includeScript("www/team/js/palette_swatches.js"),
       includeScript("www/team/js/cell_viewer.js"),
       includeScript("www/team/js/app.js"),
+      includeScript("www/team/js/restore_timing.js"),
       includeScript("www/team/js/tour_guide.js"),
       includeScript("www/team/js/guided.js"),
       includeScript("www/team/js/help_content.js"),
@@ -80,11 +82,29 @@ ui <- page_navbar(
       includeCSS("www/team/css/qw_contrast.css"), includeCSS("www/team/css/qw_a11y.css"), includeCSS("www/team/css/qw_layers.css"), includeScript("www/team/js/qw_a11y.js"), includeScript("www/team/js/qw_plot_controls.js"),
       if (!team_workspace_enabled()) includeScript("www/team/js/qw_pca_groups.js"),
       if (!team_workspace_enabled()) tagList(includeCSS("www/team/css/pending_changes_bar.css"), includeScript("www/team/js/pending_changes_bar.js")),
+      if (!team_workspace_enabled()) tagList(includeCSS("www/team/css/experiment_cards.css"), includeScript("www/team/js/experiment_cards.js")),
       if (team_library_enabled()) tagList(includeCSS("www/team/css/login_validation.css"), includeScript("www/team/js/login_validation.js")),
+      # One Canvas header (tabs + grouped toolbar + band status slot). Its own line so the asset
+      # line below stays untouched; its selectors outrank shell.css, so the order does not matter.
+      if (team_workspace_enabled()) includeCSS("www/team/css/canvas_header.css"),
+      # RC4: clean card (title, plot, footer with Edit / Duplicate / More) and the inspector's Export
+      # tab and status line. Own line; selectors outrank card_figure.css, so the order does not matter.
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/card_frame.css"), includeScript("www/team/js/canvas_inspector_export.js"), includeScript("www/team/js/card_frame.js")),
+      # Hideable inspector column on the Canvas (chevron at its edge, shortcut I). Own line; it waits for shell.js.
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/inspector_toggle.css"), includeScript("www/team/js/inspector_toggle.js")),
+      # One header in the analysis tools opened from Team (both Team modes): the Classic sub-tabs,
+      # scope bar, Tab info and quick-access rows are offered by one bar inside the tool card.
+      tagList(includeCSS("www/team/css/tool_header.css"), includeScript("www/team/js/tool_header.js")),
+      # Grouped "All analysis tools" drawer for the guided step bar and the Canvas.
+      includeCSS("www/team/css/tools_drawer.css"), includeScript("www/team/js/tools_drawer.js"), team_tools_drawer_catalog(),
       if (team_workspace_enabled()) tagList(includeCSS("www/team/css/companion_guidance.css"), includeScript("www/team/js/companion_guidance_data.js"), includeScript("www/team/js/companion_guidance.js")),
-      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;document.documentElement.classList.add('ts-gate');setTimeout(function(){document.documentElement.classList.remove('ts-gate')},4000);")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeCSS("www/team/css/workspace_minimal.css"),includeCSS("www/team/css/canvas_catalog.css"),includeCSS("www/team/css/canvas_preview.css"),includeCSS("www/team/css/canvas_viewport.css"),includeCSS("www/team/css/plot_editor.css"),includeCSS("www/team/css/illustrations.css"),includeCSS("www/team/css/foreground.css"),includeScript("www/team/js/foreground.js"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas_catalog.js"),includeScript("www/team/js/canvas_assets.js"),includeScript("www/team/js/illustrations.js"),includeScript("www/team/js/plot_editor.js"),includeCSS("www/team/css/group_comparison.css"),includeScript("www/team/js/group_comparison.js"),includeScript("www/team/js/canvas_statistics.js"),includeScript("www/team/js/canvas_viewport.js"),includeScript("www/team/js/canvas.js"),includeCSS("www/team/css/canvas_inspector.css"),includeScript("www/team/js/canvas_inspector.js"),includeScript("www/team/js/illustration_library.js"),includeScript("www/team/js/canvas_preview.js"),includeScript("www/team/js/canvas_checkpoint.js"),includeScript("www/team/js/autosave.js"),includeCSS("www/team/css/autosave.css"),includeScript("www/team/js/companion_workspace.js"),includeCSS("www/team/css/shell.css"),includeCSS("www/team/css/mascot_refine.css"),includeCSS("www/team/css/review_shell.css"),includeScript("www/team/js/data_shell.js"),includeScript("www/team/js/review_shell.js"),includeScript("www/team/js/shell.js"),includeCSS("www/team/css/card_figure.css"),includeScript("www/team/js/card_figure.js"),includeCSS("www/team/css/card_status.css"),includeScript("www/team/js/card_status.js"))
+      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;document.documentElement.classList.add('ts-gate');setTimeout(function(){document.documentElement.classList.remove('ts-gate')},4000);")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeCSS("www/team/css/workspace_minimal.css"),includeCSS("www/team/css/canvas_catalog.css"),includeCSS("www/team/css/canvas_preview.css"),includeCSS("www/team/css/canvas_viewport.css"),includeCSS("www/team/css/plot_editor.css"),includeCSS("www/team/css/illustrations.css"),includeCSS("www/team/css/foreground.css"),includeScript("www/team/js/foreground.js"),includeScript("www/team/js/status_hold.js"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas_catalog.js"),includeScript("www/team/js/canvas_assets.js"),includeScript("www/team/js/illustrations.js"),includeScript("www/team/js/plot_editor.js"),includeCSS("www/team/css/group_comparison.css"),includeScript("www/team/js/group_comparison.js"),includeScript("www/team/js/canvas_statistics.js"),includeScript("www/team/js/canvas_viewport.js"),includeScript("www/team/js/canvas.js"),includeCSS("www/team/css/canvas_inspector.css"),includeScript("www/team/js/canvas_inspector.js"),includeScript("www/team/js/illustration_library.js"),includeScript("www/team/js/canvas_preview.js"),includeCSS("www/team/css/figure_toolbar.css"),includeScript("www/team/js/figure_toolbar.js"),includeScript("www/team/js/canvas_checkpoint.js"),includeScript("www/team/js/autosave.js"),includeCSS("www/team/css/autosave.css"),includeScript("www/team/js/companion_workspace.js"),includeCSS("www/team/css/shell.css"),includeCSS("www/team/css/status_slot.css"),includeCSS("www/team/css/mascot_refine.css"),includeCSS("www/team/css/review_shell.css"),includeCSS("www/team/css/step_backdrop.css"),includeScript("www/team/js/data_shell.js"),includeScript("www/team/js/review_shell.js"),includeScript("www/team/js/shell.js"),includeCSS("www/team/css/card_figure.css"),includeScript("www/team/js/card_figure.js"),includeCSS("www/team/css/card_status.css"),includeCSS("www/team/css/canvas_band_status.css"),includeScript("www/team/js/canvas_band_status.js"),includeScript("www/team/js/card_status.js"),includeCSS("www/team/css/figure_column.css"),includeScript("www/team/js/figure_column.js"),includeCSS("www/team/css/pointer_mode.css"),includeScript("www/team/js/pointer_mode.js")),
+      # RC5: ARIA names for the step bars and the Canvas cards (attributes only).
+      includeScript("www/team/js/team_aria.js"),
+      # Phones (<= 600 px): compact step bars and scrollable tables with a fixed Sample column. After shell.css on purpose.
+      includeCSS("www/team/css/mobile_steps.css"), includeScript("www/team/js/mobile_steps.js"), includeCSS("www/team/css/mobile_tables.css"), includeScript("www/team/js/mobile_tables.js")
     ),
-    guide_header(),
+    if (team_workspace_enabled()) tagList(Filter(function(tag) !identical(tag$attribs$id, "guide-navigation"), guide_header())) else guide_header(),
     team_pending_changes_bar_ui(),
     if (team_workspace_enabled()) team_canvas_ui(),
     tags$div(
@@ -112,7 +132,8 @@ ui <- page_navbar(
   nav_panel("Results", guide_results_ui(), fillable=FALSE),
   nav_panel("3D Show", cell_show_ui(), fillable=FALSE),
   nav_panel("Share", if(team_workspace_enabled()) team_project_share_ui() else guide_share_ui(), fillable=FALSE),
-  nav_panel("Publication Export Studio", div(class="guide-page",guide_heading(7,"Publication Export Studio","Prepare figures and reproducibility bundles. Review the exported file before sharing."),guide_link("← Back to sharing",step=7),export_studio_ui("export_studio")),fillable=FALSE),
+  # Opened from the workspace's Analysis tools or Save & export (step 7 is the workspace's Save & export page).
+  nav_panel("Publication Export Studio", div(class="guide-page",div(class="guide-heading",h2("Publication Export Studio"),p("Prepare figures and reproducibility bundles. Review the exported file before sharing.")),guide_link("← Back to Save & export",step=7),export_studio_ui("export_studio")),fillable=FALSE),
   nav_menu(
     title = "Data & Overview",
     icon = icon("database"),
@@ -207,7 +228,7 @@ ui <- page_navbar(
               tags$h5("Lipid Category & Main Class Architecture", style = "margin-bottom: 0; font-weight: 700; color: #1e40af; font-size: 1.05rem;")
             ),
             tags$span(class = "badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1",
-                      style = "font-size: 0.72rem; font-weight: 600;",
+                      style = "font-size: 0.8125rem; font-weight: 600;",
                       "5 Categories / 21 Main Classes")
           ),
           card_body(
@@ -302,7 +323,7 @@ ui <- page_navbar(
                 tags$h5("Lipid Sub Class", style = "margin-bottom: 0; font-weight: 700; color: #0284c7; font-size: 1.05rem;")
               ),
               tags$span(class = "badge bg-info-subtle text-info border border-info-subtle px-2 py-1",
-                        style = "font-size: 0.72rem; font-weight: 600;",
+                        style = "font-size: 0.8125rem; font-weight: 600;",
                         "5 Distinctions")
             ),
             card_body(
@@ -326,7 +347,7 @@ ui <- page_navbar(
                 tags$h5("Structural Modification State", style = "margin-bottom: 0; font-weight: 700; color: #c2410c; font-size: 1.05rem;")
               ),
               tags$span(class = "badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1",
-                        style = "font-size: 0.72rem; font-weight: 600;",
+                        style = "font-size: 0.8125rem; font-weight: 600;",
                         "3 States")
             ),
             card_body(
@@ -347,13 +368,13 @@ ui <- page_navbar(
             ),
             card_body(
               class = "p-3",
-              tags$div(style = "font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.3px;", "Saturation Categories:"),
+              tags$div(style = "font-size: 13px; font-weight: 700; color: var(--lab-muted, #526477); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.3px;", "Saturation Categories:"),
               tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "SFA"), tags$span(class = "lexicon-desc", tags$strong("Saturated: "), "0 Double Bonds")),
               tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "MUFA"), tags$span(class = "lexicon-desc", tags$strong("Monounsaturated: "), "1 Double Bond")),
               tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "PUFA"), tags$span(class = "lexicon-desc", tags$strong("Polyunsaturated: "), "≥ 2 Double Bonds")),
               
               tags$hr(class = "my-2"),
-              tags$div(style = "font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 8px; margin-bottom: 6px; letter-spacing: 0.3px;", "Acyl Chain Lengths:"),
+              tags$div(style = "font-size: 13px; font-weight: 700; color: var(--lab-muted, #526477); text-transform: uppercase; margin-top: 8px; margin-bottom: 6px; letter-spacing: 0.3px;", "Acyl Chain Lengths:"),
               tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "SCFA"), tags$span(class = "lexicon-desc", tags$strong("Short-Chain: "), "< 6 Carbons")),
               tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "MCFA"), tags$span(class = "lexicon-desc", tags$strong("Medium-Chain: "), "6 to 12 Carbons")),
               tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "LCFA"), tags$span(class = "lexicon-desc", tags$strong("Long-Chain: "), "13 to 21 Carbons")),

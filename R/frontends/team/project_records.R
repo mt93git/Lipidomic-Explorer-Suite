@@ -6,6 +6,14 @@
 # session$userData$team_project_records_export / _import / _saved, which the
 # project library (project_library.R) consumes around save and resume.
 team_project_records_member <- 'team-project-records-v1.json'
+team_project_records_node_limit <- 100000L
+team_project_records_size_message <- 'Project records reached the size limit for one checkpoint (run history). This change is not saved; your work stays in this tab. Download a session copy from Save & export.'
+# Deterministic rejections: retrying the same record cannot succeed.
+team_project_records_permanent <- function(message) is.character(message)&&length(message)==1L&&
+  (startsWith(message,'Invalid project methods/decisions record')||startsWith(message,'Project records')||startsWith(message,'Invalid or oversized project records'))
+team_project_records_nodes <- function(record){nodes<-0L;walk<-function(x){nodes<<-nodes+length(x);if(is.list(x))for(v in x)walk(v)};walk(record);nodes}
+# Saved, but past 80% of the bound: say so before a future save is refused.
+team_project_records_near_limit <- function(session){n<-session$userData$team_project_records_last_nodes;is.numeric(n)&&length(n)==1L&&n>0.8*team_project_records_node_limit}
 team_project_records_validate <- function(record) {
   fail<-function()stop('Invalid project methods/decisions record.',call.=FALSE)
   if(!is.list(record)||!identical(record$version,'1')||!identical(record$kind,'archived-project-records'))fail()
@@ -26,7 +34,7 @@ team_project_records_validate <- function(record) {
   if(!is.list(record$methods)||!setequal(names(record$methods),c('status','lines'))||!scalar(record$methods$status)||!record$methods$status%in%c('applied','not_prepared')||!is.list(record$methods$lines)||!all(vapply(record$methods$lines,scalar,logical(1))))fail()
   # JSON-only bounded recursive data; never deserialize executable R objects.
   nodes<-0L
-  walk<-function(x,depth=0L){nodes<<-nodes+length(x);if(depth>30L||nodes>100000L)fail();if(is.list(x)){for(v in x)walk(v,depth+1L)}else if(!(is.null(x)||is.character(x)||is.logical(x)||is.numeric(x)))fail()}
+  walk<-function(x,depth=0L){nodes<<-nodes+length(x);if(nodes>team_project_records_node_limit)stop(team_project_records_size_message,call.=FALSE);if(depth>30L)fail();if(is.list(x)){for(v in x)walk(v,depth+1L)}else if(!(is.null(x)||is.character(x)||is.logical(x)||is.numeric(x)))fail()}
   walk(record)
   bytes<-jsonlite::toJSON(record,auto_unbox=TRUE,null='null',na='null',digits=NA)
   if(nchar(bytes,type='bytes')>4*1024^2)stop('Project records exceed 4 MiB.',call.=FALSE)
@@ -37,6 +45,7 @@ team_project_records_json <- function(record) jsonlite::toJSON(team_project_reco
 team_project_records_attach <- function(path,session,export=session$userData$team_project_records_export) {
   if(!is.function(export))stop('Project methods/decisions are not ready to save. Retry shortly.',call.=FALSE)
   record<-team_project_records_validate(shiny::isolate(export()))
+  session$userData$team_project_records_last_nodes<-team_project_records_nodes(record)
   stage<-tempfile('team-records-');dir.create(stage);on.exit(unlink(stage,recursive=TRUE))
   writeLines(team_project_records_json(record),file.path(stage,team_project_records_member),useBytes=TRUE)
   # Append before hashing, durable queuing and storage commit: one atomic object.
@@ -63,8 +72,10 @@ team_project_guided_server <- function(input,output,session,shared_data) {
     if(is.recursive(node))for(i in seq_along(node))if(!is.null(node[[i]]))visit(node[[i]])
   }
   visit(body(original));if(!is.call(found)||!identical(found[[1]],as.name('function')))stop('Team methods exporter contract requires review.')
+  # Session-only Team (no project library) has no private checkpoints: keep the original wording.
+  local_session<-exists('team_workspace_session_only',mode='function')&&isTRUE(team_workspace_session_only())
   wording<-function(node){
-    if(is.character(node)){
+    if(is.character(node)&&!local_session){
       node<-gsub('Previous run history is not restored.','Private checkpoints preserve archived run history; historical records do not approve current analyses.',node,fixed=TRUE)
       node<-gsub('Run history is session-local.','Private checkpoints preserve run history as archived records.',node,fixed=TRUE)
       node<-gsub('Save the prepared matrix, labels CSV and methods record in the same folder.','Private checkpoints include source settings and archived methods/decisions. Download separate copies when useful.',node,fixed=TRUE)
@@ -89,19 +100,34 @@ team_project_companion_server <- function(input,output,session,shared_data,workf
   }
   adapted<-original;body(adapted)<-rewrite(body(original));if(seen!=1L)stop('Team companion action log contract requires review.')
   bindings<-new.env(parent=environment(original))
-  guidance<-paste('When a writable private project is available, workspace edits, methods and decisions, design notes, run history and companion actions autosave in its checkpoints.',
+  guidance<-if(exists('team_workspace_session_only',mode='function')&&isTRUE(team_workspace_session_only()))
+    paste('This is a local session without a project library: nothing is saved automatically.',
+      'Use Save & export to download a session ZIP (data, settings and canvas) and the methods and decisions record before closing the tab.',
+      'A restored session ZIP does not approve current analyses or replay AI proposals.') else
+    paste('When a writable private project is available, workspace edits, methods and decisions, design notes, run history and companion actions autosave in its checkpoints.',
     'Check the Saved status; Save & export also offers named checkpoints.',
     'Restored history and actions are archived records: they do not approve current analyses or replay AI proposals. Downloads are optional copies.')
+  canvas_local<-if(exists('team_workspace_session_only',mode='function')&&isTRUE(team_workspace_session_only()))
+    paste('In Canvas, explore PCA, class profiles, volcano and violin plots. This local session is not saved automatically:',
+      'use Save & export to download a session ZIP, a whole-Canvas SVG or per-plot exports; CSV is available when the source provides it.')
   base_steps<-companion_assistant_step_guidance
-  bindings$companion_assistant_step_guidance<-local({f<-base_steps;message<-guidance;function(team_workspace=TRUE){result<-f(team_workspace);if(isTRUE(team_workspace))result[7]<-message;result}})
+  # In a local session steps 5 and 7 describe saving, which the reviewed seed words for the project library:
+  # local_steps tells explain_step to use this text rather than the knowledge base for them.
+  bindings$companion_assistant_step_guidance<-local({f<-base_steps;message<-guidance;canvas<-canvas_local;function(team_workspace=TRUE){result<-f(team_workspace);if(isTRUE(team_workspace)){result[7]<-message;if(!is.null(canvas)){result[5]<-canvas;attr(result,'local_steps')<-c(5L,7L)}};result}})
   if(exists('companion_ai_cards',mode='function'))bindings$companion_ai_cards<-local({f<-companion_ai_cards;message<-guidance;function(){cards<-f();cards$share$text<-message;cards}})
   if(exists('companion_ai_methods',mode='function'))bindings$companion_ai_methods<-local({f<-companion_ai_methods;message<-guidance;function()paste(f(),paste('[seven_steps]',message),sep='\n')})
   environment(adapted)<-bindings
   adapted(input,output,session,shared_data,workflow)
 }
 team_project_records_server <- function(input,output,session,shared_data,workflow,assistant) {
-  archived<-shiny::reactiveVal(NULL);state<-shiny::reactiveVal('Records are not yet saved to a private project. Autosave is available when signed in to a writable project; check the save status.')
+  local_session<-exists('team_workspace_session_only',mode='function')&&isTRUE(team_workspace_session_only())
+  local_message<-'Local session: methods, design notes, run history and companion actions are not saved automatically. Download them here, and export a session ZIP to resume later.'
+  archived<-shiny::reactiveVal(NULL);state<-shiny::reactiveVal(if(local_session) local_message else 'Records are not yet saved to a private project. Autosave is available when signed in to a writable project; check the save status.')
   restored_hydration<-NULL
+  # Resuming rebuilds the applied preparation, which completes after import and
+  # re-logs the latest archived run. Expect that one rebuild; never edit records.
+  rebuild_key<-NULL
+  run_key<-function(h)if(!is.null(h$key))as.character(h$key) else digest::digest(h)
   design_values<-function()list(unit=text(input$guide_unit),relationship=text(input$guide_design_type),notes=text(input$guide_design_notes))
   signature<-function(design=design_values())digest::digest(list(history=workflow$history(),actions=assistant$audit(),goal=workflow$goal(),design=design))
   session$userData$team_project_records_saved<-function()state('Saved to your project: methods, design notes, run history and companion actions.')
@@ -126,6 +152,7 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
       run_history=workflow$history(),companion_actions=rows,methods=methods,applied_preparation=list(audit=applied,provenance=provenance),quality_decisions=safe(shared_data$qc_decisions)))
   }
   session$userData$team_project_records_import<-function(record){
+    rebuild_key<<-NULL
     if(is.null(record)){restored_hydration<<-NULL;archived(NULL);state('This older checkpoint has no archived methods/decisions sidecar. No missing records were reconstructed.');return(invisible(NULL))}
     record<-team_project_records_validate(record);archived(record)
     previous_design<-design_values()
@@ -137,7 +164,11 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
     # Keep it in addition to the archived history instead of overwriting it.
     key<-function(h)if(!is.null(h$key))as.character(h$key) else digest::digest(h)
     saved_keys<-vapply(record$run_history,key,character(1))
-    current<-workflow$history();current<-Filter(function(h)!key(h)%in%saved_keys,current)
+    current<-workflow$history();latest<-if(length(saved_keys))saved_keys[[length(saved_keys)]] else NULL
+    rebuilt<-any(vapply(current,function(h)!isTRUE(h$archived)&&identical(key(h),latest),logical(1)))
+    current<-Filter(function(h)!key(h)%in%saved_keys,current)
+    # Not rebuilt yet: expect one live run repeating the latest archived run.
+    rebuild_key<<-if(rebuilt)NULL else latest
     history<-c(history,current)
     for(i in seq_along(history))history[[i]]$run<-i
     workflow$history(history)
@@ -163,6 +194,15 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
     state('Archived methods, design notes, run history and companion actions restored. They do not approve the current analysis or replay actions.')
     invisible(TRUE)
   }
+  shiny::observeEvent(workflow$history(),{
+    if(is.null(rebuild_key))return()
+    history<-workflow$history();live<-which(!vapply(history,function(h)isTRUE(h$archived),logical(1)))
+    if(!length(live))return()
+    expected<-rebuild_key;rebuild_key<<-NULL
+    if(!identical(run_key(history[[live[[1]]]]),expected))return()
+    history<-history[-live[[1]]];for(i in seq_along(history))history[[i]]$run<-i
+    workflow$history(history)
+  },ignoreInit=TRUE,priority=10)
   shiny::observeEvent(input$team_library_project,{state('Project selection changed. Current records have not been saved to this selected project.')},ignoreInit=TRUE)
   output$team_project_records_status<-shiny::renderText(state())
   output$team_archived_methods<-shiny::downloadHandler(filename=function()'archived-methods-and-decisions.txt',content=function(file){r<-archived();shiny::req(r);writeLines(c('ARCHIVED CHECKPOINT RECORD — not current scientific approval',unlist(r$methods$lines,use.names=FALSE)),file,useBytes=TRUE)})
@@ -183,16 +223,17 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
       restored_hydration<<-NULL
     }
     if(!isTRUE(safe(shared_data$is_restoring))){
-      state('Record changes are pending save. Autosave requires a writable private project; check the save status.')
+      state(if(local_session) local_message else 'Record changes are pending save. Autosave requires a writable private project; check the save status.')
       session$sendCustomMessage('team-project-records-changed',list())
     }
   },ignoreInit=TRUE)
   invisible(list(archived=archived,status=state))
 }
-team_project_share_ui <- function() {
+team_project_share_ui <- function(session_only = exists('team_workspace_session_only',mode='function')&&isTRUE(team_workspace_session_only())) {
   ui<-guide_share_ui()
   replace<-function(x){
-    if(is.character(x)){
+    # Session-only Team: the downloads are the only way to keep the work, so the original wording stays.
+    if(is.character(x)&&!session_only){
       x<-gsub('Save the prepared data, sample labels and methods record together. Add a session ZIP if you want to resume the analysis later.','When signed in to a writable private project, changes autosave in its checkpoints, including methods, design notes, run history and companion actions. Check the save status. Downloads below are optional copies.',x,fixed=TRUE)
       x<-gsub('Save both files.','Optional downloads:',x,fixed=TRUE)
       x<-gsub('1. Save the prepared data','Prepared data (optional export)',x,fixed=TRUE)

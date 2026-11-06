@@ -1,7 +1,7 @@
 # Team UX shell checks
 
 Headless checks for the Team workspace shell. They need a running Team server
-(`LIPIDOMIC_INTERFACE=team LIPIDOMIC_TEAM_WORKSPACE=1 LIPIDOMIC_PROJECT_LIBRARY=1`)
+(`LIPIDOMIC_INTERFACE=team LIPIDOMIC_PROJECT_LIBRARY=1`; Team is always the workspace, `LIPIDOMIC_TEAM_WORKSPACE` is no longer read)
 whose project library serves the synthetic CI fixture, for example a local stub
 library on 127.0.0.1. Never point them at production.
 
@@ -22,8 +22,9 @@ its figure, that selecting it moves the module's controls into the inspector's
 Data tab where they still work (CSV download, lipid choice), and that releasing
 the card returns them.
 
-`test_card_status.cjs` (same variables) checks the per-card status chip and the
-Export figure warning shown while any card is not up to date.
+`test_card_status.cjs` (same variables) checks the per-card status badge in the card
+header, the global strip shown only while data changes wait, the collapsed canvas
+notice line, and the Export figure warning shown while any card is not up to date.
 
 `test_instance_copy_selection.cjs` (same variables; `TEAM_UX_ITERATIONS`, default 20)
 copies the violin plot while its source's server-side lipid selector is cleared

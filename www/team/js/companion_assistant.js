@@ -30,7 +30,7 @@
     if(!mascot)return;
     var original=document.querySelector('#lipidomic-companion .help-companion');
     var kind=original?original.dataset.kind:'none';
-    mascot.hidden=kind==='none';mascotLabel.hidden=kind==='none';if(restButton)restButton.hidden=kind==='none';var eyebrow=panel.querySelector('.assistant-eyebrow');var label=(kind==='none'?'COMPANION':kind.toUpperCase())+(aiEnabled?' · AI GUIDE':' · LOCAL GUIDE');if(eyebrow.textContent!==label)eyebrow.textContent=label;
+    mascot.hidden=kind==='none';mascotLabel.hidden=kind==='none';if(restButton)restButton.hidden=kind==='none';var eyebrow=panel.querySelector('.assistant-eyebrow');var label=(kind==='none'?'COMPANION':kind.toUpperCase())+guideLabel();if(eyebrow.textContent!==label)eyebrow.textContent=label;
     if(kind!=='none'&&mascot.dataset.kind!==kind&&window.LipidomicCompanionArt){
       mascot.dataset.kind=kind;mascot.querySelector('.assistant-character-art').innerHTML=window.LipidomicCompanionArt(kind);
     }
@@ -39,12 +39,28 @@
     if (!window.Shiny || !connected) { if (/assistant_(action|confirm|cancel|request)/.test(name)) { setStatus('Offline mode — reconnect to send this request.'); return false; } sendQueue.push([name, value]); return false; }
     window.Shiny.setInputValue(name, value, { priority: 'event' }); return true;
   }
+  var SECTION_TITLES = ['Definition', 'Structure', 'Biological function', 'Interactions', 'Relevance', 'New insights'];
+  // Section titles in bold, the source line in italics; built with DOM nodes so nothing from the text is parsed as HTML.
+  function formatAnswer(span, text) {
+    span.textContent = '';
+    String(text).split('\n').forEach(function (line, i) {
+      if (i) span.appendChild(document.createTextNode('\n'));
+      var wrap = SECTION_TITLES.indexOf(line) >= 0 ? 'strong' : /^(— )?Source: /.test(line) ? 'em' : '';
+      if (wrap) span.appendChild(node(wrap, '', line)); else span.appendChild(document.createTextNode(line));
+    });
+  }
+  // Guidance wording only (approved extension of the mascot exception, 2026-11-04). In grounded mode (kb_grounded from the
+  // server: answers come only from the knowledge base and nothing is sent to an outside AI service) the header and the welcome
+  // say so; otherwise the existing AI and local wording is returned unchanged.
+  var kbGrounded = false, kbTerms = [];
+  function guideLabel() { return kbGrounded ? ' · KNOWLEDGE BASE' : aiEnabled ? ' · AI GUIDE' : ' · LOCAL GUIDE'; }
+  function welcomeText() { return kbGrounded ? "Ask about this workflow. Answers come from the lab's library of reviewed sources, with the source shown. Your question stays on this server and is not sent to any outside AI service. Scientific changes always need your confirmation." : aiEnabled ? 'Ask about this workflow. AI matches your question to reviewed application guidance; it does not analyze your matrix. OpenAI receives your question and basic settings. Do not enter identifying or confidential details. Scientific changes always need your confirmation.' : 'No AI model is connected. I can explain this step and guide actions. Scientific changes always need your confirmation.'; }
   function addMessage(text, kind, source) {
     if (!messages || !text) return;
     var item = node('div', 'assistant-message assistant-message-' + (kind || 'assistant'));
     item.appendChild(node('span', 'assistant-message-text', String(text)));
     if (source) item.appendChild(node('span', 'assistant-source', source === 'local' ? 'Local guide' : String(source)));
-    if (kind === 'assistant') item.querySelector('.assistant-message-text').style.whiteSpace = 'pre-wrap';
+    if (kind === 'assistant') { var body = item.querySelector('.assistant-message-text'); body.style.whiteSpace = 'pre-wrap'; formatAnswer(body, text); }
     messages.appendChild(item);
     while (messages.children.length > 40) messages.firstElementChild.remove();
     var scroller=messages.parentElement;scroller.scrollTop=scroller.scrollHeight;
@@ -123,7 +139,7 @@
     addMessage('No AI model is connected. I can explain this step, point you to the right control, and suggest next actions. I will ask before changing scientific settings.', 'assistant', 'local');
     form.onsubmit = function (e) { e.preventDefault(); var text = input.value.trim(); if (!text) return;
     // Team: answer from the local reviewed guide first; commands and reviewed boundaries still go to the server.
-    var local = window.LipidomicCompanionLocal; if (local && typeof local.answer === 'function') { addMessage(text, 'user'); input.value = ''; if (local.answer(text, {aiEnabled: aiEnabled})) return; if (!connected) { setStatus('Offline mode — reconnect to send this request.'); return; } send('assistant_request', { text: text, nonce: ++nonce, step: lastStep, revision: revision }); setStatus('Waiting for the assistant…'); return; }
+    var local = window.LipidomicCompanionLocal; if (local && typeof local.answer === 'function') { addMessage(text, 'user'); input.value = ''; if (local.answer(text, {aiEnabled: aiEnabled, kbGrounded: kbGrounded, kbTerms: kbTerms})) return; if (!connected) { setStatus('Offline mode — reconnect to send this request.'); return; } send('assistant_request', { text: text, nonce: ++nonce, step: lastStep, revision: revision }); setStatus('Waiting for the assistant…'); return; }
     if (!connected) return; addMessage(text, 'user'); input.value = ''; send('assistant_request', { text: text, nonce: ++nonce, step: lastStep, revision: revision }); setStatus('Waiting for the assistant…'); };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel && !panel.hidden) close(); });
     var bar = document.getElementById('lipidomic-help-bar'); if (bar && !bar.querySelector('.assistant-launcher')) bar.appendChild(launcher);
@@ -135,7 +151,7 @@
       Shiny.addCustomMessageHandler('assistant_reply', renderReply);Shiny.addCustomMessageHandler('assistant_busy',function(msg){if(msg.busy){life('working');setStatus('Looking up guidance…');}else awaken(false);});
       Shiny.addCustomMessageHandler('assistant_preview', renderPreview);
       Shiny.addCustomMessageHandler('assistant_navigate', function (msg) { var step = Number(msg && msg.step); if (step >= 1 && step <= 7) send('guide_step', step); });
-      Shiny.addCustomMessageHandler('assistant_state', function (msg) { if (!msg) return; if(msg.ai_enabled!==undefined){aiEnabled=!!msg.ai_enabled;var welcome=messages.querySelector('.assistant-message-text');if(welcome)welcome.textContent=aiEnabled?'Ask about this workflow. AI matches your question to reviewed application guidance; it does not analyze your matrix. OpenAI receives your question and basic settings. Do not enter identifying or confidential details. Scientific changes always need your confirmation.':'No AI model is connected. I can explain this step and guide actions. Scientific changes always need your confirmation.';syncMascot();}if (msg.step) lastStep = Number(msg.step); if (msg.revision !== undefined) revision = msg.revision;stateMessage=msg.message||'';stateDirty=!!msg.dirty;connected=true;var submit=root.querySelector('.assistant-send');if(submit)submit.disabled=false;renderContext(); });
+      Shiny.addCustomMessageHandler('assistant_state', function (msg) { if (!msg) return; if(msg.ai_enabled!==undefined){aiEnabled=!!msg.ai_enabled;kbGrounded=msg.kb_grounded===true;kbTerms=kbGrounded?(Array.isArray(msg.kb_terms)?msg.kb_terms:kbTerms):[];var welcome=messages.querySelector('.assistant-message-text');if(welcome)welcome.textContent=welcomeText();syncMascot();}if (msg.step) lastStep = Number(msg.step); if (msg.revision !== undefined) revision = msg.revision;stateMessage=msg.message||'';stateDirty=!!msg.dirty;connected=true;var submit=root.querySelector('.assistant-send');if(submit)submit.disabled=false;renderContext(); });
       $(document).on('shiny:connected', function () { connected = true; var button = root.querySelector('.assistant-send'); if (button) button.disabled = false; sendQueue.splice(0).forEach(function (entry) { window.Shiny.setInputValue(entry[0], entry[1], { priority: 'event' }); }); });
       $(document).on('shiny:disconnected', function () { connected = false; life('offline');sendQueue=[];renderPreview({}); var button = root.querySelector('.assistant-send'); var localGuide = !!window.LipidomicCompanionLocal; if (button) button.disabled = !localGuide; setStatus(localGuide ? 'Disconnected — the local guide still answers; reconnect before actions.' : 'Disconnected — reconnect before sending questions or actions.'); });
     }

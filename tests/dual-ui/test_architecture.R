@@ -8,7 +8,9 @@ if (file.exists("R/frontends/team/project_library.R")) source("R/frontends/team/
 source("R/frontends/team/workspace.R")
 source("R/frontends/team/pending_changes_bar.R")
 source("R/frontends/team/server.R")
-Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY = "0", LIPIDOMIC_TEAM_WORKSPACE = "0")
+# LIPIDOMIC_TEAM_WORKSPACE is no longer read (Team is always the workspace); team_workspace_enabled()
+# follows LIPIDOMIC_INTERFACE, which is unset (Classic) while the hook graph below is checked.
+Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY = "0")
 
 check_selectors <- function() {
   old <- Sys.getenv("LIPIDOMIC_INTERFACE", unset = NA_character_)

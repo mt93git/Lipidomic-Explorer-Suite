@@ -31,7 +31,7 @@ scope$team_library_call <- function(service, path, token = NULL, body = NULL, me
     state$refreshes <- state$refreshes + 1L
     return(list(access_token = "renewed-token", refresh_token = "renewed-refresh", expires_in = 60))
   }
-  if (identical(service, "auth") && path %in% c("/user", "/logout")) return(list())
+  if (identical(service, "auth") && path %in% c("/user", "/logout", "/logout?scope=local")) return(list())
   if (identical(service, "rest") && identical(path, "/pilot_projects?order=name")) return(list(list(id = project, name = "Synthetic project")))
   if (identical(service, "rest") && identical(path, "/pilot_members")) return(list(list(project_id = project, role = "owner")))
   if (identical(service, "rest") && grepl("^/pilot_files\\?", path)) return(rows_for(state$files, path))

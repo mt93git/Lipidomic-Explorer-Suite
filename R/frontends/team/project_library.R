@@ -105,7 +105,7 @@ team_library_activate <- function(email, code, type, password, confirm, call=tea
     call("auth","/user",token,body=list(password=password),method="PUT")
     invisible(TRUE)
   }, error=function(e) invalid("Setup could not be completed. Check the email and code, or ask your administrator for a new code."),
-  finally={if(scalar(token) && nzchar(token)) try(call("auth","/logout",token,method="POST"),silent=TRUE)})
+  finally={if(scalar(token) && nzchar(token)) try(call("auth","/logout?scope=local",token,method="POST"),silent=TRUE)})
 }
 
 # Durable queue is operator-owned, outside the application release and web root.
@@ -201,7 +201,7 @@ team_library_local_project <- "local"
 team_library_ui <- function() {
   identity <- team_library_uses_identity()
   tags$section(class="team-library",style="background:white;border:1px solid #d9e5e8;border-radius:12px;margin:16px;padding:20px;",
-    tags$style(HTML(".team-library .shiny-input-container{width:100%!important;margin-bottom:10px}.team-library-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:18px;align-items:end}.team-library-login{display:flex;gap:16px;align-items:end;flex-wrap:wrap}.team-library-login>.shiny-input-container{flex:1;min-width:180px}.team-library select{min-height:44px}.team-library small{display:block;margin-top:14px;color:#526b77}@media(max-width:750px){.team-library-grid{grid-template-columns:1fr}.team-library{margin:8px!important;padding:16px!important}}")),
+    tags$style(HTML(".team-library .shiny-input-container{width:100%!important;margin-bottom:10px}.team-library-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:18px;align-items:end}.team-library-login{display:flex;gap:16px;align-items:end;flex-wrap:wrap}.team-library-login>.shiny-input-container{flex:1;min-width:180px}.team-library select{min-height:44px}.team-library small{display:block;margin-top:14px;color:#526b77;font-size:13px}@media(max-width:750px){.team-library-grid{grid-template-columns:1fr}.team-library{margin:8px!important;padding:16px!important}}")),
     h3("Project library"),p("Save a private checkpoint. Return to your analysis without uploading files again."),
     if (team_workspace_enabled() && identity) tagAppendChild(uiOutput("team_library_account"),team_library_login_placeholder()) else uiOutput("team_library_account"),uiOutput("team_library_projects"),uiOutput("team_library_recovery"),
     # With sign-in, the card's inline alert reports sign-in problems, so the status line starts empty.
@@ -246,7 +246,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
   cleanup_pending<-function(){a<-isolate(account());if(!is.null(a))team_library_queue(a$user,clear=TRUE,expected=pending$sha256);pending<<-NULL}
   revoke <- function(a) {
     if (!is.null(a) && is.character(a$token) && length(a$token)==1L && nzchar(a$token))
-      try(team_library_call("auth","/logout",a$token,method="POST"),silent=TRUE)
+      try(team_library_call("auth","/logout?scope=local",a$token,method="POST"),silent=TRUE) # local: never end the same account's other sessions
   }
   session$onSessionEnded(function(){a<-isolate(account());set_account(NULL);revoke(a)})
   guard<-function(code) tryCatch(force(code),error=function(e) {status(conditionMessage(e)); invisible(NULL)})
@@ -314,6 +314,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
     id
   }
   emit_autosave_context <- function() {
+    if (exists("team_autosave_restore_gate", mode = "function")) team_autosave_restore_gate(session, shared_data)
     a <- isolate(account()); id <- tryCatch(isolate(input$team_library_project), error=function(e) NULL)
     loaded <- tryCatch(length(shared_data$loaded_files()) > 0, error=function(e) FALSE)
     writable <- FALSE
@@ -346,7 +347,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
       passwordInput("team_library_activation_confirm","Confirm new password"),
       actionButton("team_library_activation_submit","Set password")))
     else if(!identity_service) tagList(p("Projects are saved on this computer for a single local user; there is no sign-in."),actionButton("team_library_logout","Clear this session"))
-    else tagList(p(paste("Signed in as",a$email)),actionButton("team_library_logout","Sign out and clear this session"))})
+    else tagList(p(`data-team-account`=a$email,paste("Signed in as",a$email)),actionButton("team_library_logout","Sign out and clear this session"))})
   activation_busy <- FALSE
   observeEvent(input$team_library_activation_submit, foreground_guard("team_library_activation_submit", {
     if(activation_busy) return()
@@ -512,7 +513,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
     })
     session$sendCustomMessage("team-canvas-save-result",list(requestId=request$id,ok=isTRUE(ok)))
     if (kind == "autosave")
-      session$sendCustomMessage("team-autosave-result",list(requestId=request$id,revision=request$revision,ok=isTRUE(ok),message=if(isTRUE(ok)) "Saved" else status()))
+      session$sendCustomMessage("team-autosave-result",list(requestId=request$id,revision=request$revision,ok=isTRUE(ok),message=if(isTRUE(ok)) "Saved" else status(),permanent=!isTRUE(ok)&&exists('team_project_records_permanent',mode='function')&&team_project_records_permanent(status()),near_limit=isTRUE(ok)&&exists('team_project_records_near_limit',mode='function')&&team_project_records_near_limit(session)))
     isTRUE(ok)
   }
   observeEvent(input$team_canvas_save_ready, {

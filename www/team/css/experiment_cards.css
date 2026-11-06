@@ -1,0 +1,31 @@
+/* Guided Experiment step: New / Resume cards and collapsed steps 2-3 (www/team/js/experiment_cards.js). */
+.tx-exp-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:0 0 18px}
+.tx-exp-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-height:132px;margin:0;padding:22px;text-align:left;white-space:normal;background:#fff;border:1px solid #bccbd7;border-radius:8px;color:#162230;font:inherit;cursor:pointer}
+.tx-exp-card:hover{background:#eaf1f6}
+.tx-exp-card[aria-expanded=true]{background:#eaf1f6;border-color:#2d5f8a;box-shadow:inset 0 0 0 1px #2d5f8a}
+.tx-exp-card-title{font:600 23px/1.2 'Cormorant Garamond',Georgia,serif;color:#162230}
+.tx-exp-card-text{font-size:14px;line-height:1.5;color:#3f5163}
+.tx-exp-path-hidden{display:none!important}
+.tx-exp-library{margin:0 0 18px;padding:0 0 16px;border-bottom:1px solid #dce3e9}
+.tx-exp-library[hidden]{display:none}
+/* The project library, moved into the Resume path on this step (its own inline margin is for the header slot). */
+.tx-exp-library>.team-library{margin:0!important}
+
+/* Empty-state lines: only meaningful content shows before a matrix exists. */
+#guide_experiment_summary>p,#guide_local_experiments>p{display:none}
+body:not(.tx-exp-has-workbooks) #guide-experiment-abundance .guide-upload-limit{display:none}
+#guide-experiment-abundance .guide-upload-limit{color:#3f5163}
+
+/* Steps 2 and 3 as disclosures. */
+.tx-exp-step-toggle{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;width:100%;margin:0;padding:0;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tx-exp-step-toggle::after{content:'';flex:none;width:8px;height:8px;margin:0 4px 0 auto;align-self:center;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+.tx-exp-step-toggle[aria-expanded=true]::after{transform:rotate(-135deg)}
+.tx-exp-step-note{font:400 14px/1.4 'Nunito Sans',Arial,sans-serif;color:#3f5163}
+body.tx-exp-has-matrix .tx-exp-step-note{display:none}
+.guide-panel.tx-exp-step-collapsed h3{margin-bottom:0}
+
+@media(max-width:640px){
+  .tx-exp-choice{grid-template-columns:1fr;gap:12px}
+  .tx-exp-card{min-height:0;padding:18px}
+  .tx-exp-card-title{font-size:21px}
+}

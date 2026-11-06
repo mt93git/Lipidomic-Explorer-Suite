@@ -4,12 +4,15 @@
  // Shiny busy cycle is remembered here and sent once, when the app is idle.
  var queued=null, lockedFocus=null, STAGE_IDS={data:'data-choice',review:'review-single',canvas:'canvas'}, STAGE_NAMES={data:'Data',review:'Review',canvas:'Canvas'};
  var screens=[
-  ['data-choice',1,'Choose how to begin','Start with a new matrix or open a private saved checkpoint.'],
+  // Resolved when painted: this script runs in <head>, before the body marks a session-only workspace.
+  ['data-choice',1,'Choose how to begin',function(){return sessionOnly()?'Start with a new matrix or resume a session ZIP you saved earlier. This local session is not saved automatically.':'Start with a new matrix or open a private saved checkpoint.';}],
   ['data-matrix',1,'Add your abundance matrix','Upload the measurements you want to analyze. Your original file stays unchanged.'],
   ['data-metadata',1,'Add sample labels','Add a metadata file, or explicitly continue without one.'],
   ['review-single',3,'Review your data','Adjust detection and watch the PCA update. Click a point to inspect a sample; exclusions can be undone.'],
   ['canvas',5,'Build your figure','Add plots, arrange them, and export when ready.']
  ];
+ function sessionOnly(){var root=document.getElementById('team-workspace');return window.LIPIDOMIC_TEAM_SESSION_ONLY===true||(!!root&&root.dataset.twSessionOnly==='true');}
+ function helpText(e){return typeof e[3]==='function'?e[3]():e[3];}
  function entry(id){return screens.find(function(x){return x[0]===id;})||screens[0];}
  function stage(step){return step<=1?'data':step<=4?'review':'canvas';}
  function send(id,value){if(window.Shiny)Shiny.setInputValue(id,value,{priority:'event'});}
@@ -18,8 +21,12 @@
   if(window.console&&console.info)console.info('[Team review] entry requested',{source:source,legacyStep:legacy,authenticated:authenticated,busy:busy});
   send('team_review_prepare',{kind:'entry',source:'human',token:token});
  }
+ // Sent as soon as the server reports the restore ready at Review, even while
+ // Shiny is busy: the server queues it and runs the same guarded preparation
+ // after that flush (guided_workflow.R checks the step there). Waiting for idle
+ // only added the restored canvas and hidden outputs' render time before Review.
  function maybeRequestRestoredReview(){
-  if(!resumeEntryPending||!resumeRestoreReady||!authenticated||legacy!==3||busy)return;
+  if(!resumeEntryPending||!resumeRestoreReady||!authenticated||legacy!==3)return;
   resumeEntryPending=false;resumeRestoreReady=false;requestReviewEntry('resume');
  }
  var idleReconcilePending=false;
@@ -38,12 +45,14 @@
    Array.from(goals.children).slice(2).forEach(function(el){more.appendChild(el);});goals.appendChild(more);
   }
  }
- function state(){var e=entry(screen),i=screens.indexOf(e),next=document.querySelector('[data-tw-next]');return {stage:stage(e[1]),legacyStep:legacy,substep:screen,substepIndex:i+1,substepCount:screens.length,canBack:authenticated&&i>0,canNext:authenticated&&i<screens.length-1&&!(next&&next.disabled),nextReason:next&&next.disabled?(document.getElementById('tw-next')||{}).textContent||'':'',preparationReady:!!preparation&&preparation.ready===true&&!preparation.pending&&!preparation.running&&!preparation.restoring&&!busy,preparationPending:!!preparation&&preparation.pending===true,preparationRunning:!!preparation&&(preparation.running===true||busy),preparationRestoring:!!preparation&&preparation.restoring===true,tool:document.body.dataset.guideAnalysis==='true'?'advanced analysis':'',authenticated:authenticated};}
+ function state(){var e=entry(screen),i=screens.indexOf(e),next=document.querySelector('[data-tw-next]');return {stage:stage(e[1]),legacyStep:legacy,substep:screen,substepIndex:i+1,substepCount:screens.length,canBack:authenticated&&i>0,canNext:authenticated&&i<screens.length-1&&!(next&&next.disabled),nextReason:next&&next.disabled?statusText():'',preparationReady:!!preparation&&preparation.ready===true&&!preparation.pending&&!preparation.running&&!preparation.restoring&&!busy,preparationPending:!!preparation&&preparation.pending===true,preparationRunning:!!preparation&&(preparation.running===true||busy),preparationRestoring:!!preparation&&preparation.restoring===true,tool:document.body.dataset.guideAnalysis==='true'?'advanced analysis':document.body.dataset.guideToolPage==='true'?'tool page':'',authenticated:authenticated};}
  function canvasReadyIgnoringBusy(){return !!preparation&&preparation.ready===true&&!preparation.pending&&!preparation.running&&!preparation.restoring;}
  // True when the only thing stopping this stage is the busy lock itself.
  function busyOnly(name){return authenticated&&!pending&&busy&&!!STAGE_IDS[name]&&(name!=='canvas'||canvasReadyIgnoringBusy());}
  function queuedMessage(name){return 'Opening '+STAGE_NAMES[name]+' when the update finishes.';}
- function announce(message){var p=document.getElementById('tw-next');if(p)p.textContent=message;}
+ // status_hold.js (when loaded) keeps each status text up for ~1 s so busy cycles do not blink it.
+ function announce(message,urgent){var p=document.getElementById('tw-next');if(!p)return;if(window.TeamStatusHold)TeamStatusHold.set(p,message,urgent);else p.textContent=message;}
+ function statusText(){var p=document.getElementById('tw-next');return window.TeamStatusHold?TeamStatusHold.target(p):(p||{}).textContent||'';}
  function canvasReadiness(){
   if(preparation&&preparation.restoring)return 'Restoring your saved session. Wait before opening Canvas.';
   if(preparation&&(preparation.running||busy))return 'The workspace is updating. Wait before opening Canvas.';
@@ -68,7 +77,7 @@
    else if(b.dataset.twQueued){delete b.dataset.twQueued;b.removeAttribute('aria-busy');b.removeAttribute('title');}
   });
   if(lockedFocus)setTimeout(restoreLockedFocus,0);
-  var title=document.getElementById('tw-screen-title'),help=document.getElementById('tw-screen-help'),progress=document.getElementById('tw-progress');if(title)title.textContent=e[2];if(help)help.textContent=e[3];if(progress){var stageScreens=screens.filter(function(item){return stage(item[1])===current;});progress.textContent=current==='review'?'02 / REVIEW':current.toUpperCase()+' · '+(stageScreens.indexOf(e)+1)+' OF '+stageScreens.length;}
+  var title=document.getElementById('tw-screen-title'),help=document.getElementById('tw-screen-help'),progress=document.getElementById('tw-progress');if(title)title.textContent=e[2];if(help)help.textContent=helpText(e);if(progress){var stageScreens=screens.filter(function(item){return stage(item[1])===current;});progress.textContent=current==='review'?'02 / REVIEW':current.toUpperCase()+' · '+(stageScreens.indexOf(e)+1)+' OF '+stageScreens.length;}
   var back=root.querySelector('[data-tw-back]'),next=root.querySelector('[data-tw-next]');if(back)back.disabled=!authenticated||!!pending||busy||screen==='data-choice';if(next){
    var matrixReady=/Abundance matrix loaded/i.test((document.getElementById('guide_experiment_summary')||{}).textContent||'');
    var metadataReady=!!document.querySelector('#guide_experiment_next button[data-guide-step="2"]');
@@ -97,16 +106,16 @@
   // Any other navigation is a newer intent than a queued stage click.
   if(!fromQueue&&queued&&!queued.sent)queued=null;
   if(!authenticated||pending||busy||!screens.some(function(x){return x[0]===id;}))return false;
-  if(id==='canvas'&&(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring)){announce(canvasReadiness());return false;}
-  var e=entry(id);if(e[1]===legacy && !(id==='canvas' && document.body.dataset.guideAnalysis==='true')){screen=id;paint();return true;}
+  if(id==='canvas'&&(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring)){announce(canvasReadiness(),true);return false;}
+  var e=entry(id);if(e[1]===legacy && !(id==='canvas' && (document.body.dataset.guideAnalysis==='true'||document.body.dataset.guideToolPage==='true'))){screen=id;paint();return true;}
   var token=++navSequence;pending={id:id,token:token,prepareReviewEntry:prepareReviewEntry===true&&id==='review-single'};
   if(fromQueue&&queued&&queued.sent)queued.token=token;
   send('team_workspace_nav',{step:e[1],token:token});paint();announce('Opening the requested screen…');
   setTimeout(function(){if(pending&&pending.token===token)announce('Waiting for the server…');},1800);return true;
  }
  function next(event){paint();var i=screens.findIndex(function(x){return x[0]===screen;}),button=document.querySelector('[data-tw-next]');if(i<0||i>=screens.length-1||!authenticated||(button&&button.disabled))return false;
-  if(screen==='data-metadata'&&!document.querySelector('#guide_experiment_next button[data-guide-step="2"]')){announce('Confirm metadata or choose “Continue without additional metadata” first.');return false;}
-  if(screen==='review-single'){if(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring||busy){announce(preparation&&preparation.restoring?'Restoring your saved session…':preparation&&(preparation.running||preparation.pending)||busy?'Updating…':'Wait for the data update to finish before continuing to Canvas.');return false;}}
+  if(screen==='data-metadata'&&!document.querySelector('#guide_experiment_next button[data-guide-step="2"]')){announce('Confirm metadata or choose “Continue without additional metadata” first.',true);return false;}
+  if(screen==='review-single'){if(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring||busy){announce(preparation&&preparation.restoring?'Restoring your saved session…':preparation&&(preparation.running||preparation.pending)||busy?'Updating…':'Wait for the data update to finish before continuing to Canvas.',true);return false;}}
   var target=screens[i+1][0],prepareReviewEntry=!!(event&&event.isTrusted&&screen==='data-metadata'&&target==='review-single');if(prepareReviewEntry)resumeEntryPending=false;return navigate(target,prepareReviewEntry);}
  function back(){var i=screens.findIndex(function(x){return x[0]===screen;});return i>0?navigate(screens[i-1][0]):false;}
  function go(name){var id=STAGE_IDS[name];return id?navigate(id):false;}
@@ -144,22 +153,22 @@
   if(!notice){
    notice=document.createElement('section');notice.id='team_library_disconnected';notice.className='tw-disconnected-notice';notice.setAttribute('role','alert');
    var title=document.createElement('h2');title.textContent='Connection lost';notice.appendChild(title);
-   var message=document.createElement('p');message.textContent='The network connection or this session has disconnected. Reload and sign in to continue. Unsaved changes will be lost when you reload.';notice.appendChild(message);
-   var button=document.createElement('button');button.type='button';button.textContent='Reload and sign in';button.addEventListener('click',function(){window.location.reload();});notice.appendChild(button);
+   var message=document.createElement('p');var local=sessionOnly();message.textContent=local?'The network connection or this session has disconnected. Reload to continue. Work not downloaded as a session ZIP will be lost when you reload.':'The network connection or this session has disconnected. Reload and sign in to continue. Unsaved changes will be lost when you reload.';notice.appendChild(message);
+   var button=document.createElement('button');button.type='button';button.textContent=local?'Reload':'Reload and sign in';button.addEventListener('click',function(){window.location.reload();});notice.appendChild(button);
    document.body.appendChild(notice);
   }
   notice.hidden=!show;
  }
  function connectionDiagnostics(){
   if(new URLSearchParams(window.location.search).get('connectionDiagnostics')!=='1')return;
-  var log=document.createElement('pre');log.id='team-connection-diagnostics';log.style.cssText='position:fixed;bottom:4px;left:4px;z-index:100000;background:white;color:#172332;border:1px solid #bbc8d4;font:11px monospace;max-width:90vw;max-height:110px;overflow:auto';document.body.appendChild(log);
+  var log=document.createElement('pre');log.id='team-connection-diagnostics';log.style.cssText='position:fixed;bottom:4px;left:4px;z-index:100000;background:white;color:#172332;border:1px solid #bbc8d4;font:13px monospace;max-width:90vw;max-height:110px;overflow:auto';document.body.appendChild(log);
   function record(name,detail){var row=new Date().toISOString()+' '+name+' '+(detail||'');log.textContent=(log.textContent+'\n'+row).split('\n').slice(-12).join('\n');console.info('[Team connection]',row);}
   function attach(){var socket=window.Shiny&&Shiny.shinyapp&&Shiny.shinyapp.$socket;if(!socket||socket.__teamObserved)return;socket.__teamObserved=true;record('socket-attached','state='+socket.readyState);socket.addEventListener('close',function(e){record('socket-close','code='+e.code+' clean='+e.wasClean);});socket.addEventListener('error',function(){record('socket-error');});}
   window.addEventListener('beforeunload',function(){record('beforeunload');});window.addEventListener('pagehide',function(e){record('pagehide','persisted='+e.persisted);});
   document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.tc-preview-pdf'))record('pdf-click');},true);
   if(window.jQuery)jQuery(document).on('shiny:connected',attach).on('shiny:disconnected',function(){record('shiny-disconnected');});attach();
  }
- function init(){if(!document.getElementById('team-workspace'))return;connectionDiagnostics();window.TeamWorkspace={go:go,next:next,back:back,state:state};
+ function init(){if(!document.getElementById('team-workspace'))return;connectionDiagnostics();window.TeamWorkspace={go:go,next:next,back:back,state:state,request:requestStage};
   document.querySelectorAll('[data-tw-stage]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.twStage);});});
   // Disabled step buttons let clicks through (pointer-events:none), so a click
   // during a busy lock reaches the step bar; find the step under the pointer.
@@ -174,7 +183,7 @@
   document.addEventListener('focusin',function(event){if(lockedFocus&&event.target!==lockedFocus)lockedFocus=null;},true);
   document.addEventListener('pointerdown',function(){lockedFocus=null;},true);
   document.addEventListener('keydown',function(event){
-   if(event.key==='Escape'){if(cancelQueue())announce('Step change cancelled.');return;}
+   if(event.key==='Escape'){if(cancelQueue())announce('Step change cancelled.',true);return;}
    if((event.key!=='Enter'&&event.key!==' ')||event.repeat||event.altKey||event.ctrlKey||event.metaKey)return;
    // Still focused but disabled (before Chrome's blur), or blurred to <body>.
    var active=document.activeElement,b=stageButton(active);
@@ -196,14 +205,14 @@
   },true);
   document.querySelector('[data-tw-choice="matrix"]').addEventListener('click',function(){navigate('data-matrix');});
   var logout=document.querySelector('[data-tw-logout]');if(logout)logout.addEventListener('click',function(){var b=document.getElementById('team_library_logout');if(!b)return;logout.disabled=true;logout.textContent='Signing out…';b.click();});
-  new MutationObserver(paint).observe(document.body,{attributes:true,attributeFilter:['data-guide-step','data-guide-analysis']});
-  if(window.Shiny)Shiny.addCustomMessageHandler('team-auth-state',function(x){authenticated=!!x.authenticated;window.dispatchEvent(new CustomEvent('team-auth-changed',{detail:{authenticated:authenticated}}));paint();});
+  new MutationObserver(paint).observe(document.body,{attributes:true,attributeFilter:['data-guide-step','data-guide-analysis','data-guide-tool-page']});
+  if(window.Shiny)Shiny.addCustomMessageHandler('team-auth-state',function(x){/* only a literal true unlocks: a string, number, array or object never does */authenticated=!!x&&x.authenticated===true;window.dispatchEvent(new CustomEvent('team-auth-changed',{detail:{authenticated:authenticated,sessionOnly:!!x&&x.sessionOnly===true}}));paint();});
   if(window.Shiny)Shiny.addCustomMessageHandler('team-review-restore-ready',function(x){if(window.console&&console.info)console.info('[Team review] restore ready received',{ready:!!(x&&x.ready===true),resumePending:resumeEntryPending,legacyStep:legacy,authenticated:authenticated,busy:busy});if(x&&x.ready===true&&resumeEntryPending){resumeRestoreReady=true;paint();}});
   if(window.Shiny)Shiny.addCustomMessageHandler('team-review-entry-diagnostic',function(x){if(window.console&&console.info)console.info('[Team review] server entry diagnostic',JSON.stringify(x||{}));});
   if(window.Shiny)Shiny.addCustomMessageHandler('team-navigation-receipt',function(x){
    if(!pending||x.token!==pending.token)return;
    pending.ack=x;
-   if(!x.accepted){pending=null;screen=({1:'data-matrix',2:'review-single',3:'review-single',4:'review-single'})[x.step]||screen;paint();announce(x.reason||'Prepare the current data before continuing.');}
+   if(!x.accepted){pending=null;screen=({1:'data-matrix',2:'review-single',3:'review-single',4:'review-single'})[x.step]||screen;paint();announce(x.reason||'Prepare the current data before continuing.',true);}
    else if(legacy===Number(x.step)){var completed=pending;screen=completed.id;pending=null;if(completed.prepareReviewEntry)requestReviewEntry('next');paint();}
   });
   window.addEventListener('team-preparation-state',function(e){preparation=e.detail;paint();});
