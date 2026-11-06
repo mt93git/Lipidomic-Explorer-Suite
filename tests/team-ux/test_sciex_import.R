@@ -12,6 +12,7 @@
 # Results Table, and both must load identical() to the matrix. Without it those cases are skipped.
 # Optional: TEAM_SCIEX_REAL=/path/to/a real SCIEX export (byte-identity and parse counts only).
 suppressPackageStartupMessages({ library(shiny); library(readxl); library(dplyr) })
+source("R/frontends/team/upload_formats.R") # team_upload_has_nul (bootstrap sources it before sciex_import.R)
 source("R/frontends/team/sciex_import.R")
 
 passed <- 0L
@@ -107,6 +108,10 @@ check("wide: excluding non-Unknown drops only the Blank", identical(colnames(app
 out_s <- convert(wide_fx, exclude_standards = TRUE)
 check("wide: excluding internal standards drops the 2 .IS rows only", identical(rownames(app_matrix(out_s)), rownames(m)[1:5]))
 check("wide: a value column cannot be chosen", grepl("no value column to choose", refused(wide_fx, value = "Area")))
+# A NUL byte inside a measurement cell would be cut there by read.table(): the file is refused instead.
+nul_fx <- file.path(tmp, "nul.txt"); lines <- readLines(wide_fx); bytes <- charToRaw(paste0(paste(lines, collapse = "\n"), "\n"))
+last_tab <- max(which(bytes == as.raw(9))); writeBin(c(bytes[seq_len(last_tab + 1L)], as.raw(0), charToRaw("9"), bytes[-seq_len(last_tab + 1L)]), nul_fx)
+check("wide: a NUL byte inside a cell refuses the file", grepl("NUL bytes", refused(nul_fx)))
 pc <- parse_counts(rownames(m))
 cat(sprintf("     fixture lipid names: %d parsed, %d unparsed; parser flags %d as internal standard, %d with adduct\n", pc$parsed, pc$unparsed, pc$is, pc$adduct))
 check("wide: shared parser reads the adduct suffixes", pc$adduct >= 5L)

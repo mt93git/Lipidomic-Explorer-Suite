@@ -99,6 +99,10 @@ team_sciex_count_fields <- function(path, how, enc) {
 
 team_sciex_read_cells <- function(path, filename, how) {
   enc <- team_sciex_file_encoding(path)
+  # read.table() cuts a cell at its first NUL byte, so a value could pass truncated. Outside UTF-16
+  # (where NULs are part of the encoding) a file holding any is refused, as team_upload_delimited_to_csv() does.
+  if (!startsWith(enc, "UTF-16") && team_upload_has_nul(path))
+    stop(sprintf("%s contains NUL bytes (it may be a binary file). Export it again as text and upload that file.", filename), call. = FALSE)
   # Preflight: rows, columns and cells from the field counts, before anything is allocated.
   counts <- team_sciex_count_fields(path, how, enc)
   too_big <- function(what) stop(sprintf("%s has %s. Export fewer components or samples per file.", filename, what), call. = FALSE)
