@@ -40,3 +40,17 @@ stopifnot(nrow(guide_history_table(history[1]))==1L,
           nrow(guide_history_table(history))==3L,
           identical(guide_history_table(history)$Samples,c(8L,7L,8L)))
 cat('PASS: one and three applied runs render one and three history rows with scalar counts\n')
+# Restore provenance: only the first run after a restore, on the metadata the restore left, is marked.
+m <- guide_restore_rebuild_mark
+stopifnot(identical(m(TRUE,3L,0L,'meta','meta'),3L),
+          is.null(m(TRUE,3L,3L,'meta','meta')),       # a later run in the same restore is the person's
+          is.null(m(TRUE,3L,0L,'edited','meta')),     # metadata changed after the restore: the person's run
+          is.null(m(FALSE,3L,0L,'meta','meta')),      # no restore
+          is.null(m(TRUE,0L,0L,'meta','meta')),
+          is.null(m(TRUE,3L,0L,'meta',NULL)),
+          identical(m(TRUE,4L,3L,'meta','meta'),4L))  # the next restore's rebuild
+# A person's first run after a restore (metadata edited, so unmarked) uses up the restore: a later run on the
+# restored metadata is the person's too. The observer records the generation after any first run.
+rebuilt <- 0L; first <- m(TRUE,5L,rebuilt,'edited','meta'); rebuilt <- 5L
+stopifnot(is.null(first),is.null(m(TRUE,5L,rebuilt,'meta','meta')))
+cat('PASS: only the restore rebuild on unchanged metadata carries restore provenance\n')

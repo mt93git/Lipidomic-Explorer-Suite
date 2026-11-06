@@ -127,12 +127,20 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
   # Resuming rebuilds the applied preparation, which completes after import and
   # re-logs the latest archived run. Expect that one rebuild; never edit records.
   rebuild_key<-NULL
-  run_key<-function(h)if(!is.null(h$key))as.character(h$key) else digest::digest(h)
+  # Only the run the restore itself produced is removed: guided_workflow.R marks the first run completed after
+  # a restore with restore_rebuild=<its restore generation>, and only a run marked with the current generation is
+  # dropped, when its content repeats the latest saved run. A person's own runs are never marked, so an identical
+  # run they make before or after the import is kept; a marker left by an earlier restore is ignored.
+  # Content, not key: the key hashes restore_generation, which every resume increments. It is compared in the
+  # records' own JSON form, so an archived (JSON round-tripped) run and its native rebuild compare equal.
+  run_key<-function(h)digest::digest(as.character(jsonlite::toJSON(h[setdiff(names(h),c('key','time','run','archived','restore_rebuild'))],
+    auto_unbox=TRUE,null='null',na='null',digits=NA)),algo='sha256')
   design_values<-function()list(unit=text(input$guide_unit),relationship=text(input$guide_design_type),notes=text(input$guide_design_notes))
   signature<-function(design=design_values())digest::digest(list(history=workflow$history(),actions=assistant$audit(),goal=workflow$goal(),design=design))
   session$userData$team_project_records_saved<-function()state('Saved to your project: methods, design notes, run history and companion actions.')
   text<-function(x)if(is.character(x)&&length(x)==1L&&!is.na(x))x else ''
   safe<-function(f)if(is.function(f))tryCatch(f(),error=function(e)NULL) else NULL
+  restore_rebuild<-function(h)!isTRUE(h$archived)&&!is.null(h$restore_rebuild)&&identical(as.integer(h$restore_rebuild),as.integer(safe(shared_data$restore_generation)))
   session$userData$team_project_records_export<-function(){
     audit<-assistant$audit();rows<-lapply(seq_len(nrow(audit)),function(i)as.list(audit[i,,drop=FALSE]))
     applied<-safe(shared_data$preparation_audit);writer<-session$userData$team_project_methods_writer
@@ -162,11 +170,14 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
     for(i in seq_along(history)){history[[i]]$archived<-TRUE;history[[i]]$time<-paste0('[Archived] ',sub('^\\[Archived\\] ','',history[[i]]$time))}
     # A rebuilt current run may have completed while source files hydrated.
     # Keep it in addition to the archived history instead of overwriting it.
-    key<-function(h)if(!is.null(h$key))as.character(h$key) else digest::digest(h)
-    saved_keys<-vapply(record$run_history,key,character(1))
-    current<-workflow$history();latest<-if(length(saved_keys))saved_keys[[length(saved_keys)]] else NULL
-    rebuilt<-any(vapply(current,function(h)!isTRUE(h$archived)&&identical(key(h),latest),logical(1)))
-    current<-Filter(function(h)!key(h)%in%saved_keys,current)
+    # Runs already in this record (the same run, by its own key) are not added twice.
+    record_key<-function(h)if(!is.null(h$key))as.character(h$key) else digest::digest(h)
+    current<-Filter(function(h)!record_key(h)%in%vapply(record$run_history,record_key,character(1)),workflow$history())
+    latest<-if(length(record$run_history))run_key(record$run_history[[length(record$run_history)]]) else NULL
+    marked<-which(vapply(current,restore_rebuild,logical(1)))
+    rebuilt<-length(marked)>0L
+    # Already rebuilt: drop that one run if it repeats the latest saved run; keep everything else.
+    if(rebuilt&&identical(run_key(current[[marked[[1]]]]),latest))current<-current[-marked[[1]]]
     # Not rebuilt yet: expect one live run repeating the latest archived run.
     rebuild_key<<-if(rebuilt)NULL else latest
     history<-c(history,current)
@@ -196,11 +207,11 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
   }
   shiny::observeEvent(workflow$history(),{
     if(is.null(rebuild_key))return()
-    history<-workflow$history();live<-which(!vapply(history,function(h)isTRUE(h$archived),logical(1)))
-    if(!length(live))return()
+    history<-workflow$history();marked<-which(vapply(history,restore_rebuild,logical(1)))
+    if(!length(marked))return()
     expected<-rebuild_key;rebuild_key<<-NULL
-    if(!identical(run_key(history[[live[[1]]]]),expected))return()
-    history<-history[-live[[1]]];for(i in seq_along(history))history[[i]]$run<-i
+    if(!identical(run_key(history[[marked[[1]]]]),expected))return()
+    history<-history[-marked[[1]]];for(i in seq_along(history))history[[i]]$run<-i
     workflow$history(history)
   },ignoreInit=TRUE,priority=10)
   shiny::observeEvent(input$team_library_project,{state('Project selection changed. Current records have not been saved to this selected project.')},ignoreInit=TRUE)

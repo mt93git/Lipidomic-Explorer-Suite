@@ -216,6 +216,16 @@ guide_longitudinal_block_reasons <- function(design_type, md) {
     reasons <- c(reasons, 'No donor or patient identifier is mapped. Repeated measurements need a verified subject ID; replicate numbers alone do not establish matching.')
   reasons
 }
+# The first run completed after a restore, on the sample metadata the restore left, is the restore's rebuild of
+# the saved preparation (Team rebuilds only from Review, which waits for the restore). Returns the restore
+# generation to mark it with, or NULL for a person's run. Metadata is the one preparation input a run record does
+# not show, and only the person changes it after a restore, so a change means the run is theirs.
+guide_restore_rebuild_mark <- function(restored, generation, rebuilt_generation, metadata, restored_metadata) {
+  generation <- as.integer(generation %||% 0L)
+  if (!isTRUE(restored) || !isTRUE(generation > 0L) || identical(generation, as.integer(rebuilt_generation)) ||
+      is.null(restored_metadata) || !identical(metadata, restored_metadata)) return(NULL)
+  generation
+}
 guide_valid_contrast <- function(ref,comp) length(ref)>0&&length(comp)>0&&!any(ref %in% comp)
 # Build history only from one committed controller state and its complete matrix.
 # Pending inputs and separately updating audit reactives are not run receipts.
@@ -771,6 +781,13 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     if(length(question_requirements()))tagList(p(class='guide-pending',paste(question_requirements(),collapse=' ')),guide_focus_link('Review the required design labels','guide_design_type'),p('Quality Check, Composition and Heatmap remain available for exploratory work.')),
     div(class='guide-tool-grid',lapply(recommended(),function(x)div(class='guide-tool-card',guide_link(x,tool=x),p(guide_tool_description(x)))))))
   last_run_key <- NULL
+  rebuilt_generation <- 0L
+  # Sample metadata as the restore left it (see guide_restore_rebuild_mark).
+  metadata_id <- function() digest::digest(safe(shared_data$external_sample_metadata))
+  restored_metadata <- NULL
+  observeEvent(list(shared_data$session_restored(),shared_data$restore_generation()),{
+    restored_metadata <<- if(isTRUE(safe(shared_data$session_restored))) metadata_id() else NULL
+  })
   observeEvent(shared_data$preparation_state()$revision,{
     state <- shared_data$preparation_state()
     matrix <- safe(shared_data$data_processed_unfiltered)
@@ -778,8 +795,13 @@ guided_workflow_server <- function(input,output,session,shared_data) {
     record <- guide_completed_run_record(state,matrix,
       loaded_files=safe(shared_data$loaded_files) %||% character(),
       restore_generation=generation)
+    # project_records.R removes the marked run when it repeats the latest saved run.
+    if(!is.null(record)) record$restore_rebuild <- guide_restore_rebuild_mark(safe(shared_data$session_restored),
+      generation, rebuilt_generation, metadata_id(), restored_metadata)
     update <- guide_history_append(history(),last_run_key,record)
     if(!update$added) return()
+    # Only the first completed run after a restore can be its rebuild, marked or not.
+    if(isTRUE(safe(shared_data$session_restored))) rebuilt_generation <<- generation
     last_run_key <<- update$last_key
     history(update$history)
   },ignoreNULL=FALSE)
