@@ -14,3 +14,35 @@
 /* The phase for screen readers (busy_presentation.js): announced, not shown; outside .tbp-body, so
    it stays in the accessibility tree while the visible part is hidden. */
 #team-foreground .tbp-live{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+/* ux25 lipid scene (busy_presentation.js sceneEl): Team shell only, decorative (aria-hidden). Every
+   animation is transform/opacity on an HTML box, so the compositor runs it while scripts are busy;
+   the scene sits in .tbp-body, which is display:none while the dialog is closed or in error. Palette:
+   #2d5f8a heads, #93a9bf tails (between #2d5f8a and #c3ceda), #eaf1f7 hydrophobic-core tint, one warm head. */
+.tbp-scene{display:none}
+body.ts-shell-app .tbp-scene{display:block;position:relative;width:160px;height:88px;margin:24px auto 30px;transform:scale(1.3);pointer-events:none}
+body.ts-shell-app #team-foreground:has(.tbp-body:not([hidden]) .tbp-scene) .team-foreground-spinner{display:none}
+body.ts-shell-app .tbp-scene .tbp-mic,body.ts-shell-app .tbp-scene .tbp-bil,body.ts-shell-app .tbp-scene .tbp-mic-core{position:absolute;inset:0}
+body.ts-shell-app .tbp-scene[data-scene=bilayer] .tbp-mic,body.ts-shell-app .tbp-scene:not([data-scene=bilayer]) .tbp-bil{display:none}
+body.ts-shell-app .tbp-scene .tbp-mic-core::before{content:"";position:absolute;left:50px;top:14px;width:60px;height:60px;border-radius:50%;background:#eaf1f7}
+body.ts-shell-app .tbp-scene .tbp-bil::before{content:"";position:absolute;left:2px;right:2px;top:13px;height:62px;border-radius:12px;background:#eaf1f7}
+body.ts-shell-app .tbp-scene .tbl{position:absolute;width:12px;height:34px;transform-origin:6px 36px}
+body.ts-shell-app .tbp-scene .tbl.is-lower{transform:rotate(180deg);transform-origin:6px 17px}
+body.ts-shell-app .tbp-scene .tbl span,body.ts-shell-app .tbp-scene .tbl svg{display:block;width:12px;height:34px}
+body.ts-shell-app .tbp-scene .tbl-t{fill:none;stroke:#93a9bf;stroke-width:1.7;stroke-linecap:round}
+body.ts-shell-app .tbp-scene .tbl-h{fill:#2d5f8a}
+body.ts-shell-app .tbp-scene .tbl-s{fill:#fff;opacity:.35}
+body.ts-shell-app .tbp-scene .is-warm .tbl-h{fill:#e0913f}
+body.ts-shell-app .tbp-scene .tbl-j{animation:tbl-join .8s cubic-bezier(.2,.8,.3,1.15) both}
+body.ts-shell-app .tbp-scene .tbl-f{transform-origin:6px 6px;animation:tbl-flex 1.7s ease-in-out infinite alternate}
+body.ts-shell-app .tbp-scene .tbp-mic{animation:tbl-turn 40s linear infinite}
+body.ts-shell-app .tbp-scene .tbp-mic-core{animation:tbl-breathe 2.6s ease-in-out infinite alternate}
+body.ts-shell-app .tbp-scene .tbp-bil .tbl-m{animation:tbl-bob 1.9s ease-in-out infinite alternate}
+body.ts-shell-app .tbp-scene .tbp-bil .is-flip .tbl-m{transform-origin:6px 38px;animation:tbl-flip 9s ease-in-out infinite}
+body.ts-shell-app dialog:not([open]) .tbp-scene *{animation-play-state:paused}
+@keyframes tbl-join{from{opacity:0;transform:translateY(-16px) rotate(-20deg)}to{opacity:1;transform:none}}
+@keyframes tbl-flex{from{transform:skewX(-8deg)}to{transform:skewX(8deg)}}
+@keyframes tbl-bob{from{transform:translateY(-1.5px)}to{transform:translateY(1.5px)}}
+@keyframes tbl-breathe{from{transform:scale(.95)}to{transform:scale(1.04)}}
+@keyframes tbl-turn{to{transform:rotate(360deg)}}
+@keyframes tbl-flip{0%,40%{transform:none}50%,90%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){body.ts-shell-app .tbp-scene *,body.ts-shell-app .tbp-scene *::before{animation:none!important}}

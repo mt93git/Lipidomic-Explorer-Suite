@@ -1,0 +1,3 @@
+/* A conditionalPanel parked by conditional_park.js hides exactly as Shiny's own
+   [data-display-if]:not(.shiny-conditional--shown) rule hides it. */
+[data-team-display-if]:not(.shiny-conditional--shown){display:none}

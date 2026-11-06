@@ -25,7 +25,16 @@
  * output whose element is gone leaves its unfinished job; one whose id now names a new element starts
  * that job again. Nothing on a stale card (.tc-stale) is painted. The bar is always the ratio in the text. ETA: while counting, from
  * this step's observed rate (hidden after 15 s without progress); otherwise the step's typical
- * duration (fixed constants below) counted down from its start, then "taking longer than usual". */
+ * duration (fixed constants below) counted down from its start, then "taking longer than usual".
+ *
+ * Lipid scene (ux25): a small decorative scene above the phase line, built with the container (no
+ * later childList mutation) and shown only while .tbp-body is (so it is display:none, with no running
+ * animation, whenever the dialog is closed or shows an error). Phospholipids assemble into a breathing
+ * micelle while data is prepared (and for any non-pipeline label), and into a bilayer with one
+ * flip-flopping lipid once Review or Canvas work is counted. Only data-scene changes from render();
+ * all motion is CSS keyframes on transform/opacity of HTML boxes (composited, no script per frame).
+ * Shown in the Team shell only (body.ts-shell-app, busy_presentation.css); static under reduced
+ * motion. window.TeamBusyScene.create() returns a fresh copy for another busy container. */
 (function () {
   'use strict';
   var PHASES = ['Preparing data', 'Drawing Review plots', 'Placing cards', 'Drawing cards'];
@@ -41,7 +50,7 @@
   var LABEL_DEFAULT_MS = {'Signing in\u2026': 10000};
   var TICK_MS = 500, SCAN_MS = 1000, PHRASE_MS = 2500, ETA_MAX_MS = 600000, STALL_MS = 15000, WAIT_MOUNT_MS = 60000;
   var dialog = null, wrap, body, phaseEl, phaseText, liveText, bar, fill, etaEl, etaText, phraseText;
-  var ticker = 0, phraseTimer = 0, session = null, motion = null;
+  var ticker = 0, phraseTimer = 0, session = null, motion = null, scene;
 
   function now() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
   function setText(node, value) { if (node.data !== value) node.data = value; }
@@ -184,6 +193,30 @@
 
   // ---- rendering into the container built once --------------------------------------------
   function el(tag, cls) { var n = document.createElement(tag); if (cls) n.className = cls; return n; }
+  // One phospholipid: polar head and two wavy acyl tails, in nested boxes so that each animation
+  // owns one transform (.tbl place, .tbl-j join, .tbl-m bob or flip-flop, .tbl-f tail flex).
+  var LIPID = '<svg viewBox="0 0 12 34" width="12" height="34" focusable="false" aria-hidden="true">' +
+    '<path class="tbl-t" d="M4 10.5c-2 3.4 2 5.3 0 8.7s2 5.3 0 8.7"/><path class="tbl-t" d="M8 10.5c2 3.4-2 5.3 0 8.7s-2 5.3 0 8.7"/>' +
+    '<circle class="tbl-h" cx="6" cy="6" r="5"/><circle class="tbl-s" cx="4.3" cy="4.3" r="1.5"/></svg>';
+  function lipid(cls, place, join, move, flex) {
+    return '<span class="tbl' + cls + '" style="' + place + '"><span class="tbl-j" style="animation-delay:' + join + 's">' +
+      '<span class="tbl-m" style="animation-delay:' + move + 's"><span class="tbl-f" style="animation-delay:' + flex + 's">' + LIPID + '</span></span></span></span>';
+  }
+  function sceneEl() {
+    var i, mic = '', bil = '';
+    // Micelle: nine lipids, heads out, tails meeting at the centre (80, 44) of the 160x88 scene.
+    for (i = 0; i < 9; i++) mic += lipid(i === 3 ? ' is-warm' : '', 'left:74px;top:8px;transform:rotate(' + i * 40 + 'deg)', (i * 0.11).toFixed(2), 0, (-i * 0.37).toFixed(2));
+    // Bilayer: two leaflets of eight columns; the warm lipid of column 5 flip-flops into the gap below.
+    for (i = 0; i < 8; i++) {
+      var x = 11 + i * 18;
+      bil += lipid(i === 5 ? ' is-warm is-flip' : '', 'left:' + x + 'px;top:6px', (i * 0.07).toFixed(2), i === 5 ? 1.5 : (-i * 0.22).toFixed(2), (-i * 0.29).toFixed(2));
+      if (i !== 5) bil += lipid(' is-lower', 'left:' + x + 'px;top:48px', (0.3 + i * 0.07).toFixed(2), (-0.9 - i * 0.22).toFixed(2), (-i * 0.31 - 0.5).toFixed(2));
+    }
+    var n = el('div', 'tbp-scene'); n.setAttribute('aria-hidden', 'true'); n.dataset.scene = 'micelle';
+    n.innerHTML = '<div class="tbp-mic"><div class="tbp-mic-core">' + mic + '</div></div><div class="tbp-bil">' + bil + '</div>';
+    return n;
+  }
+  window.TeamBusyScene = {create: sceneEl};
   function build() {
     // .tbp is never hidden (its live region stays in the accessibility tree); .tbp-body is shown
     // while an operation runs.
@@ -195,7 +228,8 @@
     fill = el('span'); bar.appendChild(fill);
     etaEl = el('p', 'tbp-eta'); etaEl.setAttribute('aria-hidden', 'true'); etaText = document.createTextNode(''); etaEl.appendChild(etaText);
     var phraseEl = el('p', 'tbp-phrase'); phraseEl.setAttribute('aria-hidden', 'true'); phraseText = document.createTextNode(''); phraseEl.appendChild(phraseText);
-    body.append(phaseEl, bar, etaEl, phraseEl);
+    scene = sceneEl();
+    body.append(scene, phaseEl, bar, etaEl, phraseEl);
     wrap.append(live, body);
     dialog.insertBefore(wrap, dialog.querySelector(':scope > button'));
   }
@@ -240,6 +274,8 @@
     var pipeline = !!PIPELINE[s.label];
     if (pipeline && t - s.scanAt >= SCAN_MS) { s.scanAt = t; scan(s, t); }
     var c = pipeline ? counts(s) : {done: 0, total: 0};
+    var look = pipeline && s.phase >= 1 ? 'bilayer' : 'micelle';
+    if (scene.dataset.scene !== look) scene.dataset.scene = look;
     show(phaseEl, pipeline);
     if (pipeline) setText(phaseText, 'Step ' + (s.phase + 1) + '/' + PHASES.length + ' · ' + PHASES[s.phase] + (s.phase >= 1 && c.total ? ' ' + c.done + '/' + c.total + (c.failed ? ' (' + c.failed + ' failed)' : '') : ''));
     // Announced from the first frame after the dialog appeared: a live region in a dialog that just

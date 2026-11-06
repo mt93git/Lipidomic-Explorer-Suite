@@ -70,7 +70,7 @@ const corners = (g, which) => {
       const { p, errors } = await setup(browser);
       const g = await geometry(p);
       await hideNav(p, true);
-      await addCards(p, [{ id: 'tall', framed: true, x: g.sh.left + 330, y: g.sh.top + 300, w: 260, h: 1400 }, ...corners(g, ['tl', 'tr', 'bl', 'br'])]);
+      await addCards(p, [{ id: 'tall', framed: true, x: g.sh.left + 300, /* mid-canvas, clear of the wider ux18 zoom pill's bottom-right corner */ y: g.sh.top + 300, w: 260, h: 1400 }, ...corners(g, ['tl', 'tr', 'bl', 'br'])]);
       await frames(p, 4);
       let b = await bar(p, 'tall');
       assert.equal(b.inset, false, 'fixture: no band while the box is hidden');

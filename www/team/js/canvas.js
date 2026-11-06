@@ -2168,7 +2168,10 @@
       illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear(); dropFramePreview();
       documentState=state.document || null;
       restorePending.clear(); state.nodes.forEach(function (n) { restorePending.set(n.id,n); });
-      var hidden = state.libraryHidden, layout = root.querySelector('.tc-layout'), toggle = root.querySelector('.tc-library-toggle');
+      // In the Team shell the Plot library is a rail panel: it opens collapsed and then follows the
+      // person's own choice this session, so a restored checkpoint's saved library state is not applied.
+      var layout = root.querySelector('.tc-layout'), toggle = root.querySelector('.tc-library-toggle');
+      var hidden = root.classList.contains('ts-shell') ? layout.classList.contains('tc-library-hidden') : state.libraryHidden;
       layout.classList.toggle('tc-library-hidden', hidden); toggle.setAttribute('aria-expanded', String(!hidden)); toggle.textContent = hidden ? 'Show library' : 'Hide library';
     } finally { applyingRestore = false; }
     // One request per instance namespace. A second node with a namespace already

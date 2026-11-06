@@ -1,0 +1,50 @@
+/* Team controls layer (ux20): replaces the browser-default look of the controls the Team inventory
+   found unstyled inside the Team shell, using the Team tokens.
+   Appearance only: no markup, ids, bindings or values change, and no panel layout is touched.
+   Scope: body.ts-shell-app (the Team shell; Classic never loads this file and never has that class).
+   Left alone on purpose (owned elsewhere): the companion/mascot dock, the Canvas zoom toolbar, minimap and
+   plot-library collapse (ux18/canvasux), and the group-comparison chips (ux19/chips, gc_chips.css).
+   Every rule targets only what the Team inventory flagged, so designed controls (.btn, .btn-close,
+   chips, step bars, palette and group-comparison colour wells, card toolbars) are untouched:
+   1. Classless <button>/input[type=button|submit|reset] (no Team or module class, so only browser
+      defaults style them) become outlined Team buttons, except inside containers whose own rules style
+      their classless buttons (plot editor .tpe, card head and actions, Data & settings head, canvas
+      toolbar, library tabs). Element specificity (0,0,1), :where() for the
+      rest, so any rule that targets them through an ancestor still wins.
+   2. The plot card Appearance background swatch and file/checkbox/radio/range
+      inputs lose their browser-default look.
+   The structural module's acyl-chain matrix is left as Max built it: the card body that holds it
+   already scrolls (the earlier "clipped matrix" finding came from a scan that counted scroll
+   containers as clipping). */
+
+body.ts-shell-app{
+  --tcl-accent:var(--ts-accent,#2d5f8a);--tcl-muted:var(--ts-muted,#5a6878);--tcl-line:var(--ts-line,#e3e7ec);
+  --tcl-line-strong:#c3ceda;--tcl-tint:var(--ts-tint,#eaf1f7);--tcl-radius:6px}
+
+/* ---------- 1. Classless buttons (browser defaults only) ---------- */
+:where(body.ts-shell-app) :is(button,input:where([type=button],[type=submit],[type=reset])):where(:not([class])):where(:not(:is(#lipidomic-companion,#lipidomic-assistant-root,#lipidomic-assistant-panel,#lipidomic-context-help,#lipidomic-help-bar,#lipidomic-help-panel,#lipidomic-tour,[class*=companion],[class*=mascot],.tc-navigation,.tc-zoom-controls,.tc-map,.gc-inspector,.gc-controls,.tpe,.tc-node-head,.tc-card-actions,.tc-instance-panel-head,.tc-toolbar,.tc-library-tabs) *)){
+  -webkit-appearance:none;appearance:none;box-sizing:border-box;min-height:28px;margin:0;padding:4px 12px;
+  border:1px solid var(--tcl-line-strong);border-radius:var(--tcl-radius);background:#fff;box-shadow:none;
+  color:var(--tcl-accent);font-family:inherit;font-size:13px;font-weight:600;line-height:1.4;cursor:pointer;
+  transition:background-color .12s,border-color .12s,color .12s}
+:where(body.ts-shell-app) :is(button,input:where([type=button],[type=submit],[type=reset])):where(:not([class])):where(:not(:is(#lipidomic-companion,#lipidomic-assistant-root,#lipidomic-assistant-panel,#lipidomic-context-help,#lipidomic-help-bar,#lipidomic-help-panel,#lipidomic-tour,[class*=companion],[class*=mascot],.tc-navigation,.tc-zoom-controls,.tc-map,.gc-inspector,.gc-controls,.tpe,.tc-node-head,.tc-card-actions,.tc-instance-panel-head,.tc-toolbar,.tc-library-tabs) *)):where(:hover:not(:disabled)){border-color:var(--tcl-accent);background:var(--tcl-tint)}
+:where(body.ts-shell-app) :is(button,input:where([type=button],[type=submit],[type=reset])):where(:not([class])):where(:not(:is(#lipidomic-companion,#lipidomic-assistant-root,#lipidomic-assistant-panel,#lipidomic-context-help,#lipidomic-help-bar,#lipidomic-help-panel,#lipidomic-tour,[class*=companion],[class*=mascot],.tc-navigation,.tc-zoom-controls,.tc-map,.gc-inspector,.gc-controls,.tpe,.tc-node-head,.tc-card-actions,.tc-instance-panel-head,.tc-toolbar,.tc-library-tabs) *)):where(:disabled){opacity:.55;cursor:not-allowed}
+:where(body.ts-shell-app) :is(button,input:where([type=button],[type=submit],[type=reset])):where(:not([class])):where(:not(:is(#lipidomic-companion,#lipidomic-assistant-root,#lipidomic-assistant-panel,#lipidomic-context-help,#lipidomic-help-bar,#lipidomic-help-panel,#lipidomic-tour,[class*=companion],[class*=mascot],.tc-navigation,.tc-zoom-controls,.tc-map,.gc-inspector,.gc-controls,.tpe,.tc-node-head,.tc-card-actions,.tc-instance-panel-head,.tc-toolbar,.tc-library-tabs) *)):where(button[aria-pressed=true]){border-color:var(--tcl-accent);background:var(--tcl-accent);color:#fff}
+
+/* ---------- 2. Inputs ---------- */
+/* The plot card Appearance "Background" swatch only: canvas.js puts its label in the first .tc-edit of
+   details.tc-settings. Illustration "Accent", palette and group-comparison wells keep their own look. */
+:where(body.ts-shell-app .tc-settings>div.tc-edit:first-of-type>label) input:where([type=color]){
+  -webkit-appearance:none;appearance:none;box-sizing:border-box;width:34px;height:28px;padding:3px;
+  border:1px solid var(--tcl-line);border-radius:var(--tcl-radius);background:#fff;cursor:pointer;vertical-align:middle}
+:where(body.ts-shell-app .tc-settings>div.tc-edit:first-of-type>label) input:where([type=color])::-webkit-color-swatch-wrapper{padding:0}
+:where(body.ts-shell-app .tc-settings>div.tc-edit:first-of-type>label) input:where([type=color])::-webkit-color-swatch{border:0;border-radius:3px}
+
+:where(body.ts-shell-app) input:where([type=file]){font-family:inherit;font-size:13px;color:var(--tcl-muted);max-width:100%}
+:where(body.ts-shell-app) input:where([type=file])::file-selector-button{
+  margin-right:8px;padding:4px 12px;border:1px solid var(--tcl-line-strong);border-radius:var(--tcl-radius);background:#fff;
+  color:var(--tcl-accent);font:inherit;font-weight:600;cursor:pointer}
+:where(body.ts-shell-app) input:where([type=file]:disabled)::file-selector-button{opacity:.55;cursor:not-allowed}
+:where(body.ts-shell-app) input:where([type=file]:not(:disabled))::file-selector-button:hover{border-color:var(--tcl-accent);background:var(--tcl-tint)}
+
+:where(body.ts-shell-app) input:where([type=checkbox],[type=radio],[type=range]){accent-color:var(--tcl-accent)}

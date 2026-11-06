@@ -13,7 +13,7 @@
     board.before(spacer); spacer.appendChild(board); board.classList.add('tc-world-board');
     var shell=document.createElement('div');shell.className='tc-viewport-shell';scroll.before(shell);shell.appendChild(scroll);
     var nav = document.createElement('div'); nav.className = 'tc-navigation'; nav.setAttribute('aria-label','Canvas navigation');
-    nav.innerHTML = '<details class="tc-map" open><summary>Minimap</summary><svg tabindex="0" role="img" aria-label="Canvas minimap. Click or drag to navigate; use arrow keys to pan." preserveAspectRatio="none"><g class="tc-map-nodes"></g><rect class="tc-map-window"/></svg></details><div class="tc-zoom-controls" role="group" aria-label="Canvas zoom"><button type="button" class="tc-zoom-out" aria-label="Zoom out">−</button><button type="button" class="tc-zoom-reset" aria-label="Reset canvas zoom to 100%" title="Reset to 100%">100%</button><button type="button" class="tc-zoom-in" aria-label="Zoom in">+</button><button type="button" class="tc-zoom-fit">Fit all</button></div>';
+    nav.innerHTML = '<details class="tc-map" open><summary>Minimap</summary><svg tabindex="0" role="img" aria-label="Canvas minimap. Click or drag to navigate; use arrow keys to pan." preserveAspectRatio="none"><g class="tc-map-nodes"></g><rect class="tc-map-window"/></svg></details><div class="tc-zoom-controls" role="group" aria-label="Canvas zoom"><button type="button" class="tc-zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg class="tc-zoom-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M3.5 8h9"/></svg></button><button type="button" class="tc-zoom-reset" aria-label="Reset canvas zoom to 100%" title="Reset to 100%">100%</button><button type="button" class="tc-zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg class="tc-zoom-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M3.5 8h9M8 3.5v9"/></svg></button><button type="button" class="tc-zoom-fit" aria-label="Fit all" title="Fit all (Shift+1)"><svg class="tc-zoom-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><span class="tc-zoom-fit-label">Fit</span></button></div>';
     shell.appendChild(nav);
     // Collapsed or open, the minimap keeps the person's last choice in this browser.
     var MAP_OPEN_KEY='team.canvas.minimap.open',mapDetails=nav.querySelector('.tc-map');
@@ -22,10 +22,14 @@
     // The minimap can be moved anywhere inside the canvas; its place is remembered
     // per browser and pulled back inside when the canvas gets smaller.
     var grip=document.createElement('button');grip.type='button';grip.className='tc-map-grip';grip.textContent='⠿';
-    grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the minimap';nav.appendChild(grip);
+    grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the zoom controls and minimap';
+    // Its own segment at the left edge of the zoom pill: it never sits over a button.
+    grip.textContent='';grip.innerHTML='<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="4" r="1.2"/><circle cx="7" cy="4" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="7" cy="8" r="1.2"/><circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/></svg>';
+    var zoomRow=nav.querySelector('.tc-zoom-controls');zoomRow.insertBefore(grip,zoomRow.firstChild);
     // `home` is where the person put the box ([x,y] in shell pixels; null = its CSS corner). It is
     // shown there unless that would cover a card (placeNav() below), and only `home` is ever saved.
-    var MAP_KEY='team.canvas.minimap.position',home=null;
+    // v2: the redesigned zoom pill starts docked bottom-left; places saved for the old, taller box are not reused.
+    var MAP_KEY='team.canvas.minimap.position.v2',home=null;
     function setPos(x,y){[['left',x+'px'],['top',y+'px'],['bottom','auto'],['right','auto']].forEach(function(p){if(nav.style.getPropertyValue(p[0])!==p[1]||nav.style.getPropertyPriority(p[0])!=='important')nav.style.setProperty(p[0],p[1],'important');});}
     function clearPos(){['left','top','bottom','right'].forEach(function(p){if(nav.style.getPropertyValue(p))nav.style.removeProperty(p);});}
     function placeMap(x,y,save){
@@ -212,6 +216,9 @@
         popups(bar).forEach(function(p){out.push(p);});
       });
       root.querySelectorAll('.tc-toolbar,.tc-layout>.tc-library-edge-toggle').forEach(function(c){if(c.offsetParent)out.push(c.getBoundingClientRect());});
+      // Never under the companion (it floats above the page): a place it covers is not free.
+      var dock=document.getElementById('lipidomic-companion');
+      if(dock&&!dock.hidden&&dock.getClientRects().length&&getComputedStyle(dock).visibility!=='hidden'){var d=dock.getBoundingClientRect();if(d.width&&d.height)out.push(d);}
       return out;
     }
     function placeNav(){
@@ -372,6 +379,17 @@
     var fitButton=nav.querySelector('.tc-zoom-fit');fitButton.disabled=!zoomSupported;
     if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Scroll to pan.';
     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
+    // Shortcuts: + / − zoom, Shift+1 fits all. Only while this canvas is on screen, never while typing
+    // or inside a dialog, and never with Ctrl/Cmd/Alt (browser zoom keeps its keys).
+    document.addEventListener('keydown',function(e){
+      if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||!zoomSupported||!scroll.clientWidth||!scroll.getClientRects().length)return;
+      var t=e.target;if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],.modal,[role="dialog"]'))return;
+      if(document.querySelector('.modal.show,.modal.in'))return;
+      var r=scroll.getBoundingClientRect();if(r.bottom<=0||r.top>=innerHeight)return;
+      if(e.key==='+'||e.key==='='){e.preventDefault();zoom(scale*1.25);}
+      else if(e.key==='-'||e.key==='−'){e.preventDefault();zoom(scale/1.25);}
+      else if(e.shiftKey&&e.code==='Digit1'){e.preventDefault();fitAll();}
+    });
     // Height covered at the top of the viewport by the floating toolbar plus room for its notices.
     function toolbarReserve(){var bar=root.querySelector('.tc-toolbar');return bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+48:16;}
     function nodeRects(){return Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)')).map(function(n){return {x:n.offsetLeft,y:n.offsetTop,width:n.offsetWidth,height:n.offsetHeight};});}
