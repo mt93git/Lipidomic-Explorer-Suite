@@ -1,0 +1,23 @@
+/* Group comparison controls (group_comparison.js) as Team pills: the lipid-class chips, conditions and
+   per-panel toggles in the card and in the inspector column (.gc-inspector). Visual only: markup,
+   aria-pressed state and click handlers are unchanged. Team shell only, so Classic never sees it. */
+body.ts-shell-app .gc-inspector{display:grid;gap:16px;padding:12px 16px 16px;min-width:0;font-size:13px;color:var(--ts-ink,#141b24)}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;max-width:100%}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section>strong{flex:0 0 100%;margin:0;padding:0;font-size:13px;font-weight:600;line-height:1.4;color:var(--ts-ink,#141b24)}
+/* Family rows (Glycerophospholipids, Sphingolipids, ...) under "Lipid classes" */
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section .gc-section{flex:0 0 100%;margin:4px 0 0;padding:0;border:0}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section .gc-section>strong{font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ts-muted,#5a6878)}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section details{flex:0 0 100%;min-width:0}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section details>div{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+/* The pill */
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) button.tc-chip{-webkit-appearance:none;appearance:none;display:inline-block;box-sizing:border-box;height:28px;min-width:0;max-width:100%;margin:0;padding:0 12px;border:1px solid var(--ts-line,#e3e7ec);border-radius:999px;background:#fff;box-shadow:none;color:var(--ts-ink,#141b24);font-family:inherit;font-size:13px;font-weight:500;line-height:26px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;cursor:pointer;transition:background-color .12s,border-color .12s,color .12s}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) button.tc-chip:hover{border-color:#c3ceda;background:var(--ts-tint,#eaf1f7)}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) button.tc-chip:focus-visible{outline:2px solid var(--ts-accent,#2d5f8a);outline-offset:2px}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) button.tc-chip[aria-pressed=true]{border-color:var(--ts-accent,#2d5f8a);background:var(--ts-accent,#2d5f8a)!important;color:#fff!important}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) button.tc-chip[aria-pressed=true]:hover{border-color:#244d70;background:#244d70!important}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section button.tc-chip[aria-pressed=true]::before{content:"\2713";content:"\2713" / "";margin-right:6px;font-weight:700}
+/* "All" / "None" act on the classes; they read as links beside the section title, not as classes. */
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section:has(>.gc-section)>button.tc-chip{height:24px;padding:0 4px;border-color:transparent;background:transparent;color:var(--ts-accent,#2d5f8a);font-weight:600;line-height:22px}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section:has(>.gc-section)>button.tc-chip:hover{background:var(--ts-tint,#eaf1f7);border-color:transparent}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section:has(>.gc-section)>strong{flex:1 1 auto;flex-basis:auto;order:-1}
+body.ts-shell-app :is(.gc-inspector,.gc-root .gc-controls) .gc-section:has(>.gc-section)>.gc-section{order:1}

@@ -63,10 +63,84 @@
     // In the rail, after the Select / Move pair (pointer_mode.js) when it is there.
     var pair = rail.querySelector(':scope>.tc-pointer-mode');
     rail.insertBefore(toggle, pair ? pair.nextSibling : null);
+    // W6: labelled text controls for the same state. "Hide inspector" heads the column (inert with it);
+    // while the column is hidden a "Show inspector" tab sits on the right edge of the canvas cell, high
+    // up, clear of the companion's home at the column's foot and of the navigation at the cell's
+    // bottom-left. Neither is offered at <= 900 px (stacked) or while the tools drawer is docked over
+    // the column. Both drive set(..., true): saved, and a user action for the anti-flap budget.
+    var header = document.createElement('div'); header.className = 'ts-inspector-header';
+    var hideText = document.createElement('button'); hideText.type = 'button'; hideText.className = 'ts-inspector-hide';
+    hideText.textContent = 'Hide inspector'; hideText.setAttribute('aria-controls', column.id); hideText.title = 'Hide inspector (I)';
+    header.appendChild(hideText); column.insertBefore(header, column.firstChild);
+    var showTab = document.createElement('button'); showTab.type = 'button'; showTab.className = 'ts-inspector-show';
+    showTab.textContent = 'Show inspector'; showTab.setAttribute('aria-controls', column.id); showTab.title = 'Show inspector (I)'; showTab.hidden = true;
+    main.appendChild(showTab);
+    // Focus only ever lands on a control that is shown, enabled and not inert (Figure page, the
+    // stacked breakpoint, the tools drawer and a selected object each hide some of these controls).
+    function usable(n) {
+      return !!n && n !== document.body && n !== document.documentElement && n.isConnected && !n.disabled && !n.closest('[hidden],[inert]') && n.getClientRects().length > 0 && getComputedStyle(n).visibility !== 'hidden';
+    }
+    var FOCUSABLE = 'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+    function rescue(prefer) {
+      var list = (prefer || []).concat([toggle, showTab, hideText]);
+      for (var i = 0; i < list.length; i++) if (usable(list[i])) { list[i].focus({ preventScroll: true }); return list[i]; }
+      var all = root.querySelectorAll(FOCUSABLE);
+      for (var j = 0; j < all.length; j++) if (!column.contains(all[j]) && usable(all[j])) { all[j].focus({ preventScroll: true }); return all[j]; }
+      return null;
+    }
+    // The last of these controls (or a control in the column) that had focus: when it is hidden or made
+    // inert under the focus, the browser drops focus to the body; it is given to a usable control.
+    var held = null, opener = null, armed = false;
+    function ours(n) { return !!n && (n === toggle || n === showTab || n === hideText || column.contains(n)); }
+    function lost(a) { return !a || a === document.body || (ours(a) && !usable(a)); }
+    // opener: what had focus when focus first entered the busy dialog in this opening (the focusin's
+    // relatedTarget; null for the body), i.e. what foreground.js gives focus back to. Kept through a
+    // reopen while work is pending; focus and pointer moves inside the dialog never change it.
+    function inDialog(n) { var d = document.getElementById('team-foreground'); return !!d && !!n && d.contains(n); }
+    document.addEventListener('focusin', function (e) {
+      if (inDialog(e.target)) {
+        if (!armed) { armed = true; opener = e.relatedTarget && !inDialog(e.relatedTarget) ? e.relatedTarget : null; }
+        return;
+      }
+      held = ours(e.target) ? e.target : null;
+    }, true);
+    document.addEventListener('pointerdown', function (e) { if (!inDialog(e.target) && !ours(e.target)) held = null; }, true); // the user moves focus elsewhere
+    // Focus leaving a control that is still usable (a deliberate blur to the body, not a hide): nothing
+    // is held any more, so a later toggle by key leaves the body alone.
+    document.addEventListener('focusout', function (e) { if (e.target === held && !e.relatedTarget && usable(held)) held = null; }, true);
+    // prev: the focused element before a change this script made (or observed); focus that was ours
+    // and is now on the body or on a hidden / inert node is rescued, whatever `held` says.
+    function keepFocus(prefer, prev) {
+      var a = document.activeElement;
+      if (ours(a)) { if (usable(a)) return; }
+      else if (!lost(a) || !((prev && prev !== document.body && ours(prev)) || (held && !usable(held)))) return;
+      rescue(prefer);
+    }
+    // The busy dialog closes: foreground.js gives focus back to its opener, which fails when the opener
+    // was hidden or made inert meanwhile (tools drawer, Figure page, breakpoint) and leaves the body.
+    // Checked after the dialog's own close listeners (a listener added to the target during capture
+    // runs after the ones already there), only if the dialog stayed closed.
+    document.addEventListener('close', function (e) {
+      var dlg = e.target;
+      if (!dlg || dlg.id !== 'team-foreground') return;
+      dlg.addEventListener('close', function () {
+        if (dlg.open) return; // reopened while work is pending: keep the opener for the real close
+        var from = opener, a = document.activeElement; opener = null; armed = false;
+        // Rescued only when focus sits on a hidden control of ours, or when it is lost (the body, or the
+        // closed dialog, which the browser then drops to the body) because our opener control was
+        // hidden meanwhile. Any other opener, the body included, is left exactly as production leaves it.
+        var lostNow = !a || a === document.body || dlg.contains(a);
+        if (!((ours(a) && !usable(a)) || (lostNow && ours(from) && !usable(from)))) return;
+        if (from && usable(from)) from.focus({ preventScroll: true }); else rescue(hidden() ? [showTab] : [hideText]);
+      }, { once: true });
+    }, true);
+    hideText.addEventListener('click', function () { set(true, true); rescue([showTab]); });
+    showTab.addEventListener('click', function () { set(false, true); rescue([hideText]); });
     var explicit = saved();
     function hidden() { return layout.classList.contains('ts-inspector-collapsed'); }
     // Only what changed is written: the shell and the tools drawer observe this layout's class.
     function sync() {
+      var prev = document.activeElement;
       var h = hidden(), label = h ? 'Show inspector' : 'Hide inspector';
       // Inert while hidden, and while the Analysis tools drawer is docked over the column (tools_drawer.js
       // puts it in the column's grid cell; it is a sibling, so it stays usable): covered controls are not
@@ -75,10 +149,11 @@
       var off = (h && !narrow.matches && !drawerOver) || drawerOver;
       if (toggle.getAttribute('aria-expanded') !== String(!h)) toggle.setAttribute('aria-expanded', String(!h));
       if (toggle.getAttribute('aria-label') !== label) { toggle.setAttribute('aria-label', label); toggle.title = label + ' (I)'; }
-      if (column.inert !== off) {
-        if (off && !drawerOver && column.contains(document.activeElement)) toggle.focus();
-        column.inert = off;
-      }
+      var tab = h && !narrow.matches && !drawerOver;
+      if (showTab.hidden === tab) showTab.hidden = !tab;
+      if (column.inert !== off) column.inert = off;
+      // Hidden: focus left in the column goes to the rail toggle (as before), else to a usable control.
+      keepFocus(off ? [toggle, showTab] : [hideText, toggle], prev);
       schedule();
     }
     // Extension: hidden, the canvas takes the column's left part (up to the companion strip) only while
@@ -103,6 +178,16 @@
       var r = dock.getBoundingClientRect();
       return r.left < z.right && r.right > z.left && r.top < z.bottom && r.bottom > z.top;
     }
+    // The synthetic resize is sent only when a box the shell, the viewport or the mascot measure moved.
+    function geometry() {
+      return [main, column, root.querySelector('.tc-layout>#tc-preview-panel')].map(function (n) {
+        if (!n) return '-'; var r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].join(',');
+      }).join('|');
+    }
+    function toggleClass(name, on) {
+      var before = geometry(); layout.classList.toggle(name, on);
+      if (geometry() !== before) window.dispatchEvent(new Event('resize'));
+    }
     function extendable() {
       if (!hidden() || narrow.matches || layout.classList.contains('ttd-open') || locked) return false;
       if (document.body.classList.contains('assistant-chat-open')) return false;
@@ -115,17 +200,16 @@
       // Counted from the last user action: up to MAX_FLIPS layout-caused changes, i.e. the first flip and two
       // reversals. The state is then frozen at production's track: a change to it as the last one is made (it
       // is the safe side), a change away from it is refused, so the extension never ends frozen.
-      if (++flips > MAX_FLIPS || (flips === MAX_FLIPS && want)) { locked = true; if (!want && layout.classList.contains(EXTENDED)) { layout.classList.remove(EXTENDED); window.dispatchEvent(new Event('resize')); } return; }
+      if (++flips > MAX_FLIPS || (flips === MAX_FLIPS && want)) { locked = true; if (!want && layout.classList.contains(EXTENDED)) toggleClass(EXTENDED, false); return; }
       if (flips === MAX_FLIPS) locked = true;
-      layout.classList.toggle(EXTENDED, want);
       // Only an actual change resizes (the shell, the viewport and the mascot re-measure on it).
-      window.dispatchEvent(new Event('resize'));
+      toggleClass(EXTENDED, want);
     }
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(applyExtension); } }
     function unlock() { locked = false; flips = 0; schedule(); }
     function set(h, remember) {
       if (remember) { explicit = h; save(h); unlock(); }
-      if (hidden() !== h) { layout.classList.toggle('ts-inspector-collapsed', h); window.dispatchEvent(new Event('resize')); }
+      if (hidden() !== h) toggleClass('ts-inspector-collapsed', h);
       sync();
     }
     // The default hides the column only where it is a side column (901-1279 px); at <= 900 px it stacks
@@ -162,6 +246,10 @@
     // The dock is a direct child of the body; watch for it (or a new one) being added.
     new MutationObserver(watchDock).observe(document.body, { childList: true });
     if (narrow.addEventListener) narrow.addEventListener('change', sync);
+    // The Figure page (root class) and a selected object (the inspector's hidden attribute) hide the
+    // labelled control: focus on it moves to a usable one.
+    new MutationObserver(function () { keepFocus(hidden() ? [showTab] : [hideText]); }).observe(root, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(function () { keepFocus(hidden() ? [showTab] : [hideText]); }).observe(column, { attributes: true, attributeFilter: ['hidden'], subtree: true });
     // The tools drawer opening or closing (ttd-open) is a user action: it resets the flip budget, so a
     // drawer cycle never counts as layout feedback.
     var drawerWas = layout.classList.contains('ttd-open');

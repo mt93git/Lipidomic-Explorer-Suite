@@ -34,14 +34,17 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     assert.equal(await page.evaluate(()=>sent.length),sentBeforeCanvas,'an unavailable Canvas request is not sent to the server');
     assert.match(await page.locator('#tw-next').textContent(),/Prepare the current data in Review/);
     await page.evaluate(()=>{fireJQueryEvent('shiny:busy');});
+    await page.waitForTimeout(450); // UX14: the lock shows after 400 ms of busy
     assert.equal(await page.locator('[data-tw-stage="data"]').isDisabled(),true,'all stage navigation locks while a workspace request is active');
     assert.match(await page.locator('[data-tw-stage="data"]').getAttribute('aria-label'),/workspace update is running/i);
     assert.equal(await canvasStage.isDisabled(),true);
     assert.match(await page.locator('#tw-next').textContent(),/workspace update is running/i);
     const sentBeforeBusy=await page.evaluate(()=>sent.length);
-    assert.equal(await page.evaluate(()=>TeamWorkspace.go('review')),false);
+    assert.equal(await page.evaluate(()=>TeamWorkspace.go('review')),true,'UX14: go() during the lock is held like a step click');
     assert.equal(await page.evaluate(()=>sent.length),sentBeforeBusy,'busy navigation is not silently submitted');
+    await page.keyboard.press('Escape'); // withdraw the held request so the rest of this test is unchanged
     await page.evaluate(()=>{fireJQueryEvent('shiny:idle');});
+    await page.waitForTimeout(350); // the lock clears 300 ms after idle
     assert.equal(await page.locator('[data-tw-stage="data"]').isDisabled(),false,'stage navigation unlocks when the request finishes');
     assert.ok(await page.locator('#team-workspace').evaluate(el=>el.getBoundingClientRect().height<500), 'shell height follows content inside vertical bslib flex container');
     assert.equal(await page.locator('#team_library_save').isVisible(), false, 'save is absent from the start/resume choice');

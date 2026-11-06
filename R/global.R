@@ -1213,6 +1213,17 @@ parse_lipid_names_bulk <- function(lipid_names, mode = "Global Lipidomics", cust
   matched_indices <- match(lipid_names, unique_names)
   unique_df[matched_indices, ]
 }
+# Team may wrap the whole-matrix parser (its parse memo and per-project store)
+# through the "parse_lipid_names_bulk" hook.
+# Classic registers nothing, so the parser runs exactly as before.
+parse_lipid_names_bulk <- local({
+  parse <- parse_lipid_names_bulk
+  function(lipid_names, mode = "Global Lipidomics", custom_remaps = list()) {
+    # Code that evaluates only this file's functions (no R/core/hooks.R) gets the parser itself.
+    wrap <- if (exists("lipidomic_hook", mode = "function")) lipidomic_hook("parse_lipid_names_bulk") else identity
+    wrap(parse)(lipid_names, mode, custom_remaps)
+  }
+})
 
 generate_empty_plot_message <- function(msg, title = NULL) {
   # Disambiguate automatic titles based on message content

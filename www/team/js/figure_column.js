@@ -13,7 +13,7 @@
   // Checked plots that are not on the page, as capture() in canvas_preview.js decides:
   // listed as unusable, never finished, or finished with a stale snapshot. Figure order.
   function unfinished() {
-    var result; try { result = window.TeamCanvas && TeamCanvas.previewState(); } catch (e) { return []; }
+    var result; try { result = window.TeamCanvas && (TeamCanvas.previewStateForDisplay || TeamCanvas.previewState)(); } catch (e) { return []; }
     if (!result || !result.state || !Array.isArray(result.state.nodes)) return [];
     var api = window.TeamCanvasTabs && typeof TeamCanvasTabs.figureOrder === 'function' ? TeamCanvasTabs : null;
     var ids = result.state.nodes.map(function (n) { return n.id; }), out = [];

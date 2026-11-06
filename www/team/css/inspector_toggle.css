@@ -25,3 +25,22 @@
  #team-canvas-root.ts-shell .tc-layout.ttd-open>.ts-rail>.ts-inspector-toggle{display:none}
 }
 #team-canvas-root.ts-shell .ts-inspector-toggle[aria-expanded=false] .ts-inspector-pane{opacity:0}
+/* W6: labelled text controls (inspector_toggle.js). "Hide inspector" is laid over the top of the
+   column (absolute: no box in the column moves, so the mascot's obstacles and home are production's):
+   at the top right of the empty state. While an object is selected the inspector's own header (title
+   and ×) takes that place, and on the Figure page the column's own tabs do: there the rail icon and
+   the I key remain, and the title keeps its full width. The Show tab sits on the right edge of the canvas cell, high up, away from the home
+   and the navigation; it exists only while the column is hidden (not at <= 900 px, not under the drawer). */
+#team-canvas-root.ts-shell .ts-inspector-header{display:none}
+#team-canvas-root.ts-shell .ts-inspector-show{display:none}
+@media not all and (max-width:900px){
+ #team-canvas-root.ts-shell .ts-inspector-column{position:relative}
+ #team-canvas-root.ts-shell .ts-inspector-column>.ts-inspector-header{display:block;position:absolute;top:10px;right:12px;z-index:3}
+ #team-canvas-root.ts-shell .ts-inspector-column:has(>.tc-selection-inspector:not([hidden]))>.ts-inspector-header{display:none}
+ #team-canvas-root.ts-shell .ts-inspector-column>.ts-inspector-header:is(.tc-figure-mode *){display:none}
+ #team-canvas-root.ts-shell .ts-inspector-hide{min-height:30px;padding:4px 10px;border:1px solid #c9d4de;border-radius:7px;background:#fff;color:#2d4a66;font:500 13px/1.3 system-ui;cursor:pointer}
+ #team-canvas-root.ts-shell .ts-inspector-hide:hover{background:#f1f4f7}
+ #team-canvas-root.ts-shell .tc-main>.ts-inspector-show:not([hidden]){display:block;position:absolute;right:0;top:72px;z-index:26;writing-mode:vertical-rl;padding:12px 6px;border:1px solid #c9d4de;border-right:0;border-radius:8px 0 0 8px;background:#fff;color:#2d4a66;font:600 13px/1.2 system-ui;box-shadow:-2px 2px 8px #172d4b1a;cursor:pointer}
+ #team-canvas-root.ts-shell .tc-main>.ts-inspector-show:hover{background:#f1f4f7}
+ #team-canvas-root.ts-shell .tc-layout.ttd-open>.tc-main>.ts-inspector-show{display:none}
+}

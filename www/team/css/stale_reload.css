@@ -1,0 +1,5 @@
+/* Team: connection-lost banner, above the foreground dialog. */
+.ts-stale{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:2147483000;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:10px 12px 10px 16px;border:1px solid #e3e7ec;border-radius:8px;background:#fff;box-shadow:0 8px 24px #14243124;font-size:14px;color:#141b24}
+.ts-stale[hidden]{display:none}
+.ts-stale-reload{height:32px;padding:0 14px;border:0;border-radius:6px;background:#2d5f8a;color:#fff;font-weight:600;cursor:pointer;white-space:nowrap}
+.ts-stale-reload:focus-visible{outline:2px solid #2d5f8a;outline-offset:2px}

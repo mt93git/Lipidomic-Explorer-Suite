@@ -88,7 +88,22 @@ function withoutApprovedGroundedYield(buf) {
   return Buffer.from(text, 'utf8');
 }
 
+// context_help.js (Gerardo, 2026-11-05, performance only): positionDock/protectedEntries/positionSpeech measure boxes
+// before styles (5989b54). Exactly that approved file (by SHA-256) stands for the production bytes; any other change fails.
+const APPROVED_CONTEXT_HELP = {
+  sha256: 'f577c612c9223e849f7a78869fafc1286c4d779461bd52dde06e4e9aa4b5746f',
+  production: '7547c072fc6ebcfed60053f09fd94966be5fc9d2c2d432ffdac6e4419b825d2e',
+  ref: '28b8365',
+};
+function withoutApprovedDockPerf(buf) {
+  const sha = (b) => require('node:crypto').createHash('sha256').update(b).digest('hex');
+  if (sha(buf) !== APPROVED_CONTEXT_HELP.sha256) return buf;
+  const prod = production('www/team/js/context_help.js', APPROVED_CONTEXT_HELP.ref);
+  return prod && sha(prod) === APPROVED_CONTEXT_HELP.production ? prod : buf;
+}
+
 const STRIP = {
+  'www/team/js/context_help.js': withoutApprovedDockPerf,
   'www/team/js/companion_assistant.js': withoutApprovedFormatAnswer,
   'www/team/js/companion_guidance.js': withoutApprovedGroundedYield,
   'www/team/js/companion_guidance_data.js': withoutApprovedSessionText,
@@ -109,7 +124,7 @@ function frozenMatches(file, ref, buf) {
 // Negative control: a one-character change outside the exceptions (a character inserted at the start of the file, and
 // one character changed in the middle) must make every exception file fail, as well as a plain frozen file.
 // Returns the list of mutations that wrongly still matched (empty when the control holds).
-function negativeControl(ref, plainFile = 'www/team/js/context_help.js') {
+function negativeControl(ref, plainFile = 'www/team/js/companion_workspace.js') {
   const leaks = [];
   for (const file of [...EXCEPTION_FILES, plainFile]) {
     const raw = fs.readFileSync(path.join(ROOT, file));

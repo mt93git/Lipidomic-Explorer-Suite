@@ -2959,7 +2959,7 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
       updateCheckboxGroupInput(session, "custom_delimiters", selected = active_delims)
       
       # Perform Jaro-Winkler hierarchical clustering on column headers (Phase 2)
-      num_threads <- tryCatch({ parallel::detectCores() }, error = function(e) 1)
+      num_threads <- tryCatch({ n <- suppressWarnings(as.integer(Sys.getenv("LIPIDOMIC_STRINGDIST_THREADS", "4"))); min(parallel::detectCores(), if (is.na(n) || n < 1L) 4L else n) }, error = function(e) 1)
       if (length(unique_cols) >= 2) {
         d_mat <- stringdist::stringdistmatrix(unique_cols, method = "jw", p = 0.1, nthread = num_threads)
         hc <- hclust(d_mat, method = "ward.D2")
@@ -4562,6 +4562,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         if (nrow(df_input) <= 1 || length(useCols) < 2) {
           stop("Not enough data for PCA (requires >1 lipid and >=2 samples).")
         }
+        pca_cache <- lipidomic_hook("pca_cache", NULL)  # Team: signed per-project PCA store; Classic registers nothing
+        pca_input <- if (!is.null(pca_cache)) list(df_input, pca_opts, allParsedMetadata(), annotationData())
+        if (!is.null(pca_input) && !is.null(pca_hit <- pca_cache(pca_input))) return(pca_hit)
+        if (!is.null(pca_input)) on.exit(pca_cache(pca_input, returnValue(NULL)), add = TRUE)
         
         pca_mode <- pca_opts$pcaMode %||% "omics"
         t_pca_start <- Sys.time()

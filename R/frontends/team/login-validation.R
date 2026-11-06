@@ -59,11 +59,20 @@ team_login_after_form <- function(e) structure(e, class = c("team_login_after_fo
 # status line below the card does not repeat it, and the operation still reports
 # failure to its foreground owner. Failures marked by team_login_after_form() are
 # rethrown unchanged so the foreground guard shows their message.
+# Server-side trace of why a sign-in failed (no secrets: addresses, tokens and URLs are masked).
+team_login_log <- function(stage, e) {
+  m <- substr(gsub("[\r\n]+", " ", conditionMessage(e)), 1L, 300L)
+  m <- gsub("[^[:space:]@]+@[^[:space:]@]+", "<email>", m)
+  m <- gsub("(eyJ|sb_|Bearer )[A-Za-z0-9._-]+", "<redacted>", m)
+  m <- gsub("https?://[^[:space:]]+", "<url>", m)
+  message(sprintf("[TEAM] sign-in failed at %s: %s (%s)", stage, m, paste(class(e), collapse = "/")))
+}
 team_login_guard <- function(session, input, guard, code) guard("team_library_login", {
   errors <- team_login_field_errors(isolate(input$team_library_email), isolate(input$team_library_password))
   if (length(errors)) team_login_feedback(session, fields = errors)
   else tryCatch(code, error = function(e) {
     if (inherits(e, c("shiny.silent.error", "team_login_after_form"))) stop(e)
+    team_login_log("handler", e)
     team_login_feedback(session, alert = team_login_alert_text(conditionMessage(e)))
     stop(structure(class = c("team_login_shown", "error", "condition"), list(message = "", call = NULL)))
   })

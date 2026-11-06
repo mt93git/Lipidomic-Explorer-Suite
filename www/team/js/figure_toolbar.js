@@ -129,11 +129,15 @@
         if (p.check) p.button.setAttribute('aria-pressed', String(!!(source && source.checked)));
       });
       var note = find('.tc-compose-excluded'), match = note && note.textContent.match(/^(\d+) plot/), count = match ? Number(match[1]) : 0;
+      // A hidden bar (Draft) shows no count: skip the canvas-wide read (it ran on every
+      // drawing frame of the Draft). Showing the panel is an observed 'hidden' change,
+      // and that sync recomputes the count before the bar is painted.
+      if (!note && host.hidden) return;
       // A non-Free layout can show an empty state instead of rendering the banner.
       // Read the same inclusion/readiness flags without changing scientific state.
       if (!note && window.TeamCanvas && typeof window.TeamCanvas.previewState === 'function') {
         try {
-          var state = window.TeamCanvas.previewState(), unusable = (state.unusable || []).map(function (u) { return u.id; });
+          var state = (window.TeamCanvas.previewStateForDisplay || window.TeamCanvas.previewState)(), unusable = (state.unusable || []).map(function (u) { return u.id; });
           count = (state.state.nodes || []).filter(function (n) {
             var included = !window.TeamCanvasTabs || typeof window.TeamCanvasTabs.included !== 'function' || window.TeamCanvasTabs.included(n.id);
             return included && (!n.finished || n.finished.stale || unusable.indexOf(n.id) >= 0);

@@ -345,8 +345,17 @@ plotly_build.team_compact_distribution <- function(p, ...) {
   p$x$data <- lapply(p$x$data, function(trace) {
     h <- trace$hovertemplate
     if (is.character(h) && length(h) > 1L && !anyNA(h) && all(h == h[[1L]])) trace$hovertemplate <- h[[1L]]
+    # Transport only: www/team/js/plot_payload.js restores the same arrays before
+    # Plotly draws (a repeated sample name sent once; values as exact doubles).
+    x <- trace$x; y <- trace$y; if (utils::packageVersion('jsonlite') < '1.8.5') return(trace)
+    if (is.character(x) && length(x) > 1L && !anyNA(x) && all(x == x[[1L]])) trace$x <- list(teamRepeat = x[[1L]], n = length(x))
+    if (is.double(y) && length(y) > 1L && all(is.finite(y))) trace$y <- list(teamFloat64 = gsub('\n', '', jsonlite::base64_enc(writeBin(as.vector(y), raw(), size = 8L, endian = 'little')), fixed = TRUE))
     trace
   })
+  # Unbuilt traces repeat every value; the browser never reads them (plotly's
+  # own Shiny snapshot drops the same keys).
+  p$x[c('visdat', 'cur_data', 'attrs')] <- NULL
+  if (utils::packageVersion('jsonlite') >= '1.8.5') p$x$teamPacked <- 1L
   p
 }
 
@@ -388,8 +397,17 @@ rd_team_heat_tick <- function(group, n) {
 
 results_dashboard_module_server <- function(input, output, session, shared_data) {
   plot_width <- function(id) { w<-session$clientData[[paste0("output_",session$ns(paste0("plot_",id)),"_width")]]; if(is.null(w)||!is.finite(w)||w<=0)600 else w }
+  # Team distribution only: its ticks read the width through this budget, so a width
+  # report that leaves the budget unchanged does not re-render it (reactiveVal ignores equal values).
+  budgets <- new.env(parent=emptyenv())
+  tick_budget <- function(id,left) {
+    key <- paste(id,left); calc <- function() floor((plot_width(id)-left-35)/48)
+    if (!isTRUE(shared_data$team_compact_distribution) || !identical(id,'dist')) return(calc())
+    if (is.null(budgets[[key]])) { rv <- shiny::reactiveVal(shiny::isolate(calc())); shiny::observe(rv(calc()),priority=100); budgets[[key]] <- rv }
+    budgets[[key]]()
+  }
   sample_axis <- function(values,id,left=60) {
-    ticks<-rd_ticks(values,floor((plot_width(id)-left-35)/48))
+    ticks<-rd_ticks(values,tick_budget(id,left))
     list(title="Sample",type="category",tickangle=0,categoryorder="array",categoryarray=values,tickmode="array",tickvals=ticks,ticktext=unname(sample_info()$labels[ticks]),automargin=TRUE,tickfont=list(size=11))
   }
   base <- reactive({

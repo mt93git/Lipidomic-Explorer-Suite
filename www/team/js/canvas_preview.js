@@ -72,7 +72,7 @@
       var focusKey=document.activeElement&&picker.contains(document.activeElement)?document.activeElement.dataset.pickKey:null;
       var chosen=order.filter(function(id){return api.included(id);}).length;picker.hidden=false;picker.replaceChildren();
       var summary=document.createElement('summary');summary.textContent='Plots in this figure · '+chosen+' of '+total;picker.appendChild(summary);
-      var states={};try{TeamCanvas.previewState().unusable.forEach(function(u){states[u.id]=u.reason;});}catch(e){}
+      var states={};try{(TeamCanvas.previewStateForDisplay||TeamCanvas.previewState)().unusable.forEach(function(u){states[u.id]=u.reason;});}catch(e){}
       var body=document.createElement('div');body.className='tc-figure-plots-body';picker.appendChild(body);
       groups.forEach(function(g){
         if(!g.nodes.length)return;
