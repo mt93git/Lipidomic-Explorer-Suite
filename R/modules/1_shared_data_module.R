@@ -4562,6 +4562,10 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
         if (nrow(df_input) <= 1 || length(useCols) < 2) {
           stop("Not enough data for PCA (requires >1 lipid and >=2 samples).")
         }
+        pca_cache <- lipidomic_hook("pca_cache", NULL)  # Team: signed per-project PCA store; Classic registers nothing
+        pca_input <- if (!is.null(pca_cache)) list(df_input, pca_opts, allParsedMetadata(), annotationData())
+        if (!is.null(pca_input) && !is.null(pca_hit <- pca_cache(pca_input))) return(pca_hit)
+        if (!is.null(pca_input)) on.exit(pca_cache(pca_input, returnValue(NULL)), add = TRUE)
         
         pca_mode <- pca_opts$pcaMode %||% "omics"
         t_pca_start <- Sys.time()
