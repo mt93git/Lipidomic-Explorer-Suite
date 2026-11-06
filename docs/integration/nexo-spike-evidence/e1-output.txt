@@ -1,3 +1,5 @@
+# tests/dual-ui/test_nexo_canvas_readonly.cjs (E1, mock build, Chromium + WebKit, Playwright from tests/browser/ci)
+# commit: f25fb15 | host: MacBook Air | recorded: 2026-11-06T03:58:46Z
 PASS E1 chromium cards-equal-nodes
 PASS E1 chromium live-plots-have-traces-at-100
 PASS E1 chromium zoom-25-frozen
@@ -11,3 +13,5 @@ PASS E1 webkit zoom-200-culled-empty
 PASS E1 webkit fit-click-inspector-live
 PASS E1 webkit no-console-errors-or-failed-requests
 E1 OK
+
+# first run on the M1 (Fabric libreros-lab, commit 6249024 on 0ffa583) also passed 12/12 after two test-only adjustments, see git log.
