@@ -8,7 +8,7 @@ run<-function(key,time)list(key=key,time=time,experiment='QA clean resume',keep=
 server<-function(input,output,session){
  workflow<-list(goal=reactiveVal('overview'),history=reactiveVal(list(run('k-saved','2026-11-04 10:00 UTC'))))
  assistant<-list(pending=reactiveVal(NULL),audit=reactiveVal(data.frame(Time='t0',Action='Set',Parameter='p',Previous='a',Proposed='b',Status='Applied',stringsAsFactors=FALSE)))
- hub<-list(preparation_audit=function()NULL,qc_decisions=function()NULL,is_restoring=function()FALSE)
+ hub<-list(preparation_audit=function()NULL,qc_decisions=function()NULL,is_restoring=function()FALSE,restore_generation=function()1L)
  session$userData$team_project_methods_writer<-function(file)writeLines('QA methods',file)
  team_project_records_server(input,output,session,hub,workflow,assistant)
 }
@@ -23,7 +23,9 @@ testServer(server,{
  sent<-0L
  isolate(session$userData$team_project_records_import(record));session$flushReact()
  stopifnot(identical(sent,0L))
- workflow$history(c(history(),list(run('k-saved','rebuild'))));session$flushReact()
+ # guided_workflow.R marks the restore's own rebuild with its restore generation.
+ rebuild<-run('k-saved','rebuild');rebuild$restore_rebuild<-1L
+ workflow$history(c(history(),list(rebuild)));session$flushReact()
  stopifnot(length(history())==1L,identical(sent,0L))
  cat('PASS importing a checkpoint and its preparation rebuild do not schedule an autosave.\n')
  # The first real change is scheduled, and so is every later one.
