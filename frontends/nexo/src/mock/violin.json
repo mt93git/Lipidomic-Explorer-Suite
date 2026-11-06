@@ -1,0 +1,1 @@
+{"data":[{"type":"violin","name":"Control","y":[1,2,3,2,4],"box":{"visible":true},"line":{"color":"#2d5f8a"}},{"type":"violin","name":"Case","y":[3,4,5,4,6],"box":{"visible":true},"line":{"color":"#c0504d"}}],"layout":{"title":"PC(16:0/18:1)","margin":{"l":45,"r":20,"t":45,"b":40}}}
