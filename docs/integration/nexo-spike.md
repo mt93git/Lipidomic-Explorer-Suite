@@ -16,7 +16,7 @@ Architecture (five lines):
 ```text
 Browser → nginx on 127.0.0.1:3880
 nginx server basic auth → both Nexo routes
-/nexo/ → static files in /home/gjb47/nexo/dist/
+/nexo/ → static files in /srv/nexo/dist/
 /api/ → Plumber on 127.0.0.1:3960 → existing R test harness
 Production Team → unchanged on 127.0.0.1:3952
 ```
@@ -27,7 +27,7 @@ Checkpoint ZIPs belong in `/home/gjb47/nexo-storage`; do not commit study data.
 
 ```bash
 cd /home/gjb47/nexo-spike
-bash OS/linux/deploy-nexo.sh
+bash OS/Linux/deploy-nexo.sh
 ```
 
 The script vendors Plotly from the R environment, builds and copies the canvas,

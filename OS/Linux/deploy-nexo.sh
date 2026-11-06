@@ -12,11 +12,11 @@ cd /home/gjb47/nexo-spike
     npm ci
     npm run build
 )
-mkdir -p /home/gjb47/nexo/dist
-rsync -a --delete frontends/nexo/dist/ /home/gjb47/nexo/dist/
+test -w /srv/nexo/dist || { echo "[ERROR] /srv/nexo/dist must exist and be owned by $USER (one-time: sudo install -d -o $USER -g $USER -m 755 /srv/nexo/dist)" >&2; exit 1; }
+rsync -a --delete frontends/nexo/dist/ /srv/nexo/dist/
 
 mkdir -p "$HOME/.config/systemd/user"
-cp OS/linux/lipidomic-api.service "$HOME/.config/systemd/user/lipidomic-api.service"
+cp OS/Linux/lipidomic-api.service "$HOME/.config/systemd/user/lipidomic-api.service"
 systemctl --user daemon-reload
 if systemctl --user is-active --quiet lipidomic-api; then
     systemctl --user enable lipidomic-api
@@ -47,7 +47,7 @@ fi
 cat <<'NGINX_STEPS'
 Manual nginx steps (printed only):
   sudo cp -p /etc/nginx/conf.d/lipidomic-explorer.conf /etc/nginx/conf.d/lipidomic-explorer.conf.bak.$(date +%Y%m%d-%H%M%S)
-  Paste OS/linux/nginx-nexo-locations.conf inside the existing server block
+  Paste OS/Linux/nginx-nexo-locations.conf inside the existing server block
   listening on 127.0.0.1:3880. Keep its auth_basic enabled.
   sudo nginx -t && sudo systemctl reload nginx
 NGINX_STEPS
