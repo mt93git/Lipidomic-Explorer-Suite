@@ -62,6 +62,31 @@ existing authenticated nginx access path to try a checkpoint.
 
 ## Evidence
 
-- Commit SHA: <pending>
-- Test outputs: <pending>
-- Screenshots folder: `docs/integration/nexo-spike-evidence/` <pending>
+Recorded 2026-11-05 on branch `candidate/nexo-spike` (base `c90efa0`, head of the
+ux-wave1 stack). Deployed commit on the RTX: see `api-rtx.txt` (`/api/v1/health` reports it).
+
+| Test | Result | File |
+|---|---|---|
+| U1, U2 engine | green on the Mac and on the RTX | `nexo-spike-evidence/api-engine.txt`, `api-rtx.txt` |
+| U3 tiers (+2 placement cases) | 8/8 green | `npm test` in `frontends/nexo` |
+| I1 HTTP | green on the Mac and on the RTX | `nexo-spike-evidence/api-http.txt`, `api-rtx.txt` |
+| I2 parity | 5/5 green | `nexo-spike-evidence/api-parity.txt`, `api-rtx.txt` |
+| E1 browser (mock build) | 12/12 green, Chromium and WebKit | `nexo-spike-evidence/e1-output.txt`, `e1-*.png` |
+| E2 manual (real checkpoint) | done through an SSH tunnel to the RTX API | kept outside git (study data) |
+
+The red runs (stubs) are recorded at the top of `api-engine.txt`, `api-http.txt` and
+`api-parity.txt`. `git diff --stat c90efa0 -- R/modules R/server.R R/global.R R/ui.R
+R/frontends/team R/frontends/classic R/frontends/interface.R www` is empty.
+
+On restore the API recomputes the preparation and compares its lipids and samples with the
+archived receipt, as Team's `guide_completed_run_record()` does; a mismatch is a 422.
+
+## Known limits (for the PR to Max)
+
+- `test_api_parity.R` compares the API with the dashboard module on the same restored hub.
+  The restore itself is tied to the archive only by the receipt check (names, not values,
+  because the ZIP does not keep prepared values).
+- The API reads checkpoint ZIPs from its own folder, not through `team_storage_session`.
+- One R process renders one request at a time (503 + client retry while busy).
+- No roles: anyone past the site's basic auth can list and open every checkpoint in the folder.
+- Session cache has no eviction (fine for a demo with two checkpoints).
