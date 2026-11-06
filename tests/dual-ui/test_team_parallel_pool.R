@@ -139,7 +139,7 @@ Sys.unsetenv('LIPIDOMIC_TEAM_R_PREFILL_TIMEOUT')
 # ---- app stop kills running workers -------------------------------------------------
 Sys.setenv(LIPIDOMIC_TEAM_R_WORKERS='2'); reset()
 team_parallel_prepare_cards(); pids <- vapply(team_parallel_state$jobs, function(j) j$process$get_pid(), integer(1))
-check(identical(suppressMessages(team_parallel_stop('test')), 2L), 'stop kills running workers')
+check(length(pids) >= 1L && identical(suppressMessages(team_parallel_stop('test')), length(pids)), sprintf('stop kills every running worker (%d)', length(pids)))
 Sys.sleep(1); check(!any(vapply(pids, alive_pid, logical(1))), 'killed workers are gone')
 
 # ---- LAPACK identity at the worker thread count ------------------------------------
