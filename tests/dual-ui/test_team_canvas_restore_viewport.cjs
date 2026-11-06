@@ -12,6 +12,11 @@ const assert=require('node:assert/strict'),path=require('node:path');
  assert(result.n.left>=result.s.left-2&&result.n.right<=result.s.right+2&&result.n.top>=result.s.top-2&&result.n.bottom<=result.s.bottom+2,'first card is fit into usable viewport');
  assert(result.scale>.25,'fit focuses one card instead of entire world');
  assert.equal(result.left,'0px');assert.equal(result.top,'0px');
+ // RC2: after the restore camera the navigation box is shown, clear of every card's header strip, and usable from the keyboard.
+ const nav=await page.evaluate(()=>{const n=document.querySelector('.tc-navigation'),b=n.getBoundingClientRect(),cs=getComputedStyle(n),zoom=n.querySelector('.tc-zoom-in');zoom.focus();
+   return {shown:cs.visibility==='visible'&&cs.pointerEvents!=='none'&&b.width>0,focus:document.activeElement===zoom,clear:[...document.querySelectorAll('.tc-node')].every(c=>{const r=c.getBoundingClientRect();return !(r.left<b.right&&r.right>b.left&&r.top-34<b.bottom&&r.top+40>b.top);})};});
+ assert(nav.shown&&nav.focus&&nav.clear,'restored view: navigation box shown, focusable and clear of card headers '+JSON.stringify(nav));
+ await page.evaluate(()=>document.activeElement.blur());
  await page.evaluate(()=>{let node=document.createElement('div');node.className='tc-node';node.dataset.teamFresh='true';Object.assign(node.style,{position:'absolute',left:'0px',top:'0px',width:'620px',height:'720px'});document.querySelector('.tc-board').appendChild(node);TeamCanvasViewport.setScale(.64);TeamCanvasViewport.focusNode(node);});
  const fresh=await page.evaluate(()=>{const s=document.querySelector('.tc-scroll').getBoundingClientRect(),n=document.querySelector('.tc-node:last-child').getBoundingClientRect();return {s,n};});
  assert(fresh.n.top>=fresh.s.top-2&&fresh.n.bottom<=fresh.s.bottom+2,'fresh card header and bottom remain inside shifted viewport');

@@ -61,6 +61,24 @@ filtered <- session_persistent_inputs(list(team_library_email="user@example.org"
   team_library_password="secret", `data_hub-normalizationMethod`="median"))
 stopifnot(identical(names(filtered), "data_hub-normalizationMethod"))
 
+# Team without the project library fails closed: a missing or mistyped LIPIDOMIC_PROJECT_LIBRARY must
+# never serve the workspace without sign-in. The server boundary refuses to start the session.
+# Production's library-less local session (LIPIDOMIC_TEAM_LOCAL_SESSION=1) is not ported: no value of
+# it opens Team; local use is the library's files backend (LIPIDOMIC_STORAGE=files).
 team_library_enabled <- function() FALSE
-stopifnot(inherits(try(team_workspace_require_library(), silent=TRUE), "try-error"))
-cat("PASS: Team workspace auth boundary, spent failed startup, and ZIP credential filter\n")
+for (v in c("", "1", "true", "yes")) {
+  if (nzchar(v)) Sys.setenv(LIPIDOMIC_TEAM_LOCAL_SESSION = v) else Sys.unsetenv("LIPIDOMIC_TEAM_LOCAL_SESSION")
+  stopifnot(inherits(try(team_workspace_require_library(), silent=TRUE), "try-error"))
+  science_starts <- 0L
+  closed <- new.env(parent=emptyenv())
+  closed$userData <- new.env(parent=emptyenv())
+  stopifnot(inherits(try(server(list(), list(), closed), silent=TRUE), "try-error"), science_starts == 0L)
+}
+refused <- tryCatch(team_workspace_require_library(), error = function(e) conditionMessage(e))
+stopifnot(grepl("LIPIDOMIC_PROJECT_LIBRARY=1", refused, fixed = TRUE),
+          grepl("LIPIDOMIC_STORAGE=files", refused, fixed = TRUE),
+          !exists("team_workspace_session_only", mode = "function"))
+team_library_enabled <- function() TRUE
+stopifnot(isTRUE(team_workspace_require_library()))
+Sys.unsetenv("LIPIDOMIC_TEAM_LOCAL_SESSION")
+cat("PASS: Team workspace auth boundary, spent failed startup, ZIP credential filter, fail-closed without the library (no library-less local session)\n")

@@ -200,7 +200,9 @@
     item('Move tab right', function (id) { reorder(id, state.tabs.findIndex(function (t) { return t.id === id; }) + 1); }, true);
     item('Delete tab…', confirmDelete, true);
     trigger.addEventListener('click', function (e) { e.stopPropagation(); var open = menu.hidden; menu.hidden = !open; trigger.setAttribute('aria-expanded', String(open)); if (open) { var first = menu.querySelector('button:not(:disabled)'); if (first) first.focus(); } });
-    menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { close(); trigger.focus(); } });
+    // The open menu owns Escape: it closes only the menu (not the inspector, the chat or the expanded Canvas).
+    // Also from the trigger (Shift+Tab back from the first item keeps the menu open).
+    wrap.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { e.preventDefault(); e.stopPropagation(); close(); trigger.focus(); } });
     wrap.addEventListener('focusout', function (e) { if (!menu.hidden && e.relatedTarget && !wrap.contains(e.relatedTarget)) close(); });
     document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
     wrap.append(trigger, menu); return wrap;

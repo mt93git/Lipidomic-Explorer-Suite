@@ -1,0 +1,63 @@
+/* "All analysis tools" drawer (www/team/js/tools_drawer.js). Non-modal panel that never paints over a
+   control: on the Draft canvas it takes the inspector's column (same width), on guided pages and the Figure page it
+   sits in the page flow, elsewhere it is a fixed right-hand panel under the bars (full width on phones). */
+.ttd-chevron{display:inline-block;width:.45em;height:.45em;margin-left:.45em;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-.15em) rotate(45deg);transition:transform .15s ease}
+[data-ttd-trigger][aria-expanded=true] .ttd-chevron{transform:translateY(.1em) rotate(-135deg)}
+.tw-canvas-tabs details>summary[data-ttd-trigger]{list-style:none}
+.tw-canvas-tabs details>summary[data-ttd-trigger]::-webkit-details-marker{display:none}
+/* A panel on the overlay scale (qw_layers.css), also over the expanded Canvas. */
+.ttd-drawer{position:fixed;top:var(--ttd-top,0px);right:0;bottom:0;z-index:var(--z-panel,10100);width:min(400px,100vw);box-sizing:border-box;display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain;background:#fff;color:#162230;border-left:1px solid #cbd7e3;box-shadow:-12px 0 40px #17374830;padding:16px 18px 24px;font-size:14px;line-height:1.45}
+.ttd-drawer[hidden]{display:none}
+.ttd-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-16px;margin:-16px -18px 0;padding:14px 18px 10px;background:#fff;border-bottom:1px solid #e1e8ee;z-index:1}
+.ttd-title{margin:0;font-size:18px;font-weight:600;color:#162230}
+.ttd-intro{margin:10px 0 4px;color:#46576a}
+.ttd-close,button.ttd-open{font:inherit;min-height:36px;border-radius:7px;padding:6px 12px;cursor:pointer}
+.ttd-close{background:#fff;border:1px solid #cbd7e3;color:#2d5f8a}
+.ttd-close:hover{background:#eef3f8}
+.ttd-group{margin-top:16px}
+.ttd-group-title{margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#46576a}
+.ttd-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ttd-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe4ea;border-radius:10px;background:#f8fafc}
+.ttd-text{min-width:0}
+.ttd-name{display:block;font-weight:600;color:#162230;overflow-wrap:anywhere}
+.ttd-desc{margin:2px 0 0;color:#46576a;font-size:13px}
+button.ttd-open{flex-shrink:0;background:#2d5f8a;border:1px solid #2d5f8a;color:#fff}
+button.ttd-open:hover{background:#244e72}
+button.ttd-open:disabled{background:#e4eaef;border-color:#cbd7e3;color:#46576a;cursor:not-allowed}
+.ttd-close:focus-visible,button.ttd-open:focus-visible{outline:2px solid #2d5f8a;outline-offset:2px}
+.ttd-empty{margin-top:16px;color:#46576a}
+/* Phones (R13's <= 600 px): the fixed panel is full width. */
+@media(max-width:600px){.ttd-drawer{width:100%;left:0;border-left:0;padding:14px 14px 22px}.ttd-head{margin:-14px -14px 0;padding:12px 14px 10px;top:-14px}.ttd-item{align-items:flex-start}}
+
+/* In the page flow (guided pages at every width, under the step bar and the "Changes pending" bar,
+   like the Help panel; the Figure page, above the page): it pushes the page down instead of covering
+   Continue, its note or the bar's buttons. The header stays in view while the list scrolls with the page. */
+.ttd-drawer.ttd-inline{position:relative;top:auto;right:auto;bottom:auto;left:auto;z-index:auto;width:auto;max-width:760px;margin:12px auto 18px;overflow:visible;border:1px solid #cbd7e3;border-radius:10px;box-shadow:0 4px 16px #1622300b}
+.ttd-drawer.ttd-inline .ttd-head{top:0;border-radius:10px 10px 0 0}
+@media(max-width:600px){.ttd-drawer.ttd-inline{max-width:none;margin:0;border-width:0 0 1px;border-radius:0;box-shadow:none}.ttd-drawer.ttd-inline .ttd-head{border-radius:0}}
+
+/* Draft canvas (shell.js grid: rail | library | canvas | inspector): the drawer takes the inspector's
+   column at the inspector's own width, so the canvas column keeps its width and the Canvas header keeps
+   the geometry it has with the inspector (tabs and toolbar on one row from 901 px; a wider drawer made the
+   toolbar wrap under it). The inspector and the companion column are hidden while it is open and come
+   back on close. Nothing is fixed or layered: the Canvas header, the cards and the minimap stay where
+   they can be used. In that narrower column a tool's Open button goes under its text when they do not fit. */
+#team-canvas-root.ts-shell .tc-layout>.ttd-drawer.ttd-docked{position:relative;top:auto;right:auto;bottom:auto;left:auto;z-index:auto;grid-column:4;grid-row:1;width:auto;min-width:0;min-height:0;margin:0;border-left:1px solid var(--ts-line,#e3e7ec);box-shadow:none}
+#team-canvas-root.ts-shell .tc-layout>.ttd-drawer.ttd-docked .ttd-item{flex-wrap:wrap}
+/* The inspector column stays laid out under the drawer (the mascot's home and the chat's docking read
+   its geometry; the mascot is frozen as in production). Its content stays visible to the mascot's
+   avoidance (as in production) but inert; the opaque drawer paints over the cell, and keeps its list clear of the floating mascot with bottom padding (room for the controls). */
+#team-canvas-root.ts-shell .tc-layout.ttd-open>.ts-inspector-column :not(.tc-companion-home,.tc-companion-home *){pointer-events:none!important}
+#team-canvas-root.ts-shell .tc-layout>.ttd-drawer.ttd-docked{z-index:5;align-self:stretch;padding-bottom:236px}
+@media(max-width:900px){#team-canvas-root.ts-shell .tc-layout>.ttd-drawer.ttd-docked :is(button,a,input,select){scroll-margin-bottom:170px}}
+@media(min-width:901px){
+ #team-canvas-root.ts-shell .tc-layout.ttd-open,#team-canvas-root.ts-shell.tc-contextual-editing .tc-layout.tc-inspecting.ttd-open{grid-template-columns:var(--ts-rail) auto minmax(0,1fr) var(--ts-inspector,290px)!important}
+}
+/* Narrow screens: the inspector already sits below the canvas; the drawer takes its place there, at
+   the inspector's height (45dvh), so the Canvas header, the canvas and the drawer share one screen
+   (normal and expanded) and opening it scrolls nothing out of view. Its list scrolls inside. */
+@media(max-width:900px){
+ #team-canvas-root.ts-shell .tc-layout>.ttd-drawer.ttd-docked{grid-column:1/-1;grid-row:2;max-height:45dvh;padding:14px 14px 160px;border-left:0;border-top:1px solid var(--ts-line,#e3e7ec)}
+ #team-canvas-root.ts-shell .tc-layout>.ttd-drawer.ttd-docked .ttd-head{margin:-14px -14px 0;padding:12px 14px 10px;top:-14px}
+}
+@media(prefers-reduced-motion:reduce){.ttd-chevron{transition:none}}

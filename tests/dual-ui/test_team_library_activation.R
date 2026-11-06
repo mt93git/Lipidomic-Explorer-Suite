@@ -14,18 +14,18 @@ run <- function(mode='ok', values=args) {
       stopifnot(method=='PUT',identical(token,'temporary-secret'),identical(names(body),'password'))
       if(mode=='putfail') stop('SECRET update error')
     }
-    if(path=='/logout') {stopifnot(method=='POST',identical(token,'temporary-secret'));if(mode=='logoutfail')stop('SECRET logout error')}
+    if(path=='/logout?scope=local') {stopifnot(method=='POST',identical(token,'temporary-secret'));if(mode=='logoutfail')stop('SECRET logout error')}
     invisible(NULL)
   }
   error <- tryCatch({do.call(team_library_activate,c(values,list(call=stub)));NULL},error=function(e)conditionMessage(e))
   if(!is.null(error)) stopifnot(!grepl('SECRET|temporary-secret',error))
   list(calls=calls,error=error)
 }
-x <- run(); stopifnot(is.null(x$error),identical(vapply(x$calls,`[[`,'','path'),c('/verify','/user','/logout')))
-x <- run('mismatch');stopifnot(!is.null(x$error),identical(vapply(x$calls,`[[`,'','path'),c('/verify','/logout')))
+x <- run(); stopifnot(is.null(x$error),identical(vapply(x$calls,`[[`,'','path'),c('/verify','/user','/logout?scope=local')))
+x <- run('mismatch');stopifnot(!is.null(x$error),identical(vapply(x$calls,`[[`,'','path'),c('/verify','/logout?scope=local')))
 x <- run('expired');stopifnot(!is.null(x$error),length(x$calls)==1L)
-x <- run('putfail');stopifnot(!is.null(x$error),tail(x$calls,1)[[1]]$path=='/logout')
-x <- run('logoutfail');stopifnot(is.null(x$error),tail(x$calls,1)[[1]]$path=='/logout')
+x <- run('putfail');stopifnot(!is.null(x$error),tail(x$calls,1)[[1]]$path=='/logout?scope=local')
+x <- run('logoutfail');stopifnot(is.null(x$error),tail(x$calls,1)[[1]]$path=='/logout?scope=local')
 for(field in names(args)) {
   invalid <- args
   invalid[[field]] <- switch(field,email='bad',code='short',type='signup',password='short',confirm='different')

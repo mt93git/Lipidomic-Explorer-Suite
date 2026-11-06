@@ -15,11 +15,19 @@
     var nav = document.createElement('div'); nav.className = 'tc-navigation'; nav.setAttribute('aria-label','Canvas navigation');
     nav.innerHTML = '<details class="tc-map" open><summary>Minimap</summary><svg tabindex="0" role="img" aria-label="Canvas minimap. Click or drag to navigate; use arrow keys to pan." preserveAspectRatio="none"><g class="tc-map-nodes"></g><rect class="tc-map-window"/></svg></details><div class="tc-zoom-controls" role="group" aria-label="Canvas zoom"><button type="button" class="tc-zoom-out" aria-label="Zoom out">−</button><button type="button" class="tc-zoom-reset" aria-label="Reset canvas zoom to 100%" title="Reset to 100%">100%</button><button type="button" class="tc-zoom-in" aria-label="Zoom in">+</button><button type="button" class="tc-zoom-fit">Fit all</button></div>';
     shell.appendChild(nav);
+    // Collapsed or open, the minimap keeps the person's last choice in this browser.
+    var MAP_OPEN_KEY='team.canvas.minimap.open',mapDetails=nav.querySelector('.tc-map');
+    try{if(localStorage.getItem(MAP_OPEN_KEY)==='closed')mapDetails.open=false;}catch(e){}
+    mapDetails.addEventListener('toggle',function(){try{localStorage.setItem(MAP_OPEN_KEY,mapDetails.open?'open':'closed');}catch(e){}});
     // The minimap can be moved anywhere inside the canvas; its place is remembered
     // per browser and pulled back inside when the canvas gets smaller.
     var grip=document.createElement('button');grip.type='button';grip.className='tc-map-grip';grip.textContent='⠿';
     grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the minimap';nav.appendChild(grip);
-    var MAP_KEY='team.canvas.minimap.position';
+    // `home` is where the person put the box ([x,y] in shell pixels; null = its CSS corner). It is
+    // shown there unless that would cover a card (placeNav() below), and only `home` is ever saved.
+    var MAP_KEY='team.canvas.minimap.position',home=null;
+    function setPos(x,y){[['left',x+'px'],['top',y+'px'],['bottom','auto'],['right','auto']].forEach(function(p){if(nav.style.getPropertyValue(p[0])!==p[1]||nav.style.getPropertyPriority(p[0])!=='important')nav.style.setProperty(p[0],p[1],'important');});}
+    function clearPos(){['left','top','bottom','right'].forEach(function(p){if(nav.style.getPropertyValue(p))nav.style.removeProperty(p);});}
     function placeMap(x,y,save){
       // A hidden canvas (compose view, 3D cell) measures 0: never clamp or save then.
       if(!shell.clientWidth||!shell.clientHeight||!nav.offsetWidth)return;
@@ -28,9 +36,10 @@
       // Never over the floating toolbar: drop below it when the rectangles would meet.
       var tb=root.querySelector('.tc-toolbar'),sr=shell.getBoundingClientRect();
       if(tb&&tb.offsetParent){var t=tb.getBoundingClientRect(),l=t.left-sr.left,tp=t.top-sr.top;if(x<l+t.width&&x+nav.offsetWidth>l&&y<tp+t.height&&y+nav.offsetHeight>tp)y=Math.min(maxY,Math.round(tp+t.height+8));}
-      nav.style.setProperty('left',x+'px','important');nav.style.setProperty('top',y+'px','important');
-      nav.style.setProperty('bottom','auto','important');nav.style.setProperty('right','auto','important');nav.classList.add('is-placed');
+      // While moved aside, placeNav() decides on the next frame whether the new place is free (no flicker).
+      home=[x,y];if(!nav.classList.contains('tc-nav-moved')||nav.classList.contains('is-dragging'))setPos(x,y);nav.classList.add('is-placed');
       if(save){try{localStorage.setItem(MAP_KEY,JSON.stringify({x:x,y:y}));}catch(e){}}
+      scheduleNav();
     }
     function restoreMap(){var saved=null;try{saved=JSON.parse(localStorage.getItem(MAP_KEY)||'null');}catch(e){}
       if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)&&shell.clientWidth)placeMap(saved.x,saved.y,false);}
@@ -41,7 +50,7 @@
       grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
     grip.addEventListener('keydown',function(e){var d={ArrowLeft:[-16,0],ArrowRight:[16,0],ArrowUp:[0,-16],ArrowDown:[0,16]}[e.key];if(!d)return;e.preventDefault();placeMap(nav.offsetLeft+d[0],nav.offsetTop+d[1],true);});
     // Pull a placed minimap back inside when the visible canvas shrinks.
-    if(window.ResizeObserver)new ResizeObserver(function(){if(nav.classList.contains('is-placed'))placeMap(nav.offsetLeft,nav.offsetTop,false);else restoreMap();}).observe(shell);
+    if(window.ResizeObserver)new ResizeObserver(function(){if(home)placeMap(home[0],home[1],false);else restoreMap();scheduleNav();}).observe(shell);
     requestAnimationFrame(function(){requestAnimationFrame(restoreMap);});
     var focusButton=document.createElement('button');focusButton.type='button';focusButton.className='tc-focus-toggle';focusButton.textContent='Expand canvas';focusButton.setAttribute('aria-pressed','false');
     var toolbar=root.querySelector('.tc-mode-tabs')||root.querySelector('.tc-toolbar')||nav;toolbar.appendChild(focusButton);
@@ -73,7 +82,7 @@
       root.classList.toggle('tc-focus-mode',enabled);focusButton.textContent=enabled?'Exit expanded canvas':'Expand canvas';focusButton.setAttribute('aria-pressed',String(enabled));refresh();window.dispatchEvent(new Event('resize'));
     }
     focusButton.addEventListener('click',function(){setFocusMode(!root.classList.contains('tc-focus-mode'));});
-    document.addEventListener('keydown',function(event){if(event.key==='Escape'&&root.classList.contains('tc-focus-mode')){event.preventDefault();setFocusMode(false);focusButton.focus();}});
+    document.addEventListener('keydown',function(event){if(event.key==='Escape'&&!event.defaultPrevented&&root.classList.contains('tc-focus-mode')){event.preventDefault();setFocusMode(false);focusButton.focus();}});
     var minus=nav.querySelector('.tc-zoom-out'), plus=nav.querySelector('.tc-zoom-in'), reset=nav.querySelector('.tc-zoom-reset'), map=nav.querySelector('svg'), nodes=nav.querySelector('.tc-map-nodes'), frame=nav.querySelector('.tc-map-window');
     function bounds() { return {w:board.offsetWidth,h:board.offsetHeight}; }
     // paint() runs on every scroll/drag frame. Write only real changes: on this page any
@@ -98,7 +107,8 @@
       var top=scroll.getBoundingClientRect().top+window.scrollY;
       var viewport=window.visualViewport?window.visualViewport.height:window.innerHeight;
       // The shell shows canvas status as a floating notice, so no bottom strip to reserve.
-      var height=Math.max(300,viewport-top-(root.classList.contains('ts-shell')?8:42));
+      // A band reserved for the navigation box (placeNav) comes out of the board, not the page.
+      var height=Math.max(300,viewport-top-(root.classList.contains('ts-shell')?8:42)-navInset);
       var value=Math.round(height)+'px';if(scroll.style.height!==value)scroll.style.height=value;
     }
     function paint() {
@@ -120,20 +130,128 @@
         var rect=document.createElementNS('http://www.w3.org/2000/svg','rect');rect.setAttribute('rx',12);
         rect.appendChild(document.createElementNS('http://www.w3.org/2000/svg','title'));nodes.appendChild(rect);
       }
+      var contentRight=0,contentBottom=0;
       cards.forEach(function(n,i){
-        var r=nodes.children[i];
+        var r=nodes.children[i];contentRight=Math.max(contentRight,n.offsetLeft+n.offsetWidth);contentBottom=Math.max(contentBottom,n.offsetTop+n.offsetHeight);
         setAttr(r,'x',n.offsetLeft);setAttr(r,'y',n.offsetTop);setAttr(r,'width',n.offsetWidth);setAttr(r,'height',n.offsetHeight);
         var label=(n.querySelector('strong')||n).textContent.slice(0,150);if(r.firstChild.textContent!==label)r.firstChild.textContent=label;
       });
+      // The minimap is offered only when zoomed out and the figures, as drawn at this zoom, still
+      // overflow the viewport; the zoom controls always stay. Without CSS zoom the scale stays 100%: no minimap.
+      // "Below 100%" is what the Reset button shows: a fitted 99.6% reads 100%, and has no minimap either.
+      var mapOff=!(Math.round(scale*100)<100&&mapNeeded(contentRight,contentBottom,scale));
+      if(nav.classList.contains('tc-map-off')!==mapOff){nav.classList.toggle('tc-map-off',mapOff);if(home)requestAnimationFrame(function(){placeMap(home[0],home[1],false);});scheduleNav();}
       setAttr(frame,'x',scroll.scrollLeft/scale);setAttr(frame,'y',scroll.scrollTop/scale);setAttr(frame,'width',Math.min(w,scroll.clientWidth/scale));setAttr(frame,'height',Math.min(h,scroll.clientHeight/scale));
       var percent=Math.round(scale*100)+'%';if(reset.textContent!==percent)reset.textContent=percent;
       var low=!zoomSupported||scale<=.05,high=!zoomSupported||scale>=2;if(minus.disabled!==low)minus.disabled=low;if(plus.disabled!==high)plus.disabled=high;
     }
-    function refresh(){if(!queued){queued=true;requestAnimationFrame(paint);}}
+    // World content edge (right, bottom) drawn at zoom `z` is larger than the viewport.
+    function mapNeeded(right,bottom,z){return right*z>scroll.clientWidth||bottom*z>scroll.clientHeight;}
+    function refresh(){if(!queued){queued=true;requestAnimationFrame(paint);}scheduleNav();}
+    // The navigation box never covers a card's header (title, status badge) or its action toolbar,
+    // selected or not, and it is never hidden: zoom, Reset, Fit and move stay usable. Where its own
+    // place would meet one, it is shown (unsaved) in the first free corner of the canvas. When no
+    // corner is free the canvas reserves a band at its bottom for it (.tc-nav-inset): the cards end
+    // above the band and scroll clear of it. It goes back once its place is free; not while dragged.
+    var navQueued=false,navInset=0,cssOwn=null;
+    function meets(a,b){return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;}
+    // Screen rectangles to keep clear: each card's header strip, plus room for its action toolbar
+    // above it (card_figure.js puts it there, or under the header at the canvas top edge). Hover-only
+    // toolbars count too, since hovering any card shows them. Toolbar and library handle as well.
+    // Open card popovers count too: RC4's ⋯ menu opens above the footer, outside the bar's box, and so
+    // does any disclosure a card control has open (aria-expanded + aria-controls).
+    // Cards only move with the canvas scroll between changes, so their rectangles are measured once per
+    // change (cards, their style or class, a toolbar mode, a menu opening, a size, the zoom) and shifted by
+    // the scroll since. A toolbar floating outside its card (fixed, re-placed by card_figure.js) is read live.
+    var obsCache=null;
+    function dropObstacles(){obsCache=null;}
+    function popups(scope,skip){
+      var out=[];
+      scope.querySelectorAll('[aria-expanded="true"][aria-controls]').forEach(function(t){
+        if(skip&&skip(t))return;
+        var p=document.getElementById(t.getAttribute('aria-controls'));
+        if(!p||p.hidden||!p.getClientRects().length)return;var r=p.getBoundingClientRect();if(r.width&&r.height)out.push(r);
+      });
+      return out;
+    }
+    function shown(el){var cs=getComputedStyle(el);return cs.visibility!=='hidden'&&cs.display!=='none';}
+    function cardObstacles(ox,oy,key){
+      if(obsCache&&obsCache.key===key)return obsCache;
+      var cards=[],live=[],rel=function(r){return {left:r.left-ox,right:r.right-ox,top:r.top-oy,bottom:r.bottom-oy};};
+      board.querySelectorAll('.tc-node:not(.tc-tab-hidden)').forEach(function(n){
+        var r=n.getBoundingClientRect();if(!r.width||!r.height)return;
+        var head=n.querySelector(':scope > .tc-node-head'),h=head&&head.getBoundingClientRect(),hb=h&&h.height?h.bottom:r.top+36;
+        var entry={left:r.left-ox,right:r.right-ox,top:r.top-oy,hb:hb-oy,rects:[]};
+        var bar=head&&head.querySelector(':scope > .tc-card-actions'),floating=bar&&!bar.classList.contains('tc-card-docked');
+        if(floating)live.push(bar);
+        else if(bar&&shown(bar)){var b=bar.getBoundingClientRect();if(b.width&&b.height)entry.rects.push(rel(b));}
+        // RC4's card footer (card_frame.js .tc-card-foot), where that bar is painted as Edit · Duplicate · ⋯.
+        var foot=n.querySelector(':scope > .tc-card-foot'),f=foot&&foot.getBoundingClientRect();if(f&&f.width&&f.height)entry.rects.push(rel(f));
+        popups(n,function(t){return floating&&bar.contains(t);}).forEach(function(p){entry.rects.push(rel(p));});
+        cards.push(entry);
+      });
+      obsCache={key:key,cards:cards,live:live};
+      return obsCache;
+    }
+    // grow: the band's height while it is reserved. A bar floating along the view's lower edge
+    // (card_figure.js) follows that edge, so leaving the band would bring it back down by up to `grow`:
+    // it counts there too, or the box would hop in and out of the band on its own.
+    function obstacles(areaTop,grow){
+      var out=[],ACT=34,sr=scroll.getBoundingClientRect(),ox=sr.left-scroll.scrollLeft,oy=sr.top-scroll.scrollTop;
+      var c=cardObstacles(ox,oy,[scale,sr.width,sr.height,scroll.scrollWidth,scroll.scrollHeight].join());
+      c.cards.forEach(function(e){
+        var top=e.top+oy;
+        out.push({left:e.left+ox,right:e.right+ox,top:top-ACT,bottom:e.hb+oy+(top-ACT<areaTop+2?ACT:0)});
+        e.rects.forEach(function(r){out.push({left:r.left+ox,right:r.right+ox,top:r.top+oy,bottom:r.bottom+oy});});
+      });
+      c.live.forEach(function(bar){
+        if(!bar.isConnected)return;
+        if(shown(bar)){var b=bar.getBoundingClientRect();if(b.width&&b.height){out.push(b);
+          var vb=Math.min(window.innerHeight,sr.bottom),n=grow&&b.bottom>=vb-6&&bar.closest('.tc-node');
+          if(n){var d=Math.min(n.getBoundingClientRect().bottom,window.innerHeight,vb+grow)-vb;if(d>0)out.push({left:b.left,right:b.right,top:b.top+d,bottom:b.bottom+d});}}}
+        popups(bar).forEach(function(p){out.push(p);});
+      });
+      root.querySelectorAll('.tc-toolbar,.tc-layout>.tc-library-edge-toggle').forEach(function(c){if(c.offsetParent)out.push(c.getBoundingClientRect());});
+      return out;
+    }
+    function placeNav(){
+      navQueued=false;
+      if(dragging||nav.classList.contains('is-dragging')||!shell.clientWidth||!shell.clientHeight||!nav.offsetWidth)return;
+      var sr=shell.getBoundingClientRect(),W=shell.clientWidth,H=shell.clientHeight,w=nav.offsetWidth,h=nav.offsetHeight,m=window.innerWidth<=720?6:12;
+      // Own place: the saved one, or the stylesheet corner, measured without the temporary move. While
+      // moved, the measure is reused until a size changes (no style writes on every scroll frame).
+      var own=home;
+      if(!own){if(!cssOwn||!nav.classList.contains('tc-nav-moved')||[W,H,w,h].join()!==cssOwn[2]){clearPos();cssOwn=[nav.offsetLeft,nav.offsetTop,[W,H,w,h].join()];}own=cssOwn;}
+      var top=m,tb=root.querySelector('.tc-toolbar');
+      if(tb&&tb.offsetParent){var t=tb.getBoundingClientRect();if(t.bottom>sr.top&&t.top<sr.top+H)top=Math.max(top,Math.round(t.bottom-sr.top+8));}
+      var right=Math.max(m,W-w-m-(scroll.offsetWidth-scroll.clientWidth)),bottom=Math.max(top,H-h-m-(navInset?0:scroll.offsetHeight-scroll.clientHeight));
+      // H is the whole shell, band included: the same cards meet the same places in both modes.
+      var list=[own,[m,bottom],[right,bottom],[right,top],[m,top]],obs=obstacles(sr.top,navInset),pick=null;
+      for(var i=0;i<list.length&&!pick;i++){
+        var x=list[i][0],y=list[i][1],box={left:sr.left+x-4,top:sr.top+y-4,right:sr.left+x+w+4,bottom:sr.top+y+h+4};
+        if(!obs.some(function(o){return meets(o,box);}))pick=list[i];
+      }
+      // Leaving the band grows the board's view; if that would pull the scroll back, the cards would
+      // slide under the box again: keep the band until the person pans.
+      if(pick&&navInset){var ch=scroll.clientHeight+navInset;if(scroll.scrollTop>Math.max(ch,board.offsetHeight*scale)-ch+.5)pick=null;}
+      var inset=pick?0:h+2*m;
+      if(inset!==navInset){
+        navInset=inset;shell.classList.toggle('tc-nav-inset',!!inset);
+        if(inset)shell.style.setProperty('padding-bottom',inset+'px');else shell.style.removeProperty('padding-bottom');
+        fitViewport();sizeSpace();refresh();H=shell.clientHeight;
+        // The view's lower edge moved without a scroll or a resize: card_figure.js re-places the
+        // floating card action bars that sit along it.
+        window.dispatchEvent(new CustomEvent('team-canvas-nav-inset',{detail:{inset:inset}}));
+      }
+      if(!pick)pick=[Math.max(m,Math.min(W-w-m,own[0])),H-h-m];
+      nav.classList.toggle('tc-nav-moved',pick!==own);
+      if(pick===own&&!home)clearPos();else setPos(Math.round(pick[0]),Math.round(pick[1]));
+    }
+    function scheduleNav(){if(!navQueued){navQueued=true;requestAnimationFrame(placeNav);}}
     function zoom(next) {
       next=zoomSupported?Math.max(.05,Math.min(2,next)):1; if(!Number.isFinite(next))return;
       var x=(scroll.scrollLeft+scroll.clientWidth/2)/scale,y=(scroll.scrollTop+scroll.clientHeight/2)/scale;
-      scale=next;api.scale=scale;sizeSpace();scroll.scrollLeft=x*scale-scroll.clientWidth/2;scroll.scrollTop=y*scale-scroll.clientHeight/2;paint();
+      scale=next;api.scale=scale;sizeSpace();scroll.scrollLeft=x*scale-scroll.clientWidth/2;scroll.scrollTop=y*scale-scroll.clientHeight/2;paint();scheduleNav();
       // Plots keep their logical size; re-check them once the zoom settles.
       clearTimeout(api.zoomFitTimer);api.zoomFitTimer=setTimeout(function(){if(window.TeamCanvas&&TeamCanvas.fitAllPlots)TeamCanvas.fitAllPlots();},120);
     }
@@ -177,7 +295,8 @@
     // Restore positions are data; adjust only the camera once a restored node
     // is available, and only if it does not fit in the visible viewport.
     var restoreNeedsFocus=false, userMoved=false, restorePlan=null, pendingTimer=null, pendingShown=0;
-    ['wheel','pointerdown','keydown'].forEach(function(name){scroll.addEventListener(name,function(){userMoved=true;},{passive:true});});
+    // Capture phase: a Move-mode pan (pointer_mode.js) stops the pointerdown inside the canvas, and still counts.
+    ['wheel','pointerdown','keydown'].forEach(function(name){scroll.addEventListener(name,function(){userMoved=true;},{passive:true,capture:true});});
     nav.addEventListener('click',function(){userMoved=true;});
     // A restored workspace is framed from its saved geometry, before its plots render
     // (they arrive one by one from the server). Until that camera is applied the view is
@@ -251,7 +370,7 @@
     };
     minus.addEventListener('click',function(){zoom(scale/1.25);});plus.addEventListener('click',function(){zoom(scale*1.25);});reset.addEventListener('click',function(){zoom(1);});
     var fitButton=nav.querySelector('.tc-zoom-fit');fitButton.disabled=!zoomSupported;
-    if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Use the minimap to pan.';
+    if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Scroll to pan.';
     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
     // Height covered at the top of the viewport by the floating toolbar plus room for its notices.
     function toolbarReserve(){var bar=root.querySelector('.tc-toolbar');return bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+48:16;}
@@ -267,8 +386,11 @@
       if(board.offsetWidth<right+40)board.style.width=(right+40)+'px';if(board.offsetHeight<bottom+40)board.style.height=(bottom+40)+'px';
       // Keep the fitted figures clear of the minimap (its height at the bottom).
       // ...and below the floating toolbar and its notice area, so no card header sits under them.
-      var reserve=nav.offsetParent?nav.offsetHeight+12:0,top=toolbarReserve(),usableH=Math.max(120,scroll.clientHeight-padding-top-reserve);
-      zoom(Math.min(1,(scroll.clientWidth-padding*2)/(right-x),usableH/(bottom-y)));scroll.scrollLeft=Math.max(0,(x+(right-x)/2)*scale-scroll.clientWidth/2);
+      // The minimap (its usual ~96 px when hidden now) is reserved only if it will show at the fitted zoom.
+      var mapH=mapDetails.getClientRects().length?mapDetails.offsetHeight:96,controls=nav.offsetParent?nav.offsetHeight+12-(mapDetails.getClientRects().length?mapH:0):0,top=toolbarReserve();
+      function fitScale(reserve){return Math.min(1,(scroll.clientWidth-padding*2)/(right-x),Math.max(120,scroll.clientHeight-padding-top-reserve)/(bottom-y));}
+      var next=fitScale(controls);if(nav.offsetParent&&Math.round(next*100)<100&&mapNeeded(right,bottom,next))next=fitScale(controls+mapH);
+      zoom(next);scroll.scrollLeft=Math.max(0,(x+(right-x)/2)*scale-scroll.clientWidth/2);
       var padTop=parseFloat(getComputedStyle(scroll).paddingTop)||0;scroll.scrollTop=Math.max(0,padTop+y*scale-top);refresh();
     }
     api.fitAll=fitAll;
@@ -280,14 +402,32 @@
     }
     map.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();dragging=true;map.focus();map.setPointerCapture(e.pointerId);navigate(e);});
     map.addEventListener('pointermove',function(e){if(dragging)navigate(e);});
-    ['pointerup','pointercancel','lostpointercapture'].forEach(function(name){map.addEventListener(name,function(){dragging=false;});});
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(name){map.addEventListener(name,function(){dragging=false;scheduleNav();});});
     map.addEventListener('keydown',function(e){var dx=e.key==='ArrowRight'?80:e.key==='ArrowLeft'?-80:0,dy=e.key==='ArrowDown'?80:e.key==='ArrowUp'?-80:0;if(dx||dy){e.preventDefault();scroll.scrollLeft+=dx;scroll.scrollTop+=dy;refresh();}});
-    scroll.addEventListener('scroll',refresh,{passive:true});window.addEventListener('resize',refresh);if(window.visualViewport)window.visualViewport.addEventListener('resize',refresh);nav.querySelector('details').addEventListener('toggle',function(){refresh();if(nav.classList.contains('is-placed'))requestAnimationFrame(function(){placeMap(nav.offsetLeft,nav.offsetTop,false);});});
-    var observer=new MutationObserver(function(events){if(events.some(function(e){return e.target===board || (e.target.classList && e.target.classList.contains('tc-node'));})){refresh();if(restoreNeedsFocus)requestAnimationFrame(focusRestoredNode);}});
-    observer.observe(board,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    scroll.addEventListener('scroll',refresh,{passive:true});window.addEventListener('resize',refresh);if(window.visualViewport)window.visualViewport.addEventListener('resize',refresh);nav.querySelector('details').addEventListener('toggle',function(){refresh();if(home)requestAnimationFrame(function(){placeMap(home[0],home[1],false);});});
+    // A card popover opening or closing (card_frame.js ⋯: `hidden` on the menu, aria-expanded on its toggle).
+    function popupChange(e){return e.type==='attributes'&&(e.attributeName==='hidden'||e.attributeName==='aria-expanded');}
+    var observer=new MutationObserver(function(events){if(events.some(function(e){return e.target===board || (e.target.classList && e.target.classList.contains('tc-node'));})){dropObstacles();refresh();if(restoreNeedsFocus)requestAnimationFrame(focusRestoredNode);}
+      // card_figure.js places a card's action toolbar (style, docked or floating class) after panning or selection,
+      // or a card menu opened: re-check the navigation box.
+      else if(events.some(function(e){return popupChange(e)||(e.target.classList && e.target.classList.contains('tc-card-actions'));})){dropObstacles();scheduleNav();}});
+    observer.observe(board,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class','hidden','aria-expanded']});
+    // When the board's view gets shorter (the inspector row opening under it on narrow screens, the
+    // navigation band, the docked companion row), a selected card whose header was in view stays in view
+    // down to its footer (RC4's Edit · Duplicate · ⋯ at the card's bottom edge): scroll by what was cut,
+    // never past the header's top, so a card taller than the view keeps its header.
+    var viewH=0;
+    function keepSelectedInView(){
+      var h=scroll.clientHeight,before=viewH;viewH=h;if(!before||h>=before)return;
+      var head=board.querySelector('.tc-node.is-selected:not(.tc-tab-hidden) > .tc-node-head');if(!head)return;
+      var top=scroll.getBoundingClientRect().top+scroll.clientTop,r=head.getBoundingClientRect(),end=Math.max(r.bottom,head.parentNode.getBoundingClientRect().bottom);
+      if(r.top<top||r.top>=top+before)return;
+      var cut=end+8-(top+h);if(cut>0)scroll.scrollTop+=Math.min(cut,r.top-top);
+    }
     // Shown for the first time (size 0 -> N): frame a restored workspace before this frame paints.
-    if(window.ResizeObserver){var ro=new ResizeObserver(function(){if(restoreNeedsFocus&&restorePlan)focusRestoredNode();refresh();});ro.observe(scroll);ro.observe(board);var intro=root.querySelector('.tc-intro');if(intro)ro.observe(intro);var tools=root.querySelector('.tc-toolbar');if(tools)ro.observe(tools);}
+    window.addEventListener('resize',dropObstacles);
+    if(window.ResizeObserver){var ro=new ResizeObserver(function(){dropObstacles();keepSelectedInView();if(restoreNeedsFocus&&restorePlan)focusRestoredNode();refresh();});ro.observe(scroll);ro.observe(board);var intro=root.querySelector('.tc-intro');if(intro)ro.observe(intro);var tools=root.querySelector('.tc-toolbar');if(tools)ro.observe(tools);}
     var visibility=new MutationObserver(refresh);visibility.observe(root,{attributes:true,attributeFilter:['class']});var panel=root.querySelector('#tc-workspace-panel');if(panel)visibility.observe(panel,{attributes:true,attributeFilter:['hidden']});
-    api.refresh=refresh;refresh();
+    api.refresh=function(){dropObstacles();refresh();};refresh();
   };
 })();

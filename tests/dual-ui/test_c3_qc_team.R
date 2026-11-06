@@ -66,9 +66,10 @@ cat("PASS: pending PCA gets a visible message; scientific validation and real er
 # 3. Team runtime on synthetic fixtures (production test_guided_qc_readiness flow).
 Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_TEAM_WORKSPACE = "")
 source("R/global.R")
-# Production defines this in R/frontends/team/workspace.R (imported separately).
-if (!exists("team_workspace_enabled", mode = "function"))
-  team_workspace_enabled <- function() identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE"), "1")
+# Since production W5, workspace.R turns the workspace on for every Team session. This block
+# still covers the dormant non-workspace review path, so the switch follows the env var here.
+team_workspace_enabled <- function() identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE"), "1")
+Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE = "") # workspace.R sets it to 1 when sourced
 
 controls <- list(normalizationMethod = "none", pcaMode = "omics", maxPCs = 3,
   useImputation = FALSE, imputeZerosPerFile = TRUE, imputeRemainingNAtoZero = TRUE,

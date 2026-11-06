@@ -15,13 +15,15 @@
     var note = document.createElement('p'); note.textContent = 'Finished figure. Choose Edit to make changes.';
     var edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Edit figure'; locked.append(note, edit);
     var body = document.createElement('div'); body.className = 'tc-inspector-body';
-    // Data hosts the card's module content (card_figure.js); Style keeps the moved
-    // .tc-settings; Statistics hosts a node's .tc-statistics panel or explains why it has none.
+    // Data hosts the card's module content (card_figure.js); Appearance keeps the moved
+    // .tc-settings; Statistics hosts a node's .tc-statistics panel or explains why it has none;
+    // Export holds the card's downloads (moved, or mirrored by canvas_inspector_export.js).
     var tabs = document.createElement('div'); tabs.className = 'tc-inspector-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Property groups');
     var statsBody = document.createElement('div'); statsBody.className = 'tc-inspector-body tc-inspector-statistics';
     var dataBody = document.createElement('div'); dataBody.className = 'tc-inspector-body tc-inspector-data';
+    var exportBody = document.createElement('div'); exportBody.className = 'tc-inspector-body tc-inspector-export';
     var activeTab = 'appearance', movedStats = null, statsHome = null, movedData = [], dataPending = 0;
-    var tabList = [['data', 'Data', dataBody], ['appearance', 'Style', body], ['statistics', 'Statistics', statsBody]].map(function (spec) {
+    var tabList = [['data', 'Data', dataBody], ['appearance', 'Appearance', body], ['statistics', 'Statistics', statsBody], ['export', 'Export', exportBody]].map(function (spec) {
       var button = document.createElement('button'); button.type = 'button'; button.className = 'tc-inspector-tab'; button.textContent = spec[1];
       button.id = 'tc-inspector-tab-' + spec[0]; spec[2].id = 'tc-inspector-panel-' + spec[0];
       button.setAttribute('role', 'tab'); button.setAttribute('aria-controls', spec[2].id); spec[2].setAttribute('role', 'tabpanel'); spec[2].setAttribute('aria-labelledby', button.id);
@@ -29,13 +31,15 @@
       tabs.appendChild(button); return {key: spec[0], button: button, panel: spec[2]};
     });
     tabs.addEventListener('keydown', function (event) {
-      var index = tabList.findIndex(function (t) { return t.button === document.activeElement; }), next = index;
+      // A finished figure offers only Export: arrows move among the tabs on offer.
+      var shown = tabList.filter(function (t) { return !t.button.hidden; });
+      var index = shown.findIndex(function (t) { return t.button === document.activeElement; }), next = index;
       if (index < 0) return;
-      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = (index + (event.key === 'ArrowRight' ? 1 : tabList.length - 1)) % tabList.length;
-      else if (event.key === 'Home') next = 0; else if (event.key === 'End') next = tabList.length - 1; else return;
-      event.preventDefault(); activeTab = tabList[next].key; state(); tabList[next].button.focus();
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = (index + (event.key === 'ArrowRight' ? 1 : shown.length - 1)) % shown.length;
+      else if (event.key === 'Home') next = 0; else if (event.key === 'End') next = shown.length - 1; else return;
+      event.preventDefault(); activeTab = shown[next].key; state(); shown[next].button.focus();
     });
-    inspector.append(header, tabs, locked, dataBody, body, statsBody);
+    inspector.append(header, tabs, locked, dataBody, body, statsBody, exportBody);
     layout.insertBefore(inspector, layout.querySelector('.tc-main')); root.classList.add('tc-contextual-editing');
     var trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'tc-properties-toggle'; trigger.textContent = 'Properties'; trigger.disabled = true;
     trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-controls', inspector.id); root.querySelector('.tc-toolbar').appendChild(trigger);
@@ -47,8 +51,11 @@
       if (movedStats && statsHome && statsHome.parentNode) statsHome.replaceWith(movedStats); else if (movedStats) movedStats.remove(); movedStats = statsHome = null;
       statsBody.textContent = '';
       movedData.forEach(function (m) { if (m.home.parentNode) m.home.replaceWith(m.el); else dropOrphan(m.el); }); movedData = [];
-      dataBody.textContent = '';
+      dataBody.textContent = ''; exportBody.textContent = '';
     }
+    // Download rows (plot image buttons, Plot data CSV, module download links) go to Export.
+    function exportRow(el) { return !!(window.TeamInspectorExport && TeamInspectorExport.isExport(el)); }
+    function renderExport() { if (window.TeamInspectorExport && node) TeamInspectorExport.render(node, exportBody, dataBody); }
     // The card's source content was replaced (renderUI refresh, return) while
     // its controls sat here: unbind them so Shiny never sees duplicate ids.
     function dropOrphan(el) { if (window.Shiny && Shiny.unbindAll) Shiny.unbindAll(el, true); el.remove(); }
@@ -61,8 +68,9 @@
       }
       // Retry for a while (time, not mutation count) while the plot is still rendering.
       dataPending = !chrome.length && !n.querySelector('.gc-root') ? Date.now() + 15000 : 0;
-      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; dataBody.appendChild(el); });
-      if (!chrome.length) {
+      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; (exportRow(el) ? exportBody : dataBody).appendChild(el); });
+      // Downloads went to Export: a card whose only chrome was a download row still explains Data.
+      if (!chrome.length || !dataBody.querySelector(':scope > :not(.tc-inspector-data-settings)')) {
         var note = document.createElement('p'); note.className = 'tc-inspector-data-note';
         note.textContent = n.querySelector('.gc-root') ? 'Group comparison keeps its data controls on the figure.' : 'This figure has no data controls.';
         dataBody.appendChild(note);
@@ -87,7 +95,7 @@
     }
     function focusFirstControl() {
       if (!locked.hidden) { edit.focus(); return; }
-      var panel = activeTab === 'statistics' && !statsBody.hidden ? statsBody : activeTab === 'data' && !dataBody.hidden ? dataBody : body;
+      var open = tabList.find(function (t) { return t.key === activeTab && !t.panel.hidden; }), panel = open ? open.panel : body;
       var controls = Array.from(panel.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])'));
       var first = controls.find(function (control) { return control.getClientRects().length > 0 && !control.closest('[hidden]') && !control.closest('[inert]'); });
       (first || close).focus();
@@ -108,15 +116,19 @@
       if (!node.isConnected) { node = null; trigger.disabled = true; hide(); return; }
       heading.textContent = (node.querySelector('.tc-node-head strong') || {}).textContent || 'Selected object';
       var finished = node.classList.contains('tc-finished'), focusedControl = finished && (body.contains(document.activeElement) || statsBody.contains(document.activeElement));
-      var plot = !node.classList.contains('tc-illustration'); if (!plot) activeTab = 'appearance';
+      var plot = !node.classList.contains('tc-illustration');
+      // A finished plot keeps its downloads (Export); illustrations have Appearance only.
+      function offered(key) { return plot ? !finished || key === 'export' : key === 'appearance' && !finished; }
+      if (!offered(activeTab)) activeTab = plot && finished ? 'export' : 'appearance';
       // The retry window starts when the card becomes editable, not when it was selected.
       if (!finished && node.__tcWasFinished && !movedData.length) dataPending = Date.now() + 15000;
       node.__tcWasFinished = finished;
       // A finished card that becomes editable (Edit) gains module content: fill Data
       // then, retrying while its plot is still rendering.
       if (plot && !finished && !movedData.length && dataPending && Date.now() < dataPending && !inspector.hidden) { var until = dataPending; dataBody.textContent = ''; fillData(node); dataPending = movedData.length ? 0 : until; }
-      locked.hidden = !finished; tabs.hidden = finished || !plot; body.inert = statsBody.inert = dataBody.inert = finished;
-      tabList.forEach(function (t) { var on = t.key === activeTab; t.button.setAttribute('aria-selected', String(on)); t.button.tabIndex = on ? 0 : -1; t.panel.hidden = finished || !on; });
+      locked.hidden = !finished; tabs.hidden = !plot; body.inert = statsBody.inert = dataBody.inert = finished;
+      tabList.forEach(function (t) { var on = t.key === activeTab && offered(t.key); t.button.hidden = !offered(t.key); t.button.setAttribute('aria-selected', String(on)); t.button.tabIndex = on ? 0 : -1; t.panel.hidden = !on; });
+      renderExport();
       if (focusedControl) edit.focus();
     }
     // A window 'resize' makes Shiny re-measure and re-theme every output on the page,
@@ -171,7 +183,7 @@
     window.addEventListener('blur', function () { pointerActive = false; });
     // Native Group controls already own their interaction and report. Do not
     // open Appearance on focus/click or move its controls under the pointer.
-    function ownGroupControls(event){var own=event.target.closest('.gc-controls,.gc-inspector');if(!own)return false;var next=own.closest('.tc-node');if(next){if(!inspector.hidden)hide();node=next;trigger.disabled=false;}return true;}
+    function ownGroupControls(event){var own=event.target.closest('.gc-controls,.gc-inspector');if(!own)return false;if(window.TeamInspectorExport&&TeamInspectorExport.mirroring&&TeamInspectorExport.mirroring())return true;/* an Export mirror ran this download: keep the inspector open */var next=own.closest('.tc-node');if(next){if(!inspector.hidden)hide();node=next;trigger.disabled=false;}return true;}
     root.addEventListener('click', function (event) { if(ownGroupControls(event))return;var next = event.target.closest('.tc-node'); if (next && !event.target.closest('[data-canvas-data-settings]')) select(next); });
     root.addEventListener('focusin', function (event) { if(ownGroupControls(event))return;var next = event.target.closest('.tc-node'); if (next && !pointerActive && !event.target.closest('[data-canvas-data-settings]')) select(next); });
     window.addEventListener('team-canvas-selection', function (event) {

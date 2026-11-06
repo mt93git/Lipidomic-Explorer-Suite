@@ -1,0 +1,16 @@
+/* Canvas pointer mode (pointer_mode.js): Select / Move pair in the shell's left rail, hand cursors, on the
+   Draft canvas and on the Figure page's desk alike. The pair lives inside the rail (a fixed grid column),
+   so no rectangle the mascot avoids changes size, and the rail is the same on both pages. */
+#team-canvas-root .ts-rail>.tc-pointer-mode{order:1;display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px;padding-top:10px;border-top:1px solid var(--ts-line,#e3e7ec)}
+#team-canvas-root .ts-rail>.tc-pointer-mode button{display:grid;place-items:center;box-sizing:border-box;width:36px;height:36px;margin:0;padding:0;border:0;border-radius:8px;background:transparent;color:#4b5a69;cursor:pointer}
+#team-canvas-root .ts-rail>.tc-pointer-mode button:hover{background:#f1f4f7}
+#team-canvas-root .ts-rail>.tc-pointer-mode button[aria-pressed="true"]{background:var(--ts-tint,#eaf1f7);color:var(--ts-accent,#2d5f8a)}
+#team-canvas-root .ts-rail>.tc-pointer-mode svg{width:18px;height:18px}
+/* Move: the whole canvas (cards included) or the whole desk (page objects included) is a surface to drag;
+   nothing inside reacts to the pointer. */
+#team-canvas-root :is(.tc-scroll,.tc-preview-pages).is-hand,#team-canvas-root :is(.tc-scroll,.tc-preview-pages).is-hand *{cursor:grab!important}
+#team-canvas-root :is(.tc-scroll,.tc-preview-pages).is-panning,#team-canvas-root :is(.tc-scroll,.tc-preview-pages).is-panning *{cursor:grabbing!important}
+#team-canvas-root .tc-scroll.is-hand .tc-node{resize:none!important;user-select:none;-webkit-user-select:none}
+#team-canvas-root .tc-preview-pages.is-hand :is(.tc-paper,.tc-free-item){user-select:none;-webkit-user-select:none}
+/* One finger pans through the handler; pinch stays the browser's. */
+#team-canvas-root :is(.tc-scroll,.tc-preview-pages).is-hand{touch-action:pinch-zoom}

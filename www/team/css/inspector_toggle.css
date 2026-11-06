@@ -1,0 +1,27 @@
+/* Team Canvas: hideable inspector column (www/team/js/inspector_toggle.js). Team workspace Canvas only.
+   The toggle is a button in the shell's left rail (.ts-rail), after the Select / Move pair: the rail is a
+   fixed grid column the mascot already avoids, so no rectangle context_help.js measures changes size.
+   Hidden, the column stays laid out (invisible, no pointer, inert), so the companion's .tc-companion-home
+   keeps its centre and bottom and the chat's docking rect does not move. The home narrows to a reserved
+   companion strip (--ts-companion-strip, the resting mascot's width plus its margin) and the canvas takes
+   the column's track up to that strip: cards can never pan under the mascot's home. The centre is fixed by
+   the frozen mascot (context_help.js centres it in the home), so the canvas gains the column's left part.
+   That extension (.ts-inspector-extended, set by inspector_toggle.js) holds only while the chat is closed
+   and the mascot's current rect is clear of that part; otherwise the canvas keeps production's track.
+   The Figure page (canvas_preview.js embedInShell) takes the same canvas cell, so it takes the same track:
+   the toggle hides its right column (Object / Plots / Page, #tc-figure-column) exactly as it hides the
+   card inspector, and the page's desk gains the same width.
+   At <= 900 px the column stacks under the canvas (shell.css) and no toggle is offered. */
+#team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle{display:none}
+@media not all and (max-width:900px){
+ #team-canvas-root.ts-shell .tc-layout{--ts-companion-strip:136px}
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed.ts-inspector-extended:not(.ttd-open)>.tc-main,#team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed.ts-inspector-extended:not(.ttd-open)>#tc-preview-panel{grid-column:3/5;margin-right:calc((var(--ts-inspector,290px) - 1px + var(--ts-companion-strip)) / 2)}
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed:not(.ttd-open)>.ts-inspector-column{opacity:0;pointer-events:none}
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed.ts-inspector-extended:not(.ttd-open)>.ts-inspector-column>.tc-companion-home{align-self:center;width:var(--ts-companion-strip)}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle{order:2;display:grid;place-items:center;box-sizing:border-box;width:36px;height:36px;margin:4px 0 0;padding:0;border:0;border-radius:8px;background:transparent;color:#4b5a69;cursor:pointer}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle:hover{background:#f1f4f7;color:var(--ts-ink,#141b24)}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle[aria-expanded=true]{color:var(--ts-accent,#2d5f8a)}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle svg{width:18px;height:18px}
+ #team-canvas-root.ts-shell .tc-layout.ttd-open>.ts-rail>.ts-inspector-toggle{display:none}
+}
+#team-canvas-root.ts-shell .ts-inspector-toggle[aria-expanded=false] .ts-inspector-pane{opacity:0}

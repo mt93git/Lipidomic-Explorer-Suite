@@ -17,7 +17,7 @@ const {chromium} = require('../browser/ci/node_modules/playwright');
   const notice=page.locator('#team_library_disconnected');
   assert.equal(await notice.isVisible(),true);
   assert.match(await notice.textContent(),/Unsaved changes will be lost/);
-  assert.equal(await notice.locator('button').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(37, 99, 235)');
+  assert.equal(await notice.locator('button').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(45, 95, 138)','the notice action uses the Libreros blue (RC5: no Tailwind blue)');
   assert.equal(await page.locator('body').getAttribute('data-team-authenticated'),'false');
   await page.getByRole('button',{name:'Reload and sign in'}).click({trial:true});
   // A repeated disconnect keeps one notice and never navigates automatically.

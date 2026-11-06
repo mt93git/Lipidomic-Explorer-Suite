@@ -8,6 +8,6 @@
 .tc-node .gc-root button.tc-chip[aria-pressed=true] { background: #203d75 !important; color: white !important; }
 .gc-root button.tc-chip[aria-pressed=false] { background: white; color: #222; }
 .gc-plot { min-height: 380px; width: 100%; }
-.gc-report { max-height: 18rem; overflow: auto; white-space: pre-wrap; font-size: .8rem; }
+.gc-report { max-height: 18rem; overflow: auto; white-space: pre-wrap; font-size: .8125rem; }
 .gc-analysis-settings .btn-show-stats { display: none !important; }
 .gc-status:not(:empty) { padding: .6rem; background: #fff6d8; color: #493800; }

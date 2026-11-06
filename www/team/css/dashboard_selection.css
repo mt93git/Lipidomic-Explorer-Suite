@@ -12,5 +12,5 @@ body.team-workspace-app #team-canvas-root .tds-selection button[aria-pressed=fal
 
 .tds-collapsible{width:100%;border:1px solid #dce3e9;border-radius:8px;background:#fff}.tds-collapsible>summary{padding:9px 11px;color:#17375e;font:600 13px/1.4 system-ui;cursor:pointer}.tds-picker-body{display:flex;flex-wrap:wrap;gap:6px;padding:10px;max-height:220px;overflow:auto}.tds-picker-body .tds-search{flex-basis:100%;min-width:0}.tds-picker-body button[hidden]{display:none!important}
 
-.tds-class-catalog{display:flex;flex-wrap:wrap;gap:6px;width:100%;padding:2px 0 8px}.tds-class-count{font-size:11px;font-weight:400;opacity:.85;margin-left:5px}
+.tds-class-catalog{display:flex;flex-wrap:wrap;gap:6px;width:100%;padding:2px 0 8px}.tds-class-count{font-size:13px;font-weight:400;opacity:.85;margin-left:5px}
 body.team-workspace-app #team-canvas-root .tds-selection button[aria-pressed=mixed]{background:#eaf1f7!important;color:#17375e!important;border-color:#7595b6!important;box-shadow:inset 3px 0 #17375e}

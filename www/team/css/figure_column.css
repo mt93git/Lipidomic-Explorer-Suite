@@ -1,0 +1,39 @@
+/* Figure page right column: Object / Plots · N / Page (figure_column.js). Scoped to .tc-fc;
+   the host's own geometry (and its .tc-companion-home) is not styled here. */
+.tc-fc{display:flex;flex-direction:column;min-height:0;min-width:0;background:#fff;color:#31435b;font:13px/1.45 system-ui}
+.tc-fc[hidden]{display:none}
+#tc-figure-column>.tc-fc{flex:1 1 auto}
+.tc-fc-tabs{display:flex;gap:2px;flex:0 0 auto;padding:6px 10px 0;border-bottom:1px solid #dce3ed;background:#fff}
+.tc-fc .tc-fc-tab{flex:1 1 auto;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:#64758b;padding:9px 8px;font:600 13px system-ui;white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.tc-fc .tc-fc-tab[aria-selected=true]{color:#183b68;border-bottom-color:#315c89}
+.tc-fc .tc-fc-tab:focus-visible{--lab-focus-width:2px;--lab-focus-offset:-2px}
+.tc-fc-panel{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 16px}
+.tc-fc-panel[hidden]{display:none}
+/* Object: the moved inspector keeps its own rules; the column scrolls instead of its inline max-height. */
+.tc-fc-panel>.tc-free-inspector{display:block;box-sizing:border-box;min-width:0;max-height:none!important;overflow:visible;border:0;padding:0;background:#fff;font:13px/1.45 system-ui}
+.tc-fc-panel>.tc-free-inspector[hidden]{display:none}
+.tc-fc-panel>.tc-free-inspector .tc-object-header{top:-14px}
+.tc-fc-empty{margin:0;color:#64758b}
+.tc-fc-panel:has(>.tc-free-inspector:not([hidden]))>.tc-fc-empty{display:none}
+/* The page fills the editor once the inspector lives in the column. */
+.tc-document-editor.tc-fc-inspector-moved{grid-template-columns:minmax(0,1fr)}
+/* Plots: the "finished" rule, then the picker. */
+.tc-fc-howto{margin:0 0 14px;padding:10px 12px;border:1px solid #8ba7ca;border-radius:8px;background:#eaf1f7;color:#21456f}
+.tc-fc-howto h4{margin:0 0 4px;font:700 13px system-ui;color:#183b68}
+.tc-fc-howto p{margin:0 0 6px}
+.tc-fc-howto .tc-fc-howto-count{color:#6b4d16}
+.tc-fc-howto-count[hidden]{display:none}
+.tc-fc-howto-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tc-fc .tc-fc-howto-actions button{border:1px solid #c7d3e1;border-radius:7px;background:#fff;color:#315c89;padding:6px 10px;font:600 13px system-ui;cursor:pointer}
+.tc-fc .tc-fc-howto-actions button:disabled{opacity:.45;cursor:not-allowed}
+.tc-fc-panel>.tc-figure-plots{margin:0}
+.tc-fc-on-page{margin-left:6px;color:#2f6b3d;font-size:13px;font-weight:600}
+/* Page: Page setup stacks its controls in the narrow column. */
+.tc-fc-panel>.tc-page-settings{padding:0;border:0}
+.tc-fc-panel>.tc-page-settings .tc-preview-options{flex-direction:column;gap:12px;padding:8px 0 0}
+.tc-fc-panel>.tc-page-settings .tc-preview-options label{justify-content:space-between}
+.tc-fc button:focus-visible,.tc-fc select:focus-visible,.tc-fc input:focus-visible{--lab-focus-width:2px;--lab-focus-offset:2px}
+/* Standalone column (no shell host): a bordered block at the top of the figure page. */
+.tc-figure-column-fallback{border-block:1px solid #dce3ed;background:#fff}
+.tc-figure-column-fallback>.tc-fc>.tc-fc-panel{max-height:60dvh}
+@media(max-width:850px){.tc-fc .tc-fc-tab,.tc-fc .tc-fc-howto-actions button{min-height:44px}}

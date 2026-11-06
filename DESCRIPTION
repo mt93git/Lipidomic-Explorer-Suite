@@ -68,6 +68,7 @@ Imports:
 Suggests:
     BiocManager,
     openxlsx,
+    pdftools,
     writexl,
     rstudioapi,
     filelock,

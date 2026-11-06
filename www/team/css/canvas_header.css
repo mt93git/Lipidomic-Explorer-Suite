@@ -1,0 +1,87 @@
+/* Team shell: the Canvas has one header. Under the step bar (the 48px top bar) sits one white
+   header zone: the canvas tabs and the grouped toolbar share a row (from 901 px; stacked below),
+   and the toolbar band's status slot (canvas_band_status.css, reserved height) closes it with a
+   single hairline. The old page heading ("Your figure canvas") and the Workspace / Print preview
+   tabs stay in the DOM as proxy targets (shell.js, canvas_preview.js) but never render here.
+   Every control in the bar shares one style: 30px, ghost, 600 13px Nunito Sans, 6px radius;
+   the current/pressed state is the accent tint. Presentation only. Text #3b4855 on #fff is 9.4:1,
+   accent #2d5f8a on #eaf1f7 is 5.9:1, hint #5a6878 on #fff is 5.9:1.
+   This file is registered before shell.css, canvas_band_status.css, canvas_companion_dock.css and
+   canvas_tabs.css: every rule here outranks theirs by specificity, not by load order. */
+#team-canvas-root.ts-shell{--tc-header-h:42px}
+body.ts-shell-app #team-canvas-root>:is(.tc-intro,.tc-mode-tabs){display:none!important}
+
+/* ---- The header zone ------------------------------------------------------- */
+#team-canvas-root.ts-shell .tc-main>.tc-tabbar{min-height:var(--tc-header-h);align-items:center;padding:0 4px 0 8px;border-bottom:0;background:#fff}
+#team-canvas-root.ts-shell .tc-main>.tc-tabbar>.tc-canvas-tablist{align-items:center;padding:6px 4px;min-height:var(--tc-header-h);box-sizing:border-box}
+/* The docked toolbar is the header row itself, not a floating card. Its menus open over the
+   canvas, so it stacks with the tab bar (31, canvas_tabs.css), above the minimap (30). */
+#team-canvas-root.ts-shell .tc-main>.tc-toolbar{position:relative;z-index:31;top:auto;left:auto;transform:none;order:0;align-self:stretch;justify-content:center;width:auto;max-width:none;min-height:var(--tc-header-h)!important;margin:0;padding:0 8px!important;border:0;border-radius:0;background:#fff;box-shadow:none;flex:0 0 auto}
+/* The tab bar and the toolbar share 31; the toolbar comes later, so where it sits under the tabs (up to
+   900 px) it painted over the open Tab actions menu, picker or delete dialog (round 3: "Rename…" under
+   the toolbar's ⋯ at 390). While one of them is open the tab bar steps one above the toolbar, still below
+   every qw_layers.css panel; its own ⋯ menus are closed by then (one open menu at a time). */
+#team-canvas-root.ts-shell .tc-main>.tc-tabbar:has(.tc-canvas-tab-actions:not([hidden]),.tc-tab-picker,.tc-canvas-tab-dialog){z-index:32}
+#team-canvas-root.ts-shell .tc-main>.tc-toolbar>.ts-tools{min-height:var(--tc-header-h);gap:2px}
+/* The status slot belongs to the header: same white, full width, one hairline under the zone.
+   Its height stays the reserved --tc-band-status-h (border included), so nothing moves. */
+#team-canvas-root.ts-shell .tc-main>.tc-band-status{margin:0;padding:0 12px;background:#fff;border-bottom:1px solid var(--ts-line,#e3e7ec)}
+#team-canvas-root.ts-shell .tc-main>.tc-band-status>.ts-mode-hint{order:3;flex:0 1 auto;min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:13px/1.3 'Nunito Sans',system-ui,sans-serif;color:var(--ts-muted,#5a6878)}
+#team-canvas-root.ts-shell .tc-main>.tc-band-status>.ts-mode-hint[hidden]{display:none}
+/* The canvas starts right under the header: the toolbar no longer floats over its top edge. */
+#team-canvas-root.ts-shell .tc-viewport-shell>.tc-scroll{padding-top:0}
+
+/* From 901 px: tabs left, toolbar right, one row. The tabs keep at least 180px (shell.js
+   fitTools reserves the same), the tab list scrolls when crowded and a toolbar that still does
+   not fit wraps rather than hides. DOM order (tabs, toolbar, band, canvas) is the keyboard
+   order and stays unchanged. */
+@media (min-width:901px){
+ #team-canvas-root.ts-shell .tc-main.has-canvas-tabs{display:grid;grid-template-columns:minmax(180px,1fr) auto;grid-template-rows:auto auto minmax(0,1fr)}
+ #team-canvas-root.ts-shell .tc-main.has-canvas-tabs>.tc-tabbar{grid-column:1;grid-row:1;min-width:0}
+ #team-canvas-root.ts-shell .tc-main.has-canvas-tabs>.tc-toolbar{grid-column:2;grid-row:1;justify-content:flex-end;min-width:0}
+ #team-canvas-root.ts-shell .tc-main.has-canvas-tabs>.tc-band-status{grid-column:1/-1;grid-row:2}
+ #team-canvas-root.ts-shell .tc-main.has-canvas-tabs>.tc-viewport-shell{grid-column:1/-1;grid-row:3;min-height:0}
+}
+
+/* ---- One control style across the bar -------------------------------------- */
+#team-canvas-root.ts-shell .tc-main :is(.tc-toolbar .ts-tool,.tc-toolbar .ts-mode-option,.tc-toolbar .ts-tools>.ts-companion-toggle,.tc-tabbar .tc-canvas-tab,.tc-tabbar .tc-canvas-tab-add,.tc-tabbar .tc-canvas-tab-more){box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;min-height:30px;max-height:30px;margin:0;padding:0 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:#3b4855;font:600 13px/1 'Nunito Sans',system-ui,sans-serif;white-space:nowrap;box-shadow:none;cursor:pointer}
+#team-canvas-root.ts-shell .tc-main :is(.tc-toolbar .ts-tool,.tc-toolbar .ts-mode-option,.tc-toolbar .ts-tools>.ts-companion-toggle,.tc-tabbar .tc-canvas-tab,.tc-tabbar .tc-canvas-tab-add,.tc-tabbar .tc-canvas-tab-more)[hidden]{display:none}
+#team-canvas-root.ts-shell .tc-main :is(.tc-toolbar .ts-tool,.tc-toolbar .ts-tools>.ts-companion-toggle,.tc-tabbar .tc-canvas-tab,.tc-tabbar .tc-canvas-tab-add,.tc-tabbar .tc-canvas-tab-more):hover:not(:disabled){background:#f1f4f7;color:var(--ts-ink,#141b24)}
+#team-canvas-root.ts-shell .tc-main :is(.tc-toolbar .ts-tool,.tc-tabbar .tc-canvas-tab-add):disabled{opacity:.45;cursor:default}
+/* Current / pressed / open: the accent tint (Draft, the selected tab, an open menu or panel). */
+#team-canvas-root.ts-shell .tc-main :is(.tc-toolbar .ts-mode-option.is-current,.tc-toolbar .ts-tool[aria-pressed=true],.tc-toolbar .ts-tool[aria-expanded=true],.tc-toolbar .ts-tools>.ts-companion-toggle[aria-expanded=true],.tc-tabbar .tc-canvas-tab[aria-selected=true],.tc-tabbar .tc-canvas-tab-more[aria-expanded=true]){background:var(--ts-tint,#eaf1f7);color:var(--ts-accent,#2d5f8a)}
+#team-canvas-root.ts-shell .tc-main .tc-toolbar .ts-mode-option.is-current{cursor:default}
+/* Export figure keeps the accent colour, in the same box. */
+#team-canvas-root.ts-shell .tc-main .tc-toolbar .ts-tool.ts-primary{color:var(--ts-accent,#2d5f8a)}
+/* The icon-only controls are square; their glyphs fit the bar's height. */
+#team-canvas-root.ts-shell .tc-main :is(.tc-toolbar .ts-tool.ts-icon,.tc-toolbar .ts-tools>.ts-companion-toggle,.tc-tabbar .tc-canvas-tab-add,.tc-tabbar .tc-canvas-tab-more){width:30px;min-width:30px;flex:0 0 30px;padding:0}
+#team-canvas-root.ts-shell .tc-main .tc-toolbar .ts-companion-icon{width:22px;height:22px}
+/* Draft | Figure page: two controls of the same style in a plain group, no inner frame. */
+#team-canvas-root.ts-shell .tc-main .tc-toolbar .ts-mode-switch{gap:2px;padding:0;border:0;border-radius:0;background:transparent}
+#team-canvas-root.ts-shell .tc-main .tc-tabbar .tc-canvas-tab{max-width:220px}
+#team-canvas-root.ts-shell .tc-main .tc-tabbar .tc-canvas-tab-menu{display:flex;align-items:center}
+#team-canvas-root.ts-shell .tc-main .tc-toolbar .ts-menu-wrap{display:flex;align-items:center}
+/* Analysis tools: a long list, so the menu scrolls within the window. It opens from its
+   trigger's left edge; shell.js flips any toolbar menu that would leave the window. */
+#team-canvas-root.ts-shell .ts-analysis>.ts-menu{left:0;right:auto;min-width:240px;max-height:min(70vh,560px)}
+#team-canvas-root.ts-shell .ts-menu>.ts-menu-sep{height:1px;margin:4px 6px;background:var(--ts-line,#e3e7ec)}
+/* Phones (<= 600 px, R13's width): at most two header rows, the tabs and one toolbar row. Undo, Redo,
+   Analysis tools and Export figure move into ⋯ (shell.js .ts-phone-only items run the same actions);
+   the separators and the static "Draft" label go (Figure page stays, the way to switch). */
+#team-canvas-root.ts-shell .ts-menu>.ts-menu-item.ts-phone-only{display:none}
+/* Any width: the header stays one row (shell.js fitTools). When the canvas column is narrow
+   (inspector and docked companion open), groups leave the row for ⋯ level by level: 2 Undo,
+   Redo; 3 Analysis tools, Export figure; 4 Add plot and the static Draft label. Level 1
+   (Arrange, Text, Shapes) is in shell.css. Each separator leaves with the group it introduces. */
+#team-canvas-root.ts-shell .ts-menu>.ts-menu-item[data-ts-fit]:not(.ts-phone-only){display:none}
+#team-canvas-root.ts-shell :is(.tc-toolbar.ts-fit-2 .ts-menu>.ts-menu-item[data-ts-fit="2"],.tc-toolbar.ts-fit-3 .ts-menu>.ts-menu-item[data-ts-fit="3"],.tc-toolbar.ts-fit-4 .ts-menu>.ts-menu-item[data-ts-fit="4"]){display:block}
+#team-canvas-root.ts-shell :is(.tc-toolbar.ts-fit-2 .ts-tools>[data-ts-fit="2"],.tc-toolbar.ts-fit-3 .ts-tools>[data-ts-fit="3"],.tc-toolbar.ts-fit-4 .ts-tools>[data-ts-fit="4"],.tc-toolbar.ts-fit-4 .ts-mode-switch>[data-ts-fit="4"]){display:none!important}
+@media (max-width:600px){
+ #team-canvas-root.ts-shell .ts-menu>.ts-menu-item.ts-phone-only{display:block}
+ #team-canvas-root.ts-shell .tc-main>.tc-toolbar :is(.ts-phone-hide,.ts-sep,.ts-mode-option.is-current){display:none!important}
+}
+@media print{#team-canvas-root.ts-shell .tc-tabbar{display:none!important}}
+/* The stale-results export warning (card_status.js) inside ⋯ shows only with the ⋯ export items. */
+#team-canvas-root.ts-shell .ts-menu>.ts-more-export-warning{display:none}
+#team-canvas-root.ts-shell .tc-toolbar.ts-fit-3 .ts-menu>.ts-more-export-warning:not([hidden]){display:block}
+@media (max-width:600px){#team-canvas-root.ts-shell .ts-menu>.ts-more-export-warning:not([hidden]){display:block}}

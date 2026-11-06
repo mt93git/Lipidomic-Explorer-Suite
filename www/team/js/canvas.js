@@ -57,7 +57,7 @@
     return {place:place,open:open,close:close};
   })();
   var root, board, list, status, search, records = new Map(), paletteClock = 0, pendingAdds = new Map(), sequence = 0, selectedRecord = null, preparation = null, shinyBusy = false, preparationGeneration = 0, activityGeneration = 0, syncTimer = null, syncEpoch = 0, restorePending = new Map(), ackWaiters = new Map(), applyingRestore = false, checkpointActive = false;
-  var restoreReceipt = null, restoreBuilding = false, restoreFailed = false, restoreRetryButton = null;
+  var restoreReceipt = null, restoreBuilding = false, restoreFailed = false, restoreRetryButton = null, editedDuringRestore = false;
   function showRestoreRetry() {
     if (!restoreRetryButton) return;
     restoreRetryButton.hidden = false; restoreRetryButton.disabled = false;
@@ -71,12 +71,149 @@
     if (value === 'success') {
       Shiny.setInputValue('team_canvas_restore_complete', {ok:true, token:restoreReceipt}, {priority:'event'});
       restoreReceipt = null;
+      // The server refused background states while the restore was pending (its copy
+      // is the restored checkpoint): an edit made meanwhile is sent now.
+      // (An analyst's copy still loading sends it when it mounts.)
+      if (editedDuringRestore && !checkpointActive && !editRequests()) { clearTimeout(syncTimer); backgroundDue = true; syncTimer = setTimeout(function () { sendBackground(); }, 350); }
+      editedDuringRestore = false;
     }
     window.dispatchEvent(new CustomEvent('team-canvas-restore-status', {detail:detail}));
   }
+  // The restore waits for its own cards only: every restored node mounted and no
+  // restored copy's request in flight. An analyst's new copy, which is not part of
+  // the checkpoint, never holds the receipt (it could mount last, after the final
+  // restored card, and nothing would complete the restore then).
+  function restoredRequests() { var n=0; instanceRequests.forEach(function (request) { if (request.saved) n++; }); return n; }
   function finishRestoreIfReady() {
-    if (restoreReceipt && !restoreBuilding && !restoreFailed && !restorePending.size && !instanceRequests.size) restoreStatus('success');
+    if (restoreReceipt && !restoreBuilding && !restoreFailed && !restorePending.size && !restoredRequests()) restoreStatus('success');
   }
+  // Independent copies of a restored checkpoint are requested progressively, not
+  // all at once: one at a time in idle time while the Canvas is hidden (Review
+  // keeps the server first), a few at a time once it is shown (its active tab
+  // first). Only that scheduling differs from an immediate restore: each copy is
+  // requested exactly as before (requestInstance with its saved node) and mounts at
+  // its saved place. The restore stays pending until every copy has mounted, or
+  // fails through restoreStatus('failed') and its Retry, as before. Until a copy
+  // mounts its saved node stays in restorePending verbatim, so every save holds it.
+  // deferredNodes: node ids owned by this schedule (queued or in flight);
+  // deferredQueue: the ids not yet requested, in the checkpoint's creation order.
+  var deferredNodes = new Set(), deferredQueue = [], deferredTimer = null, deferredIdle = null, deferredBusySince = 0, lazyHydration = null, mountingDeferred = false, mountNotice = false;
+  var deferredHiddenConcurrency = 1, deferredShownConcurrency = 3, deferredBusyWait = 15000;
+  // Requests that carry an analyst's new data (copy, paste, add). A restored
+  // copy's request does not: its saved node is still in restorePending.
+  function editRequests() { var n=0; instanceRequests.forEach(function (request) { if (!request.saved) n++; }); return n; }
+  function deferredInFlight() { var n=0; instanceRequests.forEach(function (request) { if (request.deferred) n++; }); return n; }
+  // Figures the next save holds: mounted cards, illustrations, every restored node
+  // not mounted yet and the analyst's own copies still loading. A new figure is
+  // refused when this reaches 40; a restored node already holds its place.
+  function figureCount() { return Array.from(records.values()).filter(function (r) { return !!r.node; }).length + illustrations.size + restorePending.size + editRequests(); }
+  function canvasShown() { return !!root && root.isConnected && root.getClientRects().length > 0; }
+  function serverBusy() { return shinyBusy || document.documentElement.classList.contains('shiny-busy'); }
+  function cancelDeferredTimers() {
+    clearTimeout(deferredTimer); deferredTimer = null;
+    if (deferredIdle !== null) { if (window.cancelIdleCallback) cancelIdleCallback(deferredIdle); else clearTimeout(deferredIdle); deferredIdle = null; }
+  }
+  function scheduleDeferred(delay) {
+    if (!deferredQueue.length || deferredTimer || deferredIdle !== null) return;
+    deferredTimer = setTimeout(function () { deferredTimer = null; pumpDeferred(); }, delay == null ? 250 : delay);
+  }
+  // Drops every scheduled copy and its request (a newer restore or Reset replaces them).
+  function stopDeferredRestore() {
+    cancelDeferredTimers(); deferredQueue = []; deferredBusySince = 0;
+    instanceRequests.forEach(function (request, id) { if (!request.deferred) return; clearTimeout(request.timer); instanceRequests.delete(id); parkInstance(id); });
+    deferredNodes.clear(); endLazyHydration(false);
+  }
+  // Reset: every independent plot still loading is cancelled, restored or not.
+  function cancelInstanceRequests() {
+    stopDeferredRestore();
+    instanceRequests.forEach(function (request, id) { clearTimeout(request.timer); instanceRequests.delete(id); parkInstance(id); });
+  }
+  function nextDeferred(shown) {
+    if (shown && window.TeamCanvasTabs && typeof TeamCanvasTabs.activeIds === 'function') {
+      var active = TeamCanvasTabs.activeIds(), index = deferredQueue.findIndex(function (id) { return active.indexOf(id) >= 0; });
+      if (index > 0) return deferredQueue.splice(index, 1)[0];
+    }
+    return deferredQueue.shift();
+  }
+  function requestDeferred(shown) {
+    while (deferredQueue.length) {
+      var id = nextDeferred(shown), saved = restorePending.get(id);
+      if (!saved || !saved.instance) { deferredNodes.delete(id); continue; }
+      if (instanceRequests.has(saved.instance.id)) continue;
+      if (!window.Shiny || !Shiny.setInputValue || !instancesConnected()) { deferredQueue.unshift(id); return false; }
+      if (requestInstance(saved.instance.source, null, saved)) { var request = instanceRequests.get(saved.instance.id); if (request) request.deferred = true; return true; }
+      // Not requestable (as an immediate restore would find it): the restore fails as before.
+      deferredNodes.delete(id); restoreStatus('failed');
+    }
+    return false;
+  }
+  function pumpDeferred() {
+    if (!deferredQueue.length) return;
+    if (restoreBuilding || !instancesConnected()) { scheduleDeferred(500); return; }
+    var shown = canvasShown(), limit = shown ? deferredShownConcurrency : deferredHiddenConcurrency;
+    if (deferredInFlight() >= limit) { scheduleDeferred(); return; }
+    if (shown) { while (deferredQueue.length && deferredInFlight() < limit && requestDeferred(true)); scheduleDeferred(); return; }
+    // Hidden: only while the server is idle (bounded, so a server that never idles
+    // still gets every copy), then in the browser's idle time.
+    var forced = false;
+    if (serverBusy()) {
+      if (!deferredBusySince) deferredBusySince = Date.now();
+      if (Date.now() - deferredBusySince < deferredBusyWait) { scheduleDeferred(); return; }
+      forced = true;
+    }
+    // The server can become busy (Review's preparation) before the idle callback
+    // runs: it is checked again there, and the bounded busy wait resumes.
+    var run = function () {
+      deferredIdle = null;
+      if (!forced && serverBusy() && !canvasShown()) { pumpDeferred(); return; }
+      deferredBusySince = 0;
+      if (deferredInFlight() < (canvasShown() ? deferredShownConcurrency : deferredHiddenConcurrency)) requestDeferred(canvasShown());
+      scheduleDeferred();
+    };
+    deferredIdle = window.requestIdleCallback ? requestIdleCallback(run, {timeout:2000}) : setTimeout(run, 50);
+  }
+  function startDeferredRestore() {
+    if (!deferredQueue.length || restoreBuilding) return false;
+    endLazyHydration(false); lazyHydration={userTouched:false,quietSince:0,timer:null}; lazyHydration.timer=setTimeout(watchLazyHydration,250);
+    scheduleDeferred(canvasShown() ? 0 : 750);
+    return true;
+  }
+  // The Canvas shown: what is left is requested at its higher concurrency now.
+  function deferredShown() { if (deferredQueue.length && canvasShown() && deferredIdle === null) { cancelDeferredTimers(); pumpDeferred(); } }
+  // Places a restored card among the board's cards in the checkpoint's node order
+  // (as a restore mounts its other cards), whatever order the copies mounted in.
+  function placeInCreationOrder(node, id) {
+    var mine = creationOrder.indexOf(id); if (mine < 0) return;
+    var before = Array.from(board.children).find(function (other) { return other !== node && other.classList.contains('tc-node') && creationOrder.indexOf(other.dataset.canvasOrderId) > mine; });
+    if (before && node.nextElementSibling !== before) board.insertBefore(node, before);
+  }
+  // While those copies mount and draw, and nobody has touched the page, the canvas
+  // changes only by hydration: the change signal says so (autosave ignores it, as
+  // it ignores a restore's own mounting) and no background state is echoed. The
+  // first trusted pointerdown, keydown, click, input or change anywhere, or any
+  // call that edits the canvas, ends that: every later change counts as an edit.
+  function lazyHydrationQuiet() { return !!lazyHydration && !lazyHydration.userTouched; }
+  function watchLazyHydration() {
+    var h=lazyHydration; if (!h) return;
+    var loading=deferredQueue.length>0 || deferredInFlight()>0 || !!board.querySelector('.tc-restore-settling');
+    if (loading) h.quietSince=0;
+    else if (!h.quietSince) h.quietSince=Date.now();
+    else if (Date.now()-h.quietSince>=1000) { endLazyHydration(true); return; }
+    h.timer=setTimeout(watchLazyHydration,250);
+  }
+  function endLazyHydration(finished) {
+    var h=lazyHydration; if (!h) return; clearTimeout(h.timer); lazyHydration=null;
+    if (finished) deferredNodes.forEach(function (id) { if (!restorePending.has(id)) deferredNodes.delete(id); });
+    if (finished && !h.userTouched && !checkpointActive) { clearTimeout(syncTimer); sendBackground(); }
+  }
+  function touchLazyHydration(event) { if (event.isTrusted && lazyHydration) lazyHydration.userTouched=true; }
+  function editDuringHydration() { if (lazyHydration) lazyHydration.userTouched=true; }
+  // Hosts of a previous server session (after a disconnect) are never bound again:
+  // a request for the same id in a new session removes the old one first.
+  function dropStaleHost(id) { var host=document.getElementById(id+'_host'); if (!host || host.dataset.tcStale !== 'true') return; if (window.Shiny && Shiny.unbindAll) { try { Shiny.unbindAll(host); } catch (ignore) {} } host.remove(); }
+  // The state the server holds (the restored checkpoint, then each accepted
+  // background state). A background send of the same state is skipped.
+  var serverStateKey = null, backgroundKeys = new Map();
   var queuedAddTtl = 90000;
   var canvasDimensionDebug = new URLSearchParams(window.location.search).get('team_canvas_debug') === '1';
   function dimensionTrace(r,event,values) {
@@ -138,7 +275,7 @@
     'cell_class_plot':'cell_class_profile_csv',
     'cell_comparison_plot':'cell_comparison_csv'
   };
-  var instanceRequests = new Map(), instanceClipboard = null, lastInstanceRequest = null;
+  var instanceRequests = new Map(), instanceClipboard = null, lastInstanceRequest = null, instanceRequestSequence = 0;
   function sourceKey(r) { return r && r.instance ? r.instance.source : r && r.el.id; }
   function instancesConnected(){return !!(window.Shiny&&Shiny.shinyapp&&Shiny.shinyapp.$socket);}
   function instanceSupported(id) { return /^cell_(lipid|profile|class|comparison)_plot$/.test(id) || /^(results_dashboard|qc_pca_tab|barchart|heatmap_barchart_tab|volcano_tab|lsea_tab|structural_tab|structural_grid_tab|logratio_tab|group_comparison_tab|fla_tab|longitudinal_tab|pathway_tab|cellular_org_tab)-/.test(id); }
@@ -176,11 +313,16 @@
   function requestInstance(source, copied, saved) {
     if(!instanceSupported(source)) { tell('Open this dedicated view to configure its data. Independent canvas copies are available for analysis modules.'); return false; }
     if(!window.Shiny||!Shiny.setInputValue)return false;
-    if(Array.from(records.values()).filter(function(r){return !!r.node;}).length+illustrations.size+instanceRequests.size>=40){tell('This workspace supports 40 figures. Remove a figure before adding another.');return false;}
+    // A restored copy is already one of the workspace's figures (its saved node).
+    if(!saved&&figureCount()>=40){tell('This workspace supports 40 figures. Remove a figure before adding another.');return false;}
     var family=source.slice(0,source.indexOf('-')), suffix=source.slice(family.length+1);
     var id=saved?saved.instance.id:'tcinstance_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);
-    var instance=saved?saved.instance:{id:id,source:source,inputs:copied?copied.inputs:(source.indexOf('-')<0?cellSourceValues():instanceValues(family))};
-    var request={instance:instance,source:source,saved:saved||null,copy:copied||null,timer:null};
+    // A restored copy is created from a copy of its saved instance: the server's
+    // reply rewrites the request's inputs, and the saved node stays as saved until it mounts.
+    var instance=saved?JSON.parse(JSON.stringify(saved.instance)):{id:id,source:source,inputs:copied?copied.inputs:(source.indexOf('-')<0?cellSourceValues():instanceValues(family))};
+    // The server echoes the token in its reply, so a reply to an earlier request
+    // for the same id (a cancelled restore, a retry) never initializes this one.
+    var request={instance:instance,source:source,saved:saved||null,copy:copied||null,timer:null,token:'r'+(++instanceRequestSequence)+'_'+Math.random().toString(36).slice(2,8)};
     var heavy=/^(logratio_tab|group_comparison_tab|fla_tab)$/.test(family), remaining=heavy?120000:30000, wallDeadline=Date.now()+(heavy?300000:120000);
     // One active-time budget covers acknowledgement, mounting and hydration.
     // Count observed intervals only: a blocked browser or busy server is not
@@ -191,9 +333,10 @@
       if(remaining<=0 || Date.now()>=wallDeadline){instanceRequests.delete(id);if(request.saved)restoreStatus('failed');parkInstance(id);tell('The independent plot did not load in time. Check its analysis data and try again.');return;}
       request.timer=setTimeout(deadline,250);
     }
+    dropStaleHost(id);
     instanceRequests.set(id,request);
     request.timer=setTimeout(deadline,250);
-    Shiny.setInputValue('team_canvas_instance_create',instance,{priority:'event'});lastInstanceRequest=id;
+    Shiny.setInputValue('team_canvas_instance_create',Object.assign({},instance,{request:request.token}),{priority:'event'});lastInstanceRequest=id;
     tell('Creating an independent '+plotTitle(source)+'…'); return true;
   }
   // bslib's accordion binding accepts only {method,...} messages and rejects anything
@@ -333,9 +476,35 @@
     if(host){host.addEventListener('pointerdown',function(){request.userEdited=true;},{once:true});host.addEventListener('keydown',function(){request.userEdited=true;},{once:true});}
     check();
   }
-  function instanceReady(message, attempt) {
-    var request=message&&instanceRequests.get(message.id);if(!request)return;
+  // A reply belongs to the request that sent it (its token, when the server echoes
+  // one), and every retry of that reply stays bound to that request object.
+  function replyRequest(message){
+    var request=message&&instanceRequests.get(message.id);if(!request)return null;
+    // Every request carries a token: a reply without it, or with another, is not this request's.
+    if(request.token&&message.request!==request.token)return null;
+    return request;
+  }
+  function instanceReady(message, attempt, bound) {
+    var request=bound||replyRequest(message);if(!request||instanceRequests.get(message.id)!==request)return;
     try { initializeInstance(message,attempt,request); } catch(error) { failInstance(request,error); }
+  }
+  // The server's error for a copy: a failed creation request, or (no request in
+  // flight) a mounted copy whose analysis stopped. The server sends the token of
+  // the copy's latest creation request: an error carrying another one (an earlier,
+  // cancelled request for this id) leaves the request and the mounted card alone.
+  function instanceError(message) {
+    if(!message)return;
+    var request=instanceRequests.get(message.id);
+    if(request&&request.token&&message.request!==request.token)return;
+    if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);instanceRequests.delete(message.id);}
+    else {
+      var mounted=Array.from(records.values()).filter(function(r){return r.instance&&r.instance.id===message.id&&r.node;});
+      // A mounted copy keeps the token of the request that created it.
+      if(mounted.some(function(r){return r.requestToken&&message.request!==r.requestToken;}))return;
+      // A mounted copy whose analysis failed no longer shows a current result.
+      mounted.forEach(function(r){r.revision=(r.revision||0)+1;r.renderRevision=null;r.sourceError=true;r.sourceWaiting=false;r.sourceSignature=null;if(r.statistics&&window.TeamCanvasStatistics)TeamCanvasStatistics.sourceChanged(r);if(!r.hydrating)staleSnapshot(r);});
+    }
+    tell(message.message||'Could not create an independent plot.');
   }
   // A restored copy stays hidden (same size, spinner) until the browser has drawn a
   // render that matches its saved settings. The server confirms, per creation
@@ -409,7 +578,7 @@
   }
   function initializeInstance(message, attempt, request) {
     var suffix=request.source.slice(request.source.indexOf('-')+1), el=document.getElementById(message.id+'-'+suffix);
-    if(!el){if(attempt===15){var host=document.getElementById(message.id+'_host');if(host){setInstanceInputs(request.instance);openInstanceControls({instance:request.instance,label:plotTitle(request.source),el:{id:message.id+'-'+suffix}});tell('Choose this plot’s data in its independent settings panel.');}}setTimeout(function(){instanceReady(message,(attempt||0)+1);},100);return;}
+    if(!el){if(attempt===15){var host=document.getElementById(message.id+'_host');if(host){setInstanceInputs(request.instance);openInstanceControls({instance:request.instance,label:plotTitle(request.source),el:{id:message.id+'-'+suffix}});tell('Choose this plot’s data in its independent settings panel.');}}setTimeout(function(){instanceReady(message,(attempt||0)+1,request);},100);return;}
     request.instance.inputs=message.inputs||{};setInstanceInputs(request.instance);
     // Inputs are sent before mounting or restoring appearance. The next server
     // flush then computes the copy using its own selection, never its sibling's.
@@ -426,13 +595,15 @@
       if(!live){setTimeout(mount,100);return;}
       el=live;
       var wrapper=el.parentElement&&el.parentElement.closest('.shiny-html-output');
-      var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null};
+      var r={el:el,label:plotTitle(request.source),node:null,dynamic:!!wrapper,wrapper:wrapper,instance:request.instance,allowedInputs:message.allowedInputs||null,requestToken:request.token||null};
       records.set(el.id,r);watchRender(r);clearTimeout(request.timer);instanceRequests.delete(message.id);
       var csvSource=csvByPlot[request.source];if(csvSource)csvByPlot[el.id]=message.id+(request.source.indexOf('-')<0?'-'+csvSource:csvSource.slice(request.source.indexOf('-')));
-      if(request.saved){settleRestored(el,message.id,message.generation);restorePending.set(el.id,request.saved);hydratePending();trackRestoredInputs(r,request.instance.inputs);}
+      // A restored copy whose live element cannot be placed (or that throws while
+      // placed) fails the restore: its node must not stay pending with no request.
+      if(request.saved){try{settleRestored(el,message.id,message.generation);restorePending.set(el.id,request.saved);hydratePending();trackRestoredInputs(r,request.instance.inputs);}finally{if(restorePending.get(el.id)===request.saved)restoreStatus('failed');}if(request.deferred)scheduleDeferred(0);}
       else {if(request.copy){rememberGeometry();geometryGesture=true;r.largeHeatmapAdapted=true;r.squareHeatmapAdapted=true;r.visual=JSON.parse(JSON.stringify(request.copy.visual||{}));r.statisticsCopy=request.copy.statistics||null;r.hydrating=true;}try{add(r);if(request.copy&&r.node){r.labelInput.value=request.copy.label;r.labelHeading.textContent=request.copy.label;r.node.style.width=request.copy.width+'px';r.node.style.height=request.copy.height+'px';r.hydrating=false;resize(r);}}finally{if(request.copy)geometryGesture=false;}if(request.copy&&r.node)presentNewNode(r.node,r.el.id);}
       var opened=document.getElementById(message.id+'_host');if(opened&&opened.classList.contains('is-open')&&r.node)TeamCanvasFloatingPanel.open(opened,r.node);
-      renderList();changed();
+      renderList();mountingDeferred=!!request.deferred;try{changed();}finally{mountingDeferred=false;}
     });
   }
   function humanize(id) {
@@ -663,6 +834,9 @@
   }
   // camera: called because the canvas view changed (zoom, card box observer), not the content.
   function resize(r, camera) {
+    // The shell's card footer (card_frame.js) sits under the content: the plot leaves it room.
+    // Kept inside resize: tests evaluate this function's source on its own.
+    function footSpace(node) { var foot = node && node.querySelector ? node.querySelector(':scope > .tc-card-foot') : null; var h = foot ? Number(foot.offsetHeight) : 0; return isFinite(h) && h > 0 ? h : 0; }
     guardPlotlyResize();guardWidgetResize();
     if (!r.node || r.snapshot) return;
     var content = r.node.querySelector('.tc-content');
@@ -700,7 +874,9 @@
         r.squareHeatmapFit=true;
       }
     }
-    var height = square ? gd.data[0].y.length*16+210 : large ? (denseHorizontal?heat.naturalWidth:heat.naturalHeight) : Math.max(minHeight, r.node.clientHeight - plotTop - 24);
+    // A framed card's footer already separates the plot from the card edge: 16 px of slack, not 24.
+    var foot = footSpace(r.node);
+    var height = square ? gd.data[0].y.length*16+210 : large ? (denseHorizontal?heat.naturalWidth:heat.naturalHeight) : Math.max(minHeight, r.node.clientHeight - plotTop - (foot ? 16 : 24) - foot);
     // A canvas zoom never changes a card's logical size, but under CSS zoom borders, text and
     // inner scroll offsets snap to device pixels, so plotTop (and the height derived from it)
     // moves between zoom levels: a few pixels, or hundreds for a card whose content scrolls
@@ -750,7 +926,7 @@
         // Measure the drawn card once: header plus content, with no empty tail.
         if(r.squareHeatmapFit&&r.node&&content){r.squareHeatmapFit=false;var box=r.node.getBoundingClientRect(),top=box.top,scale=(window.TeamCanvasViewport&&TeamCanvasViewport.scale)||1,bottom=0;
         // The card's module controls are parked far off to the left (card_figure.css), not hidden: they are not part of the drawn card.
-        Array.prototype.forEach.call(content.querySelectorAll('*'),function(e){var b=e.getBoundingClientRect();if(b.height>0&&b.width>0&&!(b.right<box.left))bottom=Math.max(bottom,b.bottom);});if(bottom>top)r.node.style.height=Math.max(420,Math.ceil((bottom-top)/scale+content.scrollTop+20))+'px';arrange();}if(square&&gd.data&&gd.data[0]){r.heatResizePlot=gd;r.heatResizeWidth=r.el.clientWidth;r.heatResizeX=gd.data[0].x.length;r.heatResizeY=gd.data[0].y.length;}});
+        Array.prototype.forEach.call(content.querySelectorAll('*'),function(e){var b=e.getBoundingClientRect();if(b.height>0&&b.width>0&&!(b.right<box.left))bottom=Math.max(bottom,b.bottom);});if(bottom>top)r.node.style.height=Math.max(420,Math.ceil((bottom-top)/scale+content.scrollTop+20+footSpace(r.node)))+'px';arrange();}if(square&&gd.data&&gd.data[0]){r.heatResizePlot=gd;r.heatResizeWidth=r.el.clientWidth;r.heatResizeX=gd.data[0].x.length;r.heatResizeY=gd.data[0].y.length;}});
     }
     // Shiny uses resize to measure outputs and rerender static plots at their new dimensions.
     if(heightChanged)window.dispatchEvent(new Event('resize'));
@@ -786,10 +962,11 @@
   var creationOrder=[];
   function registerCreation(node,id,fresh) {
     node.dataset.canvasOrderId=id;
-    if(fresh){creationOrder=creationOrder.filter(function(key){return key!==id;});creationOrder.unshift(id);}
+    if(fresh){editDuringHydration();creationOrder=creationOrder.filter(function(key){return key!==id;});creationOrder.unshift(id);}
     else if(creationOrder.indexOf(id)<0)creationOrder.push(id);
   }
   function arrange() {
+    editDuringHydration();
     var nodes=Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)')).sort(function(a,b){return creationOrder.indexOf(a.dataset.canvasOrderId)-creationOrder.indexOf(b.dataset.canvasOrderId);});
     var scroll=board.closest('.tc-scroll'), scale=window.TeamCanvasViewport&&Number(window.TeamCanvasViewport.scale)>0?Number(window.TeamCanvasViewport.scale):1;
     var available=scroll?scroll.clientWidth:1320;
@@ -829,6 +1006,10 @@
     if (blocked) { tell(r.label + ' is unavailable. ' + blocked.reason); return false; }
     if (r.node) return true;
     if ((r.dynamic && !r.wrapper) || !r.el.isConnected || (dynamicOutput(r.el) && !r.wrapper)) return false;
+    // A new figure is refused at 40 figures, as instance requests are. Only a
+    // restored node, whose place restorePending holds, is exempt. (A copy's own
+    // request held its place until this mount, so the count has room for it.)
+    if (!restorePending.has(r.el.id) && figureCount() >= 40) { tell('This workspace supports 40 figures. Remove a figure before adding another.'); return false; }
     var card = r.el.closest('.rd-card');
     var target = card && card.querySelectorAll(selector).length === 1 ? card : r.el;
     if (r.wrapper) target = r.wrapper;
@@ -842,8 +1023,11 @@
     // Multi-panel stress violins (three panels per row) were designed for an
     // 840px plot; a 620px card squeezed their panel titles into each other.
     var widePanels=sourceKey(r)==='cellular_org_tab-stressPlot';
-    var initialWidth = roomyHeatmap ? 1000 : widePanels ? 900 : 620, initialHeight = roomyHeatmap ? 1100 : 720;
-    if (roomyHeatmap || widePanels) { node.style.width = initialWidth + 'px'; node.style.height = initialHeight + 'px'; }
+    // Shell cards show only title, plot and footer (card_frame.js): a composition card opens compact,
+    // at RC4's 380 px maximum so the figure keeps as much height as the card allows.
+    var compactCard=document.body.classList.contains('ts-shell-app')&&/^(results_dashboard-plot_(comp|dist)|barchart-(bar|donut)Plot(Unf|F)iltered)$/.test(sourceKey(r));
+    var initialWidth = roomyHeatmap ? 1000 : widePanels ? 900 : 620, initialHeight = roomyHeatmap ? 1100 : compactCard ? 380 : 720;
+    if (roomyHeatmap || widePanels || compactCard) { node.style.width = initialWidth + 'px'; node.style.height = initialHeight + 'px'; }
     var index = sequence++, x, y, occupied = Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)'));
     do {
       x = 30 + (index % 2) * (initialWidth + 30); y = 30 + Math.floor(index / 2) * (initialHeight + 30); index++;
@@ -993,7 +1177,7 @@
     if (illustrations.has(key)) return false;
     var color = (saved && saved.color) || item.defaultColor || '#235c77';
     if (!/^#[0-9a-f]{6}$/i.test(color)) color = '#235c77';
-    if (Array.from(board.querySelectorAll('.tc-node')).length >= 40) { tell('A canvas supports at most 40 items.'); return false; }
+    if ((saved ? board.querySelectorAll('.tc-node').length : figureCount()) >= 40) { tell('A canvas supports at most 40 items.'); return false; }
     var node=document.createElement('article'); node.className='tc-node tc-illustration'; node.dataset.illustrationId=id; node.dataset.nodeKind='illustration';
     node.style.left=(saved&&Number.isFinite(saved.x)?saved.x:30+(sequence%2)*380)+'px'; node.style.top=(saved&&Number.isFinite(saved.y)?saved.y:30+Math.floor(sequence/2)*330)+'px';
     node.style.width=(saved&&Number.isFinite(saved.width)?saved.width:340)+'px'; node.style.height=(saved&&Number.isFinite(saved.height)?saved.height:260)+'px'; sequence++;
@@ -1510,6 +1694,7 @@
   }
   function restore(r) {
     if (!r.node) return;
+    if (!applyingRestore) editDuringHydration();
     if(r.instance)closeInstanceControls(document.getElementById(r.instance.id+'_host'));
     if (!r.home.isConnected) { tell('The original view changed; ' + r.label + ' remains on the canvas.'); return; }
     if (r.observer) r.observer.disconnect();
@@ -1758,26 +1943,40 @@
     syncEpoch++; clearTimeout(syncTimer);
     // Team autosave listens to this lightweight signal.  It intentionally carries
     // no data; the validated canvas state is collected only when a save starts.
-    window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:{epoch:syncEpoch}}));
-    if (!checkpointActive) syncTimer = setTimeout(function () { sendBackground(); }, 350);
+    // Mounting a restored copy is hydration even after an edit: the copy already
+    // sits in every save as its saved node. A due background send is kept.
+    var hydrating = lazyHydrationQuiet() || mountingDeferred;
+    if (hydrating) hydrationChanges++; else if (restoreReceipt) editedDuringRestore = true;
+    window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:hydrating ? {epoch:syncEpoch, restoreHydration:true} : {epoch:syncEpoch}}));
+    if (!checkpointActive && (!hydrating || (backgroundDue && !lazyHydrationQuiet()))) { backgroundDue = true; syncTimer = setTimeout(function () { sendBackground(); }, 350); }
   }
+  // Changes other than hydration. A capture stays valid while restored copies
+  // mount: each moves from its saved node to an equal mounted card.
+  var hydrationChanges = 0, backgroundDue = false;
+  function editEpoch() { return syncEpoch - hydrationChanges; }
   async function settledState() {
-    if(instanceRequests.size)throw new Error('Wait for the independent plots to finish loading before saving.');
+    // Only an analyst's new copy (no saved node yet) must load first. A restored
+    // copy still loading is saved as its saved node, unchanged.
+    if(editRequests())throw new Error('Wait for the independent plots to finish loading before saving.');
     for (var i=0; i<10; i++) {
-      var epoch = syncEpoch, active = Array.from(records.values()).filter(function (r) { return !!r.node; });
+      var epoch = editEpoch(), active = Array.from(records.values()).filter(function (r) { return !!r.node; });
       var finishes = await Promise.all(active.map(function (r) { return r.finishPromise || Promise.resolve(true); }));
       if (finishes.some(function (ok) { return ok === false; })) throw new Error('A figure could not be finished. Review it before saving.');
       await Promise.all(active.map(flushAppearance));
-      if (epoch === syncEpoch) return {state:collectState(),epoch:epoch};
+      if (epoch === editEpoch()) return {state:collectState(),epoch:epoch};
     }
     throw new Error('The figure workspace is still changing. Try saving again.');
   }
   function token() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2); }
   function sendBackground() {
     if (checkpointActive || !window.Shiny || !Shiny.setInputValue) return;
+    backgroundDue = false;
     settledState().then(function (captured) {
-      if (checkpointActive || captured.epoch !== syncEpoch) return;
-      Shiny.setInputValue('team_canvas_state', {token:token(),state:captured.state}, {priority:'event'});
+      if (checkpointActive || captured.epoch !== editEpoch() || lazyHydrationQuiet()) return;
+      var key = JSON.stringify(captured.state);
+      if (key === serverStateKey) return;
+      var id = token(); backgroundKeys.clear(); backgroundKeys.set(id, key); serverStateKey = null;
+      Shiny.setInputValue('team_canvas_state', {token:id,state:captured.state}, {priority:'event'});
     }).catch(function (e) { tell(e.message || 'Could not prepare the figure workspace.'); });
   }
   async function checkpoint() {
@@ -1791,9 +1990,11 @@
           var timeout = setTimeout(function () { ackWaiters.delete(id); reject(new Error('Timed out saving the figure workspace.')); }, 15000);
           ackWaiters.set(id, function (message) { clearTimeout(timeout); if (message.ok) resolve(message); else reject(new Error(message.message || 'Could not save the figure workspace.')); });
         });
+        backgroundKeys.clear(); serverStateKey = null;
         Shiny.setInputValue('team_canvas_state', {token:id,state:captured.state}, {priority:'event'});
         await ack;
-        if (captured.epoch === syncEpoch) { succeeded = true; return {token:id}; }
+        try { serverStateKey = JSON.stringify(captured.state); } catch (error) { serverStateKey = null; }
+        if (captured.epoch === editEpoch()) { succeeded = true; backgroundDue = false; return {token:id}; }
       }
       throw new Error('The figure workspace kept changing while saving. Try again.');
     } finally {
@@ -1807,6 +2008,8 @@
     restorePending.forEach(function (saved, id) {
       var blocked=blockedPlot(id);
       if (blocked) { restorePending.delete(id); withheld.push(saved.label || plotTitle(id)); return; }
+      // Queued or loading restored copies are not missing: they mount progressively.
+      if (deferredNodes.has(id) && saved.instance && deferredQueue.indexOf(id) >= 0) return;
       var r = records.get(id);
       if (saved.instance && instanceRequests.has(saved.instance.id)) { waiting.push(saved.label);return; }
       if (!r || !r.el.isConnected || (r.dynamic && !r.wrapper) || (dynamicOutput(r.el) && !r.wrapper)) { waiting.push(saved.label); return; }
@@ -1821,6 +2024,13 @@
         r.editInputs.forEach(function (input) { var key = input.dataset.visualKey; if (saved.visual[key] !== undefined) input.value = saved.visual[key]; });
         if (saved.visual.background) { r.backgroundInput.value = saved.visual.background; r.content.style.backgroundColor = saved.visual.background; }
         if (saved.finished) showSnapshot(r, {url:saved.finished.url, createdAt:saved.finished.createdAt, stale:saved.finished.stale, provenance:saved.finished.provenance, archived:true});
+        if (deferredNodes.has(id)) {
+          placeInCreationOrder(r.node, id); deferredNodes.delete(id);
+          // The tabs observer reports this insertion once, in this task's mutation-observer
+          // microtask (queued before the one below): that one report is hydration. The
+          // notice is consumed by it, or cleared right after, so no later edit can use it.
+          if (!mountNotice) { mountNotice = true; queueMicrotask(function () { mountNotice = false; }); }
+        }
         restorePending.delete(id); expandBoard();
       } finally { applyingRestore = false; }
     });
@@ -1831,6 +2041,8 @@
   function restoreState(input, receipt) {
     restoreReceipt = typeof receipt === 'string' && receipt ? receipt : null;
     restoreFailed = false; restoreBuilding = true; restoreStatus('pending');
+    stopDeferredRestore(); serverStateKey = null;
+    var serverCopy = !!restoreReceipt && input != null;
     var state = validateState(input);
     creationOrder=state.nodes.map(function(node){return node.id;});
     geometryPast=[]; geometryFuture=[]; geometryLast=null;
@@ -1853,7 +2065,12 @@
       var hidden = state.libraryHidden, layout = root.querySelector('.tc-layout'), toggle = root.querySelector('.tc-library-toggle');
       layout.classList.toggle('tc-library-hidden', hidden); toggle.setAttribute('aria-expanded', String(!hidden)); toggle.textContent = hidden ? 'Show library' : 'Hide library';
     } finally { applyingRestore = false; }
-    state.nodes.forEach(function(n){if(n.instance)requestInstance(n.instance.source,null,n);});
+    // One request per instance namespace. A second node with a namespace already
+    // queued (both pass validation: node ids differ) is not requested: it stays in
+    // restorePending as saved and the restore fails (an immediate restore failed
+    // creating it: the namespace already belongs to another plot).
+    var namespaces = new Set(), duplicated = [];
+    state.nodes.forEach(function(n){if(!n.instance)return;if(namespaces.has(n.instance.id)){duplicated.push(n.label||n.id);return;}namespaces.add(n.instance.id);deferredNodes.add(n.id);deferredQueue.push(n.id);});
     syncEpoch++; hydratePending(); expandBoard();
     // Saved geometry lets the viewport frame the workspace before the plots arrive.
     // Tabs first: the camera frames the active tab's cards only (all cards without tabs).
@@ -1862,10 +2079,15 @@
     window.dispatchEvent(new Event('team-document-restored'));
     state.nodes.filter(function (n) { return n.kind === 'illustration'; }).forEach(function (n) { restorePending.delete(n.id); if(!addIllustration(n.assetId,n)) restoreStatus('failed'); });
     restoreBuilding = false;
-    if (withheld.length) restoreStatus('failed'); else finishRestoreIfReady();
-    if (withheld.length) tell('Skipped saved plot' + (withheld.length===1?'':'s') + ' with unvalidated scale: ' + withheld.join(', ') + '. Use Dashboard → Feature distributions while this view is checked.');
+    // A restore sent by the server (canvas_state.R team_canvas_import) leaves it
+    // holding exactly this checkpoint: echoing it back unchanged is skipped.
+    try { serverStateKey = serverCopy && !withheld.length ? JSON.stringify(collectState()) : null; } catch (error) { serverStateKey = null; }
+    if (withheld.length || duplicated.length) restoreStatus('failed'); else finishRestoreIfReady();
+    if (duplicated.length) tell('Saved plot' + (duplicated.length===1?'':'s') + ' sharing another plot’s independent settings could not be restored: ' + duplicated.join(', ') + '.');
+    else if (withheld.length) tell('Skipped saved plot' + (withheld.length===1?'':'s') + ' with unvalidated scale: ' + withheld.join(', ') + '. Use Dashboard → Feature distributions while this view is checked.');
     else if (cancelled.length) tell('Saved figure workspace restored. Cleared queued adds for ' + cancelled.join(', ') + '. Saved figures are archived until edited.');
     else if (!restorePending.size) tell('Saved figure workspace restored. Saved figures are archived until edited.');
+    editedDuringRestore = false; startDeferredRestore();
   }
   function init() {
     root = document.getElementById('team-canvas-root'); if (!root) return;
@@ -1904,8 +2126,18 @@
       if((key==='z'||redo) && replayGeometry(redo))event.preventDefault();
     });
     if (window.TeamCanvasViewport) window.TeamCanvasViewport.mount(root, board);
+    ['pointerdown','keydown','click','input','change'].forEach(function (name) { document.addEventListener(name, touchLazyHydration, true); });
+    // Showing the Canvas (Team: body[data-guide-step=5]) loads the rest of the restored copies sooner.
+    var showWatch = function () { if (deferredQueue.length) deferredShown(); };
+    new MutationObserver(showWatch).observe(document.body, {attributes:true, attributeFilter:['data-guide-step','data-guide-analysis','data-tw-screen','data-team-stage','class','style','hidden']});
+    new MutationObserver(showWatch).observe(root, {attributes:true, attributeFilter:['class','style','hidden']});
+    window.addEventListener('team-workspace-state', showWatch); window.addEventListener('resize', showWatch);
     search.addEventListener('input', renderList);
-    root.querySelector('.tc-reset').addEventListener('click', function () { documentState=null; var cancelled=clearAllQueuedAdds(); records.forEach(restore); illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear(); if (restorePending.size) { restorePending.clear(); changed(); tell('Returned all plots and cleared plots awaiting their analysis.'); } else if (cancelled.length) tell('Returned all plots and cancelled queued adds for ' + cancelled.join(', ') + '.'); else { changed(); tell('Returned all plots and illustrations to the library.'); } });
+    root.querySelector('.tc-reset').addEventListener('click', function () { documentState=null; cancelInstanceRequests(); var cancelled=clearAllQueuedAdds(); records.forEach(restore); illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear(); if (restorePending.size) { restorePending.clear(); changed(); tell('Returned all plots and cleared plots awaiting their analysis.'); } else if (cancelled.length) tell('Returned all plots and cancelled queued adds for ' + cancelled.join(', ') + '.'); else { changed(); tell('Returned all plots and illustrations to the library.'); }
+      // Reset cancelled every restored card still queued or loading: nothing is left
+      // to mount, so a pending restore completes now (and the reset canvas is sent).
+      // A failed one keeps its Retry.
+      finishRestoreIfReady(); });
     root.querySelector('.tc-arrange').addEventListener('click', arrange);
     root.querySelector('.tc-library-toggle').addEventListener('click', function () {
       var hidden = root.querySelector('.tc-layout').classList.toggle('tc-library-hidden');
@@ -1916,11 +2148,10 @@
       Shiny.addCustomMessageHandler('team-canvas-instance-ready',function(message){instanceReady(message,0);});
       Shiny.addCustomMessageHandler('team-canvas-instance-settled',function(m){if(!m||!m.id)return;settledInstances[m.id]={generation:m.generation,at:++messageSequence};window.dispatchEvent(new CustomEvent('team-canvas-instance-settled',{detail:m.id}));});
       Shiny.addCustomMessageHandler('team-canvas-de-state',function(message){var before=[deResultsReady,designReady,inferenceGate,timePointsReady].join('|');deResultsReady=!!(message&&message.ready);designReady=message&&typeof message.design==='boolean'?message.design:null;inferenceGate=message&&typeof message.gate==='string'?message.gate:null;timePointsReady=message&&typeof message.timepoints==='boolean'?message.timepoints:null;if(before!==[deResultsReady,designReady,inferenceGate,timePointsReady].join('|'))renderList();});
-      Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){var request=instanceRequests.get(message.id);if(request){if(request.saved)restoreStatus('failed');clearTimeout(request.timer);parkInstance(message.id);}instanceRequests.delete(message.id);
-        // A mounted copy whose analysis failed no longer shows a current result.
-        if(!request)records.forEach(function(r){if(r.instance&&r.instance.id===message.id&&r.node){r.revision=(r.revision||0)+1;r.renderRevision=null;r.sourceError=true;r.sourceWaiting=false;r.sourceSignature=null;if(r.statistics&&window.TeamCanvasStatistics)TeamCanvasStatistics.sourceChanged(r);if(!r.hydrating)staleSnapshot(r);}});tell(message.message||'Could not create an independent plot.');});
+      Shiny.addCustomMessageHandler('team-canvas-instance-error',function(message){instanceError(message);});
       Shiny.addCustomMessageHandler('team-preparation-state', function (state) { window.dispatchEvent(new CustomEvent('team-preparation-state', {detail:state})); });
       Shiny.addCustomMessageHandler('team-canvas-state-ack', function (message) {
+        if (message && backgroundKeys.has(message.token)) { if (message.ok) serverStateKey = backgroundKeys.get(message.token); backgroundKeys.delete(message.token); }
         var waiter = message && ackWaiters.get(message.token);
         if (waiter) { ackWaiters.delete(message.token); waiter(message); }
       });
@@ -1948,9 +2179,17 @@
       reconcileIdle();
     }).on('shiny:idle', setCanvasIdle);
     if (window.jQuery) jQuery(document).on('shiny:disconnected', function () {
-      if (!instanceRequests.size) return;
-      instanceRequests.forEach(function (request) { clearTimeout(request.timer); if (request.saved) restoreStatus('failed'); });
-      instanceRequests.clear(); tell('The connection was lost while independent plots were loading. Reconnect and retry.');
+      // The server session ended with the connection, and a reconnection opens a
+      // new one: every copy's host belongs to the old session. Hosts still loading
+      // are removed; the others are marked so a later request never binds them.
+      // Restored copies not requested yet stay unrequested: the restore fails as an
+      // interrupted one does, with its saved nodes kept for every save.
+      document.querySelectorAll('.tc-instance-host').forEach(function (host) { host.dataset.tcStale = 'true'; });
+      var interrupted = deferredQueue.length > 0; cancelDeferredTimers(); deferredQueue = []; deferredBusySince = 0;
+      if (!instanceRequests.size && !interrupted) return;
+      instanceRequests.forEach(function (request, id) { clearTimeout(request.timer); if (request.saved) interrupted = true; dropStaleHost(id); });
+      instanceRequests.clear(); if (interrupted) restoreStatus('failed');
+      tell('The connection was lost while independent plots were loading. Reconnect and retry.');
     });
     if (window.Shiny && Shiny.shinyapp) new MutationObserver(reconcileIdle).observe(document.documentElement,{attributes:true,attributeFilter:['class']});
     window.addEventListener('team-preparation-state', function (event) {
@@ -1977,8 +2216,11 @@
         }).concat(extraRoutes.filter(function (route) { return !catalog.some(function (item) { return item.id === route.id; }); }).map(function (route) { return {id:route.id,title:route.title,added:false,available:false,status:'Requires configuration'}; }));
       },
       listIllustrations: function () { return (window.TeamIllustrations && Array.isArray(window.TeamIllustrations.list) ? window.TeamIllustrations.list : []).map(function (x) { return {id:x.id,title:x.title,category:x.category || 'Illustrations'}; }); },
-      addIllustration: function (id) { return addIllustration(id); },
+      addIllustration: function (id) { editDuringHydration(); return addIllustration(id); },
       // Re-fit a card's plot to its frame (the shell parks module content around it).
+      // Framing changes no saved state, so it is not an edit by itself: card_frame.js and
+      // card_figure.js call it while restored cards mount. A user's action that leads
+      // here (a tab switch, a zoom) already counted as an edit through its own event.
       fitPlot:function(id){var r=records.get(id);if(r&&r.node)resize(r);},
       fitAllPlots:function(){records.forEach(function(r){if(r.node)resize(r, true);});},
       // Read-only card state for the shell's status chips and export warning.
@@ -1988,12 +2230,12 @@
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
-      copyPlotAsInstance:function(id){var copied=copyData(records.get(id));if(!copied)return false;lastInstanceRequest=null;return requestInstance(copied.source,copied)&&lastInstanceRequest?lastInstanceRequest:false;},
-      creationOrder:function(){return creationOrder.slice();},pastePlot:pasteRecord,duplicatePlot:function(id){return copyRecord(records.get(id))&&pasteRecord();},
-      addPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r = records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
-      addCatalogPlot: function (id) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (routeOnlyPlot(id)) { tell('Use Open export studio to configure this publication preview.'); return false; } if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r=records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
-      queuePlot: function (id, route) { if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } return queueAdd(id,route); },
-      cancelQueuedAdd: function (id) { return clearQueuedAdd(id,'Cancelled queued add for “' + plotTitle(id) + '”.'); },
+      copyPlotAsInstance:function(id){editDuringHydration();var copied=copyData(records.get(id));if(!copied)return false;lastInstanceRequest=null;return requestInstance(copied.source,copied)&&lastInstanceRequest?lastInstanceRequest:false;},
+      creationOrder:function(){return creationOrder.slice();},pastePlot:function(){editDuringHydration();return pasteRecord();},duplicatePlot:function(id){editDuringHydration();return copyRecord(records.get(id))&&pasteRecord();},
+      addPlot: function (id) { editDuringHydration(); if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r = records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
+      addCatalogPlot: function (id) { editDuringHydration(); if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (routeOnlyPlot(id)) { tell('Use Open export studio to configure this publication preview.'); return false; } if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } if (!records.has(id)) discover(); var r=records.get(id); if (!r || (r.dynamic && !r.wrapper) || !r.el.isConnected) return false; return add(r); },
+      queuePlot: function (id, route) { editDuringHydration(); if(instancesConnected()&&instanceSupported(id))return requestInstance(id); if (blockedPlot(id)) { tell(plotTitle(id) + ' is unavailable. ' + blockedPlot(id).reason); return false; } return queueAdd(id,route); },
+      cancelQueuedAdd: function (id) { editDuringHydration(); return clearQueuedAdd(id,'Cancelled queued add for “' + plotTitle(id) + '”.'); },
       previewState: function () {
         reconcileIdle();
         var state=collectState(), nodes=Array.from(records.values()).filter(function (r) { return !!r.node; }).concat(Array.from(illustrations.values()));
@@ -2018,20 +2260,29 @@
       },
       // Canvas tabs: snapshot before a tab edit, then save (navigation only saves).
       tabsWillChange: function () { rememberGeometry(); },
-      tabsChanged: function (navigation) { if (navigation) { if (!geometryReplay && !geometryGesture && board) geometryLast = geometryState(); if (!applyingRestore) { syncEpoch++; window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:{epoch:syncEpoch}})); if (!checkpointActive) { clearTimeout(syncTimer); syncTimer = setTimeout(function () { sendBackground(); }, 350); } } return; } changed(); },
+      tabsChanged: function (navigation) { if (navigation) { if (!geometryReplay && !geometryGesture && board) geometryLast = geometryState(); if (!applyingRestore) {
+        // Only the tabs observer's report of a restored copy's mount (the one-shot notice)
+        // is hydration. Anything else here (active tab, figure order) is an edit.
+        var hydrating = mountNotice; mountNotice = false;
+        if (!hydrating) editDuringHydration();
+        syncEpoch++; if (hydrating) hydrationChanges++; else if (restoreReceipt) editedDuringRestore = true;
+        window.dispatchEvent(new CustomEvent('team-canvas-changed', {detail:hydrating ? {epoch:syncEpoch, restoreHydration:true} : {epoch:syncEpoch}}));
+        if (!checkpointActive && (!hydrating || (backgroundDue && !lazyHydrationQuiet()))) { clearTimeout(syncTimer); backgroundDue = true; syncTimer = setTimeout(function () { sendBackground(); }, 350); } } return; } editDuringHydration(); changed(); },
       deselect: function () { if (!selectedRecord) return; selectedRecord = null; window.dispatchEvent(new CustomEvent('team-canvas-selection', {detail:null})); },
       selected: function () { return selectedRecord && selectedRecord.node ? {id:selectedRecord.el.id, title:selectedRecord.displayTitle || selectedRecord.label} : null; },
       getInsight: function(id){var r=records.get(id),saved=restorePending.get(id),note=saved?saved.insight:r?r.insight:undefined;return note?validateInsight(note):saved||r?null:undefined;},
-      setInsight: function(id,value){var r=records.get(id),saved=restorePending.get(id);if(!r&&!saved)return false;var note=value==null?null:validateInsight(value);if(saved)saved.insight=note;if(r)r.insight=note;if(saved||(r&&r.node))changed();return true;},
+      setInsight: function(id,value){var r=records.get(id),saved=restorePending.get(id);if(!r&&!saved)return false;var note=value==null?null:validateInsight(value);if(saved)saved.insight=note;if(r)r.insight=note;if(saved||(r&&r.node)){editDuringHydration();changed();}return true;},
       getGroupComparison: function(id){var r=records.get(id),saved=restorePending.get(id),v=saved?saved.visual:r?r.visual:null;return v&&v.groupComparison?validateGroupComparison(v.groupComparison):null;},
-      setGroupComparison: function(id,value){var r=records.get(id),saved=restorePending.get(id),owner=saved?saved.instance:r&&r.instance;if(!owner||owner.source!=='group_comparison_tab-comparisonPlot')return false;var v=validateGroupComparison(value),old=saved?saved.visual.groupComparison:r.visual&&r.visual.groupComparison;if(JSON.stringify(old)===JSON.stringify(v))return true;if(saved)saved.visual.groupComparison=v;if(r){r.visual=r.visual||{};r.visual.groupComparison=v;staleSnapshot(r);}changed();return true;},
-      reapplyGroupComparisonEditor: function(id){var r=records.get(id);if(!r||!r.node||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot')return Promise.resolve(false);var gd=plotFor(r);if(!gd)return Promise.resolve(false);if(window.TeamPlotEditor&&TeamPlotEditor.resetSource)TeamPlotEditor.resetSource(gd);if(r.plotEditor)r.plotEditor.refresh();if(!r.visual||!r.visual.editor)return Promise.resolve(true);r.appearancePending=true;return flushAppearance(r).then(function(){return true;});},
-      invalidateGroupComparison: function(id){var r=records.get(id);if(!r||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot')return false;r.revision=(r.revision||0)+1;staleSnapshot(r);watchRender(r);return true;},
-      clearGroupComparisonPanelColors: function(id,feature){var r=records.get(id);if(!r||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot'||typeof feature!=='string'||!feature.length||feature.length>500)return false;var editor=r.visual&&r.visual.editor;if(!editor||!Array.isArray(editor.traces))return true;var modified=false;editor.traces.forEach(function(t){var prefix='source:group-comparison:';if(typeof t.sourceKey!=='string'||!t.sourceKey.startsWith(prefix))return;try{var parts=JSON.parse(t.sourceKey.slice(prefix.length));if(!Array.isArray(parts)||parts[0]!==feature||parts[2]!=='violin')return;['fillColor','fillOpacity','lineColor'].forEach(function(k){if(Object.prototype.hasOwnProperty.call(t,k)){delete t[k];modified=true;}});}catch(ignore){}});if(modified){staleSnapshot(r);if(r.plotEditor)r.plotEditor.refresh();changed();}return true;},
-      clearGroupComparisonPanelVisibility: function(id,feature,condition){var r=records.get(id);if(!r||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot'||typeof feature!=='string'||!feature.length||feature.length>500||typeof condition!=='string'||!condition.length||condition.length>500)return false;var editor=r.visual&&r.visual.editor;if(!editor||!Array.isArray(editor.traces))return true;var key='source:group-comparison:'+JSON.stringify([feature,condition,'violin']),modified=false;editor.traces.forEach(function(t){if(t.sourceKey===key&&Object.prototype.hasOwnProperty.call(t,'hidden')){delete t.hidden;modified=true;}});if(modified){staleSnapshot(r);if(r.plotEditor)r.plotEditor.refresh();changed();}return true;},
+      setGroupComparison: function(id,value){var r=records.get(id),saved=restorePending.get(id),owner=saved?saved.instance:r&&r.instance;if(!owner||owner.source!=='group_comparison_tab-comparisonPlot')return false;var v=validateGroupComparison(value),old=saved?saved.visual.groupComparison:r.visual&&r.visual.groupComparison;if(JSON.stringify(old)===JSON.stringify(v))return true;editDuringHydration();if(saved)saved.visual.groupComparison=v;if(r){r.visual=r.visual||{};r.visual.groupComparison=v;staleSnapshot(r);}changed();return true;},
+      reapplyGroupComparisonEditor: function(id){editDuringHydration();var r=records.get(id);if(!r||!r.node||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot')return Promise.resolve(false);var gd=plotFor(r);if(!gd)return Promise.resolve(false);if(window.TeamPlotEditor&&TeamPlotEditor.resetSource)TeamPlotEditor.resetSource(gd);if(r.plotEditor)r.plotEditor.refresh();if(!r.visual||!r.visual.editor)return Promise.resolve(true);r.appearancePending=true;return flushAppearance(r).then(function(){return true;});},
+      invalidateGroupComparison: function(id){editDuringHydration();var r=records.get(id);if(!r||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot')return false;r.revision=(r.revision||0)+1;staleSnapshot(r);watchRender(r);return true;},
+      clearGroupComparisonPanelColors: function(id,feature){editDuringHydration();var r=records.get(id);if(!r||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot'||typeof feature!=='string'||!feature.length||feature.length>500)return false;var editor=r.visual&&r.visual.editor;if(!editor||!Array.isArray(editor.traces))return true;var modified=false;editor.traces.forEach(function(t){var prefix='source:group-comparison:';if(typeof t.sourceKey!=='string'||!t.sourceKey.startsWith(prefix))return;try{var parts=JSON.parse(t.sourceKey.slice(prefix.length));if(!Array.isArray(parts)||parts[0]!==feature||parts[2]!=='violin')return;['fillColor','fillOpacity','lineColor'].forEach(function(k){if(Object.prototype.hasOwnProperty.call(t,k)){delete t[k];modified=true;}});}catch(ignore){}});if(modified){staleSnapshot(r);if(r.plotEditor)r.plotEditor.refresh();changed();}return true;},
+      clearGroupComparisonPanelVisibility: function(id,feature,condition){editDuringHydration();var r=records.get(id);if(!r||!r.instance||r.instance.source!=='group_comparison_tab-comparisonPlot'||typeof feature!=='string'||!feature.length||feature.length>500||typeof condition!=='string'||!condition.length||condition.length>500)return false;var editor=r.visual&&r.visual.editor;if(!editor||!Array.isArray(editor.traces))return true;var key='source:group-comparison:'+JSON.stringify([feature,condition,'violin']),modified=false;editor.traces.forEach(function(t){if(t.sourceKey===key&&Object.prototype.hasOwnProperty.call(t,'hidden')){delete t.hidden;modified=true;}});if(modified){staleSnapshot(r);if(r.plotEditor)r.plotEditor.refresh();changed();}return true;},
       getDocument: function(){return documentState ? JSON.parse(JSON.stringify(documentState)) : null;},
-      setDocument: function(state){documentState=validateDocument(state,collectState().nodes);changed();},
-      checkpoint: checkpoint, serialize: collectState, restore: restoreState
+      setDocument: function(state){documentState=validateDocument(state,collectState().nodes);editDuringHydration();changed();},
+      checkpoint: checkpoint, serialize: collectState, restore: restoreState,
+      // Read-only progress of a restored checkpoint's copies (status chips, tests).
+      restoreProgress: function () { return {queued:deferredQueue.length, loading:deferredInFlight(), pending:restorePending.size, editEpoch:editEpoch()}; }
     };
     if (window.jQuery) jQuery(document).on('shiny:inputchanged', function(event) {
       // Shiny divides physical DOM rectangles by currentCSSZoom, leaving tiny

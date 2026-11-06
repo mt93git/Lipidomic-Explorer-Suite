@@ -46,6 +46,9 @@ const assert=require('node:assert/strict');const path=require('node:path');
  await page.evaluate(()=>handlers['team-autosave-result']({revision:sent.at(-1).value.revision,ok:true}));
  // Delayed canvas work remains a change after the original interaction window.
  await page.locator('#caption').click();await page.clock.runFor(6000);
+ // Mounting a restored checkpoint's deferred plots (first Canvas show) is not an edit.
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('team-canvas-changed',{detail:{epoch:1,restoreHydration:true}})));
+ assert.equal(await page.evaluate(()=>TeamAutosave.state().dirty),false,'restore hydration does not mark the workspace dirty');
  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('team-canvas-changed',{detail:{epoch:1}})));
  assert.equal(await page.evaluate(()=>TeamAutosave.state().dirty),true);
  await page.clock.runFor(15000);await page.evaluate(()=>handlers['team-autosave-result']({revision:sent.at(-1).value.revision,ok:true}));

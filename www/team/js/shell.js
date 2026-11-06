@@ -7,8 +7,7 @@
     plots: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>',
     text: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h10M9 4v10"/></svg>',
     illustrations: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><circle cx="9" cy="9" r="2"/></svg>',
-    palettes: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="7" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="9" cy="12" r="2"/></svg>',
-    cell: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2l6 3.5v7L9 16l-6-3.5v-7z"/><path d="M3 5.5L9 9l6-3.5M9 9v7"/></svg>'
+    palettes: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="7" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="9" cy="12" r="2"/></svg>'
   };
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function button(cls, label, onClick, html) {
@@ -48,7 +47,10 @@
     });
     var right = el('div', 'ts-topbar-right');
     var saved = el('span', 'ts-saved'); saved.setAttribute('role', 'status'); saved.setAttribute('aria-live', 'polite');
+    // Session-only Team (no project library, workspace.R): nobody signs in, so there is no Sign out.
+    var sessionOnly = window.LIPIDOMIC_TEAM_SESSION_ONLY === true;
     var signout = button('ts-signout', 'Sign out', function () { proxy('#team-workspace .tw-signout'); });
+    if (sessionOnly) signout.hidden = true;
     var avatar = el('span', 'ts-avatar'); avatar.setAttribute('aria-hidden', 'true');
     right.append(saved, signout, avatar);
     extras.append(project, steps, right);
@@ -84,6 +86,11 @@
       var select = document.getElementById('team_library_project');
       var label = select && select.selectedIndex >= 0 && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : '';
       var authed = document.body.dataset.teamAuthenticated === 'true';
+      if (sessionOnly) {
+        if (project.textContent !== 'Local session') project.textContent = 'Local session';
+        project.disabled = true; project.setAttribute('aria-label', 'Local session: no project library, nothing is saved automatically');
+        avatar.hidden = true; return;
+      }
       project.textContent = authed && label ? label + ' ▾' : authed ? 'Choose a project ▾' : 'Not signed in';
       project.disabled = !authed;
       var email = (document.getElementById('team_library_email') || {}).value || '';
@@ -102,11 +109,24 @@
   function closeMenus(except) { document.querySelectorAll('.ts-menu[data-open="true"]').forEach(function (m) { if (m !== except) { m.dataset.open = 'false'; var t = m.previousElementSibling; if (t) t.setAttribute('aria-expanded', 'false'); } }); }
   function menuButton(label, items, cls) {
     var wrap = el('div', 'ts-menu-wrap ' + (cls || ''));
-    var trigger = button('ts-tool ts-menu-trigger', label, function (e) { e.stopPropagation(); var open = panel.dataset.open !== 'true'; closeMenus(panel); panel.dataset.open = String(open); trigger.setAttribute('aria-expanded', String(open)); if (open) { var first = Array.prototype.find.call(panel.querySelectorAll('button:not([disabled]),summary'), function (b) { return b.getClientRects().length; }); if (first) first.focus(); } });
+    var trigger = button('ts-tool ts-menu-trigger', label, function (e) { e.stopPropagation(); var open = panel.dataset.open !== 'true'; closeMenus(panel); panel.dataset.open = String(open); trigger.setAttribute('aria-expanded', String(open)); if (open) { keepOnScreen(); var first = Array.prototype.find.call(panel.querySelectorAll('button:not([disabled]),summary'), function (b) { return b.getClientRects().length; }); if (first) first.focus(); } });
     trigger.setAttribute('aria-haspopup', 'true'); trigger.setAttribute('aria-expanded', 'false');
     var panel = el('div', 'ts-menu'); panel.setAttribute('role', 'menu'); panel.dataset.open = 'false';
+    // A menu opens from its stylesheet edge; on a wrapped (phone) toolbar it flips to the other
+    // edge of its trigger when it would leave the window.
+    function keepOnScreen() {
+      panel.style.left = panel.style.right = '';
+      var r = panel.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+      if (r.right > vw - 4) { panel.style.left = 'auto'; panel.style.right = '0'; } else if (r.left < 4) { panel.style.left = '0'; panel.style.right = 'auto'; }
+    }
     items.forEach(function (item) { panel.appendChild(item); });
-    panel.addEventListener('keydown', function (e) { if (e.key === 'Escape') { panel.dataset.open = 'false'; trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); } });
+    // An open menu handles Escape (in the menu or on its trigger). It does not stop propagation: the frozen
+    // companion chat still closes on Escape exactly as in production; defaultPrevented keeps expanded Canvas.
+    wrap.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || e.defaultPrevented || panel.dataset.open !== 'true') return;
+      e.preventDefault();
+      panel.dataset.open = 'false'; trigger.setAttribute('aria-expanded', 'false'); trigger.focus();
+    });
     // Closing hides the focused item: hand focus back to the trigger.
     panel.addEventListener('click', function (e) { if (e.target.closest('button') && !e.target.closest('details')) { var hadFocus = panel.contains(document.activeElement); panel.dataset.open = 'false'; trigger.setAttribute('aria-expanded', 'false'); if (hadFocus) setTimeout(function () { if (!document.activeElement || document.activeElement === document.body || panel.contains(document.activeElement)) trigger.focus(); }, 0); } });
     wrap.append(trigger, panel); return wrap;
@@ -151,9 +171,9 @@
     var railText = button('ts-rail-item', 'Text & shapes', function () { toFigureCanvas(); proxy('.tc-draw-primitives', root); }, ICONS.text);
     var railIllus = button('ts-rail-item', 'Illustrations', function () { toFigureCanvas(); var show = !(libraryOpen() && rail.dataset.active === 'illustrations'); setLibrary(show); if (show) libraryTab('Illustrations'); paintRail(show ? 'illustrations' : ''); }, ICONS.illustrations);
     var railPalettes = button('ts-rail-item', 'Palettes', function () { toFigureCanvas(); proxy('.tc-palette', root); }, ICONS.palettes);
-    var railCell = button('ts-rail-item', '3D cell', function () { if (!figureCanvasShown()) { toFigureCanvas(); return; } var link = guideLink('3D cell'); if (link) link.click(); }, ICONS.cell);
     railPlots.dataset.panel = 'plots'; railIllus.dataset.panel = 'illustrations';
-    rail.append(railPlots, railText, railIllus, railPalettes, railCell);
+    // 3D cell lives in the toolbar's Analysis tools menu, with the other pages that leave the canvas.
+    rail.append(railPlots, railText, railIllus, railPalettes);
     function paintRail(active) {
       if (active == null) active = libraryOpen() ? (rail.dataset.active || 'plots') : '';
       rail.dataset.active = active;
@@ -210,35 +230,95 @@
     var help = root.querySelector('.tc-save-help');
     var expandItem;
     function compactOnly(b) { b.classList.add('ts-compact-only'); return b; }
+    // Phones (<= 600 px, canvas_header.css): the header keeps one toolbar row; Undo, Redo, Analysis
+    // tools and Export figure are offered here instead (the same actions).
+    function phoneOnly(b) { b.classList.add('ts-phone-only'); return b; }
+    // Fit levels (fitTools): from level n, a bar control tagged n leaves the row and the ⋯ item
+    // tagged n is shown instead (canvas_header.css). Level 1 is the .ts-secondary group (shell.css).
+    function fitLevel(n, b) { b.dataset.tsFit = String(n); return b; }
     var moreItems = [
       compactOnly(item('Arrange', function () { proxy('.tc-arrange', root); })),
       compactOnly(item('Text', function () { text.click(); })),
       compactOnly(item('Shapes', function () { shapes.click(); })),
+      fitLevel(4, item('+ Add plot', function () { addPlot.click(); })),
+      fitLevel(2, phoneOnly(item('Undo', function () { undo.click(); }))),
+      fitLevel(2, phoneOnly(item('Redo', function () { redo.click(); }))),
+      fitLevel(3, phoneOnly(item('Analysis tools…', function () {
+        var d = window.TeamToolsDrawer, more = menu.querySelector('.ts-menu-trigger');
+        if (d) { if (d.isOpen()) d.close(true); else d.open(more); } else analysisTrigger.click();
+      }))),
+      (function (b) { b.dataset.tsExport = '1'; return b; })(fitLevel(3, phoneOnly(exportItem('Export figure: SVG · vector', '.tc-preview-svg')))),
+      fitLevel(3, phoneOnly(exportItem('Export figure: PDF', '.tc-preview-pdf'))),
+      fitLevel(3, phoneOnly(exportItem('Print figure', '.tc-preview-print'))),
       item('Paste plot', function () { proxy('.tc-paste-plot', root); }, '.tc-paste-plot'),
       item('Return all plots', function () { proxy('.tc-reset', root); }, '.tc-reset'),
       expandItem = item('Expand canvas', function () { proxy('.tc-focus-toggle', root); }, '.tc-focus-toggle'),
-      item('Save & export…', function () { var l = guideLink('Save & export'); if (l) l.click(); }),
-      item('Analysis tools', function () { var d = document.querySelector('.tw-canvas-tabs details'); if (d) { d.open = true; var s = d.querySelector('summary'); if (s) s.focus(); } })
+      item('Save & export…', function () { var l = guideLink('Save & export'); if (l) l.click(); })
     ];
     if (help) moreItems.push(help);
     menu = menuButton('⋯', moreItems, 'ts-more');
     menu.querySelector('.ts-menu-trigger').setAttribute('aria-label', 'More canvas actions');
+    // One entry point for the pages that leave the figure canvas: the "All analysis tools" drawer
+    // (tools_drawer.js), which lists every analysis tool and the 3D cell, one right-side panel at a
+    // time. data-ttd-trigger lets the drawer keep its aria-expanded and not treat this click as
+    // outside. Without the drawer, the hidden .tw-canvas-tabs disclosure opens as before.
+    var analysisMenu = el('div', 'ts-menu-wrap ts-analysis');
+    var analysisTrigger = button('ts-tool ts-analysis-trigger', 'Analysis tools', function () {
+      var d = window.TeamToolsDrawer; closeMenus(null);
+      if (d) { if (d.isOpen()) d.close(true); else d.open(analysisTrigger); return; }
+      var details = document.querySelector('.tw-canvas-tabs details'); if (details) { details.open = true; var s = details.querySelector('summary'); if (s) s.focus(); }
+    });
+    analysisTrigger.dataset.ttdTrigger = 'true';
+    analysisTrigger.setAttribute('aria-haspopup', 'dialog'); analysisTrigger.setAttribute('aria-controls', 'team-tools-drawer'); analysisTrigger.setAttribute('aria-expanded', 'false');
+    analysisMenu.appendChild(analysisTrigger);
     function sep(secondary) { var s = el('span', 'ts-sep' + (secondary ? ' ts-secondary' : '')); s.setAttribute('aria-hidden', 'true'); return s; }
     [arrange, text, shapes].forEach(function (b) { b.classList.add('ts-secondary'); });
-    tools.append(addPlot, sep(true), arrange, text, shapes, sep(), undo, redo, sep(), modeSwitch, exportMenu, menu);
-    toolbar.insertBefore(tools, toolbar.firstChild); tools.after(modeHint);
+    [undo, redo, analysisMenu, exportMenu].forEach(function (b) { b.classList.add('ts-phone-hide'); });
+    // A separator leaves with the group it introduces, so no two separators meet.
+    [undo, redo].forEach(function (b) { fitLevel(2, b); }); [analysisMenu, exportMenu].forEach(function (b) { fitLevel(3, b); }); [addPlot, draftMode].forEach(function (b) { fitLevel(4, b); });
+    tools.append(addPlot, sep(true), arrange, text, shapes, fitLevel(2, sep()), undo, redo, fitLevel(4, sep()), modeSwitch, fitLevel(3, sep()), analysisMenu, exportMenu, menu);
+    toolbar.insertBefore(tools, toolbar.firstChild);
+    // The mode hint sits in the toolbar band's status slot (canvas_band_status.js), shown only
+    // while no notice or waiting strip uses it, so it costs no row of its own.
+    var band = window.TeamCanvasBand && window.TeamCanvasBand.slot(root);
+    if (band) {
+      band.appendChild(modeHint);
+      var syncHint = function () { var busy = !!band.querySelector('.tc-status.is-visible,.tc-global-wait:not([hidden])'); if (modeHint.hidden !== busy) modeHint.hidden = busy; };
+      new MutationObserver(syncHint).observe(band, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+      syncHint();
+    } else tools.after(modeHint);
     toolbar.setAttribute('aria-label', 'Canvas tools'); toolbar.setAttribute('role', 'toolbar');
-    // One row always: when the full toolbar no longer fits the canvas width, Arrange,
-    // Text and Shapes move into the ⋯ menu (same actions).
-    var fullToolsWidth = 0;
+    // One row always, at any canvas width (RC1): when the full toolbar no longer fits, groups
+    // move into the ⋯ menu (same actions) one level at a time: 1 Arrange, Text, Shapes;
+    // 2 Undo, Redo; 3 Analysis tools, Export figure; 4 Add plot and the static Draft label.
+    // Figure page, ⋯ and the Companion button always stay in the row. The level classes sit on
+    // the toolbar (not the root, whose class other modules observe); the root keeps
+    // ts-tools-compact for level >= 1, written only when it changes.
+    var FIT_CLASSES = ['ts-fit-1', 'ts-fit-2', 'ts-fit-3', 'ts-fit-4'];
     function fitTools() {
-      var space = toolbar.parentElement ? toolbar.parentElement.clientWidth - 24 : 0;
+      // From 901 px the canvas tabs share the header row (canvas_header.css): leave them room.
+      var tabs = toolbar.parentElement && toolbar.parentElement.querySelector(':scope > .tc-tabbar');
+      var beside = !!(tabs && tabs.getClientRects().length && Math.abs(tabs.offsetTop - toolbar.offsetTop) < 2);
+      var space = toolbar.parentElement ? toolbar.parentElement.clientWidth - 24 - (beside ? 180 : 0) : 0;
       if (space <= 0 || !tools.getClientRects().length) return; // hidden: measure once visible
-      if (!root.classList.contains('ts-tools-compact')) fullToolsWidth = Math.max(fullToolsWidth, Array.prototype.reduce.call(tools.children, function (w, c) { var cs = getComputedStyle(c); return w + c.offsetWidth + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0) + 2; }, 24));
-      var compact = fullToolsWidth > space;
-      if (compact !== root.classList.contains('ts-tools-compact')) root.classList.toggle('ts-tools-compact', compact);
+      // Measure the full row synchronously (no paint in between), then keep the first level that
+      // fits. The result depends only on the width, so repeated calls cannot oscillate.
+      var had = FIT_CLASSES.filter(function (c) { return toolbar.classList.contains(c); });
+      if (had.length) toolbar.classList.remove.apply(toolbar.classList, had);
+      function outer(c) { if (!c.offsetWidth) return 0; var cs = getComputedStyle(c); return c.offsetWidth + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0) + 2; }
+      var full = Array.prototype.reduce.call(tools.children, function (w, c) { return w + outer(c); }, 24);
+      var saved = [0, 0, 0, 0, 0];
+      Array.prototype.forEach.call(tools.children, function (c) { if (c.classList.contains('ts-secondary')) saved[1] += outer(c); });
+      Array.prototype.forEach.call(tools.querySelectorAll(':scope > [data-ts-fit], :scope > .ts-mode-switch > [data-ts-fit]'), function (c) { saved[+c.dataset.tsFit] += outer(c); });
+      var level = 0, width = full;
+      while (level < FIT_CLASSES.length && width > space) { level++; width -= saved[level]; }
+      FIT_CLASSES.forEach(function (c, i) { if (i < level) toolbar.classList.add(c); });
+      if (toolbar.dataset.tsFitLevel !== String(level)) toolbar.dataset.tsFitLevel = String(level);
+      if ((level > 0) !== root.classList.contains('ts-tools-compact')) root.classList.toggle('ts-tools-compact', level > 0);
     }
     if (window.ResizeObserver && toolbar.parentElement) new ResizeObserver(fitTools).observe(toolbar.parentElement);
+    // The tab bar mounts after the shell (canvas_tabs.js): measure again when it arrives.
+    if (toolbar.parentElement) new MutationObserver(fitTools).observe(toolbar.parentElement, { childList: true });
     fitTools();
     // When the toolbar wraps to more rows, keep the status notice and the top of the canvas below it.
     if (window.ResizeObserver) new ResizeObserver(function () { var b = Math.round(toolbar.offsetTop + toolbar.offsetHeight); if (b > 0 && root.style.getPropertyValue('--ts-toolbar-bottom') !== b + 'px') root.style.setProperty('--ts-toolbar-bottom', b + 'px'); }).observe(toolbar);

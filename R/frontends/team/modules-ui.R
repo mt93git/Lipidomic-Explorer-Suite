@@ -76,7 +76,7 @@ heatmap_ui <- function(id) {
               p("Select specific lipids, lipid classes, or structural subsets to compare their distribution across sample groups in Violin View.", class = "text-muted small mb-2"),
               
               tags$div(
-                class = "alert alert-warning py-2 px-3 small my-2", style = "font-size: 0.8rem; line-height: 1.3;",
+                class = "alert alert-warning py-2 px-3 small my-2", style = "font-size: 0.8125rem; line-height: 1.3;",
                 icon("triangle-exclamation", class = "me-1 text-warning"),
                 tags$strong("Performance Note: "),
                 "Plotting a large number of lipids (>20 species) may increase loading time. Select specific target species or structural subsets for optimal responsiveness."
@@ -94,8 +94,8 @@ heatmap_ui <- function(id) {
                   class = "d-flex justify-content-between align-items-center mb-1 mt-2",
                   tags$strong("Filter by Lipid Class:", style = "font-size: 0.85rem; color: #495057;"),
                   tags$div(
-                    actionButton(ns("btn_all_violin_class"), "All", class = "btn btn-link btn-xs p-0 me-2 text-decoration-none fw-bold", style="font-size:0.8rem;"),
-                    actionButton(ns("btn_none_violin_class"), "None", class = "btn btn-link btn-xs p-0 text-decoration-none text-muted", style="font-size:0.8rem;")
+                    actionButton(ns("btn_all_violin_class"), "All", class = "btn btn-link btn-xs p-0 me-2 text-decoration-none fw-bold", style="font-size:0.8125rem;"),
+                    actionButton(ns("btn_none_violin_class"), "None", class = "btn btn-link btn-xs p-0 text-decoration-none text-muted", style="font-size:0.8125rem;")
                   )
                 ),
                 selectizeInput(ns("heatmap_violin_class_select"), label = NULL, 
@@ -104,12 +104,12 @@ heatmap_ui <- function(id) {
                 
                 tags$div(
                   class = "mb-2",
-                  tags$strong("Saturation Filters:", style = "font-size: 0.8rem; color: #495057; display: block; margin-bottom: 4px;"),
+                  tags$strong("Saturation Filters:", style = "font-size: 0.8125rem; color: #495057; display: block; margin-bottom: 4px;"),
                   actionButton(ns("select_sfa_btn"), "SFA (0 DB)", class = "btn-sm btn-outline-success py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_mufa_btn"), "MUFA (1 DB)", class = "btn-sm btn-outline-warning py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_pufa_btn"), "PUFA (≥2 DB)", class = "btn-sm btn-outline-primary py-0 px-2 me-1 mb-1", icon = icon("dna")),
                   
-                  tags$strong("Chain Length Filters:", style = "font-size: 0.8rem; color: #495057; display: block; margin-top: 6px; margin-bottom: 4px;"),
+                  tags$strong("Chain Length Filters:", style = "font-size: 0.8125rem; color: #495057; display: block; margin-top: 6px; margin-bottom: 4px;"),
                   actionButton(ns("select_scfa_btn"), "SCFA (≤C5)", class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_mcfa_btn"), "MCFA (C6-C12)", class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_lcfa_btn"), "LCFA (>C12)", class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
@@ -143,7 +143,7 @@ heatmap_ui <- function(id) {
                                        "Species Facets: Sample Conditions on X-Axis" = "species_panels_condition_x",
                                        "Class Facets: Sample Conditions on X-Axis (Class Merged)" = "class_distribution"),
                            selected = "group_distribution"),
-              tags$p(class = "text-muted small mb-2", style = "font-size: 0.78rem;",
+              tags$p(class = "text-muted small mb-2", style = "font-size: 0.8125rem;",
                      "Note: All individual sample replicates (M1-M6) are merged into group violins with individual replicate dots overlaid. Group merging can also be configured under Panel 2 in the sidebar."),
               
               selectInput(ns("violin_baseline_group"), tags$span("Baseline Reference Group (Independent from Menu 3):", bslib::tooltip(icon("circle-info", style = "margin-left: 5px; color: #6c757d; cursor: pointer;"), "Select reference baseline group for pairwise Welch's t-test significance calculations in Violin View.")),
@@ -907,7 +907,7 @@ structural_ui <- function(id) {
                         plotOutput(ns("networkPlot"), height = "800px"),
                         options = list(handles = "s, se")
                       ),
-                     shiny::HTML("<div style='margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-left: 4px solid #0072b2; font-size: 11px; line-height: 1.4; color: #333; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; border-radius: 0 4px 4px 0;'><b>Methodology Note (Correlation Networks):</b> Correlation networks illustrate inter-lipid correlations. Nodes represent either aggregated lipid main classes, chain lengths, double bonds, or individual species. Edges indicate pairwise Pearson correlation coefficients (|r|) exceeding the user-specified threshold. Undirected graph layout is optimized using the selected algorithm (e.g. Stress or Fruchterman-Reingold).</div>")
+                     shiny::HTML("<div style='margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-left: 4px solid #0072b2; font-size: 13px; line-height: 1.4; color: #333; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; border-radius: 0 4px 4px 0;'><b>Methodology Note (Correlation Networks):</b> Correlation networks illustrate inter-lipid correlations. Nodes represent either aggregated lipid main classes, chain lengths, double bonds, or individual species. Edges indicate pairwise Pearson correlation coefficients (|r|) exceeding the user-specified threshold. Undirected graph layout is optimized using the selected algorithm (e.g. Stress or Fruchterman-Reingold).</div>")
                    )
                  )
                )
@@ -1942,10 +1942,10 @@ longitudinal_ui <- function(id) {
       .rank-list-item {
         padding: 6px 12px !important;
         margin: 3px 0 !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
         line-height: 1.2 !important;
         background-color: #ffffff !important;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid var(--lab-line, #dce3e9) !important;
         border-radius: 4px !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
         cursor: grab !important;
@@ -1968,11 +1968,11 @@ longitudinal_ui <- function(id) {
       }
       .longitudinal-compact-sidebar .control-label,
       .longitudinal-compact-sidebar label {
-        font-size: 11px !important;
+        font-size: 13px !important;
       }
       .longitudinal-compact-sidebar .selectize-input,
       .longitudinal-compact-sidebar .selectize-dropdown {
-        font-size: 11px !important;
+        font-size: 13px !important;
         line-height: 1.2 !important;
       }
       .longitudinal-compact-sidebar .selectize-input {
@@ -1981,7 +1981,7 @@ longitudinal_ui <- function(id) {
       }
       .longitudinal-compact-sidebar .checkbox label,
       .longitudinal-compact-sidebar .checkbox label span {
-        font-size: 11px !important;
+        font-size: 13px !important;
       }
     ")),
     layout_sidebar(
@@ -2017,12 +2017,12 @@ longitudinal_ui <- function(id) {
           accordion_panel("2. Cohorts & Trajectories", icon = icon("users"),
             div(
               class = "longitudinal-compact-sidebar",
-              p(class="text-muted small", style="font-size: 11px;", "Select grouping/timepoint variables, check timepoints, and drag cohorts to design timecourse lines:"),
+              p(class="text-muted small", style="font-size: 13px;", "Select grouping/timepoint variables, check timepoints, and drag cohorts to design timecourse lines:"),
               uiOutput(ns("cohort_variable_selectors_ui")),
               uiOutput(ns("cohort_selectors_ui")),
               hr(style = "margin: 10px 0;"),
               uiOutput(ns("trajectory_designer_ui")),
-              actionButton(ns("submit_longitudinal_btn"), "Generate Analysis", class = "btn-primary w-100 mt-2", icon = icon("play"), style = "font-size: 11px; font-weight: 500; padding: 4px 8px;")
+              actionButton(ns("submit_longitudinal_btn"), "Generate Analysis", class = "btn-primary w-100 mt-2", icon = icon("play"), style = "font-size: 13px; font-weight: 500; padding: 4px 8px;")
             )
           ),
           accordion_panel("3. Patient IDs", icon = icon("id-card"),
@@ -2031,7 +2031,7 @@ longitudinal_ui <- function(id) {
             hr(style = "margin: 10px 0;"),
             wellPanel(
               style = "padding: 10px; margin-bottom: 0; background-color: #f8f9fa; border: 1px solid #dee2e6;",
-              h6(style = "font-weight: bold; margin-bottom: 8px; font-size: 12px;", "Create New Patient Group"),
+              h6(style = "font-weight: bold; margin-bottom: 8px; font-size: 13px;", "Create New Patient Group"),
               textInput(ns("new_group_name"), "Group Name:", placeholder = "e.g. Responders"),
               selectizeInput(ns("new_group_pts"), "Select Patients:", choices = NULL, multiple = TRUE, width = "100%"),
               actionButton(ns("btn_add_patient_group"), "Add Group", class = "btn-success btn-sm w-100", icon = icon("plus"))
@@ -2337,7 +2337,7 @@ pathway_ui <- function(id) {
               "Dynamic Physics Flow",
               icon = icon("atom"),
               tags$div(
-                style = "margin-bottom: 8px; font-size: 12px; color: #475569; background-color: #f1f5f9; padding: 6px 12px; border-radius: 6px;",
+                style = "margin-bottom: 8px; font-size: 13px; color: var(--lab-muted, #526477); background-color: var(--lab-paper, #fafaf8); padding: 6px 12px; border-radius: 6px;",
                 icon("hand-pointer", class = "text-primary me-1"),
                 tags$strong("Interactive Physics:"), " Click and drag any lipid bubble to move it across the canvas. Dynamic flow physics will actively bump neighboring bubbles and cause them to bounce and rebound."
               ),
@@ -2933,14 +2933,14 @@ math_proof_ui <- function(id) {
         }
         .", ns("fluid-origin"), " {
           color: #94a3b8;
-          font-size: 0.79rem;
+          font-size: 0.8125rem;
           margin-bottom: 6px;
           line-height: 1.35;
         }
         .", ns("fluid-row"), " {
           margin-bottom: 4px;
           color: #cbd5e1;
-          font-size: 0.80rem;
+          font-size: 0.8125rem;
         }
         .", ns("fluid-tag"), " {
           font-weight: 600;
@@ -2957,7 +2957,7 @@ math_proof_ui <- function(id) {
           margin-top: 6px;
           padding-top: 5px;
           border-top: 1px dashed #334155;
-          font-size: 0.79rem;
+          font-size: 0.8125rem;
           line-height: 1.35;
         }
         .", ns("math-op"), " {
@@ -2982,7 +2982,7 @@ math_proof_ui <- function(id) {
           font-weight: 700;
           padding: 8px 12px;
           border-bottom: 2px solid #cbd5e1;
-          font-size: 0.80rem;
+          font-size: 0.8125rem;
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
@@ -3227,7 +3227,7 @@ math_proof_ui <- function(id) {
                     ),
                     div(
                       class = "mt-2 pt-2 border-top",
-                      style = "color: #475569; font-size: 0.81rem; border-color: #e2e8f0 !important;",
+                      style = "color: #475569; font-size: 0.8125rem; border-color: #e2e8f0 !important;",
                       tags$span(style = "font-weight: 600; color: #334155;", "Source: "),
                       "Idkowiak et al., Nature Communications (2025) 16:8714; Wei et al., Sci. Rep. (2018) 8:1632."
                     )
@@ -3247,7 +3247,7 @@ math_proof_ui <- function(id) {
                     ),
                     div(
                       class = "mt-2 pt-2 border-top",
-                      style = "color: #475569; font-size: 0.81rem; border-color: #e2e8f0 !important;",
+                      style = "color: #475569; font-size: 0.8125rem; border-color: #e2e8f0 !important;",
                       tags$span(style = "font-weight: 600; color: #334155;", "Source: "),
                       "Idkowiak et al., Nature Communications (2025) 16:8714; Metabolomics (2024) 20:45."
                     )
@@ -3267,7 +3267,7 @@ math_proof_ui <- function(id) {
                     ),
                     div(
                       class = "mt-2 pt-2 border-top",
-                      style = "color: #475569; font-size: 0.81rem; border-color: #e2e8f0 !important;",
+                      style = "color: #475569; font-size: 0.8125rem; border-color: #e2e8f0 !important;",
                       tags$span(style = "font-weight: 600; color: #334155;", "Source: "),
                       "Lazar et al., J. Proteome Res. (2016) 15(4):1116-1125; Wei et al., Sci. Rep. (2018) 8:1632; Idkowiak et al., Nature Communications (2025) 16:8714."
                     )
@@ -3287,7 +3287,7 @@ math_proof_ui <- function(id) {
                     ),
                     div(
                       class = "mt-2 pt-2 border-top",
-                      style = "color: #475569; font-size: 0.81rem; border-color: #e2e8f0 !important;",
+                      style = "color: #475569; font-size: 0.8125rem; border-color: #e2e8f0 !important;",
                       tags$span(style = "font-weight: 600; color: #334155;", "Source: "),
                       "Idkowiak et al., Nature Communications (2025) 16:8714."
                     )
@@ -3307,7 +3307,7 @@ math_proof_ui <- function(id) {
                     ),
                     div(
                       class = "mt-2 pt-2 border-top",
-                      style = "color: #475569; font-size: 0.81rem; border-color: #e2e8f0 !important;",
+                      style = "color: #475569; font-size: 0.8125rem; border-color: #e2e8f0 !important;",
                       tags$span(style = "font-weight: 600; color: #334155;", "Source: "),
                       "Idkowiak et al., Nature Communications (2025) 16:8714; citing van den Berg et al., BMC Genomics (2006) 7:142."
                     )

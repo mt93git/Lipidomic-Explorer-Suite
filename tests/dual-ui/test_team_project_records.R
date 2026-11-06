@@ -76,6 +76,9 @@ cat('PASS actual assistant: Team retains all205 logged events, Classic cap200 un
 team_workspace_enabled<-function()TRUE
 html<-htmltools::renderTags(team_project_share_ui())$html
 stopifnot(!grepl('1. Download',html,fixed=TRUE),!grepl('2. Download',html,fixed=TRUE),!grepl('3. Download',html,fixed=TRUE),grepl('Downloads below are optional copies',html,fixed=TRUE),!grepl('Companion actions are session-local',html,fixed=TRUE))
+# The committed knowledge base answers step 7 itself; this checks the local step guide's records copy
+# (production f053e56 fails here for the same reason).
+Sys.setenv(LIPIDOMIC_COMPANION_KB='0')
 testServer(function(input,output,session){
  workflow<-list(step=function()7L,design_ok=function()FALSE)
  assistant<-team_project_companion_server(input,output,session,list(),workflow)

@@ -39,7 +39,7 @@ team_library_call <- function(service, path, token = NULL, body = NULL,
   if (identical(service, "rest") && identical(path, "/pilot_members"))
     return(list(list(project_id = project_a, role = "owner"), list(project_id = project_b, role = "editor")))
   if (identical(service, "rest") && grepl("/pilot_files\\?", path)) return(rows_for(test_state$rows, path))
-  if (identical(service, "auth") && identical(path, "/logout")) return(NULL)
+  if (identical(service, "auth") && path %in% c("/logout", "/logout?scope=local")) return(NULL)
   stop("Unexpected stub API request: ", service, " ", path)
 }
 team_library_queue <- function(user, pending = NULL, clear = FALSE, expected = NULL) {
@@ -230,14 +230,15 @@ run_workspace_server(function(session, output, saved_messages) {
 team_library_call <- original_call
 permission_revoked <- FALSE
 
+# The direct "legacy" save of the old seven-step Team shell (LIPIDOMIC_TEAM_WORKSPACE=0) no longer exists:
+# Team is always the workspace, so LIPIDOMIC_TEAM_WORKSPACE=0 must not bypass the Canvas acknowledgement.
 Sys.setenv(LIPIDOMIC_TEAM_WORKSPACE = "0")
 reset_test_state()
 run_workspace_server(function(session, output, saved_messages) {
   session$setInputs(team_library_save = 1L)
   session$flushReact()
-  stopifnot(test_state$exports == 1L, length(test_state$commits) == 1L,
-            identical(test_state$commits[[1L]]$project, project_a),
-            !any(vapply(saved_messages$items, function(x) identical(x$type, "team-canvas-save-request"), logical(1))))
+  stopifnot(test_state$exports == 0L, length(test_state$commits) == 0L,
+            any(vapply(saved_messages$items, function(x) identical(x$type, "team-canvas-save-request"), logical(1))))
 })
 
-cat("PASS: Team checkpoint waits for a current Canvas ACK and project binding; legacy save remains direct\n")
+cat("PASS: Team checkpoint waits for a current Canvas ACK and project binding, whatever LIPIDOMIC_TEAM_WORKSPACE says\n")

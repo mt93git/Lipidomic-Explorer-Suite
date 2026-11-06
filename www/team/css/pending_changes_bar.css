@@ -9,10 +9,9 @@
 .tw-pending-bar .btn.tw-pending-update:hover{background:#6e4200;border-color:#6e4200;color:#fff}
 .tw-pending-bar .btn.tw-pending-undo{background:#fff;border:1px solid #8a5300;color:#5c3d0a;font-weight:600;min-height:36px}
 .tw-pending-bar .btn.tw-pending-undo:hover{background:#fbe8c2;color:#3f2905}
-.tw-pending-bar .btn:focus-visible{outline:3px solid #1f4e79;outline-offset:2px;box-shadow:none}
+.tw-pending-bar .btn:focus-visible{box-shadow:none}
 /* The run strip is rendered outside Team (R/guided_workflow.R); never show "Analysis ready" beside the bar. */
 body.tw-changes-pending .guide-run-status.is-ready{display:none}
 body.guided-app #guide_quality_next .guide-button.tw-continue-blocked{background:#e6e9ec;border-color:#c3cad1;color:#44505a;cursor:not-allowed}
-body.guided-app #guide_quality_next .guide-button.tw-continue-blocked:focus-visible{outline:3px solid #1f4e79;outline-offset:2px}
 .tw-continue-reason{display:inline-block;margin:5px 0;color:#5c3d0a;font-weight:600}
 @media(max-width:760px){.tw-pending-bar{padding:10px 14px}.tw-pending-text{flex-basis:100%}}

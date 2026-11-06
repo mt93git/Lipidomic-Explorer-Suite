@@ -1,0 +1,66 @@
+/* RC4: a clean plot card and a tabbed inspector (www/team/js/card_frame.js, canvas_inspector_export.js).
+   The card shows its title with the status badge in the header slot, the plot, and a footer with
+   Edit, Duplicate and ⋯. The footer bar is card_figure.js's action toolbar (still inside the header,
+   which keeps every lookup of header buttons working). card_figure.js counter-zooms it, so its text
+   and targets stay screen-size (13 px, 30 px) at every Canvas zoom, and docks it (.tc-card-docked)
+   over the in-card spacer .tc-card-foot while that footer holds it on screen (zoom >= 90 %). Below
+   that it floats at screen size over the card's lower edge, shown on hover, selection or focus
+   (card_figure.css). Docked, the !important declarations below win over its inline left/top.
+   #team-canvas-root outranks the workspace theme's card-button paint (an id inside its :is()).
+   No new z-index: the bar keeps card_figure.css's local value, the menu opens inside it.
+   Colours: #3b4855 on white 9.4:1, #2d5f8a on #eaf1f7 5.9:1, #5a6878 on white 5.9:1. */
+body.ts-shell-app .tc-node.tc-card-framed>.tc-node-head{position:static}
+body.ts-shell-app .tc-node.tc-card-framed>.tc-node-head>strong{flex:1 1 auto}
+body.ts-shell-app .tc-node.tc-card-framed>.tc-card-foot{order:99;flex:none;height:40px;border-top:1px solid #e3e7ec;background:#fff}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:4px}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions.tc-card-docked{position:absolute!important;left:8px!important;right:8px!important;top:auto!important;bottom:5px!important;max-width:none!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:30px;padding:0!important;background:transparent!important;border:0!important;border-radius:0;box-shadow:none!important;transition:none}
+/* An open ⋯ menu may reach past a short card's edge: the card does not clip it while it is open. */
+body.ts-shell-app .tc-node.tc-card-framed.tc-card-menu-open{overflow:visible}
+body.ts-shell-app .tc-node.tc-card-framed.tc-card-menu-open>.tc-node-head>.tc-card-actions{opacity:1;pointer-events:auto}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions :is(.tc-card-actions>button,.tc-card-more,.tc-card-menu>button){display:inline-flex;align-items:center;box-sizing:border-box;height:30px!important;min-height:30px!important;margin:0!important;padding:0 10px!important;border:1px solid transparent!important;border-radius:6px!important;background:transparent!important;box-shadow:none!important;color:#3b4855!important;font:600 13px/1 'Nunito Sans',system-ui,sans-serif!important;white-space:nowrap;cursor:pointer}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions>.tc-card-edit{color:#2d5f8a!important}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions :is(.tc-card-actions>button,.tc-card-more,.tc-card-menu>button):is(:hover,:active):not(:disabled),body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-more[aria-expanded="true"]{background:#eaf1f7!important;border-color:transparent!important;color:#2d5f8a!important}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions :is(.tc-card-actions>button,.tc-card-more,.tc-card-menu>button):focus-visible{--lab-focus-width:2px;--lab-focus-offset:1px}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions :is(.tc-card-menu>button):disabled{color:#5a6878!important;cursor:not-allowed}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions .tc-card-more{width:30px;justify-content:center;padding:0!important;font-size:16px!important}
+body.ts-shell-app .tc-node.tc-card-framed .tc-card-more-wrap{position:relative;margin-left:auto;display:flex}
+/* ⋯ opens upward inside the card (its footer is the card's last row); downward (card_frame.js .is-below)
+   when the canvas view has no room above it. */
+body.ts-shell-app .tc-node.tc-card-framed .tc-card-menu{position:absolute;right:0;bottom:calc(100% + 4px);display:grid;gap:2px;min-width:176px;padding:4px;background:#fff;border:1px solid #dce3eb;border-radius:8px;box-shadow:0 6px 20px rgba(20,27,36,.16)}
+body.ts-shell-app .tc-node.tc-card-framed .tc-card-menu.is-below{top:calc(100% + 4px);bottom:auto}
+body.ts-shell-app .tc-node.tc-card-framed .tc-card-menu.is-left{left:0;right:auto}
+body.ts-shell-app .tc-node.tc-card-framed .tc-card-menu[hidden]{display:none}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-actions .tc-card-menu>button{width:100%;justify-content:flex-start;text-align:left}
+/* A finished figure's Edit (unfreeze) is the footer's Edit: no second Edit in ⋯. */
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed .tc-card-menu>button[aria-pressed="true"]{display:none!important}
+/* A finished figure: its downloads and caption are in the inspector's Export tab. A stale caption stays. */
+body.ts-shell-app .tc-node.tc-card-framed>.tc-snapshot>:is(.tc-snapshot-exports,.tc-export-fallback),body.ts-shell-app .tc-node.tc-card-framed:not(.tc-stale)>.tc-snapshot>.tc-snapshot-status{display:none}
+
+/* Inspector: four tabs fit the 320 px panel (and 366 px at 390). */
+.tc-selection-inspector .tc-inspector-tabs{padding:0 8px}
+.tc-selection-inspector .tc-inspector-tab{flex:1 1 auto;padding:9px 6px;font-size:13px;white-space:nowrap}
+.tc-selection-inspector .tc-inspector-tab[hidden]{display:none}
+/* The card's status badge, with its one action, above the tabs. Badge colours (card_status.css). */
+.tc-selection-inspector>.tc-inspector-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:8px 16px;border-bottom:1px solid #dce3eb;background:#f4f6f8;color:#3b4855;font:400 13px/1.4 system-ui,sans-serif}
+.tc-selection-inspector>.tc-inspector-status>i{width:7px;height:7px;border-radius:50%;background:#6b7785;align-self:center}
+.tc-selection-inspector>.tc-inspector-status>strong{font-weight:600}
+.tc-selection-inspector>.tc-inspector-status>span{flex-basis:100%}
+.tc-selection-inspector>.tc-inspector-status[data-state=current]>i{background:#2e8b57}
+.tc-selection-inspector>.tc-inspector-status[data-state=updating]{background:#e7f0fa;color:#1d4f7c}
+.tc-selection-inspector>.tc-inspector-status:is([data-state=pending],[data-state=waiting]){background:#fff4e0;color:#7a4b00}
+.tc-selection-inspector>.tc-inspector-status:is([data-state=pending],[data-state=waiting])>i{background:#d98b00}
+.tc-selection-inspector>.tc-inspector-status[data-state=error]{background:#fdecea;color:#8a1f11}
+.tc-selection-inspector>.tc-inspector-status[data-state=error]>i{background:#c0392b}
+.tc-selection-inspector>.tc-inspector-status>button{border:0;background:transparent;color:inherit;font:inherit;font-weight:600;text-decoration:underline;padding:0 2px;border-radius:3px;cursor:pointer;min-height:0}
+/* Export tab. */
+.tc-inspector-export{display:grid;gap:12px;align-content:start;padding:14px 16px;font-size:13px}
+.tc-inspector-export[hidden]{display:none}
+.tc-inspector-export>*{max-width:100%;min-width:0;margin:0}
+.tc-inspector-export .plot-export-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tc-inspector-export .tc-export-note,.tc-inspector-export :is(.tc-export-caption,.tc-export-none){margin:0;color:#5a6878;font-size:13px}
+.tc-inspector-export.is-finished>:not(.tc-export-more){display:none}
+.tc-inspector-export .tc-export-more{display:grid;gap:10px}
+.tc-inspector-export .tc-export-mirrors{display:flex;flex-wrap:wrap;gap:6px}
+.tc-inspector-export :is(.tc-export-mirror,.tc-csv){height:32px;padding:0 12px;border:1px solid #cbd7e3;border-radius:6px;background:#fff;color:#2d5f8a;font:600 13px/1 system-ui,sans-serif;cursor:pointer}
+.tc-inspector-export :is(.tc-export-mirror,.tc-csv):hover:not(:disabled){background:#eaf1f7}
+.tc-inspector-export .tc-export-mirror:disabled{color:#5a6878;cursor:not-allowed}

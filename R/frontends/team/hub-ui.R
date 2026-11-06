@@ -86,7 +86,7 @@ shared_data_ui <- function(id) {
                 ns("useAveragedSubstitution"), 
                 tags$span(
                   "Preserve matrix: Use group average for unchecked samples",
-                  tags$span(class = "badge bg-danger ms-1", style = "font-size: 0.68rem; vertical-align: middle;", "Caution"),
+                  tags$span(class = "badge bg-danger ms-1", style = "font-size: 0.8125rem; vertical-align: middle;", "Caution"),
                   bslib::tooltip(
                     icon("triangle-exclamation", style = "margin-left: 5px; color: #dc2626; cursor: pointer;"),
                     "CAUTION: Replacing unchecked sample values with their group average artificially deflates within-group variance and inflates residual degrees of freedom in downstream models. This can generate anti-conservative false-positive discoveries. Only intended for visualization preservation."
@@ -308,7 +308,7 @@ shared_data_ui <- function(id) {
             "Colors & palettes",
             icon = icon("palette"),
             tags$div(class = "dock-group-block mb-2",
-              tags$p(class="text-muted", style="font-size: 0.76rem;", "Use a preset or save your own colors for consistent charts."),
+              tags$p(class="text-muted", style="font-size: 0.8125rem;", "Use a preset or save your own colors for consistent charts."),
               actionButton(ns("open_palette_editor"), "Open colors & palettes", icon = icon("palette"), class = "btn-primary w-100")
             )
           )
@@ -339,6 +339,40 @@ shared_data_ui <- function(id) {
       )
     )
   )
+}
+
+# Catalog for the "All analysis tools" drawer (www/team/js/tools_drawer.js).
+# Presentation only: groups and one-line copy. The drawer lists the tool links
+# already in the page and its Open buttons click those links, so navigation
+# and the tool set stay owned by guided_workflow.R (guide_tools).
+team_tools_drawer_groups <- list(
+  list(title = "Big picture", tools = c("Quality Check", "Composition", "Heatmap")),
+  list(title = "Compare conditions", tools = c("Run comparison", "Volcano Plot", "LSEA", "Violin Plots")),
+  list(title = "Structures", tools = c("Structural", "Main Class & Acyl Chain Proportions", "Structural Grid")),
+  list(title = "Functions", tools = c("Functional Ratios", "Lipid Pathways", "Cellular Organization")),
+  list(title = "Over time", tools = c("Longitudinal"))
+)
+team_tools_drawer_copy <- c(
+  "Run comparison" = "Choose the reference and comparison groups and review the statistical method.",
+  "Math Proof" = "Trace how one measurement was transformed, step by step.",
+  "Lexicon" = "Look up lipid names and terms used in the app.",
+  "App Info" = "Help and methods: how the app prepares and analyses data.",
+  "About & Citation" = "Authors and how to cite the app.",
+  "Publication Export Studio" = "Prepare publication figures and reproducibility bundles."
+)
+team_tools_drawer_description <- function(tool) {
+  if (tool %in% names(team_tools_drawer_copy)) return(unname(team_tools_drawer_copy[[tool]]))
+  if (exists("guide_tool_description", mode = "function")) return(guide_tool_description(tool))
+  ""
+}
+team_tools_drawer_catalog <- function() {
+  tools <- if (exists("guide_tools")) guide_tools else character()
+  catalog <- list(
+    groups = lapply(team_tools_drawer_groups, function(g) list(title = g$title, tools = I(intersect(g$tools, tools)))),
+    descriptions = stats::setNames(lapply(tools, team_tools_drawer_description), tools)
+  )
+  json <- gsub("</", "<\\/", jsonlite::toJSON(catalog, auto_unbox = TRUE), fixed = TRUE)
+  tags$script(type = "application/json", id = "team-tools-drawer-catalog", HTML(json))
 }
 
 # Server logic
