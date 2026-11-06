@@ -12,6 +12,19 @@ api_handle <- function(res, expr) {
     api_bad_request = function(e) api_error(res, 400L, "bad_request", conditionMessage(e)),
     api_unprocessable = function(e) api_error(res, 422L, "unprocessable", conditionMessage(e)))
 }
+# testServer() lets httpuv serve the next request while it flushes, and it
+# refuses to nest. One render at a time; a concurrent request gets 503 and the
+# client retries.
+api_busy <- FALSE
+api_exclusive <- function(res, expr) {
+  if (api_busy) {
+    res$setHeader("Retry-After", "1")
+    return(api_error(res, 503L, "busy", "The engine is busy with another request; retry shortly."))
+  }
+  api_busy <<- TRUE
+  on.exit(api_busy <<- FALSE)
+  api_handle(res, expr)
+}
 api_body <- function(req) {
   body <- req$body
   if (is.null(body) || identical(body, "")) return(list())
@@ -36,7 +49,7 @@ function() {
 
 #* Restore or reuse a checkpoint
 #* @post /api/v1/sessions
-function(req, res) api_handle(res, {
+function(req, res) api_exclusive(res, {
   id <- api_body(req)$checkpointId
   if (!is.character(id) || length(id) != 1L || is.na(id) || !nzchar(id) ||
       grepl("/", id, fixed = TRUE) || grepl("..", id, fixed = TRUE) || grepl("\\", id, fixed = TRUE))
@@ -62,7 +75,7 @@ function(req, res) api_handle(res, {
 
 #* Render one Team dashboard plot
 #* @post /api/v1/sessions/<id>/plots/results_dashboard/<output>
-function(id, output, req, res) api_handle(res, {
+function(id, output, req, res) api_exclusive(res, {
   if (!exists(id, api_sessions, inherits = FALSE)) {
     api_error(res, 404L, "not_found", "Unknown session.")
   } else {

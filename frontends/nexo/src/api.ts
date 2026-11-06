@@ -16,11 +16,22 @@ export function inputsFor(s: Session): Record<string, unknown> {
   if (!inputs.violin_lipid && Array.isArray(s.lipids) && typeof s.lipids[0] === 'string') inputs.violin_lipid = s.lipids[0];
   return inputs;
 }
-async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE ?? '/api/v1'}${path}`, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.message ?? `Request failed (${response.status})`);
-  return value as T;
+// The R engine renders one request at a time (503 while busy), so requests are
+// queued here and a 503 is retried.
+let queue: Promise<unknown> = Promise.resolve();
+async function send<T>(path: string, body?: unknown): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE ?? '/api/v1'}${path}`, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (response.status === 503 && attempt < 60) { await new Promise(r => setTimeout(r, 500)); continue; }
+    const value = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(value.message ?? `Request failed (${response.status})`);
+    return value as T;
+  }
+}
+function request<T>(path: string, body?: unknown): Promise<T> {
+  const run = queue.then(() => send<T>(path, body));
+  queue = run.catch(() => undefined);
+  return run;
 }
 const mock = import.meta.env.VITE_API_MOCK === '1';
 export const getCheckpoints = () => mock ? Promise.resolve(checkpoints) : request<typeof checkpoints>('/checkpoints');
