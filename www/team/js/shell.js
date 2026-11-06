@@ -111,7 +111,8 @@
     var wrap = el('div', 'ts-menu-wrap ' + (cls || ''));
     var trigger = button('ts-tool ts-menu-trigger', label, function (e) { e.stopPropagation(); var open = panel.dataset.open !== 'true'; closeMenus(panel); panel.dataset.open = String(open); trigger.setAttribute('aria-expanded', String(open)); if (open) { keepOnScreen(); var first = Array.prototype.find.call(panel.querySelectorAll('button:not([disabled]),summary'), function (b) { return b.getClientRects().length; }); if (first) first.focus(); } });
     trigger.setAttribute('aria-haspopup', 'true'); trigger.setAttribute('aria-expanded', 'false');
-    var panel = el('div', 'ts-menu'); panel.setAttribute('role', 'menu'); panel.dataset.open = 'false';
+    // A group of buttons (Tab moves through them), not an ARIA menu: menu semantics promise arrow-key navigation.
+    var panel = el('div', 'ts-menu'); panel.setAttribute('role', 'group'); panel.dataset.open = 'false';
     // A menu opens from its stylesheet edge; on a wrapped (phone) toolbar it flips to the other
     // edge of its trigger when it would leave the window.
     function keepOnScreen() {
@@ -132,7 +133,7 @@
     wrap.append(trigger, panel); return wrap;
   }
   function item(label, run, enabled) {
-    var b = button('ts-menu-item', label, run); b.setAttribute('role', 'menuitem');
+    var b = button('ts-menu-item', label, run);
     if (enabled) b.dataset.enabledFrom = enabled; return b;
   }
   function mountCanvas() {
@@ -168,7 +169,10 @@
     }
     document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-tw-stage="canvas"]') && onLegacyCanvasStep()) setTimeout(toFigureCanvas, 0); }, true);
     var railPlots = button('ts-rail-item', 'Plots', function () { toFigureCanvas(); var showPlots = !(libraryOpen() && rail.dataset.active === 'plots'); setLibrary(showPlots); if (showPlots) libraryTab('Plots'); paintRail(showPlots ? 'plots' : ''); }, ICONS.plots);
-    var railText = button('ts-rail-item', 'Text & shapes', function () { toFigureCanvas(); proxy('.tc-draw-primitives', root); }, ICONS.text);
+    // ux27: text and shapes exist only on the Figure page. The rail offers them there only (hidden in the
+    // Draft, shell.css) and never changes mode: on the Figure page it opens the shape/text menu in place.
+    var railText = button('ts-rail-item', 'Text & shapes (Figure page)', function () { var c = window.TeamCanvasCompose; if (!root.classList.contains('tc-figure-mode')) return; if (c && c.openShapes) c.openShapes(); else proxy('.tc-draw-primitives', root); }, ICONS.text);
+    railText.dataset.figureOnly = 'true';
     var railIllus = button('ts-rail-item', 'Illustrations', function () { toFigureCanvas(); var show = !(libraryOpen() && rail.dataset.active === 'illustrations'); setLibrary(show); if (show) libraryTab('Illustrations'); paintRail(show ? 'illustrations' : ''); }, ICONS.illustrations);
     var railPalettes = button('ts-rail-item', 'Palettes', function () { toFigureCanvas(); proxy('.tc-palette', root); }, ICONS.palettes);
     railPlots.dataset.panel = 'plots'; railIllus.dataset.panel = 'illustrations';
@@ -202,13 +206,19 @@
     // Floating toolbar: the existing .tc-toolbar is restyled; proxied controls stay in the DOM.
     var tools = el('div', 'ts-tools');
     var addPlot = button('ts-tool', '+ Add plot', function () { setLibrary(true); libraryTab('Plots'); paintRail('plots'); var s = root.querySelector('.tc-search'); if (s) s.focus(); });
-    var arrange = button('ts-tool', 'Arrange', function () { proxy('.tc-arrange', root); });
+    var arrange = button('ts-tool', 'Tidy up', function () { proxy('.tc-arrange', root); });
     // Text and shapes live on the figure page: these open it and add there in one
     // click (canvas_preview.js explains anything that prevents it).
     function compose(action) { return function () { var c = window.TeamCanvasCompose; if (c && c[action]) c[action](); else if (action === 'addText') { proxy('#tc-preview-tab', root); proxy('.tc-preview-add-text', root); } else proxy('.tc-draw-primitives', root); }; }
     var text = button('ts-tool', 'Text', compose('addText'));
     var shapes = button('ts-tool', 'Shapes', compose('openShapes'));
-    function key(redo) { return function (e) { var t = e.currentTarget; t.dispatchEvent(new KeyboardEvent('keydown', { key: redo ? 'Z' : 'z', shiftKey: !!redo, ctrlKey: true, bubbles: true, cancelable: true })); }; }
+    // ux27: these opened the Figure page from the Draft (an implicit mode change). The Figure page's own
+    // bar has Add text and Shapes; in the Draft they are not offered (shell.css).
+    text.dataset.figureOnly = 'true'; shapes.dataset.figureOnly = 'true';
+    function key(redo) { return function (e) { var t = e.currentTarget; if (t.dispatchEvent(new KeyboardEvent('keydown', { key: redo ? 'Z' : 'z', shiftKey: !!redo, ctrlKey: true, bubbles: true, cancelable: true }))) {
+      // Nothing handled it (dispatchEvent is true when no handler applied an undo): say so.
+      var page = root.querySelector('#tc-preview-panel:not([hidden]) .tc-preview-status'), s = page || root.querySelector('.tc-status');
+      if (s) s.textContent = redo ? 'Nothing to redo.' : page ? 'Nothing to undo.' : 'Nothing to undo. Undo covers card moves, sizes, arrangement and tabs.'; } }; }
     var undo = button('ts-tool ts-icon', 'Undo', key(false), '↶');
     var redo = button('ts-tool ts-icon', 'Redo', key(true), '↷');
     // Two-state mode switch: Draft canvas (here) | Figure page. The figure page
@@ -222,7 +232,14 @@
     var previewSr = el('span', 'ts-sr-only', ' (print preview)'); preview.appendChild(previewSr);
     modeSwitch.append(draftMode, preview);
     var modeHint = el('p', 'ts-mode-hint', 'Draft: edit live plots. Finish a plot to place it on the figure page.');
-    function exportItem(label, selector) { return item(label, function () { proxy('#tc-preview-tab', root); setTimeout(function () { proxy(selector, root); }, 0); }); }
+    function exportItem(label, selector) { return item(label, function () { proxy('#tc-preview-tab', root); setTimeout(function () {
+      var t = root.querySelector(selector);
+      if (t && t.disabled) {
+        var s = root.querySelector('.tc-preview-status'), layoutSelect = root.querySelector('.tc-preview-layout');
+        if (s) s.textContent = selector === '.tc-preview-svg' && layoutSelect && layoutSelect.value !== 'free' ? 'SVG export needs Free layout (Page setup). PDF and Print work in every layout.' : 'This export is not available yet. ' + s.textContent;
+        return;
+      }
+      proxy(selector, root); }, 0); }); }
     var exportMenu = menuButton('Export figure', [
       exportItem('SVG · vector', '.tc-preview-svg'), exportItem('PDF', '.tc-preview-pdf'), exportItem('Print', '.tc-preview-print'),
       el('p', 'ts-menu-note', 'Exports the figure page as composed (finished plots, text and shapes).')], 'ts-export');
@@ -236,10 +253,12 @@
     // Fit levels (fitTools): from level n, a bar control tagged n leaves the row and the ⋯ item
     // tagged n is shown instead (canvas_header.css). Level 1 is the .ts-secondary group (shell.css).
     function fitLevel(n, b) { b.dataset.tsFit = String(n); return b; }
+    function figureOnly(b) { b.dataset.figureOnly = 'true'; return b; }
     var moreItems = [
-      compactOnly(item('Arrange', function () { proxy('.tc-arrange', root); })),
-      compactOnly(item('Text', function () { text.click(); })),
-      compactOnly(item('Shapes', function () { shapes.click(); })),
+      compactOnly(item('Tidy up', function () { proxy('.tc-arrange', root); })),
+      // ux27: Figure-page-only, like the bar's Text / Shapes (hidden in the Draft, shell.css).
+      figureOnly(compactOnly(item('Text', function () { text.click(); }))),
+      figureOnly(compactOnly(item('Shapes', function () { shapes.click(); }))),
       fitLevel(4, item('+ Add plot', function () { addPlot.click(); })),
       fitLevel(2, phoneOnly(item('Undo', function () { undo.click(); }))),
       fitLevel(2, phoneOnly(item('Redo', function () { redo.click(); }))),
@@ -289,7 +308,7 @@
     } else tools.after(modeHint);
     toolbar.setAttribute('aria-label', 'Canvas tools'); toolbar.setAttribute('role', 'toolbar');
     // One row always, at any canvas width (RC1): when the full toolbar no longer fits, groups
-    // move into the ⋯ menu (same actions) one level at a time: 1 Arrange, Text, Shapes;
+    // move into the ⋯ menu (same actions) one level at a time: 1 Tidy up, Text, Shapes;
     // 2 Undo, Redo; 3 Analysis tools, Export figure; 4 Add plot and the static Draft label.
     // Figure page, ⋯ and the Companion button always stay in the row. The level classes sit on
     // the toolbar (not the root, whose class other modules observe); the root keeps
@@ -368,6 +387,14 @@
     var base = a.isNudgeBlocked, gate = function () { return document.body.dataset.twScreen === 'canvas' || base.apply(this, arguments); };
     gate.teamCanvasQuiet = true; a.isNudgeBlocked = gate;
   })(0);
+  // ux27: the companion glides on Canvas (shell.css). Its tip pill ("About this chart") re-measures the dock
+  // when the dock's style or class changes, i.e. before the glide; a class flip at the glide's end lets it
+  // follow to the final place. Nothing about the companion itself changes.
+  document.addEventListener('transitionend', function (e) {
+    var d = e.target;
+    if (!d || d.id !== 'lipidomic-companion' || (e.propertyName !== 'left' && e.propertyName !== 'top')) return;
+    d.classList.toggle('tc-dock-settled');
+  });
   window.TeamShell = { mounted: function () { var r = document.getElementById('team-canvas-root'); return !!(r && r.dataset.tsShell === 'true'); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

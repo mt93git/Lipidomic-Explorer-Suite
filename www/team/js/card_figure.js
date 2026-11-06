@@ -32,7 +32,8 @@
     if (!on) { node.querySelectorAll('.' + CHROME + ',.' + PARK).forEach(function (el) { el.classList.remove(CHROME, PARK); el.inert = false; }); return; }
     for (var a = plot; a && a !== content; a = a.parentElement) {
       Array.prototype.forEach.call(a.parentElement.children, function (sibling) {
-        if (sibling === a || /^(STYLE|SCRIPT|LINK)$/.test(sibling.tagName)) return;
+        // The Updating/Generating skeleton (card_status.js) covers the plot; it is not a control to move to Data.
+        if (sibling === a || sibling.classList.contains('tc-card-skeleton') || /^(STYLE|SCRIPT|LINK)$/.test(sibling.tagName)) return;
         // Hidden or empty outputs (details, compact selectors) stay where their module put them.
         if (!sibling.classList.contains(CHROME) && !shown(sibling)) return;
         addOnce(sibling, CHROME);
@@ -54,12 +55,16 @@
     if (!bar) { bar = document.createElement('div'); bar.className = 'tc-card-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Card actions'); head.appendChild(bar); }
     loose.forEach(function (b) { bar.appendChild(b); });
   }
-  // The board is CSS-zoomed, so a toolbar inside the header would shrink with
-  // it and, far out, crowd the title. It stays in the header (same buttons,
-  // ids and handlers) but is fixed-positioned at screen size: counter-zoomed
-  // and anchored just above the card's top edge, or below the header when the
-  // card's top is at the canvas edge. Never over the title.
-  function setStyle(el, prop, value) { if (el.style.getPropertyValue(prop) !== value) el.style.setProperty(prop, value); }
+  // Toolbars keep their original DOM/handlers and cancel the camera scale locally.
+  // Only this small toolbar uses CSS zoom: unlike an inverse transform, it does not
+  // leave a large untransformed layout box overflowing a card at >100%.
+  // The transformed board contains fixed descendants, so positions are local.
+  function setStyle(el, prop, value) {
+    // CSSOM serializes fractional pixels with limited precision. Stable writes keep
+    // the placement observer from waking itself indefinitely after fractional zoom.
+    if (/^-?[0-9.]+px$/.test(value)) value=(Math.round(parseFloat(value)*1000)/1000)+'px';
+    if (el.style.getPropertyValue(prop) !== value) el.style.setProperty(prop, value);
+  }
   // RC4's framed cards (card_frame.js) paint this toolbar as their footer, Edit · Duplicate · ⋯. It stays
   // screen-size at every Canvas zoom: docked in the card's footer (absolute, card_frame.css) while that
   // footer is tall and wide enough for it on screen, otherwise floating at screen size over the card's
@@ -68,10 +73,13 @@
   function place(node, view) {
     var bar = node.querySelector(':scope > .tc-node-head > .tc-card-actions');
     if (!bar) return;
-    // CSSOM rounds zoom when serialising it back: compare the requested value,
-    // or every sweep would rewrite the style and wake the board observer again.
-    var zoom = node.currentCSSZoom || 1, counter = Math.round(1e4 / zoom) / 1e4;
-    if (bar._tcZoom !== counter) { bar._tcZoom = counter; bar.style.zoom = counter === 1 ? '' : String(counter); }
+    // An open ⋯ menu (card_frame.js) stays where it opened: re-placing the bar under it moved the
+    // menu hundreds of pixels and a click meant for Remove landed on the plot. Placed again on close.
+    if (node.classList.contains('tc-card-menu-open')) return;
+    var zoom = window.TeamCanvasViewport ? TeamCanvasViewport.scale : 1;
+    var counter=1/zoom;
+    // CSS zoom serialization also rounds reciprocals such as 1 / 1.5.
+    if(bar._tcZoom!==counter){bar._tcZoom=counter;bar.style.zoom=counter===1?'':String(counter);}
     var nr = node.getBoundingClientRect(), framed = node.classList.contains('tc-card-framed');
     // Docked only while the card's footer is inside the canvas view: a card larger than the view (high
     // zoom) or partly scrolled out keeps its actions floating at the view's lower edge, still reachable.
@@ -83,14 +91,28 @@
       var hb = node.querySelector(':scope > .tc-node-head').getBoundingClientRect();
       if (nr.bottom <= view.top || nr.top >= view.bottom || Math.max(hb.bottom, view.top) + 2 + 34 > view.bottom) docked = true;
     }
+    // The docked bar ends left of the card's resize grip (16 px in card units, so 16*zoom on screen): at
+    // high zoom the grip would otherwise cover ⋯.
+    var dockWidth = Math.max(0, nr.width - 8 - Math.max(8, 16 * zoom + 2)), shift = 0, nav = view && view.nav;
+    // A card in the navigation box's corner: its footer buttons start right of the box, or, with no room
+    // there, the bar floats (placed clear of the box below).
+    if (docked && nav) {
+      var need = Array.prototype.reduce.call(bar.children, function (sum, c) { return sum + c.getBoundingClientRect().width + 4; }, 0);
+      if (nr.left + 8 < nav.right && nr.left + 8 + need > nav.left && nr.bottom - 35 < nav.bottom && nr.bottom - 5 > nav.top) {
+        shift = nav.right + 4 - (nr.left + 8);
+        if (shift + need > dockWidth) { docked = false; shift = 0; }
+      }
+    }
     if (bar.classList.contains('tc-card-docked') !== docked) bar.classList.toggle('tc-card-docked', docked);
-    if (docked) { ['left', 'top', 'max-width', 'visibility'].forEach(function (p) { setStyle(bar, p, ''); }); return; }
+    setStyle(bar,'width',docked?(dockWidth-shift)+'px':'');
     if (!nr.width || !view || nr.right <= view.left || nr.left >= view.right || nr.bottom <= view.top || nr.top >= view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
     // A toolbar wider than the canvas wraps instead of running under the inspector.
     setStyle(bar, 'max-width', Math.max(120, Math.floor(view.right - view.left - 8)) + 'px');
     var br = bar.getBoundingClientRect(), head = node.querySelector(':scope > .tc-node-head').getBoundingClientRect();
     var left, top;
-    if (framed) {
+    if (docked) {
+      left=nr.left+8+shift;top=nr.bottom-35;
+    } else if (framed) {
       // The footer's place: over the card's lower edge (as much of it as is in view), never over the title.
       left = Math.max(view.left + 4, Math.min(nr.left + 4, view.right - br.width - 4));
       top = Math.max(Math.min(nr.bottom, view.bottom) - br.height - 4, Math.max(head.bottom, view.top) + 2);
@@ -99,18 +121,31 @@
       top = nr.top - br.height;
       if (top < view.top + 2) top = Math.max(head.bottom, view.top) + 2;
     }
+    // The navigation box is fixed in the view's lower-left corner (canvas_viewport.js): a floating bar
+    // never sits under it (its ⋯ would be unreachable); it moves right of the box, or above it.
+    nav = !docked && view.nav;
+    if (nav && left < nav.right && left + br.width > nav.left && top < nav.bottom && top + br.height > nav.top) {
+      if (nav.right + 4 + br.width <= view.right - 4) left = nav.right + 4; else top = nav.top - br.height - 4;
+    }
     if (top + br.height > view.bottom) { setStyle(bar, 'visibility', 'hidden'); return; }
     setStyle(bar, 'visibility', '');
-    setStyle(bar, 'left', Math.round(left) + 'px'); setStyle(bar, 'top', Math.round(top) + 'px');
+    setStyle(bar,'position',docked?'absolute':'fixed');
+    var parent=docked?(bar.offsetParent||node):node.closest('.tc-board');
+    if(!docked&&parent&&getComputedStyle(parent).transform==='none')parent=null;
+    var pr=parent?parent.getBoundingClientRect():{left:0,top:0};
+    setStyle(bar, 'left', ((left-pr.left)/(zoom*counter)-(parent?parent.clientLeft-parent.scrollLeft:0)/counter) + 'px');
+    setStyle(bar, 'top', ((top-pr.top)/(zoom*counter)-(parent?parent.clientTop-parent.scrollTop:0)/counter) + 'px');
   }
   function start() {
     var root = document.getElementById('team-canvas-root'), board = root && root.querySelector('.tc-board');
     if (!board) return;
     var queued = false;
     var scroll = board.closest('.tc-scroll') || board, placing = false;
-    function view() { var v = scroll.getBoundingClientRect(); return { left: Math.max(0, v.left), top: Math.max(0, v.top), right: Math.min(window.innerWidth, v.right), bottom: Math.min(window.innerHeight, v.bottom) }; }
+    function view() { var v = scroll.getBoundingClientRect(), n = root.querySelector('.tc-navigation'), nr = n && n.getBoundingClientRect(); return { left: Math.max(0, v.left), top: Math.max(0, v.top), right: Math.min(window.innerWidth, v.right), bottom: Math.min(window.innerHeight, v.bottom), nav: nr && nr.width ? nr : null }; }
     function placeAll() {
       placing = false;
+      // A wheel/pinch/pan gesture (canvas_viewport.js) hides the toolbars: placed once at its end.
+      if (root.classList.contains('tc-gesturing')) return;
       var v = view();
       board.querySelectorAll(':scope > .tc-node').forEach(function (n) { place(n, v); });
     }
@@ -122,6 +157,12 @@
     window.addEventListener('resize', schedulePlace);
     // The navigation box's band (canvas_viewport.js) moves the view's lower edge without either.
     window.addEventListener('team-canvas-nav-inset', schedulePlace);
+    window.addEventListener('team-canvas-gesture-end', schedulePlace);
+    // The minimap folding or unfolding changes the navigation box's size (toggle does not bubble).
+    document.addEventListener('toggle', function (e) { if (e.target.closest && e.target.closest('.tc-navigation')) schedulePlace(); }, true);
+    // The view's own size changes too (bands and panels around the canvas come and go) without a
+    // scroll or window resize: a bar placed for the old view was stale until the next sweep.
+    if (window.ResizeObserver) new ResizeObserver(schedulePlace).observe(scroll);
     // Plotly restyles its own SVG constantly (hover, zoom): those attribute changes never
     // affect what is parked, so only structural changes inside a plot wake the sweep.
     // Moving a card (drag, arrow keys) only rewrites its own or the board's style: that

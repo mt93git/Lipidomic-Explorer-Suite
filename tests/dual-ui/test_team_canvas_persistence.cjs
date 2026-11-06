@@ -98,6 +98,18 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('[id="results_dashboard-plot_pca"]').count(),1);
     await page.evaluate(() => handlers['team-canvas-restore']({state:null}));
     assert.equal(await page.locator('.tc-node').count(),0);
+    // (Codex on 07af799) Without a busy dialog, the status keeps naming the figures still
+    // awaiting their analysis after another one mounts (its "Added" message does not hide them).
+    const twoPending={version:'1',libraryHidden:false,nodes:[{id:'pending-a',label:'Pending A',x:25,y:35,width:620,height:720,visual:[],finished:null},{id:'pending-b',label:'Pending B',x:700,y:35,width:620,height:720,visual:[],finished:null}]};
+    await page.evaluate(state => handlers['team-canvas-restore']({state}),twoPending);
+    assert.ok((await page.locator('.tc-status').textContent()).includes('Pending B'));
+    await page.evaluate(() => { let el=document.createElement('div');el.id='pending-a';el.className='shiny-plot-output';document.body.appendChild(el); });
+    await page.waitForSelector('.tc-node[data-plot-id="pending-a"]');
+    const afterA=await page.locator('.tc-status').textContent();
+    assert.ok(afterA.includes('Pending B')&&!afterA.includes('Pending A'),'after A mounts the status still names B: '+afterA);
+    await page.evaluate(() => handlers['team-canvas-restore']({state:null}));
+    await page.evaluate(() => document.getElementById('pending-a').remove());
+    assert.equal(await page.locator('.tc-node').count(),0);
     const pendingState={version:'1',libraryHidden:false,nodes:[{id:'barchart-barPlotFiltered',label:'Filtered bars',x:25,y:35,width:620,height:720,visual:[],finished:null}]};
     await page.evaluate(state => handlers['team-canvas-restore']({state}),pendingState);
     assert.ok((await page.locator('.tc-status').textContent()).includes('Filtered bars'));
@@ -118,7 +130,7 @@ const assert = require('node:assert/strict');
     const afterReplacement=await page.evaluate(() => TeamCanvas.serialize());
     assert.equal(afterReplacement.nodes.length,1);
     assert.equal(afterReplacement.nodes[0].finished.url, archivedState.nodes[0].finished.url);
-    await page.locator('.tc-reset').click();
+    await page.locator('.tc-reset').click();await page.evaluate(()=>{const y=document.querySelector('.tc-reset-yes');if(y)y.click();});
     assert.equal((await page.evaluate(() => TeamCanvas.serialize())).nodes.length,0);
     console.log('PASS: checkpoints survive reload, preserve archived figures and retry concurrent edits');
   } finally { await browser.close(); }

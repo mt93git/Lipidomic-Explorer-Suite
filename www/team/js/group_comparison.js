@@ -108,12 +108,17 @@
   }
   async function download(gd,format,status) {
     try {
+      // Test mode (canvas.js lazy mount): throws if gd is a Canvas card not mounted and clean.
+      if(window.TeamCanvas&&typeof window.TeamCanvas.assertClean==='function')window.TeamCanvas.assertClean(gd);
+      // The Canvas card's revision now; the file is published only if it is unchanged.
+      var token=window.TeamCanvas&&typeof window.TeamCanvas.exportRevision==='function'?window.TeamCanvas.exportRevision(gd):null;
       var w=Math.max(100,gd.clientWidth),h=Math.max(100,gd.clientHeight),url=await withExportGeometry(gd,function(){return Plotly.toImage(gd,{format:'svg',width:w,height:h});}), blob;
       if(format==='pdf') {
         if(window.TeamPdf)TeamPdf.ensureMinusFix();
         var text=decodeURIComponent(url.slice(url.indexOf(',')+1));var svg=new DOMParser().parseFromString(text,'image/svg+xml').documentElement;
         var pdf=new window.jspdf.jsPDF({orientation:w>=h?'landscape':'portrait',unit:'pt',format:[w,h]});await pdf.svg(svg,{x:0,y:0,width:w,height:h});blob=pdf.output('blob');
       } else if(format==='jpg'||format==='png') blob=await rasterFromSvg(url,w,h,format); else blob=await (await fetch(url)).blob();
+      if(token&&!window.TeamCanvas.exportCurrent(token)){status.textContent='Plot changed \u2014 export again.';return;}
       var link=document.createElement('a'),local=URL.createObjectURL(blob);link.href=local;link.download='lipidomic-group-comparison.'+format;link.click();setTimeout(function(){URL.revokeObjectURL(local);},60000);status.textContent=format.toUpperCase()+' ready';
     } catch(e){status.textContent='Export failed: '+e.message;}
   }

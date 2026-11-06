@@ -131,7 +131,9 @@
     // canvas.js marks the changes made only by mounting a restored checkpoint's
     // deferred plots (loaded progressively after a restore) as restoreHydration: not an edit.
     window.addEventListener('team-canvas-changed',function(e){if(!restoreSettling&&!(e&&e.detail&&e.detail.restoreHydration===true))schedule('canvas edit');});
-    window.addEventListener('team-document-restored',function(){
+    window.addEventListener('team-document-restored',function(e){
+      // Undo of Return all plots (canvas.js) restores the canvas locally: an edit to save, not a load.
+      if(e&&e.detail&&e.detail.localUndo)return;
       endOpening();busyRetries=0;restored=true;restoreSettling=true;dirty=false;revision++;savedRevision=revision;inflight=null;inflightRevision=null;clearTimeout(watchdog);clearTimers();lastPreparation=null;pendingPreparation=null;pendingFile=false;confirmedScientific=false;
       if(!canvasRestore)status('Saved workspace restored','saved');
     });

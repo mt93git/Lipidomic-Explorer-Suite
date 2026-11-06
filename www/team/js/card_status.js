@@ -16,6 +16,7 @@
     'needs-data': ['Needs data', 'There is no prepared data for this figure yet. Prepare your data in Review and it draws on its own.'],
     finished: ['Finished', 'This figure is frozen. Choose Edit to change it.'],
     'finished-stale': ['Finished · out of date', 'Your data changed after this figure was finished. Choose Edit figure to redraw it with the current data.'],
+    'finished-broken': ['Saved image broken', 'This saved figure image from an older version cannot be shown or exported as it is. Choose Edit figure, then Finish plot to regenerate it.'],
     error: ['Could not update', 'This figure could not be drawn from your current data. Open Data & settings on this card for details.'],
     waiting: ['Needs settings', 'This figure is waiting for a choice or an analysis step. Open Data & settings on this card.']
   };
@@ -34,7 +35,10 @@
   function runButton(id, button) { return document.getElementById(String(id).split('-')[0] + '-' + button); }
   function dataSettings(node) {
     var b = node.querySelector('[data-canvas-data-settings]');
-    return b ? ['Data & settings', function () { b.click(); }] : null;
+    if (b) return ['Data & settings', function () { b.click(); }];
+    // A card without its own copy of the settings opens the analysis controls instead.
+    var c = node.querySelector('button[title="Open analysis controls"]');
+    return c ? ['Controls', function () { c.click(); }] : null;
   }
   function action(state, node, need) {
     if (state === 'waiting' && need && need.kind === 'run') { var run = runButton(node.dataset.plotId, need.button); if (run) return [need.action, function () { if (window.jQuery) jQuery(run).trigger('click'); else run.click(); }]; }
@@ -44,7 +48,7 @@
       if (label) return [label, openReview];
     }
     if (state === 'pending') return ['Review', openReview];
-    if (state === 'finished-stale') return ['Edit figure', function () { var b = Array.from(node.querySelectorAll('.tc-node-head > button, .tc-card-actions > button')).find(function (x) { return x.textContent === 'Edit'; }); if (b) b.click(); }];
+    if (state === 'finished-stale' || state === 'finished-broken') return ['Edit figure', function () { var b = Array.from(node.querySelectorAll('.tc-node-head > button, .tc-card-actions > button')).find(function (x) { return x.textContent === 'Edit'; }); if (b) b.click(); }];
     // Any other waiting card (a time or comparison requirement) keeps Data & settings as its one action.
     if (state === 'error' || state === 'waiting') return dataSettings(node);
     return null;
@@ -64,12 +68,39 @@
     }
     return chip;
   }
+  // While a card's plot is first generated, or its output redraws (Shiny's recalculating: a
+  // setting changed, Edit after Finish), a shimmer skeleton covers the plot area in place
+  // (card_status.css): the card keeps its size and place when the plot arrives. A card that is
+  // lazily waiting to mount keeps its own "Loading plot…"; a finished card shows its image.
+  var drawnOnce = new WeakSet();
+  function paintSkeleton(node, state) {
+    var id = node.dataset.plotId, el = id && document.getElementById(id), content = node.querySelector(':scope > .tc-content'), text = '';
+    if (content && el && state && state.indexOf('finished') !== 0 && !node.classList.contains('tc-lazy-dormant')) {
+      var drawn = TeamCanvas.cardDrawn ? TeamCanvas.cardDrawn(id) : true;
+      if (drawn) drawnOnce.add(node);
+      if (el.classList.contains('recalculating') || (!drawn && state === 'updating')) {
+        var title = node.querySelector(':scope > .tc-node-head > strong');
+        text = drawnOnce.has(node) ? 'Updating…' : 'Generating ' + (title && title.textContent || 'plot') + '…';
+      }
+    }
+    // Found by reference, wherever it is: one that left the card's content (e.g. into the inspector) is removed too.
+    var sk = node._tcSkeleton;
+    if (sk && (!text || sk.parentNode !== content)) { sk.remove(); sk = node._tcSkeleton = null; }
+    if (content) content.classList.toggle('tc-busy', !!text);
+    if (!text) return;
+    if (!sk) {
+      sk = node._tcSkeleton = document.createElement('div'); sk.className = 'tc-card-skeleton'; sk.setAttribute('role', 'status');
+      var span = document.createElement('span'); span.className = 'tc-card-skeleton-text'; sk.appendChild(span); content.appendChild(sk);
+    }
+    var label = sk.querySelector('.tc-card-skeleton-text'); if (label.textContent !== text) label.textContent = text;
+  }
   var updatingSince = new WeakMap();
   function paintCard(node) {
     var id = node.dataset.plotId, state = id && window.TeamCanvas && TeamCanvas.cardStatus ? TeamCanvas.cardStatus(id) : null;
     // Autosave and unrelated outputs briefly mark Shiny busy; show Updating only once it persists.
     if (state === 'updating') { var since = updatingSince.get(node) || Date.now(); updatingSince.set(node, since); if (Date.now() - since < 2000 && node.querySelector('.tc-card-status[data-state]')) state = node.querySelector('.tc-card-status').dataset.state; }
     else updatingSince.delete(node);
+    paintSkeleton(node, state);
     var chip = chipFor(node); if (!chip) return null;
     chip.hidden = !state; if (!state) return null;
     // A plot with a known requirement names it (catalog: study design, comparison, time points,
@@ -154,8 +185,11 @@
         if (strip.hidden !== !wait) strip.hidden = !wait;
       }
       var menu = root.querySelector('.ts-export'); if (!menu) return;
-      var warn = menu.querySelector('.ts-export-warning'), list = menu.querySelector('.ts-menu-list,[role="menu"]') || menu;
-      if (!warn) { warn = document.createElement('p'); warn.className = 'ts-menu-note ts-export-warning'; warn.setAttribute('role', 'alert'); list.prepend(warn); }
+      // Inside the Export figure dropdown (.ts-menu, role=group). It used to land on the menu's wrapper, outside the
+      // dropdown, so an amber box flashed in the toolbar whenever any card was redrawing.
+      var warn = menu.querySelector('.ts-export-warning'), list = menu.querySelector('.ts-menu-list,[role="menu"],.ts-menu') || menu;
+      if (!warn) { warn = document.createElement('p'); warn.className = 'ts-menu-note ts-export-warning'; warn.setAttribute('role', 'alert'); }
+      if (warn.parentNode !== list) list.prepend(warn);
       var note = behind.length ? behind.length + (behind.length === 1 ? ' figure is' : ' figures are') + ' not up to date (' + behind.join(', ') + '). The export would show older or incomplete results.' : '';
       if (warn.textContent !== note) warn.textContent = note;
       if (warn.hidden !== !behind.length) warn.hidden = !behind.length; menu.classList.toggle('has-stale', behind.length > 0);
@@ -172,7 +206,8 @@
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(paint); } }
     new MutationObserver(schedule).observe(board, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'], attributeOldValue: false });
     // Shiny's events arrive through jQuery; the canvas ones are native window events.
-    if (window.jQuery) jQuery(document).on('shiny:busy shiny:idle shiny:value', schedule);
+    // recalculating/recalculated: one output starts or finishes redrawing (its skeleton).
+    if (window.jQuery) jQuery(document).on('shiny:busy shiny:idle shiny:value shiny:error shiny:recalculating shiny:recalculated', schedule);
     ['team-canvas-selection', 'team-preparation-state'].forEach(function (e) { window.addEventListener(e, schedule); });
     // Preparation state lives in canvas.js; a light poll catches changes that emit no DOM event.
     setInterval(function () { if (root.offsetParent !== null) schedule(); }, 1500);

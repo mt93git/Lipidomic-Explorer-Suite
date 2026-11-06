@@ -178,8 +178,9 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     assert.equal(apart, true);
     await page.locator('.tc-node').first().evaluate(n => { n.style.left='40px'; n.style.top='900px'; });
     await page.locator('.tc-arrange').click();
-    assert.equal(await page.locator('[data-plot-id="results_dashboard-plot_violin"]').evaluate(n => n.style.top), '30px','newest card starts the first row');
-    assert.ok(await page.locator('[data-plot-id="results_dashboard-plot_pca"]').evaluate(n => n.offsetLeft > 30 || n.offsetTop > 30),'older card packs right or below according to viewport width');
+    // Tidy up keeps reading order: PCA (moved left of Violin, within Violin's row) starts the first row.
+    assert.deepEqual(await page.locator('[data-plot-id="results_dashboard-plot_pca"]').evaluate(n => [n.style.left, n.style.top]), ['30px', '30px'], 'the first card in reading order starts the first row');
+    assert.ok(await page.locator('[data-plot-id="results_dashboard-plot_violin"]').evaluate(n => n.offsetLeft > 30 || n.offsetTop > 30),'the next card packs right or below according to viewport width');
     const note={paragraph:'Measured abundances vary across groups; mechanisms require independent validation.',context_label:'CE(14:0) distribution',searched_at:'2026-10-29',fingerprint:'a'.repeat(64),sources:[{pmid:'12345',title:'Lipid evidence',year:'2025',url:'https://pubmed.ncbi.nlm.nih.gov/12345/'}],stale:false};
     assert.equal(await page.evaluate(n=>TeamCanvas.setInsight('results_dashboard-plot_pca',n),note),true);
     const savedInsight=await page.evaluate(()=>TeamCanvas.serialize());

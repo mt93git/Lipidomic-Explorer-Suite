@@ -13,8 +13,8 @@
 .tc-card-status:is([data-state=pending],[data-state=waiting])>i{background:#d98b00}
 .tc-card-status[data-state=error]{background:#fdecea;color:#8a1f11}
 .tc-card-status[data-state=error]>i{background:#c0392b}
-.tc-card-status[data-state=finished-stale]{background:#eef1f4;color:#3b4855}
-.tc-card-status[data-state=finished-stale]>i{background:#6b7785}
+.tc-card-status:is([data-state=finished-stale],[data-state=finished-broken]){background:#eef1f4;color:#3b4855}
+.tc-card-status:is([data-state=finished-stale],[data-state=finished-broken])>i{background:#6b7785}
 .tc-card-status>button{border:0;background:transparent;color:inherit;font:inherit;font-weight:600;text-decoration:underline;padding:0 2px;border-radius:3px;cursor:pointer;min-height:0}
 /* The workspace theme paints every card button white/blue: the badge action keeps the badge colours. */
 body.team-workspace-app .tc-node .tc-card-status>button,body.team-workspace-app .tc-node .tc-card-status>button:is(:hover,:active):not(:disabled):not(.disabled){background:transparent!important;color:inherit!important;border:0!important;box-shadow:none!important}
@@ -40,3 +40,17 @@ body.ts-shell-app .modal-header .ts-modal-close{margin-left:auto;opacity:.85}
 body.ts-shell-app .ts-saved[data-state=saving]::before{background:#d9a12b}
 body.ts-shell-app .ts-saved:is([data-state=error],[data-state=offline])::before{background:#e0634f}
 body.ts-shell-app .ts-saved:is([data-state=error],[data-state=offline]){color:#f4c7bd;border-color:#7a3d34}
+/* Generating / Updating skeleton (card_status.js, canvas.js showPlaceholder): it covers the plot area
+   without taking space, so the plot swaps in under it with no reflow. A new copy's skeleton card sits
+   where, and at the size, its card will open. Text #1d4f7c on #eef3f7 is >= 4.5:1. */
+.tc-node>.tc-content.tc-busy{position:relative}
+.tc-card-skeleton{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:8px;color:#1d4f7c;font:500 13px/1.4 system-ui,sans-serif;text-align:center;background:linear-gradient(100deg,#eef3f7 30%,#f8fbfd 50%,#eef3f7 70%) 0 0/300% 100%;animation:tc-skeleton-shimmer 1.6s linear infinite}
+.tc-card-skeleton>button{border:1px solid #cddfe2;border-radius:7px;background:#fff;color:#23576b;padding:5px 12px;font:600 13px/1.2 system-ui,sans-serif;cursor:pointer}
+.tc-card-skeleton>button:hover{background:#eaf5f4}
+@keyframes tc-skeleton-shimmer{from{background-position:100% 0}to{background-position:0 0}}
+@media (prefers-reduced-motion:reduce){.tc-card-skeleton{animation:none}}
+.tc-node-placeholder{position:absolute;display:flex;flex-direction:column;box-sizing:border-box;border-radius:12px;outline:1px solid #b9d0d5;background:#fff;box-shadow:0 8px 24px #294d5b24;overflow:hidden}
+.tc-node-placeholder>.tc-node-head{display:flex;align-items:center;padding:8px 10px;cursor:default;background:#eef7f6;border-bottom:1px solid #dbeae9}
+.tc-node-placeholder>.tc-node-head>strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-node-placeholder>.tc-card-skeleton{position:relative;inset:auto;flex:1;margin:8px}
+.tc-node-placeholder.is-failed>.tc-card-skeleton{animation:none;background:#fdecea;color:#8a1f11}

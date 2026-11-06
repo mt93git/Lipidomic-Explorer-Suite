@@ -1,6 +1,6 @@
 /* Canvas tabs (Team shell only). Every card belongs to exactly one tab; only the
    active tab's cards are shown, and each tab keeps its own camera (zoom and
-   scroll), so the viewport, Fit all, Arrange and the minimap work per tab.
+   scroll), so the viewport, Fit all, Tidy up and the minimap work per tab.
    State lives in TeamCanvasTabsModel; canvas.js saves it with the workspace and
    records it in the canvas undo history. No Shiny input is created or renamed. */
 (function () {
@@ -113,6 +113,9 @@
     });
     if (focusId) focusTab(focusId);
     bar.querySelectorAll('[data-needs-two]').forEach(function (b) { b.disabled = state.tabs.length < 2; });
+    // The first tab cannot move left, nor the last one right.
+    var at = state.tabs.findIndex(function (t) { return t.id === state.active; });
+    bar.querySelectorAll('[data-tab-move]').forEach(function (b) { if (b.dataset.tabMove === 'left' ? at === 0 : at === state.tabs.length - 1) b.disabled = true; });
     var add = bar.querySelector('.tc-canvas-tab-add'); if (add) add.disabled = state.tabs.length >= M.MAX_TABS;
   }
   function tabKey(e, t, i) {
@@ -144,7 +147,8 @@
       } else { render(); focusTab(id); }
     }
     input.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
-    input.addEventListener('blur', function () { finish(true); });
+    // Clicking another tab ends the rename and opens that tab (the re-render detaches the clicked button).
+    input.addEventListener('blur', function (e) { var to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.tc-canvas-tab'); finish(true); if (to && to.dataset.tabId !== id && M.tabOf(state, to.dataset.tabId)) activate(to.dataset.tabId, true); });
     b.replaceWith(input); input.focus(); input.select();
   }
   function duplicate(id) {
@@ -196,8 +200,8 @@
     function item(label, fn, needsTwo) { var b = el('button', '', label); b.type = 'button'; if (needsTwo) b.dataset.needsTwo = '1'; b.addEventListener('click', function () { close(); fn(state.active); }); menu.appendChild(b); return b; }
     function close() { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); }
     item('Rename…', startRename); item('Duplicate tab', duplicate);
-    item('Move tab left', function (id) { reorder(id, state.tabs.findIndex(function (t) { return t.id === id; }) - 1); }, true);
-    item('Move tab right', function (id) { reorder(id, state.tabs.findIndex(function (t) { return t.id === id; }) + 1); }, true);
+    item('Move tab left', function (id) { reorder(id, state.tabs.findIndex(function (t) { return t.id === id; }) - 1); }, true).dataset.tabMove = 'left';
+    item('Move tab right', function (id) { reorder(id, state.tabs.findIndex(function (t) { return t.id === id; }) + 1); }, true).dataset.tabMove = 'right';
     item('Delete tab…', confirmDelete, true);
     trigger.addEventListener('click', function (e) { e.stopPropagation(); var open = menu.hidden; menu.hidden = !open; trigger.setAttribute('aria-expanded', String(open)); if (open) { var first = menu.querySelector('button:not(:disabled)'); if (first) first.focus(); } });
     // The open menu owns Escape: it closes only the menu (not the inspector, the chat or the expanded Canvas).
@@ -233,7 +237,16 @@
     pop.appendChild(el('span', 'tc-tab-picker-title', mode === 'move' ? 'Move to tab' : 'Copy to tab'));
     others.forEach(function (t) { var b = el('button', '', t.name + (t.id === state.active ? ' (this tab)' : '')); b.type = 'button'; b.addEventListener('click', function () { closePicker(); (mode === 'move' ? moveCard : copyCard)(id, t.id); }); pop.appendChild(b); });
     var fresh = el('button', 'tc-tab-picker-new', '+ New tab'); fresh.type = 'button';
-    fresh.addEventListener('click', function () { closePicker(); var keep = state.active; before(); var r = M.addTab(state); if (!r.ok) { tell(r.message); return; } state.active = keep; after(); (mode === 'move' ? moveCard : copyCard)(id, r.id); });
+    fresh.addEventListener('click', function () {
+      closePicker(); var keep = state.active; before(); var r = M.addTab(state); if (!r.ok) { tell(r.message); return; } state.active = keep;
+      if (mode === 'move') {
+        // One undo step for "new tab + move": a single before()/after() around both.
+        var node = nodeFor(id);
+        if (node && M.moveNode(state, id, r.id)) { placeAtEnd(node, r.id); apply(); after(); focusTab(r.id); tell('Moved “' + labelFor(id) + '” to “' + M.tabOf(state, r.id).name + '”. Choose that tab to see it.'); return; }
+        after(); return;
+      }
+      after(); copyCard(id, r.id);
+    });
     pop.appendChild(fresh);
     // The picker sits inside the card: keep its clicks from re-selecting the card that just moved.
     ['click', 'pointerdown', 'mousedown', 'focusin'].forEach(function (type) { pop.addEventListener(type, function (e) { e.stopPropagation(); }); });
@@ -242,6 +255,12 @@
     anchor.after(pop); picker = pop; var first = pop.querySelector('button'); if (first) first.focus();
   }
   var picker = null;
+  // Undo of a removed card (canvas.js): what the tabs held for it, taken before the removal.
+  var returning = {};
+  function rememberCard(id) {
+    var tab = M.tabForNode(state, id); if (!tab) return null;
+    return {tab: tab, index: M.tabOf(state, tab).nodes.indexOf(id), deselected: state.figure.deselected.indexOf(id) >= 0, order: state.figure.order.indexOf(id)};
+  }
   function closePicker() { if (picker) { picker.remove(); picker = null; } }
   document.addEventListener('click', function (e) { if (picker && !picker.contains(e.target) && !e.target.closest('.tc-tab-card-action')) closePicker(); });
   function decorate(node) {
@@ -271,6 +290,14 @@
       added.forEach(function (n) {
         var id = nodeKey(n); if (!id || !n.isConnected) return; decorate(n);
         if (M.tabForNode(state, id)) return;
+        // A card brought back by Undo returns to its tab, place, figure-page selection and order.
+        var back = returning[id]; delete returning[id];
+        if (back && state.tabs.some(function (t) { return t.id === back.tab; })) {
+          var home = M.tabOf(state, back.tab); home.nodes.splice(Math.min(back.index, home.nodes.length), 0, id);
+          if (back.deselected && state.figure.deselected.indexOf(id) < 0) state.figure.deselected.push(id);
+          if (back.order >= 0 && state.figure.order.indexOf(id) < 0) state.figure.order.splice(Math.min(back.order, state.figure.order.length), 0, id);
+          return;
+        }
         // Copies sent to another tab are matched by their own instance id.
         var now = Date.now(); pendingCopies = pendingCopies.filter(function (p) { return now - p.at < 300000 && state.tabs.some(function (t) { return t.id === p.tab; }); });
         var match = pendingCopies.find(function (p) { return id === p.instance || id.indexOf(p.instance + '-') === 0 || n.id === p.instance || (n.dataset.instanceId || '') === p.instance; });
@@ -287,22 +314,23 @@
     var drag = null;
     board.addEventListener('pointerdown', function (e) {
       var head = e.target.closest('.tc-node-head,.tc-node-header,header'), node = e.target.closest('.tc-node');
-      if (!node || !head || e.target.closest('button,input,select,textarea') || e.button !== 0) return;
-      drag = {node: node, left: node.style.left, top: node.style.top, over: null};
+      if (!node || !head || e.target.closest('button,input,select,textarea') || e.button !== 0 || e.isPrimary === false) return;
+      drag = {node: node, left: node.style.left, top: node.style.top, over: null, pointerId: e.pointerId};
     }, true);
     document.addEventListener('pointermove', function (e) {
-      if (!drag) return; var hit = document.elementFromPoint(e.clientX, e.clientY), tab = hit && hit.closest && hit.closest('.tc-canvas-tab');
+      if (!drag || e.pointerId !== drag.pointerId) return; var hit = document.elementFromPoint(e.clientX, e.clientY), tab = hit && hit.closest && hit.closest('.tc-canvas-tab');
       if (drag.over && drag.over !== tab) drag.over.classList.remove('is-drop-target');
       drag.over = tab && tab.dataset.tabId !== state.active ? tab : null; if (drag.over) drag.over.classList.add('is-drop-target');
       bar.classList.toggle('is-card-drag', true);
     }, true);
-    function end() {
-      if (!drag) return; var d = drag; drag = null; bar.classList.remove('is-card-drag');
+    function end(e) {
+      if (!drag || e.pointerId !== drag.pointerId) return; var d = drag; drag = null; bar.classList.remove('is-card-drag');
       if (!d.over) return; d.over.classList.remove('is-drop-target');
       d.node.style.left = d.left; d.node.style.top = d.top;
       moveCard(nodeKey(d.node), d.over.dataset.tabId);
     }
-    document.addEventListener('pointerup', end, true); document.addEventListener('pointercancel', function () { if (drag && drag.over) drag.over.classList.remove('is-drop-target'); drag = null; if (bar) bar.classList.remove('is-card-drag'); }, true);
+    document.addEventListener('pointerup', end, true); function cancel() { if (drag && drag.over) drag.over.classList.remove('is-drop-target'); drag = null; if (bar) bar.classList.remove('is-card-drag'); }
+    document.addEventListener('pointercancel', function (e) { if (drag && e.pointerId === drag.pointerId) cancel(); }, true); window.addEventListener('blur', cancel);
   }
 
   // ---- Public API used by canvas.js (save/restore/undo) and the figure page.
@@ -321,6 +349,8 @@
     add: addTab, rename: function (id, name) { before(); var r = M.rename(state, id, name); if (r.ok) after(); return r; },
     remove: function (id, moveTo) { saveCamera(state.active); before(); var r = M.deleteTab(state, id, moveTo || null); if (r.ok) { r.kept = removeCards(r.removed); apply(); after(); } return r; },
     duplicate: duplicate, reorder: reorder, moveCard: moveCard, copyCard: copyCard,
+    // canvas.js Remove/Undo: remember a card's tab data before it leaves; expect it back with that data.
+    rememberCard: rememberCard, expectCard: function (id, memo) { if (memo) returning[id] = memo; else delete returning[id]; },
     // Figure page: groups by tab, the default/custom order and the selection.
     groups: function () { var ids = nodeIds(), order = canonical(); return state.tabs.map(function (t) { return {id: t.id, name: t.name, nodes: M.tabNodes(t, order).filter(function (n) { return ids.indexOf(n) >= 0; })}; }); },
     figureOrder: function () { var ids = nodeIds(); return M.figureOrder(state, canonical()).filter(function (n) { return ids.indexOf(n) >= 0; }); },

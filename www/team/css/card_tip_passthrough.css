@@ -1,0 +1,4 @@
+/* Team Canvas: the companion tip lets clicks through to the cards under it (a card's ⋯ or menu);
+   its own buttons, links and the Fewer tips toggle still take clicks. No visual change. */
+body.ts-shell-app[data-tw-screen="canvas"] section.cg-tip{pointer-events:none}
+body.ts-shell-app[data-tw-screen="canvas"] section.cg-tip :is(button,a,label,input,select,textarea){pointer-events:auto}

@@ -41,6 +41,12 @@
   // Labels (set by foreground.js / review_live.js) that run the data -> Review -> Canvas pipeline.
   var PIPELINE = {'Opening your saved analysis…': 1, 'Recovering your checkpoint…': 1, 'Preparing data…': 1, 'Updating your analysis…': 1};
   var STAGES = {data: 0, review: 1, canvas: 2};
+  // Opening a restored Canvas (canvas.js gate): one count, figures ready of figures, read from
+  // TeamCanvas.openProgress(); the same bar, time left and phrases as the pipeline.
+  var OPENING = 'Preparing your canvas\u2026';
+  function openingCount() {
+    try { var p = window.TeamCanvas && typeof TeamCanvas.openProgress === 'function' ? TeamCanvas.openProgress() : null; return p && p.total > 0 ? {done: Math.min(p.done | 0, p.total | 0), total: p.total | 0} : null; } catch (e) { return null; }
+  }
   var PLOTS = ['.plotly.html-widget-output', '.shiny-plot-output', '.visNetwork.html-widget-output'];
   // Typical step durations where nothing can be counted, measured on RTX (seeded check-copy resume,
   // ux-redesign-evidence/w6a*/: Preparing data 9-15 s, Review redraw 5-8 s, signing in 5 s warm):
@@ -271,6 +277,7 @@
     if (dialog.classList.contains('has-error')) { show(body, false); return; }
     show(body, true);
     if (label() !== s.label) relabel(s, t);
+    if (s.label === OPENING) { renderOpening(s, t); return; }
     var pipeline = !!PIPELINE[s.label];
     if (pipeline && t - s.scanAt >= SCAN_MS) { s.scanAt = t; scan(s, t); }
     var c = pipeline ? counts(s) : {done: 0, total: 0};
@@ -290,6 +297,23 @@
     show(etaEl, !!s.eta);
     setText(etaText, !s.eta ? '' : s.eta.kind === 'typical' ? (s.eta.ms > 0 ? seconds(s.eta.ms) + ' left' : 'taking longer than usual\u2026')
       : seconds(s.eta.ms - (t - s.eta.at)) + ' left in this step');
+  }
+  // "Preparing your canvas · 7 of 17 figures": the bar is that ratio; time left from the observed
+  // rate once figures complete (as a counted pipeline step), hidden after STALL_MS without progress.
+  function renderOpening(s, t) {
+    var c = openingCount() || {done: 0, total: 0};
+    if (c.done > (s.openDone || 0)) { s.openDone = c.done; s.progressAt = t; }
+    show(phaseEl, true);
+    setText(phaseText, 'Preparing your canvas' + (c.total ? ' \u00b7 ' + c.done + ' of ' + c.total + ' figures' : ''));
+    if (s.announce) setText(liveText, 'Preparing your canvas');
+    var determinate = c.total > 0, width = determinate ? Math.round(c.done / c.total * 100) + '%' : '';
+    if (fill.style.width !== width) fill.style.width = width;
+    if (bar.classList.contains('is-indeterminate') === determinate) bar.classList.toggle('is-indeterminate', !determinate);
+    var spent = t - s.phaseStart, est = null;
+    if (determinate && c.done > 0 && c.done < c.total && spent >= 1500 && t - s.progressAt <= STALL_MS) est = {ms: Math.min(spent * (1 - c.done / c.total) / (c.done / c.total), ETA_MAX_MS), kind: 'rate'};
+    smooth(s, t, est);
+    show(etaEl, !!s.eta);
+    setText(etaText, s.eta ? seconds(s.eta.ms - (t - s.eta.at)) + ' left' : '');
   }
   function nextPhrase() { if (!session) return; var list = phrases(); session.phrase = (session.phrase + 1) % list.length; setText(phraseText, list[session.phrase]); }
   // Reduced motion (checked again whenever the preference changes): one phrase, no rotation.

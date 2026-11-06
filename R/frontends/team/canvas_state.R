@@ -647,7 +647,38 @@ team_canvas_image_cache_adopt <- function(cache, from) {
   invisible(cache)
 }
 
+# Team-only browser error diagnostic (www/team/js/canvas_feedback.js sends it): one service-log
+# line per uncaught browser error, so a report such as "Remove does nothing" can be matched to its
+# exception. The browser sends at most 20 per page; the server also stops after 20 per session.
+# Only the error text, the script position and three stack frames, each cut to 500 characters.
+team_client_error_line <- function(value) {
+  if (!is.list(value)) return(NULL)
+  clean <- function(x) {
+    if (!is.character(x) || length(x) != 1L || is.na(x)) return("")
+    x <- gsub("[[:cntrl:]]+", " ", x)
+    x <- gsub("\\?[^ )]*", "", x, perl = TRUE)  # no query strings (tokens) from script URLs
+    substr(trimws(x), 1L, 500L)
+  }
+  # Locations only: a stack or "where" keeps just script file:line:col tokens; a message keeps its first line.
+  locations <- function(x) {
+    x <- clean(x); found <- regmatches(x, gregexpr("[A-Za-z0-9_./-]+\\.js:[0-9]+:[0-9]+", x, perl = TRUE))[[1]]
+    paste(utils::head(found, 3L), collapse = " | ")
+  }
+  first_line <- function(x) if (is.character(x) && length(x) == 1L && !is.na(x)) sub("(?s)[\r\n].*$", "", x, perl = TRUE) else x
+  kind <- clean(value$kind); if (!kind %in% c("error", "rejection")) return(NULL)
+  sprintf("[TEAM JS %s] %s %s | at %s | %s", format(Sys.time(), "%H:%M:%S"), kind, clean(first_line(value$message)), locations(value$where), locations(value$stack))
+}
+team_client_error_observer <- function(input) {
+  seen <- 0L
+  shiny::observeEvent(input$team_client_error, {
+    if (seen >= 20L) return()
+    line <- team_client_error_line(input$team_client_error); if (is.null(line)) return()
+    seen <<- seen + 1L
+    message(line)
+  }, ignoreInit = TRUE)
+}
 team_canvas_server <- function(input, output, session, shared_data) {
+  team_client_error_observer(input)
   current <- shiny::reactiveVal(NULL)
   accepted_token <- shiny::reactiveVal(NULL)
   restore_token <- shiny::reactiveVal(NULL)

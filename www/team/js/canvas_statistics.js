@@ -61,6 +61,20 @@
       fontSize: int(v.fontSize, 8, 28), spacing: num(v.spacing, 0.03, 0.3), tip: num(v.tip, 0, 0.1),
       nDisplay: choice(v.nDisplay, {samples: 1, participants: 1, both: 1, hidden: 1}), hidden: hidden};
   }
+  // Sanity check, log only: every compared group should appear once in the result's groups. It never
+  // rejects, changes or blocks a result (the result and the saved state are exactly as without it).
+  var warnedGroups = {};
+  function warnInconsistentGroups(groups, rows, key) {
+    try {
+      var names = {}, dup = false;
+      groups.forEach(function (g) { if (names[g.group]) dup = true; names[g.group] = true; });
+      var missing = [];
+      rows.forEach(function (r) { [r.a, r.b].forEach(function (n) { if (!names[n] && missing.indexOf(n) < 0) missing.push(n); }); });
+      if ((!dup && !missing.length) || warnedGroups[key]) return;
+      warnedGroups[key] = true;
+      if (typeof console !== 'undefined' && console.warn) console.warn('[TeamCanvasStatistics] Inconsistent statistics result: ' + (dup ? 'duplicate group names' : '') + (dup && missing.length ? '; ' : '') + (missing.length ? 'compared groups missing from groups: ' + missing.join(', ') : '') + '.');
+    } catch (ignore) {}
+  }
   function sanitizeResult(v, applied) {
     if (!applied) fail();
     keys(v, ['fingerprint', 'dataFingerprint', 'computedAt', 'lipid', 'grouping', 'family', 'groups', 'rows', 'provenance']);
@@ -86,6 +100,7 @@
       if ((out.p === null) !== (out.pAdj === null) || (out.p !== null && out.pAdj < out.p - 1e-12)) fail();
       return out;
     });
+    warnInconsistentGroups(groups, rows, v.fingerprint);
     var prov = v.provenance;
     keys(prov, ['method', 'transformation', 'normalization', 'imputation', 'participantIds', 'design']);
     return {fingerprint: v.fingerprint, dataFingerprint: v.dataFingerprint, computedAt: computedAt, lipid: text(v.lipid, 1000), grouping: choice(v.grouping, {Group1: 1, Group2: 1}),

@@ -124,6 +124,10 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
   local_message<-'Local session: methods, design notes, run history and companion actions are not saved automatically. Download them here, and export a session ZIP to resume later.'
   archived<-shiny::reactiveVal(NULL);state<-shiny::reactiveVal(if(local_session) local_message else 'Records are not yet saved to a private project. Autosave is available when signed in to a writable project; check the save status.')
   restored_hydration<-NULL
+  # The records exactly as a resume imported them. Importing changes the observed reactives
+  # (history, actions, goal) but is not an edit: until they differ from this, nothing is
+  # pending save. The first real difference clears it for the rest of the session.
+  imported_signature<-NULL
   # Resuming rebuilds the applied preparation, which completes after import and
   # re-logs the latest archived run. Expect that one rebuild; never edit records.
   rebuild_key<-NULL
@@ -161,7 +165,7 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
   }
   session$userData$team_project_records_import<-function(record){
     rebuild_key<<-NULL
-    if(is.null(record)){restored_hydration<<-NULL;archived(NULL);state('This older checkpoint has no archived methods/decisions sidecar. No missing records were reconstructed.');return(invisible(NULL))}
+    if(is.null(record)){restored_hydration<<-NULL;imported_signature<<-NULL;archived(NULL);state('This older checkpoint has no archived methods/decisions sidecar. No missing records were reconstructed.');return(invisible(NULL))}
     record<-team_project_records_validate(record);archived(record)
     previous_design<-design_values()
     # Restore historical data only. Confirmation and proposals are never revived.
@@ -202,6 +206,7 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
     workflow$goal(record$question)
     target_signature<-signature(record$design)
     restored_hydration<<-if(identical(signature(),target_signature))NULL else list(signature=target_signature,design=record$design,previous_design=previous_design)
+    imported_signature<<-target_signature
     state('Archived methods, design notes, run history and companion actions restored. They do not approve the current analysis or replay actions.')
     invisible(TRUE)
   }
@@ -232,6 +237,10 @@ team_project_records_server <- function(input,output,session,shared_data,workflo
         return()
       }
       restored_hydration<<-NULL
+    }
+    if(!is.null(imported_signature)){
+      if(identical(signature(),imported_signature))return()
+      imported_signature<<-NULL
     }
     if(!isTRUE(safe(shared_data$is_restoring))){
       state(if(local_session) local_message else 'Record changes are pending save. Autosave requires a writable private project; check the save status.')

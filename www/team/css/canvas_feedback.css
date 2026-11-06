@@ -1,0 +1,17 @@
+/* Team Canvas removal feedback (canvas_feedback.js): the card's exit, the toast with Undo. */
+#team-canvas-root .tc-node.tc-feedback-leaving{transition:opacity .15s ease-in,transform .15s ease-in!important;opacity:0!important;transform:scale(.96);transform-origin:50% 50%;pointer-events:none}
+#team-canvas-root .tc-node:is(.tc-feedback-leaving,.tc-feedback-entering) .tc-card-actions{opacity:0!important;visibility:hidden!important}
+#team-canvas-root .tc-node.tc-feedback-entering{animation:tc-feedback-enter .2s ease-out}
+@keyframes tc-feedback-enter{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+/* The band's status pill repeats the toast's news: hidden (still in the live region) while the toast shows it. */
+#team-canvas-root.tc-feedback-quiet .tc-band-status>.tc-status{opacity:0!important}
+/* Same look as the band's status pill (canvas_band_status.css), with room for Undo. */
+.tc-feedback-toast{position:fixed;z-index:11500;transform:translate(-50%,8px);opacity:0;display:flex;align-items:center;gap:4px;box-sizing:border-box;max-width:min(560px,calc(100vw - 32px));min-height:40px;padding:4px 4px 4px 16px;border-radius:8px;background:#162230;color:#e9eff4;font:13px/1.35 system-ui,sans-serif;box-shadow:0 6px 24px rgba(20,27,36,.28);transition:opacity .16s ease-out,transform .16s ease-out}
+.tc-feedback-toast.is-shown{opacity:1;transform:translate(-50%,0)}
+.tc-feedback-toast.is-error{background:#5c1f1f;color:#fff}
+.tc-feedback-toast .tc-feedback-text{flex:1 1 auto;min-width:0;padding:6px 8px 6px 0;overflow-wrap:anywhere}
+.tc-feedback-toast button{flex:none;display:inline-flex;align-items:center;justify-content:center;height:32px;min-height:32px;margin:0;padding:0 12px;border:0;border-radius:6px;background:transparent;color:#9fd0ff;font:700 13px/1 system-ui,sans-serif;cursor:pointer}
+.tc-feedback-toast button:hover{background:rgba(255,255,255,.12)}
+.tc-feedback-toast button:focus-visible{outline:2px solid #9fd0ff;outline-offset:-2px}
+.tc-feedback-toast .tc-feedback-close{width:32px;padding:0;color:#c9d4de;font-size:18px;font-weight:400}
+@media (prefers-reduced-motion:reduce){#team-canvas-root .tc-node.tc-feedback-leaving{transition:none!important;transform:none}#team-canvas-root .tc-node.tc-feedback-entering{animation:none}.tc-feedback-toast{transition:none}}

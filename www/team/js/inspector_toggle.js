@@ -3,7 +3,7 @@
    (inspector_toggle.css); the column itself stays laid out where it is, invisible and inert, so the
    companion's .tc-companion-home keeps its centre and bottom and the chat's docking rect
    (context_help.js, companion_assistant.js) is exactly as with the column shown.
-   The state is remembered per signed-in account; without one, it starts hidden from 901 to 1279 px. */
+   The state is remembered per signed-in account for the browser session; without one it starts hidden above 900 px (ux27). */
 (function () {
   'use strict';
   var NARROW = '(max-width:900px)'; // the column stacks under the canvas here (shell.css): no toggle
@@ -38,8 +38,10 @@
   // Keys of an earlier build (8 hex, djb2 alone) are ignored, never read: with 32 bits two accounts can
   // share one, so reading it could hand one account's choice to another. A one-click choice is set again.
   function parse(v) { return v === '1' ? true : v === '0' ? false : null; }
-  function saved() { var a = account(); if (!a) return null; try { return parse(localStorage.getItem(KEY + a)); } catch (e) { return null; } }
-  function save(hidden) { var a = account(); if (!a) return; try { localStorage.setItem(KEY + a, hidden ? '1' : '0'); } catch (e) {} }
+  // ux27: the choice lasts for this browser session (sessionStorage), never in a checkpoint: every new
+  // session starts with the inspector hidden (auto()).
+  function saved() { var a = account(); if (!a) return null; try { return parse(sessionStorage.getItem(KEY + a)); } catch (e) { return null; } }
+  function save(hidden) { var a = account(); if (!a) return; try { sessionStorage.setItem(KEY + a, hidden ? '1' : '0'); } catch (e) {} }
   // Keys typed into a field or a widget that owns its keys (Plotly, selectize, comboboxes, list boxes,
   // menus) and keys on buttons are not the shortcut.
   var OWN_KEYS = 'input,textarea,select,button,[role="button"],[contenteditable]:not([contenteditable="false"]),[role="textbox"],' +
@@ -208,14 +210,22 @@
     function schedule() { if (!queued) { queued = true; requestAnimationFrame(applyExtension); } }
     function unlock() { locked = false; flips = 0; schedule(); }
     function set(h, remember) {
-      if (remember) { explicit = h; save(h); unlock(); }
+      if (remember) { explicit = chosen = h; save(h); unlock(); }
       if (hidden() !== h) toggleClass('ts-inspector-collapsed', h);
       sync();
     }
-    // The default hides the column only where it is a side column (901-1279 px); at <= 900 px it stacks
+    // The default hides the column wherever it is a side column (> 900 px); at <= 900 px it stacks
     // under the canvas, is always shown, and the layout must not claim it is collapsed.
-    function auto() { return !narrow.matches && window.innerWidth < 1280; }
-    function initial() { explicit = saved(); set(explicit != null ? explicit : auto(), false); }
+    // ux27: Canvas opens with the inspector hidden (full-width board) wherever it is a side column.
+    function auto() { return !narrow.matches; }
+    // chosen: the person's own Show/Hide choice (also kept when sessionStorage has no account key);
+    // explicit can also be a temporary show (card click, edit actions) that is never carried over.
+    var chosen = null;
+    // ux39: every Canvas entry (first open, reload, return from Data/Review, another account) starts with the
+    // column hidden, whatever an earlier Show inspector click saved: only a card click or Show inspector in
+    // this visit shows it.
+    function initial() { explicit = chosen = null; set(auto(), false); }
+    function reenter() { initial(); }
     toggle.addEventListener('click', function () { set(!hidden(), true); });
     document.addEventListener('keydown', function (e) {
       if (e.defaultPrevented || e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || (e.getModifierState && e.getModifierState('AltGraph')) || (e.key !== 'i' && e.key !== 'I') || typing(e.target)) return;
@@ -271,6 +281,18 @@
       // the user hides it or another account signs in; nothing is written to storage.
       if (edit && root.contains(edit) && hidden() && !narrow.matches) { explicit = false; set(false, false); }
     }, true);
+    // ux35: in Draft, a click on a card (its plot included) while the column is hidden shows it, as
+    // "Show inspector" does (canvas_inspector.js selects the card on the same click). Not after a drag or
+    // a resize (the pointer moved), not on the card's controls, not on the Figure page. Nothing is prevented.
+    var downAt = null;
+    document.addEventListener('pointerdown', function (e) { downAt = [e.clientX, e.clientY]; }, true);
+    document.addEventListener('click', function (e) {
+      if (panning(e) || !hidden() || narrow.matches || root.classList.contains('tc-figure-mode')) return;
+      var t = e.target, card = t && t.closest && t.closest('.tc-node');
+      if (!card || !root.contains(card) || t.closest('button,a,input,select,textarea,label,summary,[role="menu"],[role^="menuitem"],.selectize-control')) return;
+      if (e.detail && downAt && Math.abs(e.clientX - downAt[0]) + Math.abs(e.clientY - downAt[1]) > 4) return;
+      explicit = false; set(false, false); // shown for now, never remembered: the next open starts as before
+    }, true);
     // Figure page actions that edit in the column (Add text, Page setup, open Plots, editing a text object;
     // figure_column.js) show a hidden column the same way, before they move focus into it. Not saved.
     window.TeamInspectorToggle = { reveal: function () { if (hidden() && !narrow.matches) { explicit = false; set(false, false); } return !column.inert; } };
@@ -298,6 +320,10 @@
     // The account output can be (re)inserted after the Canvas mounts.
     if (!watched) { var waitBox = new MutationObserver(function () { watchAccount(); if (watched) waitBox.disconnect(); }); waitBox.observe(document.body, { childList: true, subtree: true }); }
     initial();
+    // Every return to Canvas starts as a new open does: hidden unless the person chose Show inspector
+    // (saved choice). A card click or an edit action that showed it for the moment is not carried over.
+    var lastStage = document.body.dataset.teamStage;
+    new MutationObserver(function () { var now = document.body.dataset.teamStage; if (now === lastStage) return; lastStage = now; if (now === 'canvas') reenter(); }).observe(document.body, { attributes: true, attributeFilter: ['data-team-stage'] });
     return true;
   }
   function start() {

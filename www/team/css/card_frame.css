@@ -1,7 +1,7 @@
 /* RC4: a clean plot card and a tabbed inspector (www/team/js/card_frame.js, canvas_inspector_export.js).
    The card shows its title with the status badge in the header slot, the plot, and a footer with
    Edit, Duplicate and ⋯. The footer bar is card_figure.js's action toolbar (still inside the header,
-   which keeps every lookup of header buttons working). card_figure.js counter-zooms it, so its text
+   which keeps every lookup of header buttons working). card_figure.js counter-scales it, so its text
    and targets stay screen-size (13 px, 30 px) at every Canvas zoom, and docks it (.tc-card-docked)
    over the in-card spacer .tc-card-foot while that footer holds it on screen (zoom >= 90 %). Below
    that it floats at screen size over the card's lower edge, shown on hover, selection or focus
@@ -13,7 +13,7 @@ body.ts-shell-app .tc-node.tc-card-framed>.tc-node-head{position:static}
 body.ts-shell-app .tc-node.tc-card-framed>.tc-node-head>strong{flex:1 1 auto}
 body.ts-shell-app .tc-node.tc-card-framed>.tc-card-foot{order:99;flex:none;height:40px;border-top:1px solid #e3e7ec;background:#fff}
 body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:4px}
-body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions.tc-card-docked{position:absolute!important;left:8px!important;right:8px!important;top:auto!important;bottom:5px!important;max-width:none!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:30px;padding:0!important;background:transparent!important;border:0!important;border-radius:0;box-shadow:none!important;transition:none}
+body.ts-shell-app #team-canvas-root .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions.tc-card-docked{position:absolute!important;right:auto!important;bottom:auto!important;max-width:none!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;height:30px;padding:0!important;background:transparent!important;border:0!important;border-radius:0;box-shadow:none!important;transition:none}
 /* An open ⋯ menu may reach past a short card's edge: the card does not clip it while it is open. */
 body.ts-shell-app .tc-node.tc-card-framed.tc-card-menu-open{overflow:visible}
 body.ts-shell-app .tc-node.tc-card-framed.tc-card-menu-open>.tc-node-head>.tc-card-actions{opacity:1;pointer-events:auto}

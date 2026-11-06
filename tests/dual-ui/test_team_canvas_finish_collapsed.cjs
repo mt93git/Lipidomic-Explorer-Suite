@@ -8,7 +8,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const rscript = code => execFileSync('Rscript', ['--vanilla', '-e', code], {encoding:'utf8'}).trim();
 // The Team square heatmap geometry, from the production view builder (16 px per group).
-const heatView = groups => JSON.parse(rscript(`suppressMessages(library(htmltools)); source("R/results_dashboard.R");
+const heatView = groups => JSON.parse(rscript(`suppressMessages(library(htmltools)); source("R/frontends/team/results_dashboard.R");
   z <- matrix(seq(-1, 1, length.out = ${3 * groups}), 3, ${groups}, dimnames = list(c("PC 34:1","PE 36:2","TG 52:3"), c("Ctrl","Treated")[seq_len(${groups})]));
   v <- rd_team_heatmap_view(z, rep(5L, ${groups})); v$yaxis$tickvals <- I(v$yaxis$tickvals); v$yaxis$ticktext <- I(v$yaxis$ticktext); v$y <- I(v$y)
   cat(jsonlite::toJSON(v[c("x","y","z","width","height","colorbar","margin","xaxis","yaxis")], auto_unbox = TRUE, digits = NA))`));
@@ -202,6 +202,38 @@ const pngOf = (w, h) => rscript(`f <- tempfile(fileext = ".png"); png(f, ${w}, $
     }
     const restoreComp = (url, size) => restoreCard('results_dashboard-plot_comp', url, size);
     assert.match(await restoreComp(svg(268,92)), /much smaller than its card \(268×92 px\)/);
+    // 7b. The broken image is not shown stretched; exports and the figure page refuse it, and the
+    // saved state is the checkpoint's own (the flag is derived on display, never written back).
+    const broken = await page.evaluate(() => { const n=document.querySelector('.tc-node[data-plot-id="results_dashboard-plot_comp"]'),pv=n.querySelector('.tc-snapshot');
+      const st=TeamCanvas.previewState(),saved=TeamCanvas.serialize().nodes.find(x=>x.id==='results_dashboard-plot_comp').finished;
+      return {defect:n.classList.contains('tc-snapshot-defect'),stale:n.classList.contains('tc-stale'),img:getComputedStyle(pv.querySelector('img')).display,exports:[...pv.querySelectorAll('.tc-snapshot-exports button')].map(b=>b.disabled),
+        caption:pv.querySelector('.tc-snapshot-status').textContent,usable:st.usableIds.includes('results_dashboard-plot_comp'),reason:(st.unusable.find(u=>u.id==='results_dashboard-plot_comp')||{}).reason,saved:Object.keys(saved).sort(),savedStale:saved.stale}; });
+    assert.deepEqual({defect:broken.defect,stale:broken.stale,img:broken.img,exports:broken.exports,usable:broken.usable,reason:broken.reason,saved:broken.saved,savedStale:broken.savedStale},
+      {defect:true,stale:true,img:'none',exports:[true,true,true],usable:false,reason:'stale',saved:['createdAt','stale','url'],savedStale:false});
+    assert.match(broken.caption,/^Saved image looks broken\. Choose Edit, then Finish plot to regenerate it\./);
+    // A violin captured before the capture stamp whose shapes leave the plot clip is broken too; the
+    // same image with the stamp, and a violin whose shapes stay inside the clip, are not.
+    const violin = (top) => 'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><clipPath id="c1xyplot" class="plotclip"><rect width="500" height="300"/></clipPath></defs><g class="plot" transform="translate(60,50)" clip-path="url(#c1xyplot)"><g class="violinlayer"><path class="violin" d="M100,${top}Q120,150 100,290L80,290Q60,150 80,${top}Z"/></g></g></svg>`);
+    const variant = (body) => 'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><clipPath id="c2" class="plotclip"><rect width="500" height="300"/></clipPath></defs>${body}</svg>`);
+    const cases = await page.evaluate(v => Object.fromEntries(Object.entries(v).map(([k,u])=>[k,TeamCanvas.snapshotDefectOf(u,620,720,k==='stamped'?{captureVersion:2}:null)])),
+      {cut:violin(-40),stamped:violin(-40),inside:violin(10),bad:'data:image/svg+xml,%E0%A4%A',
+       spaces:variant(`<g clip-path="url('#c2')"><path class="violin" d="M100 -4e+1 L100 290 Z"/></g>`),
+       transformed:variant(`<g clip-path="url(#c2)"><g transform="scale(0.5)"><path class="violin" d="M100,-40L100,290Z"/></g></g>`),
+       relative:variant(`<g clip-path="url(#c2)"><path class="violin" d="m100,-40l0,290z"/></g>`),
+       base64:'data:image/svg+xml;base64,'+Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><clipPath id="c3"><rect width="500" height="300"/></clipPath></defs><g clip-path="url(#c3)"><path class="violin" d="M1,-50L1,10Z"/></g></svg>`).toString('base64')});
+    // Round 2: an escaped class name, a multi-byte character across the 4 KB probe boundary, a transformed clip.
+    // Choose a padding whose 4 KB probe ends inside 'é' (%C3|%A9): the decoder must back off.
+    let pad = '';
+    for (let k = 0; k < 6 && !pad; k++) { const p = 'a'.repeat(k) + 'é'.repeat(700), u = variant(`<desc>${p}</desc><g/>`), c = u.indexOf(',') + 1; if (u.slice(c, c + 4096).endsWith('%C3')) pad = p; }
+    assert.ok(pad, 'fixture: a padding that splits a UTF-8 character at the probe edge');
+    const more = await page.evaluate(v => Object.fromEntries(Object.entries(v).map(([k,u])=>[k,TeamCanvas.snapshotDefectOf(u,620,720)])),
+      {escaped:variant(`<g clip-path="url(#c2)"><path class="violin" d="M100,-40L100,290Z"/></g>`).replace('violin','%76iolin'),
+       multibyte:variant(`<desc>${pad}</desc><g clip-path="url(#c2)"><path class="violin" d="M100,-40L100,290Z"/></g>`),
+       charRef:variant(`<g clip-path="url(#c2)"><path class="v&#105;olin" d="M100,-40L100,290Z"/></g>`),
+       nestedClip:'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><clipPath id="c5"><g transform="translate(0,-100)"><rect y="100" width="500" height="300"/></g></clipPath></defs><g clip-path="url(#c5)"><path class="violin" d="M100,10L100,290Z"/></g></svg>`),
+       clipTransform:'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><defs><clipPath id="c4" transform="translate(0,-100)"><rect y="100" width="500" height="300"/></clipPath></defs><g clip-path="url(#c4)"><path class="violin" d="M100,10L100,290Z"/></g></svg>`)});
+    assert.deepEqual(more,{escaped:'clipped',multibyte:'clipped',charRef:'clipped',nestedClip:null,clipTransform:null});
+    assert.deepEqual(cases,{cut:'clipped',stamped:null,inside:null,bad:null,spaces:'clipped',transformed:null,relative:null,base64:'clipped'});
     assert.doesNotMatch(await restoreComp(svg(600,400)), /smaller than its card/, 'a normal image is not flagged');
     // A small static image in a small card: below the minimum, but not collapsed relative to its frame.
     const smallCard = await restoreCard('barchart-barPlotUnfiltered', svg(150,110), {width:240,height:240});
@@ -216,6 +248,8 @@ const pngOf = (w, h) => rscript(`f <- tempfile(fileext = ".png"); png(f, ${w}, $
     const repaired=await page.evaluate(()=>({url:TeamCanvas.serialize().nodes.find(n=>n.id==='results_dashboard-plot_comp').finished.url,caption:document.querySelector('.tc-node[data-plot-id="results_dashboard-plot_comp"] .tc-snapshot-status').textContent,w:document.getElementById('results_dashboard-plot_comp').clientWidth}));
     assert.doesNotMatch(repaired.caption,/smaller than its card/);
     assert.match(decodeURIComponent(repaired.url.split(',')[1]),new RegExp('width="'+repaired.w+'"'),'repaired at the card size');
+    const regenerated=await page.evaluate(()=>{const n=document.querySelector('.tc-node[data-plot-id="results_dashboard-plot_comp"]');return {defect:n.classList.contains('tc-snapshot-defect'),stale:n.classList.contains('tc-stale'),stamp:(TeamCanvas.serialize().nodes.find(x=>x.id==='results_dashboard-plot_comp').finished.provenance||{}).captureVersion};});
+    assert.deepEqual(regenerated,{defect:false,stale:false,stamp:2},'a new capture is clean and stamped');
     assert.deepEqual(errors,[]);
     console.log('PASS: Finish relays out a collapsed Plotly layout and restores its autosize, refuses only collapsed frames (Plotly and static images), accepts 1- and 2-group square heatmaps, and flags only collapsed-looking checkpoint images');
   } finally { await browser.close(); }

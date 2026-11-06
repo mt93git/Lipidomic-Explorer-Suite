@@ -34,6 +34,9 @@
   // Opens upward over the card; downward when the canvas view has no room above the footer.
   function openMenu(wrap, node) {
     var toggle = wrap.querySelector(':scope > .tc-card-more'), menu = wrap.querySelector(':scope > .tc-card-menu');
+    // Place the bar for the current view first: card_figure.js leaves it alone while the menu is open
+    // (it used to re-place it a few frames later, moving the open menu under the pointer).
+    if (window.TeamCardFigure && TeamCardFigure.place) TeamCardFigure.place(node);
     node.classList.add('tc-card-menu-open');
     menu.classList.remove('is-below', 'is-left'); menu.hidden = false; toggle.setAttribute('aria-expanded', 'true');
     var view = node.closest('.tc-scroll'), vr = view ? view.getBoundingClientRect() : null, top = Math.max(0, vr ? vr.top : 0), left = Math.max(0, vr ? vr.left : 0);
@@ -88,6 +91,19 @@
       openMenu(wrap, node);
       var first = Array.prototype.find.call(menu.querySelectorAll('button:not(:disabled)'), function (b) { return b.getClientRects().length > 0; }); if (first) first.focus();
     });
+    // The person's own Data & settings (pointer or keyboard) opens the inspector on this card's Data tab, like
+    // Edit; its controls and, for an independent copy, the button for its own panel are there. Script clicks
+    // (the inspector's Data & settings button, the status badge, the companion) keep the button's own action.
+    menu.addEventListener('click', function (e) {
+      if (!e.isTrusted || !e.target.closest('[data-canvas-data-settings]')) return;
+      e.stopPropagation(); closeMenu(wrap, false);
+      if (window.TeamInspectorToggle) TeamInspectorToggle.reveal();
+      var head = node.querySelector(':scope > .tc-node-head'); if (head) head.click();
+      requestAnimationFrame(function () {
+        var tab = document.getElementById('tc-inspector-tab-data');
+        if (tab && !tab.hidden && node.classList.contains('is-selected')) { tab.click(); tab.focus(); } else openInspector(node);
+      });
+    }, true);
     // An action ran (or the card went away): fold the menu back and give focus a visible home.
     menu.addEventListener('click', function (e) { if (e.target.closest('button')) { closeMenu(wrap, false); restoreFocus(wrap, node); } });
     wrap.addEventListener('keydown', function (e) {
@@ -95,7 +111,10 @@
       // Handled here: the canvas would otherwise deselect the card on the same Escape.
       e.preventDefault(); e.stopPropagation(); closeMenu(wrap, true);
     });
-    wrap.addEventListener('focusout', function (e) { if (!menu.hidden && e.relatedTarget && !wrap.contains(e.relatedTarget)) closeMenu(wrap, false); });
+    // Focus leaving for an ancestor is not leaving the menu: Safari does not focus a clicked button, it focuses
+    // the nearest focusable ancestor (the card's header) on mousedown. Closing then hid the menu between
+    // mousedown and mouseup, so the click meant for Remove landed on the board and nothing happened.
+    wrap.addEventListener('focusout', function (e) { var to = e.relatedTarget; if (!menu.hidden && to && !wrap.contains(to) && !to.contains(wrap)) closeMenu(wrap, false); });
     wrap.append(toggle, menu);
     bar.prepend(edit); bar.appendChild(wrap);
     return wrap;
