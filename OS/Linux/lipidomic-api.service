@@ -1,0 +1,26 @@
+[Unit]
+Description=Lipidomic Explorer API (Nexo spike)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/gjb47/nexo-spike
+ExecStart=/home/gjb47/miniforge3/envs/nexo-api/bin/Rscript --vanilla R/frontends/api/run.R
+Environment=LIPIDOMIC_INTERFACE=team
+Environment=LIPIDOMIC_STORAGE=files
+Environment=LIPIDOMIC_HOSTED=1
+Environment=LIPIDOMIC_TEAM_WORKSPACE=1
+Environment=LIPIDOMIC_API_PORT=3960
+Environment=LIPIDOMIC_API_CHECKPOINT_DIR=/home/gjb47/nexo-storage
+Environment=OMP_NUM_THREADS=2
+Environment=OPENBLAS_NUM_THREADS=2
+Environment=LANG=C.UTF-8
+# Do not set LIPIDOMIC_AUTH_URL, LIPIDOMIC_REST_URL, LIPIDOMIC_STORAGE_URL,
+# or LIPIDOMIC_COMPANION_ENV: the files backend refuses to start with them.
+# The spike has no auth of its own; nginx basic auth protects it.
+MemoryMax=3G
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
