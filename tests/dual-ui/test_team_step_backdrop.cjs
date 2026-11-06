@@ -30,7 +30,7 @@ const WITHOUT = process.argv.includes('--without-backdrop');
 // Team CSS in document order in workspace mode: ui.R's head, then the sheets the body UI includes
 // (guided_workflow.R, canvas.R); classic-only sheets dropped. includeCSS inlines the files, so relative url()s
 // resolve against the page, exactly as here.
-const uiR = ['R/frontends/team/ui.R', 'R/guided_workflow.R', 'R/frontends/team/canvas.R'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+const uiR = ['R/frontends/team/ui.R', 'R/frontends/team/guided_workflow.R', 'R/frontends/team/canvas.R'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
 const SHEETS = [...uiR.matchAll(/includeCSS\(["']www\/team\/css\/([a-z0-9_]+\.css)["']\)/g)].map(m => m[1])
   .filter((f, i, a) => a.indexOf(f) === i && !['pending_changes_bar.css', 'experiment_cards.css'].includes(f));
 assert.ok(SHEETS.includes('step_backdrop.css'), 'ui.R registers step_backdrop.css');

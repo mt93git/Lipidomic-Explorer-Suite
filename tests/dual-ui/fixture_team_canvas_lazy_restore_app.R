@@ -3,7 +3,7 @@
 suppressPackageStartupMessages(library(shiny));suppressPackageStartupMessages(library(plotly))
 `%||%` <- function(a,b)if(is.null(a))b else a
 lipidomic_plotly_event <- function(...)NULL
-source('R/sample_metadata_import.R');source('R/results_dashboard.R');source('R/frontends/team/plot_instances.R');source('R/frontends/team/canvas.R');source('R/frontends/team/canvas_state.R')
+source('R/sample_metadata_import.R');source('R/frontends/team/results_dashboard.R');source('R/frontends/team/plot_instances.R');source('R/frontends/team/canvas.R');source('R/frontends/team/canvas_state.R')
 df <- data.frame(Lipid=c('PC(34:1)','PE(36:2)','TG(50:1)'),S1=c(10,50,100),S2=c(20,60,110),S3=c(30,70,120),S4=c(40,80,130),check.names=FALSE)
 meta <- data.frame(FullName=names(df)[-1],Group1=c('A','A','B','B'),Group2='X')
 value <- function(x){force(x);function(...)x}
