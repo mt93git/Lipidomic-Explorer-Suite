@@ -20,8 +20,10 @@ app_theme <- bslib::bs_theme(
   fg = "#1F1F1F",
   primary = "#2D5F8A",
   secondary = "#57819F",
-  base_font = bslib::font_google("Nunito Sans", local = FALSE),
-  heading_font = bslib::font_google("Cormorant Garamond", local = FALSE)
+  # Plain family names: the Google Fonts stylesheet is linked once in the head below.
+  # The bslib Google-font dependency was re-sent with rendered UI and logged font.css 404s.
+  base_font = c("Nunito Sans", "sans-serif"),
+  heading_font = c("Cormorant Garamond", "serif")
 ) %>% bslib::bs_add_rules(".sidebar .card-header { font-weight: bold; }")
 
 # Main UI definition using page_navbar for a multi-tab layout.
@@ -73,10 +75,17 @@ ui <- page_navbar(
       includeScript("www/team/js/scientific_insight.js"),
       # Keeps the class stand-ins for broad :has() conditions in the Team stylesheets in sync.
       includeScript("www/team/js/has_classes.js"),
+      # Page fonts, <html lang>/h1, AA text contrast, Plot controls in place of the lone sidebar chevron, guided PCA groups.
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Nunito+Sans&family=Cormorant+Garamond&display=swap"),
+      includeCSS("www/team/css/qw_contrast.css"), includeCSS("www/team/css/qw_a11y.css"), includeCSS("www/team/css/qw_layers.css"), includeScript("www/team/js/qw_a11y.js"), includeScript("www/team/js/qw_plot_controls.js"),
+      if (!team_workspace_enabled()) includeScript("www/team/js/qw_pca_groups.js"),
+      if (!team_workspace_enabled()) tagList(includeCSS("www/team/css/pending_changes_bar.css"), includeScript("www/team/js/pending_changes_bar.js")),
+      if (team_library_enabled()) tagList(includeCSS("www/team/css/login_validation.css"), includeScript("www/team/js/login_validation.js")),
       if (team_workspace_enabled()) tagList(includeCSS("www/team/css/companion_guidance.css"), includeScript("www/team/js/companion_guidance_data.js"), includeScript("www/team/js/companion_guidance.js")),
       if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;document.documentElement.classList.add('ts-gate');setTimeout(function(){document.documentElement.classList.remove('ts-gate')},4000);")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeCSS("www/team/css/workspace_minimal.css"),includeCSS("www/team/css/canvas_catalog.css"),includeCSS("www/team/css/canvas_preview.css"),includeCSS("www/team/css/canvas_viewport.css"),includeCSS("www/team/css/plot_editor.css"),includeCSS("www/team/css/illustrations.css"),includeCSS("www/team/css/foreground.css"),includeScript("www/team/js/foreground.js"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas_catalog.js"),includeScript("www/team/js/canvas_assets.js"),includeScript("www/team/js/illustrations.js"),includeScript("www/team/js/plot_editor.js"),includeCSS("www/team/css/group_comparison.css"),includeScript("www/team/js/group_comparison.js"),includeScript("www/team/js/canvas_statistics.js"),includeScript("www/team/js/canvas_viewport.js"),includeScript("www/team/js/canvas.js"),includeCSS("www/team/css/canvas_inspector.css"),includeScript("www/team/js/canvas_inspector.js"),includeScript("www/team/js/illustration_library.js"),includeScript("www/team/js/canvas_preview.js"),includeScript("www/team/js/canvas_checkpoint.js"),includeScript("www/team/js/autosave.js"),includeCSS("www/team/css/autosave.css"),includeScript("www/team/js/companion_workspace.js"),includeCSS("www/team/css/shell.css"),includeCSS("www/team/css/mascot_refine.css"),includeCSS("www/team/css/review_shell.css"),includeScript("www/team/js/data_shell.js"),includeScript("www/team/js/review_shell.js"),includeScript("www/team/js/shell.js"),includeCSS("www/team/css/card_figure.css"),includeScript("www/team/js/card_figure.js"),includeCSS("www/team/css/card_status.css"),includeScript("www/team/js/card_status.js"))
     ),
     guide_header(),
+    team_pending_changes_bar_ui(),
     if (team_workspace_enabled()) team_canvas_ui(),
     tags$div(
       id = "targeted_lipids_top_dock",

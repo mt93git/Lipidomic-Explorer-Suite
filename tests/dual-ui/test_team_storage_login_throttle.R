@@ -59,7 +59,7 @@ fake <- function(service, path, token=NULL, body=NULL, method='GET', raw=FALSE) 
   if (good) list(access_token='synthetic-token', user=list(id='u', email='x')) else stop('invalid credentials')
 }
 gate <- make()
-for (i in 1:5) expect_error(team_library_sign_in('who@example.org', 'wrong', gate, call=fake), 'Sign-in failed')
+for (i in 1:5) expect_error(team_library_sign_in('who@example.org', 'wrong', gate, call=fake), 'We could not sign you in')
 stopifnot(calls == 5L)
 expect_error(team_library_sign_in('who@example.org', 'wrong', gate, call=fake), 'Too many attempts. Try again in 1 s.')
 stopifnot(calls == 5L)

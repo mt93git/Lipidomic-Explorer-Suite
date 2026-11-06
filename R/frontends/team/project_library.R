@@ -11,6 +11,7 @@
 # LIPIDOMIC_STORAGE=files there is no identity service: the library opens a
 # single local project without sign-in (see storage/README.md).
 
+source("R/frontends/team/login-validation.R", local=TRUE)
 team_library_enabled <- function() identical(Sys.getenv("LIPIDOMIC_PROJECT_LIBRARY"), "1")
 
 # Sign-in throttle, ON by default and never blocking. Per account (normalized
@@ -75,7 +76,7 @@ team_library_sign_in <- function(email, password, attempt, call=team_library_cal
     error=function(e) NULL)
   if (is.null(r) || !is.character(r$access_token) || length(r$access_token) != 1L || !nzchar(r$access_token)) {
     attempt(email, outcome="failure")
-    stop("Sign-in failed. Check your email and password, or try again later.", call.=FALSE)
+    stop(team_login_rejected_message(), call.=FALSE)
   }
   attempt(email, outcome="success")
   r
@@ -203,8 +204,9 @@ team_library_ui <- function() {
     tags$style(HTML(".team-library .shiny-input-container{width:100%!important;margin-bottom:10px}.team-library-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:18px;align-items:end}.team-library-login{display:flex;gap:16px;align-items:end;flex-wrap:wrap}.team-library-login>.shiny-input-container{flex:1;min-width:180px}.team-library select{min-height:44px}.team-library small{display:block;margin-top:14px;color:#526b77}@media(max-width:750px){.team-library-grid{grid-template-columns:1fr}.team-library{margin:8px!important;padding:16px!important}}")),
     h3("Project library"),p("Save a private checkpoint. Return to your analysis without uploading files again."),
     if (team_workspace_enabled() && identity) tagAppendChild(uiOutput("team_library_account"),team_library_login_placeholder()) else uiOutput("team_library_account"),uiOutput("team_library_projects"),uiOutput("team_library_recovery"),
-    tags$p(role="status",tagAppendChild(textOutput("team_library_status"),
-      if (identity) "Sign in to access saved projects." else "Opening saved projects on this computer.")))
+    # With sign-in, the card's inline alert reports sign-in problems, so the status line starts empty.
+    tags$p(role="status",if (identity) textOutput("team_library_status") else
+      tagAppendChild(textOutput("team_library_status"),"Opening saved projects on this computer.")))
 }
 # Shown inside the account output until the server's first render replaces it, so the sign-in card
 # has its final size from the first paint (Team workspace only: its styles live in shell.css).
@@ -215,14 +217,14 @@ team_library_login_placeholder <- function() {
     div(class="form-control",HTML("&nbsp;")))
   tagList(div(class="team-library-login team-library-login-placeholder",`aria-hidden`="true",
       field("Email"),field("Password"),tags$button(type="button",class="btn btn-default",tabindex="-1",tags$span("Sign in"))),
-    tags$details(class="team-library-activation team-library-login-placeholder",`aria-hidden`="true",tags$summary(tabindex="-1","Activate your invitation or reset your password")))
+    tags$details(class="team-library-activation team-library-login-placeholder",`aria-hidden`="true",tags$summary(tabindex="-1","Reset password or activate your invitation")))
 }
 # Production's server. Checkpoints are listed, saved and loaded only through
 # this session's store (team_storage_session); project and membership lookups
 # and token refresh still talk to the identity service in database mode.
 team_library_server <- function(input,output,session,shared_data,on_authenticated=NULL) {
   identity_service<-team_library_uses_identity()
-  account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); files_for<-reactiveVal(NULL); status<-reactiveVal(if(identity_service) "Sign in to access saved projects." else "Opening saved projects on this computer.")
+  account<-reactiveVal(NULL); projects<-reactiveVal(list()); members<-reactiveVal(list()); files<-reactiveVal(list()); files_for<-reactiveVal(NULL); status<-reactiveVal(if(identity_service) "" else "Opening saved projects on this computer.")
   # Credential rotation must not rebuild the project/name inputs while a Canvas
   # checkpoint is awaiting its acknowledgement. Only identity changes affect UI.
   account_identity<-reactiveVal(NULL)
@@ -334,8 +336,8 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
     }
   })
   output$team_library_account<-renderUI({a<-account_identity();if(is.null(a)) tagList(
-    div(class="team-library-login",textInput("team_library_email","Email"),passwordInput("team_library_password","Password"),actionButton("team_library_login","Sign in")),
-    tags$details(class="team-library-activation",tags$summary("Activate your invitation or reset your password"),
+    team_login_form_ui(),
+    tags$details(class="team-library-activation",tags$summary("Reset password or activate your invitation"),
       p("Use the one-time activation code supplied by your administrator. Then sign in with your new password."),
       textInput("team_library_activation_email","Email"),
       passwordInput("team_library_activation_code","Activation code"),
@@ -404,7 +406,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
   # Per-account throttle: a refused attempt shows "Too many attempts. Try again
   # in N s." and never reaches the identity service; nothing here waits.
   login_attempt <- team_library_login_limiter()
-  observeEvent(input$team_library_login,foreground_guard("team_library_login",{
+  observeEvent(input$team_library_login,team_login_guard(session,input,foreground_guard,{
     if(!is.null(isolate(account())))stop("Sign out before switching accounts.")
     email <- trimws(input$team_library_email)
     password <- input$team_library_password
@@ -425,7 +427,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
         session$close()
         stop("The workspace could not start. Reload the page and sign in again.", call.=FALSE)
       }
-      stop(e)
+      stop(team_login_after_form(e))
     })
   }))
   observeEvent(input$team_library_project,guard(refresh_files()),ignoreInit=TRUE)

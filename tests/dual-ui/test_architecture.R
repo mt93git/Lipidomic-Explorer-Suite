@@ -6,6 +6,7 @@ source("R/frontends/classic/server.R")
 # The project library is owned by the storage block; without it the library is off.
 if (file.exists("R/frontends/team/project_library.R")) source("R/frontends/team/project_library.R") else team_library_enabled <- function() FALSE
 source("R/frontends/team/workspace.R")
+source("R/frontends/team/pending_changes_bar.R")
 source("R/frontends/team/server.R")
 Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY = "0", LIPIDOMIC_TEAM_WORKSPACE = "0")
 

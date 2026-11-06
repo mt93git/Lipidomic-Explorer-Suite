@@ -140,15 +140,19 @@ testServer(host(state), {
   session$flushReact()
   stopifnot(state$science == 0L, !isTRUE(session$userData$team_library_authenticated()),
     grepl("team_library_password", output$team_library_account$html, fixed = TRUE))
+  # Refusals go to the sign-in card's alert strip (team-login-feedback), not the status line.
+  alerts <- character()
+  session$sendCustomMessage <- function(type, message)
+    if (identical(type, "team-login-feedback") && !is.null(message$alert)) alerts <<- c(alerts, message$alert)
   # Throttle: 5 failures are free; the 6th attempt is refused without any request.
   for (i in 1:5) {
     session$setInputs(team_library_email = "who@example.test", team_library_password = "wrong", team_library_login = i)
-    stopifnot(grepl("Sign-in failed", output$team_library_status, fixed = TRUE))
+    stopifnot(identical(alerts[[i]], scope$team_login_rejected_message()), identical(output$team_library_status, ""))
   }
   stopifnot(password_calls() == 5L)
   before <- length(fake$log)
   session$setInputs(team_library_password = "right", team_library_login = 6L)
-  stopifnot(identical(output$team_library_status, "Too many attempts. Try again in 1 s."),
+  stopifnot(identical(alerts[[6]], "Too many attempts. Try again in 1 s."),
     length(fake$log) == before, state$science == 0L)
   clock <<- clock + 1
   session$setInputs(team_library_password = "right", team_library_login = 7L); session$flushReact()
@@ -157,7 +161,7 @@ testServer(host(state), {
     identical(output$team_library_status, "Signed in. Choose a project and a saved checkpoint."))
   # A second sign-in in the same session is refused; science never starts twice.
   session$setInputs(team_library_login = 8L)
-  stopifnot(state$science == 1L, grepl("Sign out before switching accounts", output$team_library_status, fixed = TRUE))
+  stopifnot(state$science == 1L, identical(alerts[[length(alerts)]], "Sign out before switching accounts."))
   session$setInputs(team_library_project = project, team_library_label = "DB checkpoint"); session$flushReact()
   session$setInputs(team_library_save = 1L); session$flushReact()
   stopifnot(grepl("Checkpoint saved privately", output$team_library_status, fixed = TRUE), length(fake$rows) == 1L,

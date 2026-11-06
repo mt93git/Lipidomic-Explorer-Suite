@@ -1,0 +1,30 @@
+/* Team overlay layers: the one z-index scale for anything that can open over the expanded
+   Canvas (#team-canvas-root.tc-focus-mode, a fixed full-screen layer). Bottom to top:
+     expanded canvas < panels (tools drawer, companion) < popovers (Companion settings, card data
+     panels) < modal backdrop < modals < toasts.
+   Each rule that uses a layer repeats its number as the var() fallback, so a rule still works
+   where this file is not loaded. Controls inside #team-canvas-root (inspector column, minimap,
+   status notice, toolbar and card menus) live in the canvas's own stacking context and keep
+   their local z-index there. Modals keep the values www/team/css/custom.css already gives them,
+   far above the canvas; toasts sit above modals, as in stock Shiny. */
+:root{
+  --z-canvas-expanded:10000;
+  --z-panel:10100;
+  --z-popover:10200;
+  --z-modal-backdrop:2000000;
+  --z-modal:2000005;
+  --z-toast:2000010;
+}
+
+/* Shiny/Bootstrap modals (showModal, e.g. Colors & palettes). Bootstrap gives 1050/1055, under
+   the expanded canvas; custom.css lifts them with !important, so these need !important and a
+   higher specificity to be the source of truth. The colour picker and selectize menus inside a
+   modal stack within it. */
+body .modal-backdrop,body .modal-backdrop.show{z-index:var(--z-modal-backdrop,2000000)!important}
+body .modal,body .modal.show{z-index:var(--z-modal,2000005)!important}
+
+/* Shiny notifications (showNotification) stay readable over an open modal. */
+body #shiny-notification-panel{z-index:var(--z-toast,2000010)!important}
+
+/* Data & settings panel of an independent card copy (canvas.js, inserted on <body>). */
+body .tc-instance-host.is-open{z-index:var(--z-popover,10200)}
