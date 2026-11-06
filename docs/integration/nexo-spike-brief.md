@@ -45,8 +45,11 @@ Files:
   - `GET /api/v1/health` → `{ok, commit, r, plotly}`
   - `GET /api/v1/checkpoints` → ZIPs in `Sys.getenv("LIPIDOMIC_API_CHECKPOINT_DIR")`: `{id, name, bytes, sha256}`
     (`id` = file name without `.zip`)
-  - `POST /api/v1/sessions` `{checkpointId}` → `{sessionId, samples, lipids, preparation, canvas}`;
-    sessions cached in an environment; same checkpoint reuses its hub.
+  - `POST /api/v1/sessions` `{checkpointId}` → `{sessionId, samples, lipids, preparation, inputs, canvas}`;
+    sessions cached in an environment; same checkpoint reuses its hub. `inputs` = the saved dashboard
+    inputs from `state.json` (`state$inputs` keys starting with `results_dashboard-`, prefix stripped,
+    `plotly_*` event keys dropped), e.g. `color_by`, `pca_transform`, `pca_scale`, `violin_lipid`, `top_n`,
+    `n_class`. Fall back to the client defaults when a key is missing.
   - `POST /api/v1/sessions/<id>/plots/results_dashboard/<output>` `{inputs, width}` → `{figure, provenance}`
   - errors: 400 bad output, 404 unknown session or checkpoint, 422 validate message.
 - `run.R`:
@@ -69,11 +72,19 @@ Vite + TypeScript, no framework, no router, no global store. Port `docs/nexo/pro
   frozen = `<img>` of the checkpoint snapshot or a cached `Plotly.toImage`; culled = empty body),
   `canvas.ts` (camera, selection, inspector: title, tier, inputs), `main.ts`.
 - Boot: `?checkpoint=<id>` or a picker from `GET /checkpoints`. Cards come from `canvas.nodes` of
-  `team-canvas-v1.json` (see `R/frontends/team/canvas_state.R` for the v1 shape). Finalized/illustration
-  nodes show their snapshot image; results-dashboard nodes become live plots.
+  `team-canvas-v1.json` (validated by `R/frontends/team/canvas_state.R`). Real node shape:
+  `{kind: "plot"|"illustration", id, label, x, y, width, height, visual: {plotTitle?}, finished: {url, createdAt,
+  stale, provenance} | null, assetId, assetVersion, color, instance?}`. `finished.url` is an SVG data URL
+  (tens of KB). Plot ids look like `results_dashboard-plot_pca` / `results_dashboard-plot_violin` (match
+  `/results_dashboard-plot_(pca|violin|dist|comp|heat)/`); illustrations have `assetId` such as `lc-ms`.
+  Plot nodes render live from the API using the session `inputs`; illustrations always show `finished.url`;
+  frozen plots show `finished.url` when present. A small library lists the 5 dashboard plots; clicking one
+  adds a live card (this is how the demo shows a heatmap that the checkpoint does not contain).
 - `vite.config.ts`: `base: '/nexo/'`. plotly.js is loaded from `public/vendor/plotly.min.js` (copy of the file
   shipped with R plotly 4.12.1: `system.file("htmlwidgets/lib/plotlyjs/plotly-latest.min.js", package = "plotly")`);
-  do not add plotly to npm dependencies.
+  do not add plotly to npm dependencies and do not commit it: `public/vendor/` is gitignored and filled by
+  `scripts/vendor-plotly.sh` (copies from `$NEXO_PLOTLY_JS`, else from the R plotly package via Rscript).
+  On the M1 the file is staged at `~/nexo-vendor/plotly.min.js`.
 - Dev mock: `npm run dev` works with `VITE_API_MOCK=1` against JSON fixtures in `src/mock/`.
 
 ## Tests (7 total, Pareto)
