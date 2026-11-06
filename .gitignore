@@ -15,6 +15,12 @@ data/*.log
 data/user_uploads/*
 !data/user_uploads/.gitkeep
 
+# Companion knowledge base: the fed library (sources, index, references) is versioned with the app.
+# GitHub refuses files over 100 MB: list each such book here by name (any file over 95 MB) and deliver
+# it out of band (OneDrive/Drive, loaded on the server), e.g. knowledge_base/library/sources/<id>-<file>.pdf
+# Checked 2026-11-04 with du -k: no file under knowledge_base/library/sources exceeds 95 MB (largest:
+# fac482a280c6-AMMS-2025-02-18.pdf, 21.6 MB), so none is listed.
+
 # Development Scratch & Author-Only Internal Folders (Never Push)
 scratch/
 _INTERNAL_AUTHOR_ONLY_DO_NOT_PUSH/
