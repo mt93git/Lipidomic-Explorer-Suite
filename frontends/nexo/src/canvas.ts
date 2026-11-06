@@ -1,3 +1,4 @@
+import { place } from './place';
 import { Card } from './cards';
 import { type Node, type Session } from './api';
 import { tier } from './tiers';
@@ -74,7 +75,14 @@ export function mountCanvas(root: HTMLElement, session: Session) {
   $('library-toggle').onclick = () => { $('library').hidden = !$('library').hidden; };
   for (const id of ['pca', 'violin', 'dist', 'comp', 'heat']) {
     const button = document.createElement('button'); button.textContent = `+ ${id.toUpperCase()}`;
-    button.onclick = () => { zoom(Math.max(.5, camera.scale)); const c = add({ kind: 'plot', id: `results_dashboard-plot_${id}-${crypto.randomUUID()}`, label: id.toUpperCase(), x: (vp.clientWidth / 2 - camera.x) / camera.scale - 220, y: (vp.clientHeight / 2 - camera.y) / camera.scale - 165, width: 440, height: 330, finished: null }); selected = new Set([c]); inspector.hidden = false; $('library').hidden = true; draw(); };
+    button.onclick = () => {
+      zoom(Math.max(.5, camera.scale));
+      const wanted = { x: (vp.clientWidth / 2 - camera.x) / camera.scale - 220, y: (vp.clientHeight / 2 - camera.y) / camera.scale - 165, width: 440, height: 330 };
+      const spot = place(cards.map(c => c.node), wanted);
+      const c = add({ kind: 'plot', id: `results_dashboard-plot_${id}-${crypto.randomUUID()}`, label: id.toUpperCase(), ...spot, width: 440, height: 330, finished: null });
+      camera.x = vp.clientWidth / 2 - (spot.x + 220) * camera.scale; camera.y = vp.clientHeight / 2 - (spot.y + 165) * camera.scale;
+      selected = new Set([c]); inspector.hidden = false; $('library').hidden = true; draw();
+    };
     $('library').append(button);
   }
   vp.onwheel = e => {
