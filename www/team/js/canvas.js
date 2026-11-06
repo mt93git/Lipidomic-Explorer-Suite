@@ -349,7 +349,8 @@
     // A restored copy's Plotly output binds only once its card nears the view (lazyMount).
     if(saved&&lazyEnabled())lazyPending.add(id+'-'+suffix);
     instanceRequests.set(id,request);
-    if(!saved)request.placeholder=showPlaceholder(request,placeholder);
+    // A new copy is an edit at once (autosave keeps it while it is Generating; see pendingCopyNodes).
+    if(!saved){request.placeholder=showPlaceholder(request,placeholder);changed();}
     request.timer=setTimeout(deadline,250);
     Shiny.setInputValue('team_canvas_instance_create',Object.assign({},instance,{request:request.token}),{priority:'event'});lastInstanceRequest=id;
     if(!(saved&&gateQuiet()))tell('Creating an independent '+plotTitle(source)+'…'); return true;
@@ -2864,6 +2865,23 @@
     r.savedInputs=JSON.parse(JSON.stringify(saved||{}));r.savedInputsUntil=Date.now()+60000;
     if(!Object.keys(r.savedInputs).length)r.savedInputs=null;
   }
+  // A new copy (Add, Duplicate, Paste) still Generating has no record yet, only its request and
+  // skeleton card. A save keeps it as a saved copy (its sent inputs, the skeleton's place), so a
+  // checkpoint taken before it mounts restores it instead of losing it. A node that fails validation
+  // is left out rather than failing the whole save.
+  function pendingCopyNodes(existing) {
+    var ids = new Set(existing.map(function (n) { return n.id; })), out = [];
+    instanceRequests.forEach(function (request) {
+      var ph = request.placeholder, inst = request.instance;
+      if (request.saved || !ph || !ph.isConnected || ph.classList.contains('is-failed')) return;
+      var id = inst.id + '-' + inst.source.slice(inst.source.indexOf('-') + 1);
+      if (ids.has(id) || (records.get(id) && records.get(id).node)) return;
+      var copy = request.copy || {};
+      var n = {id:id, label:copy.label || plotTitle(inst.source), x:parseFloat(ph.style.left) || 0, y:parseFloat(ph.style.top) || 0, width:parseFloat(ph.style.width) || 620, height:parseFloat(ph.style.height) || 720, visual:copy.visual || {}, finished:null, insight:null, instance:{id:inst.id, source:inst.source, inputs:inst.inputs || {}}};
+      try { out.push(validateState({version:'1', libraryHidden:false, nodes:[n]}).nodes[0]); ids.add(id); } catch (e) {}
+    });
+    return out;
+  }
   // checkSize=false only for display reads (figure list/toolbar); saves and export keep the 24 MiB check.
   function collectState(checkSize) {
     var keysByNamespace = new Map();
@@ -2871,6 +2889,7 @@
     var nodes = Array.from(records.values()).filter(function (r) { return !!r.node; }).map(function (r) { return nodeState(r, keysByNamespace); }).concat(Array.from(illustrations.values()).map(illustrationNodeState));
     restorePending.forEach(function (n) { nodes.push(n); });
     nodes.sort(function(a,b){return creationOrder.indexOf(a.id)-creationOrder.indexOf(b.id);});
+    pendingCopyNodes(nodes).forEach(function (n) { nodes.push(n); });
     var raw = {version:'1', libraryHidden:root.querySelector('.tc-layout').classList.contains('tc-library-hidden'), nodes:nodes, document:documentForNodes(documentState,nodes)};
     var tabs = window.TeamCanvasTabs ? TeamCanvasTabs.serialize(nodes.map(function(n){return n.id;})) : null; if (tabs) raw.tabs = tabs;
     var result = validateState(raw);
@@ -2947,9 +2966,8 @@
   var hydrationChanges = 0, backgroundDue = false;
   function editEpoch() { return syncEpoch - hydrationChanges; }
   async function settledState() {
-    // Only an analyst's new copy (no saved node yet) must load first. A restored
-    // copy still loading is saved as its saved node, unchanged.
-    if(editRequests())throw new Error('Wait for the independent plots to finish loading before saving.');
+    // A copy still loading is saved without waiting: a restored one as its saved node,
+    // a new one (still Generating) as pendingCopyNodes builds it.
     for (var i=0; i<10; i++) {
       var epoch = editEpoch(), active = Array.from(records.values()).filter(function (r) { return !!r.node; });
       var finishes = await Promise.all(active.map(function (r) { return r.finishPromise || Promise.resolve(true); }));
