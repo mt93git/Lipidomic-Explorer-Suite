@@ -165,7 +165,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 <div class="app" id="app">
   <div class="top">
     <div class="brand"><i></i>Lipidomic Explorer</div>
-    <div class="project">Sickle cell · pilot ▾</div>
+    <div class="project">Demo project · pilot ▾</div>
     <div class="center" role="group" aria-label="Modo">
       <button id="modeDraft" aria-pressed="true">Borrador</button>
       <button id="modeFig" aria-pressed="false">Figura</button>
@@ -249,7 +249,7 @@ const cam={x:40,y:40,s:1};
 let cards=[], sel=new Set(), mode='select', spaceHeld=false, figmode=false, nextId=1;
 const hist=[], future=[];
 // ---------- fake data / charts ----------
-const GROUPS=[['Healthy','#7d8793'],['SC-SteadyState','#2d5f8a'],['SC-PainCrisis','#c0504d']];
+const GROUPS=[['Group A','#7d8793'],['Group B','#2d5f8a'],['Group C','#c0504d']];
 let seed=7;function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647;}
 function gauss(){return (rnd()+rnd()+rnd()+rnd()-2)/1.2;}
 function svgPCA(){let pts='';for(let g=0;g<3;g++){for(let i=0;i<18;i++){const x=150+g*55+gauss()*40,y=120+gauss()*45+(g-1)*18;pts+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="${GROUPS[g][1]}" opacity=".9"/>`;}}
@@ -320,7 +320,7 @@ function inspector(){const body=$('#dockBody');const list=cards.filter(c=>sel.ha
   if(list.length>1){body.innerHTML=`<header><h3>${list.length} gráficos seleccionados</h3><button id="dClose" aria-label="Cerrar">✕</button></header><div class="panel"><div class="multi">Acciones de grupo. Cada gráfico conserva sus propios ajustes.</div><label>Alinear<div class="align"><button data-al="l" title="Izquierda">⇤</button><button data-al="cx" title="Centro">↔</button><button data-al="r" title="Derecha">⇥</button><button data-al="t" title="Arriba">⤒</button><button data-al="cy" title="Medio">↕</button><button data-al="b" title="Abajo">⤓</button></div></label><label>Distribuir<div class="row"><button class="btn" data-dist="h">Horizontal</button><button class="btn" data-dist="v">Vertical</button><button class="btn" data-same="1">Mismo tamaño</button></div></label><label>Estado<div class="row"><button class="btn primary" id="finAll">Finalizar todos</button><button class="btn" id="editAll">Editar todos</button></div></label></div>`;return;}
   const c=list[0];const ill=TYPES[c.type][1]==='Ilustración';
   body.innerHTML=`<header><h3>${c.title}</h3><button id="dClose" aria-label="Cerrar">✕</button></header><div class="status"><i style="background:${c.fin?'var(--ok)':'#9aa7b5'}"></i>${c.fin?'Finalizado · instantánea fija':'Vivo · muestra los datos preparados actuales'}</div><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-t="style">Estilo</button>${ill?'':'<button role="tab" data-t="data">Datos</button><button role="tab" data-t="stats">Estadística</button>'}<button role="tab" data-t="export">Exportar</button></div><div class="panel" id="dPanel"></div>`;
-  const panels={style:`<label>Etiqueta<input type="text" value="${c.title}" id="dTitle"></label><label>Tamaño<div class="row"><input type="text" value="${Math.round(c.w)} × ${Math.round(c.h)} px" readonly style="width:150px"></div></label><label>Paleta de grupos<div class="sw"><button style="background:#7d8793" title="Healthy"></button><button style="background:#2d5f8a" title="SC-SteadyState"></button><button style="background:#c0504d" title="SC-PainCrisis"></button></div></label><label>Tipografía<select><option>Nunito Sans · 11 pt</option><option>Arial · 10 pt</option><option>Helvetica · 9 pt</option></select></label><div class="row"><button class="btn primary" id="dFin">${c.fin?'Editar de nuevo':'Finalizar'}</button><button class="btn" id="dDup">Duplicar</button><button class="btn" id="dRm">Quitar</button></div>`,
+  const panels={style:`<label>Etiqueta<input type="text" value="${c.title}" id="dTitle"></label><label>Tamaño<div class="row"><input type="text" value="${Math.round(c.w)} × ${Math.round(c.h)} px" readonly style="width:150px"></div></label><label>Paleta de grupos<div class="sw"><button style="background:#7d8793" title="Group A"></button><button style="background:#2d5f8a" title="Group B"></button><button style="background:#c0504d" title="Group C"></button></div></label><label>Tipografía<select><option>Nunito Sans · 11 pt</option><option>Arial · 10 pt</option><option>Helvetica · 9 pt</option></select></label><div class="row"><button class="btn primary" id="dFin">${c.fin?'Editar de nuevo':'Finalizar'}</button><button class="btn" id="dDup">Duplicar</button><button class="btn" id="dRm">Quitar</button></div>`,
     data:`<label>Lípido<select><option>PC(16:0_20:4)+AcO</option><option>CE(16:0)+NH4</option><option>TAG(52:2)_FA18:1</option></select></label><label>Colorear por<select><option>Grupo clínico</option><option>Visita</option><option>Lote</option></select></label><label>Transformación<select><option>log10</option><option>z-score</option></select></label><p class="multi">Los cambios de datos redibujan este gráfico en el servidor; el resto del lienzo no se toca.</p>`,
     stats:`<label>Unidad estadística<select><option>Participantes (recomendado)</option><option>Muestras</option></select></label><label>Prueba<select><option>Welch</option><option>Mann–Whitney</option></select></label><label>Ajuste<select><option>Holm</option><option>BH (FDR)</option><option>Bonferroni</option></select></label><div class="row"><button class="btn primary">Revisar y aplicar</button><button class="btn">Descartar</button></div><p class="multi">Los ajustes científicos se preparan y se confirman; nunca cambian el gráfico sin revisión.</p>`,
     export:`<label>Ancho físico<select><option>183 mm · 2 columnas (Nature)</option><option>89 mm · 1 columna</option><option>173 mm · PLOS</option></select></label><label>Resolución<select><option>300 dpi</option><option>600 dpi</option></select></label><label>Formato<div class="row"><button class="btn">SVG</button><button class="btn">PDF vectorial</button><button class="btn">PNG</button><button class="btn">TIFF</button><button class="btn">Datos CSV</button></div></label><p class="multi">La exportación usa la instantánea finalizada; si el gráfico está vivo, se finaliza primero.</p>`};
@@ -443,11 +443,11 @@ $('#helpHide').onclick=()=>$('#help').classList.add('hide');
 // ---------- toast ----------
 let toastT=0,lastUndoable=false;function toast(msg,undoable){$('#toastMsg').textContent=msg;lastUndoable=!!undoable;$('#toastUndo').style.display=undoable?'inline':'none';$('#toast').classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>$('#toast').classList.remove('show'),3200);}
 $('#toastUndo').onclick=()=>{undo();$('#toast').classList.remove('show');};
-// ---------- seed workspace: a realistic Paula 67 draft ----------
+// ---------- seed workspace: a realistic demo draft ----------
 mk('pca',40,40,460,340,true);mk('violin',524,40,460,340,true);mk('heat',40,404,460,420,false);mk('bar',524,404,460,420,false);
 mk('donor',40,848,300,200,true);mk('serum',364,848,300,200,true);mk('lcms',688,848,300,200,true);
 for(let i=0;i<12;i++){const t=['pca','violin','heat','bar'][i%4];mk(t,1100+(i%3)*484,40+Math.floor(i/3)*364,460,340,i%3===0);}
-// First frame: fit the Paula draft once the viewport has a size (a hidden or zero-size pane never fits).
+// First frame: fit the demo draft once the viewport has a size (a hidden or zero-size pane never fits).
 let fitted=false;function firstFit(){if(fitted)return;const r=vp.getBoundingClientRect();if(r.width<50||r.height<50)return;fitted=true;fitTo({x:40,y:40,w:944,h:1008},40);}
 new ResizeObserver(()=>{firstFit();schedule();}).observe(vp);
 requestAnimationFrame(firstFit);window.addEventListener('load',firstFit);
