@@ -48,6 +48,11 @@
       var upload = el('button', 'ts-data-upload', 'Choose files'); upload.type = 'button';
       upload.addEventListener('click', function () { var b = document.querySelector('[data-tw-choice="matrix"]'); if (b) b.click(); });
       matrix.appendChild(upload); library.appendChild(matrix);
+      // The same upload entry, visible at the top: it clicks the existing "Choose files" control, so the upload path is unchanged.
+      var start = el('button', 'ts-data-start', 'New project · Upload files'); start.type = 'button';
+      start.addEventListener('click', function () { upload.click(); });
+      var heading = library.querySelector('h3');
+      if (heading && heading.parentNode) heading.parentNode.insertBefore(start, heading.nextSibling); else library.insertBefore(start, shell);
     }
     var list = shell.querySelector('.ts-data-list'), side = shell.querySelector('.ts-data-side');
     var checkpoint = document.getElementById('team_library_checkpoint');

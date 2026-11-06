@@ -47,7 +47,11 @@
         if (on) current = i;
         var label = b.querySelector('.tw-compact-steps-label');
         if (label.textContent !== step.label) label.textContent = step.label;
-        if (b.disabled !== !!src.disabled) b.disabled = !!src.disabled;
+        // A stage locked only by a busy cycle (workspace.js data-tw-busy-lock) stays focusable
+        // (aria-disabled) so Enter/click can queue it, as on the step bar; other locks disable it.
+        var busyLock = !!src.disabled && src.dataset.twBusyLock === 'true', off = !!src.disabled && !busyLock;
+        if (b.disabled !== off) b.disabled = off;
+        if (busyLock) { if (b.getAttribute('aria-disabled') !== 'true') b.setAttribute('aria-disabled', 'true'); } else b.removeAttribute('aria-disabled');
         if (on) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
         // A locked step keeps its reason (aria-label) and a step queued during a busy
         // cycle shows the same state here (workspace.js sets both on the originals).
@@ -83,7 +87,10 @@
       // Focus goes back to the visible trigger first; the original button is hidden on
       // phones and any focus handling of the new step runs after this.
       close(true);
-      if (src && !src.disabled) src.click();
+      if (!src) return;
+      if (!src.disabled) { src.click(); return; }
+      var stage = src.dataset.twStage || src.dataset.stage;
+      if (stage && src.dataset.twBusyLock === 'true' && window.TeamWorkspace && TeamWorkspace.request) TeamWorkspace.request(stage);
     }
     function move(delta, edge) {
       var items = enabledItems(list); if (!items.length) return;
@@ -132,7 +139,7 @@
       };
       if (mq.addEventListener) mq.addEventListener('change', onChange); else if (mq.addListener) mq.addListener(onChange);
     }
-    new MutationObserver(sync).observe(cfg.source, { attributes: true, subtree: true, childList: true, characterData: true, attributeFilter: ['aria-current', 'disabled', 'aria-label', 'data-tw-queued', 'aria-busy', 'title'] });
+    new MutationObserver(sync).observe(cfg.source, { attributes: true, subtree: true, childList: true, characterData: true, attributeFilter: ['aria-current', 'disabled', 'aria-label', 'data-tw-queued', 'aria-busy', 'title', 'data-tw-busy-lock'] });
     sync();
     return wrap;
   }

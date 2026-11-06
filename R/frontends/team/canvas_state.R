@@ -192,7 +192,9 @@ team_canvas_image_cache_on_session_end <- function(session, cache) {
   invisible(NULL)
 }
 
-team_canvas_image_cached <- function(url, cache, validate = team_canvas_image) {
+# A cache may carry its own validator for figures it has not seen (team_canvas_read:
+# the Team preparation cache's per-figure SVG check, prep_cache.R).
+team_canvas_image_cached <- function(url, cache, validate = if (is.function(cache$validate)) cache$validate else team_canvas_image) {
   # Repeat the cheap shape and size checks even on a cache hit. Any content
   # edit changes the hash; collision candidates must also match exactly.
   url <- team_canvas_string(url, team_canvas_limits$snapshot, empty = FALSE)
@@ -627,7 +629,7 @@ team_canvas_read <- function(path) {
   if (!file.exists(path) || file.info(path)$size > team_canvas_limits$bytes) team_canvas_fail("Figure canvas state exceeds 24 MiB.")
   # Keep the figures validated while reading, indexed by content, so the import
   # that follows in the same restore does not validate the same SVGs again.
-  cache <- team_canvas_image_cache()
+  cache <- team_canvas_image_cache(); cache$validate <- get0("team_prep_cache_image_validate", mode = "function", ifnotfound = team_canvas_image)
   state <- team_canvas_validate(jsonlite::read_json(path, simplifyVector = FALSE), image_cache = cache)
   attr(state, "team_canvas_image_cache") <- cache
   state

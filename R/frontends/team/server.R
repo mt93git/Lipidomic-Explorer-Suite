@@ -20,7 +20,15 @@ team_missingness_data_adapter <- function(shared_data) {
 # that re-rendered them, and sent the image to the hidden tab, on every window resize or
 # pixel-ratio change. Their selector UIs keep rendering while hidden: a plot moved to the canvas
 # still needs those inputs. Canvas copies have their own namespaces and are not affected.
-team_hidden_classic_outputs <- c("structural_tab-propPlotPlot", "structural_tab-diffAcylPlot", "structural_tab-diffAcylTable")
+# The acyl-chain selection matrix and its status badge sit in the same hidden Proportions view;
+# both read available_prop_chains_info(), so rendering either while hidden ran the chain
+# extraction (about 1 s) during Review open. They hold no selection state (the selection is a
+# server-side reactiveVal; the matrix only reports clicks), the plot and its CSV read
+# isTRUE(input$prop_renormalize_subset), which is FALSE both before the matrix exists and at
+# its default, and a Canvas copy renders the matrix in its own namespace. They render when the
+# Proportions view is shown, as the plot above does.
+team_hidden_classic_outputs <- c("structural_tab-propPlotPlot", "structural_tab-diffAcylPlot", "structural_tab-diffAcylTable",
+                                 "structural_tab-prop_chain_matrix_ui", "structural_tab-prop_matrix_status_badge")
 team_suspend_hidden_classic_outputs <- function(output) {
   ids <- c(team_hidden_classic_outputs, team_hidden_metadata_previews)
   for (id in ids) shiny::outputOptions(output, id, suspendWhenHidden = TRUE)
@@ -30,6 +38,7 @@ team_frontend_server <- function(input, output, session, shared_data) {
   # Production called these from R/server.R just before this function; same order.
   if (team_workspace_enabled()) session$userData$team_shared_data <- shared_data
   if (team_workspace_enabled()) team_canvas_server(input, output, session, shared_data)
+  team_plot_instance_arm_prewarm() # once per process: Canvas copy allow-lists (plot_instances.R)
   if (team_library_enabled() && !team_workspace_enabled()) team_library_server(input, output, session, shared_data)
   # A receipt belongs to this upload, never an unrelated background flush.
   for (upload_id in c("data_hub-files", "data_hub-import_session_file", "sample_metadata_import-file")) local({

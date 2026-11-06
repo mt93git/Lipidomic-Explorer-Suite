@@ -209,6 +209,22 @@ async function clippedText(page, selector) {
     await ws.keyboard.press('Enter');
     assert.deepEqual(await ws.evaluate(() => window.stages), ['data']);
     assert.equal(await wTrigger.evaluate(t => t === document.activeElement), true);
+    // UX14: a stage locked only by a busy cycle (data-tw-busy-lock) stays reachable from the
+    // keyboard (aria-disabled, not disabled) and Enter queues it through TeamWorkspace.request.
+    await ws.evaluate(() => { window.requests = []; window.TeamWorkspace = { request: s => { requests.push(s); return true; } }; document.querySelector('[data-tw-stage="canvas"]').dataset.twBusyLock = 'true'; });
+    await wTrigger.focus(); await ws.keyboard.press('Enter');
+    const busyItem = wList.locator('button').nth(2);
+    assert.equal(await busyItem.evaluate(b => b.disabled), false, 'a busy-locked stage is not disabled in the list (Playwright isDisabled also counts aria-disabled)');
+    assert.equal(await busyItem.getAttribute('aria-disabled'), 'true', 'it is announced as unavailable');
+    await ws.keyboard.press('End');
+    assert.equal(await ws.evaluate(() => document.activeElement.textContent), '3Canvas', 'the keyboard reaches the busy-locked stage');
+    await ws.keyboard.press('Enter');
+    assert.deepEqual(await ws.evaluate(() => window.requests), ['canvas'], 'Enter queues it through the workspace request');
+    assert.deepEqual(await ws.evaluate(() => window.stages), ['data'], 'the locked original is not clicked');
+    await ws.evaluate(() => { delete document.querySelector('[data-tw-stage="canvas"]').dataset.twBusyLock; });
+    await wTrigger.focus(); await ws.keyboard.press('Enter');
+    assert.equal(await wList.locator('button').nth(2).isDisabled(), true, 'without the busy lock it is disabled again');
+    await ws.keyboard.press('Escape');
     await ws.close();
 
     // ---- Workspace tables (FIXR3B item 6, Sonnet M4) -----------------------------------------

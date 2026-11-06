@@ -98,8 +98,10 @@
     var center=r.left+r.width/2,cy=r.top+58,margin=12,topLimit=12;
     var navbar=document.querySelector('.navbar');if(navbar)topLimit=Math.max(topLimit,navbar.getBoundingClientRect().bottom+8);
     var controls=Array.from(document.querySelectorAll('button,input,select,textarea,a[href],.js-plotly-plot,.shiny-plot-output,body.team-workspace-app #team-workspace .tw-journey,body.team-workspace-app .tc-catalog,body.team-workspace-app .tc-selection-inspector,body.team-workspace-app .tc-navigation,body.team-workspace-app .tc-settings-dock')).filter(function(n){
-      if(dock.contains(n)||!n.getClientRects().length||getComputedStyle(n).visibility==='hidden')return false;
-      var q=n.getBoundingClientRect();return q.width&&q.height&&q.right>0&&q.left<innerWidth&&q.bottom>topLimit&&q.top<innerHeight;
+      // Box first (an element without client rects has an empty box), computed style last: same set.
+      if(dock.contains(n))return false;
+      var q=n.getBoundingClientRect();if(!(q.width&&q.height&&q.right>0&&q.left<innerWidth&&q.bottom>topLimit&&q.top<innerHeight))return false;
+      return getComputedStyle(n).visibility!=='hidden';
     }).map(function(n){return n.getBoundingClientRect();});
     var candidates=[];
     function add(x,y,side){
@@ -166,12 +168,22 @@
     if(y<topLimit&&innerHeight-r.bottom>=h+24)y=r.bottom+12;
     panel.style.left=clamp(x,12,innerWidth-w-12)+'px';panel.style.top=clamp(y,topLimit,innerHeight-h-16)+'px';
   }
-  function protectedEntries(){
+  // Performance only (approved exception): rects are read first and the computed-style
+  // check runs only for visible boxes, and, when a search region is given, only for boxes
+  // that intersect it. A box outside every candidate placement adds zero overlap, and an
+  // element without client rects has an empty bounding box, so the scores, and the chosen
+  // placement, are exactly those of the full scan.
+  function protectedEntries(region){
     return Array.from(document.querySelectorAll('button,input,select,textarea,a[href],[role="button"],[contenteditable="true"],img,canvas,svg,.js-plotly-plot,.shiny-plot-output,#cell-stage,.lipid-help-panel,body.team-workspace-app #team-workspace .tw-journey,body.team-workspace-app .tc-catalog,body.team-workspace-app .tc-selection-inspector,body.team-workspace-app .tc-navigation,body.team-workspace-app .tc-settings-dock')).filter(function(n){
-      return !dock.contains(n)&&n.getClientRects().length&&getComputedStyle(n).visibility!=='hidden';
-    }).map(function(n){return {node:n,rect:n.getBoundingClientRect()};}).filter(function(entry){return entry.rect.width>0&&entry.rect.height>0;});
+      return !dock.contains(n);
+    }).map(function(n){return {node:n,rect:n.getBoundingClientRect()};}).filter(function(entry){
+      var q=entry.rect;
+      if(!(q.width>0&&q.height>0))return false;
+      if(region&&!region.some(function(z){return q.right>z.left&&q.left<z.right&&q.bottom>z.top&&q.top<z.bottom;}))return false;
+      return getComputedStyle(entry.node).visibility!=='hidden';
+    });
   }
-  function protectedRects(){return protectedEntries().map(function(entry){return entry.rect;});}
+  function protectedRects(region){return protectedEntries(region).map(function(entry){return entry.rect;});}
   function overlapArea(r,rects){return rects.reduce(function(total,q){return total+Math.max(0,Math.min(r.right,q.right)-Math.max(r.left,q.left))*Math.max(0,Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top));},0);}
   // In the Team canvas, keep the entire character clear of the library,
   // floating inspector and navigation, including after a manual drag.
@@ -275,8 +287,8 @@
     if(home&&home.getClientRects().length){var hr=home.getBoundingClientRect();if(hr.bottom>0&&hr.top<innerHeight){x=clamp(hr.left+Math.max(0,(hr.width-r.width)/2),8,innerWidth-r.width-8);y=clamp(hr.top+8,8,innerHeight-r.height-8);dock.style.left=x+'px';dock.style.top=y+'px';avoidanceBase={x:x,y:y};positionPanel();positionSpeech();return;}}
     // Only the automatic placement seeks open space. Saved drag coordinates stay put.
     if(!manual){
-      var rects=protectedRects(),best={x:x,y:y,score:Infinity};
       var columns=[x,clamp(x+(corner.indexOf('right')>=0?-1:1)*(r.width+gap),8,innerWidth-r.width-8)];
+      var rects=protectedRects(columns.map(function(cx){return {left:cx,right:cx+r.width,top:y+28,bottom:Infinity};})),best={x:x,y:y,score:Infinity};
       columns.forEach(function(cx){
         for(var cy=y;cy<=innerHeight-r.height-8;cy+=r.height+12){
           var score=overlapArea({left:cx,right:cx+r.width,top:cy+28,bottom:cy+r.height},rects);

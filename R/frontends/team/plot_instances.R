@@ -465,7 +465,32 @@ team_dashboard_instance_input <- function(input, saved = list()) {
   structure(list(input=input,defaults=team_dashboard_input_defaults(),saved=saved,state=state),class='team_dashboard_instance_input')
 }
 team_instance_input_empty <- function(x) is.null(x) || !length(x) || all(is.na(x) | as.character(x) == "")
+# The keys the Signal distribution reads (sample_info, R/results_dashboard.R). In a session
+# they are watched through a reactiveVal fed by an observer: the saved value read while the
+# control was empty and the same value arriving from the browser are equal, so that arrival
+# no longer re-renders the copy. The value itself is read as before, at the time of the read.
+team_dashboard_echo_keys <- 'color_by'
 `$.team_dashboard_instance_input` <- function(x, name) {
+  state <- .subset2(x,'state')
+  if (!is.character(name) || length(name)!=1L || !name %in% team_dashboard_echo_keys || is.null(shiny::getDefaultReactiveDomain())) return(team_dashboard_instance_read(x,name))
+  if (is.null(state$memo)) state$memo <- new.env(parent=emptyenv())
+  if (!exists(name,state$memo,inherits=FALSE)) {
+    rv <- shiny::reactiveVal(shiny::isolate(team_dashboard_instance_read(x,name)))
+    shiny::observe({
+      value <- team_dashboard_instance_read(x,name)
+      # Readers last got another value (the 60 s grace ended on their read): notify them.
+      if (!identical(value,state$returned[[name]])) rv(structure(list(),class='team_echo_stale'))
+      rv(value)
+    },priority=100)
+    assign(name,rv,state$memo)
+  }
+  get(name,state$memo,inherits=FALSE)()
+  # The 60 s grace takes effect only on a read that happens anyway, as before.
+  value <- shiny::isolate(team_dashboard_instance_read(x,name))
+  state$returned[name] <- list(value)
+  value
+}
+team_dashboard_instance_read <- function(x, name) {
   value <- .subset2(x,'input')[[name]]
   saved <- .subset2(x,'saved')[[name]]; state <- .subset2(x,'state')
   if (!team_instance_input_empty(saved) && !name %in% state$caught) {
@@ -735,3 +760,56 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     team_violin_stats_server(input,session,dashboard_data,function(id) if (exists(id,active,inherits=FALSE)) get(id,active) else NULL)
   invisible(create)
 }
+# The allow-list of a family's restorable inputs (and the defaults its copies read)
+# depend only on code: the family table, its UI functions and its module file. Both
+# are memoized per process above; the first resume after start paid ~1.8 s to build
+# them inside the restore. Build them once the app is serving, one family per event
+# loop turn so requests interleave. The memoized functions are called exactly as a
+# restore would call them (same keys, same code), so a warm entry is the value a
+# cold call computes; a family that fails is left uncached and retried on demand.
+team_plot_instance_prewarm_sources <- function() {
+  c(team_cell=team_cell_instance_outputs[[1L]],vapply(names(team_plot_instance_families),function(f)paste0(f,'-',team_plot_instance_families[[f]]$outputs[[1L]]),character(1)))
+}
+# R compiles a function the first time it runs; a resume paid ~0.4 s compiling the
+# canvas and figure validators. Run them once on a constant, code-owned canvas (one
+# copy with a tiny SVG figure) and discard the result: they are pure, and the image
+# cache used here is a throwaway one with the plain checker (never a session's cache,
+# never the on-disk preparation cache).
+team_plot_instance_prewarm_validator <- function() {
+  if (!exists('team_canvas_validate',mode='function') || !exists('team_canvas_image_cache',mode='function')) return(invisible())
+  svg <- '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8"><rect width="8" height="8" fill="#ffffff"/></svg>'
+  node <- list(id='tcinstance_prewarm-plot_violin',label='Prewarm',x=0,y=0,width=600,height=400,visual=list(),
+    finished=list(url=paste0('data:image/svg+xml;charset=utf-8,',utils::URLencode(svg,reserved=TRUE)),createdAt='2026-01-01T00:00:00Z',stale=FALSE),
+    instance=list(id='tcinstance_prewarm',source='results_dashboard-plot_violin',inputs=list()))
+  cache <- team_canvas_image_cache(); cache$validate <- team_canvas_image
+  team_canvas_validate(list(version='1',libraryHidden=FALSE,nodes=list(node)),image_cache=cache)
+  invisible()
+}
+team_plot_instance_prewarm <- function(delay=0.05, defaults=TRUE) {
+  sources <- team_plot_instance_prewarm_sources()
+  steps <- c(lapply(unname(sources),function(s)function()team_plot_instance_input_ids(s)),
+    if (isTRUE(defaults)) lapply(setdiff(names(sources),c('team_cell','results_dashboard')),function(f)function()team_plot_instance_input_defaults(f)),
+    function()team_plot_instance_prewarm_validator())
+  i <- 0L
+  step <- function() {
+    i <<- i+1L; if (i>length(steps)) return(invisible())
+    tryCatch(steps[[i]](),error=function(e)NULL)
+    later::later(step,delay)
+  }
+  later::later(step,delay)
+  invisible(length(steps))
+}
+# Armed by the Team server when its first session starts (team_frontend_server), never
+# while the app is sourced: sourcing leaves the later loop empty, and Classic or tests
+# that source the Team files get no timer. Once per process; the steps start `delay`
+# seconds later. LIPIDOMIC_TEAM_PREWARM=0 turns it off. Returns whether it scheduled.
+team_plot_instance_arm_prewarm <- local({
+  armed <- FALSE
+  function(delay=1) {
+    if (armed || identical(Sys.getenv('LIPIDOMIC_TEAM_PREWARM'),'0') || !requireNamespace('later',quietly=TRUE)) return(invisible(FALSE))
+    if (!identical(tryCatch(lipidomic_interface(),error=function(e)''),'team')) return(invisible(FALSE))
+    armed <<- TRUE
+    later::later(function() team_plot_instance_prewarm(),delay)
+    invisible(TRUE)
+  }
+})

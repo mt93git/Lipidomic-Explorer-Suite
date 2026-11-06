@@ -107,10 +107,10 @@ heatmap_ui <- function(id) {
                   tags$strong("Saturation Filters:", style = "font-size: 0.8125rem; color: #495057; display: block; margin-bottom: 4px;"),
                   actionButton(ns("select_sfa_btn"), "SFA (0 DB)", class = "btn-sm btn-outline-success py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_mufa_btn"), "MUFA (1 DB)", class = "btn-sm btn-outline-warning py-0 px-2 me-1 mb-1"),
-                  actionButton(ns("select_pufa_btn"), "PUFA (≥2 DB)", class = "btn-sm btn-outline-primary py-0 px-2 me-1 mb-1", icon = icon("dna")),
+                  actionButton(ns("select_pufa_btn"), htmltools::HTML("PUFA (&ge;2 DB)"), class = "btn-sm btn-outline-primary py-0 px-2 me-1 mb-1", icon = icon("dna")),
                   
                   tags$strong("Chain Length Filters:", style = "font-size: 0.8125rem; color: #495057; display: block; margin-top: 6px; margin-bottom: 4px;"),
-                  actionButton(ns("select_scfa_btn"), "SCFA (≤C5)", class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
+                  actionButton(ns("select_scfa_btn"), htmltools::HTML("SCFA (&le;C5)"), class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_mcfa_btn"), "MCFA (C6-C12)", class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
                   actionButton(ns("select_lcfa_btn"), "LCFA (>C12)", class = "btn-sm btn-outline-info py-0 px-2 me-1 mb-1"),
                   tags$div(class = "mt-1",

@@ -69,4 +69,6 @@ body.ts-shell-app .ts-data-new{display:flex;justify-content:space-between;align-
 body.ts-shell-app .ts-data-new h5{font-size:13.5px;font-weight:600;margin:0 0 4px}
 body.ts-shell-app .ts-data-new p{font-size:13px;color:#5a6878;margin:0}
 body.ts-shell-app .ts-data-upload{height:34px;padding:0 14px;border:1px solid #e3e7ec;border-radius:6px;background:#fff;white-space:nowrap;cursor:pointer}
+body.ts-shell-app .ts-data-start{display:none;align-items:center;height:36px;padding:0 16px;margin:4px 0 10px;border:0;border-radius:6px;background:#2d5f8a;color:#fff;font-weight:600;white-space:nowrap;cursor:pointer}
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] .ts-data-start{display:inline-flex}
 @media (max-width:900px){body.ts-shell-app .ts-data{grid-template-columns:minmax(0,1fr)}}

@@ -1,5 +1,27 @@
 (function(){'use strict';
  var authenticated=false, legacy=1, screen='data-choice', pending=null, last='', paintedScreen='', navSequence=0, reviewEntrySequence=0, resumeEntryPending=false, resumeRestoreReady=false, preparation=null, busy=false;
+ // busy is the shown lock (debounced); rawBusy is Shiny's real state. A busy
+ // cycle shorter than BUSY_SHOW_MS never changes the page, and the lock stays
+ // up BUSY_HIDE_MS after idle so back-to-back cycles read as one update.
+ // Navigation still checks rawBusy, so no step change runs during a real update.
+ var rawBusy=false, busyShowTimer=0, busyHideTimer=0, BUSY_SHOW_MS=400, BUSY_HIDE_MS=300;
+ // While the saved Canvas restores in the background (canvas.js reports
+ // team-canvas-restore-status pending → success/failed) and the analyst is not
+ // on Canvas, its many short busy cycles are not shown as a step lock: a step
+ // click is still held until Shiny is idle (rawBusy), then sent. Autosave stays
+ // paused by the restore receipt, and Canvas shows its own restore progress.
+ var canvasRestoring=false;
+ // Foreground work overrides the suppression: an owned operation (TeamBusy, the
+ // modal) or a Review preparation that is not idle is a real update.
+ function foregroundActive(){return (!!window.TeamBusy&&typeof TeamBusy.pending==='function'&&TeamBusy.pending()>0)||(!!preparation&&(preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring));}
+ function backgroundRestore(){return canvasRestoring&&screen!=='canvas'&&!foregroundActive();}
+ var rawBusySince=0;
+ // Show the lock once Shiny has been busy BUSY_SHOW_MS and nothing suppresses it.
+ // Re-checked on every paint, so a foreground update that starts mid-restore shows it.
+ // Also drops a lock that only foreground work justified once that work ends while the
+ // background restore keeps Shiny busy, so it never waits for an idle that may not come.
+ function maybeShowBusy(){if(busy&&rawBusy&&backgroundRestore()){busy=false;if(busyHideTimer){clearTimeout(busyHideTimer);busyHideTimer=0;}return;}if(rawBusy&&!busy&&!busyShowTimer&&Date.now()-rawBusySince>=BUSY_SHOW_MS&&!backgroundRestore())busy=true;}
+ function resetBusy(){rawBusy=false;busy=false;canvasRestoring=false;if(busyShowTimer){clearTimeout(busyShowTimer);busyShowTimer=0;}if(busyHideTimer){clearTimeout(busyHideTimer);busyHideTimer=0;}}
  // A stage click that lands while the steps are locked only by a transient
  // Shiny busy cycle is remembered here and sent once, when the app is idle.
  var queued=null, lockedFocus=null, STAGE_IDS={data:'data-choice',review:'review-single',canvas:'canvas'}, STAGE_NAMES={data:'Data',review:'Review',canvas:'Canvas'};
@@ -30,10 +52,22 @@
   resumeEntryPending=false;resumeRestoreReady=false;requestReviewEntry('resume');
  }
  var idleReconcilePending=false;
+ function onBusy(){
+  if(!rawBusy)rawBusySince=Date.now();
+  rawBusy=true;
+  if(busyHideTimer){clearTimeout(busyHideTimer);busyHideTimer=0;}
+  if(!busy&&!busyShowTimer)busyShowTimer=setTimeout(function(){busyShowTimer=0;if(rawBusy&&!busy){maybeShowBusy();if(busy)paint();}},BUSY_SHOW_MS);
+ }
+ function onIdle(){
+  rawBusy=false;
+  if(busyShowTimer){clearTimeout(busyShowTimer);busyShowTimer=0;}
+  if(busy&&!busyHideTimer)busyHideTimer=setTimeout(function(){busyHideTimer=0;if(!rawBusy&&busy){busy=false;paint();}},BUSY_HIDE_MS);
+  paint();
+ }
  function reconcileIdle(){
-  if(!busy||idleReconcilePending||!window.Shiny||!Shiny.shinyapp)return;
+  if(!rawBusy||idleReconcilePending||!window.Shiny||!Shiny.shinyapp)return;
   idleReconcilePending=true;
-  queueMicrotask(function(){queueMicrotask(function(){idleReconcilePending=false;if(busy&&!document.documentElement.classList.contains('shiny-busy')){busy=false;paint();}});});
+  queueMicrotask(function(){queueMicrotask(function(){idleReconcilePending=false;if(rawBusy&&!document.documentElement.classList.contains('shiny-busy'))onIdle();});});
  }
  function mark(selector,id){document.querySelectorAll(selector).forEach(function(el){el.dataset.twPanel=id;});}
  function setup(){
@@ -48,7 +82,9 @@
  function state(){var e=entry(screen),i=screens.indexOf(e),next=document.querySelector('[data-tw-next]');return {stage:stage(e[1]),legacyStep:legacy,substep:screen,substepIndex:i+1,substepCount:screens.length,canBack:authenticated&&i>0,canNext:authenticated&&i<screens.length-1&&!(next&&next.disabled),nextReason:next&&next.disabled?statusText():'',preparationReady:!!preparation&&preparation.ready===true&&!preparation.pending&&!preparation.running&&!preparation.restoring&&!busy,preparationPending:!!preparation&&preparation.pending===true,preparationRunning:!!preparation&&(preparation.running===true||busy),preparationRestoring:!!preparation&&preparation.restoring===true,tool:document.body.dataset.guideAnalysis==='true'?'advanced analysis':document.body.dataset.guideToolPage==='true'?'tool page':'',authenticated:authenticated};}
  function canvasReadyIgnoringBusy(){return !!preparation&&preparation.ready===true&&!preparation.pending&&!preparation.running&&!preparation.restoring;}
  // True when the only thing stopping this stage is the busy lock itself.
- function busyOnly(name){return authenticated&&!pending&&busy&&!!STAGE_IDS[name]&&(name!=='canvas'||canvasReadyIgnoringBusy());}
+ function busyOnly(name){return authenticated&&!pending&&(busy||rawBusy)&&!!STAGE_IDS[name]&&(name!=='canvas'||canvasReadyIgnoringBusy());}
+ function queuedVisible(){return !!queued&&(queued.sent||busy||Date.now()-(queued.at||0)>=BUSY_SHOW_MS);}
+ function queueStage(name,id,prepareReviewEntry){queued={stage:name,id:id,sent:false,at:Date.now(),prepareReviewEntry:prepareReviewEntry===true};setTimeout(paint,BUSY_SHOW_MS+10);paint();}
  function queuedMessage(name){return 'Opening '+STAGE_NAMES[name]+' when the update finishes.';}
  // status_hold.js (when loaded) keeps each status text up for ~1 s so busy cycles do not blink it.
  function announce(message,urgent){var p=document.getElementById('tw-next');if(!p)return;if(window.TeamStatusHold)TeamStatusHold.set(p,message,urgent);else p.textContent=message;}
@@ -59,7 +95,7 @@
   if(preparation&&preparation.pending)return 'Data changes are pending. Review and prepare them before opening Canvas.';
   return 'Prepare the current data in Review before opening Canvas.';
  }
- function paint(){var root=document.getElementById('team-workspace');if(!root)return;setup();document.body.classList.add('team-workspace-app');document.body.dataset.teamAuthenticated=String(authenticated);
+ function paint(){var root=document.getElementById('team-workspace');if(!root)return;maybeShowBusy();setup();document.body.classList.add('team-workspace-app');document.body.dataset.teamAuthenticated=String(authenticated);
   var raw=document.body.dataset.guideStep;if(/^[1-7]$/.test(raw||'')){var step=Number(raw);if(step!==legacy){legacy=step;if(pending&&entry(pending.id)[1]===legacy){screen=pending.id;if(pending.ack){var completed=pending;pending=null;if(completed.prepareReviewEntry)requestReviewEntry('next');}}else if(entry(screen)[1]!==legacy){screen=({1:'data-choice',2:'review-single',3:'review-single',4:'review-single',5:'canvas',6:'canvas',7:'canvas'})[legacy];pending=null;}}}
   if(queued&&(!authenticated||(queued.sent&&(!pending||pending.token!==queued.token))))queued=null;
   var e=entry(screen),current=stage(e[1]);document.body.dataset.teamStage=current;document.body.dataset.twScreen=screen;
@@ -68,7 +104,7 @@
    b.setAttribute('aria-current',b.dataset.twStage===current?'step':'false');
    b.setAttribute('aria-describedby','tw-next');
    var reason=!authenticated?'Sign in to start an analysis.':pending?'Wait for the current navigation to finish.':busy?'A workspace update is running. Wait before switching steps.':b.dataset.twStage==='canvas'&&!canvasReady?canvasReadiness():'';
-   var waiting=!!queued&&queued.stage===b.dataset.twStage;
+   var waiting=queuedVisible()&&queued.stage===b.dataset.twStage;
    if(waiting)reason=queuedMessage(queued.stage);
    b.disabled=!!reason;
    if(reason)b.setAttribute('aria-label',(b.querySelector('strong')||b).textContent.trim()+'. '+reason);else b.removeAttribute('aria-label');
@@ -83,7 +119,7 @@
    var metadataReady=!!document.querySelector('#guide_experiment_next button[data-guide-step="2"]');
    var qualityReady=!!preparation&&preparation.ready===true&&!preparation.pending&&!preparation.running&&!preparation.restoring&&!busy;
    next.disabled=!authenticated||screen==='data-choice'||screen==='canvas'||(screen==='data-matrix'&&!matrixReady)||(screen==='data-metadata'&&!metadataReady)||(screen==='review-single'&&!qualityReady);
-   next.textContent=screen==='review-single'?'Continue to Canvas →':'Next →';
+   var nextLabel=screen==='review-single'?'Continue to Canvas →':'Next →';if(next.textContent!==nextLabel)next.textContent=nextLabel;
    if(authenticated&&screen==='data-matrix'&&!matrixReady)announce('Upload or open an abundance matrix before continuing.');
    if(authenticated&&screen==='data-metadata'&&!metadataReady)announce('Confirm metadata or choose “Continue without additional metadata” to continue.');
    if(authenticated&&screen==='review-single'&&!qualityReady)announce(preparation&&(preparation.running||preparation.pending)||busy?'Updating…':'The table and plot update automatically when you change the threshold or sample selection.');
@@ -91,9 +127,11 @@
   document.querySelectorAll('[data-tw-panel]').forEach(function(el){el.classList.toggle('tw-panel-hidden',el.dataset.twPanel!==screen);});
   var library=document.querySelector('.team-library');if(library){var h=library.querySelector('h3'),p=library.querySelector('p'),saving=legacy===7;if(h)h.textContent=!authenticated?'Your analysis starts here':saving?'Save your workspace':'Continue a saved analysis';if(p)p.textContent=!authenticated?'Sign in to open your private projects.':saving?'Keep your data, canvas, colors and finished figures together. Changes are saved automatically. You can also name a checkpoint to keep a milestone.':'Choose a project and the checkpoint you want to reopen.';}
   if(!authenticated)announce('Sign in to start an analysis.');
-  else if(queued&&!queued.sent)announce(queuedMessage(queued.stage));
+  else if(queued&&!queued.sent&&queuedVisible())announce(queuedMessage(queued.stage));
   else if(pending)announce('Opening the requested screen…');
-  else if(busy)announce('A workspace update is running. Wait before switching steps.');
+  // Review shows one text for an update (the line above already says Updating…); a second, different
+  // text in the same paint was held for 1 s and then swapped in, which read as a blink.
+  else if(busy)announce(screen==='review-single'?'Updating…':'A workspace update is running. Wait before switching steps.');
   else if(!canvasReady&&(screen==='review-single'||(next&&!next.disabled)))announce(canvasReadiness());
   else if(!canvasReady&&screen==='data-choice')announce('Open a saved analysis or upload an abundance matrix before opening Canvas.');
   else if(!pending&&next&&(!next.disabled||screen==='data-choice'||screen==='canvas'))announce('');
@@ -105,8 +143,11 @@
  function navigate(id,prepareReviewEntry,fromQueue){
   // Any other navigation is a newer intent than a queued stage click.
   if(!fromQueue&&queued&&!queued.sent)queued=null;
-  if(!authenticated||pending||busy||!screens.some(function(x){return x[0]===id;}))return false;
+  if(!authenticated||pending||(busy&&rawBusy)||!screens.some(function(x){return x[0]===id;}))return false;
   if(id==='canvas'&&(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring)){announce(canvasReadiness(),true);return false;}
+  // Shiny is busy but the lock is not shown (a short cycle, or the background
+  // Canvas restore): hold the request and send it at the next idle.
+  if(rawBusy){if(fromQueue)return false;queueStage(stage(entry(id)[1]),id,prepareReviewEntry);return true;}
   var e=entry(id);if(e[1]===legacy && !(id==='canvas' && (document.body.dataset.guideAnalysis==='true'||document.body.dataset.guideToolPage==='true'))){screen=id;paint();return true;}
   var token=++navSequence;pending={id:id,token:token,prepareReviewEntry:prepareReviewEntry===true&&id==='review-single'};
   if(fromQueue&&queued&&queued.sent)queued.token=token;
@@ -115,7 +156,7 @@
  }
  function next(event){paint();var i=screens.findIndex(function(x){return x[0]===screen;}),button=document.querySelector('[data-tw-next]');if(i<0||i>=screens.length-1||!authenticated||(button&&button.disabled))return false;
   if(screen==='data-metadata'&&!document.querySelector('#guide_experiment_next button[data-guide-step="2"]')){announce('Confirm metadata or choose “Continue without additional metadata” first.',true);return false;}
-  if(screen==='review-single'){if(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring||busy){announce(preparation&&preparation.restoring?'Restoring your saved session…':preparation&&(preparation.running||preparation.pending)||busy?'Updating…':'Wait for the data update to finish before continuing to Canvas.',true);return false;}}
+  if(screen==='review-single'){if(!preparation||preparation.ready!==true||preparation.pending||preparation.running||preparation.restoring){announce(preparation&&preparation.restoring?'Restoring your saved session…':preparation&&(preparation.running||preparation.pending)||busy?'Updating…':'Wait for the data update to finish before continuing to Canvas.',true);return false;}}
   var target=screens[i+1][0],prepareReviewEntry=!!(event&&event.isTrusted&&screen==='data-metadata'&&target==='review-single');if(prepareReviewEntry)resumeEntryPending=false;return navigate(target,prepareReviewEntry);}
  function back(){var i=screens.findIndex(function(x){return x[0]===screen;});return i>0?navigate(screens[i-1][0]):false;}
  function go(name){var id=STAGE_IDS[name];return id?navigate(id):false;}
@@ -123,10 +164,10 @@
  // stage allowed. Canvas keeps waiting while Review's automatic preparation is
  // pending, running or restoring (Esc or another step cancels the wait).
  function drainQueue(){
-  if(!queued||queued.sent||busy||pending)return;
+  if(!queued||queued.sent||rawBusy||pending)return;
   if(queued.stage==='canvas'&&preparation&&(preparation.running||preparation.restoring||preparation.pending))return;
   var q=queued;q.sent=true;
-  if(!navigate(q.id,false,true)&&queued===q){queued=null;paint();}
+  if(!navigate(q.id,q.prepareReviewEntry===true,true)&&queued===q){queued=null;paint();}
  }
  function stageButton(el){return el&&el.closest?el.closest('[data-tw-stage],.ts-steps .ts-step[data-stage]'):null;}
  function stageOf(b){return b?b.dataset.twStage||b.dataset.stage||'':'';}
@@ -134,11 +175,24 @@
   if(!STAGE_IDS[name])return false;
   var b=document.querySelector('#team-workspace [data-tw-stage="'+name+'"]');
   if(b&&!b.disabled)return go(name);
-  if(queued&&!queued.sent&&queued.stage===name)return true;
-  if(busyOnly(name)){queued={stage:name,id:STAGE_IDS[name],sent:false};paint();return true;}
+  // Same stage and same screen: already waiting. A different screen of that stage (Data step after a
+  // queued data-metadata) replaces it below, so the newest target is the one sent.
+  if(queued&&!queued.sent&&queued.stage===name&&queued.id===STAGE_IDS[name])return true;
+  if(busyOnly(name)){queueStage(name,STAGE_IDS[name]);return true;}
   // A click on any other locked stage withdraws a waiting request.
   if(queued&&!queued.sent){queued=null;paint();}
   return false;
+ }
+ // UX14: the public go() (companion, help navigation) is the same queue-aware request as a
+ // step click; when that refuses outside a busy cycle, the direct route gives its reason.
+ function publicGo(name){return requestStage(name)||(!busy&&!rawBusy&&go(name));}
+ // Open one named screen through the same guarded route as Back (Review's "Replace sample
+ // metadata" opens data-metadata). While Shiny is busy it is held like a step click and sent
+ // once at idle; Esc or any other navigation withdraws it.
+ function requestScreen(id){
+  if(!screens.some(function(x){return x[0]===id;}))return false;
+  if(authenticated&&!pending&&rawBusy){if(!(queued&&!queued.sent&&queued.id===id))queueStage(stage(entry(id)[1]),id);return true;}
+  return navigate(id);
  }
  function cancelQueue(){if(!queued||queued.sent)return false;queued=null;paint();return true;}
  function restoreLockedFocus(){
@@ -168,7 +222,7 @@
   document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.tc-preview-pdf'))record('pdf-click');},true);
   if(window.jQuery)jQuery(document).on('shiny:connected',attach).on('shiny:disconnected',function(){record('shiny-disconnected');});attach();
  }
- function init(){if(!document.getElementById('team-workspace'))return;connectionDiagnostics();window.TeamWorkspace={go:go,next:next,back:back,state:state,request:requestStage};
+ function init(){if(!document.getElementById('team-workspace'))return;connectionDiagnostics();window.TeamWorkspace={go:publicGo,next:next,back:back,state:state,request:requestStage,open:requestScreen};
   document.querySelectorAll('[data-tw-stage]').forEach(function(b){b.addEventListener('click',function(){go(b.dataset.twStage);});});
   // Disabled step buttons let clicks through (pointer-events:none), so a click
   // during a busy lock reaches the step bar; find the step under the pointer.
@@ -216,10 +270,11 @@
    else if(legacy===Number(x.step)){var completed=pending;screen=completed.id;pending=null;if(completed.prepareReviewEntry)requestReviewEntry('next');paint();}
   });
   window.addEventListener('team-preparation-state',function(e){preparation=e.detail;paint();});
-  if(window.jQuery)jQuery(document).on('shiny:busy',function(){busy=true;paint();}).on('shiny:idle',function(){busy=false;paint();});
+  window.addEventListener('team-canvas-restore-status',function(e){var was=canvasRestoring;canvasRestoring=!!(e.detail&&e.detail.status==='pending');if(canvasRestoring&&backgroundRestore()&&busy){busy=false;if(busyHideTimer){clearTimeout(busyHideTimer);busyHideTimer=0;}}else if(was&&!canvasRestoring&&rawBusy)onBusy();paint();});
+  if(window.jQuery)jQuery(document).on('shiny:busy',onBusy).on('shiny:idle',onIdle);
   new MutationObserver(reconcileIdle).observe(document.documentElement,{attributes:true,attributeFilter:['class']});
 
-  if(window.jQuery){jQuery(document).on('shiny:connected',function(){disconnectedNotice(false);reconcileIdle();send('team_workspace_ready',Date.now());paint();});jQuery(document).on('shiny:disconnected',function(){authenticated=false;disconnectedNotice(true);paint();});jQuery(document).on('shiny:value',function(){requestAnimationFrame(paint);});}
+  if(window.jQuery){jQuery(document).on('shiny:connected',function(){disconnectedNotice(false);reconcileIdle();send('team_workspace_ready',Date.now());paint();});jQuery(document).on('shiny:disconnected',function(){authenticated=false;/* UX14: nothing stale survives a reconnect (a restore can end without a terminal status) */resetBusy();pending=null;queued=null;disconnectedNotice(true);paint();});jQuery(document).on('shiny:value',function(){requestAnimationFrame(paint);});}
   if(window.Shiny&&Shiny.shinyapp&&Shiny.shinyapp.isConnected())send('team_workspace_ready',Date.now());paint();}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

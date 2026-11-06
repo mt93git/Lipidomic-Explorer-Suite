@@ -73,7 +73,7 @@ team_library_sign_in <- function(email, password, attempt, call=team_library_cal
   gate <- attempt(email)
   if (!isTRUE(gate$allowed)) stop(team_library_login_wait_message(gate), call.=FALSE)
   r <- tryCatch(call("auth","/token?grant_type=password",body=list(email=email,password=password),method="POST"),
-    error=function(e) NULL)
+    error=function(e) {if (exists("team_login_log", mode="function")) team_login_log("auth", e); NULL})
   if (is.null(r) || !is.character(r$access_token) || length(r$access_token) != 1L || !nzchar(r$access_token)) {
     attempt(email, outcome="failure")
     stop(team_login_rejected_message(), call.=FALSE)
@@ -242,7 +242,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
   observe({a<-account_identity();session$sendCustomMessage("team-auth-state",list(authenticated=!is.null(a)))})
   observeEvent(input$team_workspace_ready,{session$sendCustomMessage("team-auth-state",list(authenticated=!is.null(isolate(account()))))})
   pending<-NULL
-  bound_project <- reactiveVal(NULL)
+  bound_project <- reactiveVal(NULL); session$userData$team_library_bound_project <- function() isolate(bound_project())
   cleanup_pending<-function(){a<-isolate(account());if(!is.null(a))team_library_queue(a$user,clear=TRUE,expected=pending$sha256);pending<<-NULL}
   revoke <- function(a) {
     if (!is.null(a) && is.character(a$token) && length(a$token)==1L && nzchar(a$token))
@@ -539,7 +539,7 @@ team_library_server <- function(input,output,session,shared_data,on_authenticate
       autosave_sequence <<- autosave_sequence + 1L
       autosave_request <<- list(id=paste0("autosave-",autosave_sequence), revision=payload$revision,
                                 user=isolate(account())$user, project=project,
-                                label=paste0("Autosave ",format(Sys.time(), "%Y-%m-%d %H:%M:%S UTC", tz="UTC"), " · ", substr(session$token,1,6)), started=Sys.time())
+                                label=paste0("Autosave ",format(Sys.time(), "%Y-%m-%d %H:%M:%S UTC", tz="UTC"), " - ", substr(session$token,1,6)), started=Sys.time())
       status("Saving latest workspace changes…")
       session$sendCustomMessage("team-canvas-save-request",list(requestId=autosave_request$id,kind="autosave"))
       local({

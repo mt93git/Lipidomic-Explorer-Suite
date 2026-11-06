@@ -556,6 +556,20 @@
     var html = seedRenderedControls(e.value.html, request.instance);
     if (html !== null) e.value.html = html;
   });
+  // The plotly R binding turns every listed Plotly event into a Shiny input
+  // ('plotly_afterplot-<source>', 'plotly_relayout-<source>'). Drawing and resizing a canvas
+  // copy fires both many times; each became a server round trip plus Shiny's page-wide
+  // conditional re-check (about 14 s of main thread for 16 cards). The server reads only
+  // plotly_click (R/utils_plot_events.R) and no browser code reads these inputs, so a copy's
+  // value drops the two draw-time names before its binding renders (shiny:value precedes the
+  // render). Traces, layout and pixels are unchanged; graph-div listeners (gd.on) still fire,
+  // and click, hover and selection stay registered.
+  var DRAW_TIME_EVENTS = ['plotly_afterplot', 'plotly_relayout'];
+  if (window.jQuery) jQuery(document).on('shiny:value', function (e) {
+    var el = e.binding && e.binding.el, x = e.value && typeof e.value === 'object' ? e.value.x : null;
+    if (!/^tcinstance_/.test(e.name || '') || !el || !el.classList || !el.classList.contains('plotly') || !x || !Array.isArray(x.shinyEvents)) return;
+    x.shinyEvents = x.shinyEvents.filter(function (name) { return DRAW_TIME_EVENTS.indexOf(name) < 0; });
+  });
   function settleRestored(el, instanceId, generation){
     el.classList.add('tc-restore-settling');
     var start=Date.now();
@@ -1448,6 +1462,8 @@
     if(gp && ['gcTest','gcBaseline','gcScale','gcAdjustment'].every(function(k){return typeof gp[k]==='string' && gp[k].length>0 && gp[k].length<=1000;})) caption.textContent+=' Test: '+gp.gcTest+' · Baseline: '+gp.gcBaseline+' · Scale: '+gp.gcScale+' · Adjustment: '+gp.gcAdjustment+'.';
     preview.appendChild(caption);
     var image = document.createElement('img'); image.src = snapshot.url; image.alt = r.label + ' frozen figure'; preview.appendChild(image);
+    // Older checkpoints may hold a figure captured at a collapsed size; Edit then Finish plot recaptures it.
+    image.addEventListener('load', function () { if (r.preview === preview && snapshotLooksCollapsed(r, image)) { preview.classList.add('tc-snapshot-collapsed'); caption.textContent += ' This saved image is much smaller than its card (' + image.naturalWidth + '×' + image.naturalHeight + ' px). Choose Edit, then Finish plot to recapture it at the card size.'; } }, {once:true});
     var exports = document.createElement('div'); exports.className = 'tc-snapshot-exports';
     ['PNG','SVG','PDF'].forEach(function (format) { var button = document.createElement('button'); button.type = 'button'; button.textContent = format; button.addEventListener('click', function () { exportSnapshot(r, format); }); exports.appendChild(button); });
     preview.appendChild(exports); parkSnapshotSource(r); r.node.appendChild(preview);
@@ -1461,6 +1477,45 @@
     if(!value || typeof value!=='object' || Array.isArray(value) || Object.keys(value).length!==keys.length || keys.some(function(k){return typeof value[k]!=='string'||!value[k].length||value[k].length>1000;}) || !/^[a-f0-9]{64}$/i.test(value.gcSignature)) throw new Error('Confirm the Group comparison settings and wait for the current result before finishing.');
     var out={};keys.forEach(function(k){out[k]=value[k];});return out;
   }
+  // A finished figure freezes Plotly's layout at the capture size. Checkpoints made
+  // before plots kept their logical size under zoom captured a 1494 px composition
+  // card at its on-screen size (268x92): full-size fonts around a collapsed plot
+  // area. A frame is collapsed when it is below SNAPSHOT_MIN, or when the live layout
+  // still differs from the card's logical frame after one relayout. The plot area is
+  // not judged: heatmaps draw one or two groups at 16 px per group by design
+  // (R/results_dashboard.R, rd_team_heatmap_view) and keep their own geometry.
+  var SNAPSHOT_MIN = {width:160, height:120};
+  var SNAPSHOT_TOO_SMALL = 'The plot frame is too small to finish a readable figure. Enlarge the card, wait for the plot to redraw, and try again.';
+  var SNAPSHOT_ZOOM = 'This plot was drawn at the reduced canvas zoom, so its image is too small to finish. Zoom in to 100% and Finish again.';
+  var SNAPSHOT_RESTORE_FAILED = 'The live plot could not be returned to its previous layout, so the figure was not finished. Try again.';
+  function snapshotSizeUsable(width, height) { return width >= SNAPSHOT_MIN.width && height >= SNAPSHOT_MIN.height; }
+  // An image below the minimum looks collapsed only when it is also less than half its
+  // card's logical size in both directions (the 268x92 image of a 1494x720 card). Finish
+  // refuses exactly these images, so a restored caption never leads into a refusal loop.
+  function imageLooksCollapsed(w, h, node) {
+    if (!w || !h || snapshotSizeUsable(w, h) || !node) return false;
+    var fw = parseFloat(node.style.width) || node.offsetWidth, fh = parseFloat(node.style.height) || node.offsetHeight;
+    return fw > 0 && fh > 0 && w * 2 < fw && h * 2 < fh;
+  }
+  function snapshotLooksCollapsed(r, image) { return imageLooksCollapsed(image.naturalWidth, image.naturalHeight, r.node); }
+  function layoutOffFrame(gd, width, height) {
+    var full = gd._fullLayout;
+    return !!(full && full._size && (Math.abs(full.width - width) > 1 || Math.abs(full.height - height) > 1));
+  }
+  function layoutFrames() { return new Promise(function (resolve) { requestAnimationFrame(function () { requestAnimationFrame(resolve); }); }); }
+  // Finish may resize and relayout the live figure to its logical frame. It records the
+  // figure's own autosize/width/height before any change, and afterwards returns them,
+  // unless a newer render or card resize has since taken over the layout.
+  function layoutTriple(gd) { var l = gd.layout || {}, o = {}; ['autosize','width','height'].forEach(function (k) { o[k] = Object.prototype.hasOwnProperty.call(l, k) && l[k] != null ? l[k] : null; }); return o; }
+  function sameTriple(a, b) { return a.autosize === b.autosize && a.width === b.width && a.height === b.height; }
+  function callPlotly(call) { try { return Promise.resolve(call()); } catch (error) { return Promise.reject(error); } }
+  async function restoreLiveLayout(r, gd, before, owned, renderGeneration) {
+    var now = layoutTriple(gd);
+    if (sameTriple(now, before)) return null;
+    if (!sameTriple(now, owned) || (r.revision || 0) !== renderGeneration || plotFor(r) !== gd) return null;
+    try { await callPlotly(function () { return Plotly.relayout(gd, before); }); } catch (error) { return new Error(SNAPSHOT_RESTORE_FAILED); }
+    return sameTriple(layoutTriple(gd), before) ? null : new Error(SNAPSHOT_RESTORE_FAILED);
+  }
   async function finishSnapshot(r) {
     if (!r.node || !sourceCurrent(r)) { tell('Wait for preparation and this plot to finish updating before finishing the figure.'); return; }
     var gd = plotFor(r), source = r.el.querySelector('img'), captureNode = r.node, renderGeneration = r.revision || 0, revision = preparation.revision, generation = preparationGeneration, activity = activityGeneration, url;
@@ -1473,20 +1528,43 @@
       await flushAppearance(r);
       if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
       if (gd && gd.data && gd.data.length && window.Plotly) {
-        // Settle Plotly at its logical CSS size, independently of canvas viewport zoom.
-        await Promise.resolve(Plotly.Plots.resize(gd));
-        if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
-        var rect = gd.getBoundingClientRect(), computed = getComputedStyle(gd);
-        var viewScale = window.TeamCanvasViewport && Number(window.TeamCanvasViewport.scale) > 0 ? Number(window.TeamCanvasViewport.scale) : 1;
-        var width = gd.clientWidth || parseFloat(computed.width) || rect.width / viewScale;
-        var height = gd.clientHeight || parseFloat(computed.height) || rect.height / viewScale;
-        if (!Number.isFinite(width) || !Number.isFinite(height) || width < 2 || height < 2) throw new Error('Plot is not ready.');
-        var capture=function(){return Plotly.toImage(gd, {format:'svg', width:Math.round(width), height:Math.round(height)});};
-        if(sourceKey(r)==='group_comparison_tab-comparisonPlot') {
-          if(!window.TeamGroupComparison || typeof TeamGroupComparison.withExportGeometry!=='function') throw new Error('Group comparison export is not ready. Try again.');
-          url=await TeamGroupComparison.withExportGeometry(gd,capture);
-        } else url=await capture();
+        var before = layoutTriple(gd), owned = before, own = function () { owned = layoutTriple(gd); };
+        try {
+          // Settle Plotly at its logical CSS size, independently of canvas viewport zoom.
+          try { await callPlotly(function () { return Plotly.Plots.resize(gd); }); } finally { own(); }
+          if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
+          var rect = gd.getBoundingClientRect(), computed = getComputedStyle(gd);
+          var viewScale = window.TeamCanvasViewport && Number(window.TeamCanvasViewport.scale) > 0 ? Number(window.TeamCanvasViewport.scale) : 1;
+          var width = Math.round(gd.clientWidth || parseFloat(computed.width) || rect.width / viewScale);
+          var height = Math.round(gd.clientHeight || parseFloat(computed.height) || rect.height / viewScale);
+          if (!Number.isFinite(width) || !Number.isFinite(height) || width < 2 || height < 2) throw new Error('Plot is not ready.');
+          // Capture only a plot laid out at its card's logical size; refuse a collapsed frame.
+          // Team heatmaps keep their own geometry, as in production.
+          if (!snapshotSizeUsable(width, height)) throw new Error(SNAPSHOT_TOO_SMALL);
+          if (!(gd.layout && gd.layout.meta && gd.layout.meta.teamHeatmap) && layoutOffFrame(gd, width, height)) {
+            try { await callPlotly(function () { return Plotly.relayout(gd, {autosize:false, width:width, height:height}); }); } finally { own(); }
+            await layoutFrames();
+            if (layoutOffFrame(gd, width, height)) throw new Error(SNAPSHOT_TOO_SMALL);
+          }
+          if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
+          var capture=function(){return Plotly.toImage(gd, {format:'svg', width:width, height:height});};
+          if(sourceKey(r)==='group_comparison_tab-comparisonPlot') {
+            if(!window.TeamGroupComparison || typeof TeamGroupComparison.withExportGeometry!=='function') throw new Error('Group comparison export is not ready. Try again.');
+            url=await TeamGroupComparison.withExportGeometry(gd,capture);
+          } else url=await callPlotly(capture);
+        } finally {
+          // Never report a finished figure while the live layout is still Finish's own.
+          var restoreError = await restoreLiveLayout(r, gd, before, owned, renderGeneration);
+          if (restoreError) throw restoreError;
+        }
       } else if (source && source.complete && source.naturalWidth && source.naturalHeight) {
+        // A static Shiny image is judged by its logical (CSS) render size, not its bitmap,
+        // whose pixels follow the device pixel ratio and the zoom it was drawn at.
+        var logicalWidth = source.clientWidth || source.naturalWidth / (window.devicePixelRatio || 1), logicalHeight = source.clientHeight || source.naturalHeight / (window.devicePixelRatio || 1);
+        if (!snapshotSizeUsable(logicalWidth, logicalHeight)) throw new Error(SNAPSHOT_TOO_SMALL);
+        // A bitmap that would read as collapsed in its card was drawn at a reduced zoom.
+        var staticScale = window.TeamCanvasViewport && Number(window.TeamCanvasViewport.scale) > 0 ? Number(window.TeamCanvasViewport.scale) : 1;
+        if (imageLooksCollapsed(source.naturalWidth, source.naturalHeight, r.node)) throw new Error(staticScale < 1 ? SNAPSHOT_ZOOM : SNAPSHOT_TOO_SMALL);
         var c = document.createElement('canvas'); c.width = source.naturalWidth; c.height = source.naturalHeight; c.getContext('2d').drawImage(source,0,0); url = c.toDataURL('image/png');
       } else throw new Error('Plot is not ready.');
       if (r.node !== captureNode || !guard(r, revision, generation, renderGeneration, activity)) throw new Error('The analysis changed while preparing the figure. Wait for the current plot and try again.');
@@ -1722,7 +1800,27 @@
     var withoutLocal = value.replace(/url\(\s*(['"]?)#[A-Za-z0-9_.:-]+\1\s*\)/gi, '');
     return /[\\@]|\/\*/.test(value) || /url\s*\(/i.test(withoutLocal) || /javascript:/i.test(value);
   }
+  // checkedImage is a pure function of the URL text. The figure toolbar and column
+  // read previewState() on every DOM-change frame while the Canvas draws its cards,
+  // and each read re-parsed every finished SVG twice (about 30 s of main thread for
+  // 16 cards). The verdict is remembered per exact URL; a bounded, insertion-ordered
+  // LRU cache (64 entries, at most 32 Mi key characters in total) keeps memory flat.
+  // Type and the 4 MiB limit are checked first; an oversized URL is never cached. A
+  // rejection is remembered as a rejection only: the cached value is the exact boolean
+  // the full check returned for that URL.
+  var CHECKED_IMAGE_MAX = 4 * 1024 * 1024, CHECKED_IMAGE_ENTRIES = 64, CHECKED_IMAGE_BUDGET = 32 * 1024 * 1024;
+  var checkedImageVerdicts = new Map(), checkedImageChars = 0;
   function checkedImage(url) {
+    if (typeof url !== 'string' || url.length > CHECKED_IMAGE_MAX) return false;
+    if (checkedImageVerdicts.has(url)) { var known = checkedImageVerdicts.get(url); checkedImageVerdicts.delete(url); checkedImageVerdicts.set(url, known); return known; }
+    var verdict = checkedImageNow(url) === true;
+    while (checkedImageVerdicts.size && (checkedImageVerdicts.size >= CHECKED_IMAGE_ENTRIES || checkedImageChars + url.length > CHECKED_IMAGE_BUDGET)) {
+      var oldest = checkedImageVerdicts.keys().next().value; checkedImageVerdicts.delete(oldest); checkedImageChars -= oldest.length;
+    }
+    checkedImageVerdicts.set(url, verdict); checkedImageChars += url.length;
+    return verdict;
+  }
+  function checkedImageNow(url) {
     if (typeof url !== 'string' || url.length > 4 * 1024 * 1024) return false;
     if (/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(url)) {
       try { var binary = atob(url.slice(url.indexOf(',') + 1)); return binary.length >= 33 && binary.slice(0,8) === '\x89PNG\r\n\x1a\n' && binary.slice(12,16) === 'IHDR'; } catch (e) { return false; }
@@ -1937,7 +2035,13 @@
     } finally { geometryReplay=false; }
     tell(redo?'Redid the last canvas change.':'Undid the last canvas change.'); return true;
   }
+  // Display-only readers (figure toolbar, figure column, plot picker) share one
+  // previewState() per animation frame; any canvas change drops the shared result.
+  // Preview and export capture keep calling previewState() directly (always fresh).
+  var framePreview = null, framePreviewTimer = 0;
+  function dropFramePreview() { framePreview = null; if (framePreviewTimer) { cancelAnimationFrame(framePreviewTimer); framePreviewTimer = 0; } }
   function changed() {
+    dropFramePreview();
     if (applyingRestore) return;
     rememberGeometry();
     syncEpoch++; clearTimeout(syncTimer);
@@ -2039,6 +2143,8 @@
     finishRestoreIfReady();
   }
   function restoreState(input, receipt) {
+    // Restore replaces nodes and illustrations directly (applyingRestore): drop the shared display read first.
+    dropFramePreview();
     restoreReceipt = typeof receipt === 'string' && receipt ? receipt : null;
     restoreFailed = false; restoreBuilding = true; restoreStatus('pending');
     stopDeferredRestore(); serverStateKey = null;
@@ -2059,7 +2165,7 @@
         r.insight = null; r.visual = {}; r.hydrating = false; r.titleBaseline = null; r.axisBaseline = null; r.sourceSignature = null;
         if (r.equivalentObserver) r.equivalentObserver.disconnect();
       });
-      illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear();
+      illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear(); dropFramePreview();
       documentState=state.document || null;
       restorePending.clear(); state.nodes.forEach(function (n) { restorePending.set(n.id,n); });
       var hidden = state.libraryHidden, layout = root.querySelector('.tc-layout'), toggle = root.querySelector('.tc-library-toggle');
@@ -2133,7 +2239,7 @@
     new MutationObserver(showWatch).observe(root, {attributes:true, attributeFilter:['class','style','hidden']});
     window.addEventListener('team-workspace-state', showWatch); window.addEventListener('resize', showWatch);
     search.addEventListener('input', renderList);
-    root.querySelector('.tc-reset').addEventListener('click', function () { documentState=null; cancelInstanceRequests(); var cancelled=clearAllQueuedAdds(); records.forEach(restore); illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear(); if (restorePending.size) { restorePending.clear(); changed(); tell('Returned all plots and cleared plots awaiting their analysis.'); } else if (cancelled.length) tell('Returned all plots and cancelled queued adds for ' + cancelled.join(', ') + '.'); else { changed(); tell('Returned all plots and illustrations to the library.'); }
+    root.querySelector('.tc-reset').addEventListener('click', function () { documentState=null; cancelInstanceRequests(); var cancelled=clearAllQueuedAdds(); records.forEach(restore); illustrations.forEach(function (r) { if (r.observer) r.observer.disconnect(); if (r.node) r.node.remove(); }); illustrations.clear(); dropFramePreview(); if (restorePending.size) { restorePending.clear(); changed(); tell('Returned all plots and cleared plots awaiting their analysis.'); } else if (cancelled.length) tell('Returned all plots and cancelled queued adds for ' + cancelled.join(', ') + '.'); else { changed(); tell('Returned all plots and illustrations to the library.'); }
       // Reset cancelled every restored card still queued or loading: nothing is left
       // to mount, so a pending restore completes now (and the reset canvas is sent).
       // A failed one keeps its Retry.
@@ -2257,6 +2363,12 @@
         var ready=settled && hasContent && !unusable.length;
         var queuedNames=Array.from(pendingAdds.values()).map(function (pending) { return pending.label; });
         return {state:state,ready:ready,settled:settled,blank:!hasContent,usableIds:usableIds,unusable:unusable,archived:nodes.filter(function (r) { return !!(r.snapshot && r.snapshot.archived); }).length,message:ready?'Finished figures are ready for preview.':instanceRequests.size?'Independent plots are still loading. Wait before opening the preview.':shinyBusy?'The analysis is updating. Wait for it to finish before previewing.':pendingAdds.size?'Queued add' + (queuedNames.length===1?'':'s') + ' not ready: ' + queuedNames.join(', ') + '. Cancel in the catalog or wait up to 90 seconds.':restorePending.size?'Saved plots are waiting for their analysis to load.':!hasContent?'Add a plot or drawing before opening the preview.':nodes.some(function (r) { return !r.snapshot; })?'Finish every canvas plot before opening the preview.':'A finished figure is stale or no longer valid. Review it before previewing.'};
+      },
+      previewStateForDisplay: function () {
+        if (framePreview) return framePreview;
+        var result = window.TeamCanvas.previewState();
+        framePreview = result; framePreviewTimer = requestAnimationFrame(function () { framePreview = null; framePreviewTimer = 0; });
+        return result;
       },
       // Canvas tabs: snapshot before a tab edit, then save (navigation only saves).
       tabsWillChange: function () { rememberGeometry(); },

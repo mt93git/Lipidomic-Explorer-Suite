@@ -1,0 +1,17 @@
+/* Team Review: "Replace sample metadata" (secondary: the shared journey button style) with an in-page confirmation.
+   The note is absolutely positioned, so opening it never moves the page. */
+body.team-workspace-app #team-workspace .tw-replace-meta{display:none;position:relative}
+body.team-workspace-app[data-team-authenticated=true][data-tw-screen=review-single] #team-workspace .tw-replace-meta{display:inline-flex}
+body.team-workspace-app #team-workspace .tw-journey-actions .tw-replace-meta-trigger{white-space:nowrap}
+body.team-workspace-app #team-workspace .tw-journey-actions .tw-replace-meta-trigger[aria-expanded=true]{border-color:var(--lab-blue,#2d5f8a)!important}
+body.team-workspace-app #team-workspace .tw-replace-meta-note{position:absolute;top:calc(100% + 6px);right:0;z-index:40;width:340px;max-width:calc(100vw - 24px);box-sizing:border-box;padding:12px 14px;background:#fff;border:1px solid #d5dde5;border-radius:8px;box-shadow:0 8px 24px #14243122;text-align:left}
+body.team-workspace-app #team-workspace .tw-replace-meta-note[hidden]{display:none}
+body.team-workspace-app #team-workspace .tw-replace-meta-note p{margin:0 0 10px;font-size:13px;line-height:1.45;color:#26323e;max-width:none}
+body.team-workspace-app #team-workspace .tw-replace-meta-actions{display:flex;gap:8px;justify-content:flex-end}
+body.team-workspace-app #team-workspace .tw-journey-actions .tw-replace-meta-actions button{min-height:34px;padding:6px 14px;font-size:13px;border-radius:7px}
+body.team-workspace-app #team-workspace .tw-journey-actions .tw-replace-meta-confirm{background:var(--lab-blue,#2d5f8a)!important;border-color:var(--lab-blue,#2d5f8a)!important;color:#fff!important}
+@media(max-width:700px){
+ body.team-workspace-app[data-tw-screen=review-single] #team-workspace .tw-journey-actions{flex-wrap:wrap;row-gap:8px}
+ body.team-workspace-app[data-team-authenticated=true][data-tw-screen=review-single] #team-workspace .tw-replace-meta{flex:1 0 100%}
+ body.team-workspace-app #team-workspace .tw-replace-meta-note{left:0;right:auto}
+}

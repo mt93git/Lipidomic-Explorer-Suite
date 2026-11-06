@@ -23,6 +23,7 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     assert.equal(await canvas.isDisabled(), false);
 
     await page.evaluate(() => fire('shiny:busy'));
+    await page.waitForTimeout(450); // UX14: the lock shows after 400 ms of busy
     assert.equal(await canvas.isDisabled(), true);
     await clickCanvas();
     assert.equal(await canvas.getAttribute('data-tw-queued'), 'true', 'the busy click is queued');
@@ -40,6 +41,7 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     assert.equal(await canvas.getAttribute('data-tw-queued'), null, 'a rejection drops the pending state');
     assert.equal(await canvas.getAttribute('aria-busy'), null);
     assert.equal(await page.locator('#tw-next').textContent(), 'Server says no.', 'the rejection message is kept');
+    await page.waitForTimeout(350); // the lock clears 300 ms after idle
     assert.equal(await canvas.isDisabled(), false);
     await page.evaluate(() => { fire('shiny:busy'); fire('shiny:idle'); });
     assert.equal((await navs()).length, 1, 'a rejected request is not retried');
@@ -48,6 +50,7 @@ const { chromium } = require('../browser/ci/node_modules/playwright');
     await page.evaluate(() => fire('shiny:busy')); await clickCanvas();
     await page.evaluate(() => { window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:false,pending:true}})); fire('shiny:idle'); });
     assert.equal((await navs()).length, 1, 'nothing is sent while preparation is pending');
+    await page.waitForTimeout(450); // UX14: a held click is shown once it has waited 400 ms
     assert.equal(await canvas.getAttribute('data-tw-queued'), 'true', 'Canvas stays queued while preparation catches up');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:true}})));
     sent = await navs(); assert.equal(sent.length, 2, 'Canvas opens once preparation is ready');

@@ -2,9 +2,9 @@
 // The workspace status line (#tw-next) under "Choose how to begin" keeps a
 // fixed slot: its height and the content below it never move while the text
 // changes, appears or disappears, and the text never changes faster than ~1 s.
-// Review (review-single) keeps production's behaviour on purpose: the empty line
-// is removed (display:none) because the frozen mascot is placed from
-// .ts-review-home, so the slot rule must not apply there.
+// UX14: Review (review-single) reserves the same slot. Busy cycles are long
+// enough (500 ms) to pass workspace.js's 400 ms show debounce, and the idle gap
+// (400 ms) longer than its 300 ms hide delay, so the lock really toggles.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -51,26 +51,25 @@ async function run(browser, width) {
   const wait = ms => page.waitForTimeout(ms);
   // Each phase: settle, start measuring, run rapid busy/idle cycles, sample, settle again
   // (the held text lands up to 1 s later and must not move anything either).
-  // measureCls=false on Review, where production's line (and thus the layout) may move by design.
-  const cycle = async (label, n, gap, measureCls = true) => {
-    await wait(250); await page.evaluate(([l, m]) => { sample(l + ':start'); window.measuring = m; }, [label, measureCls]);
-    for (let i = 0; i < n; i++) { await page.evaluate(() => fire('shiny:busy')); await wait(gap); await page.evaluate(() => fire('shiny:idle')); await wait(gap); }
+  const cycle = async (label, n) => {
+    await wait(250); await page.evaluate(l => { sample(l + ':start'); window.measuring = true; }, label);
+    for (let i = 0; i < n; i++) { await page.evaluate(() => fire('shiny:busy')); await wait(500); await page.evaluate(() => fire('shiny:idle')); await wait(400); }
     await page.evaluate(l => sample(l), label); await wait(1100); await page.evaluate(l => { sample(l + ':held'); window.measuring = false; }, label);
   };
 
   await page.evaluate(() => handlers['team-auth-state']({authenticated: true}));
   await wait(1100); await page.evaluate(() => sample('choice-signed-in'));
-  await cycle('choice-busy-cycles', 8, 60);                 // text changes
+  await cycle('choice-busy-cycles', 4);                 // text changes
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('team-preparation-state', {detail: {ready: true}})));
   await wait(1100); await page.evaluate(() => sample('choice-ready-empty'));
-  await cycle('choice-ready-cycles', 8, 60);                // appears / disappears
+  await cycle('choice-ready-cycles', 4);                // appears / disappears
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('team-preparation-state', {detail: {ready: false, running: true}})));
   await page.evaluate(() => document.querySelector('[data-tw-choice="matrix"]').click());
-  await cycle('matrix-cycles', 6, 60);                      // data step
+  await cycle('matrix-cycles', 4);                      // data step
   await page.evaluate(() => { document.body.dataset.guideStep = '3'; });
-  await cycle('review-cycles', 6, 60, false);               // review step (production line)
+  await cycle('review-cycles', 4);               // review step (production line)
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('team-preparation-state', {detail: {ready: true}})));
-  await cycle('review-ready-cycles', 6, 60, false);
+  await cycle('review-ready-cycles', 4);
   await wait(1200); await page.evaluate(() => sample('settled'));
 
   const {samples, changes, cls, live, settled, slotRuleCount} = await page.evaluate(() => ({samples: window.samples, changes: window.changes, cls: window.cls, slotRuleCount: window.slotRuleCount,
@@ -98,17 +97,16 @@ async function run(browser, width) {
   assert.equal(heights[0], width > 900 ? 20 : 40, 'the slot is reserved (20 px, 40 px ≤900) on the data screens');
   assert.ok(dataSamples.some(s => s.text === '') && dataSamples.some(s => s.text !== ''), 'data screens were seen both empty and with text');
   assert.ok(dataSamples.every(s => s.slot && s.display !== 'none'), 'the slot rule applies on every data-screen sample and the line is never removed');
-  // Review: production behaviour, no reserved row.
+  // Review: the same reserved slot (UX14), empty or not.
   assert.ok(reviewEmpty.length > 0 && reviewText.length > 0, 'Review was seen both empty and with text');
-  assert.ok(reviewSamples.every(s => !s.slot), 'the slot rule never applies on review-single');
-  for (const s of reviewEmpty) { assert.equal(s.display, 'none', `empty #tw-next is removed on Review (${s.label})`); assert.equal(s.height, 0, 'no reserved row on Review'); }
-  for (const s of reviewText) assert.notEqual(s.display, 'none', 'Review shows the line when it has text');
-  for (const [screen, m] of Object.entries(perScreen).filter(([k]) => DATA.includes(k))) {
+  assert.ok(reviewSamples.every(s => s.slot && s.display !== 'none'), 'the slot rule applies on review-single and the line is never removed');
+  assert.equal(uniq(reviewSamples.map(s => s.height)).length, 1, `status height stays constant on Review at ${width}px`);
+  for (const [screen, m] of Object.entries(perScreen)) {
     assert.equal(m.statusTops.length, 1, `status line never moves on ${screen} at ${width}px: ${m.statusTops}`);
     assert.equal(m.belowTops.length, 1, `content below never moves on ${screen} at ${width}px: ${m.belowTops}`);
   }
   assert.ok(minGap >= 950, `status text never changes faster than ~1 s at ${width}px (min ${Math.round(minGap)} ms)`);
-  assert.ok(cls < 0.001, `CLS ≈ 0 during data-screen cycles at ${width}px (${cls})`);
+  assert.ok(cls < 0.001, `CLS ≈ 0 during data- and Review-screen cycles at ${width}px (${cls})`);
   assert.equal(settled, '', 'the latest status (empty when ready on Review) is applied after the hold');
 }
 
