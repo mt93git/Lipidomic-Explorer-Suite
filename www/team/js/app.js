@@ -92,8 +92,9 @@
 })();
 
       // Programmatic Download Trigger via Custom Message Handler
+      var appCustomHandlersRegistered = false;
       function initAppCustomHandlers() {
-        if (window.Shiny && typeof window.Shiny.addCustomMessageHandler === 'function') {
+        if (!appCustomHandlersRegistered && window.Shiny && typeof window.Shiny.addCustomMessageHandler === 'function') {
           try {
             window.Shiny.addCustomMessageHandler('triggerClick', function(message) {
               if (message && message.id) {
@@ -104,7 +105,7 @@
               }
             });
 
-            window.Shiny.addCustomMessageHandler('analysisLaunchRejected', function() {
+            window.Shiny.addCustomMessageHandler('analysisLaunchRejected', function(message) {
               $('.btn-launch-default-analysis')
                 .prop('disabled', false)
                 .html('<i class="fa-solid fa-play me-1"></i> Prepare with current settings');
@@ -137,6 +138,7 @@
                 }
               }
             });
+            appCustomHandlersRegistered = true;
           } catch(e) {}
         }
       }
@@ -1346,6 +1348,13 @@
           else if (isLongitudinal) overlayType = 'longitudinal';
           else if (isAwaitingBaseline) overlayType = 'baseline';
           else if (isAwaitingDE) overlayType = 'de';
+          // On a canvas card the data are already prepared, there is no left dock
+          // and no "above": say what this plot needs, without the Prepare button.
+          var canvasNode = plot.closest('#team-canvas-root .tc-node');
+          var canvasNeed = canvasNode && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && window.TeamCanvas && TeamCanvas.catalogSource ? TeamCanvasCatalog.needs(TeamCanvas.catalogSource(plot.id), plot.id) : null;
+          // A module defect already explained on the card (Max list) gets no requirement overlay on top.
+          if (canvasNode && plot.classList.contains('tc-known-module-error')) { existingOverlays.forEach(function (el) { el.remove(); }); continue; }
+          if (canvasNode) overlayType = canvasNeed ? 'canvas-' + canvasNeed.kind : 'canvas';
 
           // Strictly enforce: AT MOST ONE overlay per plot output! Prevent duplicate stacking loops
           if (existingOverlays.length > 0) {
@@ -1360,7 +1369,13 @@
           overlay.className = 'empty-plot-overlay';
           overlay.setAttribute('data-overlay-type', overlayType);
 
-              if (isStructural) {
+              if (canvasNode) {
+                var canvasTitle = document.createElement('div'); canvasTitle.className = 'empty-plot-title';
+                canvasTitle.textContent = canvasNeed ? canvasNeed.status : 'Nothing to draw yet';
+                var canvasText = document.createElement('div'); canvasText.className = 'empty-plot-subtitle';
+                canvasText.textContent = canvasNeed ? canvasNeed.reason : 'Nothing has been drawn for this plot yet. If this stays, open its Data & settings to choose what it shows.';
+                overlay.append(canvasTitle, canvasText);
+              } else if (isStructural) {
                 overlay.innerHTML = 
                   '<div class=\"empty-plot-title\">🧬  Awaiting Structural Analysis</div>' +
                   '<div class=\"empty-plot-subtitle\">Configure parameters and click Initiate Structural Analysis to compute chain length & unsaturation remodeling</div>' +
@@ -3179,7 +3194,21 @@
       }
       window.dockActivePlotControls = dockActivePlotControls;
 
+      // Team: this ran on every shiny:value and rewrote the same attributes on every
+      // accordion and checkbox, restyling the whole page continuously (visible flicker
+      // while plots load). Write only real changes, and run at most once per frame.
+      if (!$.fn.attrOnce) $.fn.attrOnce = function (name, value) {
+        if (value == null) return this;
+        value = String(value);
+        return this.each(function () { if (this.getAttribute(name) !== value) this.setAttribute(name, value); });
+      };
+      var dockTintsQueued = false;
       function applyDockCategoryTints() {
+        if (dockTintsQueued) return;
+        dockTintsQueued = true;
+        requestAnimationFrame(function () { dockTintsQueued = false; applyDockCategoryTintsNow(); });
+      }
+      function applyDockCategoryTintsNow() {
         // Pass 1: Numbered menus & explicit top-level categories
         $('.accordion-item').each(function() {
           var $item = $(this);
@@ -3214,9 +3243,9 @@
           }
 
           if (category) {
-            $item.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-            $btn.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-            $item.find('> .accordion-collapse > .accordion-body').attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
+            $item.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+            $btn.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+            $item.find('> .accordion-collapse > .accordion-body').attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
           }
         });
 
@@ -3230,10 +3259,10 @@
           if ($parentItem.length > 0 && $parentItem.attr('data-category')) {
             var parentCat = $parentItem.attr('data-category');
             var parentMenu = $parentItem.attr('data-menu');
-            $item.attr('data-category', parentCat).attr('data-menu', parentMenu);
+            $item.attrOnce('data-category', parentCat).attrOnce('data-menu', parentMenu);
             var $btn = $item.find('.accordion-button').first();
-            $btn.attr('data-category', parentCat).attr('data-menu', parentMenu);
-            $item.find('> .accordion-collapse > .accordion-body').attr('data-category', parentCat).attr('data-menu', parentMenu);
+            $btn.attrOnce('data-category', parentCat).attrOnce('data-menu', parentMenu);
+            $item.find('> .accordion-collapse > .accordion-body').attrOnce('data-category', parentCat).attrOnce('data-menu', parentMenu);
             return;
           }
 
@@ -3264,20 +3293,20 @@
             menuNum = 4;
           }
 
-          $item.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-          $btn.attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
-          $item.find('> .accordion-collapse > .accordion-body').attr('data-category', category).attr('data-menu', 'menu-' + menuNum);
+          $item.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+          $btn.attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
+          $item.find('> .accordion-collapse > .accordion-body').attrOnce('data-category', category).attrOnce('data-menu', 'menu-' + menuNum);
         });
 
         // Pass 3: Cascade category attributes to all radio groups and checkboxes inside each accordion item
         $('[data-category]').each(function() {
           var cat = $(this).attr('data-category');
           var menu = $(this).attr('data-menu');
-          $(this).find('.shiny-input-radiogroup, .shiny-options-group').attr('data-category', cat);
-          $(this).find('.checkbox, .form-check').attr('data-category', cat);
+          $(this).find('.shiny-input-radiogroup, .shiny-options-group').attrOnce('data-category', cat);
+          $(this).find('.checkbox, .form-check').attrOnce('data-category', cat);
           if (menu) {
-            $(this).find('.shiny-input-radiogroup, .shiny-options-group').attr('data-menu', menu);
-            $(this).find('.checkbox, .form-check').attr('data-menu', menu);
+            $(this).find('.shiny-input-radiogroup, .shiny-options-group').attrOnce('data-menu', menu);
+            $(this).find('.checkbox, .form-check').attrOnce('data-menu', menu);
           }
         });
       }

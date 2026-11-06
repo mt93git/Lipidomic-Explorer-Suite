@@ -6,7 +6,16 @@ stopifnot(identical(first$destination,'Design'),identical(first$generation,1L),
           is.null(guide_restore_route(TRUE,FALSE,1L,first$generation)))
 second <- guide_restore_route(TRUE,FALSE,2L,first$generation)
 stopifnot(identical(second$destination,'Design'),identical(second$generation,2L))
-source_text <- paste(readLines('R/frontends/team/guided_workflow.R',warn=FALSE),collapse='\n')
-stopifnot(grepl("bslib::nav_select('main_navbar',route$destination,session=session)",source_text,fixed=TRUE),
-          grepl("!x %in% c('Experiment','Design')",source_text,fixed=TRUE))
-cat('PASS: each completed restore routes Team to Design once and guards old tabs\n')
+# Inspect the real route selection structurally so formatting changes cannot
+# break the contract; simple review goes to Preparation and ordinary mode uses
+# the restore receipt's Design destination.
+contains_call <- function(node,target) {
+  if(identical(node,target)) return(TRUE)
+  if(is.recursive(node)) for(i in seq_along(node)) if(contains_call(node[[i]],target)) return(TRUE)
+  FALSE
+}
+ast <- parse('R/frontends/team/guided_workflow.R')
+stopifnot(contains_call(ast,quote(bslib::nav_select('main_navbar',
+  if(team_simple_review_enabled()) 'Preparation' else route$destination,session=session))),
+  contains_call(ast,quote(!x %in% c('Experiment','Design'))))
+cat('PASS: each completed restore routes once; simple review selects Preparation and ordinary mode selects Design; old tabs guarded\n')

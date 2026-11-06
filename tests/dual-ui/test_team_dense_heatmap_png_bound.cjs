@@ -1,0 +1,12 @@
+const {chromium}=require('../browser/ci/node_modules/playwright');const {execFileSync}=require('child_process'),fs=require('fs'),path=require('path'),assert=require('assert/strict');
+(async()=>{const b=await chromium.launch({headless:true});try{
+ const spec=JSON.parse(execFileSync('Rscript',['--vanilla','-e',`source('R/frontends/team/results_dashboard.R');v<-rd_team_heatmap_view(matrix(seq_len(2724),1362,2,dimnames=list(paste0('L',seq_len(1362)),c('A','B'))),c(34L,32L));cat(jsonlite::toJSON(v,auto_unbox=TRUE))`],{encoding:'utf8'}));
+ const source=fs.readFileSync('www/team/js/plot_exports.js','utf8');assert(source.includes("scale:format==='SVG'?1:Math.min(3,30000/width,30000/height)"));
+ const plotly=execFileSync('Rscript',['--vanilla','-e','cat(system.file("htmlwidgets/lib/plotlyjs/plotly-latest.min.js",package="plotly"))'],{encoding:'utf8'}).trim();
+ const p=await b.newPage();await p.setContent('<div id="heat"></div>');await p.addScriptTag({path:plotly});
+ const result=await p.evaluate(async v=>{const gd=document.getElementById('heat');await Plotly.newPlot(gd,[{type:'heatmap',x:v.x,y:v.y,z:v.z,xgap:0,ygap:0,colorbar:v.colorbar}],{width:v.width,height:v.height,margin:v.margin,xaxis:v.xaxis,yaxis:v.yaxis});const before=JSON.stringify(gd.data.map(t=>({x:t.x,y:t.y,z:t.z}))),width=v.width,height=v.height,scale=Math.min(3,30000/width,30000/height);const url=await Plotly.toImage(gd,{format:'png',width,height,scale});const image=new Image();image.src=url;await image.decode();return{width,height,scale,pngWidth:image.naturalWidth,pngHeight:image.naturalHeight,preserved:before===JSON.stringify(gd.data.map(t=>({x:t.x,y:t.y,z:t.z}))),url};},spec);
+ assert.equal(result.width,800);assert.equal(result.height,16499);assert.equal(result.pngHeight,30000);assert(result.pngWidth<=30000&&result.pngWidth>=1454&&result.pngWidth<=1455);assert(result.preserved);assert(result.url.startsWith('data:image/png;base64,'));
+ const png=Buffer.from(result.url.split(',')[1],'base64');assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a');assert.equal(png.readUInt32BE(20),30000);
+ if(process.env.TEAM_DENSE_PNG_OUTPUT)fs.writeFileSync(process.env.TEAM_DENSE_PNG_OUTPUT,png);
+ delete result.url;console.log(JSON.stringify({...result,pngBytes:png.length}));console.log('PASS single actual R→Plotly1362row PNG export: bounded scale produces30000px height, PNG decodes and scientific arrays remain unchanged.');
+}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});

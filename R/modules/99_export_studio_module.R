@@ -116,7 +116,7 @@ get_publication_theme <- function(base_pt = 7.5, font_family = "sans") {
 # 3. Figure Generator & Artifacts Builder
 # ==============================================================================
 
-generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, font_family = "sans", hybrid_mode = TRUE) {
+generate_export_artifacts_base <- function(figure_key, shared_data, base_pt = 7.5, font_family = "sans", hybrid_mode = TRUE) {
   if (is.function(shared_data$preparation_dirty)) {
     shiny::validate(shiny::need(!isTRUE(shared_data$preparation_dirty()),
       "Update prepared data before exporting figures from this analysis."))
@@ -446,6 +446,15 @@ generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, fo
       title = "Hierarchical Heatmap"
     ))
   }
+}
+
+# Hook "export_artifacts"(art, figure_key = , shared_data = , base_pt = , font_family = ,
+# hybrid_mode = ) -> art. Classic: the artifacts above, unchanged.
+generate_export_artifacts <- function(figure_key, shared_data, base_pt = 7.5, font_family = "sans", hybrid_mode = TRUE) {
+  art <- generate_export_artifacts_base(figure_key = figure_key, shared_data = shared_data,
+    base_pt = base_pt, font_family = font_family, hybrid_mode = hybrid_mode)
+  lipidomic_hook("export_artifacts")(art, figure_key = figure_key, shared_data = shared_data,
+    base_pt = base_pt, font_family = font_family, hybrid_mode = hybrid_mode)
 }
 
 # ==============================================================================

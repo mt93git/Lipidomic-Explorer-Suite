@@ -69,3 +69,8 @@ body.guided-app .rd-header h2{display:none}
 .rd-violin-card{margin:0 0 20px;border-top:3px solid #337f87}.rd-violin-controls{display:flex;align-items:flex-end;gap:18px;margin:14px 0}.rd-violin-controls .form-group{flex:1;min-width:0;margin:0}.rd-violin-controls .guide-button{flex:none}.rd-violin-card .selectize-control{min-width:0}.rd-violin-card .selectize-input{min-height:42px}.rd-violin-card .selectize-dropdown{z-index:1000}
 @media(max-width:600px){.rd-violin-controls{flex-direction:column;align-items:stretch}.rd-violin-controls .guide-button{white-space:normal}.rd-violin-card .rd-card-head{flex-direction:column}}
 .plot-export-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 6px;font:12px var(--lab-body,system-ui);color:#526477}.plot-export-bar>span:first-child{margin-right:6px}.plot-export-button{min-height:44px;padding:8px 12px;border:1px solid #bdcdd8;border-radius:6px;background:#fff;color:#245e66;font:600 12px var(--lab-body,system-ui);cursor:pointer}.plot-export-button:hover{background:#edf5f6}.plot-export-button:focus-visible{outline:3px solid #2d5f8a;outline-offset:2px}.plot-export-button:disabled{opacity:.55;cursor:wait}.plot-export-status{flex-basis:100%;font-size:12px}.plot-export-status:empty{display:none}
+
+/* Lipid heatmap: Show All lipids / Significant only, and why it is unavailable. */
+.rd-heat-significance{margin:8px 0 4px}.rd-heat-significance .form-group{margin-bottom:0}
+.rd-heat-significance label.is-unavailable{color:#6b7785 !important;cursor:not-allowed !important}
+.rd-heat-significance-note{margin:2px 0 6px;font-size:12px;line-height:1.45;color:#526477}.rd-heat-significance-note:empty{display:none}

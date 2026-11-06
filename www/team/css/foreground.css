@@ -1,0 +1,9 @@
+#team-foreground{color:#172d4b;background:#fff;border:1px solid #dce3eb;border-radius:18px;padding:32px;width:min(420px,calc(100vw - 32px));box-sizing:border-box;text-align:center;box-shadow:0 18px 70px #172d4b30;z-index:2147483647}
+#team-foreground::backdrop{background:rgba(23,45,75,.32);backdrop-filter:blur(3px)}
+#team-foreground h2{font:600 20px/1.4 system-ui;margin:20px 0 8px}
+#team-foreground p{font:14px/1.6 system-ui;color:#56697d;margin:0}
+#team-foreground button{margin-top:20px;min-height:40px;padding:8px 20px;background:#315c89;color:white;border:0;border-radius:8px}
+.team-foreground-spinner{display:inline-block;width:30px;height:30px;border:3px solid #e3ebf2;border-top-color:#315c89;border-radius:50%;animation:team-loading-spin .8s linear infinite}
+#team-foreground.has-error .team-foreground-spinner{display:none}
+@keyframes team-loading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.team-foreground-spinner{animation:none}}

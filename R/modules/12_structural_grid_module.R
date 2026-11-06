@@ -404,7 +404,7 @@ structural_grid_server <- function(id, shared_data) {
     # Grid calculation logic for Single Class
     gridResults <- reactive({
       df <- gridFilteredData()
-      req(nrow(df) > 0)
+      validate(need(nrow(df) > 0, "No species with resolved sn-chains in this class"))
       
       # Determine position coordinates mapping
       pos <- input$position %||% "both"
@@ -428,7 +428,7 @@ structural_grid_server <- function(id, shared_data) {
         grid_df <- dplyr::bind_rows(df_sn1, df_sn2)
       }
       
-      req(nrow(grid_df) > 0)
+      validate(need(nrow(grid_df) > 0, "No species with resolved sn-chains in this class"))
       
       # Retrieve p-value configuration
       de_sett <- shared_data$de_settings()
@@ -519,7 +519,7 @@ structural_grid_server <- function(id, shared_data) {
     
     allClassesProcessed <- reactive({
       df <- allClassesData()
-      req(nrow(df) > 0)
+      validate(need(nrow(df) > 0, "No species with resolved sn-chains in this class"))
       
       # Determine position coordinates mapping
       pos <- input$position %||% "both"
@@ -543,7 +543,7 @@ structural_grid_server <- function(id, shared_data) {
         grid_df <- dplyr::bind_rows(df_sn1, df_sn2)
       }
       
-      req(nrow(grid_df) > 0)
+      validate(need(nrow(grid_df) > 0, "No species with resolved sn-chains in this class"))
       
       use_hyper <- isTRUE(input$use_hyperclass)
       grid_df <- grid_df %>%
@@ -655,7 +655,7 @@ structural_grid_server <- function(id, shared_data) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
       res <- gridResults()
-      validate(need(!is.null(res) && nrow(res) > 0, "No data available. Adjust options and click 'Generate Grid Plots'."))
+      validate(need(!is.null(res) && nrow(res) > 0, "No species with resolved sn-chains in this class"))
       
       n_cols <- length(unique(res$Carbon))
       n_rows <- length(unique(res$DB))
@@ -717,7 +717,7 @@ structural_grid_server <- function(id, shared_data) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
       res <- gridResults()
-      validate(need(!is.null(res) && nrow(res) > 0, "No data available. Adjust options and click 'Generate Grid Plots'."))
+      validate(need(!is.null(res) && nrow(res) > 0, "No species with resolved sn-chains in this class"))
       
       n_cols <- length(unique(res$Carbon))
       n_rows <- length(unique(res$DB))
@@ -1528,7 +1528,7 @@ structural_grid_server <- function(id, shared_data) {
       active_tab <- input$grid_tabs %||% "Single Class View"
       
       if (active_tab == "Single Class View") {
-        res <- gridResults()
+        res <- tryCatch(gridResults(), error = function(e) NULL)
         total_tested <- if (!is.null(res)) nrow(res) else 0
         sig_tested <- if (!is.null(res)) sum(res$Stars != "") else 0
         

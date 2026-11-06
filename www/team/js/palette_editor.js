@@ -94,8 +94,19 @@
       });
   }
   const observer = new MutationObserver(function (mutations) {
-    if (mutations.some(function (m) { return m.addedNodes.length; })) syncAll(document);
-    if (mutations.some(function (m) { return m.type === 'attributes' && m.attributeName === 'class'; })) syncPickerState();
+    // Only added subtrees can hold new fields (or new parts of an existing field), and only class
+    // changes inside a palette editor can move colourpicker focus; the rest of the page is skipped.
+    const fields = new Set();
+    mutations.forEach(function (m) {
+      Array.prototype.forEach.call(m.addedNodes, function (node) {
+        if (node.nodeType !== 1) return;
+        const own = node.closest('.palette-color-field');
+        if (own) fields.add(own);
+        node.querySelectorAll('.palette-color-field').forEach(function (field) { fields.add(field); });
+      });
+    });
+    fields.forEach(syncField);
+    if (mutations.some(function (m) { return m.type === 'attributes' && m.attributeName === 'class' && m.target.closest && m.target.closest('.palette-editor'); })) syncPickerState();
   });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {

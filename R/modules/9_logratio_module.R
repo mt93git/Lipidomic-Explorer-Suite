@@ -194,6 +194,7 @@ logratio_ui <- function(id) {
 }
 
 logratio_server <- function(id, shared_data, global_color_map) {
+  shared_data <- lipidomic_hook("logratio_shared_data")(shared_data)
   moduleServer(id, function(input, output, session) {
     
   # --- 1. Reactives for Metadata & Grouping ---
@@ -854,6 +855,9 @@ logratio_server <- function(id, shared_data, global_color_map) {
           }
         }
         curr_sel <- isolate(input$featureLevel)
+        if (identical(lipidomic_interface(), "team") && is.null(curr_sel)) {
+          curr_sel <- shared_data$get_restored_input(session$ns("featureLevel"), NULL)
+        }
         default_sel <- if (is_targeted) {
           if (!is.null(curr_sel) && curr_sel %in% lvl_choices) curr_sel else "individual"
         } else {
@@ -1038,6 +1042,11 @@ logratio_server <- function(id, shared_data, global_color_map) {
 
     if (identical(lipidomic_interface(), "team")) {
     output$scrollable_plot_ui <- renderUI({
+      # The restored Team canvas needs the original output boundary even before
+      # the lazy analysis controls have supplied featureLevel.
+      if (is.null(input$featureLevel) || !length(input$featureLevel)) {
+        return(plotOutput(session$ns("logratioPlot"), width = "100%", height = "500px"))
+      }
       feats <- unifiedSelectedFeatures()
       n <- if (!is.null(feats)) length(feats) else 0
 
@@ -1331,7 +1340,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
         }
         export_df <- df_log %>% 
            dplyr::select(Sample, GroupingVal, Feature, Class_Total, Global_Total, Proportion, Baseline_Mean_Prop, Log2FC, P_Value, Significance, Is_Baseline)
-        write_spreadsheet_csv(export_df, file, row.names = FALSE)
+        write_spreadsheet_csv(lipidomic_hook("violin_export_table")(export_df, session, shared_data), file, row.names = FALSE)
       },
       contentType = "text/csv"
     )
@@ -1443,7 +1452,7 @@ logratio_server <- function(id, shared_data, global_color_map) {
        req(db_info)
        export_df <- db_info$plot_db %>% 
            dplyr::select(Sample, GroupingVal, Feature, Class_Total, Global_Total, Proportion, Baseline_Mean_Prop, Log2FC, P_Value, Significance, Is_Baseline)
-       write_spreadsheet_csv(export_df, file, row.names = FALSE)
+       write_spreadsheet_csv(lipidomic_hook("violin_export_table")(export_df, session, shared_data), file, row.names = FALSE)
     }
     
     output$downloadAllMacroZip <- downloadHandler(
@@ -1582,5 +1591,9 @@ logratio_server <- function(id, shared_data, global_color_map) {
       show_statistics_modal(session = parent_sess, shared_data = shared_data, origin_tab_name = "Violin Plots")
     })
     
+    # Hook "logratio_result"(NULL, input =, shared_data =, processed_db =) -> the
+    # module's return value. Classic: NULL (no caller reads it). Team's Group
+    # comparison card reads this instance's prepared data and settings.
+    lipidomic_hook("logratio_result")(NULL, input = input, shared_data = shared_data, processed_db = processed_db)
   })
 }

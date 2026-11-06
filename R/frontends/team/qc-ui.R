@@ -256,7 +256,12 @@ qc_boxplot_ui <- function(id) {
                    ),
                    card_body(
                      uiOutput(ns("pca_fallback_alert")),
-                     plotOutput(ns("pca2dPlot"), height="600px"),
+                     tagList(
+                       checkboxInput(ns("team_pca2dPlot_vector"), "Editable vector view (optional)", value=FALSE),
+                       helpText("Presentation edits only. Original view and scientific PDF/data downloads remain available. Smart repelled labels and unsupported layouts require the original view. Text spacing can differ in the vector renderer."),
+                       conditionalPanel(condition="!input.team_pca2dPlot_vector", ns=ns, plotOutput(ns("pca2dPlot"), height="600px")),
+                       conditionalPanel(condition="input.team_pca2dPlot_vector", ns=ns, plotly::plotlyOutput(ns("pca2dVectorPlot"), height="600px"))
+                     ),
                      get_journal_caption("pca")
                    )
                  )
@@ -331,7 +336,12 @@ qc_boxplot_ui <- function(id) {
                    ),
                    card_body(
                      uiOutput(ns("pca_load_fallback_alert")),
-                     plotOutput(ns("load2dPlot"), height="600px"),
+                     tagList(
+                       checkboxInput(ns("team_load2dPlot_vector"), "Editable vector view (optional)", value=FALSE),
+                       helpText("Presentation edits only. Original view and scientific PDF/data downloads remain available. Smart repelled labels and unsupported layouts require the original view. Text spacing can differ in the vector renderer."),
+                       conditionalPanel(condition="!input.team_load2dPlot_vector", ns=ns, plotOutput(ns("load2dPlot"), height="600px")),
+                       conditionalPanel(condition="input.team_load2dPlot_vector", ns=ns, plotly::plotlyOutput(ns("load2dVectorPlot"), height="600px"))
+                     ),
                      get_journal_caption("pca")
                    )
                  )

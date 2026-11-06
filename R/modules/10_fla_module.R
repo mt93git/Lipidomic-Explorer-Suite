@@ -1035,11 +1035,13 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
                base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
             }
-            return(base_map[lvl])
+            return(unname(base_map[lvl]))
          } else {
             return(val)
          }
       })
+      # sapply keeps a returned name as a suffix ("A.A"); key the palette by group.
+      safe_colors <- stats::setNames(safe_colors, as.character(c_levels))
       
       # Define universal palette for facets
       fla_palette <- c(
@@ -1587,6 +1589,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
     
     # 6. Correlation Engine
     correlation_data <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(NULL)
       req(processed_db())
       df_long <- processed_db()
       
@@ -1658,6 +1661,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
 
     # 6a. Correlation Circos Plot Logic
     circos_plot_logic <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(function(include_title = FALSE) { print(generate_empty_plot_message("Functional correlation circos requires a confirmed independent study design. Repeated observations cannot be treated as independent.")) })
       req(processed_db())
       cor_df <- correlation_data()
       if(is.null(cor_df) || nrow(cor_df) == 0) {
@@ -1754,6 +1758,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
     })
 
     output$plotCircos <- renderPlot({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(generate_empty_plot_message("Functional correlation circos requires a confirmed independent study design. Repeated observations cannot be treated as independent."))
       func <- circos_plot_logic()
       req(func)
       func()

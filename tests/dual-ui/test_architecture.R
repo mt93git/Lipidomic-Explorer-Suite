@@ -1,8 +1,13 @@
 # Read-only structural contract for the two presentation shells.
 # This is intentionally fast and does not start Shiny, read user data, or call services.
+suppressPackageStartupMessages(library(shiny))
 source("R/frontends/interface.R")
 source("R/frontends/classic/server.R")
+# The project library is owned by the storage block; without it the library is off.
+if (file.exists("R/frontends/team/project_library.R")) source("R/frontends/team/project_library.R") else team_library_enabled <- function() FALSE
+source("R/frontends/team/workspace.R")
 source("R/frontends/team/server.R")
+Sys.setenv(LIPIDOMIC_PROJECT_LIBRARY = "0", LIPIDOMIC_TEAM_WORKSPACE = "0")
 
 check_selectors <- function() {
   old <- Sys.getenv("LIPIDOMIC_INTERFACE", unset = NA_character_)
@@ -60,7 +65,9 @@ record_hook <- function(name, result = NULL) {
 }
 guide_sentinel <- structure(list(), class = "guide-sentinel")
 guided_workflow_server <- record_hook("workflow", guide_sentinel)
-results_dashboard_server <- record_hook("dashboard")
+dashboard_sentinel <- structure(list(), class = "dashboard-sentinel")
+results_dashboard_server <- record_hook("dashboard", dashboard_sentinel)
+team_scientific_insight_server <- record_hook("insight")
 cell_show_server <- record_hook("cell")
 companion_assistant_server <- record_hook("companion")
 sentinel_hub <- structure(list(data_processed = function() "strict matrix",
@@ -70,13 +77,14 @@ sentinel_hub <- structure(list(data_processed = function() "strict matrix",
   class = "shared-hub-sentinel")
 guide <- team_frontend_server(input = list(), output = list(), session = NULL, shared_data = sentinel_hub)
 stopifnot(identical(guide, guide_sentinel))
-for (name in c("workflow", "dashboard", "companion")) {
+for (name in c("workflow", "dashboard", "insight", "companion")) {
   adapter <- hook_calls[[name]]$args[[4L]]
   stopifnot(is.list(adapter), !identical(adapter, sentinel_hub),
     identical(adapter$data_processed, sentinel_hub$data_processed_allow_missing),
     identical(adapter$marker, sentinel_hub$marker))
 }
-stopifnot(identical(hook_calls$companion$args[[5L]], guide))
+stopifnot(identical(hook_calls$companion$args[[5L]], guide),
+  identical(hook_calls$insight$args[[5L]], dashboard_sentinel))
 cell_adapter <- hook_calls$cell$args[[4L]]
 stopifnot(is.list(cell_adapter), !identical(cell_adapter, sentinel_hub),
   identical(cell_adapter$data_processed, sentinel_hub$data_processed_unfiltered))

@@ -1,0 +1,96 @@
+# Team checkpoint storage
+
+Team-only. `R/frontends/team/bootstrap.R` sources this folder and validates the
+configuration at startup; Classic never loads it.
+
+## Selecting a backend
+
+| `LIPIDOMIC_STORAGE` | Backend | Configuration |
+|---|---|---|
+| unset or `files` | Local directories | `LIPIDOMIC_STORAGE_DIR` (default: `tools::R_user_dir("LipidomicExplorer", "data")/team-projects`) |
+| `database` (alias `db`) | Supabase project library | `LIPIDOMIC_AUTH_URL`, `LIPIDOMIC_REST_URL`, `LIPIDOMIC_STORAGE_URL`; needs the `httr` package (in Suggests) |
+
+Any other value stops the Team process at startup with an error. So does
+`database` without its three URLs or without `httr` installed, and, for either
+backend, `LIPIDOMIC_UPLOAD_QUEUE` (the durable checkpoint queue) without the
+`filelock` package (in Suggests).
+
+**`files` is for a single local user.** It has no accounts and no access
+control: anyone who can reach the app can list, load and delete every project.
+A shared server must use `database`. To prevent an open deployment by
+omission, Team refuses to start in `files` when any of `LIPIDOMIC_AUTH_URL`,
+`LIPIDOMIC_REST_URL` or `LIPIDOMIC_STORAGE_URL` is set, and asks for
+`LIPIDOMIC_STORAGE=database`. The pilot launch must therefore set
+`LIPIDOMIC_STORAGE=database` and `LIPIDOMIC_LOGIN_THROTTLE=off` explicitly.
+
+## Sign-in and the project library by backend
+
+The project library (`LIPIDOMIC_PROJECT_LIBRARY=1`, required by the Team
+workspace `LIPIDOMIC_TEAM_WORKSPACE=1`) behaves as follows:
+
+- **`database`**: production behaviour, unchanged. The library shows the
+  sign-in and activation forms; nothing scientific starts until sign-in
+  succeeds (`on_authenticated`). Projects and memberships come from the
+  identity service, write access is rechecked before every save, tokens are
+  refreshed when they expire and live only in the session's `account()`
+  reactive. Saves go through the durable queue (`LIPIDOMIC_UPLOAD_QUEUE` is
+  required, as in production).
+- **`files`**: there is no identity service, so there is no sign-in. The
+  library opens a single local project (`local`, shown as "This computer")
+  owned by the one local user, and the workspace starts immediately. Save,
+  list and resume work exactly as in `database` (Canvas acknowledgement,
+  project binding, records sidecar, sha256 check before import). The durable
+  queue is not used: the files backend writes atomically and there is no
+  remote commit to interrupt, so `LIPIDOMIC_UPLOAD_QUEUE` is ignored by the
+  server. "Sign out" just clears the session. Because anyone who can reach the
+  app gets this access, `files` remains for one local user only.
+
+The UI never offers delete; `store$delete` is available to maintainers only.
+
+## Contract
+
+`team_storage_session(session, token = access)` creates one store per Shiny
+session (`token` is only used by `database` and should be a function that
+returns the session's current access token). A store has four operations:
+
+- `list(project)`: checkpoint records, newest first.
+- `save(project, path, label)`: stores a ZIP and returns its record. Saving
+  identical bytes again returns the existing checkpoint.
+- `load(project, id, dest = NULL)`: writes a verified copy and returns its path.
+  The sha256 is always checked before the bytes are returned.
+- `delete(project, id)`: removes the checkpoint.
+
+A record is `list(id, project, name, sha256, size_bytes, created_at)`. Project
+and checkpoint identifiers are validated before any path or URL is built. In
+`files` they are `[A-Za-z0-9][A-Za-z0-9_-]{0,63}` and the sha256. In `database`
+both are UUIDs. Labels must be 1 to 80 characters.
+
+| Operation | `files` | `database` |
+|---|---|---|
+| list | read `<project>/<sha256>.json` metadata | `GET rest /pilot_files?project_id=eq.P` |
+| save | atomic write of `<sha256>.zip`, then its metadata | `team_library_commit` (idempotent upload + registration, verified) |
+| load | read the ZIP, verify sha256, atomic write to `dest` | look up the row by id, download the object, verify sha256 |
+| delete | remove metadata, then the ZIP | delete the `pilot_files` row, then the object |
+
+With `database`, the identity service and row-level security enforce access.
+The schema lives in the production branch at `pilot/supabase/schema.sql`.
+
+## Maintainer note: delete is denied on the database backend
+
+The production schema grants no DELETE on `pilot_files` or on `case-files`
+objects. `delete` on the database backend therefore fails with "Request denied"
+today, by design; this code does not change the schema. Enabling it needs an
+operator-reviewed RLS policy for owners/editors on both the table and the
+bucket. The code deletes the catalog row first, so a partial failure can only
+leave an invisible object that a later save of the same bytes reuses.
+
+## Sign-in throttling
+
+`team_library_login_limiter()` in `../project_library.R` is on by default and
+never blocks the R process. Per account, 5 failed sign-ins are free; after that
+an attempt is refused with `retry_after_seconds` of 1, 2, 4 ... (capped at 60)
+counted from the last failure, and must not reach the identity service. No
+lockout; success resets. `team_library_sign_in()` applies this and
+`team_library_login_wait_message()` renders "Too many attempts. Try again in N s.",
+which `team_library_server()` shows as its status without contacting anything.
+`LIPIDOMIC_LOGIN_THROTTLE=off` gives immediate retries.

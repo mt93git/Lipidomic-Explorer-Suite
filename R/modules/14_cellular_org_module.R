@@ -851,10 +851,18 @@ cellular_org_server <- function(id, shared_data, global_color_map) {
       )
       
       if (!is.null(p)) {
-        p <- p + labs(
-          title = "Organelle stress profile comparisons across cohorts",
-          subtitle = "Violin distribution showing sample density and technical variance"
-        )
+        if (inherits(p, "patchwork")) {
+          p <- (p & ggplot2::theme(plot.title = ggplot2::element_text(size = 11, face = "bold", hjust = 0.5))) +
+            patchwork::plot_annotation(
+              title = "Organelle stress profile comparisons across cohorts",
+              subtitle = "Violin distribution showing sample density and technical variance"
+            )
+        } else {
+          p <- p + labs(
+            title = "Organelle stress profile comparisons across cohorts",
+            subtitle = "Violin distribution showing sample density and technical variance"
+          )
+        }
       }
       p
     })

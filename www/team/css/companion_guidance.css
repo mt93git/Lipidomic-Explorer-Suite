@@ -1,0 +1,32 @@
+/* Team companion tips and chart guidance (presentation only). */
+.cg-tip{position:fixed;z-index:1035;width:min(300px,calc(100vw - 24px));font-size:13px;line-height:1.4;color:#141b24}
+.cg-tip[hidden]{display:none}
+.cg-tip .cg-body{background:#fff;border:1px solid #dfe4ea;border-radius:10px;box-shadow:0 8px 24px #14243114;padding:10px 12px}
+.cg-tip.is-collapsed{width:auto}
+.cg-tip.is-collapsed .cg-body{display:none}
+.cg-tip:not(.is-collapsed) .cg-pill{display:none}
+.cg-pill{border:1px solid #c9d6de;background:#fff;color:#1f5d82;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:600;box-shadow:0 1px 2px #141b240f;cursor:pointer}
+.cg-head{display:flex;align-items:center;gap:4px}
+.cg-title{flex:1;font-size:13px;font-weight:600}
+.cg-icon{border:0;background:none;color:#557080;font-size:17px;line-height:1;padding:2px 5px;cursor:pointer;border-radius:6px}
+.cg-text{margin:5px 0 8px}
+.cg-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.cg-button{border:1px solid #91b2c5;background:#fff;color:#1f5d82;border-radius:8px;padding:5px 9px;font:inherit;font-size:12.5px;cursor:pointer}
+.cg-button.cg-primary{background:#1f638d;border-color:#1f638d;color:#fff}
+.cg-button.cg-small{padding:3px 8px;font-size:12px}
+.cg-button:hover,.cg-button:focus-visible,.cg-pill:hover,.cg-pill:focus-visible,.cg-icon:focus-visible{outline:2px solid #acd8ea;outline-offset:1px}
+.cg-fewer{display:flex;align-items:center;gap:5px;margin:2px 0 0;font-size:11.5px;color:#5a7282;cursor:pointer}
+.cg-answer .cg-heading{display:block;font-size:14px;margin-bottom:2px}
+.cg-answer .cg-section{display:block;margin-top:8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#51748b}
+.cg-answer .cg-p{margin:3px 0}
+.cg-answer .cg-muted{color:#5a7282;font-size:12.5px;margin-top:8px}
+.cg-answer .cg-list{margin:3px 0 0;padding-left:18px}
+.cg-answer .cg-list li{margin:3px 0}
+.cg-suggestion .cg-button{margin-left:6px}
+.cg-kind{display:inline-block;margin:2px 0 2px;padding:1px 7px;border-radius:999px;font-size:11px;background:#e9f1f5;color:#2f5568}
+.cg-kind-inferential,.cg-kind-mixed{background:#fff3df;color:#6b4b12}
+.cg-highlight{outline:3px solid #f2b84b!important;outline-offset:2px;border-radius:6px;transition:outline-color .3s}
+@media (prefers-reduced-motion:reduce){.cg-highlight{transition:none}}
+/* The tip above replaces the legacy floating speech bubble in Team. */
+body.cg-active .companion-speech{display:none!important}
+.cg-panel-fewer{flex-shrink:0;padding:0 16px 10px}

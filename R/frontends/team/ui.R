@@ -40,6 +40,8 @@ ui <- page_navbar(
   window_title = "Libreros Lab · Lipidomic Explorer",
   theme = app_theme,
   header = tagList(
+    if (team_workspace_enabled()) team_workspace_ui(),
+    if (team_library_enabled()) team_library_ui(),
     tags$head(
       tags$link(rel = "icon", type = "image/png", href = "team/img/favicon.png"),
       tags$link(rel = "shortcut icon", href = "team/img/favicon.png"),
@@ -48,11 +50,16 @@ ui <- page_navbar(
       includeCSS("www/team/css/guided.css"),
       includeCSS("www/team/css/context_help.css"),
       includeCSS("www/team/css/companion_assistant.css"),
+      includeCSS("www/team/css/scientific_insight.css"),
       includeCSS("www/team/css/dashboard.css"),
+      includeCSS("www/team/css/dashboard_selection.css"),
+      includeScript("www/team/js/dashboard_selection.js"),
+      includeScript("www/team/js/dashboard_significance.js"),
       includeCSS("www/team/css/palette_editor.css"),
       includeCSS("www/team/css/cell_show.css"),
       tags$script(src="team/vendor/jspdf.umd.min.js"),
       tags$script(src="team/vendor/svg2pdf.umd.min.js"),
+      includeScript("www/team/js/violin_display.js"),
       includeScript("www/team/js/plot_exports.js"),
       includeScript("www/team/js/palette_editor.js"),
       includeScript("www/team/js/cell_viewer.js"),
@@ -62,9 +69,15 @@ ui <- page_navbar(
       includeScript("www/team/js/help_content.js"),
       includeScript("www/team/js/companion_art.js"),
       includeScript("www/team/js/context_help.js"),
-      includeScript("www/team/js/companion_assistant.js")
+      includeScript("www/team/js/companion_assistant.js"),
+      includeScript("www/team/js/scientific_insight.js"),
+      # Keeps the class stand-ins for broad :has() conditions in the Team stylesheets in sync.
+      includeScript("www/team/js/has_classes.js"),
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/companion_guidance.css"), includeScript("www/team/js/companion_guidance_data.js"), includeScript("www/team/js/companion_guidance.js")),
+      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;document.documentElement.classList.add('ts-gate');setTimeout(function(){document.documentElement.classList.remove('ts-gate')},4000);")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeCSS("www/team/css/workspace_minimal.css"),includeCSS("www/team/css/canvas_catalog.css"),includeCSS("www/team/css/canvas_preview.css"),includeCSS("www/team/css/canvas_viewport.css"),includeCSS("www/team/css/plot_editor.css"),includeCSS("www/team/css/illustrations.css"),includeCSS("www/team/css/foreground.css"),includeScript("www/team/js/foreground.js"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas_catalog.js"),includeScript("www/team/js/canvas_assets.js"),includeScript("www/team/js/illustrations.js"),includeScript("www/team/js/plot_editor.js"),includeCSS("www/team/css/group_comparison.css"),includeScript("www/team/js/group_comparison.js"),includeScript("www/team/js/canvas_statistics.js"),includeScript("www/team/js/canvas_viewport.js"),includeScript("www/team/js/canvas.js"),includeCSS("www/team/css/canvas_inspector.css"),includeScript("www/team/js/canvas_inspector.js"),includeScript("www/team/js/illustration_library.js"),includeScript("www/team/js/canvas_preview.js"),includeScript("www/team/js/canvas_checkpoint.js"),includeScript("www/team/js/autosave.js"),includeCSS("www/team/css/autosave.css"),includeScript("www/team/js/companion_workspace.js"),includeCSS("www/team/css/shell.css"),includeCSS("www/team/css/mascot_refine.css"),includeCSS("www/team/css/review_shell.css"),includeScript("www/team/js/data_shell.js"),includeScript("www/team/js/review_shell.js"),includeScript("www/team/js/shell.js"),includeCSS("www/team/css/card_figure.css"),includeScript("www/team/js/card_figure.js"),includeCSS("www/team/css/card_status.css"),includeScript("www/team/js/card_status.js"))
     ),
     guide_header(),
+    if (team_workspace_enabled()) team_canvas_ui(),
     tags$div(
       id = "targeted_lipids_top_dock",
       class = "targeted-lipids-top-dock d-flex justify-content-end align-items-center mb-2 pe-3",
@@ -89,7 +102,7 @@ ui <- page_navbar(
   nav_panel("Question", guide_question_ui(), fillable=FALSE),
   nav_panel("Results", guide_results_ui(), fillable=FALSE),
   nav_panel("3D Show", cell_show_ui(), fillable=FALSE),
-  nav_panel("Share", guide_share_ui(), fillable=FALSE),
+  nav_panel("Share", if(team_workspace_enabled()) team_project_share_ui() else guide_share_ui(), fillable=FALSE),
   nav_panel("Publication Export Studio", div(class="guide-page",guide_heading(7,"Publication Export Studio","Prepare figures and reproducibility bundles. Review the exported file before sharing."),guide_link("← Back to sharing",step=7),export_studio_ui("export_studio")),fillable=FALSE),
   nav_menu(
     title = "Data & Overview",

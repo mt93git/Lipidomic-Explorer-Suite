@@ -3,34 +3,34 @@
 
 # Curated layout constants for the 28 lipid classes
 ALL_PATHWAY_NODES <- list(
-  'TG'      = list(x=0.0, y=0.0, label='TAG', lx=-2.5, ly=-1.5),
-  'DG'      = list(x=0.0, y=5.0, label='DAG', lx=-4.0, ly=5.5),
-  'PA'      = list(x=0.0, y=10.0, label='PA', lx=-3.0, ly=9.5),
-  'LPA'     = list(x=0.0, y=15.0, label='LPA', lx=-2.5, ly=14.0),
-  'LCB'     = list(x=-10.0, y=15.0, label='LCBs', lx=-13.0, ly=15.0),
-  'Cer'     = list(x=-10.0, y=10.0, label='Cer', lx=-12.5, ly=10.0),
-  'SM'      = list(x=-10.0, y=5.0, label='SM', lx=-13.0, ly=4.0),
-  'PE'      = list(x=4.33, y=-2.5, label='PE', lx=2.5, ly=-1.5),
-  'LPE'     = list(x=8.66, y=-5.0, label='LPE', lx=9.5, ly=-6.0),
-  'PC'      = list(x=-4.33, y=-2.5, label='PC', lx=-4.0, ly=-2.0),
-  'LPC'     = list(x=-8.66, y=-5.0, label='LPC', lx=-12.5, ly=-6.5),
-  'PI'      = list(x=10.0, y=15.0, label='PI', lx=11.5, ly=15.5),
-  'LPI'     = list(x=13.54, y=18.54, label='LPI', lx=14.5, ly=19.0),
-  'CDP-DAG' = list(x=5.0, y=10.0, label='CDP-DAG', lx=2.0, ly=11.5),
-  'PG'      = list(x=10.0, y=10.0, label='PG', lx=11.0, ly=9.5),
-  'LPG'     = list(x=15.0, y=10.0, label='LPG', lx=16.0, ly=9.5),
-  'PS'      = list(x=10.0, y=5.0, label='PS', lx=11.5, ly=4.0),
-  'LPS'     = list(x=13.54, y=1.46, label='LPS', lx=14.5, ly=1.0),
-  'MAG'     = list(x=0.0, y=-5.0, label='MAG', lx=-1.5, ly=-7.0),
-  'dhCer'   = list(x=-10.0, y=12.5, label='dhCer', lx=-9.0, ly=11.5),
-  'CerP'    = list(x=-14.0, y=12.0, label='CerP', lx=-18.0, ly=12.0),
-  'HexCer'  = list(x=-14.0, y=2.0, label='HexCer', lx=-20.0, ly=3.0),
-  'Hex2Cer' = list(x=-18.0, y=-1.0, label='Hex2Cer', lx=-24.5, ly=0.0),
-  'Hex3Cer' = list(x=-22.0, y=-4.0, label='Hex3Cer', lx=-24.0, ly=-6.0),
-  'ePC'     = list(x=-10.0, y=18.0, label='ePC', lx=-12.5, ly=18.0),
-  'ePE'     = list(x=-2.0, y=19.0, label='ePE', lx=-4.5, ly=20.5),
-  'CL'      = list(x=17.0, y=13.0, label='CL', lx=18.5, ly=13.0),
-  'CE'      = list(x=-5.0, y=16.0, label='CE', lx=-7.5, ly=16.0)
+  'TG'      = list(x=0.0, y=0.0, label='TAG', lx=0.0, ly=-1.5, xanchor='center', yanchor='top'),
+  'DG'      = list(x=0.0, y=5.0, label='DAG', lx=-1.4, ly=5.3, xanchor='right', yanchor='middle'),
+  'PA'      = list(x=0.0, y=10.0, label='PA', lx=-1.4, ly=10.0, xanchor='right', yanchor='middle'),
+  'LPA'     = list(x=0.0, y=15.0, label='LPA', lx=-1.4, ly=14.6, xanchor='right', yanchor='middle'),
+  'LCB'     = list(x=-10.0, y=15.0, label='LCBs', lx=-11.4, ly=15.0, xanchor='right', yanchor='middle'),
+  'Cer'     = list(x=-10.0, y=10.0, label='Cer', lx=-11.4, ly=9.8, xanchor='right', yanchor='middle'),
+  'SM'      = list(x=-10.0, y=5.0, label='SM', lx=-11.4, ly=4.8, xanchor='right', yanchor='middle'),
+  'PE'      = list(x=4.33, y=-2.5, label='PE', lx=5.6, ly=-2.2, xanchor='left', yanchor='middle'),
+  'LPE'     = list(x=8.66, y=-5.0, label='LPE', lx=9.9, ly=-5.2, xanchor='left', yanchor='middle'),
+  'PC'      = list(x=-4.33, y=-2.5, label='PC', lx=-5.6, ly=-2.2, xanchor='right', yanchor='middle'),
+  'LPC'     = list(x=-8.66, y=-5.0, label='LPC', lx=-9.9, ly=-5.2, xanchor='right', yanchor='middle'),
+  'PI'      = list(x=10.0, y=15.0, label='PI', lx=11.4, ly=15.2, xanchor='left', yanchor='middle'),
+  'LPI'     = list(x=13.54, y=18.54, label='LPI', lx=14.9, ly=18.7, xanchor='left', yanchor='middle'),
+  'CDP-DAG' = list(x=5.0, y=10.0, label='CDP-DAG', lx=5.0, ly=11.5, xanchor='center', yanchor='bottom'),
+  'PG'      = list(x=10.0, y=10.0, label='PG', lx=11.2, ly=8.8, xanchor='left', yanchor='middle'),
+  'LPG'     = list(x=15.0, y=10.0, label='LPG', lx=16.4, ly=10.0, xanchor='left', yanchor='middle'),
+  'PS'      = list(x=10.0, y=5.0, label='PS', lx=11.4, ly=5.0, xanchor='left', yanchor='middle'),
+  'LPS'     = list(x=13.54, y=1.46, label='LPS', lx=14.9, ly=1.3, xanchor='left', yanchor='middle'),
+  'MAG'     = list(x=0.0, y=-5.0, label='MAG', lx=0.0, ly=-6.4, xanchor='center', yanchor='top'),
+  'dhCer'   = list(x=-10.0, y=12.5, label='dhCer', lx=-8.6, ly=12.5, xanchor='left', yanchor='middle'),
+  'CerP'    = list(x=-14.0, y=12.0, label='CerP', lx=-15.4, ly=12.0, xanchor='right', yanchor='middle'),
+  'HexCer'  = list(x=-14.0, y=2.0, label='HexCer', lx=-15.4, ly=2.2, xanchor='right', yanchor='middle'),
+  'Hex2Cer' = list(x=-18.0, y=-1.0, label='Hex2Cer', lx=-19.4, ly=-0.8, xanchor='right', yanchor='middle'),
+  'Hex3Cer' = list(x=-22.0, y=-4.0, label='Hex3Cer', lx=-23.4, ly=-3.8, xanchor='right', yanchor='middle'),
+  'ePC'     = list(x=-10.0, y=18.0, label='ePC', lx=-11.4, ly=18.0, xanchor='right', yanchor='middle'),
+  'ePE'     = list(x=-2.0, y=19.0, label='ePE', lx=-3.4, ly=19.0, xanchor='right', yanchor='middle'),
+  'CL'      = list(x=17.0, y=13.0, label='CL', lx=18.4, ly=13.2, xanchor='left', yanchor='middle'),
+  'CE'      = list(x=-5.0, y=16.0, label='CE', lx=-6.4, ly=16.0, xanchor='right', yanchor='middle')
 )
 
 ALL_PATHWAY_EDGES <- list(
@@ -327,13 +327,30 @@ pathway_server <- function(id, shared_data) {
     }
     
     auto_label_pos <- function(x, y, label) {
-      if (x <= 0) {
-        lx <- x - nchar(label) * 0.6 - 1.5
+      if (x < 0) {
+        lx <- x - 1.4
       } else {
-        lx <- x + 1.5
+        lx <- x + 1.4
       }
-      ly <- y - 1.5
+      ly <- y
       return(c(lx, ly))
+    }
+
+    get_current_label_anchor <- function(node) {
+      overrides <- position_overrides()
+      c_nodes <- custom_nodes()
+      if (node %in% names(overrides) || node %in% names(c_nodes)) {
+        pos <- get_current_pos(node)
+        return(list(xanchor = if (pos[1] < 0) "right" else "left", yanchor = "middle"))
+      }
+      if (node %in% names(ALL_PATHWAY_NODES)) {
+        info <- ALL_PATHWAY_NODES[[node]]
+        return(list(
+          xanchor = info$xanchor %||% "left",
+          yanchor = info$yanchor %||% "middle"
+        ))
+      }
+      return(list(xanchor = "left", yanchor = "middle"))
     }
     
     compute_current_edges <- reactive({
@@ -1415,13 +1432,15 @@ pathway_server <- function(id, shared_data) {
       precursor_annotations <- list()
       if ("LPA" %in% active) {
         precursor_annotations[[length(precursor_annotations) + 1]] <- list(
-          x = 0, y = 20.5, text = "G3P", showarrow = FALSE,
+          x = 0.2, y = 20.6, text = "G3P", showarrow = FALSE,
+          xanchor = "left", yanchor = "bottom",
           font = list(size = 15, color = "black")
         )
       }
       if ("LCB" %in% active) {
         precursor_annotations[[length(precursor_annotations) + 1]] <- list(
-          x = -5, y = 20.5, text = "Fatty Acids", showarrow = FALSE,
+          x = -5.2, y = 20.6, text = "Fatty Acids", showarrow = FALSE,
+          xanchor = "right", yanchor = "bottom",
           font = list(size = 15, color = "black")
         )
       }
@@ -1486,10 +1505,11 @@ pathway_server <- function(id, shared_data) {
           }
         }
         
+        anc <- get_current_label_anchor(cls)
         label_annotations[[length(label_annotations) + 1]] <- list(
           x = label_xs[i], y = label_ys[i], text = label_text, showarrow = FALSE,
           font = list(size = 14, color = color),
-          xanchor = "left", yanchor = "middle"
+          xanchor = anc$xanchor, yanchor = anc$yanchor
         )
       }
       
@@ -1537,8 +1557,8 @@ pathway_server <- function(id, shared_data) {
         x_range <- c(-25.0, 25.0)
         y_range <- c(-15.0, 25.0)
       } else {
-        x_range <- c(min(all_xs) - 4.0, max(all_xs) + 4.0)
-        y_range <- c(min(all_ys) - 4.0, max(all_ys) + 4.0)
+        x_range <- c(min(all_xs) - 6.0, max(all_xs) + 6.0)
+        y_range <- c(min(all_ys) - 4.5, max(all_ys) + 4.5)
       }
       
       show_grid <- isTRUE(input$show_grid)

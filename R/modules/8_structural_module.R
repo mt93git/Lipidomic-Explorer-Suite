@@ -2231,7 +2231,11 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     })
     
     render_structural_status_banner <- function() {
-      de_banner <- render_de_not_run_banner(shared_data)
+      lipidomic_hook("de_banner")(render_structural_status_banner_base(), shared_data = shared_data)
+    }
+
+    render_structural_status_banner_base <- function() {
+      de_banner <- render_de_not_run_banner_base(shared_data)
       if (!is.null(de_banner)) return(de_banner)
       
       if (is.null(input$runAnalysis) || input$runAnalysis == 0) {
@@ -2528,6 +2532,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     
     # --- 5. Network Graph Plotting ---
     networkData <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "structural")) return(NULL)
       req(shared_data$data_processed(), shared_data$annotationData())
       df_proc <- shared_data$data_processed()
       rownames(df_proc) <- NULL
@@ -2645,6 +2650,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     })
     
     output$networkPlot <- renderPlot({
+       if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "structural")) return(generate_empty_plot_message("Correlation network requires a confirmed independent study design. Repeated observations cannot be treated as independent."))
        net <- networkData()
        if(is.null(net)) {
           plot.new()
