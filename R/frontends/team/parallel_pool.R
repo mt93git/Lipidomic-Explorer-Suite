@@ -279,8 +279,11 @@ team_parallel_card_store <- function(prepared) {
   invisible(stored)
 }
 # Start once the app is running (later() callbacks run only inside the event
-# loop), and only for the Team interface.
-if (!nzchar(Sys.getenv('LIPIDOMIC_TEAM_R_WORKER','')) && requireNamespace('later', quietly=TRUE))
+# loop), and only for the Team interface. This is the one callback that sourcing
+# the app leaves on the later loop; team_parallel_boot_timer holds its cancel
+# function (NULL when nothing was scheduled), so scripts that source the app
+# without running it can cancel it.
+team_parallel_boot_timer <- if (!nzchar(Sys.getenv('LIPIDOMIC_TEAM_R_WORKER','')) && requireNamespace('later', quietly=TRUE))
   later::later(function() {
     if (!isTRUE(tryCatch(shiny::isRunning(),error=function(e)FALSE))) return()
     if (!identical(tryCatch(lipidomic_interface(),error=function(e)''),'team')) return()

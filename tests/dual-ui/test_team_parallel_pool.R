@@ -95,15 +95,19 @@ team_parallel_state$threads <- 2L
 good <- list(pid=-1L, blas=2L, env='2', isolated=TRUE, values=list(barchart=serial0 <- list()))
 check(is.null(suppressMessages(team_parallel_collect(fake(modifyList(good, list(isolated=FALSE)))))), 'a worker whose isolation check failed is ignored')
 
-# ---- 4 workers: launch returns at once; caches identical() to serial -------------------
+# ---- 4 workers requested: launch returns at once; caches identical() to serial ---------
+# The pool is bounded by cores - 1 and free memory, so the size and BLAS threads it logs are
+# the ones its own rule gives on this host (4 x 2 on RTX; 3 x 1 on a 4-core CI runner).
 Sys.setenv(LIPIDOMIC_TEAM_R_WORKERS='4'); reset(); clear_caches()
+n_workers <- min(team_parallel_workers(), length(families)); n_threads <- team_parallel_threads(max(1L, n_workers))
+check(n_workers >= 2L, sprintf('this host fits at least 2 workers (%d)', n_workers))
 t_launch <- system.time(log <- logged(started <- team_parallel_prepare_cards()))[['elapsed']]
-check(isTRUE(started) && t_launch < 2, sprintf('launching 4 workers returns at once (%.2f s)', t_launch))
-check(length(log)==1L && grepl('4 workers x 2 BLAS thread', log), '4 workers: size and threads logged once')
+check(isTRUE(started) && t_launch < 2, sprintf('launching %d workers returns at once (%.2f s)', n_workers, t_launch))
+check(length(log)==1L && grepl(sprintf('%d workers x %d BLAS thread', n_workers, n_threads), log), sprintf('%d workers x %d BLAS thread(s): size and threads logged once', n_workers, n_threads))
 pids <- vapply(team_parallel_state$jobs, function(j) j$process$get_pid(), integer(1))
-check(length(pids)==4L && !any(pids==Sys.getpid()), 'workers are separate processes')
+check(length(pids)==n_workers && !any(pids==Sys.getpid()), 'workers are separate processes')
 t0 <- Sys.time(); log <- logged(check(run_until(idle), 'all workers finished'))
-cat(sprintf('timing: %d families serial %.1f s on the main process; 4 background workers %.1f s wall, 0 s main-process compute\n', length(families), t_serial, as.numeric(difftime(Sys.time(), t0, units='secs'))+t_launch))
+cat(sprintf('timing: %d families serial %.1f s on the main process; %d background workers %.1f s wall, 0 s main-process compute\n', length(families), t_serial, n_workers, as.numeric(difftime(Sys.time(), t0, units='secs'))+t_launch))
 check(any(grepl(sprintf('%d values stored', n_values), log)), sprintf('%d values stored from workers', n_values))
 check(n_values > 150L, sprintf('compared %d card preparation values over %d families', n_values, length(families)))
 check(identical(fill_snapshot(), reference), 'caches filled from workers are identical() to serial caches (every family)')
@@ -135,8 +139,8 @@ Sys.sleep(1); check(!any(vapply(pids, alive_pid, logical(1))), 'killed workers a
 # ---- LAPACK identity at the worker thread count ------------------------------------
 set.seed(7); m <- matrix(rlnorm(2000*96), 2000)
 pc_main <- stats::prcomp(t(log2(m+1)), scale.=TRUE)
-pc_child <- callr::r(function(m) stats::prcomp(t(log2(m+1)), scale.=TRUE), args=list(m), libpath=.libPaths(), env=team_parallel_child_env(team_parallel_threads(4L)))
-check(identical(pc_child, pc_main), sprintf('prcomp in a worker environment (%d BLAS threads) is identical() to the main process', team_parallel_threads(4L)))
+pc_child <- callr::r(function(m) stats::prcomp(t(log2(m+1)), scale.=TRUE), args=list(m), libpath=.libPaths(), env=team_parallel_child_env(n_threads))
+check(identical(pc_child, pc_main), sprintf('prcomp in a worker environment (%d BLAS threads) is identical() to the main process', n_threads))
 Sys.unsetenv(c('R_ENVIRON_USER','W13_TEST_API_KEY'))
 check(identical(future::plan(), plan_before), 'global future plan still untouched')
 cat('PASS test_team_parallel_pool\n')

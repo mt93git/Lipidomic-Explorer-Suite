@@ -41,10 +41,18 @@ if (mode == 'direct') {
   quit(save = 'no')
 }
 suppressPackageStartupMessages({ source('R/global.R'); source('R/frontends/team/server.R') })
+# The W13 worker-pool boot timer (parallel_pool.R) is the one callback sourcing leaves; it does
+# nothing unless the app is running. Cancelling it must leave the loop empty. Classic does not
+# source the Team files, so it has no such timer.
+check('sourcing the app schedules only the worker-pool boot timer (none in Classic)',
+  if (mode == 'classic') !exists('team_parallel_boot_timer') else is.function(team_parallel_boot_timer) && isTRUE(team_parallel_boot_timer()))
 check('sourcing the app leaves the later loop empty and arms nothing', later::loop_empty() && armed == 0L)
 check('nothing memoized while the app is sourced', memo_seen == 0L && memo_size() == 0L)
 if (mode == 'classic') {
-  check('Classic: arming at session start schedules nothing', !isTRUE(team_plot_instance_arm_prewarm()) && later::loop_empty())
+  # On integration Classic does not source the Team files at all (Blocks C/D), so there is no
+  # prewarm to arm; where it is defined, arming it from Classic must still schedule nothing.
+  check('Classic: arming at session start schedules nothing',
+    (!exists('team_plot_instance_arm_prewarm', mode = 'function') || !isTRUE(team_plot_instance_arm_prewarm())) && later::loop_empty())
   drain(2); check('Classic memoizes nothing', memo_size() == 0L)
   quit(save = 'no')
 }
