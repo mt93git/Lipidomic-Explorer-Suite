@@ -1,0 +1,18 @@
+/* Screen-name h1 added by qw_a11y.js when the screen has no visible h1, and the
+   fallback <header id="team-page-banner"> that holds it when there is no main landmark. */
+.qw-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+/* Wide tool pages with a collapsed main sidebar: the labelled Plot controls button
+   replaces the lone floating chevron (qw_plot_controls.js). Below 900px guided.css
+   already hides the chevron and shows the same button. */
+@media(min-width:900px){
+  body.qw-plot-controls-proxy[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar).sidebar-collapsed>.collapse-toggle,
+  body.qw-plot-controls-proxy[data-guide-analysis=true] .bslib-sidebar-layout:is(.ts-has-main-sidebar,#main_sidebar)>.collapse-toggle[aria-expanded=false]{display:none!important}
+  body.qw-plot-controls-proxy[data-guide-analysis=true] .guide-narrow-controls{display:inline-flex;margin:0 0 0 auto}
+}
+
+/* Group legend on the guided Quality PCA (qw_pca_groups.js). */
+.qw-pca-legend{display:flex;flex-wrap:wrap;gap:6px 16px;list-style:none;margin:4px 0 8px;padding:0;font-size:13px;color:#344956}
+.qw-pca-legend li{display:inline-flex;align-items:center;gap:6px}
+.qw-pca-legend b{font-weight:600;color:#526477}
+.qw-pca-swatch{display:inline-block;width:11px;height:11px;border-radius:50%;border:1px solid #ffffff;box-shadow:0 0 0 1px #8b98a5}

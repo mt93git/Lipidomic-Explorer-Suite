@@ -1,0 +1,60 @@
+// Plotly/HTMLWidgets regression: geometry redraw must not stale a finished figure.
+const { chromium } = require('../browser/ci/node_modules/playwright');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+(async () => {
+  const jquery=execFileSync('Rscript',['--vanilla','-e','cat(system.file("www/shared/jquery.min.js",package="shiny"))'],{encoding:'utf8'}).trim();
+  const plotly=execFileSync('Rscript',['--vanilla','-e','cat(system.file("htmlwidgets/lib/plotlyjs/plotly-latest.min.js",package="plotly"))'],{encoding:'utf8'}).trim();
+  const browser=await chromium.launch({headless:true});
+  try {
+    const page=await browser.newPage({viewport:{width:1200,height:1000},acceptDownloads:true});
+    await page.setContent(`<div class="rd-dashboard"><div class="rd-card"><div class="rd-card-head"><h3>Abundance distribution</h3><a href="/data.csv">CSV</a></div><div id="results_dashboard-plot_dist" class="plotly html-widget-output" style="height:420px"></div></div></div><section id="team-canvas-root"><button class="tc-library-toggle"></button><div class="tc-layout"><input class="tc-search"><div class="tc-list"></div><button class="tc-reset"></button><button class="tc-arrange"></button><div class="tc-scroll" style="height:600px"><div class="tc-board"><div class="tc-empty"></div></div></div><div class="tc-status"></div></div></section>`);
+    await page.addStyleTag({path:path.resolve('www/team/css/canvas.css')});
+    await page.addScriptTag({path:jquery}); await page.addScriptTag({path:plotly});
+    await page.evaluate(() => Plotly.newPlot('results_dashboard-plot_dist',[{type:'scatter',x:[1,2,3],y:[2,3,4]}],{margin:{t:10},xaxis:{title:'Sample'}}));
+    await page.addStyleTag({path:path.resolve('www/team/css/canvas_viewport.css')});
+    await page.addScriptTag({path:path.resolve('www/team/js/canvas_viewport.js')});
+    await page.addScriptTag({path:path.resolve('www/team/js/canvas.js')});
+    await page.evaluate(() => TeamCanvas.addPlot('results_dashboard-plot_dist'));
+    const data=[{type:'scatter',x:[1,2,3],y:[2,3,4]}], layout={margin:{t:10},xaxis:{title:'Sample'},width:500,height:400};
+    async function output(d,l) { await page.evaluate(async ({d,l}) => {const gd=document.getElementById('results_dashboard-plot_dist');jQuery(gd).trigger({type:'shiny:value',value:{x:{data:d,layout:l}}});await Plotly.react(gd,d,l);},{d,l}); await page.waitForTimeout(450); }
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:true,pending:false,running:false,revision:1}})));
+    await output(data,layout);
+    await page.locator('.tc-settings summary').click();
+    await page.getByLabel('Plot title').fill('Study distribution');
+    await page.locator('.tc-node-head button',{hasText:'Finish plot'}).click();
+    await page.waitForSelector('.tc-snapshot img');
+    const before=await page.locator('.tc-snapshot img').getAttribute('src');
+    const savedBeforeZoom=await page.evaluate(()=>TeamCanvas.serialize());
+    await page.getByRole('button',{name:'Zoom out',exact:true}).click();
+    await page.getByRole('button',{name:'Fit all',exact:true}).click();
+    await page.locator('.tc-zoom-reset').click();
+    assert.deepEqual(await page.evaluate(()=>TeamCanvas.serialize()),savedBeforeZoom,'viewport navigation must preserve real Plotly snapshot and checkpoint');
+    await page.evaluate(() => jQuery(document).trigger('shiny:busy'));
+    await page.setViewportSize({width:1512,height:1200});
+    await output(data,{height:600,width:800,autosize:true,margin:{t:40,b:80},xaxis:{title:'Sample'}});
+    await page.evaluate(() => jQuery(document).trigger('shiny:idle'));
+    await page.waitForTimeout(250);
+    assert.equal(await page.locator('.tc-node.tc-stale').count(),0);
+    assert.equal(await page.locator('.tc-snapshot-exports button:disabled').count(),0);
+    assert.equal(await page.locator('.tc-snapshot img').getAttribute('src'),before);
+    const download=page.waitForEvent('download'); await page.locator('.tc-snapshot-exports button',{hasText:'SVG'}).click(); await download;
+    await output(data,{height:600,width:800,margin:{t:40},xaxis:{title:'A different scientific axis'}});
+    assert.equal(await page.locator('.tc-node.tc-stale').count(),1);
+    assert.equal(await page.locator('.tc-snapshot-exports button:disabled').count(),3);
+    await page.locator('.tc-node-head button',{hasText:'Edit'}).click();
+    await page.waitForTimeout(250);
+    await page.locator('.tc-node-head button',{hasText:'Finish plot'}).click();
+    await page.waitForSelector('.tc-snapshot img');
+    await output([{type:'scatter',x:[1,2,3],y:[2,3,99]}],{height:600,width:800,margin:{t:40},xaxis:{title:'A different scientific axis'}});
+    assert.equal(await page.locator('.tc-node.tc-stale').count(),1);
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('team-preparation-state',{detail:{ready:true,pending:false,running:false,revision:2}})));
+    await page.locator('.tc-node-head button',{hasText:'Edit'}).click();
+    await output([{type:'scatter',x:[1,2,3],y:[2,3,99]}],{height:650,width:900,margin:{t:35},xaxis:{title:'A different scientific axis'}});
+    await page.locator('.tc-node-head button',{hasText:'Finish plot'}).click();
+    await page.waitForSelector('.tc-snapshot img');
+    assert.equal(await page.locator('.tc-node.tc-stale').count(),0);
+    console.log('PASS: equal Plotly output survives viewport redraw; changed axis and data invalidate');
+  } finally { await browser.close(); }
+})().catch(e=>{console.error(e);process.exitCode=1;});

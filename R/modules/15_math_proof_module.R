@@ -19,16 +19,31 @@
 #    - Clear, human descriptions of physical role, dataset origin, and live value.
 # ==============================================================================
 
+# shiny::withMathJax() uses a mutable /latest/ script URL and cannot attach SRI.
+# Keep its MathJax 2 queue behavior while pinning the fetched executable bytes.
+with_pinned_mathjax <- function(...) {
+  tagList(
+    tags$head(htmltools::singleton(tags$script(
+      src = "https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML",
+      type = "text/javascript",
+      integrity = "sha384-vi9R4hb1goLJPJDHY+dOmXxcY3HGv6tJIwHxy5JunOTxJGHbsSuubPgl++SNxYYi",
+      crossorigin = "anonymous"
+    ))),
+    ...,
+    tags$script(HTML('if (window.MathJax) MathJax.Hub.Queue(["Typeset", MathJax.Hub]);'))
+  )
+}
+
 math_proof_ui <- function(id) {
   ns <- NS(id)
   
-  shiny::withMathJax(
+  with_pinned_mathjax(
     tagList(
-      # External KaTeX styling and runtime for instantaneous rendering
+      # Fixed-version KaTeX assets; SRI fails closed if CDN bytes change.
       tags$head(
-        tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"),
-        tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"),
-        tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"),
+        tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css", integrity = "sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV", crossorigin = "anonymous"),
+        tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js", integrity = "sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8", crossorigin = "anonymous"),
+        tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js", integrity = "sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05", crossorigin = "anonymous"),
         tags$script(type = "text/x-mathjax-config", HTML("
           MathJax.Hub.Config({
             tex2jax: {
@@ -1025,7 +1040,7 @@ math_proof_server <- function(id, shared_data) {
         stringsAsFactors = FALSE
       )
       
-      write.csv(audit_table, file, row.names = FALSE)
+      write_spreadsheet_csv(audit_table, file, row.names = FALSE)
     }
     
     # --------------------------------------------------------------------------
@@ -1316,9 +1331,9 @@ math_proof_server <- function(id, shared_data) {
         "<meta charset='UTF-8'>",
         "<meta name='viewport' content='width=device-width, initial-scale=1.0'>",
         sprintf("<title>Mathematical Demonstration & Transformation Audit - %d Lipid(s)</title>", length(lipids_to_audit)),
-        "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css'>",
-        "<script src='https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js'></script>",
-        "<script src='https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js'></script>",
+        "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css' integrity='sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV' crossorigin='anonymous'>",
+        "<script src='https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js' integrity='sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8' crossorigin='anonymous'></script>",
+        "<script src='https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js' integrity='sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05' crossorigin='anonymous'></script>",
         "<script>",
         "  window.MathJax = {",
         "    tex: {",
@@ -1331,7 +1346,7 @@ math_proof_server <- function(id, shared_data) {
         "    }",
         "  };",
         "</script>",
-        "<script id='MathJax-script' async src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'></script>",
+        "<script id='MathJax-script' async src='https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js' integrity='sha384-Wuix6BuhrWbjDBs24bXrjf4ZQ5aFeFWBuKkFekO2t8xFU0iNaLQfp2K6/1Nxveei' crossorigin='anonymous'></script>",
         "<style>",
         "  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.55; color: #1e293b; background-color: #f8fafc; padding: 24px; max-width: 1100px; margin: 0 auto; }",
         "  .header-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }",
@@ -1933,9 +1948,9 @@ math_proof_server <- function(id, shared_data) {
           class = "export-matrix-modal-content",
           
           # KaTeX & custom styling for crisp mathematical vector rendering, studio window expansion, and light alpha blue cell selection
-          tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"),
-          tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"),
-          tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"),
+          tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css", integrity = "sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV", crossorigin = "anonymous"),
+          tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js", integrity = "sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8", crossorigin = "anonymous"),
+          tags$script(src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js", integrity = "sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05", crossorigin = "anonymous"),
           tags$style(HTML("
             /* Base sizing for the Matrix Studio modal */
             .modal-dialog.matrix-studio-dialog {
@@ -2649,7 +2664,7 @@ math_proof_server <- function(id, shared_data) {
       
       forms <- build_step_formulas(active_lip, active_samp, s_raw, s_lod, s_log, s_imp, s_norm, s_fin, s_off, s_scaling, s_is_obs)
       
-      shiny::withMathJax(
+      with_pinned_mathjax(
         tags$div(
           class = "modal-demonstration-container p-2",
           tags$div(
@@ -2847,8 +2862,11 @@ math_proof_server <- function(id, shared_data) {
     # --------------------------------------------------------------------------
     observeEvent(input$goto_step1, { updateTabsetPanel(session, "stepper_tabs", selected = "step1") })
     observeEvent(input$goto_step2, { updateTabsetPanel(session, "stepper_tabs", selected = "step2") })
+    observeEvent(input$goto_step2_from_step3, { updateTabsetPanel(session, "stepper_tabs", selected = "step2") })
     observeEvent(input$goto_step3, { updateTabsetPanel(session, "stepper_tabs", selected = "step3") })
+    observeEvent(input$goto_step3_from_step4, { updateTabsetPanel(session, "stepper_tabs", selected = "step3") })
     observeEvent(input$goto_step4, { updateTabsetPanel(session, "stepper_tabs", selected = "step4") })
+    observeEvent(input$goto_step4_from_step5, { updateTabsetPanel(session, "stepper_tabs", selected = "step4") })
     observeEvent(input$goto_step5, { updateTabsetPanel(session, "stepper_tabs", selected = "step5") })
     observeEvent(input$goto_overview, { updateTabsetPanel(session, "stepper_tabs", selected = "overview") })
     
@@ -2903,7 +2921,7 @@ math_proof_server <- function(id, shared_data) {
       is_hover_default <- isTRUE(input$enable_hover)
       div(
         class = paste(ns("math-slider-container"), "math-slider-container mb-3"),
-        id = ns(slider_id),
+        `data-slider` = ns(slider_id),
         # Control Header with Two Dots & Label
         div(
           class = "d-flex align-items-center justify-content-between px-3 py-2 bg-light border-bottom",
@@ -3038,7 +3056,8 @@ math_proof_server <- function(id, shared_data) {
     # Helper: Build 3 Subtabs for each Step Card
     build_step_card_ui <- function(step_num, title, icon_name, badge_label, badge_color, 
                                    math_content, rationale_content, quote_content,
-                                   prev_btn_id = NULL, next_btn_id = NULL) {
+                                   prev_btn_id = NULL, next_btn_id = NULL,
+                                   context = "single") {
       div(
         class = paste0(ns("stepper-card"), " card p-0 mb-4"),
         div(
@@ -3053,7 +3072,7 @@ math_proof_server <- function(id, shared_data) {
         div(
           class = paste0(ns("subtab-container"), " card-body p-4"),
           bslib::navset_pill(
-            id = ns(paste0("subtabs_step_", step_num)),
+            id = ns(paste0(if (identical(context, "overview")) "overview_" else "", "subtabs_step_", step_num)),
             selected = "math_demo",
             
             # Subtab 1: Mathematical Demonstration
@@ -4291,7 +4310,7 @@ math_proof_server <- function(id, shared_data) {
                   math_content = step3_math,
                   rationale_content = step3_rationale,
                   quote_content = step3_quote,
-                  prev_btn_id = "goto_step2",
+                  prev_btn_id = "goto_step2_from_step3",
                   next_btn_id = "goto_step4"
                 )
               )
@@ -4351,7 +4370,7 @@ math_proof_server <- function(id, shared_data) {
                   math_content = step4_math,
                   rationale_content = step4_rationale,
                   quote_content = step4_quote,
-                  prev_btn_id = "goto_step3",
+                  prev_btn_id = "goto_step3_from_step4",
                   next_btn_id = "goto_step5"
                 )
               )
@@ -4411,7 +4430,7 @@ math_proof_server <- function(id, shared_data) {
                   math_content = step5_math,
                   rationale_content = step5_rationale,
                   quote_content = step5_quote,
-                  prev_btn_id = "goto_step4",
+                  prev_btn_id = "goto_step4_from_step5",
                   next_btn_id = "goto_overview"
                 )
               )
@@ -4472,20 +4491,20 @@ math_proof_server <- function(id, shared_data) {
                 build_step_card_ui(1, "Step 1: Raw Ingestion & Detection Limit Screening", "file-import", 
                                    if (is_observed) "Observed Signal" else "Left-Censored NA", 
                                    if (is_observed) "bg-success" else "bg-warning text-dark",
-                                   step1_math, step1_rationale, step1_quote),
+                                   step1_math, step1_rationale, step1_quote, context = "overview"),
                 build_step_card_ui(2, "Step 2: Variance-Stabilizing Base-2 Logarithmic Transformation", "calculator", 
                                    "y = log2(x)", "bg-secondary",
-                                   step2_math, step2_rationale, step2_quote),
+                                   step2_math, step2_rationale, step2_quote, context = "overview"),
                 build_step_card_ui(3, "Step 3: Quantile Regression for Left-Censored Data (QRILC) Imputation", "dice", 
                                    if (is_observed) "No Imputation" else "QRILC Sampled", 
                                    if (is_observed) "bg-light text-secondary border" else "bg-info text-dark",
-                                   step3_math, step3_rationale, step3_quote),
+                                   step3_math, step3_rationale, step3_quote, context = "overview"),
                 build_step_card_ui(4, "Step 4: Sample-Wise Global Median Centering Normalization", "scale-balanced", 
                                    sprintf("Offset: %+.3f log2", delta_j), "bg-primary",
-                                   step4_math, step4_rationale, step4_quote),
+                                   step4_math, step4_rationale, step4_quote, context = "overview"),
                 build_step_card_ui(5, "Step 5: Restitution to Linear Abundance & Scaling Equivalence", "arrow-up-right-from-square", 
                                    "A = 2^(y_norm)", "bg-success",
-                                   step5_math, step5_rationale, step5_quote)
+                                   step5_math, step5_rationale, step5_quote, context = "overview")
               )
             )
           )

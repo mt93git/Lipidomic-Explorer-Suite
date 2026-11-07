@@ -1,0 +1,71 @@
+# Optional Team workspace. All plot outputs remain in the existing Shiny session.
+team_canvas_ui <- function() {
+  # Canvas tabs ship with the canvas markup so the shared page wiring stays untouched.
+  shiny::tagList(team_canvas_section(), team_canvas_tabs_assets())
+}
+
+team_canvas_tabs_assets <- function() {
+  if (!file.exists("www/team/js/canvas_tabs.js")) return(NULL)
+  shiny::tagList(shiny::includeCSS("www/team/css/canvas_tabs.css"),
+    shiny::includeScript("www/team/js/canvas_tabs_model.js"), shiny::includeScript("www/team/js/canvas_tabs.js"))
+}
+
+team_canvas_section <- function() {
+  shiny::tags$section(id = "team-canvas-root", class = "tc-workspace", `aria-label` = "Figure canvas",
+    shiny::tags$div(class = "tc-intro",
+      shiny::tags$div(shiny::tags$h2("Your figure canvas"),
+        shiny::tags$p("Add a plot. Make it yours. Finish when ready.")),
+      shiny::tags$button(type = "button", class = "tc-palette", "Colors & palettes", onclick = "Shiny.setInputValue('data_hub-open_palette_editor', Date.now(), {priority:'event'});")),
+    shiny::tags$div(class = "tc-mode-tabs", role = "tablist", `aria-label` = "Canvas view",
+      shiny::tags$button(id = "tc-workspace-tab", type = "button", role = "tab", `aria-selected` = "true", `aria-controls` = "tc-workspace-panel", tabindex = "0", "Workspace"),
+      shiny::tags$button(id = "tc-preview-tab", type = "button", role = "tab", `aria-selected` = "false", `aria-controls` = "tc-preview-panel", tabindex = "-1", "Print preview")),
+    shiny::tags$div(id = "tc-workspace-panel", role = "tabpanel", `aria-labelledby` = "tc-workspace-tab",
+    shiny::tags$div(class = "tc-layout",
+      shiny::tags$aside(class = "tc-catalog", `aria-label` = "Plot catalog",
+        shiny::tags$h3("Plot library"),
+        shiny::tags$p("Choose a plot to add. Some analyses need additional settings."),
+        shiny::tags$input(type = "search", class = "tc-search", placeholder = "Search plots", `aria-label` = "Search plots"),
+        shiny::tags$details(class = "tc-view-settings",
+          shiny::tags$summary("Plot settings"),
+          shiny::tags$p("These settings change the displayed results; they do not rerun data preparation."),
+          shiny::tags$div(class = "tc-settings-dock")),
+        shiny::tags$div(class = "tc-list", `aria-live` = "polite")),
+      shiny::tags$div(class = "tc-main",
+        shiny::tags$div(class = "tc-toolbar", shiny::tags$strong("Canvas"),
+          shiny::tags$button(type = "button", class = "tc-library-toggle", `aria-expanded` = "true", "Hide library"), shiny::tags$span(htmltools::HTML("Drag a header to move &middot; drag a corner to resize")),
+          shiny::tags$button(type = "button", class = "tc-arrange", "Arrange"),
+          shiny::tags$button(type = "button", class = "tc-reset", "Return all plots")),
+        shiny::tags$div(class = "tc-scroll", shiny::tags$div(class = "tc-board",
+          shiny::tags$div(class = "tc-empty", "Your figure starts here. Add a plot from the library."))),
+        shiny::tags$p(class = "tc-footnote", "Your workspace saves automatically. Check the save status before leaving."),
+        shiny::tags$details(class="tc-save-help",shiny::tags$summary("About finished figures & downloads"),
+          shiny::tags$p(class = "tc-shortcut-help", "Undo position, size or Arrange with Ctrl+Z (Windows/Linux) or Cmd+Z (Mac). Redo with Ctrl/Cmd+Shift+Z or Ctrl+Y. Undo after adding a Workspace figure restores the earlier layout and keeps the new figure below it. Removing or restoring figures starts fresh position and size history. In Print preview, these shortcuts undo document edits, including text, shapes and styling. Text fields keep their own undo."),
+          shiny::tags$p("Finish captures a snapshot of the prepared result. Edit reconnects it to the current analysis. Autosave keeps your layout, colors and finished snapshots in private checkpoints. Use Print preview to export finished figures together. Individual plot downloads and available CSV remain in Workspace.")),
+        shiny::tags$div(class = "tc-status", role = "status", `aria-live` = "polite")))),
+    shiny::tags$section(id = "tc-preview-panel", class = "tc-preview", role = "tabpanel", `aria-labelledby` = "tc-preview-tab", hidden = "hidden",
+      shiny::tags$div(class = "tc-preview-toolbar",
+        shiny::tags$div(class = "tc-preview-heading", shiny::tags$h3("Compose your final figure"),
+          shiny::tags$p(class = "tc-mode-hint", "The final layout. Add titles, text, shapes and panel letters, then export. Plots appear here once they are finished in the draft.")),
+        shiny::tags$div(class = "tc-preview-actions",
+          shiny::tags$button(type = "button", class = "tc-preview-stephania", "Publication layout"),
+          shiny::tags$button(type = "button", class = "tc-preview-add-text", "Add text"),
+          shiny::tags$button(type = "button", class = "tc-preview-svg", disabled = "disabled", "Download SVG"),
+          shiny::tags$button(type = "button", class = "tc-preview-pdf", disabled = "disabled", "Download PDF"),
+          shiny::tags$button(type = "button", class = "tc-preview-print", disabled = "disabled", "Print"))),
+      shiny::tags$div(class = "tc-preview-options",
+        shiny::tags$label("Layout", shiny::tags$select(id = "tc-preview-layout", `aria-label` = "Layout", class = "tc-preview-layout",
+          shiny::tags$option(value = "free", htmltools::HTML("Free layout &middot; arrange on page")), shiny::tags$option(value = "pages", "One plot per page"), shiny::tags$option(value = "arrangement", "Canvas arrangement"), shiny::tags$option(value = "figure1", "Figure 1 layout"))),
+        shiny::tags$label("Paper", shiny::tags$select(id = "tc-preview-paper", `aria-label` = "Paper", class = "tc-preview-paper",
+          shiny::tags$option(value = "letter", "US Letter"), shiny::tags$option(value = "a4", "A4"), shiny::tags$option(value = "custom", "Custom"))),
+        shiny::tags$label(class = "tc-preview-custom-size", "Width (pt)", shiny::tags$input(type = "number", class = "tc-preview-custom-width", `aria-label` = "Page width (pt)", min = "100", max = "3000", step = "0.01", value = "612")),
+        shiny::tags$label(class = "tc-preview-custom-size", "Height (pt)", shiny::tags$input(type = "number", class = "tc-preview-custom-height", `aria-label` = "Page height (pt)", min = "100", max = "3000", step = "0.01", value = "792")),
+        shiny::tags$label(class = "tc-preview-furniture-label", shiny::tags$input(type = "checkbox", class = "tc-preview-furniture", checked = "checked", `aria-label` = "Show page header and footer"), "Show page header and footer"),
+        shiny::tags$label("Orientation", shiny::tags$select(id = "tc-preview-orientation", `aria-label` = "Orientation", class = "tc-preview-orientation",
+          shiny::tags$option(value = "portrait", "Portrait"), shiny::tags$option(value = "landscape", "Landscape")))),
+      shiny::tags$p(class = "tc-preview-status", role = "status", `aria-live` = "polite", "Finish plots in the draft canvas to place them here. Text and shapes can be added at any time."),
+      # Figure page in the shell grid (canvas_preview.js embedInShell): the toolbar slot stays above the
+      # page, the column moves to the right column above the companion's home. Both start empty.
+      shiny::tags$div(id = "tc-figure-toolbar-slot"),
+      shiny::tags$div(id = "tc-figure-column"),
+      shiny::tags$div(class = "tc-preview-pages", `aria-label` = "Figure pages")))
+}

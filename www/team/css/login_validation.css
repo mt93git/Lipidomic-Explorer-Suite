@@ -1,0 +1,13 @@
+/* Sign-in feedback inside the card (R/frontends/team/login-validation.R, www/team/js/login_validation.js). */
+/* #b42318 on white is 6.6:1; #8a1c12 on #fdf1f0 is 8.4:1. */
+.team-library .form-control[aria-invalid=true]{border-color:#b42318!important;box-shadow:0 0 0 1px #b42318!important}
+.team-library .team-login-field-error{color:#b42318;font-size:13px;line-height:1.4;margin:6px 0 0}
+.team-library .team-login-alert{background:#fdf1f0;border:1px solid #f1c4bf;border-left:4px solid #b42318;border-radius:8px;color:#8a1c12;font-size:14px;line-height:1.45;margin:4px 0 0;padding:10px 14px}
+.team-library :is(.team-login-field-error,.team-login-alert)[hidden]{display:none}
+/* Guided Team lays the sign-in out as a wrapping flex row; the alert takes a full row there. */
+.team-library .team-login-alert{flex:1 1 100%}
+/* Activation and password reset stay one disclosure; its summary reads as a visible plain link. */
+.team-library .team-library-activation>summary{display:inline-block;list-style:none;margin-top:12px;color:var(--lab-blue,#2d5f8a);font-size:14px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.team-library .team-library-activation>summary::-webkit-details-marker{display:none}
+.team-library .team-library-activation>summary:hover{color:var(--action-primary-hover,#1f4a6e)}
+.team-library .team-library-activation>summary:focus-visible{outline:3px solid var(--lab-blue,#2d5f8a);outline-offset:3px}

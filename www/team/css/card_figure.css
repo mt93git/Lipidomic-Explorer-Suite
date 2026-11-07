@@ -1,0 +1,59 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
+/* Card = figure. Module content parks off-screen (still rendered for Shiny) until the card is selected. */
+body.ts-shell-app .tc-node.tc-figure-card :is(.tc-figure-chrome,.tc-figure-park){position:absolute!important;left:-100000px!important;top:0!important;width:560px!important;pointer-events:none}
+body.ts-shell-app .tc-node.tc-figure-card .rd-card{border:0;box-shadow:none;padding:4px 6px;background:transparent}
+body.ts-shell-app .tc-inspector-data{display:grid;gap:12px;align-content:start;padding:14px 16px}
+body.ts-shell-app .tc-inspector-data>*{max-width:100%;min-width:0;margin:0}
+body.ts-shell-app .tc-inspector-data :is(.rd-card-head,.rd-violin-controls){display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px;width:100%}
+body.ts-shell-app .tc-inspector-data :is(.rd-card-head,.rd-violin-controls)>*{width:100%!important;max-width:100%!important;min-width:0}
+body.ts-shell-app .tc-inspector-data .rd-card-head :is(h1,h2,h3,h4,h5){font-size:15px;font-weight:600;line-height:1.3;margin:0}
+body.ts-shell-app .tc-inspector-data .shiny-input-container{width:100%!important}
+body.ts-shell-app .tc-inspector-data .rd-card-sub,body.ts-shell-app .tc-inspector-data .rd-card-note{font-size:13px;color:#5a6878}
+body.ts-shell-app .tc-inspector-data .plot-export-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+body.ts-shell-app .tc-inspector-data .selectize-control,body.ts-shell-app .tc-inspector-data select{width:100%!important}
+body.ts-shell-app .tc-inspector-data-settings{justify-self:start;height:34px;padding:0 12px;border:1px solid #cbd7e3;border-radius:6px;background:#fff;color:#2d5f8a;font-weight:600;cursor:pointer}
+body.ts-shell-app .tc-inspector-data-note{font-size:13px;color:#5a6878;margin:0}
+/* One-line card header: title (ellipsis) + status; actions in a hover/selection toolbar. */
+body.ts-shell-app .tc-node .tc-node-head{display:flex!important;flex-wrap:nowrap!important;align-items:center;gap:8px;position:relative;min-height:36px;overflow:visible}
+body.ts-shell-app .tc-node .tc-node-head>strong{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.ts-shell-app .tc-node .tc-node-head>.tc-card-status{flex:none}
+/* Positioned + counter-scaled by card_figure.js: screen-size, above the card, clear of the title. */
+body.ts-shell-app .tc-card-actions{position:fixed;left:0;top:0;display:flex;gap:2px;padding:3px;background:#fff;border:1px solid #e3e7ec;border-radius:6px;box-shadow:0 1px 3px rgba(20,27,36,.10);opacity:0;transition:opacity .12s;z-index:5;flex-wrap:wrap;box-sizing:border-box}
+/* Hidden actions take no clicks (a tap on the header must not hit an invisible Remove). */
+body.ts-shell-app .tc-card-actions{pointer-events:none}
+body.ts-shell-app .tc-node:hover .tc-card-actions,body.ts-shell-app .tc-node.is-selected .tc-card-actions,body.ts-shell-app .tc-node:focus-within .tc-card-actions{opacity:1;pointer-events:auto}
+body.ts-shell-app .tc-card-actions>button{border:0!important;background:transparent!important;font-size:13px!important;padding:3px 8px!important;border-radius:4px!important;color:#3b4855!important;min-height:0!important;height:auto!important;margin:0!important;white-space:nowrap}
+body.ts-shell-app .tc-card-actions>button:hover{background:#eaf1f7!important;color:#2d5f8a!important}
+@media (prefers-reduced-motion:reduce){body.ts-shell-app .tc-card-actions{transition:none}}
+/* Zoom and minimap: one bottom-left cluster. A slim pill [grip | − | 100% | + | Fit] and a minimap card above it in the same style. The box itself is transparent. */
+#team-canvas-root.ts-shell .tc-navigation{width:auto!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;display:flex;flex-direction:column;align-items:flex-start;gap:8px;color:#141b24}
+#team-canvas-root.ts-shell .tc-navigation .tc-map{box-sizing:border-box;width:200px;padding:6px 8px 8px;background:#fff;border:1px solid #e3e7ec;border-radius:12px;box-shadow:0 1px 2px #141b240f,0 6px 18px #141b2414}
+#team-canvas-root.ts-shell .tc-navigation .tc-map summary{font:600 12px/18px system-ui,sans-serif;color:#5a6878;margin:0 0 4px;letter-spacing:.01em}
+#team-canvas-root.ts-shell .tc-navigation .tc-map svg{width:100%;height:72px;border:1px solid #e3e7ec;border-radius:7px;background:#f7f9fb}
+#team-canvas-root.ts-shell .tc-navigation .tc-map svg:focus-visible{outline:2px solid #2d5f8a;outline-offset:2px}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls{display:inline-flex;align-items:stretch;gap:0;margin:0;height:32px;box-sizing:border-box;padding:0 2px;background:#fff;border:1px solid #e3e7ec;border-radius:999px;box-shadow:0 1px 2px #141b240f,0 6px 18px #141b2414;white-space:nowrap}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;height:30px;min-height:0;min-width:30px;margin:0;padding:0 8px;border:0;border-radius:999px;background:transparent;color:#141b24;font:500 13px/1 system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button+button:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:1px;background:#e3e7ec}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:hover:not(:disabled){background:#eef3f8;color:#2d5f8a}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:active:not(:disabled){background:#e1eaf3}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:focus-visible{outline:2px solid #2d5f8a;outline-offset:-2px;z-index:1}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:disabled{opacity:.4;cursor:default}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-icon{display:block;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-reset{min-width:56px!important;padding:0 6px;font-variant-numeric:tabular-nums;color:#141b24}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-fit{padding:0 11px 0 9px;font-weight:600;color:#2d5f8a}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip{position:relative;top:auto;right:auto;width:22px;min-width:22px;padding:0 0 0 4px;color:#5a6878;cursor:grab;touch-action:none}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip svg{display:block;fill:currentColor}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip:hover{background:transparent;color:#2d5f8a}
+#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip+button:before{top:6px;bottom:6px}
+#team-canvas-root.ts-shell .tc-navigation.is-dragging .tc-zoom-controls{box-shadow:0 8px 24px #141b242e}
+#team-canvas-root.ts-shell .tc-navigation.is-dragging .tc-map-grip{cursor:grabbing}
+@media (prefers-reduced-motion:reduce){#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button{transition:none}}
+/* Compose view: a visible way back, an explained empty page, and the companion kept below menus. */
+#tc-preview-panel .tc-preview-back{display:inline-flex;align-items:center;height:30px;margin:0 12px 8px 0;padding:0 10px;border:1px solid #cbd7e3;border-radius:6px;background:#fff;color:#2d5f8a;font-weight:600;cursor:pointer}
+#tc-preview-panel .tc-preview-empty{display:grid;justify-items:start;gap:8px;max-width:520px;margin:48px auto;padding:24px 28px;background:#fff;border:1px solid #e3e7ec;border-radius:8px}
+#tc-preview-panel .tc-preview-empty h4{margin:0;font-size:16px;font-weight:600}
+#tc-preview-panel .tc-preview-empty p{margin:0;color:#5a6878}
+#tc-preview-panel .tc-preview-empty button{height:34px!important;padding:0 14px!important;border:0!important;border-radius:6px!important;background:#2d5f8a!important;color:#fff!important;font-weight:600;cursor:pointer}
+#tc-preview-panel .tc-document-editor:is(.ts-preview-empty,.tc-preview-empty)>:not(.tc-preview-pages){display:none!important}
+#tc-preview-panel .tc-document-editor:is(.ts-preview-empty,.tc-preview-empty)>.tc-preview-pages{grid-column:1/-1;width:100%}
+#tc-preview-panel .tc-shape-menu[open]{position:relative;z-index:1300}

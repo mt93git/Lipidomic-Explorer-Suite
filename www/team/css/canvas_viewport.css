@@ -1,0 +1,111 @@
+/* `X:is(.ts-flag,ARG)` stands for `X:has(ARG)`: www/team/js/has_classes.js keeps .ts-flag in sync (broad :has() restyles the whole page on every DOM change); ARG never matches X and only keeps the specificity. */
+/* Team viewport controls float over the canvas; zoom never changes world coordinates. */
+.tc-world-space{position:relative;overflow:hidden;flex:none}.tc-board.tc-world-board{position:absolute;left:0;top:0;transform-origin:0 0}.tc-viewport-shell{position:relative;min-width:0;min-height:0;box-sizing:border-box;isolation:isolate}.tc-navigation{position:absolute;right:12px;bottom:12px;z-index:12;color:#172d4b;background:#fff;border:1px solid #dce3eb;border-radius:9px;padding:8px;box-shadow:0 5px 20px #172d4b20}.tc-zoom-controls{display:flex;align-items:center;gap:4px;margin-top:6px}.tc-navigation button,.tc-focus-toggle{border:1px solid #dce3eb;border-radius:6px;background:#fff;color:#315c89;min-width:32px;min-height:32px;padding:5px 7px;font:600 13px system-ui;cursor:pointer}.tc-navigation button:hover:not(:disabled),.tc-focus-toggle:hover{background:#eff4f8}.tc-navigation button:disabled{opacity:.4;cursor:default}.tc-zoom-reset{min-width:48px!important;font-variant-numeric:tabular-nums}.tc-map{width:178px}.tc-map summary{font:600 13px system-ui;color:#607285;cursor:pointer;margin-bottom:5px}.tc-map svg{display:block;width:178px;height:80px;border:1px solid #dce3eb;border-radius:5px;background:#f5f7fa;cursor:crosshair;touch-action:none}.tc-map-nodes rect{fill:#cbd9e7;stroke:#6889a8;stroke-width:1;vector-effect:non-scaling-stroke}.tc-map-window{fill:#315c8915;stroke:#315c89;stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none}
+#team-canvas-root.tc-focus-mode{position:fixed;inset:0;z-index:var(--z-canvas-expanded,10000);background:#fff;margin:0;padding:12px;overflow:auto;display:flex;flex-direction:column;box-sizing:border-box}#team-canvas-root.tc-focus-mode .tc-intro{display:none}#team-canvas-root.tc-focus-mode #tc-workspace-panel{flex:1;min-height:0}#team-canvas-root.tc-focus-mode .tc-layout{height:100%;min-height:0}#team-canvas-root.tc-focus-mode .tc-main{display:flex;flex-direction:column;min-height:0}#team-canvas-root.tc-focus-mode .tc-viewport-shell{flex:1;min-height:0}#team-canvas-root.tc-focus-mode .tc-scroll{height:100%!important;max-height:none;min-height:0}
+@media(max-width:720px){.tc-navigation{right:6px;bottom:6px;padding:6px}.tc-map,.tc-map svg{width:145px}.tc-map svg{height:65px}.tc-navigation button{min-width:28px;padding:4px}.tc-navigation .tc-zoom-reset{min-width:43px!important}#team-canvas-root.tc-focus-mode{padding:6px}#team-canvas-root.tc-focus-mode .tc-layout{display:flex;flex-direction:column}#team-canvas-root.tc-focus-mode .tc-main{flex:1}#team-canvas-root.tc-focus-mode .tc-catalog{max-height:25vh;overflow:auto}}
+body.team-workspace-app[data-tw-screen="canvas"] .tc-scroll:is(.ts-has-world,.tc-world-space){min-height:300px;height:calc(100dvh - 220px);max-height:none}
+.tc-mode-tabs .tc-focus-toggle{margin-left:auto;align-self:center;white-space:nowrap}
+
+/* A workspace first: the catalog is a temporary drawer, never a permanent column. */
+#team-canvas-root{margin-bottom:0}
+#team-canvas-root .tc-layout{position:relative;display:block;min-width:0}
+#team-canvas-root .tc-main{min-width:0;overflow:visible}
+#team-canvas-root .tc-catalog{position:absolute;left:10px;top:54px;bottom:auto;align-self:auto;width:260px;max-width:calc(100% - 20px);z-index:20;overflow:auto;box-sizing:border-box;box-shadow:0 8px 32px #172d4b24;padding:14px;background:#fff}
+#team-canvas-root .tc-catalog .tc-list{max-height:none;overflow:visible}
+#team-canvas-root .tc-catalog>p{font-size:13px;line-height:1.5}
+#team-canvas-root .tc-library-close{position:absolute;top:8px;right:8px;z-index:2;width:30px;height:30px;min-height:30px!important;padding:0!important;background:#fff;border:1px solid #dce3eb;border-radius:6px;color:#315c89;font-size:20px;cursor:pointer}
+#team-canvas-root .tc-toolbar{position:relative;min-height:44px;padding:5px 12px;gap:8px;flex-wrap:wrap}
+#team-canvas-root .tc-save-help{margin:0;padding:0;font-size:13px;position:relative;color:#526576}
+#team-canvas-root .tc-save-help summary{cursor:pointer;padding:8px;white-space:nowrap}
+#team-canvas-root .tc-save-help[open]{position:absolute;right:8px;top:5px;width:min(360px,calc(100% - 16px));z-index:25;padding:8px 14px;background:#fff;border:1px solid #dce3eb;border-radius:8px;box-shadow:0 8px 24px #172d4b22}
+#team-canvas-root .tc-save-help p{font-size:13px;line-height:1.5;padding:6px 0;margin:0}
+#team-canvas-root .tc-status{box-sizing:border-box;min-height:34px;max-height:34px;overflow:auto;padding:5px 12px;font-size:13px;line-height:22px;margin:0}
+#team-canvas-root.tc-focus-mode .tc-layout{display:block}
+#team-canvas-root.tc-focus-mode .tc-main{height:100%}
+#team-canvas-root.tc-focus-mode .tc-catalog{max-height:none}
+/* Expanded on narrow screens the Canvas stays one screen tall with a card selected too. shell.css's
+   <=900 px rule for .tc-layout.tc-inspecting (height:auto) outranks its own expanded 100dvh and lets the
+   board's view grow to the whole world (2000+ px), which puts the navigation box far below the fold and
+   turns the minimap off. The inspector row below takes its share from the board's view instead. */
+/* Not at 900 px and below: there the inspector row sits under the board and the frozen companion chat
+   copies the inspector's place (companion_assistant.js), so the grid keeps production's height:auto. */
+@media(max-width:720px){
+ #team-canvas-root .tc-toolbar{gap:4px;padding:4px 6px}
+ #team-canvas-root .tc-toolbar>span,#team-canvas-root .tc-toolbar>strong{display:none}
+ #team-canvas-root .tc-toolbar button{font-size:13px;padding:6px 8px;min-height:32px}
+ #team-canvas-root .tc-catalog{top:48px;bottom:6px}
+ #team-canvas-root .tc-save-help summary{padding:6px;font-size:13px}
+}
+
+body.team-workspace-app[data-tw-screen="canvas"] .navbar{min-height:48px!important;padding:4px 20px!important;margin-bottom:0!important}
+body.team-workspace-app[data-tw-screen="canvas"] .navbar .navbar-brand{min-height:38px!important}
+body.team-workspace-app[data-tw-screen="canvas"] .navbar #navbar_brand_logo_img{height:38px!important;max-height:38px!important}
+body.team-workspace-app[data-tw-screen="canvas"] #team-canvas-root>.tc-intro p{display:none}
+#team-canvas-root .tc-status:focus{max-height:100px;outline:2px solid #315c89;outline-offset:-2px}
+@media print{#team-canvas-root .tc-navigation,#team-canvas-root .tc-catalog,#team-canvas-root .tc-toolbar,#team-canvas-root .tc-status{display:none!important}}
+
+#team-canvas-root .tc-catalog>.tc-library-tabs{padding-right:30px}
+
+/* Keep controls stable and reachable while overlays are open. */
+#team-canvas-root .tc-navigation{z-index:30}
+#team-canvas-root .tc-save-help[open]{position:relative;right:auto;top:auto;width:auto;padding:0;border:0;background:transparent;box-shadow:none}
+#team-canvas-root .tc-help-content{position:absolute;right:0;top:100%;width:340px;max-width:calc(100vw - 40px);max-height:250px;overflow:auto;box-sizing:border-box;padding:12px 16px;background:#fff;border:1px solid #dce3eb;border-radius:8px;box-shadow:0 8px 24px #172d4b22;z-index:40}
+#team-canvas-root .tc-status:hover,#team-canvas-root .tc-status:focus{max-height:100px}
+@media(max-width:720px){#team-canvas-root .tc-catalog{padding-bottom:160px}}
+/* Compact floating plot library, leaving the figure workspace unobstructed. */
+#team-canvas-root .tc-catalog{width:172px;max-height:calc(100% - 64px);padding:10px;overscroll-behavior:contain}
+#team-canvas-root .tc-catalog>p{font-size:13px;line-height:1.35}
+#team-canvas-root .tc-catalog .tc-list{overflow:visible}
+/* Reserve camera space for the open library without changing plot coordinates. */
+#team-canvas-root .tc-layout:not(.tc-library-hidden) .tc-viewport-shell{margin-left:182px}
+/* Keep each figure's controls and plot reachable within its resizable card. */
+#team-canvas-root .tc-node>.tc-content{flex:1 1 0;min-height:0;overflow:auto;scrollbar-gutter:stable}
+#team-canvas-root .tc-node.tc-camera-target{z-index:2}
+#team-canvas-root .tc-node.is-selected{z-index:3}
+/* On phones the library is an overlay, so it does not squeeze the camera. */
+@media(max-width:720px){#team-canvas-root .tc-layout:not(.tc-library-hidden) .tc-viewport-shell{margin-left:0}}
+@media(max-width:720px){#team-canvas-root .tc-catalog{width:160px}}
+
+/* One persistent library handle, centered on the panel edge. */
+#team-canvas-root .tc-layout>.tc-library-edge-toggle{position:absolute;left:182px;top:calc(50% + 27px);transform:translateY(-50%);z-index:35;display:grid;place-items:center;width:28px;height:64px;min-width:28px;min-height:64px;padding:0;border:1px solid #cbd8e3;border-radius:9px;background:#fff;color:#315c89;box-shadow:0 2px 8px #172d4b12;font-size:0;cursor:pointer}
+#team-canvas-root .tc-layout>.tc-library-edge-toggle::before{content:'';width:7px;height:7px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+#team-canvas-root .tc-layout.tc-library-hidden>.tc-library-edge-toggle{left:0}
+#team-canvas-root .tc-layout.tc-library-hidden>.tc-library-edge-toggle::before{transform:rotate(225deg)}
+#team-canvas-root .tc-layout>.tc-library-edge-toggle:hover{background:#eef4f9;border-color:#8aa4bd}
+#team-canvas-root .tc-catalog>.tc-library-tabs{padding-right:0}
+@media(max-width:720px){#team-canvas-root .tc-layout:not(.tc-library-hidden)>.tc-library-edge-toggle{left:170px}}
+@media print{#team-canvas-root .tc-library-edge-toggle{display:none!important}}
+
+/* Infinite dot grid. The dots belong to the viewport, not to the zoomed board, so they
+   cover the whole visible canvas at every zoom and pan. `local` scrolls the pattern with
+   the content (panning needs no script); canvas_viewport.js only sets the tile size when
+   the zoom changes. The origin is the content box, where the board's world (0,0) sits. */
+#team-canvas-root .tc-viewport-shell>.tc-scroll{background-image:radial-gradient(circle,var(--tc-grid-dot,#cdd6e2) 1px,transparent 1px);background-size:var(--tc-grid-size,22px) var(--tc-grid-size,22px);background-repeat:repeat;background-origin:content-box;background-attachment:local}
+body.team-workspace-app #team-canvas-root .tc-viewport-shell>.tc-scroll{--tc-grid-dot:var(--lab-line)}
+#team-canvas-root .tc-board.tc-world-board{background-image:none}
+/* While a restored workspace is being framed, keep the camera out of sight so it appears
+   already at its final zoom and position. canvas_viewport.js lifts this class itself and
+   with a timer; no CSS animation (libreros.css turns animations off for reduced motion). */
+#team-canvas-root .tc-viewport-shell.tc-camera-pending>.tc-scroll{opacity:0!important;pointer-events:none;transition:none!important}
+/* The minimap stays available at every camera scale; <details> preserves the user's choice. */
+.tc-map summary:focus-visible{border-radius:3px}
+/* The navigation box is never hidden and never over a card's header or actions: canvas_viewport.js
+   shows it in a free corner, or, when none is free, in a band it reserves under the board
+   (.tc-nav-inset sets the shell's padding-bottom; the board's view ends above it). */
+#team-canvas-root .tc-viewport-shell.tc-nav-inset{background:#f5f7fa}
+#team-canvas-root .tc-viewport-shell.tc-nav-inset>.tc-scroll{border-bottom:1px solid #dce3eb}
+
+/* World overflow belongs to the scrollport, never to the overlay's containing block. */
+#team-canvas-root .tc-viewport-shell>.tc-scroll{min-width:0;min-height:0}
+#team-canvas-root.ts-shell .tc-viewport-shell>.tc-scroll{flex-basis:0}
+/* ux40 gesture mode (canvas_viewport.js): while wheel, pinch or pan moves the camera, a plot with a current bitmap
+   shows it in place of its live DOM, and card toolbars and resize grips are hidden. Only the transform changes. */
+#team-canvas-root.tc-gesturing .tc-world-board{will-change:transform}
+#team-canvas-root.tc-gesturing .tc-node .js-plotly-plot.tc-has-bitmap{visibility:hidden}
+#team-canvas-root.tc-gesturing .tc-node .js-plotly-plot.tc-has-bitmap::before{content:'';position:absolute;left:0;top:0;z-index:1;width:var(--tc-bitmap-w);height:var(--tc-bitmap-h);background:var(--tc-bitmap) 0 0/100% 100% no-repeat;visibility:visible;pointer-events:none}
+#team-canvas-root.tc-gesturing .tc-card-actions,#team-canvas-root.tc-gesturing .tc-node-resize{visibility:hidden!important}
+/* The docked footer bar is forced visible (card_frame.css): hidden during the gesture all the same. */
+body.ts-shell-app #team-canvas-root.tc-gesturing .tc-node.tc-card-framed>.tc-node-head>.tc-card-actions.tc-card-docked{visibility:hidden!important}
+/* Explicit logical-coordinate resize handle. */
+#team-canvas-root .tc-world-board>.tc-node{resize:none}
+#team-canvas-root .tc-node>.tc-node-resize{position:absolute;right:0;bottom:0;z-index:6;width:16px;height:16px;min-width:0;min-height:0;padding:0;border:0;border-radius:0 0 8px 0;background:linear-gradient(135deg,transparent 50%,#6889a8 51%,#6889a8 58%,transparent 59%,transparent 70%,#6889a8 71%,#6889a8 78%,transparent 79%);cursor:nwse-resize;touch-action:none}

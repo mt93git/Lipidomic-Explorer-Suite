@@ -1,0 +1,20 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const code=fs.readFileSync('www/team/js/canvas.js','utf8');
+const request=code.slice(code.indexOf('  function requestInstance('),code.indexOf('  function setInstanceInputs('));
+const wait=code.slice(code.indexOf('  function waitInstanceInputs('),code.indexOf('  function instanceReady('));
+let now=0,next=0,jobs=new Map(),sent=[],messages=[],ready=false,retryCount=0;
+const el={addEventListener(){}};
+const ctx={instanceRequests:new Map(),figureCount:()=>0,instanceRequestSequence:0,dropStaleHost(){},records:new Map(),illustrations:new Map(),window:{Shiny:{},jQuery:null},Shiny:{setInputValue:(...x)=>sent.push(x),shinyapp:{$inputValues:{}}},document:{documentElement:{classList:{contains:()=>false}},getElementById:id=>id.endsWith('_host')?el:id.endsWith('-adv_sat')?el:null},shinyBusy:false,instanceSupported:()=>true,instanceValues:()=>({}),cellSourceValues:()=>({}),plotTitle:()=> 'test',tell:x=>messages.push(x),restoreStatus:()=>{},parkInstance:id=>sent.push(['park',id]),setInstanceInputs:()=>{retryCount++},console,setTimeout:(fn,ms)=>{let id=++next;jobs.set(id,{fn,t:now+ms});return id},clearTimeout:id=>jobs.delete(id),Date:{now:()=>now},Math,Array,JSON};
+vm.createContext(ctx);vm.runInContext(request+'\n'+wait,ctx);
+function advance(ms){const end=now+ms;while(true){let a=[...jobs].sort((x,y)=>x[1].t-y[1].t)[0];if(!a||a[1].t>end)break;jobs.delete(a[0]);now=a[1].t;a[1].fn()}now=end}
+assert(ctx.requestInstance('logratio_tab-logratioPlot',{inputs:{adv_sat:[]}}));
+const req=[...ctx.instanceRequests.values()][0];
+advance(35000);assert(ctx.instanceRequests.has(req.instance.id),'heavy acknowledgement remains pending after 30s');
+ctx.Shiny.shinyapp.$inputValues[req.instance.id+'-adv_sat']='';
+ctx.waitInstanceInputs(req,()=>{ready=true});advance(1000);assert(ready,'empty selection normalizes and hydrates');
+assert(!messages.some(x=>/did not load/.test(x)));
+ctx.instanceRequests.delete(req.instance.id);advance(1000);
+assert(ctx.requestInstance('logratio_tab-logratioPlot',{inputs:{adv_sat:false}}));const req2=[...ctx.instanceRequests.values()][0];ctx.Shiny.shinyapp.$inputValues[req2.instance.id+'-adv_sat']='';ready=false;ctx.waitInstanceInputs(req2,()=>{ready=true});advance(1000);assert(!ready,'false must not equal empty');ctx.shinyBusy=true;advance(130000);assert(ctx.instanceRequests.has(req2.instance.id),'busy queue is not timed out');ctx.shinyBusy=false;advance(121000);assert(!ctx.instanceRequests.has(req2.instance.id),'stalled request eventually times out');assert(retryCount<=6,'invalid input has bounded retries');assert(sent.some(x=>x[0]==='park'&&x[1]===req2.instance.id));
+assert(ctx.requestInstance('logratio_tab-logratioPlot',{inputs:{adv_sat:false}}));const req3=[...ctx.instanceRequests.values()][0];ctx.shinyBusy=true;advance(300250);assert(!ctx.instanceRequests.has(req3.instance.id),'hard wall cap stops perpetually busy requests');
+ctx.shinyBusy=false;assert(ctx.requestInstance('logratio_tab-logratioPlot',{inputs:{adv_sat:'expected'}}));const req4=[...ctx.instanceRequests.values()][0];ctx.Shiny.shinyapp.$inputValues[req4.instance.id+'-adv_sat']='not-ready';ready=false;ctx.waitInstanceInputs(req4,()=>{ready=true});advance(45000);assert(!ready&&ctx.instanceRequests.has(req4.instance.id),'hydration waits beyond 30s');ctx.Shiny.shinyapp.$inputValues[req4.instance.id+'-adv_sat']='expected';advance(1000);assert(ready,'late input hydration recovers');ctx.instanceRequests.delete(req4.instance.id);
+console.log('PASS simulated delayed heavy instance, optional empties, busy queue and timeout cleanup');

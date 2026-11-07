@@ -1,0 +1,74 @@
+/* Team Review shell: three columns, KPI tiles, legend, one Export menu. */
+body.ts-shell-app .tw-simple-review .tw-review-board{display:grid!important;grid-template-columns:260px minmax(0,1fr) 280px;gap:16px;align-items:start}
+body.ts-shell-app .tw-simple-review .tw-review-board>*{min-width:0;margin:0!important}
+body.ts-shell-app .ts-kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}
+body.ts-shell-app .ts-kpi{border:1px solid #e3e7ec;border-radius:6px;padding:10px 12px;background:#fbfcfd;min-width:0}
+body.ts-shell-app .ts-kpi b{display:block;font:500 20px/1.2 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;color:#141b24}
+body.ts-shell-app .ts-kpi span{display:block;font-size:13px;color:#5a6878;overflow-wrap:anywhere}
+body.ts-shell-app .tw-review-detection .ts-kpi-source{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body.ts-shell-app #guide_review_statistics:not(.ts-details-open) .ts-detail-row{display:none}
+body.ts-shell-app .ts-prep-details{border:0;background:transparent;color:#2d5f8a;padding:4px 0;font-size:13px;cursor:pointer}
+body.ts-shell-app .ts-prep-details:hover{text-decoration:underline}
+body.ts-shell-app .ts-review-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:4px 0 6px;color:#26323e}
+body.ts-shell-app .ts-review-legend span{display:inline-flex;align-items:center;gap:6px}
+body.ts-shell-app .ts-review-legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+body.ts-shell-app .ts-review-legend b{font-weight:500;color:#5a6878;font-variant-numeric:tabular-nums}
+body.ts-shell-app .tw-simple-review .plot-export-bar{position:relative;display:flex;justify-content:flex-end;gap:6px}
+body.ts-shell-app .ts-export-trigger{border:1px solid #e3e7ec;background:#fff;border-radius:6px;height:32px;padding:0 12px;font-size:13px;color:#141b24;cursor:pointer}
+body.ts-shell-app .ts-export-menu{position:absolute;top:36px;right:0;z-index:20;display:grid;min-width:120px;padding:4px;background:#fff;border:1px solid #e3e7ec;border-radius:8px;box-shadow:0 8px 24px #14243118}
+body.ts-shell-app .ts-export-menu[hidden]{display:none}
+body.ts-shell-app .ts-export-menu .plot-export-button{border:0!important;background:transparent!important;text-align:left;padding:7px 10px!important;border-radius:5px;min-height:0!important;font-size:13px}
+body.ts-shell-app .ts-export-menu .plot-export-button:hover{background:#f1f4f7!important}
+body.ts-shell-app .ts-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body.ts-shell-app .ts-review-samples{display:grid;gap:8px;align-content:start}
+body.ts-shell-app .ts-review-samples .ts-label{font:500 13px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;color:#5a6878}
+body.ts-shell-app .ts-review-samples .ts-excluded-label{margin-top:10px}
+body.ts-shell-app .ts-review-samples .ts-muted{font-size:13px;color:#5a6878;margin:0}
+body.ts-shell-app .ts-review-samples .tw-review-popover{position:static!important;inset:auto!important;transform:none!important;width:auto!important;max-width:none!important;box-shadow:none!important;border:1px solid #e3e7ec;border-radius:8px;padding:12px;margin:0;background:#fff}
+body.ts-shell-app .ts-review-samples .tw-review-popover strong{display:block;font:500 13px/1.4 ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+body.ts-shell-app .ts-review-samples .ts-sample-group{display:block;font-size:13px;color:#5a6878;margin-bottom:6px}
+body.ts-shell-app .ts-review-samples .tw-review-popover p{font-size:13px;color:#5a6878}
+body.ts-shell-app .ts-review-samples .tw-review-popover-actions{display:flex;gap:6px;flex-wrap:wrap}
+body.ts-shell-app .ts-review-samples .tw-review-popover-actions .btn{height:30px;padding:0 12px;font-size:13px}
+body.ts-shell-app .ts-review-samples details{font-size:13px}
+body.ts-shell-app .ts-review-samples #qc_pca_tab-guided_qc_decisions>div>p{font-size:13px;color:#5a6878;margin:0 0 6px}
+body.ts-shell-app .ts-review-samples .ts-excluded-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:8px 0;border-bottom:1px solid #eef1f4;font-size:13px}
+body.ts-shell-app .ts-review-samples .ts-excluded-row strong{font:500 13px/1.4 ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+body.ts-shell-app .ts-review-samples .ts-excluded-row button{grid-column:2;grid-row:1/span 2;border:0;background:transparent;color:#2d5f8a;padding:0 4px;min-height:0;height:24px}
+body.ts-shell-app .ts-review-samples .ts-excluded-detail{grid-column:1;font-size:13px;color:#5a6878}
+@media (max-width:1100px){body.ts-shell-app .tw-simple-review .tw-review-board{grid-template-columns:minmax(0,1fr)}}
+body.ts-shell-app .ts-review-samples .ts-review-home{height:236px;border-top:1px solid #eef1f4;margin-top:8px}
+@media (max-width:1100px){body.ts-shell-app .ts-review-samples .ts-review-home{display:none}}
+
+/* ---- Data step: project cards, side card, new matrix ----------------------- */
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] #team-workspace .tw-choice-card{display:none!important}
+body.ts-shell-app .team-library.ts-data-library{max-width:1000px!important;border-color:#e3e7ec!important}
+body.ts-shell-app .ts-data{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start;margin:14px 0}
+body.ts-shell-app .ts-data-list{border:1px solid #e3e7ec;border-radius:8px;background:#fff;overflow:hidden}
+body.ts-shell-app .ts-data-project{display:grid;grid-template-columns:40px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:14px;align-items:center;width:100%;text-align:left;padding:14px 16px;border:0;border-bottom:1px solid #eef1f4;background:#fff;cursor:pointer}
+body.ts-shell-app .ts-data-project:last-child{border-bottom:0}
+body.ts-shell-app .ts-data-project:hover{background:#fbfcfd}
+body.ts-shell-app .ts-data-project.is-selected{background:#eaf1f7}
+body.ts-shell-app .ts-data-thumb{grid-row:1/span 2;width:40px;height:40px;border-radius:6px;border:1px solid #dfe5eb;background:radial-gradient(circle at 30% 60%,#8a8f96 0 3px,transparent 4px),radial-gradient(circle at 55% 35%,#c0392b 0 3px,transparent 4px),radial-gradient(circle at 75% 55%,#4f7cb3 0 3px,transparent 4px) #fff}
+body.ts-shell-app .ts-data-name{font-weight:600;font-size:14px;color:#141b24;overflow-wrap:anywhere}
+body.ts-shell-app .ts-data-meta{grid-column:2;font-size:13px;color:#5a6878;font-variant-numeric:tabular-nums}
+body.ts-shell-app .ts-data-chip{grid-column:3;grid-row:1/span 2;font-size:13px;padding:3px 9px;border-radius:999px;background:#eef1f4;color:#3b4855}
+body.ts-shell-app .ts-data-side{display:grid;gap:10px;border:1px solid #e3e7ec;border-radius:8px;background:#fff;padding:18px}
+body.ts-shell-app .ts-data-side .ts-label{font:500 13px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;color:#5a6878;overflow-wrap:anywhere}
+body.ts-shell-app .ts-data-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px}
+body.ts-shell-app .ts-data-callout{font-size:13px;color:#5a6878;border-left:2px solid #c9d3dc;padding:2px 0 2px 10px;margin:0;overflow-wrap:anywhere}
+body.ts-shell-app .ts-data-checkpoints{display:grid;gap:2px}
+body.ts-shell-app .ts-data-ckpt{position:relative;padding:5px 0 5px 20px;font-size:13px;color:#26323e}
+body.ts-shell-app .ts-data-ckpt::before{content:'';position:absolute;left:2px;top:11px;width:8px;height:8px;border-radius:50%;background:#c3ccd5}
+body.ts-shell-app .ts-data-ckpt.is-latest::before{background:#2d5f8a}
+body.ts-shell-app .ts-data-open{height:36px;border:0;border-radius:6px;background:#2d5f8a;color:#fff;font-weight:600;cursor:pointer}
+body.ts-shell-app .ts-data-open:disabled{opacity:.45;cursor:default}
+body.ts-shell-app .ts-data-all{grid-column:1/-1;font-size:13px}
+body.ts-shell-app .ts-data-all>summary{cursor:pointer;color:#2d5f8a;padding:4px 0}
+body.ts-shell-app .ts-data-new{display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid #e3e7ec;border-radius:8px;background:#fff;padding:16px 18px;margin-top:6px}
+body.ts-shell-app .ts-data-new h5{font-size:13.5px;font-weight:600;margin:0 0 4px}
+body.ts-shell-app .ts-data-new p{font-size:13px;color:#5a6878;margin:0}
+body.ts-shell-app .ts-data-upload{height:34px;padding:0 14px;border:1px solid #e3e7ec;border-radius:6px;background:#fff;white-space:nowrap;cursor:pointer}
+body.ts-shell-app .ts-data-start{display:none;align-items:center;height:36px;padding:0 16px;margin:4px 0 10px;border:0;border-radius:6px;background:#2d5f8a;color:#fff;font-weight:600;white-space:nowrap;cursor:pointer}
+body.ts-shell-app[data-team-authenticated=true][data-tw-screen=data-choice] .ts-data-start{display:inline-flex}
+@media (max-width:900px){body.ts-shell-app .ts-data{grid-template-columns:minmax(0,1fr)}}

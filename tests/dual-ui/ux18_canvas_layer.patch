@@ -1,0 +1,146 @@
+diff --git a/www/team/css/card_figure.css b/www/team/css/card_figure.css
+index b4f13d5..25e43c4 100644
+--- a/www/team/css/card_figure.css
++++ b/www/team/css/card_figure.css
+@@ -25,13 +25,30 @@ body.ts-shell-app .tc-node:hover .tc-card-actions,body.ts-shell-app .tc-node.is-
+ body.ts-shell-app .tc-card-actions>button{border:0!important;background:transparent!important;font-size:13px!important;padding:3px 8px!important;border-radius:4px!important;color:#3b4855!important;min-height:0!important;height:auto!important;margin:0!important;white-space:nowrap}
+ body.ts-shell-app .tc-card-actions>button:hover{background:#eaf1f7!important;color:#2d5f8a!important}
+ @media (prefers-reduced-motion:reduce){body.ts-shell-app .tc-card-actions{transition:none}}
+-/* Compact, movable minimap. */
+-#team-canvas-root.ts-shell .tc-navigation{width:172px!important;padding:6px 8px 8px!important}
+-#team-canvas-root.ts-shell .tc-navigation .tc-map svg{height:72px}
+-#team-canvas-root.ts-shell .tc-map-grip{position:absolute;top:2px;right:4px;width:22px;height:20px;padding:0!important;min-width:0!important;border:0!important;background:transparent!important;color:#7b8794;font-size:13px;line-height:1;cursor:grab;border-radius:4px}
+-#team-canvas-root.ts-shell .tc-map-grip:hover{background:#eef1f4!important;color:#2d5f8a}
+-#team-canvas-root.ts-shell .tc-navigation.is-dragging{box-shadow:0 6px 20px rgba(20,27,36,.18)}
++/* Zoom and minimap: one bottom-left cluster. A slim pill [grip | − | 100% | + | Fit] and, when zoomed out on
++   figures larger than the view, a minimap card above it in the same style. The box itself is transparent. */
++#team-canvas-root.ts-shell .tc-navigation{width:auto!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;display:flex;flex-direction:column;align-items:flex-start;gap:8px;color:#141b24}
++#team-canvas-root.ts-shell .tc-navigation .tc-map{box-sizing:border-box;width:200px;padding:6px 8px 8px;background:#fff;border:1px solid #e3e7ec;border-radius:12px;box-shadow:0 1px 2px #141b240f,0 6px 18px #141b2414}
++#team-canvas-root.ts-shell .tc-navigation .tc-map summary{font:600 12px/18px system-ui,sans-serif;color:#5a6878;margin:0 0 4px;letter-spacing:.01em}
++#team-canvas-root.ts-shell .tc-navigation .tc-map svg{width:100%;height:72px;border:1px solid #e3e7ec;border-radius:7px;background:#f7f9fb}
++#team-canvas-root.ts-shell .tc-navigation .tc-map svg:focus-visible{outline:2px solid #2d5f8a;outline-offset:2px}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls{display:inline-flex;align-items:stretch;gap:0;margin:0;height:32px;box-sizing:border-box;padding:0 2px;background:#fff;border:1px solid #e3e7ec;border-radius:999px;box-shadow:0 1px 2px #141b240f,0 6px 18px #141b2414;white-space:nowrap}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;height:30px;min-height:0;min-width:30px;margin:0;padding:0 8px;border:0;border-radius:999px;background:transparent;color:#141b24;font:500 13px/1 system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button+button:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:1px;background:#e3e7ec}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:hover:not(:disabled){background:#eef3f8;color:#2d5f8a}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:active:not(:disabled){background:#e1eaf3}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:focus-visible{outline:2px solid #2d5f8a;outline-offset:-2px;z-index:1}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button:disabled{opacity:.4;cursor:default}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-icon{display:block;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-reset{min-width:56px!important;padding:0 6px;font-variant-numeric:tabular-nums;color:#141b24}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-fit{padding:0 11px 0 9px;font-weight:600;color:#2d5f8a}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip{position:relative;top:auto;right:auto;width:22px;min-width:22px;padding:0 0 0 4px;color:#5a6878;cursor:grab;touch-action:none}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip svg{display:block;fill:currentColor}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip:hover{background:transparent;color:#2d5f8a}
++#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>.tc-map-grip+button:before{top:6px;bottom:6px}
++#team-canvas-root.ts-shell .tc-navigation.is-dragging .tc-zoom-controls{box-shadow:0 8px 24px #141b242e}
+ #team-canvas-root.ts-shell .tc-navigation.is-dragging .tc-map-grip{cursor:grabbing}
++@media (prefers-reduced-motion:reduce){#team-canvas-root.ts-shell .tc-navigation .tc-zoom-controls>button{transition:none}}
+ /* Compose view: a visible way back, an explained empty page, and the companion kept below menus. */
+ #tc-preview-panel .tc-preview-back{display:inline-flex;align-items:center;height:30px;margin:0 12px 8px 0;padding:0 10px;border:1px solid #cbd7e3;border-radius:6px;background:#fff;color:#2d5f8a;font-weight:600;cursor:pointer}
+ #tc-preview-panel .tc-preview-empty{display:grid;justify-items:start;gap:8px;max-width:520px;margin:48px auto;padding:24px 28px;background:#fff;border:1px solid #e3e7ec;border-radius:8px}
+diff --git a/www/team/css/shell.css b/www/team/css/shell.css
+index 7724f7a..caa0958 100644
+--- a/www/team/css/shell.css
++++ b/www/team/css/shell.css
+@@ -82,7 +82,7 @@ body.ts-shell-app[data-tw-screen=canvas] #team-workspace{margin:0;gap:0}
+ #team-canvas-root.ts-shell .ts-menu .tc-save-help .tc-help-content{max-width:290px}
+ 
+ /* Minimap and zoom: bottom-left inside the canvas */
+-#team-canvas-root.ts-shell .tc-navigation{position:absolute!important;left:12px!important;right:auto!important;bottom:12px!important;top:auto!important;z-index:25;width:196px;box-sizing:border-box;margin:0!important}
++#team-canvas-root.ts-shell .tc-navigation{position:absolute!important;left:12px!important;right:auto!important;bottom:12px!important;top:auto!important;z-index:25;width:auto;box-sizing:border-box;margin:0!important}
+ #team-canvas-root.ts-shell .tc-status{margin:0;padding:6px 14px;font-size:13px;border-top:1px solid var(--ts-line);background:#fff}
+ 
+ /* Fixed inspector column with the companion's reserved home at its foot */
+@@ -183,3 +183,13 @@ body.ts-shell-app .ts-step[data-tw-queued]::after{content:attr(title);position:a
+ #team-canvas-root.ts-shell .tc-toolbar>.ts-mode-hint.ts-mode-hint.ts-mode-hint{display:block!important;flex-basis:100%;margin:0;padding:1px 8px 2px;text-align:center;font:13px/1.3 'Nunito Sans',system-ui,sans-serif;color:#66737f}
+ #team-canvas-root.ts-shell.ts-tools-compact .tc-toolbar>.ts-mode-hint.ts-mode-hint.ts-mode-hint{display:none!important}
+ .ts-sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
++/* Canvas only: the companion is small (80 px; the same art, colours and motion). context_help.js still places
++   it, at the foot of its reserved home in the right-hand column (bottom-right of the page), clear of the canvas,
++   its zoom controls and minimap; its bubble opens left/up and is dropped rather than shown over a control. */
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini){width:80px;height:147px}
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-launcher,
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-launcher .help-companion{width:80px;height:80px}
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-help-label{top:76px;font-size:11px;box-sizing:border-box;left:50%;transform:translateX(-50%);max-width:100%;overflow:hidden;text-overflow:ellipsis}
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-actions{padding-top:20px;gap:2px}
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-actions button{width:24px;min-width:24px;height:28px}
++body.ts-shell-app.team-workspace-app[data-tw-screen=canvas] #lipidomic-companion:not(.is-mini) .companion-actions .assistant-dock-chat{min-width:0;padding:0 3px;font-size:10px}
+diff --git a/www/team/js/canvas_viewport.js b/www/team/js/canvas_viewport.js
+index 68ac2f6..112fd7c 100644
+--- a/www/team/js/canvas_viewport.js
++++ b/www/team/js/canvas_viewport.js
+@@ -13,7 +13,7 @@
+     board.before(spacer); spacer.appendChild(board); board.classList.add('tc-world-board');
+     var shell=document.createElement('div');shell.className='tc-viewport-shell';scroll.before(shell);shell.appendChild(scroll);
+     var nav = document.createElement('div'); nav.className = 'tc-navigation'; nav.setAttribute('aria-label','Canvas navigation');
+-    nav.innerHTML = '<details class="tc-map" open><summary>Minimap</summary><svg tabindex="0" role="img" aria-label="Canvas minimap. Click or drag to navigate; use arrow keys to pan." preserveAspectRatio="none"><g class="tc-map-nodes"></g><rect class="tc-map-window"/></svg></details><div class="tc-zoom-controls" role="group" aria-label="Canvas zoom"><button type="button" class="tc-zoom-out" aria-label="Zoom out">−</button><button type="button" class="tc-zoom-reset" aria-label="Reset canvas zoom to 100%" title="Reset to 100%">100%</button><button type="button" class="tc-zoom-in" aria-label="Zoom in">+</button><button type="button" class="tc-zoom-fit">Fit all</button></div>';
++    nav.innerHTML = '<details class="tc-map" open><summary>Minimap</summary><svg tabindex="0" role="img" aria-label="Canvas minimap. Click or drag to navigate; use arrow keys to pan." preserveAspectRatio="none"><g class="tc-map-nodes"></g><rect class="tc-map-window"/></svg></details><div class="tc-zoom-controls" role="group" aria-label="Canvas zoom"><button type="button" class="tc-zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg class="tc-zoom-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M3.5 8h9"/></svg></button><button type="button" class="tc-zoom-reset" aria-label="Reset canvas zoom to 100%" title="Reset to 100%">100%</button><button type="button" class="tc-zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg class="tc-zoom-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M3.5 8h9M8 3.5v9"/></svg></button><button type="button" class="tc-zoom-fit" aria-label="Fit all" title="Fit all (Shift+1)"><svg class="tc-zoom-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><span class="tc-zoom-fit-label">Fit</span></button></div>';
+     shell.appendChild(nav);
+     // Collapsed or open, the minimap keeps the person's last choice in this browser.
+     var MAP_OPEN_KEY='team.canvas.minimap.open',mapDetails=nav.querySelector('.tc-map');
+@@ -22,10 +22,14 @@
+     // The minimap can be moved anywhere inside the canvas; its place is remembered
+     // per browser and pulled back inside when the canvas gets smaller.
+     var grip=document.createElement('button');grip.type='button';grip.className='tc-map-grip';grip.textContent='⠿';
+-    grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the minimap';nav.appendChild(grip);
++    grip.setAttribute('aria-label','Move minimap (drag, or use arrow keys)');grip.title='Drag to move the zoom controls and minimap';
++    // Its own segment at the left edge of the zoom pill: it never sits over a button.
++    grip.textContent='';grip.innerHTML='<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="4" r="1.2"/><circle cx="7" cy="4" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="7" cy="8" r="1.2"/><circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/></svg>';
++    var zoomRow=nav.querySelector('.tc-zoom-controls');zoomRow.insertBefore(grip,zoomRow.firstChild);
+     // `home` is where the person put the box ([x,y] in shell pixels; null = its CSS corner). It is
+     // shown there unless that would cover a card (placeNav() below), and only `home` is ever saved.
+-    var MAP_KEY='team.canvas.minimap.position',home=null;
++    // v2: the redesigned zoom pill starts docked bottom-left; places saved for the old, taller box are not reused.
++    var MAP_KEY='team.canvas.minimap.position.v2',home=null;
+     function setPos(x,y){[['left',x+'px'],['top',y+'px'],['bottom','auto'],['right','auto']].forEach(function(p){if(nav.style.getPropertyValue(p[0])!==p[1]||nav.style.getPropertyPriority(p[0])!=='important')nav.style.setProperty(p[0],p[1],'important');});}
+     function clearPos(){['left','top','bottom','right'].forEach(function(p){if(nav.style.getPropertyValue(p))nav.style.removeProperty(p);});}
+     function placeMap(x,y,save){
+@@ -212,6 +216,9 @@
+         popups(bar).forEach(function(p){out.push(p);});
+       });
+       root.querySelectorAll('.tc-toolbar,.tc-layout>.tc-library-edge-toggle').forEach(function(c){if(c.offsetParent)out.push(c.getBoundingClientRect());});
++      // Never under the companion (it floats above the page): a place it covers is not free.
++      var dock=document.getElementById('lipidomic-companion');
++      if(dock&&!dock.hidden&&dock.getClientRects().length&&getComputedStyle(dock).visibility!=='hidden'){var d=dock.getBoundingClientRect();if(d.width&&d.height)out.push(d);}
+       return out;
+     }
+     function placeNav(){
+@@ -372,6 +379,17 @@
+     var fitButton=nav.querySelector('.tc-zoom-fit');fitButton.disabled=!zoomSupported;
+     if(!zoomSupported)fitButton.title='Zoom is unavailable in this browser. Scroll to pan.';
+     nav.querySelector('.tc-zoom-fit').addEventListener('click',function(){fitAll();});
++    // Shortcuts: + / − zoom, Shift+1 fits all. Only while this canvas is on screen, never while typing
++    // or inside a dialog, and never with Ctrl/Cmd/Alt (browser zoom keeps its keys).
++    document.addEventListener('keydown',function(e){
++      if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||!zoomSupported||!scroll.clientWidth||!scroll.getClientRects().length)return;
++      var t=e.target;if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],.modal,[role="dialog"]'))return;
++      if(document.querySelector('.modal.show,.modal.in'))return;
++      var r=scroll.getBoundingClientRect();if(r.bottom<=0||r.top>=innerHeight)return;
++      if(e.key==='+'||e.key==='='){e.preventDefault();zoom(scale*1.25);}
++      else if(e.key==='-'||e.key==='−'){e.preventDefault();zoom(scale/1.25);}
++      else if(e.shiftKey&&e.code==='Digit1'){e.preventDefault();fitAll();}
++    });
+     // Height covered at the top of the viewport by the floating toolbar plus room for its notices.
+     function toolbarReserve(){var bar=root.querySelector('.tc-toolbar');return bar&&getComputedStyle(bar).position==='absolute'?bar.offsetTop+bar.offsetHeight+48:16;}
+     function nodeRects(){return Array.from(board.querySelectorAll('.tc-node:not(.tc-tab-hidden)')).map(function(n){return {x:n.offsetLeft,y:n.offsetTop,width:n.offsetWidth,height:n.offsetHeight};});}
+diff --git a/www/team/js/shell.js b/www/team/js/shell.js
+index 2ac3e47..8ebfed4 100644
+--- a/www/team/js/shell.js
++++ b/www/team/js/shell.js
+@@ -359,6 +359,15 @@
+     var x = document.createElement('button'); x.type = 'button'; x.className = 'btn-close btn-close-white ts-modal-close'; x.setAttribute('data-bs-dismiss', 'modal'); x.setAttribute('data-dismiss', 'modal'); x.setAttribute('aria-label', 'Close');
+     header.appendChild(x);
+   });
++  // Canvas: the companion does not open its automatic screen tip over the figures (a tip asked for from
++  // its menu still shows). Uses the assistant's public nudge gate; the companion's own code is unchanged.
++  (function quietCanvasNudges(tries) {
++    var a = window.LipidomicAssistant;
++    if (!a || typeof a.isNudgeBlocked !== 'function') { if (tries < 240) setTimeout(function () { quietCanvasNudges(tries + 1); }, 250); return; }
++    if (a.isNudgeBlocked.teamCanvasQuiet) return;
++    var base = a.isNudgeBlocked, gate = function () { return document.body.dataset.twScreen === 'canvas' || base.apply(this, arguments); };
++    gate.teamCanvasQuiet = true; a.isNudgeBlocked = gate;
++  })(0);
+   window.TeamShell = { mounted: function () { var r = document.getElementById('team-canvas-root'); return !!(r && r.dataset.tsShell === 'true'); } };
+   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+ })();

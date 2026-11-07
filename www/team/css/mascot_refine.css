@@ -1,0 +1,13 @@
+/* Companion art polish (presentation only): same character, states and controls.
+   Crisper edge on the dot-grid canvas, one consistent soft shadow, and a speech
+   bubble that matches the workspace cards. Revert this file to restore the
+   previous look. */
+body.ts-shell-app #lipidomic-companion .companion-launcher svg,
+body.ts-shell-app .assistant-character svg{filter:drop-shadow(0 0 .6px #fff) drop-shadow(0 0 .6px #fff) drop-shadow(0 4px 8px #16223014)}
+body.ts-shell-app #lipidomic-companion .companion-help-label{background:#fff;border:1px solid #e3e7ec;color:#26323e;border-radius:999px;box-shadow:0 1px 2px #141b240f;font-weight:500}
+body.ts-shell-app #lipidomic-companion .companion-actions button{border-color:#e3e7ec;box-shadow:0 1px 2px #141b240a}
+body.ts-shell-app .companion-speech{background:#fff;border-color:#dfe4ea;border-radius:10px;box-shadow:0 8px 24px #14243114;color:#141b24}
+body.ts-shell-app .companion-speech:after{background:#fff}
+body.ts-shell-app .companion-speech[data-tail=right]:after{border-top-color:#dfe4ea;border-right-color:#dfe4ea}
+body.ts-shell-app .companion-speech[data-tail=left]:after{border-bottom-color:#dfe4ea;border-left-color:#dfe4ea}
+body.ts-shell-app .assistant-panel-head{background:#f6f8fa}

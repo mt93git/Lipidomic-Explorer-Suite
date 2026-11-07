@@ -1,0 +1,512 @@
+# R/ui.R
+# Main UI structure.
+
+# Load version dynamically from DESCRIPTION file
+app_version <- tryCatch({
+  desc <- read.dcf("DESCRIPTION")
+  if ("Version" %in% colnames(desc)) {
+    desc[1, "Version"]
+  } else {
+    "10.3.3"
+  }
+}, error = function(e) {
+  "10.3.3"
+})
+
+# Define the overall theme for the application.
+app_theme <- bslib::bs_theme(
+  version = 5,
+  bg = "#FFFFFF",
+  fg = "#1F1F1F",
+  primary = "#2D5F8A",
+  secondary = "#57819F",
+  # Plain family names: the Google Fonts stylesheet is linked once in the head below.
+  # The bslib Google-font dependency was re-sent with rendered UI and logged font.css 404s.
+  base_font = c("Nunito Sans", "sans-serif"),
+  heading_font = c("Cormorant Garamond", "serif")
+) %>% bslib::bs_add_rules(".sidebar .card-header { font-weight: bold; }")
+
+# Main UI definition using page_navbar for a multi-tab layout.
+ui <- page_navbar(
+  id = "main_navbar",
+  selected = "Experiment",
+  title = div(class = "guide-brand-lockup",
+    tags$img(
+      id = "navbar_brand_logo_img",
+      src = "team/libreros-lab-logo.webp",
+      alt = "Libreros Lab",
+      class = "navbar-brand-logo-full"
+    ),
+    tags$span("LIPIDOMIC EXPLORER", class = "guide-app-name")
+  ),
+  window_title = "Libreros Lab · Lipidomic Explorer",
+  theme = app_theme,
+  header = tagList(
+    if (team_workspace_enabled()) team_workspace_ui(),
+    if (team_library_enabled()) team_library_ui(),
+    tags$head(
+      tags$link(rel = "icon", type = "image/png", href = "team/img/favicon.png"),
+      tags$link(rel = "shortcut icon", href = "team/img/favicon.png"),
+      includeCSS("www/team/css/custom.css"),
+      includeCSS("www/team/css/libreros.css"),
+      includeCSS("www/team/css/guided.css"),
+      includeCSS("www/team/css/context_help.css"),
+      includeCSS("www/team/css/companion_assistant.css"),
+      includeCSS("www/team/css/scientific_insight.css"),
+      includeCSS("www/team/css/dashboard.css"),
+      includeCSS("www/team/css/dashboard_selection.css"),
+      includeScript("www/team/js/dashboard_selection.js"),
+      # Restores the Signal distribution arrays the server sends compactly (R/results_dashboard.R).
+      includeScript("www/team/js/plot_payload.js"),
+      includeScript("www/team/js/dashboard_significance.js"),
+      includeCSS("www/team/css/palette_editor.css"),
+      includeCSS("www/team/css/cell_show.css"),
+      tags$script(src="team/vendor/jspdf.umd.min.js"),
+      tags$script(src="team/vendor/svg2pdf.umd.min.js"),
+      includeScript("www/team/js/violin_display.js"),
+      includeScript("www/team/js/plot_exports.js"),
+      includeScript("www/team/js/palette_editor.js"),
+      includeCSS("www/team/css/palette_swatches.css"), includeScript("www/team/js/palette_swatches.js"),
+      includeScript("www/team/js/cell_viewer.js"),
+      includeScript("www/team/js/app.js"),
+      includeScript("www/team/js/restore_timing.js"),
+      includeScript("www/team/js/input_batch.js"),
+      # W16c: Max's hidden tool tabs leave Shiny's page-wide conditional re-check while Canvas or Review shows.
+      includeCSS("www/team/css/conditional_park.css"), includeScript("www/team/js/conditional_park.js"), includeScript("www/team/js/slider_idle.js"),
+      includeScript("www/team/js/tour_guide.js"),
+      includeScript("www/team/js/guided.js"),
+      includeScript("www/team/js/help_content.js"),
+      includeScript("www/team/js/companion_art.js"),
+      includeScript("www/team/js/context_help.js"),
+      includeScript("www/team/js/companion_assistant.js"),
+      includeScript("www/team/js/scientific_insight.js"),
+      # Keeps the class stand-ins for broad :has() conditions in the Team stylesheets in sync.
+      includeScript("www/team/js/has_classes.js"),
+      # Page fonts, <html lang>/h1, AA text contrast, Plot controls in place of the lone sidebar chevron, guided PCA groups.
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Nunito+Sans&family=Cormorant+Garamond&display=swap"),
+      includeCSS("www/team/css/qw_contrast.css"), includeCSS("www/team/css/qw_a11y.css"), includeCSS("www/team/css/qw_layers.css"), includeScript("www/team/js/qw_a11y.js"), includeScript("www/team/js/qw_plot_controls.js"),
+      if (!team_workspace_enabled()) includeScript("www/team/js/qw_pca_groups.js"),
+      if (!team_workspace_enabled()) tagList(includeCSS("www/team/css/pending_changes_bar.css"), includeScript("www/team/js/pending_changes_bar.js")),
+      if (!team_workspace_enabled()) tagList(includeCSS("www/team/css/experiment_cards.css"), includeScript("www/team/js/experiment_cards.js")),
+      if (team_library_enabled()) tagList(includeCSS("www/team/css/login_validation.css"), includeScript("www/team/js/login_validation.js")),
+      # One Canvas header (tabs + grouped toolbar + band status slot). Its own line so the asset
+      # line below stays untouched; its selectors outrank shell.css, so the order does not matter.
+      if (team_workspace_enabled()) includeCSS("www/team/css/canvas_header.css"),
+      # RC4: clean card (title, plot, footer with Edit / Duplicate / More) and the inspector's Export
+      # tab and status line. Own line; selectors outrank card_figure.css, so the order does not matter.
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/card_frame.css"), includeScript("www/team/js/canvas_inspector_export.js"), includeScript("www/team/js/card_frame.js")),
+      # Hideable inspector column on the Canvas (chevron at its edge, shortcut I). Own line; it waits for shell.js.
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/inspector_toggle.css"), includeScript("www/team/js/inspector_toggle.js")),
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/canvas_feedback.css"), includeScript("www/team/js/canvas_feedback.js")),
+      # One header in the analysis tools opened from Team (both Team modes): the Classic sub-tabs,
+      # scope bar, Tab info and quick-access rows are offered by one bar inside the tool card.
+      tagList(includeCSS("www/team/css/tool_header.css"), includeScript("www/team/js/tool_header.js")),
+      # Grouped "All analysis tools" drawer for the guided step bar and the Canvas.
+      includeCSS("www/team/css/tools_drawer.css"), includeScript("www/team/js/tools_drawer.js"), team_tools_drawer_catalog(),
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/companion_guidance.css"), includeScript("www/team/js/companion_guidance_data.js"), includeScript("www/team/js/companion_guidance.js")),
+      if (team_workspace_enabled()) tagList(tags$script(HTML("window.LIPIDOMIC_TEAM_WORKSPACE=true;document.documentElement.classList.add('ts-gate');setTimeout(function(){document.documentElement.classList.remove('ts-gate')},4000);")),includeCSS("www/team/css/workspace.css"), includeCSS("www/team/css/canvas.css"),includeCSS("www/team/css/workspace_minimal.css"),includeCSS("www/team/css/canvas_catalog.css"),includeCSS("www/team/css/canvas_preview.css"),includeCSS("www/team/css/canvas_viewport.css"),includeCSS("www/team/css/plot_editor.css"),includeCSS("www/team/css/illustrations.css"),includeCSS("www/team/css/foreground.css"),includeCSS("www/team/css/busy_presentation.css"),includeScript("www/team/js/foreground.js"),includeScript("www/team/js/busy_phrases.js"),includeScript("www/team/js/busy_presentation.js"),includeScript("www/team/js/status_hold.js"),includeScript("www/team/js/workspace.js"),includeScript("www/team/js/canvas_catalog.js"),includeScript("www/team/js/canvas_assets.js"),includeScript("www/team/js/illustrations.js"),includeScript("www/team/js/plot_editor.js"),includeCSS("www/team/css/group_comparison.css"),includeScript("www/team/js/group_comparison.js"),includeScript("www/team/js/canvas_statistics.js"),includeScript("www/team/js/canvas_viewport.js"),includeScript("www/team/js/canvas.js"),includeCSS("www/team/css/canvas_inspector.css"),includeScript("www/team/js/canvas_inspector.js"),includeScript("www/team/js/illustration_library.js"),includeScript("www/team/js/canvas_preview.js"),includeCSS("www/team/css/figure_toolbar.css"),includeScript("www/team/js/figure_toolbar.js"),includeScript("www/team/js/canvas_checkpoint.js"),includeScript("www/team/js/autosave.js"),includeCSS("www/team/css/autosave.css"),includeScript("www/team/js/companion_workspace.js"),includeCSS("www/team/css/shell.css"),includeCSS("www/team/css/status_slot.css"),includeCSS("www/team/css/mascot_refine.css"),includeCSS("www/team/css/review_shell.css"),includeCSS("www/team/css/step_backdrop.css"),includeScript("www/team/js/data_shell.js"),includeScript("www/team/js/review_shell.js"),includeCSS("www/team/css/replace_metadata.css"),includeScript("www/team/js/replace_metadata.js"),includeCSS("www/team/css/group_editor.css"),includeScript("www/team/js/group_editor.js"),includeScript("www/team/js/shell.js"),includeCSS("www/team/css/card_figure.css"),includeScript("www/team/js/card_figure.js"),includeCSS("www/team/css/card_status.css"),includeCSS("www/team/css/canvas_band_status.css"),includeScript("www/team/js/canvas_band_status.js"),includeScript("www/team/js/card_status.js"),includeCSS("www/team/css/figure_column.css"),includeScript("www/team/js/figure_column.js"),includeCSS("www/team/css/pointer_mode.css"),includeCSS("www/team/css/card_tip_passthrough.css"),includeScript("www/team/js/pointer_mode.js")),
+      # Group comparison controls as Team pills (lipid-class chips, conditions); a cut label gets a tooltip. Own line, after group_comparison.css and shell.css.
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/gc_chips.css"), includeScript("www/team/js/gc_chips.js")),
+      if (team_workspace_enabled()) tagList(includeCSS("www/team/css/stale_reload.css"), includeScript("www/team/js/stale_reload.js")),
+      # RC5: ARIA names for the step bars and the Canvas cards (attributes only).
+      includeScript("www/team/js/team_aria.js"),
+      # One Team look for every control (buttons, fields, checkboxes, file inputs, sliders); Team shell only. Own line.
+      includeCSS("www/team/css/controls_layer.css"),
+      # Fail closed: this gate runs before every upload interceptor below and refuses .xlsx/.xls on the abundance input whenever the sheet picker is not running.
+      tags$script(HTML(team_sheet_gate_js)),
+      # SCIEX results exports: converted to a wide .csv by Team before the shared upload sees them (before upload_formats.js, if present).
+      includeCSS("www/team/css/sciex_import.css"), includeScript("www/team/js/sciex_import.js"),
+      # .txt/.tsv abundance files: converted to .csv by Team before the shared upload sees them.
+      includeCSS("www/team/css/upload_formats.css"), includeScript("www/team/js/upload_formats.js"),
+      # Excel workbooks on the abundance upload: size cap and sheet choice before the shared upload sees them. After sciex_import.js and upload_formats.js on purpose: its listener runs last.
+      includeCSS("www/team/css/sheet_picker.css"), includeScript("www/team/js/sheet_picker.js"),
+      # Phones (<= 600 px): compact step bars and scrollable tables with a fixed Sample column. After shell.css on purpose.
+      includeCSS("www/team/css/mobile_steps.css"), includeScript("www/team/js/mobile_steps.js"), includeCSS("www/team/css/mobile_tables.css"), includeScript("www/team/js/mobile_tables.js")
+    ),
+    if (team_workspace_enabled()) tagList(Filter(function(tag) !identical(tag$attribs$id, "guide-navigation"), guide_header())) else guide_header(),
+    team_pending_changes_bar_ui(),
+    team_sciex_ui(),
+    team_upload_formats_ui(),
+    team_sheet_picker_ui(),
+    if (team_workspace_enabled()) team_canvas_ui(),
+    tags$div(
+      id = "targeted_lipids_top_dock",
+      class = "targeted-lipids-top-dock d-flex justify-content-end align-items-center mb-2 pe-3",
+      uiOutput("data_hub-appliedRunStrip"),
+      targeted_lipids_hub_ui("targeted_lipids_hub")
+    )
+  ),
+  
+ # The sidebar will contain all user controls. It is defined by the shared_data module.
+  sidebar = sidebar(
+    id = "main_sidebar",
+    width = 320,
+    shared_data_ui("data_hub") # UI from the central data module.
+  ),
+  
+  # ==============================================================================
+  # --- Data & Overview ---
+  # ==============================================================================
+  nav_panel("Experiment", guide_experiment_ui(), fillable=FALSE),
+  nav_panel("Design", guide_design_ui(), fillable=FALSE),
+  nav_panel("Preparation", guide_quality_ui(), fillable=FALSE),
+  nav_panel("Question", guide_question_ui(), fillable=FALSE),
+  nav_panel("Results", guide_results_ui(), fillable=FALSE),
+  nav_panel("3D Show", cell_show_ui(), fillable=FALSE),
+  nav_panel("Share", if(team_workspace_enabled()) team_project_share_ui() else guide_share_ui(), fillable=FALSE),
+  # Opened from the workspace's Analysis tools or Save & export (step 7 is the workspace's Save & export page).
+  nav_panel("Publication Export Studio", div(class="guide-page",div(class="guide-heading",h2("Publication Export Studio"),p("Prepare figures and reproducibility bundles. Review the exported file before sharing.")),guide_link("← Back to Save & export",step=7),export_studio_ui("export_studio")),fillable=FALSE),
+  nav_menu(
+    title = "Data & Overview",
+    icon = icon("database"),
+    nav_panel("App Info", icon = icon("info-circle"),
+      card(
+        class = "mb-3 border-0 bg-light-subtle",
+        card_body(
+          div(
+            class = "d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2",
+            div(
+              class = "d-flex align-items-center gap-3",
+              tags$img(src = "img/app_logo.jpg", alt = "App Logo", style = "width: 72px; height: 72px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; background: white; object-fit: contain;"),
+              div(
+                tags$h3("Global Lipidomic Explorer", class = "text-primary fw-bold mb-1"),
+                tags$span(class = "badge-version-chip", paste0("Version ", app_version))
+              )
+            ),
+            actionButton(
+              "btn_reopen_welcome_guide",
+              " Welcome Guide & Tour",
+              icon = icon("compass"),
+              class = "btn btn-outline-primary btn-sm fw-semibold shadow-sm",
+              onclick = "if(window.showWelcomeModal) { window.showWelcomeModal(); } else { Shiny.setInputValue('trigger_show_welcome_modal', Math.random()); }"
+            )
+          ),
+          tags$p(class = "text-muted", 
+                "An interactive environment designed for clinical and laboratory lipidomics profiling. The platform automates structural parsing, quality control diagnostics, differential comparisons, metabolic mapping, and session sharing directly from raw abundance matrices."),
+         
+         hr(class = "my-4"),
+         
+         navset_card_tab(
+           nav_panel("1. Features & Capabilities",
+             card_body(
+               tags$ul(
+                 style = "padding-left: 20px; line-height: 1.6;",
+                 tags$li(strong("Data Ingestion & Annotation:"), " Dynamic parser with automated lipid chain structures identification."),
+                 tags$li(strong("Quality Check:"), " Distribution boxplots, PCA score & loadings, correlation matrices, and technical outlier treatment."),
+                 tags$li(strong("Precision Filtering:"), " Technical replicate BQC Coefficient of Variation (CoV) analysis to globally exclude imprecise species."),
+                 tags$li(strong("Differential Abundance:"), " Statistical methods depend on the selected tool, design, and settings. Review each test and its assumptions before interpretation."),
+                 tags$li(strong("Composition & Structural shifts:"), " Stacked barcharts, chain-length/unsaturation dotplots, and species violin distributions."),
+                 tags$li(strong("Carbon & Double Bond Grids:"), " Single-class and multi-class heatmaps mapped across structural coordinates."),
+                 tags$li(strong("Lipid Set Enrichment (LSEA):"), " Group-wise pathway-level set enrichment testing (NES and P-values)."),
+                 tags$li(strong("Metabolic Pathways:"), " Biosynthetic class biosynthesis networks overlaid with abundance and saturation shifts."),
+                 tags$li(strong("Cellular lipid proxies:"), " Exploratory composition-derived indices do not directly measure organelle function, ferroptosis, or macrophage state."),
+                 tags$li(strong("Longitudinal Trajectories:"), " Multi-timepoint trajectory trend profiling across patients or experimental cohorts."),
+                 tags$li(strong("Session Persistence:"), " Compress and export complete active session packages to share exact configurations with collaborators.")
+               )
+             )
+           ),
+           nav_panel("2. Quick Start User Guide",
+             card_body(
+               h5(icon("compass"), " Quick Start Workflow Guide", class = "fw-bold text-secondary mb-3"),
+               tags$ol(
+                 style = "padding-left: 20px; line-height: 1.6;",
+                 tags$li(strong("Upload:"), " Open Experiment to upload your abundance spreadsheet (.xlsx or .csv), then confirm sample mapping in Design."),
+                 tags$li(strong("Map:"), " Map group classifications and select your Comparison group vs. Baseline Reference group."),
+                 tags$li(strong("Run:"), " Click 'Run Analysis' to initialize the data processing, normalization, and structural parsing pipeline."),
+                 tags$li(strong("Explore:"), " Choose My question, then use Results to open the relevant analysis tools."),
+                 tags$li(strong("Save:"), " Click 'Export Session' in Share to download a package containing your complete active session state.")
+               )
+             )
+           )
+         )
+        )
+      )
+    ),
+    nav_panel("Lexicon", icon = icon("book"),
+    tagList(
+      card(
+        class = "mb-3 border-0 bg-light-subtle",
+        card_body(
+          tags$h5("Lexicon & Structural Taxonomy", class="text-primary fw-bold mb-1"),
+          tags$p(class="text-muted small mb-0", 
+                 "Authoritative reference guide for the 4-tier lipidomic nomenclature, chemical definitions, and metadata classification standards:"),
+          tags$ul(class="text-muted small mb-0", style="padding-left: 20px; margin-top: 5px;",
+            tags$li(tags$strong("Tier 1 - Lipid Category:"), " 5 overarching biochemical categories: Fatty Acyl, Glycerolipid, Glycerophospholipid, Sphingolipid, and Sterol Lipid."),
+            tags$li(tags$strong("Tier 2 - Lipid Main Class:"), " 21 primary parent classes defining molecular headgroups and fundamental metabolic pathways."),
+            tags$li(tags$strong("Tier 3 - Lipid Sub Class:"), " Alkyl ether (O-), plasmalogen vinyl-ether (P-), dihydro (d-), and split sub-class variants (Ether PE, Plasmalogen PE)."),
+            tags$li(tags$strong("Tier 4 - Structural Modification State:"), " Backbone saturation and processing status (dihydro, mature, standard), alongside saturation and carbon chain filters.")
+          )
+        )
+      ),
+      layout_columns(
+        col_widths = breakpoints(sm = 12, md = 12, lg = c(8, 4), xl = c(8, 4)),
+        card(
+          class = "shadow-sm border-0 mb-3",
+          card_header(
+            class = "d-flex justify-content-between align-items-center py-2 px-3 bg-light-subtle",
+            tags$div(
+              class = "d-flex align-items-center gap-2",
+              icon("layer-group", class = "text-primary"),
+              tags$h5("Lipid Category & Main Class Architecture", style = "margin-bottom: 0; font-weight: 700; color: #1e40af; font-size: 1.05rem;")
+            ),
+            tags$span(class = "badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1",
+                      style = "font-size: 0.8125rem; font-weight: 600;",
+                      "5 Categories / 21 Main Classes")
+          ),
+          card_body(
+            class = "p-3",
+            tags$div(
+              class = "lexicon-search-wrapper",
+              tags$span(class = "lexicon-search-icon", icon("magnifying-glass")),
+              tags$input(id = "lexicon-filter-input", type = "text", class = "form-control lexicon-search-input",
+                         placeholder = "Quick filter abbreviations or definitions (e.g. PC, Cer, Ether, mature)...",
+                         autocomplete = "off")
+            ),
+            tags$div(
+              class = "lexicon-category-grid",
+              # Column 1: Glycerophospholipids (GP)
+              tags$div(
+                class = "lexicon-subcard subcard-gp",
+                tags$div(
+                  class = "lexicon-subcard-header",
+                  tags$span("GP: Glycerophospholipids"),
+                  tags$span(class = "badge badge-gp", "13 Main Classes")
+                ),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "CL"), tags$span(class = "lexicon-desc", "Cardiolipin")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "LPA"), tags$span(class = "lexicon-desc", "Lysophosphatidic Acid")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "LPC"), tags$span(class = "lexicon-desc", "Lysophosphatidylcholine")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "LPE"), tags$span(class = "lexicon-desc", "Lysophosphatidylethanolamine")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "LPG"), tags$span(class = "lexicon-desc", "Lysophosphatidylglycerol")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "LPI"), tags$span(class = "lexicon-desc", "Lysophosphatidylinositol")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "LPS"), tags$span(class = "lexicon-desc", "Lysophosphatidylserine")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "PA"), tags$span(class = "lexicon-desc", "Phosphatidic Acid")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "PC"), tags$span(class = "lexicon-desc", "Phosphatidylcholine")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "PE"), tags$span(class = "lexicon-desc", "Phosphatidylethanolamine")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "PG"), tags$span(class = "lexicon-desc", "Phosphatidylglycerol")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "PI"), tags$span(class = "lexicon-desc", "Phosphatidylinositol")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gp", "PS"), tags$span(class = "lexicon-desc", "Phosphatidylserine"))
+              ),
+              
+              # Column 2: Sphingolipids (SP)
+              tags$div(
+                class = "lexicon-subcard subcard-sp",
+                tags$div(
+                  class = "lexicon-subcard-header",
+                  tags$span("SP: Sphingolipids"),
+                  tags$span(class = "badge badge-sp", "4 Main Classes")
+                ),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-sp", "Cer"), tags$span(class = "lexicon-desc", "Ceramide")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-sp", "GlcCer"), tags$span(class = "lexicon-desc", "Glucosylceramide")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-sp", "LacCer"), tags$span(class = "lexicon-desc", "Lactosylceramide")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-sp", "SM"), tags$span(class = "lexicon-desc", "Sphingomyelin"))
+              ),
+              
+              # Column 3: Glycerolipids (GL), Sterols (ST), Fatty Acyls (FA)
+              tags$div(
+                class = "lexicon-subcard subcard-gl",
+                tags$div(
+                  class = "lexicon-subcard-header",
+                  tags$span("GL: Glycerolipids"),
+                  tags$span(class = "badge badge-gl", "2 Main Classes")
+                ),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "DAG"), tags$span(class = "lexicon-desc", "Diacylglycerol")),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "TAG"), tags$span(class = "lexicon-desc", "Triacylglycerol")),
+                
+                tags$div(
+                  class = "lexicon-subcard-header subcard-st",
+                  style = "margin-top: 14px;",
+                  tags$span("ST: Sterol Lipids"),
+                  tags$span(class = "badge badge-st", "1 Main Class")
+                ),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-st", "CE"), tags$span(class = "lexicon-desc", "Cholesteryl Ester")),
+                
+                tags$div(
+                  class = "lexicon-subcard-header subcard-fa",
+                  style = "margin-top: 14px;",
+                  tags$span("FA: Fatty Acyls"),
+                  tags$span(class = "badge badge-fa", "1 Main Class")
+                ),
+                tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-fa", "ACar"), tags$span(class = "lexicon-desc", "Acylcarnitine"))
+              )
+            )
+          )
+        ),
+        
+        # Right Column Cards
+        tags$div(
+          # Tier 3 Card: Lipid Sub Class
+          card(
+            class = "shadow-sm border-0 mb-3",
+            card_header(
+              class = "d-flex align-items-center justify-content-between py-2 px-3 bg-light-subtle",
+              tags$div(
+                class = "d-flex align-items-center gap-2",
+                icon("diagram-project", style = "color: #0284c7;"),
+                tags$h5("Lipid Sub Class", style = "margin-bottom: 0; font-weight: 700; color: #0284c7; font-size: 1.05rem;")
+              ),
+              tags$span(class = "badge bg-info-subtle text-info border border-info-subtle px-2 py-1",
+                        style = "font-size: 0.8125rem; font-weight: 600;",
+                        "5 Distinctions")
+            ),
+            card_body(
+              class = "p-3",
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-subclass", "O-"), tags$span(class = "lexicon-desc", tags$strong("Ether (O-): "), "Alkyl ether bond linkage")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-subclass", "P-"), tags$span(class = "lexicon-desc", tags$strong("Plasmalogen (P-): "), "Vinyl-ether (alkenyl) bond linkage")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-subclass", "d-"), tags$span(class = "lexicon-desc", tags$strong("Dihydro (d-): "), "Saturated sphingoid base linkage")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-subclass", "PE_E"), tags$span(class = "lexicon-desc", tags$strong("Ether Phosphatidylethanolamine: "), "Ether-linked PE (O-)")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-subclass", "PE_P"), tags$span(class = "lexicon-desc", tags$strong("Plasmalogen Phosphatidylethanolamine: "), "Plasmalogen PE (P-)"))
+            )
+          ),
+          
+          # Tier 4 Card: Structural Modification State
+          card(
+            class = "shadow-sm border-0 mb-3",
+            card_header(
+              class = "d-flex align-items-center justify-content-between py-2 px-3 bg-light-subtle",
+              tags$div(
+                class = "d-flex align-items-center gap-2",
+                icon("dna", style = "color: #c2410c;"),
+                tags$h5("Structural Modification State", style = "margin-bottom: 0; font-weight: 700; color: #c2410c; font-size: 1.05rem;")
+              ),
+              tags$span(class = "badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1",
+                        style = "font-size: 0.8125rem; font-weight: 600;",
+                        "3 States")
+            ),
+            card_body(
+              class = "p-3",
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-mod", "dihydro"), tags$span(class = "lexicon-desc", tags$strong("dihydro: "), "Dihydro-modification / saturated backbone")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-mod", "mature"), tags$span(class = "lexicon-desc", tags$strong("mature: "), "Fully processed / unsaturated mature state")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-mod", "standard"), tags$span(class = "lexicon-desc", tags$strong("standard: "), "Standard / conventional unmodified state"))
+            )
+          ),
+          
+          # Filter Reference Card
+          card(
+            class = "shadow-sm border-0",
+            card_header(
+              class = "d-flex align-items-center gap-2 py-2 px-3 bg-light-subtle",
+              icon("filter", style = "color: #047857;"),
+              tags$h5("Structural Filters", style = "margin-bottom: 0; font-weight: 700; color: #047857; font-size: 1.05rem;")
+            ),
+            card_body(
+              class = "p-3",
+              tags$div(style = "font-size: 13px; font-weight: 700; color: var(--lab-muted, #526477); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.3px;", "Saturation Categories:"),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "SFA"), tags$span(class = "lexicon-desc", tags$strong("Saturated: "), "0 Double Bonds")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "MUFA"), tags$span(class = "lexicon-desc", tags$strong("Monounsaturated: "), "1 Double Bond")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-gl", "PUFA"), tags$span(class = "lexicon-desc", tags$strong("Polyunsaturated: "), htmltools::HTML("&ge; 2 Double Bonds"))),
+              
+              tags$hr(class = "my-2"),
+              tags$div(style = "font-size: 13px; font-weight: 700; color: var(--lab-muted, #526477); text-transform: uppercase; margin-top: 8px; margin-bottom: 6px; letter-spacing: 0.3px;", "Acyl Chain Lengths:"),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "SCFA"), tags$span(class = "lexicon-desc", tags$strong("Short-Chain: "), "< 6 Carbons")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "MCFA"), tags$span(class = "lexicon-desc", tags$strong("Medium-Chain: "), "6 to 12 Carbons")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "LCFA"), tags$span(class = "lexicon-desc", tags$strong("Long-Chain: "), "13 to 21 Carbons")),
+              tags$div(class = "lexicon-item", tags$span(class = "lexicon-badge badge-neutral", "VLCFA"), tags$span(class = "lexicon-desc", tags$strong("Very-Long-Chain: "), "> 21 Carbons"))
+            )
+          )
+        )
+      )
+    )
+  )
+  ),
+
+  # ==============================================================================
+  # --- Quality Control ---
+  # ==============================================================================
+  nav_menu(
+    title = "Quality Control",
+    icon = icon("shield-halved"),
+    nav_panel("Quality Check", icon = icon("sitemap"),
+      qc_boxplot_ui("qc_pca_tab")
+    )
+  ),
+
+  # ==============================================================================
+  # --- Quantitative ---
+  # ==============================================================================
+  nav_menu(
+    title = "Quantitative",
+    icon = icon("chart-simple"),
+    nav_panel("Heatmap", icon = icon("table-cells"),
+      heatmap_ui("heatmap_barchart_tab")
+    ),
+    nav_panel("Composition", icon = icon("chart-bar"),
+      barchart_ui("barchart")
+    ),
+    nav_panel("Volcano Plot", icon = icon("mountain-sun"),
+      volcano_ui("volcano_tab")
+    ),
+    nav_panel("LSEA", icon = icon("chart-line"),
+      lsea_ui("lsea_tab")
+    )
+  ),
+
+  # ==============================================================================
+  # --- Structural ---
+  # ==============================================================================
+  nav_menu(
+    title = "Structural",
+    icon = icon("dna"),
+    nav_panel("Structural", icon = icon("dna"),
+      structural_ui("structural_tab")
+    ),
+    nav_panel("Main Class & Acyl Chain Proportions", icon = icon("chart-column"),
+      structural_proportions_ui("structural_tab")
+    ),
+    nav_panel("Structural Grid", icon = icon("table-cells-large"),
+      structural_grid_ui("structural_grid_tab")
+    ),
+    nav_panel("Violin Plots", icon = icon("scale-unbalanced"),
+      logratio_ui("logratio_tab")
+    )
+  ),
+
+  # ==============================================================================
+  # --- Targeted Analysis ---
+  # ==============================================================================
+  nav_menu(
+    title = "Targeted Analysis",
+    icon = icon("diagram-project"),
+    nav_panel("Functional Ratios", icon = icon("calculator"),
+      fla_ui("fla_tab")
+    ),
+    nav_panel("Lipid Pathways", icon = icon("diagram-project"),
+      pathway_ui("pathway_tab")
+    ),
+    nav_panel("Cellular Organization", icon = icon("cubes"),
+      cellular_org_ui("cellular_org_tab")
+    ),
+    nav_panel("Longitudinal", icon = icon("clock"),
+      longitudinal_ui("longitudinal_tab")
+    )
+  ),
+
+  # ==============================================================================
+  # --- Reference & Methods ---
+  # ==============================================================================
+  nav_menu(
+    title = "Reference & Methods",
+    icon = icon("book-bookmark"),
+    # Dedicated Statistics tab is hidden - statistical details are displayed directly
+    # via the high-contrast 'Show Statistic Detail' console modal overlay on each plot tab.
+    nav_panel("Math Proof", icon = icon("square-root-variable"), fillable = FALSE,
+      math_proof_ui("math_proof_tab")
+    ),
+    nav_panel("About & Citation", icon = icon("info-circle"),
+      card(
+        card_header(h4("About the Lipidomic Explorer")),
+        card_body(
+          p("This app intend to allow to facilitate the analysis of lipidomics data"),
+          hr(),
+          h5("Author"),
+          p("Maxence Tricaud - Libreros Lab"),
+          p(icon("envelope"), tags$a(href="mailto:mtricaud.cetri@gmail.com", "mtricaud.cetri@gmail.com")),
+          p(
+            tags$img(src = "https://info.orcid.org/wp-content/uploads/2019/11/orcid_16x16.png", style="width:16px; height:16px;"),
+            " ORCID: ",
+            tags$a(href="https://orcid.org/0009-0000-0737-5110", target="_blank", "0009-0000-0737-5110")
+          )
+        )
+      )
+    )
+  )
+)

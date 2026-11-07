@@ -849,7 +849,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
             p_val <- NA
             stars <- "ns"
             if(length(na.omit(base_vals))>=2 && length(na.omit(comp_vals))>=2) {
-               tt <- tryCatch(compute_local_p_val(base_vals, comp_vals, method = resolved_method, paired = FALSE), error=function(e) NA)
+               tt <- tryCatch(guided_local_p_value(base_vals, comp_vals, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                if(!is.na(tt)) {
                   p_val <- tt
                   if(p_val < 0.001) stars <- "***"
@@ -1035,11 +1035,13 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                if(length(c_levels) > length(pal)) pal <- colorRampPalette(pal)(length(c_levels))
                base_map <- stats::setNames(pal[1:length(c_levels)], c_levels)
             }
-            return(base_map[lvl])
+            return(unname(base_map[lvl]))
          } else {
             return(val)
          }
       })
+      # sapply keeps a returned name as a suffix ("A.A"); key the palette by group.
+      safe_colors <- stats::setNames(safe_colors, as.character(c_levels))
       
       # Define universal palette for facets
       fla_palette <- c(
@@ -1285,7 +1287,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                            "non_parametric"
                         }
                         
-                        pval <- tryCatch(compute_local_p_val(log_v1, log_v2, method = resolved_method, paired = FALSE), error=function(e) NA)
+                        pval <- tryCatch(guided_local_p_value(log_v1, log_v2, method = resolved_method, session = session, shared_data = shared_data, paired = FALSE), error=function(e) NA)
                         
                         m1 <- mean(vals_1, na.rm=TRUE)
                         m2 <- mean(vals_2, na.rm=TRUE)
@@ -1304,7 +1306,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
                 }
             }
         }
-        write.csv(ledger_out, file, row.names=FALSE)
+        write_spreadsheet_csv(ledger_out, file, row.names=FALSE)
       }
     )
     
@@ -1510,7 +1512,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
         content = function(file) {
             obj <- volcano_plot_obj()
             req(obj)
-            write.csv(obj$data, file, row.names = FALSE)
+            write_spreadsheet_csv(obj$data, file, row.names = FALSE)
         }
     )
     
@@ -1587,6 +1589,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
     
     # 6. Correlation Engine
     correlation_data <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(NULL)
       req(processed_db())
       df_long <- processed_db()
       
@@ -1658,6 +1661,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
 
     # 6a. Correlation Circos Plot Logic
     circos_plot_logic <- reactive({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(function(include_title = FALSE) { print(generate_empty_plot_message("Functional correlation circos requires a confirmed independent study design. Repeated observations cannot be treated as independent.")) })
       req(processed_db())
       cor_df <- correlation_data()
       if(is.null(cor_df) || nrow(cor_df) == 0) {
@@ -1754,6 +1758,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
     })
 
     output$plotCircos <- renderPlot({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "fla")) return(generate_empty_plot_message("Functional correlation circos requires a confirmed independent study design. Repeated observations cannot be treated as independent."))
       func <- circos_plot_logic()
       req(func)
       func()
@@ -1803,7 +1808,7 @@ fla_server <- function(id, shared_data, global_color_map = NULL) {
       content = function(file) {
         df <- correlation_data()
         req(df)
-        write.csv(df, file, row.names = FALSE)
+        write_spreadsheet_csv(df, file, row.names = FALSE)
       }
     )
     

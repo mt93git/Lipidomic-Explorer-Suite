@@ -16,6 +16,11 @@ data/*.log
 Rplots.pdf
 launch_debug.ps1
 
+# Companion knowledge base: answers read only library/index (chunks.jsonl, sources.json) at runtime.
+# The fed source files (PDFs) are needed only by 03_COMPANION_KNOWLEDGE.R to feed/rebuild, so keep them
+# out of the image; use a volume or LIPIDOMIC_KB_DIR to rebuild inside a container.
+knowledge_base/library/sources/
+
 # Scratch & development experiments
 scratch/
 

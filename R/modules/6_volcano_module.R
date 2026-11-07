@@ -216,7 +216,7 @@ volcano_server <- function(id, shared_data) {
     })
     
   # --- Plotting ---
-    generateVolcanoPlot <- function() {
+    generateVolcanoPlotBase <- function() {
       if (is.null(shared_data$de_results())) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
@@ -446,6 +446,13 @@ volcano_server <- function(id, shared_data) {
       
       p
     }
+    # Hook "volcano_caption"(plot, shared_data = , width_px = ) -> plot. width_px is a
+    # function returning the rendered width; Classic never calls it and keeps the plot.
+    generateVolcanoPlot <- function() {
+      lipidomic_hook("volcano_caption")(generateVolcanoPlotBase(), shared_data = shared_data,
+        width_px = function() input$volcanoPlot_size$width %||%
+          session$clientData[[paste0("output_", session$ns("volcanoPlot"), "_width")]])
+    }
     
     output$volcano_fallback_alert <- renderUI({
       targeted_fallback_banner_ui(isTRUE(volcano_fallback_active()))
@@ -510,7 +517,7 @@ volcano_server <- function(id, shared_data) {
     output$downloadTable <- downloadHandler(
       filename = "volcano_data.csv",
       content = function(file) {
-        write.csv(volcanoData(), file, row.names=FALSE)
+        write_spreadsheet_csv(volcanoData(), file, row.names=FALSE)
       }
     )
 

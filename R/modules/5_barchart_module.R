@@ -217,7 +217,7 @@ barchart_ui <- function(id) {
                     tags$div(
                       class = "d-flex align-items-center gap-2",
                       uiOutput(ns("filtered_barplot_header_title"), inline = TRUE),
-                      uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+                      uiOutput(ns("active_contrast_badge_bar_ui"), inline = TRUE)
                     ),
                     tags$div(
                       downloadButton(ns("downloadBarCSV_Filtered"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
@@ -241,7 +241,7 @@ barchart_ui <- function(id) {
                     tags$div(
                       class = "d-flex align-items-center gap-2",
                       uiOutput(ns("filtered_donutplot_header_title"), inline = TRUE),
-                      uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+                      uiOutput(ns("active_contrast_badge_donut_ui"), inline = TRUE)
                     ),
                     tags$div(
                       downloadButton(ns("downloadDonutCSV_Filtered"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
@@ -613,6 +613,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       }
 
       mat <- df %>% dplyr::select(-Lipid_Name) %>% as.matrix()
+      validate_composition_values(mat)
       rownames(mat) <- df$Lipid_Name
       if (!is_agg()) {
           colnames(mat) <- meta$Display_Name[match(colnames(mat), meta$FullName)]
@@ -836,6 +837,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       }
       
       mat <- df_sub %>% dplyr::select(-Lipid_Name) %>% as.matrix()
+      validate_composition_values(mat)
       rownames(mat) <- df_sub$Lipid_Name
       if (!is_agg()) {
           colnames(mat) <- meta$Display_Name[match(colnames(mat), meta$FullName)]
@@ -870,7 +872,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
     output$de_not_run_banner_filtered <- renderUI({ render_de_not_run_banner(shared_data) })
     output$de_not_run_banner_filtered_donut <- renderUI({ render_de_not_run_banner(shared_data) })
 
-    output$active_contrast_badge_ui <- renderUI({
+    active_contrast_badge <- function() {
       ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
       req(ci, ci$ref, ci$comp)
       ref_str <- paste(ci$ref, collapse = "+")
@@ -883,7 +885,9 @@ barchart_server <- function(id, shared_data, global_color_map) {
         title = "Click to configure Reference vs Comparison cohorts in Compared Analysis dock panel",
         icon("code-compare", class = "me-1"), paste0(comp_str, " vs ", ref_str)
       )
-    })
+    }
+    output$active_contrast_badge_bar_ui <- renderUI(active_contrast_badge())
+    output$active_contrast_badge_donut_ui <- renderUI(active_contrast_badge())
 
     output$filtered_barplot_header_title <- renderUI({
       ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
@@ -1207,6 +1211,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       content = function(file) {
         tryCatch({
           mat <- unfilteredData()
+          validate_composition_values(mat)
           anno_bar <- shared_data$annotationData()
           is_agg <- is_agg()
           
@@ -1272,9 +1277,9 @@ barchart_server <- function(id, shared_data, global_color_map) {
             }
           }
           
-          write.csv(ledger %>% dplyr::distinct(), file, row.names = FALSE)
+          write_spreadsheet_csv(ledger %>% dplyr::distinct(), file, row.names = FALSE)
         }, error = function(e) {
-          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+          write_spreadsheet_csv(data.frame(Error = e$message), file, row.names = FALSE)
         })
       }
     )
@@ -1401,7 +1406,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       content = function(file) {
         mat <- unfilteredData()
         df <- as.data.frame(mat) %>% tibble::rownames_to_column("Lipid_Name")
-        write.csv(df, file, row.names = FALSE)
+        write_spreadsheet_csv(df, file, row.names = FALSE)
       }
     )
 
@@ -1550,7 +1555,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       content = function(file) {
         mat <- filteredBarData()
         df <- as.data.frame(mat) %>% tibble::rownames_to_column("Lipid_Name")
-        write.csv(df, file, row.names = FALSE)
+        write_spreadsheet_csv(df, file, row.names = FALSE)
       }
     )
     
@@ -1716,6 +1721,7 @@ barchart_server <- function(id, shared_data, global_color_map) {
       content = function(file) {
         tryCatch({
           mat <- filteredBarData()
+          validate_composition_values(mat)
           anno_bar <- shared_data$annotationData()
           is_agg <- is_agg()
           
@@ -1781,9 +1787,9 @@ barchart_server <- function(id, shared_data, global_color_map) {
             }
           }
           
-          write.csv(ledger %>% dplyr::distinct(), file, row.names = FALSE)
+          write_spreadsheet_csv(ledger %>% dplyr::distinct(), file, row.names = FALSE)
         }, error = function(e) {
-          write.csv(data.frame(Error = e$message), file, row.names = FALSE)
+          write_spreadsheet_csv(data.frame(Error = e$message), file, row.names = FALSE)
         })
       }
     )

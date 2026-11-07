@@ -1,0 +1,17 @@
+/* Guided Team flow: persistent "Changes pending" bar (R/frontends/team/pending_changes_bar.R). */
+#tw-pending-bar:empty,#tw-pending-bar>.shiny-html-output:empty{display:none}
+.tw-pending-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 24px;background:#fff4dc;border-bottom:1px solid #e8cf98;border-left:5px solid #b7791f;color:#5c3d0a;font-size:14px}
+.tw-pending-bar[data-tw-pending-failed="true"]{border-left-color:#a61b1b}
+.tw-pending-text{margin:0;flex:1 1 320px}
+.tw-pending-text strong{color:#5c3d0a}
+.tw-pending-actions{display:flex;flex-wrap:wrap;gap:8px}
+.tw-pending-bar .btn.tw-pending-update{background:#8a5300;border:1px solid #8a5300;color:#fff;font-weight:700;min-height:36px}
+.tw-pending-bar .btn.tw-pending-update:hover{background:#6e4200;border-color:#6e4200;color:#fff}
+.tw-pending-bar .btn.tw-pending-undo{background:#fff;border:1px solid #8a5300;color:#5c3d0a;font-weight:600;min-height:36px}
+.tw-pending-bar .btn.tw-pending-undo:hover{background:#fbe8c2;color:#3f2905}
+.tw-pending-bar .btn:focus-visible{box-shadow:none}
+/* The run strip is rendered outside Team (R/guided_workflow.R); never show "Analysis ready" beside the bar. */
+body.tw-changes-pending .guide-run-status.is-ready{display:none}
+body.guided-app #guide_quality_next .guide-button.tw-continue-blocked{background:#e6e9ec;border-color:#c3cad1;color:#44505a;cursor:not-allowed}
+.tw-continue-reason{display:inline-block;margin:5px 0;color:#5c3d0a;font-weight:600}
+@media(max-width:760px){.tw-pending-bar{padding:10px 14px}.tw-pending-text{flex-basis:100%}}

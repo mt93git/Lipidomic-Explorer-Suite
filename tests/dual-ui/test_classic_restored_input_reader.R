@@ -1,0 +1,38 @@
+source("R/utils_restored_inputs.R")
+r <- restored_input_reader(); values <- list("qc-color"="#123456", "composition-mode"="relative", "module-a.b"="literal", "module-axb"="other")
+ns <- function(id) paste0("qc-",id)
+for(i in 1:3) stopifnot(r(values,"color",namespace=ns,generation=1L,consume=FALSE)=="#123456")
+# Delayed browser acknowledgement must survive repeated renders/default values.
+for(i in 1:3)stopifnot(r(values,"color",namespace=ns,generation=1L,consume=TRUE,live=list("qc-color"="old"))=="#123456")
+attr(r,"acknowledge")(list("qc-color"="#123456"),1L)
+stopifnot(r(values,"qc-color",default="fixed-default",namespace=ns,generation=1L,consume=TRUE,live=list("qc-color"="#abcdef"))=="#abcdef")
+stopifnot(r(values,"composition-mode",generation=1L,consume=TRUE)=="relative")
+attr(r,"acknowledge")(list("composition-mode"="relative"),1L)
+stopifnot(r(values,"composition-mode",default="fixed-default",generation=1L,consume=TRUE,live=list("composition-mode"="absolute"))=="absolute")
+stopifnot(r(values,"a.b",generation=1L,consume=TRUE)=="literal",r(values,"color",namespace=ns,generation=2L,consume=TRUE)=="#123456",identical(r(list(),"x",default=FALSE,generation=3L,consume=TRUE),FALSE))
+team<-restored_input_reader();for(i in 1:3)stopifnot(team(values,"color",namespace=ns,consume=FALSE,live=list("qc-color"="changed"))=="#123456")
+# Preserve intentional empty selection after acknowledgement.
+r2<-restored_input_reader();v<-list(mode="class");invisible(r2(v,"mode",consume=TRUE));attr(r2,"acknowledge")(list(mode="class"),0L)
+stopifnot(is.null(r2(v,"mode",default="fixed",consume=TRUE,live=list(mode=NULL))))
+# Filtered/transformed seeds and ordering controls need not echo the archive exactly.
+norm<-restored_input_reader();seed<-list(order=c("A","B","missing"));initial<-list(order=c("A","B"))
+stopifnot(identical(norm(seed,"order",consume=TRUE,live=initial),seed$order))
+attr(norm,"acknowledge")(list(order=c("B","A")),0L)
+stopifnot(identical(norm(seed,"order",consume=TRUE,live=list(order=c("B","A"))),c("B","A")))
+ordered<-restored_input_reader();seed2<-list(order=c("A","B"))
+stopifnot(identical(ordered(seed2,"order",consume=TRUE,live=list(order=c("B","A"))),c("A","B")))
+attr(ordered,"acknowledge")(list(order=c("A","B")),0L)
+stopifnot(identical(ordered(seed2,"order",consume=TRUE,live=list(order=c("B","A"))),c("B","A")))
+col<-restored_input_reader();invisible(col(list(color="#aabbcc"),"color",consume=TRUE));attr(col,"acknowledge")(list(color="#AABBCC"),0L);stopifnot(col(list(color="#aabbcc"),"color",consume=TRUE,live=list(color="#112233"))=="#112233")
+library(shiny)
+shiny::testServer(function(input,output,session){
+ archived<-reactiveVal(list(mode="class"));read<-restored_input_reader();counter<-new.env();counter$n<-0L
+ observe({attr(read,"acknowledge")(reactiveValuesToList(input),1L)})
+ output$widget<-renderUI({input$tick;counter$n<-counter$n+1L;selectInput("mode","Feature level",c("Default"="default","Class"="class","Species"="species"),selected=read(archived(),"mode",default="default",generation=1L,consume=TRUE,live=isolate(reactiveValuesToList(input))))})
+},{
+ session$flushReact();stopifnot(grepl('value="class" selected',output$widget$html,fixed=TRUE))
+ session$setInputs(tick=1);session$flushReact();stopifnot(grepl('value="class" selected',output$widget$html,fixed=TRUE))
+ session$setInputs(mode="class");session$flushReact();session$setInputs(mode="species",tick=2);session$flushReact()
+ stopifnot(grepl('value="species" selected',output$widget$html,fixed=TRUE));before<-counter$n;session$flushReact();stopifnot(counter$n==before)
+})
+cat("PASS lazy hydration acknowledgement, repeated real renderUI, fixed-default callers keep live/empty selection, namespaces, generations, Team unchanged and no reactive loop\n")

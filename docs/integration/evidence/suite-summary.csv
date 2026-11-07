@@ -1,0 +1,14 @@
+version,test,exit_code,status
+block1-baseline,test_recursive_syntax.R,0,PASS
+block1-baseline,test_restore_helper.R,0,PASS
+block1-baseline,test_pathway_logic.R,0,PASS
+block1-baseline,test_statistical_engine.R,0,PASS
+block1-baseline,test_targeted_fallback_simulation.R,0,PASS
+block1-baseline,test_session_roundtrip_simulation.R,0,PASS
+upstream,test_recursive_syntax.R,0,PASS
+upstream,test_restore_helper.R,0,PASS
+upstream,test_pathway_logic.R,0,PASS
+upstream,test_statistical_engine.R,0,PASS
+upstream,test_targeted_fallback_simulation.R,0,PASS
+upstream,test_session_roundtrip_simulation.R,0,PASS
+upstream,test_integration_safeguards.R,0,PASS

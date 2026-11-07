@@ -1,0 +1,54 @@
+/* Team Canvas: hideable inspector column (www/team/js/inspector_toggle.js). Team workspace Canvas only.
+   The toggle is a button in the shell's left rail (.ts-rail), after the Select / Move pair: the rail is a
+   fixed grid column the mascot already avoids, so no rectangle context_help.js measures changes size.
+   Hidden (the default wherever the column is a side column, ux27), the column stays laid out but invisible
+   (visibility, no pointer, inert) and the canvas takes the whole width, the column's track included. The
+   companion's .tc-companion-home is a small box at the live column edge, at the canvas viewport's
+   bottom-right: context_help.js (frozen) centres the resting mascot in it. The .ts-inspector-extended
+   class inspector_toggle.js still sets no longer changes the layout.
+   The Figure page (canvas_preview.js embedInShell) takes the same canvas cell, so it takes the same track:
+   the toggle hides its right column (Object / Plots / Page, #tc-figure-column) exactly as it hides the
+   card inspector, and the page's desk gains the same width.
+   At <= 900 px the column stacks under the canvas (shell.css) and no toggle is offered. */
+#team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle{display:none}
+@media not all and (max-width:900px){
+ #team-canvas-root.ts-shell .tc-layout{--ts-companion-strip:136px}
+ /* ux27: hidden, the canvas takes the whole width (the column's track included; nothing is reserved). */
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed:not(.ttd-open)>.tc-main,#team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed:not(.ttd-open)>#tc-preview-panel{grid-column:3/5;margin-right:0}
+ /* Hidden, the column's contents are not measured either (visibility): the companion no longer steps
+    around an invisible inspector at the old column edge. */
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed:not(.ttd-open)>.ts-inspector-column{opacity:0;pointer-events:none;visibility:hidden}
+ /* shell.css forces the card inspector visible (visibility:visible!important); hidden, it is not measured either. */
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed:not(.ttd-open)>.ts-inspector-column>.tc-selection-inspector{visibility:hidden!important}
+ /* ux27: the companion's home is a small box at the canvas viewport's bottom-right, outside the column's
+    flow: left of the inspector while it is shown, at the canvas's right edge while it is hidden. Both are
+    the live column edge (no width is hard-coded), so context_help.js (unchanged) re-places the companion
+    when the inspector or the Plots panel opens or closes and when the window resizes. */
+ #team-canvas-root.ts-shell .ts-inspector-column>.tc-companion-home{position:absolute;right:100%;bottom:0;width:var(--ts-companion-strip);height:176px;flex:none;margin:0!important;border:0;background:none;pointer-events:none}
+ #team-canvas-root.ts-shell .tc-layout.ts-inspector-collapsed:not(.ttd-open)>.ts-inspector-column>.tc-companion-home{right:0}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle{order:2;display:grid;place-items:center;box-sizing:border-box;width:36px;height:36px;margin:4px 0 0;padding:0;border:0;border-radius:8px;background:transparent;color:#4b5a69;cursor:pointer}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle:hover{background:#f1f4f7;color:var(--ts-ink,#141b24)}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle[aria-expanded=true]{color:var(--ts-accent,#2d5f8a)}
+ #team-canvas-root.ts-shell .ts-rail>.ts-inspector-toggle svg{width:18px;height:18px}
+ #team-canvas-root.ts-shell .tc-layout.ttd-open>.ts-rail>.ts-inspector-toggle{display:none}
+}
+#team-canvas-root.ts-shell .ts-inspector-toggle[aria-expanded=false] .ts-inspector-pane{opacity:0}
+/* W6: labelled text controls (inspector_toggle.js). "Hide inspector" is laid over the top of the
+   column (absolute: no box in the column moves, so the mascot's obstacles and home are production's):
+   at the top right of the empty state. While an object is selected the inspector's own header (title
+   and ×) takes that place, and on the Figure page the column's own tabs do: there the rail icon and
+   the I key remain, and the title keeps its full width. The Show tab sits on the right edge of the canvas cell, high up, away from the home
+   and the navigation; it exists only while the column is hidden (not at <= 900 px, not under the drawer). */
+#team-canvas-root.ts-shell .ts-inspector-header{display:none}
+#team-canvas-root.ts-shell .ts-inspector-show{display:none}
+@media not all and (max-width:900px){
+ #team-canvas-root.ts-shell .ts-inspector-column{position:relative}
+ #team-canvas-root.ts-shell .ts-inspector-column>.ts-inspector-header{display:block;position:absolute;top:10px;right:12px;z-index:3}
+ #team-canvas-root.ts-shell .ts-inspector-column:has(>.tc-selection-inspector:not([hidden]))>.ts-inspector-header{display:none}
+ #team-canvas-root.ts-shell .ts-inspector-column>.ts-inspector-header:is(.tc-figure-mode *){display:none}
+ #team-canvas-root.ts-shell .ts-inspector-hide{min-height:30px;padding:4px 10px;border:1px solid #c9d4de;border-radius:7px;background:#fff;color:#2d4a66;font:500 13px/1.3 system-ui;cursor:pointer}
+ #team-canvas-root.ts-shell .ts-inspector-hide:hover{background:#f1f4f7}
+ #team-canvas-root.ts-shell .tc-main>.ts-inspector-show:not([hidden]){display:block;position:absolute;right:0;top:72px;z-index:26;writing-mode:vertical-rl;padding:12px 6px;border:1px solid #c9d4de;border-right:0;border-radius:8px 0 0 8px;background:#fff;color:#2d4a66;font:600 13px/1.2 system-ui;box-shadow:-2px 2px 8px #172d4b1a;cursor:pointer}
+ #team-canvas-root.ts-shell .tc-main>.ts-inspector-show:hover{background:#f1f4f7}
+ #team-canvas-root.ts-shell .tc-layout.ttd-open>.tc-main>.ts-inspector-show{display:none}
+}

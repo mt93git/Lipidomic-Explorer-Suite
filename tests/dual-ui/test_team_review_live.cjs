@@ -1,0 +1,71 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {makeDebounced} = require('../../www/team/js/review_live.js');
+const jobs = [], sent = [], cancelled = [];
+const queue = makeDebounced(x => sent.push(x), (fn, delay) => { jobs.push({fn, delay}); return jobs.length; }, id => cancelled.push(id));
+assert.equal(sent.length, 0);
+queue(20);queue(65);queue(80);
+assert.deepEqual(cancelled,[1,2]);
+jobs[0].fn();jobs[1].fn();assert.equal(sent.length,0);
+assert.equal(jobs[2].delay,450);jobs[2].fn();
+assert.deepEqual(sent,[{kind:'detection',threshold:80,token:3,source:'human'}]);
+const source=fs.readFileSync('www/team/js/review_live.js','utf8');
+assert.match(source,/event\.isTrusted/);
+assert.doesNotMatch(source,/setInputValue\(['"](?:data_hub-runAnalysis|qc_pca_tab-guided_qc_propose)/);
+console.log('PASS: human slider debounce sends only latest intent, never automatic exclusion');
+
+let currentValue=20;
+queue(() => currentValue);currentValue=90;
+jobs.at(-1).fn();assert.equal(sent.at(-1).threshold,90);
+assert.match(source,/pointercancel/);assert.match(source,/lostpointercapture/);assert.match(source,/addEventListener\('blur'/);
+assert.match(source,/closest\('\.irs,/);
+console.log('PASS: slider value is read after debounce, and cancelled gestures cannot leave a drag armed');
+const vm=require('node:vm');
+const handlers={},windowHandlers={},shinyHandlers={},browserJobs=[],browserSent=[],wire=[];
+const slider={value:'20',min:'0',max:'100',getAttribute:()=>null};
+const container={querySelector:()=>slider};
+const target=(isHandle)=>({closest:selector=>selector.includes('shiny-input-container')?container:(isHandle?{}:null)});
+const handle=target(true),label=target(false);
+const browser={document:{documentElement:{},addEventListener:(name,fn)=>{handlers[name]=fn;},getElementById:id=>id==='qc_pca_tab-minDetectionPct'?slider:null},addEventListener:(name,fn)=>{windowHandlers[name]=fn;},MutationObserver:class{observe(){}},setTimeout:fn=>{browserJobs.push(fn);return browserJobs.length;},clearTimeout:()=>{},Shiny:{setInputValue:(name,value,options)=>{wire.push({name,value,options});if(name==='team_review_prepare')browserSent.push(value)},addCustomMessageHandler:(name,fn)=>{shinyHandlers[name]=fn;}}};
+browser.window=browser;browser.Event=class{constructor(type){this.type=type;}};browser.dispatchEvent=()=>{};vm.runInNewContext(source,browser);
+const event=target=>({isTrusted:true,target});
+handlers.pointerdown(event(label));handlers.pointerup(event(label));assert.equal(browserJobs.length,0);
+handlers.pointerdown(event(handle));handlers.pointercancel(event(handle));handlers.pointerup(event(handle));assert.equal(browserJobs.length,0);
+handlers.pointerdown(event(handle));windowHandlers.blur();handlers.pointerup(event(handle));assert.equal(browserJobs.length,0);
+handlers.pointerdown(event(handle));handlers.pointerup(event(handle));assert.equal(browserJobs.length,1);
+slider.value='85';browserJobs[0]();assert.equal(browserSent[0].threshold,85);assert.equal(wire[0].name,'qc_pca_tab-minDetectionPct');assert.equal(wire[0].value,85);assert.equal(wire[0].options.priority,'event');assert.equal(wire[1].name,'team_review_prepare');assert.equal(wire[1].value.threshold,wire[0].value);
+console.log('PASS: actual event handlers ignore label clicks/cancelled drags and defer the DOM value read');
+// A real slider emits input while dragging. A cancelled drag must not queue
+// its intermediate value, including when an earlier timer still fires.
+handlers.input(event(handle));
+const beforeCancel = browserJobs.length;
+handlers.pointerdown(event(handle));
+slider.value='55'; handlers.input(event(handle));
+handlers.pointercancel(event(handle)); handlers.pointerup(event(handle));
+assert.equal(browserJobs.length,beforeCancel);
+browserJobs.at(-1)();
+assert.equal(browserSent.length,1);
+handlers.pointerdown(event(handle)); slider.value='65'; handlers.input(event(handle));
+handlers.pointerup(event(handle));
+browserJobs.at(-1)();
+assert.equal(browserSent.at(-1).threshold,65);
+console.log('PASS: cancelled slider gesture cannot send intermediate or stale values');
+
+// Server sends this bridge only after valid confirmation. The slider update
+// must arrive before debounce and still match the confirmed value.
+const beforeConfirmed=browserSent.length;
+shinyHandlers['team-review-confirmed-detection']({threshold:50});
+slider.value='50';browserJobs.at(-1)();
+assert.equal(browserSent.length,beforeConfirmed+1);
+assert.equal(browserSent.at(-1).threshold,50);assert.equal(wire.at(-2).name,'qc_pca_tab-minDetectionPct');assert.equal(wire.at(-2).value,50);assert.equal(wire.at(-1).name,'team_review_prepare');
+shinyHandlers['team-review-confirmed-detection']({threshold:80});
+slider.value='30';browserJobs.at(-1)();assert.equal(browserSent.length,beforeConfirmed+1);
+shinyHandlers['team-review-confirmed-detection']({threshold:101});assert.equal(browserSent.length,beforeConfirmed+1);
+console.log('PASS: confirmed detection prepares only the matching bound slider value');
+const foregroundEvents=[];browser.TeamBusy={begin:label=>(foregroundEvents.push(['begin',label]),'token-'+foregroundEvents.length),end:token=>foregroundEvents.push(['end',token]),fail:(token,msg)=>foregroundEvents.push(['fail',token,msg])};
+shinyHandlers['team-review-foreground-start']({key:'entry:4'});shinyHandlers['team-review-foreground-start']({key:'entry:4'});assert.equal(foregroundEvents.filter(e=>e[0]==='begin').length,1);
+shinyHandlers['team-review-foreground-result']({key:'entry:wrong',status:'complete'});assert.equal(foregroundEvents.filter(e=>e[0]==='end').length,0);
+shinyHandlers['team-review-foreground-result']({key:'entry:4',status:'noop'});assert.equal(foregroundEvents.filter(e=>e[0]==='end').length,1);
+shinyHandlers['team-review-foreground-start']({key:'detection:8'});shinyHandlers['team-review-foreground-result']({key:'detection:8',status:'failed'});assert.equal(foregroundEvents.filter(e=>e[0]==='fail').length,1);
+console.log('PASS: action-scoped foreground receipts reject unrelated tokens and close noops');

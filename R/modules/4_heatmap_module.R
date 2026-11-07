@@ -211,6 +211,20 @@ heatmap_ui <- function(id) {
 
 # --- Module Server ---
 
+# Classic default of the heatmap_violin_values hook (see R/core/hooks.R): selected-feature
+# violin values on the requested scale. The prepared matrix is log2, so the linear
+# view exponentiates and the log2 view (and its CSV) uses it unchanged.
+heatmap_violin_values_default <- function(sub_df, sample_cols, scale, ...) {
+  if (identical(scale, "linear")) {
+    for (sc in sample_cols) {
+      if (is.numeric(sub_df[[sc]])) {
+        sub_df[[sc]] <- 2^(sub_df[[sc]])
+      }
+    }
+  }
+  sub_df
+}
+
 heatmap_server <- function(id, shared_data) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -836,13 +850,8 @@ heatmap_server <- function(id, shared_data) {
        req(nrow(sub_df) > 0)
        
        # Convert numeric sample columns if linear scale is selected
-       if (isTRUE(input$violin_scale_mode == "linear")) {
-          for (sc in sample_cols) {
-             if (is.numeric(sub_df[[sc]])) {
-                sub_df[[sc]] <- 2^(sub_df[[sc]])
-             }
-          }
-       }
+       sub_df <- lipidomic_hook("heatmap_violin_values", heatmap_violin_values_default)(
+          sub_df, sample_cols, scale = if (isTRUE(input$violin_scale_mode == "linear")) "linear" else "log2")
        
        # Pivot ONLY sample numeric columns into long format
        long_df <- sub_df %>% 
@@ -1026,7 +1035,9 @@ heatmap_server <- function(id, shared_data) {
                    pv <- NA
                    st <- "ns"
                    if (length(b_vals) >= 1 && length(c_vals) >= 1) {
-                      tt <- tryCatch(t.test(b_vals, c_vals)$p.value, error = function(e) NA)
+                      tt <- if (guided_local_inference_allowed(session, shared_data))
+                        tryCatch(t.test(b_vals, c_vals)$p.value, error = function(e) NA_real_)
+                      else NA_real_
                       if (!is.na(tt)) {
                          pv <- tt
                          st <- if (pv < (alpha_thresh / 50)) "***" else if (pv < (alpha_thresh / 5)) "**" else if (pv < alpha_thresh) "*" else "ns"
@@ -1122,6 +1133,8 @@ heatmap_server <- function(id, shared_data) {
           sample_col <- if ("FullName" %in% names(meta)) "FullName" else if ("Sample" %in% names(meta)) "Sample" else names(meta)[1]
           group_col <- if ("Group1" %in% names(meta) && length(unique(meta$Group1)) > 1) "Group1" else if ("Group" %in% names(meta)) "Group" else names(meta)[1]
           
+          sub_df <- lipidomic_hook("heatmap_violin_values", heatmap_violin_values_default)(
+             sub_df, sample_cols, scale = "log2")
           long_df <- sub_df %>% 
              dplyr::select(Lipid_Name = !!rlang::sym(lipid_col), dplyr::all_of(sample_cols)) %>% 
              tidyr::pivot_longer(cols = dplyr::all_of(sample_cols), names_to = "Sample_ID", values_to = "Log2_Abundance") %>% 
@@ -1137,9 +1150,9 @@ heatmap_server <- function(id, shared_data) {
                    Group_SE = round(sd(Log2_Abundance, na.rm = TRUE) / sqrt(pmax(1, dplyr::n())), 4)
                 ) %>% 
                 dplyr::ungroup()
-             readr::write_csv(grp_summary, file)
+             readr::write_csv(spreadsheet_csv_safe(grp_summary), file)
           } else {
-             readr::write_csv(long_df, file)
+             readr::write_csv(spreadsheet_csv_safe(long_df), file)
           }
        }
     )
@@ -2625,6 +2638,7 @@ heatmap_server <- function(id, shared_data) {
       
       curr_settings <- shared_data$de_settings()
       curr_l2fc <- if (!is.null(curr_settings$log2fc_threshold)) curr_settings$log2fc_threshold else 1
+      curr_pval <- if (!is.null(curr_settings$p_threshold)) curr_settings$p_threshold else 0.05
       condense_lbl <- if ((input$staircaseGroup %||% "subclass") == "subclass") "Classes" else if ((input$staircaseGroup %||% "subclass") == "hyperclass") "Categories" else "Lipids"
       title_text <- sprintf("Filtered Heatmap - Class Standard Deviation (%d %s | |L2FC| \u2265 %s, P < %s)", nrow(mat_display), condense_lbl, curr_l2fc, curr_pval)
       heatmap_res <- generateHeatmapObject(mat_display, title_text,  
@@ -2647,9 +2661,14 @@ heatmap_server <- function(id, shared_data) {
       return(heatmap_res)
     })
     
-    output$unfiltered_heatmap_container <- renderUI({
-      show_avg <- isTRUE(input$condenseRows) || (!isTRUE(input$condenseRows) && !isTRUE(input$condenseRowsSD))
-      show_sd <- isTRUE(input$condenseRowsSD)
+    # Classic renders this as one container output. An optional frontend may
+    # redefine it through the heatmap_container_outputs hook to split the same
+    # content into separate outputs (controls, average card, SD card).
+    unfiltered_heatmap_ui <- function(show_avg = isTRUE(input$condenseRows) || (!isTRUE(input$condenseRows) && !isTRUE(input$condenseRowsSD)),
+                                      show_sd = isTRUE(input$condenseRowsSD),
+                                      controls = TRUE, download_label = "CSV") {
+      force(show_avg)
+      force(show_sd)
       
       cards <- list()
       
@@ -2668,7 +2687,7 @@ heatmap_server <- function(id, shared_data) {
                ),
                tags$div(
                   class = "d-flex align-items-center gap-1",
-                  downloadButton(ns("downloadHeatmapCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 4px;"),
+                  downloadButton(ns("downloadHeatmapCSV"), download_label, class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 4px;"),
                   downloadButton(ns("downloadHeatmapPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
                )
             ),
@@ -2691,7 +2710,7 @@ heatmap_server <- function(id, shared_data) {
                   textOutput(ns("unfiltered_sd_summary_text"), inline = TRUE)
                ),
                tags$div(
-                  downloadButton(ns("downloadHeatmapSDCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
+                  downloadButton(ns("downloadHeatmapSDCSV"), download_label, class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
                   downloadButton(ns("downloadHeatmapSDPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
                )
             ),
@@ -2736,12 +2755,19 @@ heatmap_server <- function(id, shared_data) {
         )
       )
       
-      tagList(quick_access, cards)
-    })
+      if (controls) tagList(quick_access, cards) else tagList(cards)
+    }
+    output$unfiltered_heatmap_container <- renderUI({ unfiltered_heatmap_ui() })
+    lipidomic_hook("heatmap_container_outputs")(output, "unfiltered_heatmap_container", unfiltered_heatmap_ui)
 
-    output$filtered_heatmap_container <- renderUI({
-      show_avg <- isTRUE(input$condenseRows) || (!isTRUE(input$condenseRows) && !isTRUE(input$condenseRowsSD))
-      show_sd <- isTRUE(input$condenseRowsSD)
+    # Classic renders this as one container output. An optional frontend may
+    # redefine it through the heatmap_container_outputs hook to split the same
+    # content into separate outputs (controls, average card, SD card).
+    filtered_heatmap_ui <- function(show_avg = isTRUE(input$condenseRows) || (!isTRUE(input$condenseRows) && !isTRUE(input$condenseRowsSD)),
+                                    show_sd = isTRUE(input$condenseRowsSD),
+                                    controls = TRUE, download_label = "CSV") {
+      force(show_avg)
+      force(show_sd)
       
       ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
       contrast_header <- if (!is.null(ci) && !is.null(ci$ref) && !is.null(ci$comp)) {
@@ -2765,13 +2791,13 @@ heatmap_server <- function(id, shared_data) {
                      textOutput(ns("filtered_summary_text"), inline = TRUE)
                   ),
                   tags$span(class = "threshold-badge badge bg-light text-primary-emphasis border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold",
-                     uiOutput(ns("filtered_threshold_badge"), inline = TRUE)
+                     uiOutput(ns("filtered_threshold_badge_avg"), inline = TRUE)
                   ),
-                  uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+                  uiOutput(ns("active_contrast_badge_avg_ui"), inline = TRUE)
                ),
                tags$div(
                   class = "d-flex align-items-center gap-1",
-                  downloadButton(ns("downloadFilteredHeatmapCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 4px;"),
+                  downloadButton(ns("downloadFilteredHeatmapCSV"), download_label, class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 4px;"),
                   downloadButton(ns("downloadFilteredHeatmapPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
                )
             ),
@@ -2798,12 +2824,12 @@ heatmap_server <- function(id, shared_data) {
                      textOutput(ns("filtered_sd_summary_text"), inline = TRUE)
                   ),
                   tags$span(class = "threshold-badge badge bg-light text-secondary border border-secondary-subtle rounded-pill px-2.5 py-1 fw-semibold",
-                     uiOutput(ns("filtered_threshold_badge"), inline = TRUE)
+                     uiOutput(ns("filtered_threshold_badge_sd"), inline = TRUE)
                   ),
-                  uiOutput(ns("active_contrast_badge_ui"), inline = TRUE)
+                  uiOutput(ns("active_contrast_badge_sd_ui"), inline = TRUE)
                ),
                tags$div(
-                  downloadButton(ns("downloadFilteredHeatmapSDCSV"), "CSV", class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
+                  downloadButton(ns("downloadFilteredHeatmapSDCSV"), download_label, class="btn-sm btn-outline-secondary py-0 btn-download-csv", style="margin-right: 5px;"),
                   downloadButton(ns("downloadFilteredHeatmapSDPDF"), "PDF", class="btn-sm btn-outline-secondary py-0 btn-download-pdf")
                )
             ),
@@ -2855,8 +2881,10 @@ heatmap_server <- function(id, shared_data) {
         }
       ", jsonlite::toJSON(contrast_header, auto_unbox = TRUE))))
       
-      tagList(quick_access, cards, script_tag)
-    })
+      if (controls) tagList(quick_access, cards, script_tag) else tagList(cards)
+    }
+    output$filtered_heatmap_container <- renderUI({ filtered_heatmap_ui() })
+    lipidomic_hook("heatmap_container_outputs")(output, "filtered_heatmap_container", filtered_heatmap_ui)
     
     output$de_not_run_banner <- renderUI({
       render_de_not_run_banner(shared_data)
@@ -3209,7 +3237,7 @@ heatmap_server <- function(id, shared_data) {
         colnames(df_var) <- paste0(colnames(df_var), "_Variance")
         
         out_df <- cbind(df_mean, df_var, df_sd) %>% tibble::rownames_to_column(row_lbl)
-        write.csv(out_df, file, row.names = FALSE)
+        write_spreadsheet_csv(out_df, file, row.names = FALSE)
       }
     )
 
@@ -3255,7 +3283,7 @@ heatmap_server <- function(id, shared_data) {
         colnames(df_var) <- paste0(colnames(df_var), "_Variance")
         
         out_df <- cbind(df_mean, df_var, df_sd) %>% tibble::rownames_to_column(row_lbl)
-        write.csv(out_df, file, row.names = FALSE)
+        write_spreadsheet_csv(out_df, file, row.names = FALSE)
       }
     )
 
@@ -3318,14 +3346,16 @@ heatmap_server <- function(id, shared_data) {
        paste("Displaying", length(final), "Lipids (DE Filtered)")
     })
 
-    output$filtered_threshold_badge <- renderUI({
+    filtered_threshold_badge <- function() {
       curr_settings <- shared_data$de_settings()
       curr_l2fc <- if (!is.null(curr_settings$log2fc_threshold)) curr_settings$log2fc_threshold else 1
       curr_pval <- if (!is.null(curr_settings$p_threshold)) curr_settings$p_threshold else 0.05
       HTML(sprintf("|L2FC| &ge; %s &middot; P &lt; %s", curr_l2fc, curr_pval))
-    })
+    }
+    output$filtered_threshold_badge_avg <- renderUI(filtered_threshold_badge())
+    output$filtered_threshold_badge_sd <- renderUI(filtered_threshold_badge())
 
-    output$active_contrast_badge_ui <- renderUI({
+    active_contrast_badge <- function() {
       ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
       req(ci, ci$ref, ci$comp)
       ref_str <- paste(ci$ref, collapse = "+")
@@ -3338,7 +3368,9 @@ heatmap_server <- function(id, shared_data) {
         title = "Click to configure Reference vs Comparison cohorts in Compared Analysis dock panel",
         icon("code-compare", class = "me-1"), paste0(comp_str, " vs ", ref_str)
       )
-    })
+    }
+    output$active_contrast_badge_avg_ui <- renderUI(active_contrast_badge())
+    output$active_contrast_badge_sd_ui <- renderUI(active_contrast_badge())
     
     output$downloadHeatmapPDF <- downloadHandler(
       filename = function() { paste0("Unfiltered_Heatmap_", format(Sys.Date(), "%Y%m%d"), ".pdf") },
@@ -3424,11 +3456,11 @@ heatmap_server <- function(id, shared_data) {
            } else {
               out_df <- if (!is.null(df_var) && !is.null(df_sd)) cbind(df_mean, df_var, df_sd) else df_mean
               out_df <- out_df %>% tibble::rownames_to_column(row_lbl)
-              write.csv(out_df, file, row.names = FALSE)
+              write_spreadsheet_csv(out_df, file, row.names = FALSE)
            }
         } else {
            out_df <- as.data.frame(obj$data) %>% tibble::rownames_to_column(row_lbl)
-           write.csv(out_df, file, row.names = FALSE)
+           write_spreadsheet_csv(out_df, file, row.names = FALSE)
         }
       }
     )
@@ -3520,11 +3552,11 @@ heatmap_server <- function(id, shared_data) {
            } else {
               out_df <- if (!is.null(df_var) && !is.null(df_sd)) cbind(df_mean, df_var, df_sd) else df_mean
               out_df <- out_df %>% tibble::rownames_to_column(row_lbl)
-              write.csv(out_df, file, row.names = FALSE)
+              write_spreadsheet_csv(out_df, file, row.names = FALSE)
            }
         } else {
            out_df <- as.data.frame(obj$data) %>% tibble::rownames_to_column(row_lbl)
-           write.csv(out_df, file, row.names = FALSE)
+           write_spreadsheet_csv(out_df, file, row.names = FALSE)
         }
       }
     )

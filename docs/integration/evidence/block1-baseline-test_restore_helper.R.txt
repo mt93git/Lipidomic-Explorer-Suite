@@ -1,0 +1,67 @@
+--- Test Case 1 (List of lists) ---
+Original structure:
+List of 2
+ $ :List of 5
+  ..$ id        : chr "group1"
+  ..$ name      : chr "Group 1"
+  ..$ pts       : chr [1:2] "P1" "P2"
+  ..$ checked   : logi TRUE
+  ..$ is_default: logi FALSE
+ $ :List of 5
+  ..$ id        : chr "group2"
+  ..$ name      : chr "Group 2"
+  ..$ pts       : chr "P3"
+  ..$ checked   : logi FALSE
+  ..$ is_default: logi TRUE
+NULL
+
+New structure:
+List of 2
+ $ :List of 5
+  ..$ id        : chr "group1"
+  ..$ name      : chr "Group 1"
+  ..$ pts       : chr [1:2] "P1" "P2"
+  ..$ checked   : logi TRUE
+  ..$ is_default: logi FALSE
+ $ :List of 5
+  ..$ id        : chr "group2"
+  ..$ name      : chr "Group 2"
+  ..$ pts       : chr "P3"
+  ..$ checked   : logi FALSE
+  ..$ is_default: logi TRUE
+NULL
+
+--- Test Case 2 (Data frame with list-column) ---
+Original structure (DF):
+List of 2
+ $ :List of 5
+  ..$ id        : chr "group1"
+  ..$ name      : chr "Group 1"
+  ..$ checked   : logi TRUE
+  ..$ is_default: logi FALSE
+  ..$ pts       : chr [1:2] "P1" "P2"
+ $ :List of 5
+  ..$ id        : chr "group2"
+  ..$ name      : chr "Group 2"
+  ..$ checked   : logi FALSE
+  ..$ is_default: logi TRUE
+  ..$ pts       : chr "P3"
+NULL
+
+New structure (DF):
+List of 2
+ $ :List of 5
+  ..$ id        : chr "group1"
+  ..$ name      : chr "Group 1"
+  ..$ checked   : logi TRUE
+  ..$ is_default: logi FALSE
+  ..$ pts       : chr [1:2] "P1" "P2"
+ $ :List of 5
+  ..$ id        : chr "group2"
+  ..$ name      : chr "Group 2"
+  ..$ checked   : logi FALSE
+  ..$ is_default: logi TRUE
+  ..$ pts       : chr "P3"
+NULL
+
+=== ALL HELPER TESTS PASSED ===

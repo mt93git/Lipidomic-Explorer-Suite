@@ -1,0 +1,24 @@
+/* Pre-Canvas illustrated backdrop (Team workspace only): Data (matrix, metadata), Review, and the loading
+   dialog shown over them. The start screen "Choose how to begin" keeps its own data-matrix art
+   (shell.css), which this layer sits beneath.
+   One fixed, decorative layer (body::before) painted under all page content at --z-backdrop
+   (qw_layers.css): pointer-events:none, out of flow (no layout shift), and static, so reduced motion
+   needs no variant. The art (img/step-backdrop*.svg) reuses the gradient, tile and spectrum vocabulary of
+   data-matrix.svg and login-spectrum.svg, paler and kept to the page edges and the bottom band, with a
+   light veil in the middle where the text sits. The companion is not touched.
+   Excluded: signed-out screens (sign-in art), Canvas, and analysis tool pages (data-guide-analysis). */
+body.team-workspace-app[data-team-authenticated=true]:not([data-tw-screen=canvas]):not([data-guide-analysis=true])::before{
+  content:"";position:fixed;inset:0;z-index:var(--z-backdrop,-1);pointer-events:none;
+  background:#f7f6fa url("team/img/step-backdrop.svg") center bottom/cover no-repeat}
+@media (max-aspect-ratio:4/5){
+  body.team-workspace-app[data-team-authenticated=true]:not([data-tw-screen=canvas]):not([data-guide-analysis=true])::before{
+    background-image:url("team/img/step-backdrop-portrait.svg")}}
+/* libreros.css paints html, body and the bslib layout with an opaque paper colour (!important). The
+   layer sits under in-flow backgrounds, so on these screens body and the layout let it through; html
+   keeps the paper colour as the base. Cards and panels keep their own white backgrounds. */
+body.team-workspace-app[data-team-authenticated=true]:is([data-tw-screen=data-matrix],[data-tw-screen=data-metadata],[data-tw-screen=review-single]):not([data-guide-analysis=true]){background:transparent!important}
+body.team-workspace-app[data-team-authenticated=true]:is([data-tw-screen=data-matrix],[data-tw-screen=data-metadata],[data-tw-screen=review-single]):not([data-guide-analysis=true]) .bslib-sidebar-layout:not(.ts-has-library-login):not(.team-library-login){background:transparent!important}
+/* The screen help sits on illustration (the start screen's data-matrix tiles, or this layer): one step darker
+   than workspace.css's #5a7380 keeps it at 4.5:1 or more over the palest tiles. */
+body.team-workspace-app[data-team-authenticated=true]:not([data-tw-screen=canvas]) #team-workspace .tw-journey-copy p{color:#4a6270}
+@media print{body.team-workspace-app::before{display:none}}
