@@ -6,6 +6,9 @@ Sys.setenv(LIPIDOMIC_INTERFACE = 'team', LIPIDOMIC_TEAM_WORKSPACE = '1', LIPIDOM
 suppressPackageStartupMessages({ source('R/global.R'); source('R/frontends/team/server.R') })
 ok <- 0L
 check <- function(label, cond) { if (!isTRUE(cond)) stop('FAIL: ', label, call. = FALSE); ok <<- ok + 1L; cat('ok -', label, '\n') }
+# The only callback sourcing leaves is the W13 worker-pool boot timer (parallel_pool.R), which
+# does nothing unless the app is running; cancel it, then nothing else may be scheduled.
+stopifnot(is.function(team_parallel_boot_timer), isTRUE(team_parallel_boot_timer()))
 stopifnot(identical(later::loop_empty(), TRUE))  # nothing scheduled with PREWARM=0
 # Re-sourcing the file gives fresh (cold) memo environments; the Team module UIs that
 # global.R defined stay in place, exactly as in a fresh app process.

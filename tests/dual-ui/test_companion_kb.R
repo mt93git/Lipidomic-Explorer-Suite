@@ -209,6 +209,10 @@ Sys.setenv(LIPIDOMIC_KB_SEARCH_SEED = "0")
 
 # ---- The companion: grounded mode ----------------------------------------------------------
 Sys.setenv(LIPIDOMIC_KB_DIR = lib)
+# The companion's AI path hands the provider helpers (companion_ai_guard, ...) to its worker as
+# future globals, so they must exist, as they do in the app (bootstrap.R sources the provider).
+# The model call itself is mocked below.
+source("R/frontends/team/companion_ai_provider.R")
 source("R/frontends/team/companion_assistant.R")
 ai_calls <- 0L
 companion_ai_available <- function() TRUE

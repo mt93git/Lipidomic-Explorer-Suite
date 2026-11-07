@@ -24,7 +24,7 @@ jobs:
       - name: Install system libraries for graph packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglpk-dev libxml2-dev
+          sudo apt-get install -y libglpk-dev libxml2-dev libpoppler-cpp-dev
       - name: Install declared dependencies for the complete acceptance suite
         shell: Rscript --vanilla {0}
         run: |

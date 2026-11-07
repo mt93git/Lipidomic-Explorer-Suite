@@ -35,10 +35,10 @@ team_suspend_hidden_classic_outputs <- function(output) {
   invisible(ids)
 }
 team_frontend_server <- function(input, output, session, shared_data) {
+  team_plot_instance_arm_prewarm() # once per process: Canvas copy allow-lists (plot_instances.R)
   # Production called these from R/server.R just before this function; same order.
   if (team_workspace_enabled()) session$userData$team_shared_data <- shared_data
   if (team_workspace_enabled()) team_canvas_server(input, output, session, shared_data)
-  team_plot_instance_arm_prewarm() # once per process: Canvas copy allow-lists (plot_instances.R)
   if (team_library_enabled() && !team_workspace_enabled()) team_library_server(input, output, session, shared_data)
   # A receipt belongs to this upload, never an unrelated background flush.
   for (upload_id in c("data_hub-files", "data_hub-import_session_file", "sample_metadata_import-file")) local({

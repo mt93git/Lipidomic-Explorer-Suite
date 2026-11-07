@@ -92,15 +92,18 @@ team_parallel_cores <- function() {
 }
 # Pool size: the request (LIPIDOMIC_TEAM_R_WORKERS, else the default maximum),
 # bounded by what fits at the per-worker RSS budget both in host free memory
-# above the reserve and in the unit's own memory limit, and by cores - 1.
-team_parallel_workers <- function(available_gb = team_parallel_mem_available_gb(), cores = team_parallel_cores(), cgroup_gb = team_parallel_cgroup_available_gb()) {
+# above the reserve and in the unit's own memory limit, by cores - 1, and by
+# cores / BLAS threads per worker, so every worker keeps the main process's
+# thread count (see team_parallel_threads: LAPACK results depend on it).
+team_parallel_workers <- function(available_gb = team_parallel_mem_available_gb(), cores = team_parallel_cores(), cgroup_gb = team_parallel_cgroup_available_gb(), main = team_parallel_main_blas_threads()) {
   requested <- team_parallel_int_env('LIPIDOMIC_TEAM_R_WORKERS', team_parallel_int_env('LIPIDOMIC_TEAM_R_MAX_WORKERS', 8L))
   if (requested<=0L || is.na(available_gb)) return(0L)
   per <- team_parallel_num_env('LIPIDOMIC_TEAM_R_WORKER_GB', 0.9)
   if (per<=0) return(0L)
   fit <- floor((available_gb-team_parallel_num_env('LIPIDOMIC_TEAM_R_RESERVE_GB', 6))/per)
   if (!is.na(cgroup_gb)) fit <- min(fit, floor(cgroup_gb/per))
-  as.integer(max(0L, min(requested, fit, cores-1L)))
+  per_threads <- max(1L, team_parallel_int_env('LIPIDOMIC_TEAM_R_WORKER_THREADS', main))
+  as.integer(max(0L, min(requested, fit, cores-1L, max(1L, cores %/% per_threads))))
 }
 # BLAS threads per worker. LAPACK results such as prcomp() change in their last
 # bits with the thread count (measured on RTX: 2000x96 at 8 threads, 8000x400
@@ -279,8 +282,11 @@ team_parallel_card_store <- function(prepared) {
   invisible(stored)
 }
 # Start once the app is running (later() callbacks run only inside the event
-# loop), and only for the Team interface.
-if (!nzchar(Sys.getenv('LIPIDOMIC_TEAM_R_WORKER','')) && requireNamespace('later', quietly=TRUE))
+# loop), and only for the Team interface. This is the one callback that sourcing
+# the app leaves on the later loop; team_parallel_boot_timer holds its cancel
+# function (NULL when nothing was scheduled), so scripts that source the app
+# without running it can cancel it.
+team_parallel_boot_timer <- if (!nzchar(Sys.getenv('LIPIDOMIC_TEAM_R_WORKER','')) && requireNamespace('later', quietly=TRUE))
   later::later(function() {
     if (!isTRUE(tryCatch(shiny::isRunning(),error=function(e)FALSE))) return()
     if (!identical(tryCatch(lipidomic_interface(),error=function(e)''),'team')) return()

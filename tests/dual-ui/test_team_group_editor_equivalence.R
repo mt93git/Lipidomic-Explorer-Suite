@@ -3,12 +3,16 @@
 # sample_metadata_import_server confirm path). Uses Paula's 67-sample checkpoint (ckpt16).
 # Usage (from the repo root):
 #   TEAM_GROUPS_CKPT=~/ux-equivalence/ux13/ckpt16.zip R --vanilla --no-echo --file=tests/dual-ui/test_team_group_editor_equivalence.R
+ck <- path.expand(Sys.getenv("TEAM_GROUPS_CKPT", "~/ux-equivalence/ux13/ckpt16.zip"))
+# Paula's checkpoint is real lab data and is not in the repository: without it there is nothing to compare.
+if (!file.exists(ck)) {
+  cat("SKIP test_team_group_editor_equivalence.R: needs Paula's 67-sample checkpoint (real data, not in the repository); set TEAM_GROUPS_CKPT to run it\n")
+  quit(save = "no", status = 0)
+}
 Sys.setenv(LIPIDOMIC_INTERFACE = "team")
 source("R/global.R")
 team_workspace_enabled <- function() TRUE
 check <- function(label, ok) if (!isTRUE(ok)) stop("FAIL: ", label, call. = FALSE) else cat("ok -", label, "\n")
-ck <- path.expand(Sys.getenv("TEAM_GROUPS_CKPT", "~/ux-equivalence/ux13/ckpt16.zip"))
-stopifnot(file.exists(ck))
 unz_dir <- tempfile("ckpt16-"); dir.create(unz_dir); utils::unzip(ck, exdir = unz_dir)
 saved_canvas <- team_canvas_read(file.path(unz_dir, "team-canvas-v1.json"))
 
