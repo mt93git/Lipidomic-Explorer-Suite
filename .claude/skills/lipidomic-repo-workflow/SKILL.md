@@ -47,6 +47,7 @@ Find the kind of change before you write code. State it in the PR.
 | **Normal** | Interface, text, speed, bug fixes, tests | 1 approval from either of the other two, and green CI |
 | **Touches the shared core** | `R/modules/`, `R/global.R`, `R/server.R`, `R/core/` (analysis modules, data loading, hooks) | 1 approval. Classic output must stay identical to the reference ("scientific parity"); if it changes, the PR says so and explains why. |
 | **Changes a scientific result** | Default parameters, statistics, sample exclusion, normalization | 2 approvals (both other people), plus a before/after check in the PR |
+| **Changes project rules** | `.github/workflows/`, `DESCRIPTION`, `CITATION.cff`, `LICENSE`, this skill (`SKILL.md` and its folder, both copies) | 2 approvals (both other people) |
 
 When in doubt, pick the stricter kind.
 
@@ -57,10 +58,10 @@ Team code lives in `R/frontends/team/`. It reaches the core only through the nam
 1. Production only from tags on main.
 2. CI runs on every PR, whatever the target branch.
 3. `main` and integration are protected: changes enter only by PR, with green CI and another person's approval.
-4. Package versions are pinned in `renv.lock`, so the Macs, the server and CI run the same versions.
+4. Package versions will be pinned in a shared `renv.lock` (to be added by the repo-setup PR), so the Macs, the server and CI run the same versions. Until then, CI is the reference machine.
 5. No test is disabled or deleted to get green. A test is skipped only when it needs private data that cannot be in the repo, and the PR says so.
 6. No real data or secrets in the repo. Use synthetic fixtures only. Keys, Supabase URLs, passwords and environment values live on the server.
-7. Scientific changes need two approvals and a before/after check.
+7. Scientific changes need two approvals and a before/after check. Changes to CI workflows, `DESCRIPTION`, `CITATION.cff`, `LICENSE` or this skill also need two approvals.
 8. Every PR explains itself: what changes, which areas it touches, how it was tested, and the effect on Classic. Reviews happen in writing.
 
 ## Rules for AI agents
@@ -80,6 +81,7 @@ These apply to Claude Code, Codex, Antigravity and any other agent working in th
 The full checklist is in `references/release-checklist.md`. In short:
 
 - Release once a week (Thursday by default). Release duty rotates: Max, then Gerardo, then Paula.
+- The person on duty opens the release PR and tags main. The deploy needs access to the Yale server: on Max's weeks, Max does the release PR and the tag, and Gerardo runs the production deploy from that tag.
 - Release PR: integration into main, with green CI and one approval.
 - Tag main with the next version (`vMAJOR.MINOR.PATCH`) and deploy production from that tag, never from a branch.
 - Keep a backup and a tested rollback command before switching production.

@@ -11,6 +11,7 @@
 - [ ] Tag the merge commit on main: `git tag -a vX.Y.Z <sha> -m "vX.Y.Z"` and push the tag.
 
 ## 3. Deploy production from the tag
+The deploy needs access to the Yale server. If the person on duty has none (Max, from Quebec), they hand over to Gerardo here, with the tag name.
 - [ ] Check out the tag, never a branch.
 - [ ] Back up the current production release and its configuration.
 - [ ] Write down the rollback command and make sure it works before switching.
