@@ -10,7 +10,7 @@ Proposed version of `.github/pull_request_template.md`. It keeps the verificatio
 - [ ] Normal (interface, text, speed, fixes, tests): 1 approval
 - [ ] Touches the shared core (R/modules, R/global.R, R/server.R, R/core): 1 approval + Classic parity
 - [ ] Changes a scientific result (defaults, statistics, sample exclusion): 2 approvals + before/after check
-- [ ] Changes project rules (.github/workflows/, DESCRIPTION, CITATION.cff, LICENSE, the agent skill): 2 approvals
+- [ ] Changes the project's rules (.github/workflows/, DESCRIPTION, CITATION.cff, LICENSE, the agent skill): 2 approvals
 
 ## How it was tested
 <!-- Commands run, results, and what you checked by hand. -->
