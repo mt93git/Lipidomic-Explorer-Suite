@@ -6,7 +6,11 @@
   var baselines = new WeakMap();
   // Marker shapes offered per series (Plotly symbol names), and their labels in the panel.
   var MARKER_SYMBOLS = ['circle','square','triangle-up','star','diamond'];
-  var SYMBOL_LABELS = {'circle':'Circle','square':'Square','triangle-up':'Triangle','star':'Star','diamond':'Diamond'};
+  var SYMBOL_LABELS = {'circle':'Circle','square':'Square','triangle-up':'Triangle','star':'Star','diamond':'Diamond','':'As plotted'};
+  // Trace types whose points can take these shapes. 3D scatter only draws circle, square and diamond.
+  var POINTER_SCATTER = ['scatter','scattergl','scatter3d','scatterpolar','scatterpolargl','scatterternary','scattergeo','scattercarpet'];
+  var SYMBOLS_3D = ['circle','square','diamond'];
+  function symbolChoices(trace){return (trace.type==='scatter3d'?SYMBOLS_3D:MARKER_SYMBOLS);}
   // 95% data ellipse: squared Mahalanobis radius of a chi-square with 2 degrees of freedom.
   var ELLIPSE_CHI2 = 5.991, ELLIPSE_STEPS = 72, ELLIPSE_PREFIX = 'team-ellipse:';
   function isEllipse(shape){return !!shape && typeof shape.name === 'string' && shape.name.indexOf(ELLIPSE_PREFIX) === 0;}
@@ -19,8 +23,13 @@
   function seriesCapabilities(trace){
     var type=trace.type || 'scatter', mode=String(trace.mode || '');
     var scatter=type==='scatter'||type==='scattergl';
-    return {marker:scatter ? mode.indexOf('markers')>=0 : ['bar','histogram','box','violin','waterfall'].includes(type),
-      markerSize:scatter && mode.indexOf('markers')>=0,
+    // Every trace that draws point markers: scatter-like traces in markers mode (2D, 3D, polar, ternary, geo, carpet),
+    // and the sample points of a box or violin. Map traces (scattermapbox) use icon names, not these shapes.
+    var scatterPoints=POINTER_SCATTER.indexOf(type)>=0 && mode.indexOf('markers')>=0;
+    var boxPoints=(type==='box'&&trace.boxpoints!==false&&trace.boxpoints!=='false')||(type==='violin'&&trace.points!==false&&trace.points!=='false');
+    return {marker:POINTER_SCATTER.indexOf(type)>=0 ? mode.indexOf('markers')>=0 : ['bar','histogram','box','violin','waterfall'].includes(type),
+      pointer:scatterPoints||boxPoints,
+      markerSize:scatterPoints||boxPoints,
       line:scatter ? mode.indexOf('lines')>=0 : ['box','violin','bar','histogram'].includes(type),
       fill:['box','violin','bar','histogram'].includes(type)||(scatter && trace.fill && trace.fill!=='none' && !trace.fillgradient),
       continuous:['heatmap','contour','histogram2d'].includes(type)};
@@ -205,7 +214,7 @@
   function ellipseSeries(gd){
     var out=[];(gd.data||[]).forEach(function(t,i){
       var full=(gd._fullData||[])[i]||t,caps=seriesCapabilities(Object.assign({},t,{mode:full.mode||t.mode}));
-      if(!caps.markerSize||(t.xaxis&&t.xaxis!=='x')||(t.yaxis&&t.yaxis!=='y')||(t.meta&&t.meta.teamPanel))return;
+      if(!caps.markerSize||(t.type&&['scatter','scattergl'].indexOf(t.type)<0)||(t.xaxis&&t.xaxis!=='x')||(t.yaxis&&t.yaxis!=='y')||(t.meta&&t.meta.teamPanel))return;
       if(numericPoints(t).length>=3)out.push(i);
     });
     return out;
@@ -287,21 +296,21 @@
     }
     // A relayout whose every value already matches the plot is skipped (one changed key sends them all, so implied edits stay as before).
     if(Object.keys(layout).length&&!Object.keys(layout).every(function(k){var current=readPath(gd.layout,k);return (current==null&&layout[k]==null)||JSON.stringify(current)===JSON.stringify(layout[k]);}))tasks.push(root.Plotly.relayout(gd,layout));
-    (gd.data||[]).forEach(function(source,index){var t=desired[index]||{index:index};var prior=b.traces[index];if(!prior)return;var u={};(prior.touched||[]).forEach(function(k){u[k]=k==='colorscale' && Array.isArray(prior[k]) ? [prior[k]] : prior[k];});
+    (gd.data||[]).forEach(function(source,index){var t=desired[index]||{index:index};var prior=b.traces[index];if(!prior)return;var u={};(prior.touched||[]).forEach(function(k){u[k]=(Array.isArray(prior[k])||ArrayBuffer.isView(prior[k])) ? [prior[k]] : prior[k];});
       var source=gd.data&&gd.data[t.index];if(!source)return;if(t.name!==undefined)u.name=safeText(t.name);
       if(selection){prior.visibilityTouched=false;}else if(hidden.has(index)){u.visible=false;prior.visibilityTouched=true;}else if(prior.visibilityTouched){u.visible=prior.visible;prior.visibilityTouched=false;}
-      if(t.color&&editableColor(source,'marker'))u['marker.color']=t.color;
+      if(t.color&&(editableColor(source,'marker')||seriesCapabilities(source).pointer))u['marker.color']=t.color;
       var caps=seriesCapabilities(source), border=borderPath(source);
       if(t.lineColor&&editableColor(source,border))u[border+'.color']=t.lineColor;
       if(t.lineWidth!==undefined)u[border+'.width']=t.lineWidth;
       if(caps.fill&&fillEditable(source)&&t.fillColor)u[fillPath(source)]=rgba(t.fillColor,t.fillOpacity===undefined?alpha(readPath((gd._fullData||[])[index]||source,fillPath(source))):t.fillOpacity);
       if(t.markerSize!==undefined&&scalar((source.marker||{}).size))u['marker.size']=t.markerSize;
-      if(t.markerSymbol&&MARKER_SYMBOLS.indexOf(t.markerSymbol)>=0&&caps.markerSize&&scalar((source.marker||{}).symbol))u['marker.symbol']=t.markerSymbol;
+      if(t.markerSymbol&&symbolChoices(source).indexOf(t.markerSymbol)>=0&&caps.pointer)u['marker.symbol']=t.markerSymbol;
       if(t.opacity!==undefined)u.opacity=t.opacity;if(source.type==='violin'){if(t.points!==undefined)u.points=t.points?'all':false;if(t.innerBox!==undefined)u['box.visible']=t.innerBox;}
       if(supportsHeatScale(source) && t.scaleLow && t.scaleMid && t.scaleHigh){
         u.colorscale=[[[0,t.scaleLow],[0.5,t.scaleMid],[1,t.scaleHigh]]];u.autocolorscale=false;
       }
-      prior.touched=Object.keys(u).filter(function(k){return k!=='visible';});Object.keys(u).forEach(function(k){var intended=k==='colorscale'&&Array.isArray(u[k])?u[k][0]:u[k];if(JSON.stringify(readPath(source,k))===JSON.stringify(intended))delete u[k];});if(Object.keys(u).length){var keys=Object.keys(u).sort(),group=JSON.stringify(keys);if(!batches.has(group))batches.set(group,{keys:keys,traces:[],values:[]});batches.get(group).traces.push(t.index);batches.get(group).values.push(u);}
+      prior.touched=Object.keys(u).filter(function(k){return k!=='visible';});Object.keys(u).forEach(function(k){var intended=Array.isArray(u[k])?u[k][0]:u[k];if(JSON.stringify(readPath(source,k))===JSON.stringify(intended))delete u[k];});if(Object.keys(u).length){var keys=Object.keys(u).sort(),group=JSON.stringify(keys);if(!batches.has(group))batches.set(group,{keys:keys,traces:[],values:[]});batches.get(group).traces.push(t.index);batches.get(group).values.push(u);}
     });
     // One restyle per set of changed attributes instead of one per trace. A single-trace restyle
     // reads an array value as value[0] (Plotly takes value[i % length]); each trace's entry keeps that.
@@ -418,12 +427,15 @@
         outlines.title=outlinesAvailable||outlinesOn?'Draw a dotted 95% ellipse around the points of each group, in the color of its markers. Presentation only: no values or statistics change.':'Group outlines need a scatter plot with at least 3 points per group.';
         outlines.onclick=function(){if(options.isLocked&&options.isLocked())return;var n=state();n.groupEllipses=!outlinesOn;commit(n);render();};
         seriesActions.appendChild(outlines);seriesActions.appendChild(showAll);series.appendChild(seriesActions);series.appendChild(el('p',selectionOwner(gd)?(gd.layout.meta&&gd.layout.meta.teamGroupComparison?'Show or hide conditions in this panel. This changes presentation only; values and statistical models stay unchanged.':'Choose the lipid classes shown. Visible classes are renormalized to 100% per sample; the same selection is saved and used in CSV downloads.'):'Visibility changes whole identified series and their companion layers. Categories stored inside one trace cannot be hidden separately; at least one scientific series must remain visible. Raster images cannot expose editable series.'));
-      ((gd&&gd.data)||[]).forEach(function(t,i){var group=el('fieldset');group.appendChild(el('legend',t.name||'Series '+(i+1)));series.appendChild(group);if(!baseline(gd).traces[i].sourceKey){group.appendChild(el('p','This series shares its identity with another series. Series editing is unavailable to preserve the scientific mapping.'));return;}var current=Object.assign({name:t.name||'',color:typeof (t.marker||{}).color==='string'?t.marker.color:'#17375e',lineColor:typeof (t.line||{}).color==='string'?t.line.color:'#17375e',lineWidth:(t.line||{}).width===undefined?2:t.line.width,markerSize:typeof (t.marker||{}).size==='number'?t.marker.size:6,markerSymbol:typeof (t.marker||{}).symbol==='string'?t.marker.symbol:'circle',opacity:t.opacity===undefined?1:t.opacity},state().traces.find(function(v){return v.sourceKey?v.sourceKey===baseline(gd).traces[i].sourceKey:v.index===i;})||{});
+      ((gd&&gd.data)||[]).forEach(function(t,i){var group=el('fieldset');group.appendChild(el('legend',t.name||'Series '+(i+1)));series.appendChild(group);if(!baseline(gd).traces[i].sourceKey){group.appendChild(el('p','This series shares its identity with another series. Series editing is unavailable to preserve the scientific mapping.'));return;}var current=Object.assign({name:t.name||'',color:typeof (t.marker||{}).color==='string'?t.marker.color:'#52514e',lineColor:typeof (t.line||{}).color==='string'?t.line.color:'#17375e',lineWidth:(t.line||{}).width===undefined?2:t.line.width,markerSize:typeof (t.marker||{}).size==='number'?t.marker.size:6,markerSymbol:typeof (t.marker||{}).symbol==='string'?t.marker.symbol:'circle',opacity:t.opacity===undefined?1:t.opacity},state().traces.find(function(v){return v.sourceKey?v.sourceKey===baseline(gd).traces[i].sourceKey:v.index===i;})||{});
         var members=visibilityGroup(gd,i),visibility=el('label'),check=el('input');check.type='checkbox';check.dataset.teamSeriesIndex=String(i);check.checked=!members.some(function(j){return hiddenIndices(baseline(gd),desiredTraces(baseline(gd),state(),{})).has(j);});var sourceVisible=members.some(function(j){return baseline(gd).traces[j].visible!==false&&baseline(gd).traces[j].visible!=='legendonly';});check.checked=check.checked&&sourceVisible;check.disabled=!sourceVisible||members.some(function(j){return !baseline(gd).traces[j].sourceKey;});if(!sourceVisible&&!selectionOwner(gd))group.appendChild(el('p','This series is hidden by the original analysis; presentation controls do not reveal it.'));visibility.appendChild(el('span',members.length>1?'Show group and companion series':'Show series'));var owned=selectionOwner(gd);if(owned){check.checked=owned.isSelected(i);check.disabled=!!(options.isLocked&&options.isLocked());}visibility.appendChild(check);check.onchange=function(){setVisible(gd,i,check.checked);};group.appendChild(visibility);
         var effective=(gd._fullData||[])[i] || t, caps=seriesCapabilities(Object.assign({},t,{mode:effective.mode || t.mode})),perPoint=!editableColor(t,'marker');
         var fp=fillPath(t),bp=borderPath(t);
+        // Marker shape: the 5 shapes (3 in 3D). A series whose points already carry their own shapes shows "As plotted" until one is chosen.
+        var origSymbol=baseline(gd).traces[i]['marker.symbol'],shapeChoices=symbolChoices(t),asPlotted=!(origSymbol===undefined||origSymbol===null||(typeof origSymbol==='string'&&shapeChoices.indexOf(origSymbol)>=0)),symbolOptions={choices:(asPlotted?['']:[]).concat(shapeChoices)};
         var patch=state().traces.find(function(v){return v.sourceKey===baseline(gd).traces[i].sourceKey;})||{};
         current.fillColor=patch.fillColor||readPath(effective,fp)||'#17375e';current.fillOpacity=patch.fillOpacity===undefined?alpha(readPath(effective,fp)):patch.fillOpacity;
+        if(patch.markerSymbol===undefined)current.markerSymbol=asPlotted?'':(typeof origSymbol==='string'?origSymbol:'circle');
         current.lineColor=patch.lineColor||readPath(effective,bp+'.color')||'#17375e';current.lineWidth=patch.lineWidth===undefined?(readPath(effective,bp+'.width')||0):patch.lineWidth;
         if(caps.continuous && supportsHeatScale(t) && effective.reversescale!==true && effective.zmid==null){
           group.appendChild(el('p','Change the low, scale midpoint and high colors of this plot only. The midpoint is not necessarily zero. Numeric values and scale limits stay unchanged.'));
@@ -441,9 +453,10 @@
             });
           });
         } else if(caps.continuous)group.appendChild(el('p','This plot uses a continuous color scale that cannot be edited here. Group palettes do not change it.'));
+        else if(caps.marker && perPoint && caps.pointer)group.appendChild(el('p','This plot colors each point by value. Choosing a marker color below gives every point of this series one color instead; Reset presentation restores the original colors.'));
         else if(caps.marker && perPoint)group.appendChild(el('p','Per-point / continuous colors are preserved; uniform marker color is unavailable.'));
         if(t.type==='violin')['points','innerBox'].forEach(function(key){var owner={};owner[key]=patch[key]===undefined?(key==='points'?effective.points!==false:!!(effective.box&&effective.box.visible)):patch[key];field(group,key==='points'?'Points':'Inner box',key,owner,{type:'boolean'},function(value){var n=state(),tr=tracePatch(n,i,gd);tr[key]=value;commit(n);});});
-        ['name','fillColor','fillOpacity','color','lineColor','lineWidth','markerSymbol','markerSize','opacity'].forEach(function(k){if((k==='markerSymbol'&&(!caps.markerSize||!scalar((t.marker||{}).symbol)))||(['fillColor','fillOpacity'].includes(k)&&(!caps.fill||!fillEditable(t)))||(k==='color'&&(!caps.marker||perPoint||['bar','histogram'].includes(t.type)))||((k==='lineColor'||k==='lineWidth')&&!caps.line)||(k==='lineColor'&&!editableColor(t,bp))||(k==='markerSize'&&(!caps.markerSize||!scalar((t.marker||{}).size))))return;var s=k==='name'?{type:'text'}:k==='markerSymbol'?{type:'text',choices:MARKER_SYMBOLS,labels:SYMBOL_LABELS}:['color','fillColor','lineColor'].includes(k)?{type:'color'}:{type:'number',min:0,max:['opacity','fillOpacity'].includes(k)?1:k==='lineWidth'?20:100};field(group,labelFor(k),k,current,s,function(v){var n=state(),tr=n.traces.find(function(a){return a.sourceKey?a.sourceKey===baseline(gd).traces[i].sourceKey:a.index===i;});if(!tr){tr={index:i,sourceKey:baseline(gd).traces[i].sourceKey};n.traces.push(tr);}tr.sourceKey=baseline(gd).traces[i].sourceKey;tr[k]=v;if(['fillColor','fillOpacity'].includes(k)){var f=group.querySelector('input[data-fill-color]');if(!tr.fillColor&&f)tr.fillColor=f.value;if(tr.fillOpacity===undefined)tr.fillOpacity=current.fillOpacity;}commit(n);});if(k==='fillColor'){var row=group.lastElementChild;row.querySelector('input').dataset.fillColor='true';}});
+        ['name','fillColor','fillOpacity','color','lineColor','lineWidth','markerSymbol','markerSize','opacity'].forEach(function(k){if((k==='markerSymbol'&&!caps.pointer)||(['fillColor','fillOpacity'].includes(k)&&(!caps.fill||!fillEditable(t)))||(k==='color'&&(!caps.marker||(perPoint&&!caps.pointer)||['bar','histogram'].includes(t.type)))||((k==='lineColor'||k==='lineWidth')&&!caps.line)||(k==='lineColor'&&!editableColor(t,bp))||(k==='markerSize'&&(!caps.markerSize||!scalar((t.marker||{}).size))))return;var s=k==='name'?{type:'text'}:k==='markerSymbol'?{type:'text',choices:symbolOptions.choices,labels:SYMBOL_LABELS}:['color','fillColor','lineColor'].includes(k)?{type:'color'}:{type:'number',min:0,max:['opacity','fillOpacity'].includes(k)?1:k==='lineWidth'?20:100};field(group,labelFor(k),k,current,s,function(v){var n=state(),tr=n.traces.find(function(a){return a.sourceKey?a.sourceKey===baseline(gd).traces[i].sourceKey:a.index===i;});if(!tr){tr={index:i,sourceKey:baseline(gd).traces[i].sourceKey};n.traces.push(tr);}tr.sourceKey=baseline(gd).traces[i].sourceKey;tr[k]=v;if(['fillColor','fillOpacity'].includes(k)){var f=group.querySelector('input[data-fill-color]');if(!tr.fillColor&&f)tr.fillColor=f.value;if(tr.fillOpacity===undefined)tr.fillOpacity=current.fillOpacity;}commit(n);});if(k==='fillColor'){var row=group.lastElementChild;row.querySelector('input').dataset.fillColor='true';}});
       });
       var notes=section('Text annotations'),add=el('button','Add annotation');add.type='button';notes.appendChild(add);add.disabled=(state().annotations||[]).length>=30;if(add.disabled)add.title='Up to 30 annotations per chart.';add.onclick=function(){var n=state();n.annotations=n.annotations||[];n.annotations.push({text:'Annotation',x:0.5,y:0.5});commit(n);render();};
       (state().annotations||[]).forEach(function(a,i){var group=el('fieldset');notes.appendChild(group);['text','x','y','size','color'].forEach(function(k){var owner={};owner[k]=k==='size'?a.font.size:k==='color'?a.font.color:a[k];var s=k==='text'?{type:'text'}:k==='color'?{type:'color'}:{type:'number',min:k==='size'?6:0,max:k==='size'?72:1};field(group,labelFor(k),k,owner,s,function(v){var n=state();n.annotations=n.annotations.map(function(b){return {text:b.text,x:b.x,y:b.y,size:b.font.size,color:b.font.color};});n.annotations[i][k]=v;commit(n);});});var remove=el('button','Remove annotation');remove.type='button';remove.onclick=function(){var n=state();n.annotations.splice(i,1);commit(n);render();};group.appendChild(remove);});
