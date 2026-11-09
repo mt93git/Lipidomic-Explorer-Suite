@@ -1,0 +1,31 @@
+:root {
+  --navy: #162230;
+  --blue: #2d5f8a;
+  --focus-dark: #78afe0;
+  --paper: #fafaf8;
+  --tint: #eaf1f7;
+  --muted: #526477;
+  --ink: #202e3b;
+  --surface: #ffffff;
+  --line: #dce3e8;
+  --subtle: #f0f3f5;
+  --ok: #276b50;
+  --ok-tint: #e9f3ed;
+  --danger: #ac353b;
+  --danger-tint: #fbeef0;
+  --warning: #865b18;
+  --warning-tint: #fbf1d9;
+  --client-atlas: #476b95;
+  --client-cedar: #73805a;
+  --client-meridian: #a66a4b;
+  --client-harbor: #3f7d86;
+  --client-juniper: #7d6a9e;
+  --radius: 8px;
+  --shadow: 0 2px 5px rgb(22 34 48 / 4%);
+}
+
+html.system-fonts {
+  --font-title: Georgia, "Times New Roman", serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}

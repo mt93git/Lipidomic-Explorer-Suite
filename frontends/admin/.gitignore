@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.npm-cache/
+.env*
+!.env.example
+coverage/
+*.tsbuildinfo
+verification/*.log
+test-results/
+playwright-report/
+# Admin pilot by simulation (e2e/live/pilot.spec.ts): screenshots and the seed's local credentials file. Never commit.
+e2e/live/pilot-evidence/
+e2e/live/.pilot-credentials*.json
+# Identity E2E (e2e/live/identity.spec.ts): screenshots and the seed's local credentials file. Never commit.
+e2e/live/identity-evidence/
+e2e/live/.identity-credentials*.json
