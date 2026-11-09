@@ -5,14 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, switchView } from "@/app/actions";
 import type { AppSession } from "@/lib/models";
+import { initials } from "@/lib/initials";
 import { navigation } from "@/lib/navigation";
 import { GlobalSearch } from "./global-search";
 import { ScopeControl } from "./scope-control";
 
 export function AppShell({ session, children }: { session: AppSession; children: ReactNode }) {
   const pathname = (usePathname() || "/").replace(/^\/admin(?=\/|$)/, "") || "/";
-  const initials = session.displayName.split(" ").slice(0, 2).map(part => part[0]).join("");
-  const staff = session.view === "staff";
+    const staff = session.view === "staff";
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="topbar">
@@ -29,7 +29,7 @@ export function AppShell({ session, children }: { session: AppSession; children:
           : session.clients.length > 1 ? <Link className="client-context" href="/choose-client" title="Change selected client">{session.selectedClient?.name ?? "Choose client"} <span aria-hidden="true">⌄</span></Link>
           : <span className="client-context">{session.selectedClient?.name ?? "No client"}</span>}
         <div className="user-chip">
-          <span className="avatar" aria-hidden="true">{initials}</span>
+          <span className="avatar" aria-hidden="true">{initials(session.displayName)}</span>
           <span><span className="user-name">{session.displayName}</span><span className="user-role">{session.role}</span></span>
         </div>
         <form action={signOut}><button className="sign-out">Sign out</button></form>

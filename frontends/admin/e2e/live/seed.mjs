@@ -7,6 +7,8 @@
 //   orderCode     a new order of "E2E Live Client A" at Request: the operator receives and registers it;
 //                 the client must not see it
 //   ownOrderCode  a new order of "E2E Live Client B": the client's own order (positive control)
+// The users, the two clients and the memberships are fixed fixtures, found or created once and reused. The two orders
+// are new each run; the live run's global teardown (e2e/live/teardown.mjs) archives them at the end, failed runs too.
 //
 // Everything comes from the environment (never committed):
 //   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,

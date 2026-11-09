@@ -7,6 +7,7 @@ import { totp, totpStep } from "./totp.mjs";
 // and the Supabase settings and test users' credentials are in the environment (never committed). Run
 // `node e2e/live/seed.mjs` first with the same environment, then, with no demo server on port 3110:
 //   ADMIN_E2E_LIVE=1 npx playwright test e2e/live
+// After the run, failed or not, the global teardown (e2e/live/teardown.mjs) archives the two seeded orders.
 // The dev server Playwright starts inherits NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY, so it runs in live mode.
 const env = process.env;
 const required = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "ADMIN_E2E_OPERATOR_EMAIL", "ADMIN_E2E_OPERATOR_PASSWORD", "ADMIN_E2E_CLIENT_EMAIL", "ADMIN_E2E_CLIENT_PASSWORD"];
@@ -17,7 +18,10 @@ type Seed = { orderCode: string; ownOrderCode: string; totpSecret?: string; totp
 const seedFile = env.ADMIN_E2E_SEED_FILE ?? join(__dirname, ".seed.local.json");
 function seed(): Seed {
   if (!existsSync(seedFile)) throw new Error(`Run node e2e/live/seed.mjs first (no ${seedFile})`);
-  return JSON.parse(readFileSync(seedFile, "utf8")) as Seed;
+  const data = JSON.parse(readFileSync(seedFile, "utf8")) as Seed;
+  // e2e/live/teardown.mjs archives the run's orders and drops their codes: each run needs a fresh seed.
+  if (!data.orderCode || !data.ownOrderCode) throw new Error(`Run node e2e/live/seed.mjs first (the last run archived its orders)`);
+  return data;
 }
 
 const slow = { timeout: 60_000 };

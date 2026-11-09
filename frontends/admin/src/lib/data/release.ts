@@ -121,6 +121,7 @@ const orderSelect = "id, code, title, stage, client_id";
 const datasetSelect = "id, order_id, client_id, result_file_id, version, status, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes, project_id, companion_path, released_at, archived_at, archived_reason, created_at";
 const BUILD_STAGES = ["processed", "qc_checked", "excel_built", "released"];
 const BUILD_ATTEMPTS = 3;
+class StaleVersion extends Error {} // build_dataset's PT409: another build took the version; build again
 
 async function client() {
   const supabase = await createAdminClient();
@@ -213,9 +214,10 @@ async function download(bucket: string, path: string): Promise<Buffer> {
 // Objects are never overwritten (upsert false; neither bucket has an UPDATE policy). When the path is taken, the
 // existing object is read back and accepted only if it holds exactly these bytes (sha256 and size); anything
 // else, an unreadable object included, fails closed. A digest in the path is a name, not proof of content.
-async function upload(bucket: string, path: string, bytes: Buffer): Promise<void> {
+// Returns true when this call wrote the object, false when an identical one was already there.
+async function upload(bucket: string, path: string, bytes: Buffer): Promise<boolean> {
   const { error } = await (await client()).storage.from(bucket).upload(path, bytes, { contentType: XLSX, upsert: false });
-  if (!error) return;
+  if (!error) return true;
   if (!/already exists|duplicate/i.test(error.message)) throw new DataError(`${bucket} refused ${path}: ${error.message}`);
   let existing: Buffer;
   try {
@@ -226,6 +228,34 @@ async function upload(bucket: string, path: string, bytes: Buffer): Promise<void
   if (existing.byteLength !== bytes.byteLength || digest(existing) !== digest(bytes)) {
     throw new DataError(`${bucket} already holds ${path} with other bytes (sha256 ${digest(existing).slice(0, 12)}…, ${existing.byteLength} bytes); nothing was recorded.`);
   }
+  return false;
+}
+// Uploads the files, then calls the function that records them. If an upload or the call fails, the objects this
+// call wrote (not ones that were already there) are removed with the same token, best effort, and the original
+// error is thrown. 0012 lets that token remove only what no admin row records (admin-files) or a still pending
+// analysis file (case-files), so a call that did commit despite the error keeps its files.
+async function uploadThenRecord<T>(bucket: string, files: { path: string; bytes: Buffer }[], record: () => Promise<T>): Promise<T> {
+  const written: string[] = [];
+  try {
+    for (const file of files) if (await upload(bucket, file.path, file.bytes)) written.push(file.path);
+    return await record();
+  } catch (error) {
+    await removeQuietly(bucket, written);
+    throw error;
+  }
+}
+async function removeQuietly(bucket: string, paths: string[]): Promise<void> {
+  if (!paths.length) return;
+  let problem: string;
+  try {
+    const { data, error } = await (await client()).storage.from(bucket).remove(paths);
+    if (!error && (data?.length ?? 0) === paths.length) return;
+    problem = error ? "storage refused" : `${data?.length ?? 0} removed`;
+  } catch {
+    problem = "request failed";
+  }
+  // Counts only: the paths name clients and orders, and the server log is not the place for them.
+  console.warn(`release: could not remove ${paths.length} uploaded objects from ${bucket} after a failed call (${problem})`);
 }
 
 // ---------------------------------------------------------------- the seam
@@ -333,16 +363,22 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
       sciexOsVersion: accepted.sciex_os_version, processingMethod: accepted.processing_method,
     });
     const paths = datasetPaths(row.client_id, row.code, { full: built.full.sha256, analysis: built.analysis.sha256, companion: built.companion.sha256 });
-    await upload("admin-files", paths.full, built.full.bytes);
-    await upload("admin-files", paths.analysis, built.analysis.bytes);
-    await upload("admin-files", paths.companion, built.companion.bytes);
-    const { data, error } = await db.rpc("build_dataset", {
-      p_order_id: row.id, p_result_file_id: accepted.id, p_expected_version: version, p_storage_path: paths.full, p_sha256: built.full.sha256,
-      p_analysis_sha256: built.analysis.sha256, p_analysis_size_bytes: built.analysis.sizeBytes,
-      p_companion_sha256: built.companion.sha256, p_companion_size_bytes: built.companion.sizeBytes,
+    // If build_dataset fails (a stale version included), this attempt's own uploads are removed again (0012).
+    const datasetId = await uploadThenRecord("admin-files", [
+      { path: paths.full, bytes: built.full.bytes }, { path: paths.analysis, bytes: built.analysis.bytes }, { path: paths.companion, bytes: built.companion.bytes },
+    ], async () => {
+      const { data, error } = await db.rpc("build_dataset", {
+        p_order_id: row.id, p_result_file_id: accepted.id, p_expected_version: version, p_storage_path: paths.full, p_sha256: built.full.sha256,
+        p_analysis_sha256: built.analysis.sha256, p_analysis_size_bytes: built.analysis.sizeBytes,
+        p_companion_sha256: built.companion.sha256, p_companion_size_bytes: built.companion.sizeBytes,
+      });
+      if (!error) return String(data);
+      throw error.code === "PT409" ? new StaleVersion() : refusal(error);
+    }).catch((error: unknown) => {
+      if (error instanceof StaleVersion) return null;
+      throw error;
     });
-    if (!error) return { datasetId: String(data), version };
-    if (error.code !== "PT409") throw refusal(error);
+    if (datasetId !== null) return { datasetId, version };
     if (attempt >= BUILD_ATTEMPTS) throw new DataError(`Other builds of ${row.code} kept taking the next version; nothing was recorded. Try again.`);
   }
 }
@@ -394,7 +430,8 @@ export async function signDataset(input: { datasetId: string; role: SignerRole; 
 }
 // admin.release_dataset(...): the analysis file goes to Team's bucket first, with the signer's own token
 // (0007 lets an eligible signer stage <project_id>/<analysis_sha256> while the dataset is built), then the
-// function creates the project. If the call fails the staged object is left behind; a retry uses a new id.
+// function creates the project. If the call fails the staged object is removed again with that token (0012: only
+// while it is still pending, so never once the project exists); a retry stages a new copy under a new id.
 export async function releaseDataset(input: { datasetId: string; actorId?: string }): Promise<{ projectId: string }> {
   if (!live()) {
     return demoWrite((state, actor) => {
@@ -423,11 +460,11 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
     throw new DataError("The staged file is not the analysis file recorded and signed for this dataset; build a new version.");
   }
   const projectId = randomUUID();
-  await upload("case-files", analysisObjectPath(projectId, dataset.analysis_sha256), bytes);
-  const returned = await rpc("release_dataset", {
-    p_dataset_id: dataset.id, p_analysis_object_path: analysisObjectPath(projectId, dataset.analysis_sha256), p_analysis_sha256: dataset.analysis_sha256,
+  const object = analysisObjectPath(projectId, dataset.analysis_sha256);
+  const returned = await uploadThenRecord("case-files", [{ path: object, bytes }], () => rpc("release_dataset", {
+    p_dataset_id: dataset.id, p_analysis_object_path: object, p_analysis_sha256: dataset.analysis_sha256,
     p_analysis_size_bytes: num(dataset.analysis_size_bytes), p_analysis_name: `${code} dataset v${dataset.version} analysis.xlsx`, p_companion_path: paths.companion,
-  });
+  }));
   return { projectId: String(returned ?? projectId) };
 }
 

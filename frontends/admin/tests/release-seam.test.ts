@@ -121,6 +121,9 @@ describe("live seam: the release contract through rpc and storage", () => {
   // An object the bucket already holds at a path the next upload targets (the review's 46 wrong bytes, say).
   let preexisting: (path: string, bytes: Buffer) => Buffer | undefined = () => undefined;
   let unreadable: (path: string) => boolean = () => false;
+  // Every remove() call, and how the next ones fail (a thrown error, or an error in the result like supabase-js).
+  const removes: { bucket: string; paths: string[] }[] = [];
+  let removeFails: "throw" | "error" | null = null;
   // Like Storage: objects are immutable (upsert false); a second write to a path is refused as a duplicate.
   const storage = {
     from: (bucket: string) => ({
@@ -136,6 +139,13 @@ describe("live seam: the release contract through rpc and storage", () => {
         uploads.push({ bucket, path, bytes: Buffer.from(bytes), options });
         store.set(path, Buffer.from(bytes));
         return { data: { path }, error: null };
+      },
+      remove: async (paths: string[]) => {
+        removes.push({ bucket, paths: [...paths] });
+        if (removeFails === "throw") throw new Error("network down");
+        if (removeFails === "error") return { data: null, error: { message: "storage unavailable" } };
+        const gone = paths.filter(path => buckets[bucket]?.delete(path));
+        return { data: gone.map(name => ({ name })), error: null };
       },
     }),
   };
@@ -190,6 +200,8 @@ describe("live seam: the release contract through rpc and storage", () => {
   beforeEach(() => {
     rpc.mockReset();
     uploads.length = 0;
+    removes.length = 0;
+    removeFails = null;
     preexisting = () => undefined;
     unreadable = () => false;
     for (const key of Object.keys(buckets)) delete buckets[key];
@@ -231,6 +243,7 @@ describe("live seam: the release contract through rpc and storage", () => {
     tables.result_file[0].sha256 = "0".repeat(64);
     await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow(/does not match/);
     expect(uploads).toHaveLength(3);
+    expect(removes).toEqual([]); // the call succeeded: nothing to clean up
   });
   it("releases: stages the analysis file in case-files at <project_id>/<analysis_sha256> with the user's own token, then calls release_dataset with the recorded manifest", async () => {
     rpc.mockResolvedValueOnce({ data: "ds-uuid", error: null });
@@ -256,6 +269,7 @@ describe("live seam: the release contract through rpc and storage", () => {
     const staged = uploads[3];
     expect(staged).toMatchObject({ bucket: "case-files", path: `${projectId}/${sha(analysis.bytes)}` });
     expect(sha(staged.bytes)).toBe(sha(analysis.bytes));
+    expect(removes).toEqual([]);
     expect(rpc).toHaveBeenLastCalledWith("release_dataset", {
       p_dataset_id: "ds-uuid", p_analysis_object_path: `${projectId}/${sha(analysis.bytes)}`, p_analysis_sha256: sha(analysis.bytes), p_analysis_size_bytes: analysis.bytes.byteLength,
       p_analysis_name: "ORD048 dataset v1 analysis.xlsx", p_companion_path: `client-uuid/ORD048/datasets/${sha(uploads[2].bytes)}/companion.xlsx`,
@@ -335,6 +349,78 @@ describe("live seam: the release contract through rpc and storage", () => {
     expect((await provenance(full.bytes)).source_txt_sha256).toBe(sha(bom));
     expect((await provenance(companion.bytes)).source_txt_sha256).toBe(sha(bom));
     expect(sha(bom)).not.toBe(sha(sourceText));
+  });
+  // 0012: a failed call removes, with the same token, exactly what this call uploaded, and still throws its own error.
+  it("removes this build's uploads when build_dataset fails, then throws the function's error", async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "results file rf-uuid is superseded; only an accepted file is built into a dataset" } });
+    await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow(/results file rf-uuid is superseded/);
+    expect(removes).toEqual([{ bucket: "admin-files", paths: uploads.map(u => u.path) }]);
+    expect(uploads).toHaveLength(3);
+    expect([...buckets["admin-files"].keys()]).toEqual(["client-uuid/ORD048/review-1/results.txt"]);
+  });
+  it("never removes an identical object that was already there, only what this call wrote", async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "permission denied for function build_dataset" } });
+    preexisting = (path, bytes) => (path.endsWith("/analysis.xlsx") ? bytes : undefined);
+    await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow("You do not have permission to do this.");
+    expect(uploads.map(u => u.path.split("/").at(-1))).toEqual(["dataset-v1.xlsx", "companion.xlsx"]);
+    expect(removes).toEqual([{ bucket: "admin-files", paths: uploads.map(u => u.path) }]);
+    expect([...buckets["admin-files"].keys()].filter(path => path.includes("/datasets/"))).toEqual([expect.stringMatching(/\/analysis\.xlsx$/)]);
+  });
+  it("removes what it wrote when a later upload fails closed", async () => {
+    preexisting = path => (path.endsWith("/companion.xlsx") ? Buffer.from("x".repeat(46)) : undefined);
+    await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow(/companion\.xlsx.* other bytes/);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(removes).toEqual([{ bucket: "admin-files", paths: uploads.map(u => u.path) }]);
+    expect(uploads.map(u => u.path.split("/").at(-1))).toEqual(["dataset-v1.xlsx", "analysis.xlsx"]);
+  });
+  it("a failed or erroring remove never replaces the function's error; it logs a short warning without paths", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    for (const failure of ["throw", "error"] as const) {
+      for (const path of [...buckets["admin-files"].keys()]) if (path.includes("/datasets/")) buckets["admin-files"].delete(path); // what the failed remove left
+      removeFails = failure;
+      rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: `order ORD048 is archived (${failure})` } });
+      await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow(`order ORD048 is archived (${failure})`);
+    }
+    expect(removes).toHaveLength(2);
+    expect(warn).toHaveBeenCalledTimes(2);
+    for (const [message] of warn.mock.calls) {
+      expect(message).toMatch(/^release: could not remove 3 uploaded objects from admin-files/);
+      expect(message).not.toMatch(/client-uuid|ORD048|[0-9a-f]{64}/);
+    }
+    warn.mockRestore();
+  });
+  it("removes the stale attempt's files when another build took the version, and keeps the recorded ones", async () => {
+    rpc.mockImplementation(databaseBuild);
+    await Promise.all([buildDataset({ orderId: "order-uuid" }), buildDataset({ orderId: "order-uuid" })]);
+    // (Both first attempts may build identical bytes; the loser then wrote nothing of its own and removes nothing.)
+    expect(removes.length).toBeLessThanOrEqual(1);
+    const recorded = tables.dataset.flatMap(row => [row.storage_path, `client-uuid/ORD048/datasets/${row.analysis_sha256}/analysis.xlsx`, `client-uuid/ORD048/datasets/${row.companion_sha256}/companion.xlsx`]);
+    for (const path of removes.flatMap(r => r.paths)) expect(recorded).not.toContain(path);
+    for (const path of recorded) expect(buckets["admin-files"].has(path as string), String(path)).toBe(true);
+  });
+  it("removes the staged case-files object when release_dataset fails, then throws the function's error", async () => {
+    rpc.mockResolvedValueOnce({ data: "ds-uuid", error: null });
+    await buildDataset({ orderId: "order-uuid" });
+    const [full, analysis, companion] = uploads;
+    tables.dataset.push({
+      id: "ds-uuid", order_id: "order-uuid", client_id: "client-uuid", result_file_id: "rf-uuid", version: 1, status: "built", storage_path: full.path, sha256: sha(full.bytes),
+      analysis_sha256: sha(analysis.bytes), analysis_size_bytes: analysis.bytes.byteLength, companion_sha256: sha(companion.bytes), companion_size_bytes: companion.bytes.byteLength,
+      project_id: null, companion_path: null, released_at: null, archived_at: null, archived_reason: null, created_at: "2026-11-07T16:00:00Z",
+    });
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "dataset ds-uuid needs 2 signatures by eligible signers; it has 1" } });
+    await expect(releaseDataset({ datasetId: "ds-uuid" })).rejects.toThrow(/needs 2 signatures/);
+    const staged = uploads[3];
+    expect(staged.bucket).toBe("case-files");
+    expect(removes).toEqual([{ bucket: "case-files", paths: [staged.path] }]);
+    expect(buckets["case-files"].size).toBe(0);
+    // ... and a remove that fails still leaves the function's error in charge.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    removeFails = "throw";
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "dataset ds-uuid needs 2 signatures by eligible signers; it has 1" } });
+    await expect(releaseDataset({ datasetId: "ds-uuid" })).rejects.toThrow(/needs 2 signatures/);
+    expect(removes).toHaveLength(2);
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
   it("fails closed without an authenticated client", async () => {
     vi.mocked(createAdminClient).mockResolvedValue(null);

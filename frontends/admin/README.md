@@ -278,13 +278,19 @@ calls `admin.build_dataset` with the manifest. Rules of the build (wave 2b revie
 - **One version.** The version written into `Provenance` (`dataset_version`) is passed as `p_expected_version`;
   `build_dataset` refuses it under the order lock when another build took it (SQLSTATE 40001), and the app builds
   the files again for the next version (up to 3 attempts). So a workbook's version always equals `admin.dataset.version`.
+- **Cleanup after a failure.** If an upload fails closed or `build_dataset` refuses the files (a stale version
+  included), the objects this attempt wrote are removed with the same token, best effort, and the original error is
+  shown; an identical object that was already there is never removed. Migration 0012 lets that token remove only
+  `admin-files` objects no dataset or results file records, so a build that committed despite an error keeps its
+  files. A failed remove logs one warning with counts only.
 - **The accepted bytes.** The TXT is decoded strictly as UTF-8 with a leading BOM kept, and the build checks that the
   text re-encodes to the accepted digest, so `source_txt_sha256` in `Provenance` is the digest of the accepted bytes.
 
 **The release** downloads the analysis file, checks its digest and size against the manifest, uploads it to Team's bucket
 `case-files` at `<project_id>/<analysis_sha256>` **with the signed-in signer's own token** (migration 0007 allows
 that for a built dataset's recorded digest; no service role exists in this app, see `tests/security.test.ts`) and
-calls `admin.release_dataset`. A failed call leaves the staged object behind; the retry uses a new project id.
+calls `admin.release_dataset`. If the call fails, the staged object is removed again with the same token (migration
+0012: only while it is pending, never once the project exists); the retry uses a new project id.
 
 | Module | Functions | Live | Demo |
 |---|---|---|---|
@@ -346,11 +352,10 @@ the browser; the companion's `Provenance` sheet lists no signatures (they live i
 Known limits (wave 2b review):
 
 - **Abandoned uploads (finding 9).** Files are uploaded before the database records them, with no durable attempt
-  record and no cleanup: a refused or failed `build_dataset` (including the 40001 rebuild) leaves its three files in
-  `admin-files`, and a refused or failed `release_dataset` leaves the analysis file in `case-files` under a project id
-  nobody owns; the retry uses a new project id. Users have no delete right in either bucket (by design), so these
-  objects stay until a maintenance path (a dataset-bound reservation reused on retry, or a narrowly authorized
-  collector) is built. They are never published: Team lists only files with a `pilot_files` row. The project-creation
+  record. A refused or failed `build_dataset` or `release_dataset` removes what that call wrote (best effort, with
+  migration 0012's narrow DELETE policies; until 0012 is applied the remove deletes nothing and only logs a warning).
+  Objects still stay behind when the process dies between upload and call, or when the remove itself fails. They are
+  never published: Team lists only files with a `pilot_files` row. The project-creation
   race the review describes (a pending upload checked against a project id another transaction is creating) is
   also open until such a reservation exists.
 - **Team library compatibility (finding 5), pending a decision with Team's owner.** Team's library opens a selected
