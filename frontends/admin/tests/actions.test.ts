@@ -1,0 +1,69 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseClient, enterDemo, signOut, switchView } from "@/app/actions";
+import { getEnvironment } from "@/lib/environment";
+import { getAppSession } from "@/lib/session";
+import { createAdminClient } from "@/lib/supabase/server";
+import { endAppSession } from "@/lib/auth-service";
+import { demoSession } from "@/lib/demo";
+import { clientCookie, signedOutCookie } from "@/lib/auth-cookies";
+
+const { setCookie } = vi.hoisted(() => ({ setCookie: vi.fn() }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ set: setCookie }) }));
+vi.mock("@/lib/environment", () => ({ getEnvironment: vi.fn() }));
+vi.mock("@/lib/session", () => ({ getAppSession: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ createAdminClient: vi.fn() }));
+vi.mock("@/lib/auth-service", () => ({ authenticate: vi.fn(), endAppSession: vi.fn() }));
+vi.mock("@/lib/action-redirect", () => ({ redirectAfterAction: async (url: string) => { throw new Error(`redirect:${url}`); } }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(getEnvironment).mockReturnValue({ mock: true, url: "", anonKey: "" });
+  vi.mocked(getAppSession).mockResolvedValue(demoSession);
+  vi.mocked(endAppSession).mockResolvedValue({ error: null });
+});
+function choice(id: string) { const form = new FormData(); form.set("clientId", id); return form; }
+
+describe("server action boundaries", () => {
+  it("persists an allowed client in an HttpOnly /admin cookie for a client user", async () => {
+    vi.mocked(getAppSession).mockResolvedValue({ ...demoSession, view: "client", role: "Client admin" });
+    await expect(chooseClient(choice("example-cedar"))).rejects.toThrow("redirect:/client/home");
+    expect(setCookie).toHaveBeenCalledWith(clientCookie, "example-cedar", expect.objectContaining({ path: "/admin", httpOnly: true }));
+  });
+  it("turns a staff client choice into an overview filter without persisting it", async () => {
+    await expect(chooseClient(choice("example-cedar"))).rejects.toThrow("redirect:/pipeline?client=example-cedar");
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+  it("rejects a forged client id before writing any cookie", async () => {
+    await expect(chooseClient(choice("unrelated-client"))).rejects.toThrow("redirect:/choose-client?error=membership");
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+  it("requires a session before accepting a client selection", async () => {
+    vi.mocked(getAppSession).mockResolvedValue(null);
+    await expect(chooseClient(choice("example-cedar"))).rejects.toThrow("redirect:/sign-in");
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+  it("refuses the view switch in live mode", async () => {
+    vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
+    const form = new FormData(); form.set("view", "staff");
+    await expect(switchView(form)).rejects.toThrow("redirect:/");
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+  it("does not permit demo entry when live authentication is configured", async () => {
+    vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
+    await expect(enterDemo()).rejects.toThrow("redirect:/sign-in");
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+  it("keeps the example user signed out without contacting Supabase", async () => {
+    await expect(signOut()).rejects.toThrow("redirect:/sign-in");
+    expect(setCookie).toHaveBeenCalledWith(signedOutCookie, "1", expect.objectContaining({ path: "/admin" }));
+    expect(endAppSession).not.toHaveBeenCalled();
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+  it("uses the app-scoped sign-out service for a live session", async () => {
+    const client = { auth: {} } as never;
+    vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
+    vi.mocked(createAdminClient).mockResolvedValue(client);
+    await expect(signOut()).rejects.toThrow("redirect:/sign-in");
+    expect(endAppSession).toHaveBeenCalledExactlyOnceWith(client);
+  });
+});
