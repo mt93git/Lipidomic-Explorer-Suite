@@ -159,7 +159,9 @@ api_card_create <- function(s, source, inputs = list(), instanceId = NULL, warm 
   api_create_phase("defaults", started); started <- Sys.time()
   nodeId <- paste0(instanceId, "-", resolved$output)
   api_session_dirty(s)
-  api_output_want(s, nodeId)
+  # The card's plot output stays behind its lazy gate (session.R api_output_lazy) until the card's inputs settle:
+  # wanted from the start, Team's module drew it once per settling round (seeded instance inputs, echoed module
+  # updates, renderUI-built inputs), three full draws of the violin view (~11 s each on the complete fixture).
   api_size(s, nodeId, 800, 600)
   do.call(api_inputs, c(list(s), stats::setNames(defaults, paste0(instanceId, "-", names(defaults)))))
   api_create_phase("inputs", started); started <- Sys.time()
@@ -173,6 +175,14 @@ api_card_create <- function(s, source, inputs = list(), instanceId = NULL, warm 
   api_create_phase("flush", started); started <- Sys.time()
   api_seed_rendered_inputs(s, instanceId)
   api_create_phase("seed", started); started <- Sys.time()
+  # Now the plot is drawn, once, from the settled inputs at 800x600 (the size the eager order drew its last draw at,
+  # so a render at another size replays the same recorded plot). Seeding again keeps any input whose markup only
+  # appears after the plot is drawn; it flushes only if it finds one. Counted in "flush" (Team's graph computes it).
+  if (isTRUE(api_output_want(s, nodeId))) {
+    api_flush(s)
+    api_seed_rendered_inputs(s, instanceId)
+  }
+  api_create_phase("flush", started); started <- Sys.time()
   errors <- Filter(function(x) identical(x$id, instanceId), s$bus$messages("team-canvas-instance-error"))
   card <- list(instanceId = instanceId, nodeId = nodeId, source = source, family = resolved$family,
     render = entry$render, allowedInputs = entry$allowedInputs, inputs = defaults,
@@ -670,11 +680,11 @@ api_timing_header <- function(timing = api_timing_snapshot(), total = NULL) {
 }
 # Create route (goal 3 diagnosis): request (session lookup, body), validate (source, id, catalog entry, input
 # validation, 160-card check), warm (handing the render pool a warm job: never waits for it), defaults (Team's input
-# defaults, the family's archived inputs; the results dashboard reads its first lipid here), inputs (output wanted,
-# size, setting the card's inputs on the mock session: setInputs flushes), instance (Team's
-# team_canvas_instances_create: the module's server starts), flush (Team's reactive graph until the card settles:
-# the wanted plot output is computed here at 800x600), seed (reading the card's rendered UI outputs to seed
-# renderUI-built inputs, a flush per round), card (instance errors, current inputs, plot height, records),
+# defaults, the family's archived inputs; the results dashboard reads its first lipid here), inputs (size,
+# setting the card's inputs on the mock session: setInputs flushes), instance (Team's
+# team_canvas_instances_create: the module's server starts), flush (Team's reactive graph until the card settles,
+# then, after seed, the plot output wanted and computed once at 800x600), seed (reading the card's rendered UI
+# outputs to seed renderUI-built inputs, a flush per round), card (instance errors, current inputs, plot height, records),
 # guard, other, total. One stderr line: "create <instance> <source> phase=ms ... total=ms".
 api_timing_create_log <- function(instanceId, source, timing = api_timing_snapshot(), total = NULL) {
   total <- total %||% (as.numeric(difftime(Sys.time(), timing$t0, units = "secs")) * 1000) # %||% binds tighter than *
