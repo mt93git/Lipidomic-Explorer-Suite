@@ -1646,10 +1646,12 @@
     // Multi-panel stress violins (three panels per row) were designed for an
     // 840px plot; a 620px card squeezed their panel titles into each other.
     var widePanels=source==='cellular_org_tab-stressPlot';
+    // Raster figures with many labels (network, acyl chain proportions) open larger so their text stays legible.
+    var bigRaster=/^structural_tab-(networkPlot|propPlotPlot)$/.test(source);
     // Shell cards show only title, plot and footer (card_frame.js): a composition card opens compact,
     // at RC4's 380 px maximum so the figure keeps as much height as the card allows.
     var compactCard=document.body.classList.contains('ts-shell-app')&&/^(results_dashboard-plot_(comp|dist)|barchart-(bar|donut)Plot(Unf|F)iltered)$/.test(source);
-    return {width:roomyHeatmap ? 1000 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : compactCard ? (source==='results_dashboard-plot_comp' ? 560 : 380) : 720, fixed:roomyHeatmap || widePanels || compactCard};
+    return {width:roomyHeatmap ? 1000 : bigRaster ? 900 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : bigRaster ? 860 : compactCard ? (source==='results_dashboard-plot_comp' ? 560 : 380) : 720, fixed:roomyHeatmap || widePanels || compactCard || bigRaster};
   }
   // The first free place in the two-column grid, clear of every visible card and skeleton card.
   function freeSpot(width, height) {

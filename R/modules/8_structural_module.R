@@ -1,6 +1,13 @@
 # R/modules/8_structural_module.R
 # Structural Lipidome Audit.
 
+# Team has no left sidebar: its cards carry their own Run button. Classic keeps its wording.
+structural_team_view <- function() exists("lipidomic_interface", mode = "function") && identical(tryCatch(lipidomic_interface(), error = function(e) ""), "team")
+structural_run_hint <- function() {
+  if (structural_team_view()) "Choose 'Run structural analysis' on this card (or in Data & settings) to compute structural remodeling shifts"
+  else "Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"
+}
+
 # Order display categories by chain length and unsaturation without rewriting labels.
 # Unknown or malformed labels remain in their original order; Other is last.
 structural_order_acyl_chains <- function(chains) {
@@ -2282,7 +2289,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
       if (is.null(input$runAnalysis) || input$runAnalysis == 0) {
-        return(generate_empty_plot_message("Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"))
+        return(generate_empty_plot_message(structural_run_hint()))
       }
       summaryPlotReactive()
     })
@@ -2525,7 +2532,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
       if (is.null(input$runAnalysis) || input$runAnalysis == 0) {
-        return(generate_empty_plot_message("Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"))
+        return(generate_empty_plot_message(structural_run_hint()))
       }
       speciesPlotReactive()
     })
@@ -2664,7 +2671,9 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
          ggraph::scale_edge_width_manual(values = c("p < 0.05" = 0.5, "p < 0.01" = 1.2, "p < 0.001" = 2.0)) +
          ggraph::scale_edge_color_manual(values = c("+ (Positive)" = "#0072B2", "- (Negative)" = "#D55E00")) +
          ggraph::geom_node_point(aes(fill = I(color_val)), shape = 21, size = 10, color = border_col, stroke = 1) +
-         ggraph::geom_node_text(aes(label = name), repel = TRUE, size = 4.5, fontface = "bold", bg.color = "white", bg.r = 0.15) +
+         do.call(ggraph::geom_node_text, c(list(mapping = aes(label = name), repel = TRUE, size = 4.5, fontface = "bold", bg.color = "white", bg.r = 0.15),
+           # In Team, push labels of nodes that sit almost on top of each other apart and never drop one.
+           if (structural_team_view()) list(force = 4, box.padding = 1, point.padding = 0.8, max.overlaps = Inf) else list())) +
          ggplot2::theme_void() +
          ggplot2::theme(
             legend.position = "right",
@@ -2981,7 +2990,9 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       curr_sel <- isolate(input$prop_group_var)
       selected_val <- if (!is.null(curr_sel) && curr_sel %in% choices) {
         curr_sel
-      } else if ("FullName" %in% choices) {
+      } else if ("FullName" %in% choices && !structural_team_view()) {
+        # Classic opens with one row per sample. A Team card is small, so it opens with one row per group
+        # (the sample-level view stays one choice away in "Group By").
         "FullName"
       } else {
         default_cohort
