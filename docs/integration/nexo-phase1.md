@@ -5,7 +5,7 @@ Branch `nexo/phase1` = production commit `ebee653` (what the RTX runs as Team) +
 
 ## Phase 1 close (2026-11-08)
 
-**Status: closed on synthetic data; confirmation by the real users still open.** The whole Figure 1 workflow works
+**Status: closed on synthetic data.** The whole Figure 1 workflow works
 end to end in Nexo, and a checkpoint saved by Nexo opens in Team with nothing lost. This is shown on the complete
 synthetic checkpoint (`tests/dual-ui/fixtures/nexo-complete-synthetic.zip`), in Chromium and WebKit, against the
 real API running production's science. Paula and Steph were not available, so a script played them
@@ -16,8 +16,9 @@ done". Deployed on the RTX at `95b2526a`. Close-time evidence: `nexo-phase1-evid
 
 **Close decision (2026-11-09).** Gerardo closed Phase 1 on synthetic data, effective once the server runs the
 ported API and the Nexo PRs #18, #19 and #20 (stacked on the Admin PRs #16 and #17) carry it to Max
-(`nexo-pr-stack.md`). The real-user confirmation below stays open as an
-acceptance item; it does not block Phase 1B. Since the 2026-11-08 close the API moved to `frontends/nexo-api/`
+(`nexo-pr-stack.md`). A confirmation run by Paula and Steph on her own checkpoint is not planned: Paula has no
+time for it now, so the synthetic close is the close, and what only real people can judge is listed below as not
+covered. Since the 2026-11-08 close the API moved to `frontends/nexo-api/`
 (outside Team's `R/` tree, so Max's storage-isolation safeguard passes), passes its R suite on both Team trees
 (`nexo-phase1-evidence/max-port/`), and nested guarded calls now share one 120 s request deadline.
 
@@ -50,9 +51,10 @@ acceptance item; it does not block Phase 1B. Since the 2026-11-08 close the API 
 6. **Production untouched.** Team (:3952) answers 200 with no restarts; `/nexo/` and `/api/` answer 401 without
    credentials.
 
-### What only the real people and data can confirm
+### Not covered: what only the real people and data can judge
 
-From Steph's review, section 5. None of this can be settled by a simulation:
+From Steph's review, section 5. None of this can be settled by a simulation, and no session with Paula and Steph is
+planned:
 
 - whether these are the right statistics for the study (test, comparison family, pairing);
 - that Paula's own checkpoint behaves like the synthetic one through the whole workflow (it opens and draws; the
@@ -62,12 +64,14 @@ From Steph's review, section 5. None of this can be settled by a simulation:
 - the finished figure at journal size with panels C and D, whose methods are still PENDING in the template;
 - a side-by-side comparison of Nexo panels with Team's render of the same real checkpoint.
 
-The real close is Paula repeating pilot steps 9–12 on her own checkpoint and Steph signing the result off.
-
 ### Known open items (not blocking the close)
 
-- **Speed:** Selected-feature distributions takes about 36 s per card (Team module at plot height 3000); card
-  creation on a heavy checkpoint is 1.3–3.7 s. Next speed target.
+- **Speed:** Selected-feature distributions took about 36 s per card because a create drew Team's violin view three
+  times (once per settling round of the card's inputs). Since 2026-11-09 the card's plot output is wanted only after
+  the inputs settle, so it is drawn once: create 10.7–11.0 s on the server (median 10.8 s of 3, both Team trees),
+  decoded PNG at 620x3000 byte-identical to the old order, `plotHeight` 3000 unchanged (`test_api_violin_speed.R`;
+  it needs the `png` package, so the server run used the same test comparing the raw PNG bytes). The remaining
+  ~11 s is one draw of Team's module (60 violins with t-tests). Card creation on a heavy checkpoint is 1.3–3.7 s.
 - **Team module behaviour, for Max (not changed here):** the donut `ncols` bug; Team's Ocean & Coral and Earth &
   Garden presets give two groups near-identical colours (Nexo now warns); the heatmap shows "30 of 76" beside
   "Showing 60 significant lipids"; three identical "Show Statistic Detail" buttons on the structural summary; a
