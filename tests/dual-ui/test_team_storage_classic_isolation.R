@@ -11,8 +11,10 @@ classic_bootstrap <- file.path('R', 'frontends', lipidomic_interface(), 'bootstr
 if (!is.na(old)) Sys.setenv(LIPIDOMIC_INTERFACE=old)
 stopifnot(identical(classic_bootstrap, 'R/frontends/classic/bootstrap.R'))
 if (file.exists(classic_bootstrap)) stopifnot(!any(grepl('storage|project_library|project_records', readLines(classic_bootstrap))))
+# R/frontends/api (the Nexo API) is a Team-only process (run.R sets LIPIDOMIC_INTERFACE=team), not shared code.
 shared <- setdiff(list.files('R', pattern='[.]R$', recursive=TRUE, full.names=TRUE),
-  list.files('R/frontends/team', pattern='[.]R$', recursive=TRUE, full.names=TRUE))
+  c(list.files('R/frontends/team', pattern='[.]R$', recursive=TRUE, full.names=TRUE),
+    list.files('R/frontends/api', pattern='[.]R$', recursive=TRUE, full.names=TRUE)))
 for (f in c(shared, 'app.R')) {
   text <- paste(readLines(f, warn=FALSE), collapse='\n')
   if (grepl('frontends/team/storage|project_library[.]R|project_records[.]R|team_storage_|LIPIDOMIC_STORAGE', text))
