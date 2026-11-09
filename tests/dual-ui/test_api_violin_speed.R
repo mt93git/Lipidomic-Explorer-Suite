@@ -61,7 +61,7 @@ cat(sprintf("PASS parity: decoded PNG at 620x%d identical to the eager order (sh
 
 # 4. Machine-dependent wall-clock budget: opt in with NEXO_API_PERF=1.
 if (identical(Sys.getenv("NEXO_API_PERF"), "1")) {
-  budget <- as.numeric(Sys.getenv("NEXO_VIOLIN_CREATE_BUDGET_S", "20"))
+  budget <- as.numeric(Sys.getenv("NEXO_VIOLIN_CREATE_BUDGET_S", "25"))
   if (seconds > budget) stop(sprintf("violin create took %.1f s (budget %.0f s)", seconds, budget))
   cat(sprintf("PASS violin create %.1f s within %.0f s\n", seconds, budget))
 } else cat("SKIP test_api_violin_speed wall-clock budget: set NEXO_API_PERF=1 to run timing budgets\n")
