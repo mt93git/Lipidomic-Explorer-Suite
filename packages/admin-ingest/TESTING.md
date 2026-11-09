@@ -54,7 +54,7 @@ A real-data golden run remains the coordinator's task.
 failed with exit 128:
 
 ```text
-fatal: Unable to create '/Users/gerardobarcia/lipidomic-collab-20261024/.git/worktrees/router-20261107-172702-883392/index.lock': Operation not permitted
+fatal: Unable to create '<repo>/.git/worktrees/router-20261107-172702-883392/index.lock': Operation not permitted
 ```
 
 No push or gh commands were used. All repository writes stayed inside
