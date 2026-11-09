@@ -134,6 +134,48 @@ rd_class <- function(lipids) {
   cls
 }
 
+# Composition overview: a legend outside the bars, at the right, lists every visible class with a dot in its color,
+# in the same order as the stack (top to bottom).
+# The script recomputes the names after every draw, so a class that is turned off, by the class selector or by
+# "Show series" in Appearance, loses its name at once and the others close up. Presentation only: it reads the plotted
+# values and never changes them.
+rd_comp_label_js <- "function(el, x) {
+  var PREFIX = 'team-bar-label:', busy = false;
+  function visibleBar(t) { return t && t.type === 'bar' && t.visible !== false && t.visible !== 'legendonly'; }
+  function others(gd) { return (gd.layout.annotations || []).filter(function (a) { return !(a && typeof a.name === 'string' && a.name.indexOf(PREFIX) === 0); }); }
+  function labels(gd) {
+    var full = gd._fullLayout; if (!full || !full.xaxis || !full.yaxis || !full._size) return null;
+    var cats = full.xaxis._categories || []; if (!cats.length) return [];
+    var last = cats[cats.length - 1], h = full._size.h; if (!(h > 0)) return null;
+    var items = [];
+    (gd.data || []).forEach(function (t) {
+      if (!visibleBar(t) || !Array.isArray(t.x) || !Array.isArray(t.y)) return;
+      var i = t.x.indexOf(last), v = Number(t.y[i]); if (i < 0 || !isFinite(v) || v <= 0) return;
+      var c = t.marker && typeof t.marker.color === 'string' ? t.marker.color : '#52514e';
+      items.push({ name: String(t.name), color: c });
+    });
+    if (!items.length) return [];
+    // The legend lists the classes in the same order as the stack, top to bottom: the last trace drawn is the top segment.
+    items.reverse();
+    var pitch = Math.max(11, Math.min(17, h / items.length)), fs = Math.max(9, Math.min(12, Math.round(pitch - 4))), text = (full.font && full.font.color) || '#52514e';
+    return items.map(function (it, k) {
+      return { name: PREFIX + it.name, xref: 'paper', yref: 'paper', x: 1.02, y: Math.round((1 - (k + 0.5) * pitch / h) * 10000) / 10000, showarrow: false,
+        text: '<span style=\"color:' + it.color + '\">●</span> ' + it.name, xanchor: 'left', yanchor: 'middle', align: 'left', font: { size: fs, color: text }, captureevents: false };
+    });
+  }
+  function sig(list) { return JSON.stringify((list || []).map(function (a) { return [a.name, a.y, a.text, a.x, a.font && a.font.size]; })); }
+  function refresh() {
+    if (busy || !el.layout || !window.Plotly) return;
+    var wanted = labels(el); if (wanted === null) return;
+    var current = (el.layout.annotations || []).filter(function (a) { return a && typeof a.name === 'string' && a.name.indexOf(PREFIX) === 0; });
+    if (sig(current) === sig(wanted)) return;
+    busy = true;
+    Promise.resolve(window.Plotly.relayout(el, { annotations: others(el).concat(wanted) })).catch(function () {}).then(function () { busy = false; });
+  }
+  el.on('plotly_afterplot', refresh);
+  refresh();
+}"
+
 rd_layout <- function(p, ..., margin = list(l = 60, r = 20, t = 10, b = 60)) {
   plotly::layout(p, paper_bgcolor = "#ffffff", plot_bgcolor = "#ffffff",
                  font = list(family = "Inter, system-ui, sans-serif", size = 12, color = "#52514e"),
@@ -690,7 +732,11 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
       validate(need(length(chosen)>0,'Select at least one lipid class.'),need(length(visible)>0,'Select at least one condition.'))
       lev<-levels(d$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
       p<-plotly::plot_ly(source=session$ns('rd_comp'))
-      for(cl in lev) {
+      # Stack order: the largest class at the bottom, growing smaller toward the top (less to more, top to bottom).
+      class_means<-if(group_mode) tapply(source$groups$Mean_share_pct[as.character(source$groups$Group)%in%visible],as.character(source$groups$Class)[as.character(source$groups$Group)%in%visible],function(v) mean(v,na.rm=TRUE)) else tapply(d$Share_pct[d$Group_visible],as.character(d$Class)[d$Group_visible],function(v) mean(v,na.rm=TRUE))
+      class_means<-unname(class_means[lev]);class_means[!is.finite(class_means)]<-0
+      plot_order<-lev[order(-class_means,lev)]
+      for(cl in plot_order) {
         if(group_mode) {
           df<-source$groups[as.character(source$groups$Class)==cl & as.character(source$groups$Group)%in%visible,,drop=FALSE]
           x<-as.character(df$Group);y<-df$Mean_share_pct
@@ -703,14 +749,14 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
         }
         p<-plotly::add_trace(p,x=x,y=y,type='bar',name=cl,legendgroup=cl,
           visible=cl%in%chosen,meta=list(teamSourceKey=paste0('team-composition:',cl)),
-          marker=list(color=unname(cols[cl]),line=list(color='#fcfcfb',width=1)),text=hover,hovertemplate='%{text}<extra></extra>')
+          marker=list(color=unname(cols[cl]),line=list(color='#fcfcfb',width=1)),text=hover,textposition='none',hovertemplate='%{text}<extra></extra>')
       }
       axis<-if(group_mode) list(title='Condition / cell type',type='category',tickmode='array',tickvals=x,ticktext=paste0(x,' · n = ',counts)) else sample_axis(x,'comp')
-      return(p |> rd_layout(barmode='stack',bargap=.15,
+      return(htmlwidgets::onRender(p |> rd_layout(barmode='stack',bargap=.15,
         meta=list(teamConditions=unname(sort(sample_info()$levels,method='radix')),teamComposition=list(version=1L,axisMode=if(group_mode)'group' else 'sample',groupInputId=session$ns('comp_group_selection'),groupIds=unique(as.character(d$Group)),estimator='Equal-weight mean of per-sample selected-class signal percentages'),
           teamClassSelection=list(inputId=session$ns('comp_class_selection'),classes=unname(lev),selected=unname(chosen),serverEstimator=TRUE)),
         xaxis=axis,yaxis=list(title=if(group_mode)'Mean share of selected signal (%)' else 'Share of selected signal (%)',range=c(0,100)),
-        showlegend=FALSE,margin=list(l=60,r=15,t=10,b=100)))
+        showlegend=FALSE,margin=list(l=60,r=125,t=10,b=100)),rd_comp_label_js))
     }
     df<-comp_full();lev<-levels(df$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
     df$Hover<-paste0(unname(sample_hover()[as.character(df$Sample)]),"<br>Class: ",as.character(htmltools::htmlEscape(as.character(df$Class))))

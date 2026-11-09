@@ -1649,7 +1649,7 @@
     // Shell cards show only title, plot and footer (card_frame.js): a composition card opens compact,
     // at RC4's 380 px maximum so the figure keeps as much height as the card allows.
     var compactCard=document.body.classList.contains('ts-shell-app')&&/^(results_dashboard-plot_(comp|dist)|barchart-(bar|donut)Plot(Unf|F)iltered)$/.test(source);
-    return {width:roomyHeatmap ? 1000 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : compactCard ? 380 : 720, fixed:roomyHeatmap || widePanels || compactCard};
+    return {width:roomyHeatmap ? 1000 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : compactCard ? (source==='results_dashboard-plot_comp' ? 560 : 380) : 720, fixed:roomyHeatmap || widePanels || compactCard};
   }
   // The first free place in the two-column grid, clear of every visible card and skeleton card.
   function freeSpot(width, height) {
