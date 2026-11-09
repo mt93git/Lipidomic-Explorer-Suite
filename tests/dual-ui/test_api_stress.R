@@ -1,5 +1,9 @@
 # H8 stress: one session with 24 live cards from the catalog (synthetic fixture only).
 # Measures create and render times, cache hits, a resize pass and RSS, with budgets.
+# Machine-dependent wall-clock budgets: opt in with NEXO_API_PERF=1.
+if (!identical(Sys.getenv("NEXO_API_PERF"), "1")) {
+  cat("SKIP test_api_stress: set NEXO_API_PERF=1 to run timing budgets\n"); quit(status = 0)
+}
 for (pkg in c("shiny", "jsonlite", "digest")) if (!requireNamespace(pkg, quietly = TRUE)) {
   cat("SKIP test_api_stress: package", pkg, "not installed\n"); quit(status = 0)
 }

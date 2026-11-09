@@ -3,6 +3,8 @@
 The API is a separate process, not part of the Shiny app, so it lives in `frontends/nexo-api/` (next to
 `frontends/nexo/`), outside Team's `R/` tree. It still runs from the repository root with Team's `R/` beside
 it: `Rscript --vanilla frontends/nexo-api/run.R` (`LIPIDOMIC_API_ROOT` points it at another Team tree).
+Machine-dependent wall-clock budgets (`test_api_stress.R`, the 50-render p95/RSS part of `test_api_cache.R`)
+SKIP unless `NEXO_API_PERF=1`.
 
 Admin wave 1 added one entry point: `POST /api/v1/datasets/sessions` opens a Nexo session straight
 from an Admin dataset v1 workbook (multipart `file` + `settings` JSON, or JSON `datasetId` stored in
