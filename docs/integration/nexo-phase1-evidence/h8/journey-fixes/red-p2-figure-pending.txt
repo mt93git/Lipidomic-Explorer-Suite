@@ -1,0 +1,18 @@
+PASS H8 chromium status-hint-follows-figure-mode
+PASS H8d chromium figure dblclick-text duplicate z-order aspect-lock
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'Draft'
+- 'Draft · 2 to finish'
+        ^
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_figure_page.cjs:64:32)
+    at async <repo>/tests/dual-ui/test_nexo_figure_page.cjs:91:46 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'Draft',
+  expected: 'Draft · 2 to finish',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

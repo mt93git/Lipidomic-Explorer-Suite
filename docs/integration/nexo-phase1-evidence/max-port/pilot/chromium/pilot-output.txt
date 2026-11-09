@@ -1,0 +1,55 @@
+PILOT LIVE http://127.0.0.1:5287 checkpoint=nexo-complete-synthetic engines=chromium out=<tmp>/pilot-max/chromium
+PASS 1 chromium Paula: Open the checkpoint from the start screen
+PASS 2 chromium Paula: Confirm the study design if asked
+PASS 3a chromium Paula: Add "PCA scores · 2D" from the library and wait for it to draw
+PASS 3b chromium Paula: Add "Feature distributions" from the library and wait for it to draw
+PASS 3c chromium Paula: Add "Differential volcano" from the library and wait for it to draw
+PASS 3d chromium Paula: Add "Composition · unfiltered" from the library and wait for it to draw
+PASS 3e chromium Paula: Add "Selected-feature distributions"; its card is as tall as Team's plot height
+PASS 4 chromium Paula: Change a data input of the PCA (inspector, Data tab)
+PASS 4b chromium Paula: Change the Control group's colour in the session palette (rail Palettes)
+PASS 4c chromium Paula: Add the structural summary and press "Initiate Structural Analysis" in the Data tab
+PASS 4d chromium Paula: Add the heatmap and read the "Significant only" status note
+PASS 4e chromium Paula: Add the FLA ratio distributions and add one index in a sel_<category> picker
+PASS 5 chromium Paula: Restyle the violin (Appearance: title, Okabe–Ito palette, font size) [friction: 8 clicks (> 6)]
+PASS 6 chromium Paula: Violin statistics: Wilcoxon + BH, review, confirm; results table; download CSV [friction: 7 clicks (> 6)]
+PASS 7 chromium Paula: Resize and arrange (real drag, Tidy up), undo and redo once [friction: 8 clicks (> 6)]
+PASS 7b chromium Paula: Zoom in to 150 % or more with the zoom controls and look at the PCA
+PASS 7c chromium Paula: The API loses the session; Paula changes the group colour again in the session palette
+PASS 8 chromium Paula: Add an illustration and a text [friction: 8 clicks (> 6)]
+PASS 9 chromium Paula: Finish PCA, violin and volcano; open Figure page, paper Letter, layout Figure 1 [friction: the Figure 1 template hides the text added in step 8 without saying so (it is kept; the Free layout shows it); 15 clicks (> 6)]
+PASS 10 chromium Paula: Export the figure (Export dialog, Nature preset, SVG and PDF) and one "More downloads" file of an unfinished card [friction: 13 clicks (> 6)]
+PASS 10b chromium Paula: Export the composed Figure page as PDF and as SVG (Page tab)
+PASS 11 chromium Paula: Save a checkpoint named pilot-sim-<timestamp>
+PASS 11b chromium Paula: Download the saved checkpoint ZIP from the Checkpoints dialog
+PASS 12 chromium Steph: Reopen the saved checkpoint in a new context and check what came back [friction: 13 clicks (> 6)]
+PASS 13 chromium Steph: Open it on a phone (375×812): view only and legible
+cleanup: deleted the pilot's own checkpoint pilot-sim-20261109T064812-chromium (903b12abcf0c…): HTTP 200
+---
+PASS 1
+PASS 2
+PASS 3a
+PASS 3b
+PASS 3c
+PASS 3d
+PASS 3e
+PASS 4
+PASS 4b
+PASS 4c
+PASS 4d
+PASS 4e
+PASS 5
+PASS 6
+PASS 7
+PASS 7b
+PASS 7c
+PASS 8
+PASS 9
+PASS 10
+PASS 10b
+PASS 11
+PASS 11b
+PASS 12
+PASS 13
+PILOT ok=25 failed=0 friction=7
+log: <tmp>/pilot-max/chromium/pilot-log.json

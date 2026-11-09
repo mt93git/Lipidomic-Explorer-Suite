@@ -1,0 +1,3 @@
+Error: Invalid value for heat_lipid_selection: too long
+Execution halted
+exit=1

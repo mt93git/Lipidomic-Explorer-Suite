@@ -1,0 +1,14 @@
+PASS H3 chromium schema-edit-render-status
+PASS H3 chromium appearance-palette-background-undo-no-request
+PASS H3 chromium illustration-toggle-escape
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#inspector').getByRole('group', { name: 'Sample groups', exact: true }) to be visible[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_inspector.cjs:89:18)
+    at async <repo>/tests/dual-ui/test_nexo_inspector.cjs:123:46 {
+  log: [
+    "  - waiting for locator('#inspector').getByRole('group', { name: 'Sample groups', exact: true }) to be visible"
+  ],
+  name: 'TimeoutError'
+}

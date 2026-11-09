@@ -1,0 +1,41 @@
+PASS H5 chromium analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+PASS H8 chromium statistics-marker-and-cleared-after-data-change-one-undo-step
+locator.click: Timeout 10000ms exceeded.
+Call log:
+[2m  - waiting for locator('#inspector').getByRole('button', { name: 'Review and confirm…', exact: true })[22m
+[2m    - locator resolved to <button disabled>Review and confirm…</button>[22m
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not enabled[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is not enabled[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    19 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is not enabled[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_statistics.cjs:111:79)
+    at async <repo>/tests/dual-ui/test_nexo_statistics.cjs:137:46 {
+  log: [
+    "  - waiting for locator('#inspector').getByRole('button', { name: 'Review and confirm…', exact: true })",
+    '    - locator resolved to <button disabled>Review and confirm…</button>',
+    '  - attempting click action',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not enabled',
+    '    - retrying click action',
+    '    - waiting 20ms',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not enabled',
+    '    - retrying click action',
+    '      - waiting 100ms',
+    '    19 × waiting for element to be visible, enabled and stable',
+    '       - element is not enabled',
+    '     - retrying click action',
+    '       - waiting 500ms'
+  ],
+  name: 'TimeoutError'
+}

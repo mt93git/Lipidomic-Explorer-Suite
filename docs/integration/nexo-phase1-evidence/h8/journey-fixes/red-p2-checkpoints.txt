@@ -1,0 +1,13 @@
+PASS H4 chromium move-dirty-saving-saved
+PASS H8 chromium autosave-failure-reason-toast-retry-now
+locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+[2m  - waiting for locator('.toast').filter({ hasText: 'Saved checkpoint demo. You are now working on it' }) to be visible[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_save.cjs:66:93)
+    at async <repo>/tests/dual-ui/test_nexo_save.cjs:108:46 {
+  log: [
+    "  - waiting for locator('.toast').filter({ hasText: 'Saved checkpoint demo. You are now working on it' }) to be visible"
+  ],
+  name: 'TimeoutError'
+}

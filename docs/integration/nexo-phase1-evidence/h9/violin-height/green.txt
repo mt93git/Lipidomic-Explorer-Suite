@@ -1,0 +1,38 @@
+$ cd frontends/nexo && npx vitest run src/canvas/plotHeight.test.ts
+ ✓ src/canvas/plotHeight.test.ts (5 tests) 9ms
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+
+$ cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+ Test Files  108 passed (108)
+      Tests  490 passed (490)
+tsc: no errors
+
+$ node tests/dual-ui/test_nexo_violin_height.cjs
+PASS F5 chromium add-card-height-plotHeight-plus-chrome
+PASS F5 chromium slider-resizes-card-pushes-neighbour
+PASS F5 chromium undo-restores-size-and-input
+PASS F5 chromium hand-resize-writes-violin_zoom_pct-one-undo
+PASS F5 chromium no-console-errors
+PASS F5 webkit add-card-height-plotHeight-plus-chrome
+PASS F5 webkit slider-resizes-card-pushes-neighbour
+PASS F5 webkit undo-restores-size-and-input
+PASS F5 webkit hand-resize-writes-violin_zoom_pct-one-undo
+PASS F5 webkit no-console-errors
+F5 violin height OK
+exit 0
+
+$ Rscript tests/dual-ui/test_api_violin_height.R
+Not run: Rscript not found on the M1 (no R). The coordinator runs it on the RTX.
+
+$ node tests/dual-ui/<suite>.cjs   (mock build, Chromium + WebKit; PASS lines counted)
+test_nexo_inspector exit=0 PASS=42
+test_nexo_canvas_edit exit=0 PASS=34
+test_nexo_card_chrome exit=0 PASS=29
+test_nexo_finish exit=1 PASS=3
+test_nexo_figure_page exit=0 PASS=16
+
+test_nexo_finish fails the same way at the red commit 58a0aaa7 (base behaviour; PASS=3, same line), pre-existing and unrelated:
+locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('.card[data-id="tcinstance_a5cb5a70d7f9-pathwayVisNetwork"]').locator('.body .network canvas') to be visible

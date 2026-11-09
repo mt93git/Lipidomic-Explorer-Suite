@@ -1,0 +1,338 @@
+[
+ {
+  "plot": "pca3dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 2 traces, types and x/y/z (rounded to 6 significant digits) as the module render with the same body"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "locator.evaluate: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "locator.focus: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 651835 B; SVG 218450 B; Team PDF PCA_3D_20261107_0937.pdf 4229 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/pca3dPlot-r1-7-export-dialog.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "reopened title \"PCA scores · 3D\""
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-1-draws.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 fe7e0efcd3332235… identical (31353 B)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; mergeReplicatesMode single→merged redrew (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-4-data-mergeReplicatesMode.png); keyboard (Tab) reaches mergeReplicatesMode; dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":25}"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 20 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-5-appearance.png; canvas Undo → \"Audit boxplotAfterNorm\", Redo → \"Audit boxplotAfterNorm\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 354218 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF QC_Boxplot_After_20261107_0941.pdf 5769 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-7-export-dialog.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-8-finished.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 90000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-1-draws.png, docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "FAIL",
+  "detail": "inspector pcaMode=class, expected omics (catalog default omics)"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; pcaMode class→class redrew (docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-4-data-pcaMode.png); loadMarkerSize2D 8→12 redrew (docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-4-data-loadMarkerSize2D.png); loadTextSize2D 4→6 redrew (docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-4-data-loadTextSize2D.png); keyboard (Tab) reaches loadMarkerSize2D, loadTextSize2D, pcaMode; dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":25}"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 12 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-5-appearance.png; canvas Undo → \"Audit load2dPlot\", Redo → \"Audit load2dPlot\""
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 1329799 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF Loading_2D_20261107_0946.pdf 12132 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-7-export-dialog.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/load2dPlot-r1-8-finished.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 90000ms exceeded."
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "card state error: PCA scores · editable 2D Could not update Data & settings ⋯ Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Swi"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "1 console error(s) on all pages of this plot (1 = the 422 of Team's smart-label refusal, before smart labels were turned off): page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s31/cards/tcinstance_4a60355f0130/render"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "card state error: PCA loadings · editable 2D Could not update Data & settings ⋯ Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. S"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "1 console error(s) on all pages of this plot (1 = the 422 of Team's smart-label refusal, before smart labels were turned off): page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s32/cards/tcinstance_15af6a9ef622/render"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-1-draws.png, docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 58ccb79c702a93ed… identical (27612 B)"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; outlierThreshold 2.5→3.5 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-outlierThreshold.png); invalid outlierThreshold=-4 refused: state=error, \"Could not update the plot: Invalid value for outlierThreshold: below the minimum 1 ×\" (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-invalid.png); outlierScope global→group redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-outlierScope.png); outlierNumShow 24→10 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-outlierNumShow.png); keyboard (Tab) reaches outlierScope, outlierThreshold, outlierNumShow; dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":25}"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 20 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-5-appearance.png; canvas Undo → \"Audit outlierPlot\", Redo → \"Audit outlierPlot\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 331369 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF Outliers_Detection_20261107.pdf 5339 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-7-export-dialog.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 780x400; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-8-finished.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Target page, context or browser has been closed"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "1 console error(s) on all pages of this plot: page+: Failed to load resource: the server responded with a status of 400 (Bad Request) @/api/v1/sessions/s33/cards/tcinstance_3bc1c96c29a0"
+ }
+]

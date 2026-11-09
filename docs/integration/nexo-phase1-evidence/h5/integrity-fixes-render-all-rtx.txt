@@ -1,0 +1,60 @@
+# render-all on the RTX, commit 6501dff (integrity fixes), 2026-11-06T11:34Z
+PASS render results_dashboard-plot_pca
+PASS render results_dashboard-plot_violin
+PASS render results_dashboard-plot_dist
+PASS render results_dashboard-plot_comp
+PASS render results_dashboard-plot_heat
+PASS render qc_pca_tab-boxplotAfterNorm
+PASS render qc_pca_tab-outlierPlot
+PASS render qc_pca_tab-pca2dPlot
+PASS gate qc_pca_tab-pca2dVectorPlot Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector
+PASS render qc_pca_tab-pca3dPlot
+PASS render qc_pca_tab-load2dPlot
+PASS gate qc_pca_tab-load2dVectorPlot Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vecto
+PASS render qc_pca_tab-load3dPlot
+PASS render qc_pca_tab-sampleCorrPlot
+PASS render qc_pca_tab-bqcPlot
+PASS render qc_pca_tab-bqcDeviationPlot
+PASS render qc_pca_tab-bqcAbundancePlot
+PASS render qc_pca_tab-outlierPcaPlot
+PASS render qc_pca_tab-guided_qc_plot
+PASS render barchart-barPlotUnfiltered
+PASS gate barchart-barPlotFiltered No lipids passed filters (Significant & Global Filters).
+PASS render barchart-donutPlotUnfiltered
+PASS gate barchart-donutPlotFiltered No lipids passed filters (Significant & Global Filters).
+PASS render heatmap_barchart_tab-heatmapPlot
+PASS render heatmap_barchart_tab-heatmapSDPlot
+PASS gate heatmap_barchart_tab-filteredHeatmapPlot No lipids passed significance filters.
+PASS gate heatmap_barchart_tab-filteredHeatmapSDPlot No lipids passed significance filters.
+PASS render heatmap_barchart_tab-violin_plot_render
+PASS render volcano_tab-volcanoPlot
+PASS render lsea_tab-lseaPlot
+PASS gate structural_tab-summaryPlot No structural shifts detected or insufficient data.
+PASS silent structural_tab-speciesPlotPlot The plot inputs are unavailable for this session.
+PASS render structural_tab-networkPlot
+PASS render structural_tab-propPlotPlot
+PASS render structural_tab-diffAcylPlot
+PASS silent structural_grid_tab-heatmapPlot The plot inputs are unavailable for this session.
+PASS silent structural_grid_tab-dotplotPlot The plot inputs are unavailable for this session.
+PASS render structural_grid_tab-mergedPlot
+PASS render structural_grid_tab-diffAllPlot
+PASS render logratio_tab-logratioPlot
+PASS render group_comparison_tab-comparisonPlot
+PASS render fla_tab-logratioPlot
+PASS render fla_tab-plotVolcano
+PASS render fla_tab-plotCircos
+PASS silent longitudinal_tab-macroclass_plot The plot inputs are unavailable for this session.
+PASS silent longitudinal_tab-subclass_plot The plot inputs are unavailable for this session.
+PASS silent longitudinal_tab-index_plot The plot inputs are unavailable for this session.
+PASS silent longitudinal_tab-struct_plot The plot inputs are unavailable for this session.
+PASS render longitudinal_tab-allmetrics_plot
+PASS render pathway_tab-pathwayPlot
+PASS render pathway_tab-pathwayVisNetwork
+PASS render cellular_org_tab-stressPlot
+PASS render cellular_org_tab-cpiPlot
+PASS render cellular_org_tab-polarPlot
+PASS render cell_lipid_plot
+PASS render cell_profile_plot
+PASS render cell_class_plot
+PASS render cell_comparison_plot
+SUMMARY rendered=44 gated=7 silent=7 failed=0 of 58

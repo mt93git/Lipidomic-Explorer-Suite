@@ -1,0 +1,170 @@
+[
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-1-draws.png, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent); sharp at 100 %: image 1000x1100 drawn at 965x1062 in a 998x1062 box (dpr 1, zoom − 100% + Fit 100%) → 1.04 image px per screen px (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-1-sharp-100.png)"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (63671 B); card image 1000x1100 shown at 998x1062"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "655→815→422 px wide, redrawn each time; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-3-larger.png, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-3-smaller.png"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "29 Team controls all present (allowedInputs not in Team's markup: violin_scale_mode, violin_baseline_group_header, violin_zoom_pct, heatmapDisplayColumns, customizeRowOrder); hideHeatmapRowNames→true redrew (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-4-data-changed.png); no numeric control (N/A); DE threshold \"Threshold <\" 0.05→0.001 (Analysis settings, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-4-de-settings.png) redrew the filtered heatmap (card text \"Up to date Filtered average heatmap ⋯\") (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-4-significant.png); restored 0.05 and redrew; DE fields seen: Threshold < / |Log2FC| >="
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-5-appearance.png; canvas Undo → \"Audit filteredHeatmapPlot\", Redo → \"Audit filteredHeatmapPlot\""
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 390102 B; SVG disabled (\"More downloads from this analysis DataPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team Data Filtered_Heatmap_Data_20261108.xlsx 5399 B; Team PDF Filtered_Heatmap_20261108.pdf 8227 B; card PDF 294958 B; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 698x761 in a 658x684 body; Edit figure → live png; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-8-finished.png"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit filteredHeatmapPlot\" with hideHeatmapRowNames=true; remove + Undo brought it back drawn; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-9-duplicate.png"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened b4caea3801c6…: \"Audit filteredHeatmapPlot\", hideHeatmapRowNames=true, background kept; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-10-reopened.png"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; 1440x900: tabs Data/Appearance/Statistics/Export, 1 sliders; 1024x768: tabs Data/Appearance/Statistics/Export, 1 sliders; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapPlot-12-layout-<width>-<tab>.png"
+ },
+ {
+  "plot": "filteredHeatmapPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-1-draws.png, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent); sharp at 100 %: image 1000x1100 drawn at 965x1062 in a 998x1062 box (dpr 1, zoom − 100% + Fit 100%) → 1.04 image px per screen px (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-1-sharp-100.png)"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (34157 B); card image 1000x1100 shown at 998x1062"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "655→815→422 px wide, redrawn each time; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-3-larger.png, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-3-smaller.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "29 Team controls all present (allowedInputs not in Team's markup: violin_scale_mode, violin_baseline_group_header, violin_zoom_pct, heatmapDisplayColumns, customizeRowOrder); showHeatmapGrid→true redrew (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-4-data-changed.png); no numeric control (N/A); DE threshold \"Threshold <\" 0.05→0.001 (Analysis settings, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-4-de-settings.png) redrew the filtered heatmap (card text \"Up to date Filtered variability heatmap ⋯\") (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-4-significant.png); restored 0.05 and redrew; DE fields seen: Threshold < / |Log2FC| >="
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-5-appearance.png; canvas Undo → \"Audit filteredHeatmapSDPlot\", Redo → \"Audit filteredHeatmapSDPlot\""
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 432761 B; SVG disabled (\"More downloads from this analysis DataPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team Data Filtered_Heatmap_SD_Variance_Data_20261108.csv 15371 B; Team PDF Filtered_Heatmap_SD_20261108.pdf 6268 B; card PDF 341159 B; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 698x761 in a 658x684 body; Edit figure → live png; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-8-finished.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit filteredHeatmapSDPlot\" with showHeatmapGrid=true; remove + Undo brought it back drawn; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-9-duplicate.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 21bec34a981b…: \"Audit filteredHeatmapSDPlot\", showHeatmapGrid=true, background kept; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-10-reopened.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; 1440x900: tabs Data/Appearance/Statistics/Export, 1 sliders; 1024x768: tabs Data/Appearance/Statistics/Export, 1 sliders; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-12-layout-<width>-<tab>.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

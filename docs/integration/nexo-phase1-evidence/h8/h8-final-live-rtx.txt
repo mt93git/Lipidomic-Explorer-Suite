@@ -1,0 +1,18 @@
+# H8 final live check, deploy 309419c (RTX API through the tunnel; Mac dev server for the UI)
+## synthetic checkpoint (verbatim)
+PASS H6live chromium finish real plot (attempts=1) -> snapshot image/svg+xml 22 KiB
+PASS H6live chromium opened 1 cards
+PASS H6live chromium real bundle Figure_PCA_2D_Score_Plot_Publication_Bundle_20261106_1259.zip members=7 [.R .csv .json .pdf .png .svg .tiff]
+PASS H6live chromium figure page SVG figure-canvas-1.svg 15816 bytes
+PASS H6live chromium real card CSV results_lipid_violin_20261106.csv rows=8
+PASS H6live chromium 0 console errors (checkpoint writes: 0, autosave of synthetic data)
+PASS H6live webkit finish real plot (attempts=1) -> snapshot image/svg+xml 22 KiB
+PASS H6live webkit opened 1 cards
+PASS H6live webkit real bundle Figure_PCA_2D_Score_Plot_Publication_Bundle_20261106_1259.zip members=7 [.R .csv .json .pdf .png .svg .tiff]
+PASS H6live webkit figure page SVG figure-canvas-1.svg 15823 bytes
+PASS H6live webkit real card CSV results_lipid_violin_20261106.csv rows=8
+PASS H6live webkit 0 console errors (checkpoint writes: 0, autosave of synthetic data)
+## pilot checkpoint (read-only; outputs and captures kept in the private folder, only counts here)
+desktop Chromium + WebKit: opened, real bundle, Figure page SVG, real card CSV: PASS; 0 console errors; checkpoint writes 0
+phone 390x844 view-only, WebKit + Chromium: 5 cards; 0 writes after 20 s
+workspace checkpoints before and after: 7 (2 folder checkpoints + 5 autosaves of the synthetic checkpoint from the H8 stress runs)

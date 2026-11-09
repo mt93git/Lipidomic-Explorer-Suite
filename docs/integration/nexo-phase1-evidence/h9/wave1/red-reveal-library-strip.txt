@@ -1,0 +1,25 @@
+   ✓ revealing a newly placed card > a card larger than the view shows its title corner: top-left on the margins 0ms
+   × revealing a newly placed card > treats the strip under the floating library as out of view 4ms
+     → Cannot read properties of null (reading 'x')
+   ✓ revealing a newly placed card > locating zooms out just enough for a card that does not fit, never in 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/canvas/reveal.test.ts > revealing a newly placed card > treats the strip under the floating library as out of view
+TypeError: Cannot read properties of null (reading 'x')
+ ❯ src/canvas/reveal.test.ts:24:107
+     22|   it('treats the strip under the floating library as out of view', () …
+     23|     const covered = { ...view, left: 280 };
+     24|     expect(revealCamera(covered, { x: 0, y: 0, scale: 1 }, { x: 100, y…
+       |                                                                                                           ^
+     25|     expect(revealCamera(covered, { x: 0, y: 0, scale: 1 }, { x: 400, y…
+     26|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  07:24:50
+   Duration  453ms (transform 46ms, setup 0ms, collect 39ms, tests 8ms, environment 0ms, prepare 123ms)
+

@@ -1,0 +1,184 @@
+[
+ {
+  "plot": "speciesPlotPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "\"Load Species Plot\" did not redraw the card"
+ },
+ {
+  "plot": "speciesPlotPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno)"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "added from the Library; \"Initiate Structural Analysis\" → card redrew; docs/integration/chart-audit/b07-structure/networkPlot-1-before-actions.png → docs/integration/chart-audit/b07-structure/networkPlot-1-draws.png, docs/integration/chart-audit/b07-structure/networkPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (6256 B); card image 620x720 shown at 618x682; networkLayout=stress (catalog default stress)"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "wheel over the network card did not zoom the canvas (− 100% + Fit 100%)"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "52 Team controls all present (allowedInputs not in Team's markup: structuralGrouping, topClassesCount, selectedDetails, prop_group_var, prop_target_classes, diff_target_classes, prop_renormalize_subset, diff_cohort_var, diff_ref_group, diff_comp_group, diff_strata_filter, diff_sn_cohort_filter, diff_patient_var); module actions: Apply Custom Colors / Initiate Structural Analysis / Show Statistic Detail / Show Statistic Detail / Show Statistic Detail / Select All / None / Saturated (:0) / Unsaturated (:1+) / Apply Color Changes / Reset to Default Colors / Switch to Cohort View (Group 1) / Load Species Plot / Show Statistic Detail; networkLayout→fr redrew (docs/integration/chart-audit/b07-structure/networkPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "a Plotly editor is offered for an image plot"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no Nexo statistics workflow for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "networkPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 159682 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV MainClass_AcylChain_Proportions_2026-11-07-23-34.csv 15329 B; Team PDF MainClass_AcylChain_Proportions_2026-11-07-23-34.pdf 7115 B; card PDF 66547 B; docs/integration/chart-audit/b07-structure/networkPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b07-structure/networkPlot-8-finished.png"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit networkPlot\" with networkLayout=fr, background kept; remove + Undo brought it back drawn; docs/integration/chart-audit/b07-structure/networkPlot-9-duplicate.png"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 692db3eb6010…: \"Audit networkPlot\", networkLayout=fr, background kept; docs/integration/chart-audit/b07-structure/networkPlot-10-reopened.png"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "2 sizes × 4 Inspector tabs, every <details> open, 0 offenders; docs/integration/chart-audit/b07-structure/networkPlot-12-layout-1440-data.png, docs/integration/chart-audit/b07-structure/networkPlot-12-layout-1440-card.png, docs/integration/chart-audit/b07-structure/networkPlot-12-layout-1024-data.png, docs/integration/chart-audit/b07-structure/networkPlot-12-layout-1024-card.png"
+ },
+ {
+  "plot": "networkPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "added from the Library; no module action needed; docs/integration/chart-audit/b07-structure/propPlotPlot-1-before-actions.png → docs/integration/chart-audit/b07-structure/propPlotPlot-1-draws.png, docs/integration/chart-audit/b07-structure/propPlotPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x400 (27235 B); card image 620x400 shown at 618x682; prop_enable_donut=false (catalog default false)"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b07-structure/propPlotPlot-3-larger.png, docs/integration/chart-audit/b07-structure/propPlotPlot-3-smaller.png"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "52 Team controls all present (allowedInputs not in Team's markup: structuralGrouping, topClassesCount, selectedDetails, prop_group_var, prop_target_classes, diff_target_classes, prop_renormalize_subset, diff_cohort_var, diff_ref_group, diff_comp_group, diff_strata_filter, diff_sn_cohort_filter, diff_patient_var); module actions: Apply Custom Colors / Initiate Structural Analysis / Show Statistic Detail / Show Statistic Detail / Show Statistic Detail / Select All / None / Saturated (:0) / Unsaturated (:1+) / Apply Color Changes / Reset to Default Colors / Switch to Cohort View (Group 1) / Load Species Plot / Show Statistic Detail; prop_enable_donut→true redrew (docs/integration/chart-audit/b07-structure/propPlotPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "a Plotly editor is offered for an image plot"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no Nexo statistics workflow for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 150831 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV MainClass_AcylChain_Proportions_2026-11-07-23-34.csv 15329 B; Team PDF MainClass_AcylChain_Proportions_2026-11-07-23-34.pdf 52016 B; card PDF 62733 B; docs/integration/chart-audit/b07-structure/propPlotPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x1800 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b07-structure/propPlotPlot-8-finished.png"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit propPlotPlot\" with prop_enable_donut=true, background kept; remove + Undo brought it back drawn; docs/integration/chart-audit/b07-structure/propPlotPlot-9-duplicate.png"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened b43f9dfd971b…: \"Audit propPlotPlot\", prop_enable_donut=true, background kept; docs/integration/chart-audit/b07-structure/propPlotPlot-10-reopened.png"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "2 sizes × 4 Inspector tabs, every <details> open, 0 offenders; docs/integration/chart-audit/b07-structure/propPlotPlot-12-layout-1440-data.png, docs/integration/chart-audit/b07-structure/propPlotPlot-12-layout-1440-card.png, docs/integration/chart-audit/b07-structure/propPlotPlot-12-layout-1024-data.png, docs/integration/chart-audit/b07-structure/propPlotPlot-12-layout-1024-card.png"
+ },
+ {
+  "plot": "propPlotPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

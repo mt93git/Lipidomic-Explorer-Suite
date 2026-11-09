@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "stressPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "at first: state=current \"\", action: none needed (docs/integration/chart-audit/b11-pathways-cellular/stressPlot-1-before-generate.png); then: docs/integration/chart-audit/b11-pathways-cellular/stressPlot-1-draws.png, docs/integration/chart-audit/b11-pathways-cellular/stressPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (71389 B); card image 900x720 shown at 898x682"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "900→1060→648 px wide, redrawn each time; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-3-larger.png, docs/integration/chart-audit/b11-pathways-cellular/stressPlot-3-smaller.png"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "15 Team controls all present (Team's run-time controls selectedBaseline: all present); pointSize→6 redrew (docs/integration/chart-audit/b11-pathways-cellular/stressPlot-4-data-changed.png); invalid -1: state=error, redrew=true, message=\"Could not update the plot: Invalid value for pointSize: below the minimum 1 ×\" (docs/integration/chart-audit/b11-pathways-cellular/stressPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-5-appearance.png; canvas Undo → \"Audit stressPlot\", Redo → \"Audit stressPlot\""
+ },
+ {
+  "plot": "stressPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "stressPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 709693 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team CSV subcellular_stress_metrics_2026-11-08.csv 9690 B; Team PDF subcellular_stress_metrics_2026-11-08.pdf 56894 B; card PDF 581603 B; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 702x498 in a 700x460 body; Edit figure → live png; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-8-finished.png"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit stressPlot\" with pointSize=6 (at first: state=current, drawn=true); remove + Undo brought it back drawn; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-9-duplicate.png"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 4db8406bba0e…: \"Audit stressPlot\", pointSize=6, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b11-pathways-cellular/stressPlot-10-reopened.png"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b11-pathways-cellular/stressPlot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "stressPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,5 @@
+inspector exit=0 pass=40
+access exit=0 pass=54
+analysis_settings exit=0 pass=6
+DONE
+vitest: 100 files / 461 tests passed; tsc --noEmit clean

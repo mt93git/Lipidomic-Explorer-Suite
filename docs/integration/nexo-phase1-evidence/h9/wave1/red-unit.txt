@@ -1,0 +1,9 @@
+   × overviewCamera (opening zoom and Fit) > a board that fits opens at 100 %, centred 6ms
+   × overviewCamera (opening zoom and Fit) > a large board opens lower so every card is in view 1ms
+   × overviewCamera (opening zoom and Fit) > a board too large for the minimum zoom stops at the minimum and says so 0ms
+   × overviewCamera (opening zoom and Fit) > centres a board that does not start at the origin 1ms
+   × library icons > every catalog plot has a chart-type symbol that exists in the sprite 5ms
+   × library icons > an unknown plot falls back to its family glyph, then to a generic plot glyph 1ms
+   × library icons > the sprite is static drawing only 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  7 failed (7)

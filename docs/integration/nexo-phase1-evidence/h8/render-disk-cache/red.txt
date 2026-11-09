@@ -1,0 +1,3 @@
+Rscript --vanilla tests/dual-ui/test_api_render_disk_cache.R  (RTX, before R/frontends/api/render_disk.R)
+Error: a render must be written to the disk cache, found 0
+exit=1

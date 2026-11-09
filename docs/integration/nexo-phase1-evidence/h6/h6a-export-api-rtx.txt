@@ -1,0 +1,26 @@
+# H6a export API on the RTX (nexo-api env, R 4.4.3), commits 78536f3 + 104869c, 2026-11-06T11:57Z
+## test_api_export.R
+PASS export presets
+PASS export 400
+PASS export pca_2d members+csv+provenance match Team
+PASS export volcano members+csv+provenance match Team
+PASS export class_abundance members+csv+provenance match Team
+PASS export heatmap members+csv+provenance match Team
+PASS card data.csv from the module's download handler
+## test_api_http.R (after the path fix)
+PASS I1 health 200
+PASS I1 catalog 58
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints
+PASS stats HTTP describe 200
+PASS I1 card schema 200
+PASS I1 card PNG bytes
+PASS I1 export presets 200, bad export 400
+PASS I1 checkpoint validate/save/download/upload/delete
+PASS I1 session delete 200
+nginx /nexo/ without credentials: 401
+nginx /api/v1/health without credentials: 401
+Production Team (:3952) HTTP status: 200
+presets 200
+{"ok":true,"commit":"104869c2dabc49ac8ac6cea60158df65fbd961b6","root":"<server-home>/nexo-sp

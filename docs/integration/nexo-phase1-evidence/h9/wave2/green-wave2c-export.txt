@@ -1,0 +1,29 @@
+Wave 2c (honest exports, t-ca84 merged at 40fbc9af) on top of wave 2 + computed shapes/BQC (a41cbb19).
+tsc --noEmit: clean. vitest: 93 files / 419 tests passed.
+
+18 mock suites (Chromium + WebKit), macOS:
+analysis_settings exit=0 pass=6
+inspector exit=0 pass=38
+canvas_edit exit=0 pass=34
+access exit=0 pass=50
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=12
+canvas_open exit=0 pass=14
+card_chrome exit=0 pass=25
+export exit=0 pass=34
+figure_page exit=0 pass=16
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+p3 exit=0 pass=2
+save exit=0 pass=14
+statistics exit=0 pass=6
+cohort exit=0 pass=8
+library exit=0 pass=16
+perf: first run exit=1 pass=4 (the honest BQC placeholder made 'Batch deviation' a module message, the grid expected an image);
+      after excluding bqcDeviationPlot like the VectorPlot views (both refused by Team's validate()): Chromium all green,
+      WebKit red on one console error: 'There are too many active WebGL contexts on this page, the oldest context will be lost.'
+
+Finding (not caused by this merge, cards.ts unchanged): the mock now draws 3D cards as real scatter3d scenes, as the API
+always did. The live cap counts Plotly nodes (4), but each 3D scene holds a WebGL context and WebKit does not release a purged
+plot's context at once; the 3D snapshot (toImage) opens one more. Panning across many 3D cards loses contexts in Safari.
+Follow-up task: release the GL context on purge and cap live 3D scenes; perf suite must be green in WebKit.

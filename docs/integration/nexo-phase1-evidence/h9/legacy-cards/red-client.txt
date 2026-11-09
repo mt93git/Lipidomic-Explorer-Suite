@@ -1,0 +1,19 @@
+# red: mock card lookup as strict as the API (cards.R api_card_get); legacy dashboard nodes' Data tab
+inspector exit=1 pass=2
+statistics exit=1 pass=1
+analysis_settings exit=0 pass=6
+DONE
+## inspector
+PASS C1 chromium computed-colour-shape-bqc-save-reopen-render-label
+PASS C1 webkit computed-colour-shape-bqc-save-reopen-render-label
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#inspector').getByRole('listbox', { name: 'Lipid', exact: true }) to be visible[22m
+
+## statistics
+PASS H5 chromium analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#inspector').locator('#violin_lipid[role=listbox]').getByRole('option', { name: 'PE(18:0/20:4)', exact: true })[22m
+
+  log: [

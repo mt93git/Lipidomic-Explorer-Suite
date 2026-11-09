@@ -1,0 +1,8 @@
+PASS a render is written to the disk cache under the code commit
+PASS a reopened checkpoint draws its saved card from disk without re-creating it (0.004 s)
+PASS a changed input or size misses
+PASS a changed analysis setting or cohort misses
+PASS another code commit misses
+PASS a reopened dashboard copy draws from disk without re-creating it (0.003 s)
+Error: a Plotly card asked as json must hit the disk cache on reopen
+exit=1

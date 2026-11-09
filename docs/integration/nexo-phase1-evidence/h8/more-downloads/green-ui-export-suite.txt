@@ -1,0 +1,23 @@
+PASS H6d chromium preset-cell-dpi
+PASS H6d chromium bundle-download Mock_pca_2d_Publication_Bundle.zip
+PASS H8 chromium publication-scope-explained-volcano-gated-download-toast allowed=false
+PASS H6d chromium focus-stays-in-dialog-after-download
+PASS H6d chromium server-400-inline
+PASS H6d chromium escape-focus-return
+PASS H6d chromium inspector-csv dl_violin.csv
+PASS H6d chromium plot-scope-png
+PASS H6d chromium menu-figure-page-svg figure-canvas-1.svg
+PASS H8 chromium more-downloads-from-this-analysis downloadPlot.pdf
+PASS H6d chromium no-console-errors
+PASS H6d webkit preset-cell-dpi
+PASS H6d webkit bundle-download Mock_pca_2d_Publication_Bundle.zip
+PASS H8 webkit publication-scope-explained-volcano-gated-download-toast allowed=false
+PASS H6d webkit focus-stays-in-dialog-after-download
+PASS H6d webkit server-400-inline
+PASS H6d webkit escape-focus-return
+PASS H6d webkit inspector-csv dl_violin.csv
+PASS H6d webkit plot-scope-png
+PASS H6d webkit menu-figure-page-svg figure-canvas-1.svg
+PASS H8 webkit more-downloads-from-this-analysis downloadPlot.pdf
+PASS H6d webkit no-console-errors
+H6d OK

@@ -1,0 +1,338 @@
+[
+ {
+  "plot": "cell_lipid_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b12-cells/cell_lipid_plot-1-draws.png, docs/integration/chart-audit/b12-cells/cell_lipid_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 2 traces as the module render (scatter); title undefined"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b12-cells/cell_lipid_plot-3-larger.png, docs/integration/chart-audit/b12-cells/cell_lipid_plot-3-smaller.png"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "8 Team controls all present (allowedInputs not in Team's markup: none); cell_lipid→Cer(d18:1/22:0) redrew (docs/integration/chart-audit/b12-cells/cell_lipid_plot-4-data-changed.png); no numeric control (N/A); no module action button in the Data tab"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Base size; Chart text color; Plot background; font 16 #aa0000, plot bg #f0f0ff; 6 palettes, 6 distinct colourings; Healthy in grey present; legend Top Left → x=0; grid toggle; orientation enabled; Undo/Redo; Reset → title \"Click to enter Plot title\"; docs/integration/chart-audit/b12-cells/cell_lipid_plot-5-appearance.png; canvas Undo → \"Audit cell_lipid_plot\", Redo → \"Audit cell_lipid_plot\""
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 129035 B; SVG disabled (\"no reason shown\"); Team download labels: Download CSV / Download CSV / Download CSV / Download CSV; Team Download CSV #1 Cer_d18_1_22_0_-prepared-values.csv 4312 B (\"Measurement\",\"Prepared_signal\",\"Lipid\",\"Normalization\",\"Imputation\",\"Status\",\"Provenance\"); Team Download CSV #2 lipid-class-profile.csv 1677 B (\"Class\",\"Abundance\",\"Features\",\"Available\",\"Excluded\",\"Signal_percent\",\"Log10_signal\",\"Sam); Team Download CSV #3 lipid-class-comparison.csv 7370 B (\"Sample\",\"Class\",\"Abundance\",\"Group\"); Team Download CSV #4 cell-comparison-Cer_d18_1_22_0_.csv 5986 B (\"Measurement\",\"Prepared_signal\",\"Available_features\",\"Excluded_features\",\"Partial_total\",\"); card PDF 99977 B; docs/integration/chart-audit/b12-cells/cell_lipid_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b12-cells/cell_lipid_plot-8-finished.png"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit cell_lipid_plot\" with cell_lipid=Cer(d18:1/22:0); remove + Undo brought it back drawn; docs/integration/chart-audit/b12-cells/cell_lipid_plot-9-duplicate.png"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened db65ee6246d8…: \"Audit cell_lipid_plot\", cell_lipid=Cer(d18:1/22:0), background kept; docs/integration/chart-audit/b12-cells/cell_lipid_plot-10-reopened.png"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b12-cells/cell_lipid_plot-12-data-1024.png"
+ },
+ {
+  "plot": "cell_lipid_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b12-cells/cell_profile_plot-1-draws.png, docs/integration/chart-audit/b12-cells/cell_profile_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 1 traces as the module render (bar); title undefined"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b12-cells/cell_profile_plot-3-larger.png, docs/integration/chart-audit/b12-cells/cell_profile_plot-3-smaller.png"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "8 Team controls all present (allowedInputs not in Team's markup: none); cell_profile_view→log redrew (docs/integration/chart-audit/b12-cells/cell_profile_plot-4-data-changed.png); no numeric control (N/A); no module action button in the Data tab"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Base size; Chart text color; Plot background; font 16 #aa0000, plot bg #f0f0ff; 6 palettes, 6 distinct colourings; Healthy in grey present; legend Top Left → x=0; grid toggle; orientation enabled; Undo/Redo; Reset → title \"Click to enter Plot title\"; docs/integration/chart-audit/b12-cells/cell_profile_plot-5-appearance.png; canvas Undo → \"Audit cell_profile_plot\", Redo → \"Audit cell_profile_plot\""
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 214372 B; SVG disabled (\"no reason shown\"); Team download labels: Download CSV / Download CSV / Download CSV / Download CSV; Team Download CSV #1 Cer_d18_1_16_0_-prepared-values.csv 4314 B (\"Measurement\",\"Prepared_signal\",\"Lipid\",\"Normalization\",\"Imputation\",\"Status\",\"Provenance\"); Team Download CSV #2 lipid-class-profile.csv 1677 B (\"Class\",\"Abundance\",\"Features\",\"Available\",\"Excluded\",\"Signal_percent\",\"Log10_signal\",\"Sam); Team Download CSV #3 lipid-class-comparison.csv 7370 B (\"Sample\",\"Class\",\"Abundance\",\"Group\"); Team Download CSV #4 cell-comparison-Cer_d18_1_16_0_.csv 5988 B (\"Measurement\",\"Prepared_signal\",\"Available_features\",\"Excluded_features\",\"Partial_total\",\"); card PDF 114018 B; docs/integration/chart-audit/b12-cells/cell_profile_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b12-cells/cell_profile_plot-8-finished.png"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit cell_profile_plot\" with cell_profile_view=log; remove + Undo brought it back drawn; docs/integration/chart-audit/b12-cells/cell_profile_plot-9-duplicate.png"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 0ecba10d2e67…: \"Audit cell_profile_plot\", cell_profile_view=log, background kept; docs/integration/chart-audit/b12-cells/cell_profile_plot-10-reopened.png"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b12-cells/cell_profile_plot-12-data-1024.png"
+ },
+ {
+  "plot": "cell_profile_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b12-cells/cell_class_plot-1-draws.png, docs/integration/chart-audit/b12-cells/cell_class_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 2 traces as the module render (bar); title {\"text\":\"Prepared class totals<br>Descriptive comparison · no spatial inference\",\"font\":{\"size\":12}}"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b12-cells/cell_class_plot-3-larger.png, docs/integration/chart-audit/b12-cells/cell_class_plot-3-smaller.png"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "8 Team controls all present (allowedInputs not in Team's markup: none); cell_reference_group→Treatment redrew (docs/integration/chart-audit/b12-cells/cell_class_plot-4-data-changed.png); no numeric control (N/A); no module action button in the Data tab"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Base size; Chart text color; Plot background; font 16 #aa0000, plot bg #f0f0ff; 6 palettes, 6 distinct colourings; Healthy in grey present; legend Top Left → x=0; grid toggle; orientation enabled; Undo/Redo; Reset → title \"Prepared class totals<br>Descriptive comparison · \"; docs/integration/chart-audit/b12-cells/cell_class_plot-5-appearance.png; canvas Undo → \"Audit cell_class_plot\", Redo → \"Audit cell_class_plot\""
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 117236 B; SVG disabled (\"no reason shown\"); Team download labels: Download CSV / Download CSV / Download CSV / Download CSV; Team Download CSV #1 Cer_d18_1_16_0_-prepared-values.csv 4314 B (\"Measurement\",\"Prepared_signal\",\"Lipid\",\"Normalization\",\"Imputation\",\"Status\",\"Provenance\"); Team Download CSV #2 lipid-class-profile.csv 1677 B (\"Class\",\"Abundance\",\"Features\",\"Available\",\"Excluded\",\"Signal_percent\",\"Log10_signal\",\"Sam); Team Download CSV #3 lipid-class-comparison.csv 7370 B (\"Sample\",\"Class\",\"Abundance\",\"Group\"); Team Download CSV #4 cell-comparison-Cer_d18_1_16_0_.csv 5988 B (\"Measurement\",\"Prepared_signal\",\"Available_features\",\"Excluded_features\",\"Partial_total\",\"); card PDF 76566 B; docs/integration/chart-audit/b12-cells/cell_class_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b12-cells/cell_class_plot-8-finished.png"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit cell_class_plot\" with cell_reference_group=Treatment; remove + Undo brought it back drawn; docs/integration/chart-audit/b12-cells/cell_class_plot-9-duplicate.png"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened a9ac24c79f43…: \"Audit cell_class_plot\", cell_reference_group=Treatment, background kept; docs/integration/chart-audit/b12-cells/cell_class_plot-10-reopened.png"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b12-cells/cell_class_plot-12-data-1024.png"
+ },
+ {
+  "plot": "cell_class_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b12-cells/cell_comparison_plot-1-draws.png, docs/integration/chart-audit/b12-cells/cell_comparison_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 2 traces as the module render (violin); title {\"text\":\"Prepared signal · violin + points<br>Click a point for its single-measurement profile · descriptive comparison\""
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b12-cells/cell_comparison_plot-3-larger.png, docs/integration/chart-audit/b12-cells/cell_comparison_plot-3-smaller.png"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "8 Team controls all present (allowedInputs not in Team's markup: none); cell_explore_level→class redrew (docs/integration/chart-audit/b12-cells/cell_comparison_plot-4-data-changed.png); cell_comparison_group=Control (same as Reference): \"Choose two different groups.\" shown (docs/integration/chart-audit/b12-cells/cell_comparison_plot-4-data-invalid.png); no module action button in the Data tab"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "palettes do not change the plot"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 169967 B; SVG disabled (\"no reason shown\"); Team download labels: Download CSV / Download CSV / Download CSV / Download CSV; Team Download CSV #1 Cer_d18_1_16_0_-prepared-values.csv 4314 B (\"Measurement\",\"Prepared_signal\",\"Lipid\",\"Normalization\",\"Imputation\",\"Status\",\"Provenance\"); Team Download CSV #2 lipid-class-profile.csv 1677 B (\"Class\",\"Abundance\",\"Features\",\"Available\",\"Excluded\",\"Signal_percent\",\"Log10_signal\",\"Sam); Team Download CSV #3 lipid-class-comparison.csv 7370 B (\"Sample\",\"Class\",\"Abundance\",\"Group\"); Team Download CSV #4 cell-comparison-CER_class_total.csv 6187 B (\"Measurement\",\"Prepared_signal\",\"Available_features\",\"Excluded_features\",\"Partial_total\",\"); card PDF 120084 B; docs/integration/chart-audit/b12-cells/cell_comparison_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b12-cells/cell_comparison_plot-8-finished.png"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit cell_comparison_plot\" with cell_explore_level=class; remove + Undo brought it back drawn; docs/integration/chart-audit/b12-cells/cell_comparison_plot-9-duplicate.png"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened b45c042d3efa…: \"Audit cell_comparison_plot\", cell_explore_level=class, background kept; docs/integration/chart-audit/b12-cells/cell_comparison_plot-10-reopened.png"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b12-cells/cell_comparison_plot-12-data-1024.png"
+ },
+ {
+  "plot": "cell_comparison_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,7 @@
+canvas_tabs exit=1 pass=4
+DONE
+PASS H8 chromium move-to-tab-titled-picker-and-toast
+PASS H2G chromium move-filter-hud-minimap-F2
+PASS H8 chromium tab-rename-delete-feedback-and-card-count
+PASS H2G chromium pointer-reorder-delete-move-single-undo
+AssertionError [ERR_ASSERTION]: tab strip keeps room (46.046875px)

@@ -1,0 +1,16 @@
+[
+ {
+  "plot": "comparisonPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "comparisonPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 409 (Conflict)"
+ }
+]

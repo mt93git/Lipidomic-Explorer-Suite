@@ -1,0 +1,50 @@
+PASS H7c chromium phone-view-only-chrome
+PASS H8 chromium phone-opens-fitted-with-content
+PASS H7c chromium phone-pan-pinch-wheel-zoom
+PASS H7c chromium phone-inspector-read-only-export-works
+PASS H7c chromium phone-card-menu-and-shortcuts-inert
+PASS H7c chromium phone-no-autosave-no-checkpoint-post
+PASS H9 chromium phone-view-only aaa-text-contrast
+PASS H7c chromium phone-axe-banner-dismiss
+PASS H8 chromium phone-banner-compact-and-stays-dismissed
+PASS H7c chromium phone-figure-page-read-only
+PASS H7c chromium phone-no-console-errors
+PASS H7c chromium mode-param-overrides
+PASS H7c chromium layout-768x1024
+PASS H7c chromium layout-1024x768
+PASS H9 chromium canvas aaa-text-contrast
+PASS H9 chromium inspector aaa-text-contrast
+PASS H9 chromium export-dialog aaa-text-contrast
+PASS H7c chromium finished-inspector-status-matches-badge
+PASS H9 chromium figure-page aaa-text-contrast
+PASS H7c chromium desktop-axe-canvas-inspector-export-figure
+PASS H8b chromium empty-canvas-hint-add-plot
+PASS H7c chromium keyboard-tab-order-focus-rings
+PASS H7c chromium keyboard-enter-selects-arrow-moves
+PASS H7c chromium keyboard-escape-cascade
+PASS H8b chromium keyboard-shortcuts-dialog
+PASS H7c webkit phone-view-only-chrome
+PASS H8 webkit phone-opens-fitted-with-content
+PASS H7c webkit phone-pan-pinch-wheel-zoom
+PASS H7c webkit phone-inspector-read-only-export-works
+PASS H7c webkit phone-card-menu-and-shortcuts-inert
+PASS H7c webkit phone-no-autosave-no-checkpoint-post
+PASS H9 webkit phone-view-only aaa-text-contrast
+PASS H7c webkit phone-axe-banner-dismiss
+PASS H8 webkit phone-banner-compact-and-stays-dismissed
+PASS H7c webkit phone-figure-page-read-only
+PASS H7c webkit phone-no-console-errors
+PASS H7c webkit mode-param-overrides
+PASS H7c webkit layout-768x1024
+PASS H7c webkit layout-1024x768
+PASS H9 webkit canvas aaa-text-contrast
+PASS H9 webkit inspector aaa-text-contrast
+PASS H9 webkit export-dialog aaa-text-contrast
+PASS H7c webkit finished-inspector-status-matches-badge
+PASS H9 webkit figure-page aaa-text-contrast
+PASS H7c webkit desktop-axe-canvas-inspector-export-figure
+PASS H8b webkit empty-canvas-hint-add-plot
+PASS H7c webkit keyboard-tab-order-focus-rings
+PASS H7c webkit keyboard-enter-selects-arrow-moves
+PASS H7c webkit keyboard-escape-cascade
+PASS H8b webkit keyboard-shortcuts-dialog

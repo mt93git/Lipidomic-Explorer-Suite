@@ -1,0 +1,265 @@
+chromium:1440x900 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 qc_pca_tab-boxplotAfterNorm
+PASS chromium:1440x900 qc_pca_tab-outlierPlot
+PASS chromium:1440x900 qc_pca_tab-pca2dPlot
+PASS chromium:1440x900 qc_pca_tab-pca2dVectorPlot
+chromium:1440x900 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 qc_pca_tab-load2dPlot
+PASS chromium:1440x900 qc_pca_tab-load2dVectorPlot
+chromium:1440x900 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 qc_pca_tab-sampleCorrPlot
+PASS chromium:1440x900 qc_pca_tab-bqcPlot
+PASS chromium:1440x900 qc_pca_tab-bqcDeviationPlot
+PASS chromium:1440x900 qc_pca_tab-bqcAbundancePlot
+PASS chromium:1440x900 qc_pca_tab-outlierPcaPlot
+chromium:1440x900 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 barchart-barPlotUnfiltered
+chromium:1440x900 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 barchart-donutPlotUnfiltered
+chromium:1440x900 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 fla_tab-plotVolcano
+chromium:1440x900 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 heatmap_barchart_tab-heatmapPlot
+PASS chromium:1440x900 heatmap_barchart_tab-heatmapSDPlot
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 heatmap_barchart_tab-violin_plot_render
+chromium:1440x900 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 structural_tab-networkPlot
+PASS chromium:1440x900 structural_tab-propPlotPlot
+chromium:1440x900 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 group_comparison_tab-comparisonPlot
+PASS chromium:1440x900 logratio_tab-logratioPlot
+PASS chromium:1440x900 fla_tab-logratioPlot
+PASS chromium:1440x900 fla_tab-plotCircos
+chromium:1440x900 longitudinal_tab-macroclass_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 longitudinal_tab-macroclass_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 longitudinal_tab-macroclass_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 longitudinal_tab-macroclass_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 longitudinal_tab-subclass_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 longitudinal_tab-subclass_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 longitudinal_tab-subclass_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 longitudinal_tab-subclass_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 longitudinal_tab-index_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 longitudinal_tab-index_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 longitudinal_tab-index_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 longitudinal_tab-index_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 longitudinal_tab-struct_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 longitudinal_tab-struct_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 longitudinal_tab-struct_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 longitudinal_tab-struct_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 longitudinal_tab-allmetrics_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 longitudinal_tab-allmetrics_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 longitudinal_tab-allmetrics_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 longitudinal_tab-allmetrics_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 pathway_tab-pathwayPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 pathway_tab-pathwayPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 pathway_tab-pathwayPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 pathway_tab-pathwayPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 pathway_tab-pathwayVisNetwork
+PASS chromium:1440x900 cellular_org_tab-stressPlot
+PASS chromium:1440x900 cellular_org_tab-cpiPlot
+PASS chromium:1440x900 cellular_org_tab-polarPlot
+chromium:1440x900 cell_lipid_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 cell_lipid_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 cell_lipid_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 cell_lipid_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 cell_profile_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 cell_profile_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 cell_profile_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 cell_profile_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 cell_class_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 cell_class_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 cell_class_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 cell_class_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1440x900 cell_comparison_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1440x900 cell_comparison_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1440x900 cell_comparison_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1440x900 cell_comparison_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1440x900 export_studio-studio_preview_plot
+chromium:1024x768 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 results_dashboard-plot_pca Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 results_dashboard-plot_violin Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 results_dashboard-plot_dist Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 results_dashboard-plot_comp Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 results_dashboard-plot_heat Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 qc_pca_tab-boxplotAfterNorm
+PASS chromium:1024x768 qc_pca_tab-outlierPlot
+PASS chromium:1024x768 qc_pca_tab-pca2dPlot
+PASS chromium:1024x768 qc_pca_tab-pca2dVectorPlot
+chromium:1024x768 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 qc_pca_tab-pca3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 qc_pca_tab-load2dPlot
+PASS chromium:1024x768 qc_pca_tab-load2dVectorPlot
+chromium:1024x768 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 qc_pca_tab-load3dPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 qc_pca_tab-sampleCorrPlot
+PASS chromium:1024x768 qc_pca_tab-bqcPlot
+PASS chromium:1024x768 qc_pca_tab-bqcDeviationPlot
+PASS chromium:1024x768 qc_pca_tab-bqcAbundancePlot
+PASS chromium:1024x768 qc_pca_tab-outlierPcaPlot
+chromium:1024x768 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 qc_pca_tab-guided_qc_plot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 barchart-barPlotUnfiltered
+chromium:1024x768 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 barchart-barPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 barchart-donutPlotUnfiltered
+chromium:1024x768 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 barchart-donutPlotFiltered Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 volcano_tab-volcanoPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 lsea_tab-lseaPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 fla_tab-plotVolcano
+chromium:1024x768 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_tab-diffAcylPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 heatmap_barchart_tab-heatmapPlot
+PASS chromium:1024x768 heatmap_barchart_tab-heatmapSDPlot
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 heatmap_barchart_tab-filteredHeatmapSDPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 heatmap_barchart_tab-violin_plot_render
+chromium:1024x768 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_tab-summaryPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_tab-speciesPlotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 structural_tab-networkPlot
+PASS chromium:1024x768 structural_tab-propPlotPlot
+chromium:1024x768 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_grid_tab-heatmapPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_grid_tab-dotplotPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_grid_tab-mergedPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+chromium:1024x768 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Middle Center"
+chromium:1024x768 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Middle Right"
+chromium:1024x768 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Bottom Center"
+chromium:1024x768 structural_grid_tab-diffAllPlot Appearance spill details>div.plot-editor-positions>button "Bottom Right"
+PASS chromium:1024x768 group_comparison_tab-comparisonPlot
+PASS chromium:1024x768 logratio_tab-logratioPlot
+chromium:1024x768 fla_tab-logratioPlot - error sweep "page.waitForTimeout: Target page, contex"
+page.waitForTimeout: Target page, context or browser has been closed
+    at settle (<repo>/.claude/worktrees/router-20261107-173722-a262b2/tests/dual-ui/test_nexo_layout_sweep.cjs:80:42)
+    at desktop (<repo>/.claude/worktrees/router-20261107-173722-a262b2/tests/dual-ui/test_nexo_layout_sweep.cjs:137:13)
+    at async <repo>/.claude/worktrees/router-20261107-173722-a262b2/tests/dual-ui/test_nexo_layout_sweep.cjs:187:54 {
+  log: []
+}
+INTERRUPTED at 18:20 (time limit): 1440x900 complete, 1024x768 partial, phone not reached

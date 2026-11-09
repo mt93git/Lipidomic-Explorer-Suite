@@ -1,0 +1,11 @@
+   × colour tokens > muted on paper is at least 7:1 3ms
+   × colour tokens > muted on canvas is at least 7:1 0ms
+   × colour tokens > muted on tint is at least 7:1 0ms
+   × colour tokens > accent on paper is at least 7:1 0ms
+   × colour tokens > accent on canvas is at least 7:1 0ms
+   × colour tokens > accent on tint is at least 7:1 0ms
+   × colour tokens > paper on accent is at least 7:1 0ms
+   × colour tokens > amber-fg on amber-bg is at least 7:1 0ms
+   × focusCamera > starts exactly where plots stop being live 5ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  9 failed | 11 passed (20)

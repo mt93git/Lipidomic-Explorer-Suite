@@ -1,0 +1,18 @@
+2c557729 API: plot data CSV for finished legacy dashboard cards
+clean
+{"ok":true,"commit":"2c5577292d0b43cc28ad56b8ff1f05c03d9e319c","root":"<server-home>/nexo-spike","r":"4.4.3","shiny":"1.14.0","plotly":"4.12.1","sessions":0,"rssMb":624.16796875}
+nginx /nexo/ without credentials: 401
+nginx /api/v1/health without credentials: 401
+Production Team (:3952) HTTP status: 200
+== test_api_parity
+    - total_samples: 8
+    - total_lipids: 12
+    - total_samples: 8
+PASS parity 5/5
+exit 0
+== test_api_render_all
+PASS render cell_lipid_plot
+PASS render cell_profile_plot
+PASS render cell_class_plot
+PASS render cell_comparison_plot
+exit 0

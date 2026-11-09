@@ -1,0 +1,233 @@
+[
+ {
+  "plot": "pca3dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 2 traces, types and x/y/z (rounded to 6 significant digits) as the module render with the same body; module figure in a bare 620x720 div: pca3dPlot-r2-2-api-bare.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620x720→780x780→450x520→240x220 (minimum)→620x720 (restored through the handle at zoom factor 1.000); larger: plotly layout 620x682→780x742; smaller: plotly layout 780x742→450x482; minimum: plotly layout 450x482→240x182; docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-3-larger.png, docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-3-smaller.png, docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-3-minimum.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'length') [pca3dPlot-r2-4-fail.png, url /nexo/?checkpoint=fb1b75d821261b819da1f54be992b021d303c6bf1fbc2ea1e6d505e97ffb40d5] API: PATCH /sessions/s1/cards/tcinstance_7e4f6accd420 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"scoreMarkerSize3D\":14},\"actions\":[]}]"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "locator.evaluate: Error: strict mode violation: locator('#inspector').locator('.plot-editor') resolved to 2 elements: [pca3dPlot-r2-5-fail.png, url /nexo/?checkpoint=fb1b75d821261b819da1f54be992b021d303c6bf1fbc2ea1e6d505e97ffb40d5] API: PATCH /sessions/s1/cards/tcinstance_7e4f6accd420 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"scoreMarkerSize3D\":14},\"actions\":[]}]"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "SVG disabled with no reason [pca3dPlot-r2-7-fail.png, url /nexo/?checkpoint=fb1b75d821261b819da1f54be992b021d303c6bf1fbc2ea1e6d505e97ffb40d5] API: PATCH /sessions/s1/cards/tcinstance_7e4f6accd420 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"scoreMarkerSize3D\":14},\"actions\":[]}]"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x682; Edit figure → live plotly; docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-8-finished.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pca3dPlot\" with {\"scoreMarkerSize3D\":\"14\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/pca3dPlot-r2-9-duplicate.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "1 chrome text element(s) under 12 px: [[\"SPAN.logo\",11,\"LE\"]] [pca3dPlot-r2-10-fail.png, url /nexo/?checkpoint=4cf6fe44c661ff8f0713a2525529338e84e37e398dd049cd93c274fc607fa04d] API: PATCH /sessions/s1/cards/tcinstance_7e4f6accd420 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"scoreMarkerSize3D\":14},\"actions\":[]}]"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 7c052f91ea6a239b… identical (29204 B)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size [boxplotAfterNorm-r2-3-fail.png, url /nexo/?checkpoint=4dec25057016a599a818acaabc1040b9a706605aaca16b39e7109b53df8d9b69]"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'length') [boxplotAfterNorm-r2-4-fail.png, url /nexo/?checkpoint=4dec25057016a599a818acaabc1040b9a706605aaca16b39e7109b53df8d9b69] API: PATCH /sessions/s2/cards/tcinstance_9c16183f9f80 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"Normalization Check\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc [sent {\"inputs\":{\"mergeReplicatesMode\":\"merged\"},\"actions\":[]}]"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-5-appearance.png; canvas Undo → \"Audit boxplotAfterNorm\", Redo → \"Audit boxplotAfterNorm\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "SVG disabled with no reason [boxplotAfterNorm-r2-7-fail.png, url /nexo/?checkpoint=4dec25057016a599a818acaabc1040b9a706605aaca16b39e7109b53df8d9b69] API: PATCH /sessions/s2/cards/tcinstance_9c16183f9f80 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"Normalization Check\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc [sent {\"inputs\":{\"mergeReplicatesMode\":\"merged\"},\"actions\":[]}]"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-8-finished.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit boxplotAfterNorm\" with {\"mergeReplicatesMode\":\"merged\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-9-duplicate.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 45e5f7e76eee…: \"Audit boxplotAfterNorm\", {\"mergeReplicatesMode\":\"merged\"}, background kept; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-10-phone.png)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 9dd1c683c10e7b7d… identical (141994 B)"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size [load2dPlot-r2-3-fail.png, url /nexo/?checkpoint=eeae2e55e832216aa27207061d235f0caf782974ef72a88c338e18b0fc9cf7c9]"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'length') [load2dPlot-r2-4-fail.png, url /nexo/?checkpoint=eeae2e55e832216aa27207061d235f0caf782974ef72a88c338e18b0fc9cf7c9] API: PATCH /sessions/s3/cards/tcinstance_3e4a2a1144cb → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Loading Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_d [sent {\"inputs\":{\"pcaMode\":\"omics\"},\"actions\":[]}] | PATCH /sessions/s3/cards/tcinstance_3e4a2a1144cb → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Loading Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":24,\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"outlierNumShow\":24,\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"],\"showSingleLipidNames\":true,\"loadMarkerSize2D\":12,\"showLabels3D\":true,\"smartLabelLoad2D\":true,\"normalizationMethod\":\"m]"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-5-appearance.png; canvas Undo → \"Audit load2dPlot\", Redo → \"Audit load2dPlot\""
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "SVG disabled with no reason [load2dPlot-r2-7-fail.png, url /nexo/?checkpoint=eeae2e55e832216aa27207061d235f0caf782974ef72a88c338e18b0fc9cf7c9] API: PATCH /sessions/s3/cards/tcinstance_3e4a2a1144cb → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Loading Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":24,\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"outlierNumShow\":24,\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"],\"showSingleLipidNames\":true,\"loadMarkerSize2D\":12,\"showLabels3D\":true,\"smartLabelLoad2D\":true,\"normalizationMethod\":\"m] | PATCH /sessions/s3/cards/tcinstance_3e4a2a1144cb → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Loading Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":24,\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"],\"loadTextSize2D\":6},\"actions\":[]}]"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-8-finished.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit load2dPlot\" with {\"pcaMode\":\"class\",\"loadMarkerSize2D\":\"12\",\"loadTextSize2D\":\"6\"} (module reset: duplicate {\"pcaMode\":\"class\",\"loadMarkerSize2D\":\"12\",\"loadTextSize2D\":\"6\"} vs original {\"pcaMode\":\"omics\",\"loadMarkerSize2D\":\"12\",\"loadTextSize2D\":\"6\"}), background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-9-duplicate.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened fc7089401671…: \"Audit load2dPlot\", {\"pcaMode\":\"omics\",\"loadMarkerSize2D\":\"12\",\"loadTextSize2D\":\"6\"}, background kept; docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/load2dPlot-r2-10-phone.png)"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ }
+]

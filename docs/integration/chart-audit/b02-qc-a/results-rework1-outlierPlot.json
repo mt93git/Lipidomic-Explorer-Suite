@@ -1,0 +1,79 @@
+[
+ {
+  "plot": "outlierPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-1-draws.png, docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 58ccb79c702a93ed… identical (27612 B)"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size [outlierPlot-r1-3-fail.png, url /nexo/?checkpoint=0fb0b40e01223a4e766b611248426cccedfd633d364a821a35428a5e6cf457ab]"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; outlierThreshold 2.5→3.5 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-outlierThreshold.png); invalid outlierThreshold=-4 refused: state=error, \"Could not update the plot: Invalid value for outlierThreshold: below the minimum 1 ×\" (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-invalid.png); outlierScope global→group redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-outlierScope.png); outlierNumShow 24→10 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-4-data-outlierNumShow.png); keyboard (Tab) reaches outlierScope, outlierThreshold, outlierNumShow; dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":25}"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 20 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-5-appearance.png; canvas Undo → \"Audit outlierPlot\", Redo → \"Audit outlierPlot\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 331369 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF Outliers_Detection_20261107.pdf 5339 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-7-export-dialog.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 780x400; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-8-finished.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit outlierPlot\" with {\"outlierThreshold\":\"3.5\",\"outlierScope\":\"group\",\"outlierNumShow\":\"24\"} (module reset: duplicate {\"outlierThreshold\":\"3.5\",\"outlierScope\":\"group\",\"outlierNumShow\":\"24\"} vs original {\"outlierThreshold\":\"3.5\",\"outlierScope\":\"group\",\"outlierNumShow\":\"10\"}), background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/outlierPlot-r1-9-duplicate.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 60000ms exceeded. [page closed] last console: page+: Failed to load resource: the server responded with a status of 400 (Bad Request) @/api/v1/sessions/s35/cards/tcinstance_c79c0ffb40d6"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "1 console error(s) on all pages of this plot (1 = expected refusals: Team's smart-label 422 and/or the 400 of #4's invalid value): page+: Failed to load resource: the server responded with a status of 400 (Bad Request) @/api/v1/sessions/s35/cards/tcinstance_c79c0ffb40d6"
+ }
+]

@@ -1,0 +1,24 @@
+R side of computed controls and ordered selects (RTX, nexo-api env, production tree copy, synthetic fixture
+tests/dual-ui/fixtures/nexo-complete-synthetic.zip).
+
+RED (test written first, before R/frontends/api changes):
+  Rscript --vanilla tests/dual-ui/test_api_computed_controls.R
+  Error in api_is_computed_id(c("customCol_Control", "customShape_Case_A", ...
+
+GREEN:
+  PASS computed ids are customCol_<g>, customShape_<g> and bqcSamples only
+  PASS ordered selectize carries selectize.plugins = drag_drop
+  PASS 2 per-group colour controls are offered, marked computed
+  PASS a computed colour is accepted, live and part of the explicit inputs
+  PASS computed values are typed-checked; unknown ids are still refused
+  PASS 2 per-group shape controls, options Circle=16, Square=15, Triangle=17, Diamond=18, Plus=3, Cross=4, Star=8
+  PASS bqcSamples offered (24 samples), marked computed and accepted
+  PASS test_api_computed_controls
+
+Regression (same copy):
+  test_api_schema 6 PASS (assertion updated: outside allowedInputs only computed controls, marked computed)
+  test_api_schema_actions 5 PASS · test_api_schema_choices 2 PASS · test_api_restore_cards 6 PASS
+  test_api_render_disk_cache 7 PASS
+
+Client follow-up found here: Team's customShape_<g> values are ggplot pch numbers ("16", "15", ...) with names;
+the client must take the schema's options, not plotly symbol names.

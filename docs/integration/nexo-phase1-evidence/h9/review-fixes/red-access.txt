@@ -1,0 +1,26 @@
+PASS H7c chromium phone-view-only-chrome
+PASS H8 chromium phone-opens-fitted-with-content
+PASS H7c chromium phone-pan-pinch-wheel-zoom
+PASS H7c chromium phone-inspector-read-only-export-works
+PASS H7c chromium phone-card-menu-and-shortcuts-inert
+PASS H7c chromium phone-no-autosave-no-checkpoint-post
+AssertionError [ERR_ASSERTION]: AAA contrast chromium phone-view-only: 3
++ actual - expected
+
++ [
++   'span[aria-current="step"] #ffffff/#2d5f8a 6.74',
++   'button[title="Fit all (Shift+1)"] #5a6878/#ffffff 5.69',
++   'button[title="Zoom to 100% (Shift+0)"] #5a6878/#ffffff 5.69'
++ ]
+- []
+
+    at aaa (<repo>/tests/dual-ui/test_nexo_access.cjs:63:10)
+    at async phoneReadOnly (<repo>/tests/dual-ui/test_nexo_access.cjs:201:5)
+    at async <repo>/tests/dual-ui/test_nexo_access.cjs:403:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

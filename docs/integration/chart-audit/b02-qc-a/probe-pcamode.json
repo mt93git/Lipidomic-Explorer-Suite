@@ -1,0 +1,69 @@
+{
+ "requests": [
+  {
+   "method": "POST",
+   "url": "/sessions/s38/cards",
+   "body": {
+    "keys": [
+     "instanceId",
+     "source",
+     "inputs"
+    ],
+    "inputCount": 0
+   }
+  },
+  {
+   "method": "POST",
+   "url": "/sessions/s38/cards/tcinstance_3c6cfc7ee250/render",
+   "body": {
+    "keys": [
+     "width",
+     "height",
+     "format"
+    ],
+    "inputCount": 0,
+    "width": 620,
+    "height": 720
+   }
+  }
+ ],
+ "inspector": [
+  {
+   "label": "Individual Lipids",
+   "checked": false
+  },
+  {
+   "label": "Aggregated Classes",
+   "checked": true
+  }
+ ],
+ "radiosNamedPcaModeInDocument": 2,
+ "schema": {
+  "keys": [
+   "controls",
+   "actions",
+   "actionControls",
+   "tabs"
+  ],
+  "pcaMode": {
+   "value": "class",
+   "default": "omics",
+   "options": [
+    "omics",
+    "class"
+   ]
+  }
+ },
+ "card": {
+  "status": 405
+ },
+ "analysis": {
+  "keys": [
+   "sections",
+   "design",
+   "deState"
+  ]
+ },
+ "cardText": "PCA loadings · 2D Up to date ⋯",
+ "shot": "load2dPlot-r1-probe-pcamode.png"
+}

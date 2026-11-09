@@ -1,0 +1,16 @@
+WROTE <out>/nexo-complete-synthetic.zip (76 lipids x 24 samples, sha256 8e583c28ee21eaf9849315a662d0081b83bff16277e0e4934b28cf72daf4aae6)
+qc_pca_tab-pca2dVectorPlot render
+qc_pca_tab-load2dVectorPlot NOT RENDERED: Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector view to use the original plot and downloads.
+barchart-barPlotFiltered NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+barchart-donutPlotFiltered NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+heatmap_barchart_tab-filteredHeatmapPlot NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+heatmap_barchart_tab-filteredHeatmapSDPlot NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+structural_tab-summaryPlot NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+structural_tab-speciesPlotPlot NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+structural_grid_tab-heatmapPlot NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+structural_grid_tab-dotplotPlot NOT RENDERED: Invalid contrast: (T2)/1 - (T1)/1 
+longitudinal_tab-macroclass_plot render
+longitudinal_tab-subclass_plot render
+longitudinal_tab-index_plot render
+longitudinal_tab-struct_plot render
+VERIFY 5 of 14 rendered

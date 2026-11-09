@@ -1,0 +1,43 @@
+# Red (before the fix): Finish right after focusing a PNG card on a Retina screen. Paths as <repo>.
+
+$ cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/imageReady.test.ts > waits for an image that is still decoding, and gives up after its bound
+AssertionError: expected 'undefined' to be 'function' // Object.is equality
+ Test Files  1 failed | 125 passed (126)
+      Tests  1 failed | 586 passed (587)
+src/imageReady.test.ts(6,28): error TS2307: Cannot find module './imageReady' or its corresponding type declarations.
+tsc exit 0
+
+$ node tests/dual-ui/test_nexo_retina.cjs   # mock, run 1 (a race: red in WebKit)
+PASS retina chromium zoomed-out-asks-dpr-1 (1 request(s), image 440 px)
+PASS retina chromium live-100-asks-dpr-2 (natural 880 px, CSS 438 px)
+PASS retina chromium zoomed-out-80-back-to-dpr-1 (0 new request(s))
+PASS retina chromium finish-while-the-2x-image-loads-waits-for-it
+PASS retina chromium no-console-errors
+PASS retina webkit zoomed-out-asks-dpr-1 (1 request(s), image 440 px)
+PASS retina webkit live-100-asks-dpr-2 (natural 880 px, CSS 438 px)
+PASS retina webkit zoomed-out-80-back-to-dpr-1 (0 new request(s))
+AssertionError [ERR_ASSERTION]: Finish right after focusing refused: ["Plot is not ready.×"]
+    at browserTests (<repo>/tests/dual-ui/test_nexo_retina.cjs:99:5)
+    at async <repo>/tests/dual-ui/test_nexo_retina.cjs:119:46 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+$ node tests/dual-ui/test_nexo_retina.cjs   # mock, run 2 (the race went the other way: green)
+PASS retina chromium zoomed-out-asks-dpr-1 (1 request(s), image 440 px)
+PASS retina chromium live-100-asks-dpr-2 (natural 880 px, CSS 438 px)
+PASS retina chromium zoomed-out-80-back-to-dpr-1 (0 new request(s))
+PASS retina chromium finish-while-the-2x-image-loads-waits-for-it
+PASS retina chromium no-console-errors
+PASS retina webkit zoomed-out-asks-dpr-1 (1 request(s), image 440 px)
+PASS retina webkit live-100-asks-dpr-2 (natural 880 px, CSS 438 px)
+PASS retina webkit zoomed-out-80-back-to-dpr-1 (0 new request(s))
+PASS retina webkit finish-while-the-2x-image-loads-waits-for-it
+PASS retina webkit no-console-errors
+retina OK

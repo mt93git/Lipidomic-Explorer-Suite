@@ -1,0 +1,13 @@
+# H6 live probe against the H7a deploy (65aad8e), 2026-11-06T14:21:08Z
+PASS H6live chromium finish real plot (attempts=2) -> snapshot image/svg+xml 22 KiB
+PASS H6live chromium opened 1 cards
+PASS H6live chromium real bundle Figure_PCA_2D_Score_Plot_Publication_Bundle_20261106_0921.zip members=7 [.R .csv .json .pdf .png .svg .tiff]
+PASS H6live chromium figure page SVG figure-canvas-1.svg 15816 bytes
+PASS H6live chromium real card CSV results_lipid_violin_20261106.csv rows=8
+PASS H6live chromium 0 console errors (checkpoint writes: 0, autosave of synthetic data)
+PASS H6live webkit finish real plot (attempts=2) -> snapshot image/svg+xml 22 KiB
+PASS H6live webkit opened 1 cards
+PASS H6live webkit real bundle Figure_PCA_2D_Score_Plot_Publication_Bundle_20261106_0921.zip members=7 [.R .csv .json .pdf .png .svg .tiff]
+PASS H6live webkit figure page SVG figure-canvas-1.svg 15823 bytes
+PASS H6live webkit real card CSV results_lipid_violin_20261106.csv rows=8
+PASS H6live webkit 0 console errors (checkpoint writes: 0, autosave of synthetic data)

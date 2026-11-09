@@ -1,0 +1,58 @@
+[
+ {
+  "plot": "load3dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/load3dPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/load3dPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b03-qc-b/load3dPlot-12-data-1024.png"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "sampleCorrPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/sampleCorrPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/sampleCorrPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "sampleCorrPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b03-qc-b/sampleCorrPlot-12-data-1024.png"
+ },
+ {
+  "plot": "sampleCorrPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,70 @@
+Mac, mock build, tree 1300f4d + working changes of this commit
+PILOT MOCK http://127.0.0.1:<port> checkpoint=demo engines=chromium,webkit out=$NEXO_PILOT_OUT/pilot-mock
+PASS 1 chromium Paula: Open the checkpoint from the start screen
+PASS 2 chromium Paula: Confirm the study design if asked
+PASS 3a chromium Paula: Add "PCA scores · 2D" from the library and wait for it to draw
+PASS 3b chromium Paula: Add "Feature distributions" from the library and wait for it to draw
+PASS 3c chromium Paula: Add "Differential volcano" from the library and wait for it to draw
+PASS 3d chromium Paula: Add "Composition · unfiltered" from the library and wait for it to draw
+PASS 4 chromium Paula: Change a data input of the PCA (inspector, Data tab)
+PASS 5 chromium Paula: Restyle the violin (Appearance: title, Okabe–Ito palette, font size) [friction: 8 clicks (> 6)]
+PASS 6 chromium Paula: Violin statistics: Wilcoxon + BH, review, confirm; results table; download CSV [friction: 7 clicks (> 6)]
+PASS 7 chromium Paula: Resize and arrange (real drag, Tidy up), undo and redo once
+PASS 8 chromium Paula: Add an illustration and a text [friction: the page is full (8 items): "Add text" refuses with Team's message; the user must move or resize an item first; 7 clicks (> 6); error toast: No free space is left on the page. Move or resize an item first.]
+PASS 9 chromium Paula: Finish PCA, violin and volcano; open Figure page, paper Letter, layout Figure 1 [friction: 11 clicks (> 6)]
+PASS 10 chromium Paula: Export the figure (Export dialog, Nature preset, SVG and PDF) and one "More downloads" file of an unfinished card [friction: 13 clicks (> 6)]
+PASS 11 chromium Paula: Save a checkpoint named pilot-sim-<timestamp>
+PASS 12 chromium Steph: Reopen the saved checkpoint in a new context and check what came back
+PASS 13 chromium Steph: Open it on a phone (375×812): view only and legible
+PASS 1 webkit Paula: Open the checkpoint from the start screen
+PASS 2 webkit Paula: Confirm the study design if asked
+PASS 3a webkit Paula: Add "PCA scores · 2D" from the library and wait for it to draw
+PASS 3b webkit Paula: Add "Feature distributions" from the library and wait for it to draw
+PASS 3c webkit Paula: Add "Differential volcano" from the library and wait for it to draw
+PASS 3d webkit Paula: Add "Composition · unfiltered" from the library and wait for it to draw
+PASS 4 webkit Paula: Change a data input of the PCA (inspector, Data tab)
+PASS 5 webkit Paula: Restyle the violin (Appearance: title, Okabe–Ito palette, font size) [friction: 8 clicks (> 6)]
+PASS 6 webkit Paula: Violin statistics: Wilcoxon + BH, review, confirm; results table; download CSV [friction: 7 clicks (> 6)]
+PASS 7 webkit Paula: Resize and arrange (real drag, Tidy up), undo and redo once
+PASS 8 webkit Paula: Add an illustration and a text [friction: the page is full (8 items): "Add text" refuses with Team's message; the user must move or resize an item first; 7 clicks (> 6); error toast: No free space is left on the page. Move or resize an item first.]
+PASS 9 webkit Paula: Finish PCA, violin and volcano; open Figure page, paper Letter, layout Figure 1 [friction: 11 clicks (> 6)]
+PASS 10 webkit Paula: Export the figure (Export dialog, Nature preset, SVG and PDF) and one "More downloads" file of an unfinished card [friction: 13 clicks (> 6)]
+PASS 11 webkit Paula: Save a checkpoint named pilot-sim-<timestamp>
+PASS 12 webkit Steph: Reopen the saved checkpoint in a new context and check what came back
+PASS 13 webkit Steph: Open it on a phone (375×812): view only and legible
+---
+PASS 1
+PASS 2
+PASS 3a
+PASS 3b
+PASS 3c
+PASS 3d
+PASS 4
+PASS 5
+PASS 6
+PASS 7
+PASS 8
+PASS 9
+PASS 10
+PASS 11
+PASS 12
+PASS 13
+PASS 1
+PASS 2
+PASS 3a
+PASS 3b
+PASS 3c
+PASS 3d
+PASS 4
+PASS 5
+PASS 6
+PASS 7
+PASS 8
+PASS 9
+PASS 10
+PASS 11
+PASS 12
+PASS 13
+PILOT ok=32 failed=0 friction=10
+log: $NEXO_PILOT_OUT/pilot-mock/pilot-log.json
+mock exit=0

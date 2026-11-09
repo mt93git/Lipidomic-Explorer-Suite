@@ -1,0 +1,3 @@
+$ Rscript --vanilla tests/dual-ui/test_api_unknown_session.R   (RTX, production tree, after the fix)
+PASS every session route (22) answers an unknown session with 404 not_found
+PASS test_api_unknown_session

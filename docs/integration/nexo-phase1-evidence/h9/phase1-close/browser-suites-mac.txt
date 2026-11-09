@@ -1,0 +1,30 @@
+# Browser suites against the mock (Mac, Chromium; nexo/phase1 c321dbfc, same app code as 95b2526a)
+analysis_settings exit=0 pass=6
+inspector exit=0 pass=46
+canvas_edit exit=0 pass=34
+access exit=0 pass=54
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=12
+canvas_open exit=0 pass=14
+card_chrome exit=0 pass=29
+export exit=0 pass=34
+figure_page exit=0 pass=18
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+p3 exit=0 pass=2
+perf exit=0 pass=17
+save exit=0 pass=16
+statistics exit=0 pass=6
+cohort exit=0 pass=8
+library exit=0 pass=16
+retina exit=0 pass=10
+plotly_click exit=0 pass=10
+finish_after_export exit=0 pass=1
+session_palette exit=0 pass=10
+thumb_drag exit=0 pass=6
+session_reopen exit=0 pass=14
+actions_replay exit=0 pass=10
+timecourse_designer exit=0 pass=16
+DONE
+
+# vitest (frontends/nexo): Test Files 133 passed (133); Tests 640 passed (640); tsc --noEmit clean

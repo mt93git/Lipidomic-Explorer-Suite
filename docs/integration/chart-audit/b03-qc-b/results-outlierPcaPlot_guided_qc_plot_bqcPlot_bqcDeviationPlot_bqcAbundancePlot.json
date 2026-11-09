@@ -1,0 +1,387 @@
+[
+ {
+  "plot": "bqcPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/bqcPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/bqcPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "FAIL",
+  "detail": "locator.inputValue: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/bqcPlot-3-larger.png, docs/integration/chart-audit/b03-qc-b/bqcPlot-3-smaller.png"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "locator.fill: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 8 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b03-qc-b/bqcPlot-5-appearance.png; canvas Undo → \"Audit bqcPlot\", Redo → \"Audit bqcPlot\""
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "Team PDF produced no file within 60 s; the page said \"\""
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b03-qc-b/bqcPlot-8-finished.png"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.inputValue: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.inputValue: Timeout 15000ms exceeded."
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (3893 B); card image 620x720 shown at 618x646"
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-3-larger.png, docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-3-smaller.png"
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); mergeReplicatesMode→merged redrew (docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 8 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-5-appearance.png; canvas Undo → \"Audit bqcDeviationPlot\", Redo → \"Audit bqcDeviationPlot\""
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "Team PDF produced no file within 60 s; the page said \"\""
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b03-qc-b/bqcDeviationPlot-8-finished.png"
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "bqcDeviationPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 500 (Internal Server Error) | Failed to load resource: the server responded with a status of 500 (Internal Server Error) | Failed to load resource: the server responded with a status of 500 (Internal Server Error) | Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (3893 B); card image 620x720 shown at 618x646"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-3-larger.png, docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-3-smaller.png"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); mergeReplicatesMode→merged redrew (docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 8 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-5-appearance.png; canvas Undo → \"Audit bqcAbundancePlot\", Redo → \"Audit bqcAbundancePlot\""
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 91048 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); no Team downloads; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-7-export-dialog.png"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-8-finished.png"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit bqcAbundancePlot\" with mergeReplicatesMode=merged; remove + Undo brought it back drawn; docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-9-duplicate.png"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 5453d3c42ca8…: \"Audit bqcAbundancePlot\", mergeReplicatesMode=merged, background kept; docs/integration/chart-audit/b03-qc-b/bqcAbundancePlot-10-reopened.png"
+ },
+ {
+  "plot": "bqcAbundancePlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (26779 B); card image 620x720 shown at 618x646"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-3-larger.png, docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-3-smaller.png"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); outlierThreshold→3.5 redrew (docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-4-data-changed.png); invalid -4: state=error, redrew=false, message=\"Could not update the plot: Invalid value for outlierThreshold: below the minimum 1 ×\" (docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 8 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-5-appearance.png; canvas Undo → \"Audit outlierPcaPlot\", Redo → \"Audit outlierPcaPlot\""
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 234268 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); no Team downloads; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-8-finished.png"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit outlierPcaPlot\" with outlierThreshold=3.5; remove + Undo brought it back drawn; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-9-duplicate.png"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 9e3c7fb29db0…: \"Audit outlierPcaPlot\", outlierThreshold=3.5, background kept; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-10-reopened.png"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/guided_qc_plot-1-draws.png, docs/integration/chart-audit/b03-qc-b/guided_qc_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "FAIL",
+  "detail": "inspector maxPCs=3, catalog default undefined"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-3-larger.png, docs/integration/chart-audit/b03-qc-b/guided_qc_plot-3-smaller.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); maxPCs→4 redrew (docs/integration/chart-audit/b03-qc-b/guided_qc_plot-4-data-changed.png); invalid -1: state=error, redrew=false, message=\"Could not update the plot: Invalid value for maxPCs: below the minimum 2 ×\" (docs/integration/chart-audit/b03-qc-b/guided_qc_plot-4-data-invalid.png)"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "legend position not applied"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 97818 B; SVG disabled (\"no reason shown\"); no Team downloads; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x418 in a 421x424 body; Edit figure → live plotly; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-8-finished.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit guided_qc_plot\" with maxPCs=4; remove + Undo brought it back drawn; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-9-duplicate.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 3113ffba2d93…: \"Audit guided_qc_plot\", maxPCs=4, background kept; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-10-reopened.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

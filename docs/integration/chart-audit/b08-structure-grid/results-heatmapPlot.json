@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "heatmapPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "design confirmed in the Library (Animal, independent); docs/integration/chart-audit/b08-structure-grid/heatmapPlot-1-draws.png, docs/integration/chart-audit/b08-structure-grid/heatmapPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (20330 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-3-larger.png, docs/integration/chart-audit/b08-structure-grid/heatmapPlot-3-smaller.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "20 Team controls all present; renderUI controls lipid_class, gridLog2fcThresh present (allowedInputs not in Team's markup: lipid_class, all_size_map, all_color_map, all_alpha_map, hide_non_sig_all_classes); textSize→16 redrew (docs/integration/chart-audit/b08-structure-grid/heatmapPlot-4-data-changed.png); invalid -3: state=error, redrew=false, message=\"Could not update the plot: Invalid value for textSize: below the minimum 6 ×\" (docs/integration/chart-audit/b08-structure-grid/heatmapPlot-4-data-invalid.png); \"Show Statistic Detail\" → dialog: \"Statistics Console Context: Structural Grids White on Black Mathematical calculus, parameter estimates, and degrees of freedom computed for \" (docs/integration/chart-audit/b08-structure-grid/heatmapPlot-4-action.png); \"Log2FC Threshold (abs)\" (min=0 step=0.1; help \"Applies an effect size filter to restrict structural grid do…\") 0→0.5 redrew (docs/integration/chart-audit/b08-structure-grid/heatmapPlot-4-threshold-changed.png); -1 refused: \"Enter a number of at least 0.\", aria-invalid, 0 PATCH, no redraw, state current (docs/integration/chart-audit/b08-structure-grid/heatmapPlot-4-threshold-invalid.png)"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-5-appearance.png; canvas Undo → \"Audit heatmapPlot\", Redo → \"Audit heatmapPlot\""
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 269943 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV GridData_GL_TAG_20261108_1023.csv 1030 B; Team PDF HeatmapGrid_GL_TAG_20261108_1023.pdf 6191 B; card PDF 211917 B; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-8-finished.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit heatmapPlot\" with textSize=16, gridLog2fcThresh=0.5; remove + Undo brought it back drawn; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-9-duplicate.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-12-layout-1440-data.png; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-12-layout-1440-card.png; 1440x900: 4 tabs (Data/Appearance/Statistics/Export); docs/integration/chart-audit/b08-structure-grid/heatmapPlot-12-layout-1024-data.png; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-12-layout-1024-card.png; 1024x768: 4 tabs (Data/Appearance/Statistics/Export)"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 808a4581b9b6…: \"Audit heatmapPlot\", textSize=16, gridLog2fcThresh=0.5, background kept; docs/integration/chart-audit/b08-structure-grid/heatmapPlot-10-reopened.png; saved through Team's validator (ack gate, 200); ZIP members state.json, shared-state-v1.json, team-canvas-v1.json, data_files/, data_files/dataset-001-6252452ca7225030.csv, nexo-canvas-v1.json; Team canvas without gridLog2fcThresh, Nexo member gridLog2fcThresh=0.5"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "index_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "before Generate Analysis: state=waiting \"Needs Generate Analysis. The time points are there. Time courses are built only on request: choose “Generate analysis” on this card (the module’s “Generate Analysis”, also in Data & settings). Generat\" (docs/integration/chart-audit/b10-longitudinal/index_plot-1-before-generate.png); after Generate Analysis: docs/integration/chart-audit/b10-longitudinal/index_plot-1-draws.png, docs/integration/chart-audit/b10-longitudinal/index_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "index_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x550 (20699 B); card image 620x550 shown at 618x682"
+ },
+ {
+  "plot": "index_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b10-longitudinal/index_plot-3-larger.png, docs/integration/chart-audit/b10-longitudinal/index_plot-3-smaller.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "buttons named by their input id: btn_del_case_case_894476, btn_del_case_case_690202 (docs/integration/chart-audit/b10-longitudinal/index_plot-4-data-changed.png)"
+ },
+ {
+  "plot": "index_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b10-longitudinal/index_plot-5-appearance.png; canvas Undo → \"Audit index_plot\", Redo → \"Audit index_plot\""
+ },
+ {
+  "plot": "index_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "index_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 162378 B; SVG disabled (\"Download PNG Download SVG This figure is a raster image; SVG is not available.\"); no Team downloads; card PDF 115601 B; docs/integration/chart-audit/b10-longitudinal/index_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x700 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b10-longitudinal/index_plot-8-finished.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit index_plot\" with plotHeight=700 (at first: state=waiting, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b10-longitudinal/index_plot-9-duplicate.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened c6c22439a9df…: \"Audit index_plot\", plotHeight=700, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b10-longitudinal/index_plot-10-reopened.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b10-longitudinal/index_plot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b10-longitudinal/index_plot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "index_plot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno)"
+ }
+]
