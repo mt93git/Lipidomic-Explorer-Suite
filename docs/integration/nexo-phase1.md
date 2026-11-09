@@ -14,6 +14,13 @@ therefore closes as "the Figure 1 workflow is complete end to end on synthetic d
 done". Deployed on the RTX at `95b2526a`. Close-time evidence: `nexo-phase1-evidence/h9/phase1-close/`; the `h8/…` and `h9/…` paths below are under
 `nexo-phase1-evidence/`.
 
+**Close decision (2026-11-09).** Gerardo closed Phase 1 on synthetic data, effective once the server runs the
+ported API and the Nexo PRs #18, #19 and #20 (stacked on the Admin PRs #16 and #17) carry it to Max
+(`nexo-pr-stack.md`). The real-user confirmation below stays open as an
+acceptance item; it does not block Phase 1B. Since the 2026-11-08 close the API moved to `frontends/nexo-api/`
+(outside Team's `R/` tree, so Max's storage-isolation safeguard passes), passes its R suite on both Team trees
+(`nexo-phase1-evidence/max-port/`), and nested guarded calls now share one 120 s request deadline.
+
 ### Definition of done, item by item
 
 | The plan asked for | Where it stands | Evidence |
@@ -73,9 +80,10 @@ The real close is Paula repeating pilot steps 9–12 on her own checkpoint and S
 
 ### Hand-off
 
-Max receives Nexo only as stacked candidate PRs of new files, after Gerardo approves. The stack was rebuilt on
-2026-11-09 as three PRs on Max's integration branch (`nexo-pr-stack.md`): Nexo now runs and passes its R suite on
-both trees (`nexo-phase1-evidence/max-port/`). Team behaviours for Max are in `nexo-team-bug-proposals.md`.
+Max receives Nexo as the stacked PRs #18 (API), #19 (canvas and browser suites) and #20 (docs) on
+`mt93git/Lipidomic-Explorer-Suite`, on top of the Admin PRs #16 and #17 (`nexo-pr-stack.md`). They add files only;
+Nexo runs and passes its R suite on both Team trees (`nexo-phase1-evidence/max-port/`). Team behaviours for Max are
+in `nexo-team-bug-proposals.md`. Further Nexo changes for Max go on top of #18 to #20.
 
 After this note, `nexo/phase1` also took the Admin line's shared-identity work (Nexo sends the Admin session token on
 dataset opens; `admin-identity.md`). It belongs to Phase 1B, is not part of the close evidence above and was not

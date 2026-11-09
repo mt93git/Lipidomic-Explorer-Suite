@@ -1,0 +1,418 @@
+Diagnostics: <tmp>/api-render-all-37634a2555576b.log 
+fatal: not a git repository (or any of the parent directories): .git
+[INGESTION TRACE] 2026-11-09 07:29:14.784 | STAGE: 2_RAWDATA_REACTIVE_TRIGGERED | >>> [START]
+[INGESTION TRACE] 2026-11-09 07:29:14.787 | STAGE: 2_FILE_TYPE_DETECTED | --> [INFO]
+[INGESTION TRACE] 2026-11-09 07:29:14.796 | STAGE: 2_RAWDATA_COMPLETED | +++ [SUCCESS]
+    - total_lipids: 76
+    - total_samples: 24
+[INGESTION TRACE] 2026-11-09 07:29:14.815 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-09 07:29:14.875 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-09 07:29:14.918 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-09 07:29:14.918 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-09 07:29:15.007 | STAGE: 6_IMPUTATION_NORMALIZATION_START | >>> [START]
+    - sample_count: 24
+    - lipid_count: 76
+[INGESTION TRACE] 2026-11-09 07:29:15.011 | STAGE: 6_IMPUTATION_NORMALIZATION_SUCCESS | +++ [SUCCESS]
+PASS render results_dashboard-plot_pca
+PASS render results_dashboard-plot_violin
+PASS render results_dashboard-plot_dist
+PASS render results_dashboard-plot_comp
+PASS render results_dashboard-plot_heat
+
+[PERF - START] 07:29:28.050 | Starting PCA Calculation (mode: omics)
+[PERF - COMPLETE] 07:29:28.059 | omics PCA Calculation Finished in 0.008 sec
+PASS render qc_pca_tab-boxplotAfterNorm
+PASS render qc_pca_tab-outlierPlot
+[PCA2D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+PASS render qc_pca_tab-pca2dPlot
+[PCA2D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+PASS render qc_pca_tab-pca2dVectorPlot
+[PCA3D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+[PCA3D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+PASS render qc_pca_tab-pca3dPlot
+PASS render qc_pca_tab-load2dPlot
+PASS render qc_pca_tab-load2dVectorPlot
+PASS render qc_pca_tab-load3dPlot
+PASS render qc_pca_tab-sampleCorrPlot
+PASS render qc_pca_tab-bqcPlot
+PASS render qc_pca_tab-bqcDeviationPlot
+PASS render qc_pca_tab-bqcAbundancePlot
+PASS render qc_pca_tab-outlierPcaPlot
+PASS render qc_pca_tab-guided_qc_plot
+PASS render barchart-barPlotUnfiltered
+PASS render barchart-barPlotFiltered
+PASS render barchart-donutPlotUnfiltered
+PASS gate barchart-donutPlotFiltered Team's module could not draw this plot: invalid 'type' (closure) of argument
+PASS render heatmap_barchart_tab-heatmapPlot
+PASS render heatmap_barchart_tab-heatmapSDPlot
+PASS render heatmap_barchart_tab-filteredHeatmapPlot
+PASS render heatmap_barchart_tab-filteredHeatmapSDPlot
+PASS render heatmap_barchart_tab-violin_plot_render
+PASS render volcano_tab-volcanoPlot
+PASS render lsea_tab-lseaPlot
+PASS render structural_tab-summaryPlot
+PASS render structural_tab-speciesPlotPlot
+PASS render structural_tab-networkPlot
+PASS render structural_tab-propPlotPlot
+PASS render structural_tab-diffAcylPlot
+PASS render structural_grid_tab-heatmapPlot
+PASS render structural_grid_tab-dotplotPlot
+PASS render structural_grid_tab-mergedPlot
+PASS render structural_grid_tab-diffAllPlot
+PASS render logratio_tab-logratioPlot
+PASS render group_comparison_tab-comparisonPlot
+PASS render fla_tab-logratioPlot
+PASS render fla_tab-plotVolcano
+PASS render fla_tab-plotCircos
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] renderPlot macroclass_plot
+[DEBUG longitudinal] macroclassPlotReactive: selected = GL
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot subclass_plot
+[DEBUG longitudinal] subclassPlotReactive: selected = GL_TAG
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot index_plot
+[DEBUG longitudinal] indexPlotReactive: selected = PE/PC_Index
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot struct_plot
+[DEBUG longitudinal] structPlotReactive: selected = GL_TAG - Total Carbons
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-macroclass_plot
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] renderPlot macroclass_plot
+[DEBUG longitudinal] macroclassPlotReactive: selected = GL
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot subclass_plot
+[DEBUG longitudinal] subclassPlotReactive: selected = GL_TAG
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot index_plot
+[DEBUG longitudinal] indexPlotReactive: selected = PE/PC_Index
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot struct_plot
+[DEBUG longitudinal] structPlotReactive: selected = GL_TAG - Total Carbons
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-subclass_plot
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] renderPlot macroclass_plot
+[DEBUG longitudinal] macroclassPlotReactive: selected = GL
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot subclass_plot
+[DEBUG longitudinal] subclassPlotReactive: selected = GL_TAG
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot index_plot
+[DEBUG longitudinal] indexPlotReactive: selected = PE/PC_Index
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot struct_plot
+[DEBUG longitudinal] structPlotReactive: selected = GL_TAG - Total Carbons
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-index_plot
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] renderPlot macroclass_plot
+[DEBUG longitudinal] macroclassPlotReactive: selected = GL
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot subclass_plot
+[DEBUG longitudinal] subclassPlotReactive: selected = GL_TAG
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot index_plot
+[DEBUG longitudinal] indexPlotReactive: selected = PE/PC_Index
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+[DEBUG longitudinal] renderPlot struct_plot
+[DEBUG longitudinal] structPlotReactive: selected = GL_TAG - Total Carbons
+`geom_line()`: Each group consists of only one observation.
+ℹ Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-struct_plot
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+[DEBUG longitudinal] macroclass_selector_ui triggered
+[DEBUG longitudinal] macroclassSumsData reactive triggered
+[DEBUG longitudinal] longData reactive triggered
+[DEBUG longitudinal] longData: rows = 1824
+[DEBUG longitudinal] macroclassSumsData: rows = 72
+[DEBUG longitudinal] macroclass_selector_ui: choices size: 3
+[DEBUG longitudinal] subclass_selector_ui triggered
+[DEBUG longitudinal] subclassSumsData reactive triggered
+[DEBUG longitudinal] subclassSumsData: rows = 216
+[DEBUG longitudinal] subclass_selector_ui: choices size: 9
+[DEBUG longitudinal] index_selector_ui triggered
+[DEBUG longitudinal] indicesData reactive triggered
+[DEBUG longitudinal] indicesData: rows = 24
+[DEBUG longitudinal] index_selector_ui: choices size: 45
+[DEBUG longitudinal] struct_selector_ui triggered
+[DEBUG longitudinal] structFeaturesData reactive triggered
+[DEBUG longitudinal] structFeaturesData: rows = 1200
+[DEBUG longitudinal] struct_selector_ui: choices size: 50
+[DEBUG longitudinal] allmetrics_selector_ui triggered
+[DEBUG longitudinal] allMetricsData reactive triggered
+[DEBUG longitudinal] allMetricsData: rows = 1824
+[DEBUG longitudinal] allmetricsPlotReactive triggered
+[DEBUG longitudinal] allmetricsPlotReactive: ledger is NULL
+PASS render longitudinal_tab-allmetrics_plot
+PASS render pathway_tab-pathwayPlot
+PASS render pathway_tab-pathwayVisNetwork
+PASS render cellular_org_tab-stressPlot
+PASS render cellular_org_tab-cpiPlot
+PASS render cellular_org_tab-polarPlot
+PASS render cell_lipid_plot
+PASS render cell_profile_plot
+PASS render cell_class_plot
+PASS render cell_comparison_plot
+SUMMARY rendered=57 gated=1 silent=0 failed=0 of 58
+  running command ''git' rev-parse HEAD' had status 128
+2: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead. 
+3: Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+4: Removed 1 row containing missing values or values outside the scale range
+(`geom_text_repel()`). 
+5: There was 1 warning in `dplyr::summarise()`.
+ℹ In argument: `dplyr::across(where(is.numeric), sum, na.rm = TRUE)`.
+ℹ In group 1: `subclass = "Ceramide"`.
+Caused by warning:
+! The `...` argument of `across()` is deprecated as of dplyr 1.1.0.
+Supply arguments directly to `.fns` through an anonymous function instead.
+
+  # Previously
+  across(a:b, mean, na.rm = TRUE)
+
+  # Now
+  across(a:b, \(x) mean(x, na.rm = TRUE)) 
+6: The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
+ℹ Please use the `linewidth` argument instead. 
+7: There was 1 warning in `dplyr::mutate()`.
+ℹ In argument: `Plot_Value = dplyr::case_when(...)`.
+Caused by warning:
+! Calling `case_when()` with size 1 LHS inputs and size >1 RHS inputs was
+  deprecated in dplyr 1.2.0.
+ℹ This `case_when()` statement can result in subtle silent bugs and is very inefficient.
+
+  Please use a series of if statements instead:
+
+  ```
+  # Previously
+  case_when(scalar_lhs1 ~ rhs1, scalar_lhs2 ~ rhs2, .default = default)
+
+  # Now
+  if (scalar_lhs1) {
+    rhs1
+  } else if (scalar_lhs2) {
+    rhs2
+  } else {
+    default
+  }
+  ``` 

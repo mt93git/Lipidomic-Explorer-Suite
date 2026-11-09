@@ -1,99 +1,82 @@
-# Nexo hand-off: three stacked PRs
+# Nexo hand-off: PRs #18, #19 and #20
 
-This replaces the old eight-PR plan. The package is built from `nexo/phase1` on `max/integration-60cd4538`, the local reference to `integration/libreros-guided-workflow`. It has more than 2,400 new files and no path collisions with that branch. The proposed stack is:
+Nexo reaches Max as three PRs in the stack open on `mt93git/Lipidomic-Explorer-Suite`, on top of the Admin PRs
+(#16 `candidate/admin-db-20261108`, #17 `candidate/admin-app-20261108`), all stacked on
+`integration/libreros-guided-workflow` (`60cd4538`):
 
-1. `candidate/nexo-api` on `max/integration-60cd4538`.
-2. `candidate/nexo-frontend` on `candidate/nexo-api`.
-3. `candidate/nexo-docs` on `candidate/nexo-frontend`.
+| PR | Branch | Content |
+|---|---|---|
+| #18 | `candidate/nexo-api-20261108` (on #17) | the headless R API in `frontends/nexo-api/`, its 52 tests `tests/dual-ui/test_api_*.R` and the synthetic fixtures they use |
+| #19 | `candidate/nexo-frontend-20261108` (on #18) | the TypeScript canvas in `frontends/nexo/` (with vitest), 34 browser suites `tests/dual-ui/test_nexo_*.cjs`, the chart-audit harness and the Figure 1 pilot |
+| #20 | `candidate/nexo-docs-20261109` (on #19) | design, plan and close notes, chart audit reports, Team inventory, text evidence, this hand-off and the Team proposals |
 
-Nexo is a headless R API that runs Team's Shiny modules under `shiny::MockShinySession`, and a TypeScript canvas. Each PR adds files only. It does not change Classic, Team or the science modules. Check each base and tip, and the full stack:
+Nexo is a headless R API that runs Team's own Shiny modules under `shiny::MockShinySession`, plus a TypeScript
+canvas. The API is a separate process, not part of the Shiny app, so it lives in `frontends/nexo-api/` next to
+`frontends/nexo/`, outside Team's `R/` tree. The Nexo PRs add files only: they change no upstream file, nothing in
+Classic, Team, the science modules or `DESCRIPTION`. For each PR and for the whole stack these print nothing:
 
 ```sh
-git diff --name-only --diff-filter=MDR <base> <tip>
-git diff --name-only <base> <tip> -- R/modules R/server.R R/global.R R/ui.R R/frontends/team R/frontends/classic www DESCRIPTION
+git diff --name-only --diff-filter=MDRT integration/libreros-guided-workflow <tip>
+git diff --name-only integration/libreros-guided-workflow <tip> -- R app.R www DESCRIPTION
 ```
 
-Both commands must print nothing. Binary captures (1,553 PNG, PDF and SVG evidence files; about 180 MB) are excluded and listed in `docs/integration/nexo-phase1-evidence/captures-not-included.txt`; they stay on the Nexo working branch. Text evidence is included, with local paths and host names replaced by `<repo>`, `<home>`, `<server-home>`, `<server>` or `<tmp>`. Team and module behaviours found along the way are in `nexo-team-bug-proposals.md`, for Max to decide; the stack does not change them.
+Left out: binary captures (listed in `docs/integration/nexo-phase1-evidence/captures-not-included.txt`) and the
+server deploy kit with its hard-coded server paths. Text kept in has local paths and host names replaced by
+`<repo>`, `<home>`, `<server-home>`, `<server>` or `<tmp>`. Team and module behaviours found along the way are in
+`nexo-team-bug-proposals.md`, for Max to decide; the stack does not change them.
 
 ## Checks and results
 
-On Max's tree plus Nexo, the API suites went from 25 PASS / 23 FAIL / 1 SKIP before the port to 49 PASS / 1 SKIP / 0 FAIL after it. Before the port, the catalog could not find `qc_pca_tab-guided_qc_plot`, which is defined in `R/frontends/team/qc-server.R` on his tree. The remaining SKIP, `test_api_render_disk_cache`, needs a git checkout. At the production close (`ebee653` plus Nexo), the result was 48 PASS / 1 SKIP / 0 FAIL.
+All on synthetic data; per-test results are in `docs/integration/nexo-phase1-evidence/max-port/`.
 
-On Max's tree, `render_all` produced 58 rendered / 0 gated / 0 silent / 0 failed out of 58 on the complete synthetic fixture. On the classic fixture it produced 44 / 9 / 5 / 0. Production's classic result was 44 / 7 / 7 / 0. The difference is that his Team gates the two editable-vector PCA views with its own smart-label message.
+| Check | Result | Evidence |
+|---|---|---|
+| Max's `run_acceptance.R`, his branch alone | 152 PASS / 1 FAIL (`test_c3_qc_team.R`, already failing without Nexo), 582 s | `acceptance-base-manifest.csv` |
+| Max's `run_acceptance.R` on the #20 tree (#16 to #20) | 204 PASS / 1 FAIL (the same `test_c3_qc_team.R`), 1369 s; all 52 `test_api_*.R` pass, his storage-isolation test passes unchanged | `acceptance-stack-manifest.csv` |
+| Nexo R suite (`test_api_*.R`, 52 files) on his branch | 50 PASS / 2 SKIP / 0 FAIL | `r-suite-max-tree.txt` |
+| Nexo R suite on production (`ebee653`) | 50 PASS / 2 SKIP / 0 FAIL | `r-suite-production-tree.txt` |
+| Before the port, on his branch | 9 PASS / 39 FAIL / 1 SKIP: the catalog could not find `qc_pca_tab-guided_qc_plot` (defined in `R/frontends/team/qc-server.R` there) and almost every test fell with it | `baseline-red-r-suite-max-tree.txt` |
+| All 58 catalog plots, complete fixture, his branch | 58 drawn / 0 gated / 0 silent / 0 failed | `render-all-complete-max-tree.txt` |
+| All 58 plots, classic fixture, his branch | 44 / 9 / 5 / 0 (production: 44 / 7 / 7 / 0; his Team gates the two editable-vector PCA views with its own smart-label message) | `render-all-classic-max-tree.txt` |
+| Figure 1 pilot against a live API on his branch | Chromium 25/25, WebKit 25/25 | `pilot/<engine>/pilot-output.txt` |
+| Checkpoint saved by Nexo, opened by his Team | 8/8 in both engines | `pilot/<engine>/team-roundtrip-max.txt` |
+| New R files of #18 and #19 parse | 76 of 76 | `r-parse.txt` |
 
-The Figure 1 pilot against a live API on Max's tree passed 25/25 in Chromium and 25/25 in WebKit. `pilot_team_roundtrip.R` passed 8/8 in both engines using his Team. These results use synthetic data. Real-user confirmation remains open.
+The two SKIPs are the disk-cache test, which needs git metadata (his CI checks out with git, so there it runs), and
+`test_api_stress.R`, which runs only with `NEXO_API_PERF=1`. `tests/dual-ui/test_c3_qc_team.R` fails the same way on his branch without Nexo in this environment; it is
+not caused by the stack.
 
-His CI's `DESCRIPTION` does not include `plumber`, `callr`, `png` or `svglite`. Tests that need missing dependencies print SKIP and exit 0; the other tests run. `tests/dual-ui/test_api_dependency_guards.R` enforces this behavior. Vitest and the `.cjs` browser suites run on the server or a Mac with Node and Playwright; they do not run in his CI. The proposed addition `Suggests: plumber, callr, httr` is not included; Max decides whether to add it.
+**What his CI runs.** `run_acceptance.R` picks up the 52 new `tests/dual-ui/test_api_*.R`. Tests that need a
+package outside `DESCRIPTION` (`plumber`, `callr`, `png`, `svglite`) print SKIP and exit 0;
+`tests/dual-ui/test_api_dependency_guards.R` checks that every such use is guarded. Wall-clock budgets
+(`test_api_stress.R`, the p95/RSS part of `test_api_cache.R`) SKIP unless `NEXO_API_PERF=1`, so a slower runner does
+not fail them. Measured on the server, the new tests add about 13 minutes to the run. Without `plumber`,
+`test_api_checkpoint_scope.R` (the Admin store scope) and the HTTP tests SKIP in his CI, so that logic is covered
+only where `plumber` is installed. Vitest and the `.cjs` browser suites need Node and Playwright; they run on the
+server or a Mac, not in his CI. His workflow triggers on PRs to the integration branches, so the stacked PRs get no
+CI run of their own until they reach the integration branch.
 
-The Admin identity work is in this branch. Server-side store scope is enabled by `LIPIDOMIC_ADMIN_REQUIRE_USER=1` and is off by default. See `admin-identity.md` and `nexo-store-scope.md` for the contract and rollout limits.
+**Proposal, Max decides:** add `plumber` and `callr` to `Suggests` (`httr` is already there) so the HTTP and
+store-scope tests run in CI. Not included in the stack.
 
-Proposed agreement: use one reference tree. Production on RTX still runs the adapter architecture. Each divergence requires another Nexo port.
+**Admin identity.** #18 includes the server-side store scope for Admin accounts. It is off by default and turns on
+with `LIPIDOMIC_ADMIN_REQUIRE_USER=1`; `admin-identity.md` and `nexo-store-scope.md` give the contract and its
+limits.
 
-## PR 1: `candidate/nexo-api`
+**Proposed agreement: one reference tree.** Production (the server) still runs Team in the adapter architecture;
+his branch runs the hooks architecture, and 15 science files differ between the two. Nexo now passes on both, but
+every new divergence means porting it again. The ask: agree that his integration branch is the single reference,
+and that production is redeployed from it once his port is complete. In return Nexo is developed and tested against
+that branch only, and keeps its parity tests comparing with Team of the same tree. Timing is his call.
 
-### Description
+## How to test
 
-Add the headless API in `R/frontends/api/`, 51 `tests/dual-ui/test_api_*.R` files including the dependency guards, Nexo fixtures in `tests/dual-ui/fixtures/`, and the OS/Linux deploy kit. The API runs Team's modules in mock Shiny sessions. It includes the Admin identity and store-scope work described above.
+- **#18:** run the two scope commands; `Rscript --vanilla tests/dual-ui/run_acceptance.R <baseline> <output>` as in
+  CI, or one test with `Rscript --vanilla tests/dual-ui/test_api_<name>.R` (with `plumber` and `callr` installed the
+  HTTP tests run too). Start the API with `Rscript --vanilla frontends/nexo-api/run.R`.
+- **#19:** in `frontends/nexo`, `npm ci`, `npm test` and `npm run build`. With Node, Playwright and the API running,
+  `node tests/dual-ui/test_nexo_canvas_edit.cjs` or the pilot `node tests/dual-ui/pilot/pilot_figure1.cjs`, then open
+  the checkpoint it saved in Team with `Rscript --vanilla tests/dual-ui/pilot/pilot_team_roundtrip.R <zip>`.
+- **#20:** documentation only; the scope commands print nothing.
 
-### Type of Change
-
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [x] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-
-### Verification Checklist
-
-- [x] The automated AST syntax audit passes (`Rscript -e "parse('...')"` on new R files). All 74 new R files parse.
-- [x] Session roundtrip persistence has been validated (Export/Import of a test session works). The synthetic Team round trip passed on Max's tree.
-- [ ] The change matches the WYSIWYG plot layouts sizing protocol (if applicable). Not verified as a separate protocol check.
-
-**Depends on:** `max/integration-60cd4538`.
-
-**How to test:** Run the scope commands above against the PR base and tip. Parse each new R file with `Rscript -e "parse('...')"`. Run `tests/dual-ui/test_api_*.R` with `Rscript`; inspect SKIPs and run with the optional dependencies installed for full coverage. Run `tests/dual-ui/pilot/pilot_team_roundtrip.R` on a synthetic checkpoint.
-
-## PR 2: `candidate/nexo-frontend`
-
-### Description
-
-Add the TypeScript canvas in `frontends/nexo/`, `tests/dual-ui/test_nexo_*.cjs`, and the pilot, chart-audit and performance suites under `tests/dual-ui/`. The canvas uses the API from PR 1.
-
-### Type of Change
-
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [x] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-
-### Verification Checklist
-
-- [x] The automated AST syntax audit passes (`Rscript -e "parse('...')"` on new R files). The one new R file, `tests/dual-ui/pilot/pilot_team_roundtrip.R`, parses.
-- [x] Session roundtrip persistence has been validated (Export/Import of a test session works). The synthetic pilot and Team round trip passed in both engines on Max's tree.
-- [ ] The change matches the WYSIWYG plot layouts sizing protocol (if applicable). Not verified as a separate protocol check.
-
-**Depends on:** `candidate/nexo-api`.
-
-**How to test:** Run the scope commands against the PR base and tip. In `frontends/nexo`, install the project's dependencies and run `npm test` and `npm run build`. With Node, Playwright and a running API, run the `.cjs` browser suites and `tests/dual-ui/pilot/pilot_figure1.cjs` in Chromium and WebKit. Use the synthetic fixtures.
-
-## PR 3: `candidate/nexo-docs`
-
-### Description
-
-Add `docs/integration/nexo*`, `docs/integration/chart-audit/`, `docs/integration/team-inventory/`, `docs/integration/admin-*.md` and `docs/nexo/`. Text evidence is included; binary captures are excluded.
-
-### Type of Change
-
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [x] Documentation update
-
-### Verification Checklist
-
-- [x] The automated AST syntax audit passes (`Rscript -e "parse('...')"` on modified files). The four R probe scripts kept as evidence parse; they are not tests and `run_acceptance.R` does not run them.
-- [ ] Session roundtrip persistence has been validated (Export/Import of a test session works). No session behavior changes in this PR; not applicable.
-- [ ] The change matches the WYSIWYG plot layouts sizing protocol (if applicable). No plot layout changes in this PR; not applicable.
-
-**Depends on:** `candidate/nexo-frontend`.
-
-**How to test:** Run the scope commands against the PR base and tip. Review the documentation and text evidence, including the Admin identity switch and its limits. Check that binary captures and local identifying paths are absent.
+Further Nexo changes for Max go on top of #18, #19 or #20.
