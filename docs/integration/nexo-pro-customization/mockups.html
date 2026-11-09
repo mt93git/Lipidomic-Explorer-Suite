@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nexo pro customization · inspector mockups (static)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+/* Team tokens (frontends/nexo/src/tokens.css). Text colours chosen for AAA (>= 7:1 on white):
+   ink #141b24 (16.8:1), navy #162230 (15.4:1), muted #4a5563 (7.3:1), accent text #27547b (7.9:1).
+   #2d5f8a stays for borders, selected backgrounds and focus rings (non-text, >= 3:1). */
+:root{--accent:#2d5f8a;--accent-text:#27547b;--navy:#162230;--ink:#141b24;--muted:#4a5563;--line:#e3e7ec;--tint:#eaf1f7;--paper:#fff;--canvas:#f3f5f7;--amber-bg:#fff4e0;--amber-fg:#6b4100;--green:#1f6b43;--font:'Nunito Sans',system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--canvas);font:14px/1.45 var(--font);color:var(--ink)}
+h1{font-size:18px;margin:0 0 4px;color:var(--navy)}
+.lead{margin:0 0 20px;color:var(--muted);font-size:13px;max-width:980px}
+.row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.panel{width:320px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px 16px;font-size:13px}
+.panel h2{font-size:16px;margin:0;color:var(--navy);display:flex;justify-content:space-between;align-items:center}
+.panel h2 .x{font-weight:400;color:var(--muted);font-size:16px}
+.status{color:var(--muted);font-size:12px;margin:4px 0 8px}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:10px}
+.tabs span{padding:6px 10px;color:var(--muted)}
+.tabs span.on{color:var(--navy);font-weight:700;border-bottom:2px solid var(--accent);margin-bottom:-1px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.bar .sep{width:1px;background:var(--line);margin:2px 2px}
+button,.btn{font:inherit;font-size:12.5px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;line-height:1.3}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.on{background:var(--tint);border-color:var(--accent);color:var(--accent-text);font-weight:600}
+.btn.menu::after{content:" ▾";font-size:10px}
+.btn[disabled],.btn.off{color:#6b7480;background:#f7f8fa;cursor:default}
+details{border-bottom:1px solid var(--line);padding:6px 0}
+summary{cursor:pointer;color:var(--navy);font-weight:600;padding:6px 0;list-style:none;display:flex;justify-content:flex-start;gap:6px;align-items:center}
+summary::before{content:"▸";display:inline-block;width:14px;color:var(--muted);font-weight:400}
+details[open] summary::before{content:"▾"}
+summary .tag{font-weight:400;font-size:11px;color:var(--muted);margin-left:auto}
+details.off summary{color:#4a5563}
+details.off summary::after{content:"off";font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:0 7px}
+.reason{margin:2px 0 6px 14px;color:var(--muted);font-size:12px}
+.field{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 6px 14px}
+.field span:first-child{color:var(--ink)}
+.in{min-width:0;display:inline-flex;align-items:center;gap:6px}
+.num{width:64px;border:1px solid var(--line);border-radius:6px;padding:3px 6px;text-align:right;background:#fff;color:var(--ink)}
+.unit{color:var(--muted);font-size:12px;width:22px}
+.sel{border:1px solid var(--line);border-radius:6px;padding:3px 24px 3px 6px;background:#fff linear-gradient(45deg,transparent 50%,#4a5563 50%) no-repeat right 9px top 13px/5px 5px,#fff linear-gradient(-45deg,transparent 50%,#4a5563 50%) no-repeat right 4px top 13px/5px 5px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg span{padding:2px 8px;font-size:12px;color:var(--muted)}
+.seg span.on{background:var(--tint);color:var(--accent-text);font-weight:700}
+.lock{display:inline-flex;align-items:center;gap:4px;color:var(--accent-text);font-size:12px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 4px 14px}
+.chip{border:1px solid var(--line);border-radius:12px;padding:2px 9px;font-size:12px;background:#fff;color:var(--ink)}
+.chip.on{background:var(--tint);border-color:var(--accent);color:var(--accent-text);font-weight:600}
+.chip.off{color:#6b7480;background:#f7f8fa;text-decoration:line-through}
+.hint{margin:4px 0 4px 14px;color:var(--muted);font-size:12px}
+.ok{color:var(--green);font-weight:600}
+.warn{background:var(--amber-bg);color:var(--amber-fg);border-radius:6px;padding:6px 8px;margin:6px 0 4px 14px;font-size:12px}
+.sw{display:inline-flex;gap:2px;vertical-align:middle}
+.sw i{width:12px;height:14px;border:1px solid var(--line);border-radius:2px;display:block}
+.scale{margin:4px 0 4px 14px;border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.scale .field{margin:4px 0}
+.kbd{font:11px/1 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 4px;color:var(--muted);background:#fff}
+.pop{border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 24px rgba(20,27,36,.12);padding:8px 10px;margin:8px 0 14px;background:#fff}
+.pop h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 6px}
+.item{display:flex;justify-content:space-between;align-items:center;padding:5px 6px;border-radius:6px}
+.item.on{background:var(--tint)}
+.item small{color:var(--muted);font-size:11px}
+.confirm{border:1px solid var(--accent);border-radius:8px;padding:10px;margin:8px 0;background:#fff}
+.confirm p{margin:0 0 8px}
+.cb{display:grid;grid-template-columns:72px 1fr;gap:4px 8px;align-items:center;margin:6px 0 6px 14px;font-size:12px}
+.cb .sw i{width:22px;height:16px}
+.caption{font-size:12px;color:var(--muted);margin:6px 0 0;max-width:320px}
+</style>
+</head>
+<body>
+<h1>Nexo · "pro" plot customization — inspector mockups</h1>
+<p class="lead">Static mockups for docs/integration/nexo-pro-customization.md. Width 320 px as Nexo's inspector. Panel A: Appearance tab for a live Plotly card. Panel B: the same tab for a ggplot card that arrives as a PNG from R (every control that cannot work is shown off with its reason, not hidden). Panel C: style presets, "apply to tab" confirmation and the colour-blind check.</p>
+<div class="row">
+
+<!-- ===================== Panel A: Plotly card ===================== -->
+<section class="panel" id="mock-a" aria-label="Mockup A: Appearance tab, Plotly card">
+  <h2>Feature distributions <span class="x">×</span></h2>
+  <p class="status">Up to date</p>
+  <div class="tabs"><span>Data</span><span class="on">Appearance</span><span>Statistics</span><span>Export</span></div>
+  <div class="bar">
+    <span class="btn">Undo</span><span class="btn off">Redo</span><span class="sep"></span>
+    <span class="btn">Copy style</span><span class="btn">Paste style</span><span class="btn menu">Apply to tab</span><span class="sep"></span>
+    <span class="btn menu">Presets</span>
+  </div>
+  <p class="hint" style="margin-left:0">Presentation only. Scientific coordinates and per-point colours are preserved. Copy <span class="kbd">⌘⌥C</span> · Paste <span class="kbd">⌘⌥V</span></p>
+
+  <details open>
+    <summary>Size &amp; position <span class="tag">120 × 90 mm · 4:3</span></summary>
+    <div class="field"><span>Units</span><span class="seg"><span class="on">mm</span><span>px</span></span></div>
+    <div class="field"><span>Width</span><span class="in"><span class="num">120</span><span class="unit">mm</span></span></div>
+    <div class="field"><span>Height</span><span class="in"><span class="num">90</span><span class="unit">mm</span></span></div>
+    <div class="field"><span>Aspect ratio</span><span class="lock">🔒 Locked 4:3</span></div>
+    <p class="hint">453 × 340 px on the canvas · 1417 × 1063 px at 300 DPI</p>
+    <div class="chips">
+      <span class="chip on">Nature 1-col 89</span><span class="chip">Nature 2-col 180</span><span class="chip">Cell 1-col 85</span><span class="chip">Cell 2-col 174</span><span class="chip off" title="Below Team's 240 px card minimum (63 mm)">Science 1-col 55</span>
+    </div>
+    <p class="hint">Science 1-col (55 mm) is below Team's 240 px card minimum (63 mm). Set 55 mm in Export instead.</p>
+    <div class="field"><span>Position</span><span class="in"><span class="unit">X</span><span class="num">420</span><span class="unit">Y</span><span class="num">160</span><span class="unit">px</span></span></div>
+  </details>
+
+  <details open>
+    <summary>Typography <span class="tag">Arial · 12 pt base</span></summary>
+    <div class="field"><span>Family</span><span class="sel">Arial</span></div>
+    <div class="field"><span>Base size</span><span class="in"><span class="num">12</span><span class="unit">pt</span></span></div>
+    <div class="scale">
+      <div class="field"><span>Title</span><span class="in"><span class="num">16</span></span></div>
+      <div class="field"><span>Axis titles</span><span class="in"><span class="num">12</span></span></div>
+      <div class="field"><span>Tick labels</span><span class="in"><span class="num">11</span></span></div>
+      <div class="field"><span>Legend</span><span class="in"><span class="num">11</span></span></div>
+    </div>
+    <div class="chips"><span class="btn">Match fonts across tab</span><span class="btn">Reset scale</span></div>
+    <p class="hint">Eight families, the ones Team accepts. Weights are not editable yet (second wave).</p>
+  </details>
+
+  <details>
+    <summary>Colour palette <span class="tag"><span class="sw"><i style="background:#8dd3c7"></i><i style="background:#ffffb3"></i><i style="background:#bebada"></i><i style="background:#fb8072"></i><i style="background:#80b1d3"></i></span> Gelato Days</span></summary>
+  </details>
+
+  <details open>
+    <summary>Colour-blind check <span class="tag">on · deuteranopia</span></summary>
+    <div class="chips"><span class="chip">Normal</span><span class="chip on">Deuteranopia</span><span class="chip">Protanopia</span><span class="chip">Tritanopia</span><span class="chip">Greyscale</span></div>
+    <p class="hint">Simulates on the card only; nothing is saved. <span class="ok">Control / Case stay distinguishable (ΔE 31).</span></p>
+  </details>
+
+  <details><summary>Legend <span class="tag">top right · vertical</span></summary></details>
+  <details><summary>Axes <span class="tag">lines on · grid off</span></summary></details>
+  <details><summary>Series <span class="tag">2 shown</span></summary></details>
+  <details><summary>Text annotations <span class="tag">1</span></summary></details>
+  <div class="bar" style="margin-top:10px"><span class="btn">Preview export at 300 DPI…</span><span class="btn">Publication style</span><span class="btn">Reset presentation</span></div>
+</section>
+
+<!-- ===================== Panel B: PNG ggplot card ===================== -->
+<section class="panel" id="mock-b" aria-label="Mockup B: Appearance tab, PNG (ggplot) card">
+  <h2>Sample correlation <span class="x">×</span></h2>
+  <p class="status">Up to date · image from R</p>
+  <div class="tabs"><span>Data</span><span class="on">Appearance</span><span>Statistics</span><span>Export</span></div>
+  <div class="bar">
+    <span class="btn">Undo</span><span class="btn off">Redo</span><span class="sep"></span>
+    <span class="btn off">Copy style</span><span class="btn">Paste style</span><span class="btn menu">Apply to tab</span><span class="sep"></span>
+    <span class="btn menu">Presets</span>
+  </div>
+  <p class="hint" style="margin-left:0">This plot is drawn by R and arrives as an image. Nexo can set its size, sharpness and label; fonts, axes and series come from the module (change them in Data where it offers them).</p>
+
+  <details open>
+    <summary>Size &amp; position <span class="tag">120 × 90 mm · 4:3</span></summary>
+    <div class="field"><span>Units</span><span class="seg"><span class="on">mm</span><span>px</span></span></div>
+    <div class="field"><span>Width</span><span class="in"><span class="num">120</span><span class="unit">mm</span></span></div>
+    <div class="field"><span>Height</span><span class="in"><span class="num">90</span><span class="unit">mm</span></span></div>
+    <div class="field"><span>Aspect ratio</span><span class="lock">🔒 Locked 4:3</span></div>
+    <div class="chips"><span class="chip on">Nature 1-col 89</span><span class="chip">Nature 2-col 180</span><span class="chip">Cell 1-col 85</span><span class="chip off">Science 1-col 55</span></div>
+    <div class="field"><span>Sharp render (2×)</span><span class="in"><input type="checkbox" checked aria-label="Sharp render"></span></div>
+    <p class="hint">Asks R for the image at twice the card size. Fonts in the image scale with the module, not with Nexo.</p>
+    <div class="field"><span>Position</span><span class="in"><span class="unit">X</span><span class="num">880</span><span class="unit">Y</span><span class="num">160</span><span class="unit">px</span></span></div>
+  </details>
+
+  <details class="off">
+    <summary>Typography</summary>
+    <p class="reason">Fonts are part of the image R draws. Pasting a style keeps size and position only.</p>
+  </details>
+  <details class="off">
+    <summary>Colour palette</summary>
+    <p class="reason">Colours are set by the module. Open Data → look for a palette or colour control.</p>
+  </details>
+
+  <details open>
+    <summary>Colour-blind check <span class="tag">off</span></summary>
+    <div class="chips"><span class="chip on">Normal</span><span class="chip">Deuteranopia</span><span class="chip">Protanopia</span><span class="chip">Tritanopia</span><span class="chip">Greyscale</span></div>
+    <p class="hint">Works on the image as drawn. No palette report for image plots.</p>
+  </details>
+
+  <details class="off">
+    <summary>Legend, axes, series, annotations</summary>
+    <p class="reason">Drawn by R for this plot. Nexo does not redraw ggplot figures.</p>
+  </details>
+  <div class="bar" style="margin-top:10px"><span class="btn">Preview export at 300 DPI…</span><span class="btn off" title="Nothing to reset: no presentation changes">Reset presentation</span></div>
+</section>
+
+<!-- ===================== Panel C: presets, apply to tab, colour-blind ===================== -->
+<section class="panel" id="mock-c" aria-label="Mockup C: presets, apply to tab, colour-blind check">
+  <h2>Style presets &amp; apply to tab</h2>
+  <p class="status">Popovers opened from the Appearance style bar</p>
+
+  <div class="pop" aria-label="Presets popover">
+    <h3>Presets</h3>
+    <div class="item on"><span>My lab style <small>· saved 6 Nov</small></span><span class="btn">Apply</span></div>
+    <div class="item"><span>Publication (Team)</span><span class="btn">Apply</span></div>
+    <div class="item"><span>Team original</span><span class="btn">Apply</span></div>
+    <div class="bar" style="margin:8px 0 2px"><span class="btn">Save current as…</span><span class="btn">Import JSON</span><span class="btn">Export JSON</span></div>
+    <p class="hint" style="margin-left:0">Stored in this browser only; not in the checkpoint. Export JSON to share with the lab.</p>
+  </div>
+
+  <div class="pop" aria-label="Presets popover, empty">
+    <h3>Presets · empty state</h3>
+    <p class="hint" style="margin-left:0">No saved styles yet. Save the current style to reuse it on other plots and checkpoints.</p>
+    <div class="bar" style="margin:6px 0 0"><span class="btn primary">Save current as…</span><span class="btn">Import JSON</span></div>
+  </div>
+
+  <div class="confirm" role="group" aria-label="Apply style to tab">
+    <p><strong>Apply the style of “Feature distributions” to 4 other plots in “Results”?</strong></p>
+    <p class="hint" style="margin-left:0">Fonts, legend, axes, background and palette are applied to 2 Plotly plots. 2 image plots get size only. 1 finished plot is skipped. One undo step.</p>
+    <div class="bar" style="margin:0"><span class="btn primary">Apply to 4 plots</span><span class="btn">Cancel</span></div>
+  </div>
+
+  <div class="confirm" style="border-color:var(--line)" role="group" aria-label="Apply style to tab, disabled">
+    <p><strong>Apply to tab</strong> <span class="btn off" style="float:right">Apply to tab</span></p>
+    <p class="hint" style="margin:0">This tab has no other plots.</p>
+  </div>
+
+  <div class="pop" aria-label="Colour-blind check">
+    <h3>Colour-blind check · palette report</h3>
+    <div class="cb">
+      <span>Normal</span><span class="sw"><i style="background:#8dd3c7"></i><i style="background:#fb8072"></i><i style="background:#80b1d3"></i><i style="background:#bebada"></i></span>
+      <span>Deuteran.</span><span class="sw"><i style="background:#c2c7bf"></i><i style="background:#b39b6e"></i><i style="background:#9aa8cf"></i><i style="background:#b9b7d8"></i></span>
+      <span>Protan.</span><span class="sw"><i style="background:#c9c9b8"></i><i style="background:#a1a06a"></i><i style="background:#8facd5"></i><i style="background:#b5b8da"></i></span>
+      <span>Tritan.</span><span class="sw"><i style="background:#8dd0d8"></i><i style="background:#fb8a8a"></i><i style="background:#86b1be"></i><i style="background:#c0b8bf"></i></span>
+    </div>
+    <div class="warn">Deuteranopia: “Control” and “Vehicle” are close (ΔE 9). Try Okabe–Ito or change one series colour.</div>
+    <p class="hint" style="margin-left:0">Simulation applies to the selected card (or the whole tab). Nothing is saved.</p>
+  </div>
+</section>
+
+</div>
+<p class="caption">Visual language: Nunito Sans, navy #162230, accent #2d5f8a (borders, selection), accent text #27547b and muted #4a5563 for AAA contrast, line #e3e7ec.</p>
+</body>
+</html>

@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "heatmapPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b05-heatmaps/heatmapPlot-1-draws.png, docs/integration/chart-audit/b05-heatmaps/heatmapPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent); sharp at 100 %: image 1000x1100 drawn at 965x1062 in a 998x1062 box (dpr 1, zoom − 100% + Fit 100%) → 1.04 image px per screen px (docs/integration/chart-audit/b05-heatmaps/heatmapPlot-1-sharp-100.png)"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (73852 B); card image 1000x1100 shown at 998x1062"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "655→815→422 px wide, redrawn each time; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-3-larger.png, docs/integration/chart-audit/b05-heatmaps/heatmapPlot-3-smaller.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "29 Team controls all present (allowedInputs not in Team's markup: violin_scale_mode, violin_baseline_group_header, violin_zoom_pct, heatmapDisplayColumns, customizeRowOrder); hideHeatmapRowNames→true redrew (docs/integration/chart-audit/b05-heatmaps/heatmapPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-5-appearance.png; canvas Undo → \"Audit heatmapPlot\", Redo → \"Audit heatmapPlot\""
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 431654 B; SVG disabled (\"More downloads from this analysis DataPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team Data Unfiltered_Heatmap_Data_20261108.xlsx 6771 B; Team PDF Unfiltered_Heatmap_20261108.pdf 9046 B; card PDF 112566 B; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 698x761 in a 658x684 body; Edit figure → live png; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-8-finished.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit heatmapPlot\" with hideHeatmapRowNames=true; remove + Undo brought it back drawn; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-9-duplicate.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 8905636a80dd…: \"Audit heatmapPlot\", hideHeatmapRowNames=true, background kept; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-10-reopened.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; 1440x900: tabs Data/Appearance/Statistics/Export, 1 sliders; 1024x768: tabs Data/Appearance/Statistics/Export, 1 sliders; docs/integration/chart-audit/b05-heatmaps/heatmapPlot-12-layout-<width>-<tab>.png"
+ },
+ {
+  "plot": "heatmapPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,30 @@
+$ cd frontends/nexo && npx vitest run src/canvas/plotHeight.test.ts
+   × violin card height follows the module plot height > card height = plotHeight + chrome, capped at the canvas limit 3ms
+   × violin card height follows the module plot height > reads the reported plotHeight first, then the height input, never a formula 2ms
+   × violin card height follows the module plot height > a hand resize writes a clamped, stepped plot height 0ms
+   × violin card height follows the module plot height > one undo step restores both the size and violin_zoom_pct 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/canvas/plotHeight.test.ts > violin card height follows the module plot height > card height = plotHeight + chrome, capped at the canvas limit
+Error: not implemented
+ FAIL  src/canvas/plotHeight.test.ts > violin card height follows the module plot height > reads the reported plotHeight first, then the height input, never a formula
+AssertionError: expected undefined to be 2340 // Object.is equality
+ FAIL  src/canvas/plotHeight.test.ts > violin card height follows the module plot height > a hand resize writes a clamped, stepped plot height
+Error: not implemented
+ FAIL  src/canvas/plotHeight.test.ts > violin card height follows the module plot height > one undo step restores both the size and violin_zoom_pct
+AssertionError: expected 2378 to be 1038 // Object.is equality
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+
+$ node tests/dual-ui/test_nexo_violin_height.cjs
+AssertionError [ERR_ASSERTION]: mock plotHeight for the synthetic selection
++ actual - expected
+
++ undefined
+- 2340
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_violin_height.cjs:62:12)
+    at async <repo>/tests/dual-ui/test_nexo_violin_height.cjs:139:46 {
+(the run failed: the AssertionError above; output cut with head)
+
+$ Rscript tests/dual-ui/test_api_violin_height.R
+Rscript not found on the M1 (no R): the coordinator runs it on the RTX.

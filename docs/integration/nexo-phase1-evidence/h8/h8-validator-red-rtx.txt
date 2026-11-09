@@ -1,0 +1,14 @@
+heatmap_barchart_tab-heatmapPlot Invalid value for heatmapGridColor: expected #RRGGBB
+heatmap_barchart_tab-heatmapSDPlot Invalid value for heatmapGridColor: expected #RRGGBB
+heatmap_barchart_tab-filteredHeatmapPlot Invalid value for heatmapGridColor: expected #RRGGBB
+heatmap_barchart_tab-filteredHeatmapSDPlot Invalid value for heatmapGridColor: expected #RRGGBB
+heatmap_barchart_tab-violin_plot_render Invalid value for heatmapGridColor: expected #RRGGBB
+lsea_tab-lseaPlot Invalid value for borderColor: expected #RRGGBB
+structural_tab-summaryPlot Invalid value for borderColor: expected #RRGGBB
+structural_tab-speciesPlotPlot Invalid value for borderColor: expected #RRGGBB
+structural_tab-networkPlot Invalid value for borderColor: expected #RRGGBB
+structural_tab-propPlotPlot Invalid value for borderColor: expected #RRGGBB
+structural_tab-diffAcylPlot Invalid value for borderColor: expected #RRGGBB
+structural_grid_tab-heatmapPlot Invalid val
+Calls: local ... eval.parent -> eval -> eval -> eval -> eval -> eval
+Execution halted

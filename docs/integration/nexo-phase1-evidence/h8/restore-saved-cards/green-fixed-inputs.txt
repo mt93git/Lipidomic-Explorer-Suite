@@ -1,0 +1,15 @@
+1c48e3e Restored cards: queued ones say updating; fixed family views keep run-time inputs
+== test_api_restore_cards
+PASS restore text settings follow Team's 100000-character limit
+PASS restore a Team instance draws with its saved inputs
+PASS restore a fixed family node draws through its fixed instance
+PASS restore a fixed family node keeps the family's run-time inputs
+PASS restore does not dirty the session
+PASS restore an id the checkpoint does not hold is still unknown
+exit=0
+== test_api_roundtrip
+PASS roundtrip reopen returns the checkpoint, not later edits
+PASS roundtrip nexo->zip->nexo
+PASS roundtrip zip->team-validate
+PASS roundtrip keeps project records
+exit=0

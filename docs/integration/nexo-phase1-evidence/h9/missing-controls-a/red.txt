@@ -1,0 +1,27 @@
+# missing-controls-a RED (M1, 2026-11-08). Client stubs only; R test written, unrun on M1 (no R).
+
+$ cd frontends/nexo && npx vitest run src/ui/forms/missingControlsA.test.ts
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/ui/forms/missingControlsA.test.ts > FLA sel_<category> pickers are computed: kept in Nexo member, re-sent on reopen, carried on duplicate
+AssertionError: expected false to be true // Object.is equality
+ FAIL  src/ui/forms/missingControlsA.test.ts > a module action that builds new controls (Select Shifts to Visualize) gives them their initial value
+AssertionError: expected {} to deeply equal { selectedDetails: [ 'PC | a', …(1) ] }
+ FAIL  src/ui/forms/missingControlsA.test.ts > a group heading is Team's tab title, else a humanised raw id; real titles stay
+AssertionError: expected 'differential_view' to be 'Differential Acyl Chain Expression' // Object.is equality
+ FAIL  src/ui/forms/missingControlsA.test.ts > index pickers are the computed checkbox groups other than BQC samples
+AssertionError: expected [] to deeply equal [ 'sel_Structural' ]
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+
+$ node tests/dual-ui/test_nexo_missing_controls_a.cjs  (mock, chromium first)
+AssertionError [ERR_ASSERTION]: differential tab titled as in Team
+
+0 !== 1
+
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 0,
+  expected: 1,
+  operator: 'strictEqual',
+  diff: 'simple'
+exit=1

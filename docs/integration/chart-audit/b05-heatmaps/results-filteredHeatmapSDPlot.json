@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-1-draws.png, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent); sharp at 100 %: image 1000x1100 drawn at 965x1062 in a 998x1062 box (dpr 1, zoom − 100% + Fit 100%) → 1.04 image px per screen px (docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-1-sharp-100.png)"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (34157 B); card image 1000x1100 shown at 998x1062"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "655→815→422 px wide, redrawn each time; docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-3-larger.png, docs/integration/chart-audit/b05-heatmaps/filteredHeatmapSDPlot-3-smaller.png"
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 15000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 15000ms exceeded."
+ },
+ {
+  "plot": "filteredHeatmapSDPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,3 @@
+# red (R, before the cards.R fix) on the RTX
+Error: schema of tcinstance_v0_violin before a render: Unknown card.
+Execution halted

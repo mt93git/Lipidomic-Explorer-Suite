@@ -1,0 +1,6 @@
+PASS H7c chromium phone-view-only-chrome
+PASS H8 chromium phone-opens-fitted-with-content
+PASS H7c chromium phone-pan-pinch-wheel-zoom
+PASS H7c chromium phone-inspector-read-only-export-works
+AssertionError [ERR_ASSERTION]: the card carries no action bar
+  actual: 1,

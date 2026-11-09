@@ -1,0 +1,30 @@
+== test_api_export
+PASS export presets
+PASS export 400
+PASS export pca_2d members+csv+provenance match Team
+PASS export volcano members+csv+provenance match Team
+PASS export class_abundance members+csv+provenance match Team
+PASS export heatmap members+csv+provenance match Team
+PASS card data.csv from the module's download handler
+exit 0
+== test_api_http
+PASS I1 health 200
+PASS I1 catalog 58
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints
+PASS stats HTTP describe 200
+PASS I1 card schema 200
+PASS I1 card PNG bytes
+PASS I1 export presets 200, bad export 400
+PASS I1 checkpoint validate/save/download/upload/delete
+PASS I1 session delete 200
+exit 0
+== test_api_roundtrip
+PASS roundtrip nexo->zip->nexo
+PASS roundtrip zip->team-validate
+PASS roundtrip keeps project records
+exit 0
+presets 200
+index-BzcZG_dp.css
+index-C5VJEk1R.js

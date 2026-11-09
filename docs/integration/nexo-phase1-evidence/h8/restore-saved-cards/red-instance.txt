@@ -1,0 +1,8 @@
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  20:39:12
+   Duration  523ms (transform 41ms, setup 0ms, collect 34ms, tests 8ms, environment 0ms, prepare 92ms)
+

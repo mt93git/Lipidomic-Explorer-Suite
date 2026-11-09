@@ -1,0 +1,4 @@
+PASS H6-0 unit menu upward-downward-clamp
+AssertionError [ERR_ASSERTION]: the card carries no action bar
+  actual: 1,
+  expected: 0,

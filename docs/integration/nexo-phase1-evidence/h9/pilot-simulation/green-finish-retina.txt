@@ -1,0 +1,123 @@
+# Green (after the fix). Paths as <repo>.
+
+$ cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+
+ Test Files  126 passed (126)
+      Tests  587 passed (587)
+   Start at  15:10:10
+   Duration  25.61s (transform 7.01s, setup 0ms, collect 18.86s, tests 12.26s, environment 123ms, prepare 35.57s)
+
+tsc clean
+
+$ node tests/dual-ui/test_nexo_retina.cjs   # mock
+PASS retina chromium zoomed-out-asks-dpr-1 (1 request(s), image 440 px)
+PASS retina chromium live-100-asks-dpr-2 (natural 880 px, CSS 438 px)
+PASS retina chromium zoomed-out-80-back-to-dpr-1 (0 new request(s))
+PASS retina chromium finish-while-the-2x-image-loads-waits-for-it
+PASS retina chromium no-console-errors
+PASS retina webkit zoomed-out-asks-dpr-1 (1 request(s), image 440 px)
+PASS retina webkit live-100-asks-dpr-2 (natural 880 px, CSS 438 px)
+PASS retina webkit zoomed-out-80-back-to-dpr-1 (0 new request(s))
+PASS retina webkit finish-while-the-2x-image-loads-waits-for-it
+PASS retina webkit no-console-errors
+retina OK
+exit 0
+
+$ node tests/dual-ui/test_nexo_inspector.cjs   # mock
+PASS C1 chromium computed-colour-shape-bqc-save-reopen-render-label
+PASS C1 webkit computed-colour-shape-bqc-save-reopen-render-label
+PASS H8 chromium data-change-undo-redo-restores-server-card-form
+PASS H8b chromium fast-undo-redo-ends-at-the-redone-value-on-the-server
+PASS H8c chromium data-change-then-tab-switch-still-reaches-the-server
+PASS P3 chromium listbox-picker-activedescendant-arrows-enter-patch
+PASS H3 chromium schema-edit-render-status
+PASS F13 chromium nexo-log-range-badge-team-view-save-reopen
+PASS H3 chromium appearance-palette-background-undo-no-request
+PASS H3 chromium copy-style-violin-paste-single-undo
+PASS H3 chromium apply-style-to-tab-confirm-counts-single-undo
+PASS F12 chromium legend-chip-right-outside-single-undo
+PASS F6 chromium saved-style-apply-to-another-card-single-undo
+PASS F7 chromium colour-blind-preview-nothing-saved
+PASS H3 chromium illustration-toggle-escape
+PASS P2 chromium lipid-filter-pick-all-none-class
+PASS F10 chromium heat-preset-viridis-single-undo
+PASS H8 chromium selection-bar-checklist-team-encoding-null-label
+PASS H8 chromium zoomed-out-image-card-follows-data-change-and-undo
+PASS H8 chromium zoomed-out-plotly-card-retakes-its-snapshot-after-data-change
+PASS F1 chromium module-action-button-redraws-the-card-and-shows-its-dialog
+PASS R2 chromium checkbox-gated-computed-colours-appear-and-redraw
+PASS P1 chromium ordered-grouping-keyboard-patch-buttons-add-remove
+PASS H3 chromium no-console-errors
+PASS H8 webkit data-change-undo-redo-restores-server-card-form
+PASS H8b webkit fast-undo-redo-ends-at-the-redone-value-on-the-server
+PASS H8c webkit data-change-then-tab-switch-still-reaches-the-server
+PASS P3 webkit listbox-picker-activedescendant-arrows-enter-patch
+PASS H3 webkit schema-edit-render-status
+PASS F13 webkit nexo-log-range-badge-team-view-save-reopen
+PASS H3 webkit appearance-palette-background-undo-no-request
+PASS H3 webkit copy-style-violin-paste-single-undo
+PASS H3 webkit apply-style-to-tab-confirm-counts-single-undo
+PASS F12 webkit legend-chip-right-outside-single-undo
+PASS F6 webkit saved-style-apply-to-another-card-single-undo
+PASS F7 webkit colour-blind-preview-nothing-saved
+PASS H3 webkit illustration-toggle-escape
+PASS P2 webkit lipid-filter-pick-all-none-class
+PASS F10 webkit heat-preset-viridis-single-undo
+PASS H8 webkit selection-bar-checklist-team-encoding-null-label
+PASS H8 webkit zoomed-out-image-card-follows-data-change-and-undo
+PASS H8 webkit zoomed-out-plotly-card-retakes-its-snapshot-after-data-change
+PASS F1 webkit module-action-button-redraws-the-card-and-shows-its-dialog
+PASS R2 webkit checkbox-gated-computed-colours-appear-and-redraw
+PASS P1 webkit ordered-grouping-keyboard-patch-buttons-add-remove
+PASS H3 webkit no-console-errors
+H3 OK
+exit 0
+
+$ node tests/dual-ui/test_nexo_card_chrome.cjs   # mock
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    frontends/nexo/src/cards.ts:46:20:
+      46 │     script.src = `${import.meta.env.BASE_URL}vendor/plotly.min.js`...
+         ╵                     ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    frontends/nexo/src/network/vis.ts:10:17:
+      10 │     const base = import.meta.env.BASE_URL, css = document.createEl...
+         ╵                  ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+PASS H6-0 unit menu upward-downward-clamp
+PASS W2 chromium header-actions-hover-and-tab
+PASS F11 chromium inline-rename-enter-escape-f2-single-undo
+PASS R16 chromium tooltips-supplement-names-focus-hover
+PASS H9 chromium notice-once-toast-only
+PASS H6-0 chromium anatomy-menu-remove-undo-duplicate-badge-finish
+PASS R11 chromium card-state-mapping-on-card
+PASS H9 chromium plot-fills-card-body
+PASS W2 chromium thumb-15-header-25-frozen-image-click-focus
+PASS H6-0 chromium screenshot 1440
+PASS H6-0 chromium screenshot 1024
+PASS H6-0 chromium screenshot 390
+PASS H6-0 chromium no-console-errors
+PASS W2 chromium touch-actions-without-hover
+PASS F11 chromium view-only-link-and-phone-cannot-rename
+PASS W2 webkit header-actions-hover-and-tab
+PASS F11 webkit inline-rename-enter-escape-f2-single-undo
+PASS R16 webkit tooltips-supplement-names-focus-hover
+PASS H9 webkit notice-once-toast-only
+PASS H6-0 webkit anatomy-menu-remove-undo-duplicate-badge-finish
+PASS R11 webkit card-state-mapping-on-card
+PASS H9 webkit plot-fills-card-body
+PASS W2 webkit thumb-15-header-25-frozen-image-click-focus
+PASS H6-0 webkit screenshot 1440
+PASS H6-0 webkit screenshot 1024
+PASS H6-0 webkit screenshot 390
+PASS H6-0 webkit no-console-errors
+PASS W2 webkit touch-actions-without-hover
+PASS F11 webkit view-only-link-and-phone-cannot-rename
+H6-0 OK
+exit 0

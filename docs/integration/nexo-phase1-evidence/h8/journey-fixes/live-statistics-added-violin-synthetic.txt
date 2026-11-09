@@ -1,0 +1,21 @@
+# Live, classic-seed7-synthetic, Vite dev -> API tunnel (RTX 31b9f12 + this fix). Study design confirmed (Animal, independent) as test_api_statistics.R does.
+== chromium
+0.5s opened
+1.6s units ["Animal","Human","Cell line","Donor"]
+1.8s design confirmed
+3.5s marker Statistics visible true
+3.6s lipid PC(34:1) -> PC(36:2)
+4.5s marker Statistics out of date toast 1
+8.5s after undo lipid PC(34:1) marker Statistics
+8.6s calls ["POST /cards/tcinstance_6371895e9f4a/render","POST /cards/tcinstance_6371895e9f4a/statistics/violin mode=describe","POST /cards/tcinstance_6371895e9f4a/statistics/violin mode=apply","PATCH /cards/tcinstance_6371895e9f4a","POST /cards/tcinstance_6371895e9f4a/statistics/violin mode=check","POST /cards/tcinstance_6371895e9f4a/render","PATCH /cards/tcinstance_6371895e9f4a"]
+8.6s errors []
+== webkit
+4.1s opened
+5.1s units ["Animal","Human","Cell line","Donor"]
+5.4s design confirmed
+7.1s marker Statistics visible true
+7.1s lipid PC(34:1) -> PC(36:2)
+7.9s marker Statistics out of date toast 1
+11.7s after undo lipid PC(34:1) marker Statistics
+11.8s calls ["POST /cards/tcinstance_478f626c3dd3/render","POST /cards/tcinstance_478f626c3dd3/statistics/violin mode=describe","POST /cards/tcinstance_478f626c3dd3/statistics/violin mode=apply","PATCH /cards/tcinstance_478f626c3dd3","POST /cards/tcinstance_478f626c3dd3/statistics/violin mode=check","POST /cards/tcinstance_478f626c3dd3/render","PATCH /cards/tcinstance_478f626c3dd3"]
+11.8s errors []

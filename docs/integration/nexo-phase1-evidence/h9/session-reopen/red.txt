@@ -1,0 +1,71 @@
+$ cd frontends/nexo && npx vitest run src/api/session.test.ts src/state/autosave.test.ts
+
+ RUN  v3.2.7 <repo>/frontends/nexo
+
+ ❯ src/api/session.test.ts (10 tests | 10 failed) 39ms
+   × session recovery (api.ts single place) > knows a lost session from the API answers, and not an unknown card 33ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > reopens once, aliases the old id to the live one and retries the failed request once 1ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > shares one in-flight recovery between every failing request 0ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > a request that failed on the old id after recovery finished retries on the live id without reopening again 0ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > throws SessionLostError when the retried request is lost again (no loop) 1ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > throws SessionLostError when recovery fails, and later requests fail at once without a request 0ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > without a recovery hook a lost session is a SessionLostError 0ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > the recovery's own requests on the new session never start a nested recovery 0ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > other errors pass through untouched 0ms
+     → (0 , resetSessions) is not a function
+   × session recovery (api.ts single place) > a second loss of the reopened session reopens again (once per loss) and keeps the first id pointing at the newest 1ms
+     → (0 , resetSessions) is not a function
+ ❯ src/state/autosave.test.ts (7 tests | 1 failed) 449ms
+   ✓ edit saves at 15s; continuous edits at 60s 192ms
+   ✓ failure retries after 5s 2ms
+   ✓ stale ack keeps dirty; edits during save resave after 1s 1ms
+   ✓ watchdog ignores a late ack and retries without losing edits 1ms
+   ✓ paused and view-only suppress saves; busy retries stop after 24 2ms
+   ✓ H8 journeys 8.1: a failed save keeps its reason until a save succeeds 3ms
+   × a lost session that could not be reopened shows the failure and is not retried (no retry loop) 248ms
+     → expected "spy" to be called 1 times, but got 25 times
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > knows a lost session from the API answers, and not an unknown card
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > reopens once, aliases the old id to the live one and retries the failed request once
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > shares one in-flight recovery between every failing request
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > a request that failed on the old id after recovery finished retries on the live id without reopening again
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > throws SessionLostError when the retried request is lost again (no loop)
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > throws SessionLostError when recovery fails, and later requests fail at once without a request
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > without a recovery hook a lost session is a SessionLostError
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > the recovery's own requests on the new session never start a nested recovery
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > other errors pass through untouched
+ FAIL  src/api/session.test.ts > session recovery (api.ts single place) > a second loss of the reopened session reopens again (once per loss) and keeps the first id pointing at the newest
+TypeError: (0 , resetSessions) is not a function
+ ❯ src/api/session.test.ts:8:20
+      6| 
+      7| describe('session recovery (api.ts single place)', () => {
+      8|   beforeEach(() => resetSessions());
+       |                    ^
+      9| 
+     10|   it('knows a lost session from the API answers, and not an unknown ca…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  src/state/autosave.test.ts > a lost session that could not be reopened shows the failure and is not retried (no retry loop)
+AssertionError: expected "spy" to be called 1 times, but got 25 times
+ ❯ src/state/autosave.test.ts:38:57
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  11 failed | 6 passed (17)
+   Start at  07:13:41
+   Duration  4.21s (transform 338ms, setup 0ms, collect 504ms, tests 488ms, environment 0ms, prepare 1.68s)
+

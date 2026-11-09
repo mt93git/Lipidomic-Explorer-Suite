@@ -1,0 +1,6 @@
+changed PC(34:1) -> PC(36:2) undo enabled true
+after undo select PC(34:1) patches ["{\"inputs\":{\"violin_lipid\":\"PC(36:2)\"},\"actions\":[]}","{\"inputs\":{\"violin_lipid\":\"PC(34:1)\"},\"actions\":[]}"]
+errors []
+changed PC(34:1) -> PC(36:2) undo enabled true
+after undo select PC(34:1) patches ["{\"inputs\":{\"violin_lipid\":\"PC(36:2)\"},\"actions\":[]}","{\"inputs\":{\"violin_lipid\":\"PC(34:1)\"},\"actions\":[]}"]
+errors []

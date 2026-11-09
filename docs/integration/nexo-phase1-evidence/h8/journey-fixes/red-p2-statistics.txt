@@ -1,0 +1,7 @@
+PASS H5 chromium analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+page.waitForFunction: Timeout 30000ms exceeded.
+    at browserTests (<repo>/tests/dual-ui/test_nexo_statistics.cjs:88:14)
+    at async <repo>/tests/dual-ui/test_nexo_statistics.cjs:119:46 {
+  log: [],
+  name: 'TimeoutError'
+}

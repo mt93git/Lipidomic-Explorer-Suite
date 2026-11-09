@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-1-draws.png, docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (40072 B); card image 620x380 shown at 618x342"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→450 px wide, redrawn each time; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-3-larger.png, docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-3-smaller.png"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "13 Team controls all present; renderUI barGroupMode: \"Group By: Lipid Main Class Lipid Category\"; barDisplayColumns: \"Display Columns (Subset): Control_Synthetic plasma_T1 Contro\" (allowedInputs not in Team's markup: barGroupMode, barDisplayColumns); showDonutStats→true redrew (docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-4-data-changed.png); no numeric control (N/A); Value Mode offers Absolute (%) | Normalized (%) (Team's run-time choices)"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-5-appearance.png; canvas Undo → \"Audit donutPlotUnfiltered\", Redo → \"Audit donutPlotUnfiltered\""
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 431938 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV LipidAnalysis_261108_LipidAnalysis_Donut_Unfiltered_Data_Rep.csv 4531 B; Team PDF LipidAnalysis_261108_LipidAnalysis_Donut_Unfiltered_Rep.pdf 34187 B; card PDF 363888 B; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-7-export-dialog.png"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 450x220 in a 448x182 body; Edit figure → live png; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-8-finished.png"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit donutPlotUnfiltered\" with showDonutStats=true; remove + Undo brought it back drawn; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-9-duplicate.png"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over 8 tab views (1440:Data, 1440:Appearance, 1440:Statistics, 1440:Export, 1024:Data, 1024:Appearance, 1024:Statistics, 1024:Export) + card chrome and More menu at both sizes; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-12-layout-*.png"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 5779228f825c…: \"Audit donutPlotUnfiltered\", showDonutStats=true, background kept; docs/integration/chart-audit/b04-composition/donutPlotUnfiltered-10-reopened.png"
+ },
+ {
+  "plot": "donutPlotUnfiltered",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

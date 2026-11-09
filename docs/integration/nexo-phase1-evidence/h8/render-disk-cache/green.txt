@@ -1,0 +1,7 @@
+Rscript --vanilla tests/dual-ui/test_api_render_disk_cache.R  (RTX, nexo-api env)
+PASS a render is written to the disk cache under the code commit
+PASS a reopened checkpoint draws its saved card from disk without re-creating it (0.016 s)
+PASS a changed input or size misses
+PASS a changed analysis setting or cohort misses
+PASS another code commit misses
+exit=0

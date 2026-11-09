@@ -1,0 +1,10 @@
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H8d chromium copy-paste-plot
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H8d chromium zoom-shortcuts
+AssertionError [ERR_ASSERTION]: a placeholder appeared while adding
+    at browserTests (<repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:123:12)
+    at async <repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:172:46 {

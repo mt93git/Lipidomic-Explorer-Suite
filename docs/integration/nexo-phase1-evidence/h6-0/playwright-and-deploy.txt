@@ -1,0 +1,61 @@
+# H6-0 integrated at a570f93; Playwright on the Mac (mock build), 2026-11-06T11:38Z
+PASS H6-0 unit menu upward-downward-clamp
+PASS H6-0 chromium anatomy-menu-remove-undo-duplicate-badge-finish
+PASS H6-0 chromium screenshot 1440
+PASS H6-0 chromium screenshot 1024
+PASS H6-0 chromium screenshot 390
+PASS H6-0 chromium no-console-errors
+PASS H6-0 webkit anatomy-menu-remove-undo-duplicate-badge-finish
+PASS H6-0 webkit screenshot 1440
+PASS H6-0 webkit screenshot 1024
+PASS H6-0 webkit screenshot 390
+PASS H6-0 webkit no-console-errors
+PASS E1 chromium cards-equal-nodes
+PASS E1 chromium live-plots-have-traces-at-100
+PASS E1 chromium zoom-25-frozen
+PASS E1 chromium zoom-200-culled-empty
+PASS E1 chromium fit-click-inspector-live
+PASS E1 chromium no-console-errors-or-failed-requests
+PASS E1 webkit cards-equal-nodes
+PASS E1 webkit live-plots-have-traces-at-100
+PASS E1 webkit zoom-25-frozen
+PASS E1 webkit zoom-200-culled-empty
+PASS E1 webkit fit-click-inspector-live
+PASS E1 webkit no-console-errors-or-failed-requests
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H2F chromium toolbar-tidy-remove-all-undo
+PASS H2F chromium no-console-errors
+PASS H2F webkit header-drag-store-settle-single-undo-camera
+PASS H2F webkit keyboard-and-corner-resize
+PASS H2F webkit delete-undo
+PASS H2F webkit duplicate-undo
+PASS H2F webkit library-add-undo-preserves-camera
+PASS H2F webkit toolbar-tidy-remove-all-undo
+PASS H2F webkit no-console-errors
+PASS H5 chromium analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+PASS H5 webkit analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+PASS H4 chromium move-dirty-saving-saved
+PASS H4 chromium named-save-list-download-reload-position
+PASS H4 chromium no-console-errors
+PASS H4 webkit move-dirty-saving-saved
+PASS H4 webkit named-save-list-download-reload-position
+PASS H4 webkit no-console-errors
+PASS H2G chromium move-filter-hud-minimap-F2
+PASS H2G chromium pointer-reorder-delete-move-single-undo
+PASS H2G chromium no-console-errors
+PASS H2G webkit move-filter-hud-minimap-F2
+PASS H2G webkit pointer-reorder-delete-move-single-undo
+PASS H2G webkit no-console-errors
+PASS H3 chromium schema-edit-render-status
+PASS H3 chromium appearance-palette-background-undo-no-request
+PASS H3 chromium illustration-toggle-escape
+PASS H3 chromium no-console-errors
+PASS H3 webkit schema-edit-render-status
+PASS H3 webkit appearance-palette-background-undo-no-request
+PASS H3 webkit illustration-toggle-escape
+PASS H3 webkit no-console-errors
+vitest 115/115, tsc clean; RTX test_api_session.R 5/5 at a570f93; deployed, /health commit a570f93, Team :3952 200

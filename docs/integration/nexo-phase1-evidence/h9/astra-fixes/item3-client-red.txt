@@ -1,0 +1,5 @@
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/plotlyClick.test.ts [ src/plotlyClick.test.ts ]
+Error: Cannot find module './plotlyClick' imported from 'frontends/nexo/src/plotlyClick.test.ts'
+Caused by: Error: Failed to load url ./plotlyClick (resolved id: ./plotlyClick) in frontends/nexo/src/plotlyClick.test.ts. Does the file exist?
+ Test Files  1 failed (1)

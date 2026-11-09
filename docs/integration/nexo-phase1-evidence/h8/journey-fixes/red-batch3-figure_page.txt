@@ -1,0 +1,13 @@
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^Figure page: arrange finished plots/. Input:
+
+'Draft: edit live plots. Finish a plot to place it on the figure page.'
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_figure_page.cjs:36:9)
+    at async <repo>/tests/dual-ui/test_nexo_figure_page.cjs:80:46 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'Draft: edit live plots. Finish a plot to place it on the figure page.',
+  expected: /^Figure page: arrange finished plots/,
+  operator: 'match',
+  diff: 'simple'
+}

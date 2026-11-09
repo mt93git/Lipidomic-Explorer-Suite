@@ -1,0 +1,55 @@
+fatal: not a git repository (or any of the parent directories): .git
+In system2("git", c("rev-parse", "HEAD"), stdout = TRUE) :
+  running command ''git' rev-parse HEAD' had status 128
+INFO checkpoint pilot-saved.zip, 134303 bytes, sha256 cfb6ec87691681f5284deecfa227efd9ccb29781e82e346f940465a9ff24bc4f
+PASS (i) read_session_archive(include_team_canvas = TRUE) read it: 9 canvas node(s)
+PASS (ii) team_canvas_validate(archive$canvas) equals the archive canvas (canonical JSON)
+PASS (iv) 8 plot instance(s): every source is in Team's catalog and its inputs validate (qc_pca_tab-pca2dPlot, results_dashboard-plot_violin, volcano_tab-volcanoPlot, barchart-barPlotUnfiltered, heatmap_barchart_tab-violin_plot_render, structural_tab-summaryPlot, results_dashboard-plot_heat, fla_tab-logratioPlot)
+[INGESTION TRACE] 2026-11-08 20:37:13.382 | STAGE: 2_RAWDATA_REACTIVE_TRIGGERED | >>> [START]
+[INGESTION TRACE] 2026-11-08 20:37:13.382 | STAGE: 2_RAWDATA_REACTIVE_TRIGGERED | >>> [START]
+[INGESTION TRACE] 2026-11-08 20:37:13.384 | STAGE: 2_FILE_TYPE_DETECTED | --> [INFO]
+[INGESTION TRACE] 2026-11-08 20:37:13.384 | STAGE: 2_FILE_TYPE_DETECTED | --> [INFO]
+[INGESTION TRACE] 2026-11-08 20:37:13.400 | STAGE: 2_RAWDATA_COMPLETED | +++ [SUCCESS]
+    - total_lipids: 76
+    - total_samples: 24
+[INGESTION TRACE] 2026-11-08 20:37:13.400 | STAGE: 2_RAWDATA_COMPLETED | +++ [SUCCESS]
+    - total_lipids: 76
+    - total_samples: 24
+[INGESTION TRACE] 2026-11-08 20:37:13.408 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-08 20:37:13.408 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-08 20:37:13.469 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-08 20:37:13.469 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-08 20:37:13.513 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-08 20:37:13.513 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-08 20:37:13.513 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-08 20:37:13.513 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[LIPIDOMIC EXPLORER 20:37:13] 'Run Analysis' action triggered.
+  >> Staged uploaded file(s): 1
+  >> [STATUS] Triggering fresh analysis execution across all data modules...
+[INGESTION TRACE] 2026-11-08 20:37:13.899 | STAGE: 6_IMPUTATION_NORMALIZATION_START | >>> [START]
+    - sample_count: 24
+    - lipid_count: 76
+[INGESTION TRACE] 2026-11-08 20:37:13.899 | STAGE: 6_IMPUTATION_NORMALIZATION_START | >>> [START]
+    - sample_count: 24
+    - lipid_count: 76
+[INGESTION TRACE] 2026-11-08 20:37:13.903 | STAGE: 6_IMPUTATION_NORMALIZATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-08 20:37:13.903 | STAGE: 6_IMPUTATION_NORMALIZATION_SUCCESS | +++ [SUCCESS]
+PASS (iii) Team's restore emitted team-canvas-restore with the validated canvas (9 node(s))
+[1] "DEBUG: Global Filtered Set length: 76"
+
+[PERF - START] 20:37:15.707 | Starting PCA Calculation (mode: omics)
+[PERF - COMPLETE] 20:37:15.716 | omics PCA Calculation Finished in 0.009 sec
+INFO (iii) created tcinstance_5b3aa12d3e2f (qc_pca_tab-pca2dPlot) in 1.9 s
+INFO (iii) created tcinstance_5f6411e2ad7b (results_dashboard-plot_violin) in 0.5 s
+INFO (iii) created tcinstance_41dc2ce3c07a (volcano_tab-volcanoPlot) in 0.3 s
+INFO (iii) created tcinstance_d78d17550ccf (barchart-barPlotUnfiltered) in 1.0 s
+INFO (iii) created tcinstance_9834e1bff746 (heatmap_barchart_tab-violin_plot_render) in 1.9 s
+INFO (iii) created tcinstance_1880fa59d0b3 (structural_tab-summaryPlot) in 3.3 s
+INFO (iii) created tcinstance_f25b14e36253 (results_dashboard-plot_heat) in 0.4 s
+INFO (iii) created tcinstance_dabfec65e50d (fla_tab-logratioPlot) in 1.3 s
+PASS (iii) no team-canvas-instance-error; all 8 saved plot(s) created from Team's restored copies
+PASS (vi) Team's read_session_archive reads Group1::Control = #0055AA from state.json color_shape
+PASS (vi) Team's restore (data hub import) puts Control back in #0055AA (shared_data$color_maps())
+INFO (v) counts nodes=9 tabs=0 finished=3 statistics=1 illustrations=1 texts=1
+PASS (v) counts match what the pilot log (webkit, step 11b) says Paula saved: nodes=9 tabs=0 finished=3 statistics=1 illustrations=1 texts=1
+pilot_team_roundtrip: all PASS

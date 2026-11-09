@@ -1,0 +1,79 @@
+[
+ {
+  "plot": "load3dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/load3dPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/load3dPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 9 traces as the module render (scatter3d); title {\"text\":\"3D PCA Loadings\"}"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/load3dPlot-3-larger.png, docs/integration/chart-audit/b03-qc-b/load3dPlot-3-smaller.png"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); loadMarkerSize3D→20 redrew (docs/integration/chart-audit/b03-qc-b/load3dPlot-4-data-changed.png); slider bounded like Team: an out-of-range value cannot be entered"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Chart font size; Chart text color; Plot background; font 16 #aa0000, plot bg undefined; 6 palettes, 6 distinct colourings; Healthy in grey present; legend Top Left → x=0; NO grid toggle; orientation disabled (not supported for this plot); Undo/Redo; Reset → title \"3D PCA Loadings\"; docs/integration/chart-audit/b03-qc-b/load3dPlot-5-appearance.png; canvas Undo → \"Audit load3dPlot\", Redo → \"Audit load3dPlot\""
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 504532 B; SVG 146410 B; Team PDF Loading_3D_20261107_0032.pdf 4229 B; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b03-qc-b/load3dPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x418 in a 421x424 body; Edit figure → live plotly; docs/integration/chart-audit/b03-qc-b/load3dPlot-8-finished.png"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit load3dPlot\" with loadMarkerSize3D=20; remove + Undo brought it back drawn; docs/integration/chart-audit/b03-qc-b/load3dPlot-9-duplicate.png"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 6bae83590a8e…: \"Audit load3dPlot\", loadMarkerSize3D=20, background kept; docs/integration/chart-audit/b03-qc-b/load3dPlot-10-reopened.png"
+ },
+ {
+  "plot": "load3dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

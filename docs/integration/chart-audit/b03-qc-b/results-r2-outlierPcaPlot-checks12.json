@@ -1,0 +1,23 @@
+[
+ {
+  "plot": "outlierPcaPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b03-qc-b/outlierPcaPlot-12-data-1024.png"
+ },
+ {
+  "plot": "outlierPcaPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

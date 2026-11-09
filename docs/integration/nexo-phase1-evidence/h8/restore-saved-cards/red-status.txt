@@ -1,0 +1,5 @@
+   × bodyStatus > a card waiting for its first image while it restores is updating, not an error 5ms
+   ✓ bodyStatus > keeps the other states 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 'error' to be 'updating' // Object.is equality
+      Tests  1 failed | 1 passed (2)

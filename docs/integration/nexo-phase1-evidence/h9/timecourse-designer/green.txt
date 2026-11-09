@@ -1,0 +1,30 @@
+# Green (M1, mock). Paths: <repo> = repository root.
+## cd frontends/nexo && npx vitest run
+ Test Files  112 passed (112)
+      Tests  511 passed (511)
+## npx tsc --noEmit -p .
+tsc clean (exit 0)
+## node tests/dual-ui/test_nexo_timecourse_designer.cjs (Chromium + WebKit, 1440x900)
+PASS F4 chromium check11-no-render-while-waiting (1 refusal before)
+PASS F4 chromium buckets-from-schema
+PASS F4 chromium keyboard-move-to-timecourse-2-redraws
+PASS F4 chromium remove-item-redraws-member-not-instance
+PASS F4 chromium duplicate-keeps-buckets
+PASS F4 chromium save-reopen-keeps-buckets
+PASS F4 chromium add-timecourse-empty-bucket
+PASS F4 chromium no-console-errors
+PASS F4 webkit check11-no-render-while-waiting (1 refusal before)
+PASS F4 webkit buckets-from-schema
+PASS F4 webkit keyboard-move-to-timecourse-2-redraws
+PASS F4 webkit remove-item-redraws-member-not-instance
+PASS F4 webkit duplicate-keeps-buckets
+PASS F4 webkit save-reopen-keeps-buckets
+PASS F4 webkit add-timecourse-empty-bucket
+PASS F4 webkit no-console-errors
+F4 time-course designer OK
+## node tests/dual-ui/test_nexo_inspector.cjs: 42 PASS, last line: H3 OK
+## node tests/dual-ui/test_nexo_card_chrome.cjs: 29 PASS, last line: H6-0 OK
+## node tests/dual-ui/test_nexo_save.cjs: 16 PASS, last line: H4 OK
+## node tests/dual-ui/test_nexo_canvas_edit.cjs: 15 PASS, last line: }
+## canvas_edit first run failed in H9 'back after Enter' (camera 481,323@0.2711 vs 495,330@0.2500, after 15 PASS); rerun unchanged: 34 PASS, H2F OK. The same suite passed in an earlier run on this branch: timing, not this change.
+## R: Rscript tests/dual-ui/test_api_timecourse_designer.R NOT RUN (no R on the M1); to run on the RTX.

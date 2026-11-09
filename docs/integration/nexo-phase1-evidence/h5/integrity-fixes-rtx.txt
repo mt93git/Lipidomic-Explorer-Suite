@@ -1,0 +1,43 @@
+# Integrity-review fixes, commit 5ccff4d, RTX nexo-api env (R 4.4.3), 2026-11-06T11:25Z
+## storage
+PASS storage save/list/load/delete
+PASS storage list skips bad records
+exit=0
+## schema
+PASS schema family qc
+PASS schema family dashboard
+PASS schema boolean strict
+PASS schema card violin
+PASS schema card qc
+exit=0
+## session
+PASS session open
+PASS session seeds cards from archived inputs
+PASS session echoes choices-only updates
+PASS session reuse
+PASS session close
+exit=0
+## engine
+PASS U1 synthetic 12x9, matches archived receipt
+PASS U1 legacy refused
+PASS U2 plots 5/5
+PASS U2 typed errors
+exit=0
+## roundtrip
+PASS roundtrip nexo->zip->nexo
+PASS roundtrip zip->team-validate
+PASS roundtrip keeps project records
+exit=0
+## statistics
+PASS stats describe
+PASS stats apply welch/bh
+PASS stats check
+PASS stats 400
+PASS stats violin-only
+PASS stats parity welch
+PASS group comparison confirm
+exit=0
+## catalog
+PASS catalog 58
+exit=0
+

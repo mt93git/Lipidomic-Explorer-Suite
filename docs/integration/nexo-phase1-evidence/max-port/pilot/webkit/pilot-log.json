@@ -1,0 +1,657 @@
+[
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 1,
+    "action": "Open the checkpoint from the start screen",
+    "expected": "The canvas of \"nexo-complete-synthetic\" opens and its cards settle",
+    "observed": "opened ?checkpoint=nexo-complete-synthetic; 0 cards settled",
+    "ok": true,
+    "seconds": 1.8,
+    "clicks": 1,
+    "screenshot": "webkit-paula-01-open-the-checkpoint-from-the-start-scree.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": []
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 2,
+    "action": "Confirm the study design if asked",
+    "expected": "The differential plots unlock, or nothing is asked",
+    "observed": "confirmed Experimental unit=Animal, Sample relationship=independent; Differential volcano can be added",
+    "ok": true,
+    "seconds": 0.9,
+    "clicks": 5,
+    "screenshot": "webkit-paula-02-confirm-the-study-design-if-asked.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": []
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "3a",
+    "action": "Add \"PCA scores · 2D\" from the library and wait for it to draw",
+    "expected": "A new card appears and draws its plot; the time from the click to the drawn plot is logged",
+    "observed": "card tcinstance_926eb0956d89-pca2dPlot drawn 2.3 s after the click · click→drawn 2.3 s · first render queue;dur=11.1, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.2, cache;dur=2.2, card;dur=0.0, input;dur=1.9, flush;dur=207.3, output;dur=1.0, encode;dur=0.9, r",
+    "ok": true,
+    "seconds": 2.3,
+    "clicks": 2,
+    "screenshot": "webkit-paula-3a-add-pca-scores-2d-from-the-library-and-w.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 2.3,
+      "createServerTiming": "request;dur=0.0, validate;dur=0.6, warm;dur=5.3, defaults;dur=0.1, inputs;dur=2.1, instance;dur=225.0, flush;dur=569.3, seed;dur=115.6, card;dur=5.0, guard;dur=0.1, other;dur=0.4, total;dur=923.7",
+      "firstRenderServerTiming": "queue;dur=11.1, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.2, cache;dur=2.2, card;dur=0.0, input;dur=1.9, flush;dur=207.3, output;dur=1.0, encode;dur=0.9, revision;dur=0.5, store;dur=0.3, rekey;dur=2.7, disk;dur=0.0, guard;dur=0.1, other;dur=30.0, total;dur=258.4, where;desc=\"worker\", workercard;desc=\"held\""
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "3b",
+    "action": "Add \"Feature distributions\" from the library and wait for it to draw",
+    "expected": "A new card appears and draws its plot; the time from the click to the drawn plot is logged",
+    "observed": "card tcinstance_5803b5f09121-plot_violin drawn 1.2 s after the click · click→drawn 1.2 s · first render queue;dur=11.1, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.2, cache;dur=2.2, card;dur=0.0, input;dur=0.6, flush;dur=3.9, output;dur=1.0, encode;dur=0.5, rev",
+    "ok": true,
+    "seconds": 1.2,
+    "clicks": 2,
+    "screenshot": "webkit-paula-3b-add-feature-distributions-from-the-libra.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 1.2,
+      "createServerTiming": "request;dur=0.1, validate;dur=0.6, warm;dur=5.2, defaults;dur=0.5, inputs;dur=1.0, instance;dur=41.4, flush;dur=298.2, seed;dur=213.7, card;dur=1.6, guard;dur=0.1, other;dur=0.4, total;dur=562.8",
+      "firstRenderServerTiming": "queue;dur=11.1, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.2, cache;dur=2.2, card;dur=0.0, input;dur=0.6, flush;dur=3.9, output;dur=1.0, encode;dur=0.5, revision;dur=0.4, store;dur=0.3, rekey;dur=2.4, disk;dur=0.0, guard;dur=0.1, other;dur=20.0, total;dur=42.6, where;desc=\"worker\", workercard;desc=\"held\""
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "3c",
+    "action": "Add \"Differential volcano\" from the library and wait for it to draw",
+    "expected": "A new card appears and draws its plot; the time from the click to the drawn plot is logged",
+    "observed": "card tcinstance_35d16f6d4c16-volcanoPlot drawn 1.1 s after the click · click→drawn 1.1 s · first render queue;dur=11.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.2, cache;dur=2.1, card;dur=0.0, input;dur=2.4, flush;dur=160.5, output;dur=0.8, encode;dur=0.3, r",
+    "ok": true,
+    "seconds": 1.1,
+    "clicks": 2,
+    "screenshot": "webkit-paula-3c-add-differential-volcano-from-the-librar.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 1.1,
+      "createServerTiming": "request;dur=0.0, validate;dur=0.6, warm;dur=5.2, defaults;dur=0.1, inputs;dur=1.5, instance;dur=42.3, flush;dur=236.0, seed;dur=8.3, card;dur=2.9, guard;dur=0.2, other;dur=0.4, total;dur=297.5",
+      "firstRenderServerTiming": "queue;dur=11.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.2, cache;dur=2.1, card;dur=0.0, input;dur=2.4, flush;dur=160.5, output;dur=0.8, encode;dur=0.3, revision;dur=0.4, store;dur=0.2, rekey;dur=2.3, disk;dur=0.0, guard;dur=0.1, other;dur=22.6, total;dur=203.0, where;desc=\"worker\", workercard;desc=\"held\""
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "3d",
+    "action": "Add \"Composition · unfiltered\" from the library and wait for it to draw",
+    "expected": "A new card appears and draws its plot; the time from the click to the drawn plot is logged",
+    "observed": "card tcinstance_f3ddf09fdaaa-barPlotUnfiltered drawn 1.1 s after the click · click→drawn 1.1 s · first render queue;dur=11.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.4, cache;dur=2.5, card;dur=0.0, input;dur=1.5, flush;dur=33.8, output;dur=0.9, encode;dur=0.2, re",
+    "ok": true,
+    "seconds": 1.1,
+    "clicks": 2,
+    "screenshot": "webkit-paula-3d-add-composition-unfiltered-from-the-libr.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 1.1,
+      "createServerTiming": "request;dur=0.0, validate;dur=0.7, warm;dur=5.3, defaults;dur=0.1, inputs;dur=1.6, instance;dur=83.3, flush;dur=177.1, seed;dur=254.9, card;dur=1.8, guard;dur=0.2, other;dur=0.5, total;dur=525.5",
+      "firstRenderServerTiming": "queue;dur=11.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.4, cache;dur=2.5, card;dur=0.0, input;dur=1.5, flush;dur=33.8, output;dur=0.9, encode;dur=0.2, revision;dur=0.4, store;dur=0.2, rekey;dur=2.4, disk;dur=0.0, guard;dur=0.1, other;dur=19.4, total;dur=72.8, where;desc=\"worker\", workercard;desc=\"held\""
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "3e",
+    "action": "Add \"Selected-feature distributions\"; its card is as tall as Team's plot height",
+    "expected": "Card height = Plot Height (px) shown in the Data tab + 38 px (capped at 4000); the image is drawn at that height",
+    "observed": "Plot Height 3000 px → card 3038 px (= +38); image 620×3000 (dpr 1); drawn 37.1 s after the click · click→drawn 37.1 s · first render queue;dur=11.1, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.3, cache;dur=2.2, card;dur=0.0, input;dur=1.3, flush;dur=949.8, output;dur=1.0, encode;dur=3.7, r",
+    "ok": true,
+    "seconds": 39.8,
+    "clicks": 4,
+    "screenshot": "webkit-paula-3e-add-selected-feature-distributions-its-c.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 37.1,
+      "createServerTiming": "request;dur=0.0, validate;dur=0.6, warm;dur=5.4, defaults;dur=0.1, inputs;dur=1.8, instance;dur=128.7, flush;dur=23069.5, seed;dur=12171.4, card;dur=3.7, guard;dur=0.2, other;dur=0.4, total;dur=35381.8",
+      "firstRenderServerTiming": "queue;dur=11.1, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.3, cache;dur=2.2, card;dur=0.0, input;dur=1.3, flush;dur=949.8, output;dur=1.0, encode;dur=3.7, revision;dur=0.6, store;dur=0.2, rekey;dur=2.6, disk;dur=0.0, guard;dur=0.1, other;dur=25.3, total;dur=998.3, where;desc=\"worker\", workercard;desc=\"held\"",
+      "plotHeight": 3000,
+      "cardHeight": 3038,
+      "image": [
+        620,
+        3000
+      ]
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 4,
+    "action": "Change a data input of the PCA (inspector, Data tab)",
+    "expected": "The PCA card redraws with the new input",
+    "observed": "Correlation Method:: Pearson → Spearman; card redrew",
+    "ok": true,
+    "seconds": 3.3,
+    "clicks": 4,
+    "screenshot": "webkit-paula-04-change-a-data-input-of-the-pca-inspector.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": []
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "4b",
+    "action": "Change the Control group's colour in the session palette (rail Palettes)",
+    "expected": "The session palette opens with Team's palettes; the PCA (and the other group-coloured cards on the board) redraw with #aa3300",
+    "observed": "palettes: Default, Tableau Classic, Ocean & Coral, Earth & Garden, Colorblind Friendly; Colour for Control → #aa3300; the PCA redrew and shows it (3202 px of 446400); other cards redrawn 0/4, showing #aa3300: 1",
+    "ok": true,
+    "seconds": 4.1,
+    "clicks": 3,
+    "screenshot": "webkit-paula-4b-change-the-control-group-s-colour-in-the.png",
+    "consoleErrors": [],
+    "toasts": [
+      "Redrawing the plots that follow the session palette…Undo",
+      "Session colours applied: 2 of 5 plots redrew (3 not drawn yet). Plots with their own colour settings keep them.Undo"
+    ],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "sessionPalette": {
+        "context": "Group1",
+        "group": "Control",
+        "color": "#aa3300"
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "4c",
+    "action": "Add the structural summary and press \"Initiate Structural Analysis\" in the Data tab",
+    "expected": "The card first shows Team's placeholder, then draws the analysis",
+    "observed": "added (2.4 s to the placeholder); after Initiate the card drew the analysis (image 0.013 → 0.152 bytes per pixel) · click→drawn 2.4 s · first render queue;dur=0.0, request;dur=0.1, pool;dur=0.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.4, cache;dur=2.9, card;dur=0.0, input;dur=1.5, flush;dur=26.4, outp",
+    "ok": true,
+    "seconds": 5.5,
+    "clicks": 5,
+    "screenshot": "webkit-paula-4c-add-the-structural-summary-and-press-ini.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 2.4,
+      "createServerTiming": "request;dur=0.1, validate;dur=0.6, warm;dur=0.1, defaults;dur=0.1, inputs;dur=8.1, instance;dur=187.7, flush;dur=754.7, seed;dur=1157.8, card;dur=6.1, guard;dur=0.2, other;dur=0.4, total;dur=2115.9",
+      "firstRenderServerTiming": "queue;dur=0.0, request;dur=0.1, pool;dur=0.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.4, cache;dur=2.9, card;dur=0.0, input;dur=1.5, flush;dur=26.4, output;dur=1.1, encode;dur=0.1, revision;dur=0.4, store;dur=0.2, rekey;dur=2.5, disk;dur=0.0, guard;dur=0.1, other;dur=0.5, total;dur=36.1, where;desc=\"main\"",
+      "placeholder": {
+        "natural": [
+          620,
+          720
+        ],
+        "css": [
+          618,
+          682
+        ],
+        "bytes": 6002,
+        "bpp": 0.013
+      },
+      "analysed": {
+        "natural": [
+          620,
+          720
+        ],
+        "css": [
+          618,
+          682
+        ],
+        "bytes": 67778,
+        "bpp": 0.152
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "4d",
+    "action": "Add the heatmap and read the \"Significant only\" status note",
+    "expected": "Disabled: the note gives Team's reason. Allowed: choosing it shows Team's \"Showing N significant lipids\" note",
+    "observed": "\"Significant only\" allowed; chosen, the note reads \"Showing 60 significant lipids: mean of (Treatment_T1, Treatment_T2, Treatment_T3) vs mean of (Control_T1, Control_T2, Control_T3); Benjamini-Hochberg adjusted p\"; card kept its drawing; drawn 0.9 s after the click · click→drawn 0.9 s · first render queue;dur=0.0, request;dur=0.0, pool;dur=0.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.4, cache;dur=3.1, card;dur=0.0, input;dur=0.7, flush;dur=4.7, outpu · Significant only is allowed here (step 2 confirmed an independent design): the disabled case is not reached in this run",
+    "ok": true,
+    "seconds": 3.5,
+    "clicks": 5,
+    "screenshot": "webkit-paula-4d-add-the-heatmap-and-read-the-significant.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 0.9,
+      "createServerTiming": "request;dur=0.0, validate;dur=0.6, warm;dur=0.1, defaults;dur=0.7, inputs;dur=1.8, instance;dur=41.8, flush;dur=244.9, seed;dur=193.3, card;dur=1.7, guard;dur=0.2, other;dur=0.4, total;dur=485.4",
+      "firstRenderServerTiming": "queue;dur=0.0, request;dur=0.0, pool;dur=0.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.4, cache;dur=3.1, card;dur=0.0, input;dur=0.7, flush;dur=4.7, output;dur=1.6, encode;dur=0.7, revision;dur=0.4, store;dur=0.2, rekey;dur=2.7, disk;dur=0.0, guard;dur=0.1, other;dur=0.5, total;dur=15.2, where;desc=\"main\""
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "4e",
+    "action": "Add the FLA ratio distributions and add one index in a sel_<category> picker",
+    "expected": "The card redraws with the added index",
+    "observed": "Structural: ticked PE/PC_Index; the card redrew; first drawn 1.6 s after the click · click→drawn 1.6 s · first render queue;dur=0.0, request;dur=0.1, pool;dur=0.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.3, cache;dur=2.8, card;dur=0.0, input;dur=1.4, flush;dur=72.7, outp",
+    "ok": true,
+    "seconds": 3.6,
+    "clicks": 5,
+    "screenshot": "webkit-paula-4e-add-the-fla-ratio-distributions-and-add-.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "clickToDrawnSeconds": 1.6,
+      "createServerTiming": "request;dur=0.0, validate;dur=0.7, warm;dur=0.1, defaults;dur=0.1, inputs;dur=3.9, instance;dur=83.2, flush;dur=733.1, seed;dur=384.7, card;dur=2.3, guard;dur=0.1, other;dur=0.4, total;dur=1208.5",
+      "firstRenderServerTiming": "queue;dur=0.0, request;dur=0.1, pool;dur=0.0, args;dur=0.0, descriptor;dur=0.0, memory;dur=0.3, cache;dur=2.8, card;dur=0.0, input;dur=1.4, flush;dur=72.7, output;dur=1.8, encode;dur=1.1, revision;dur=0.4, store;dur=0.2, rekey;dur=2.4, disk;dur=0.0, guard;dur=0.1, other;dur=0.5, total;dur=83.9, where;desc=\"main\""
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 5,
+    "action": "Restyle the violin (Appearance: title, Okabe–Ito palette, font size)",
+    "expected": "The violin shows the new title, Okabe–Ito colours and the larger font",
+    "observed": "title \"Figure 1b · lipid distribution\", font 14, colours rgba(230,159,0,1), rgba(86,180,233,1)",
+    "ok": true,
+    "seconds": 3.1,
+    "clicks": 8,
+    "screenshot": "webkit-paula-05-restyle-the-violin-appearance-title-okab.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": true,
+    "frictionReasons": [
+      "8 clicks (> 6)"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 6,
+    "action": "Violin statistics: Wilcoxon + BH, review, confirm; results table; download CSV",
+    "expected": "Results table has rows; a CSV with a header downloads",
+    "observed": "1 result row(s): \"Treatment vs Control n = 12 samples; n = 12 samples 7.4e-7 7.4e-7 *** -1 \"; statistics.csv 2 lines",
+    "ok": true,
+    "seconds": 2,
+    "clicks": 7,
+    "screenshot": "webkit-paula-06-violin-statistics-wilcoxon-bh-review-con.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": true,
+    "frictionReasons": [
+      "7 clicks (> 6)"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 7,
+    "action": "Resize and arrange (real drag, Tidy up), undo and redo once",
+    "expected": "The card grows, Tidy up moves cards, Undo restores and Redo re-applies",
+    "observed": "violin 575×668 → 665×728; composition moved; Tidy up, ⌘/Ctrl+Z, Redo all round-tripped · at 14 % the composition card is a thumbnail: dragged by its body",
+    "ok": true,
+    "seconds": 8.5,
+    "clicks": 8,
+    "screenshot": "webkit-paula-07-resize-and-arrange-real-drag-tidy-up-und.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": true,
+    "frictionReasons": [
+      "8 clicks (> 6)"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "7b",
+    "action": "Zoom in to 150 % or more with the zoom controls and look at the PCA",
+    "expected": "The PCA image is drawn at about twice its CSS width (dpr 2)",
+    "observed": "181 %: PCA image 1240×1440 for 618×682 CSS px (×2.01); its render requests asked dpr 2, 1",
+    "ok": true,
+    "seconds": 3.2,
+    "clicks": 6,
+    "screenshot": "webkit-paula-7b-zoom-in-to-150-or-more-with-the-zoom-con.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "zoomPercent": 181,
+      "image": {
+        "natural": [
+          1240,
+          1440
+        ],
+        "css": [
+          618,
+          682
+        ],
+        "bytes": 96723,
+        "bpp": 0.054
+      },
+      "ratio": 2.01,
+      "dprAsked": "2, 1"
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "7c",
+    "action": "The API loses the session; Paula changes the group colour again in the session palette",
+    "expected": "The app reconnects by itself, the PCA shows #0055aa, the earlier edits are kept, no error stays",
+    "observed": "toasts: Reconnecting to the analysis… → Analysis reconnected. Your plots were restored.; PCA shows #0055aa (3156 px); session s3… → s4…; violin title, FLA pick and structural drawing kept; no error left · DELETE this page's session s3…: HTTP 200",
+    "ok": true,
+    "seconds": 15.8,
+    "clicks": 5,
+    "screenshot": "webkit-paula-7c-the-api-loses-the-session-paula-changes-.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [
+      "Reconnecting to the analysis…",
+      "Analysis reconnected. Your plots were restored.",
+      "Redrawing the plots that follow the session palette…Undo"
+    ],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "sessionPalette": {
+        "context": "Group1",
+        "group": "Control",
+        "color": "#0055aa"
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 8,
+    "action": "Add an illustration and a text",
+    "expected": "An illustration card on the canvas; a text on the Figure page",
+    "observed": "illustration illustration_45f8740f-2f99-4aa9-8f67-af8c6a3505c1; text \"Figure 1 · synthetic cohort\" on the Figure page",
+    "ok": true,
+    "seconds": 0.5,
+    "clicks": 8,
+    "screenshot": "webkit-paula-08-add-an-illustration-and-a-text.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": true,
+    "frictionReasons": [
+      "8 clicks (> 6)"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 9,
+    "action": "Finish PCA, violin and volcano; open Figure page, paper Letter, layout Figure 1",
+    "expected": "Three cards finished; the Figure page shows them on Letter in the Figure 1 layout",
+    "observed": "finished pca, violin, volcano; Letter, layout \"Figure 1\"; 3 of 8 plots finished · pca: select 2.6 s, finish 0.0 s · violin: select 2.6 s, finish 0.1 s · volcano: select 1.6 s, finish 0.1 s · page settings 0.0 s",
+    "ok": true,
+    "seconds": 7.2,
+    "clicks": 15,
+    "screenshot": "webkit-paula-09-finish-pca-violin-and-volcano-open-figur.png",
+    "consoleErrors": [],
+    "toasts": [],
+    "friction": true,
+    "frictionReasons": [
+      "the Figure 1 template hides the text added in step 8 without saying so (it is kept; the Free layout shows it)",
+      "15 clicks (> 6)"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 10,
+    "action": "Export the figure (Export dialog, Nature preset, SVG and PDF) and one \"More downloads\" file of an unfinished card",
+    "expected": "A bundle with SVG and PDF; a module download from the composition card",
+    "observed": "preset \"Nature / Nature Research (89 / 120 / 180 mm)\"; bundle Figure_PCA_2D_Score_Plot_Publication_Bundle_20261109_0150.zip (SVG+PDF+R script+Data (CSV)(locked)) [Figure_PCA_2D_Score_Plot.pdf, Figure_PCA_2D_Score_Plot.svg, Figure_PCA_2D_Score_Plot_data.csv, reproduce_figure_pca_2d_score_plot.R, figure_provenance.json]; composition \"CSV\" → LipidAnalysis_261109_LipidAnalysis_Barchart_Unfiltered_Data_Rep.csv 20439 B",
+    "ok": true,
+    "seconds": 11.2,
+    "clicks": 13,
+    "screenshot": "webkit-paula-10-export-the-figure-export-dialog-nature-p.png",
+    "consoleErrors": [],
+    "toasts": [
+      "Session colours applied: 2 of 8 plots redrew (3 not drawn yet). Plots with their own colour settings keep them.Undo",
+      "Downloaded Figure_PCA_2D_Score_Plot_Publication_Bundle_20261109_0150.zip",
+      "Downloaded LipidAnalysis_261109_LipidAnalysis_Barchart_Unfiltered_Data_Rep.csv"
+    ],
+    "friction": true,
+    "frictionReasons": [
+      "13 clicks (> 6)"
+    ],
+    "metrics": {
+      "bundle": {
+        "name": "Figure_PCA_2D_Score_Plot_Publication_Bundle_20261109_0150.zip",
+        "bytes": 19588,
+        "formats": [
+          "SVG",
+          "PDF",
+          "R script",
+          "Data (CSV)(locked)"
+        ],
+        "members": [
+          "Figure_PCA_2D_Score_Plot.pdf",
+          "Figure_PCA_2D_Score_Plot.svg",
+          "Figure_PCA_2D_Score_Plot_data.csv",
+          "reproduce_figure_pca_2d_score_plot.R",
+          "figure_provenance.json"
+        ]
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "10b",
+    "action": "Export the composed Figure page as PDF and as SVG (Page tab)",
+    "expected": "Non-empty PDF and SVG at the page size; the SVG holds every panel the page shows",
+    "observed": "page shows 2 of 10 panels filled on 1 sheet(s); PDF figure-canvas.pdf → webkit-figure-page.pdf 229883 B, 1 page(s), 612 × 792 pt (215.9 × 279.4 mm), 1 page image(s); SVG figure-canvas-1.svg → webkit-figure-page.svg 73737 B, 612 × 792 pt (215.9 × 279.4 mm), 2 panel(s) of 10 slots, 1 embedded image(s)",
+    "ok": true,
+    "seconds": 0.6,
+    "clicks": 5,
+    "screenshot": "webkit-paula-10b-export-the-composed-figure-page-as-pdf-a.png",
+    "consoleErrors": [],
+    "toasts": [
+      "Downloaded figure-canvas.pdf",
+      "Downloaded figure-canvas-1.svg"
+    ],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "pageExport": {
+        "shown": {
+          "sheets": 1,
+          "slots": 10,
+          "panels": 2
+        },
+        "pdf": {
+          "file": "webkit-figure-page.pdf",
+          "name": "figure-canvas.pdf",
+          "bytes": 229883,
+          "header": "%PDF-",
+          "pages": 1,
+          "images": 1,
+          "size": [
+            612,
+            792
+          ],
+          "mm": [
+            215.9,
+            279.4
+          ]
+        },
+        "svg": {
+          "file": "webkit-figure-page.svg",
+          "name": "figure-canvas-1.svg",
+          "bytes": 73737,
+          "root": "svg",
+          "width": 612,
+          "height": 792,
+          "slots": 10,
+          "panels": 2,
+          "images": 1,
+          "error": null,
+          "mm": [
+            215.9,
+            279.4
+          ]
+        }
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": 11,
+    "action": "Save a checkpoint named pilot-sim-<timestamp>",
+    "expected": "A toast confirms the save and the URL points at the new checkpoint",
+    "observed": "saved \"pilot-sim-20261109T065056-webkit\" as 18f4b45e2023…; 9 cards, 3 finished",
+    "ok": true,
+    "seconds": 1.9,
+    "clicks": 4,
+    "screenshot": "webkit-paula-11-save-a-checkpoint-named-pilot-sim-timest.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [
+      "Saved checkpoint pilot-sim-20261109T065056-webkit. You are now working on it; the previous checkpoint stays as it was."
+    ],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "screen": {
+        "cards": 9,
+        "finished": 3,
+        "statistics": 1,
+        "tabs": 1
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Paula",
+    "step": "11b",
+    "action": "Download the saved checkpoint ZIP from the Checkpoints dialog",
+    "expected": "A ZIP downloads; its Team canvas holds the cards, finished plots and statistics on screen; Team's state keeps the session colour; Nexo's member keeps the pressed action and the FLA pick",
+    "observed": "pilot-saved.zip 135601 B sha256 18f4b45e2023cc967dfc83923f26d9a169230d56656c1669fe58e9aac9a45446; members state.json, shared-state-v1.json, team-canvas-v1.json, data_files/, data_files/dataset-001-6252452ca7225030.csv, nexo-canvas-v1.json; counts {\"nodes\":9,\"tabs\":0,\"finished\":3,\"statistics\":1,\"illustrations\":1,\"texts\":1}",
+    "ok": true,
+    "seconds": 0.5,
+    "clicks": 3,
+    "screenshot": "webkit-paula-11b-download-the-saved-checkpoint-zip-from-t.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [],
+    "friction": false,
+    "frictionReasons": [],
+    "metrics": {
+      "saved": {
+        "zip": "pilot-saved.zip",
+        "sha256": "18f4b45e2023cc967dfc83923f26d9a169230d56656c1669fe58e9aac9a45446",
+        "bytes": 135601,
+        "members": [
+          "state.json",
+          "shared-state-v1.json",
+          "team-canvas-v1.json",
+          "data_files/",
+          "data_files/dataset-001-6252452ca7225030.csv",
+          "nexo-canvas-v1.json"
+        ],
+        "counts": {
+          "nodes": 9,
+          "tabs": 0,
+          "finished": 3,
+          "statistics": 1,
+          "illustrations": 1,
+          "texts": 1
+        },
+        "screen": {
+          "cards": 9,
+          "finished": 3,
+          "statistics": 1,
+          "tabs": 1
+        }
+      }
+    }
+  },
+  {
+    "engine": "webkit",
+    "persona": "Steph",
+    "step": 12,
+    "action": "Reopen the saved checkpoint in a new context and check what came back",
+    "expected": "Cards, violin style, statistics, finished plots, illustration, text and Figure page settings are restored",
+    "observed": "9 cards, 3 finished, violin title + statistics, illustration, text, letter/figure1, PCA colour, structural drawn without pressing Initiate, FLA pick · design restored with the checkpoint (already confirmed): nothing asked, Differential volcano can be added · violin is a finished snapshot image; its title is checked through the inspector · PCA shows #0055aa (3156 px) · structural image 0.152 bytes per pixel (Paula: placeholder 0.013, analysis 0.152); replay calls 1 · FLA PE/PC_Index ticked · text kept: the Figure 1 template hides free text, the Free layout shows it · pill at the end: \"Autosave ready\"",
+    "ok": true,
+    "seconds": 38.1,
+    "clicks": 13,
+    "screenshot": "webkit-steph-12-reopen-the-saved-checkpoint-in-a-new-con.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [],
+    "friction": true,
+    "frictionReasons": [
+      "13 clicks (> 6)"
+    ]
+  },
+  {
+    "engine": "webkit",
+    "persona": "Steph",
+    "step": 13,
+    "action": "Open it on a phone (375×812): view only and legible",
+    "expected": "A view-only notice, no enabled editing control, text at a readable size and no sideways scrolling",
+    "observed": "view-only notice shown; no editing control enabled; text ≥ 12 px; no sideways scroll · tapped the violin (the card) to read its inspector",
+    "ok": true,
+    "seconds": 1.2,
+    "clicks": 2,
+    "screenshot": "webkit-steph-13-open-it-on-a-phone-375-812-view-only-and.png",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "toasts": [
+      "Overview limited to 10 %: pan or use the minimap to reach the rest of the canvas."
+    ],
+    "friction": false,
+    "frictionReasons": []
+  }
+]

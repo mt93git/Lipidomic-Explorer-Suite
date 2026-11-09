@@ -1,0 +1,6 @@
+   ✓ collapses cumulative Team fit groups at four thresholds 1ms
+   × collapses further levels when the tab strip needs room, never fewer than Team, at most all four 3ms
+     → expected [] to deeply equal [ 'arrange' ]
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/ui/toolbarOverflow.test.ts > collapses further levels when the tab strip needs room, never fewer than Team, at most all four
+AssertionError: expected [] to deeply equal [ 'arrange' ]

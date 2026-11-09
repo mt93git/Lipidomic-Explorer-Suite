@@ -1,0 +1,7 @@
+red runs before the fix (inspector: Apply palette still present; figure_page: no hidden-items note)
+$NEXO_PILOT_OUT/red-figure_page.txt:[2m  - waiting for locator('.figure-hidden-note') to be visible[22m
+$NEXO_PILOT_OUT/red-figure_page.txt:  log: [ "  - waiting for locator('.figure-hidden-note') to be visible" ],
+$NEXO_PILOT_OUT/red-figure_page.txt:  name: 'TimeoutError'
+$NEXO_PILOT_OUT/red-inspector.txt:AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+$NEXO_PILOT_OUT/red-inspector.txt:  actual: 1,
+$NEXO_PILOT_OUT/red-inspector.txt:  expected: 0,

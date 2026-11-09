@@ -1,0 +1,75 @@
+# H7a green, RTX nexo-api env, 2026-11-06T14:13:04Z
+== test_api_cache
+PASS cache hit png qc_pca_tab-boxplotAfterNorm first 0.12s hit 0.015s
+PASS cache hit plotly results_dashboard-plot_pca first 0.01s hit 0.001s
+PASS cache misses on size, input and design changes
+PASS legacy dashboard re-render with the same saved inputs is a cache hit
+PASS cache bounded 201.3 KB of 64 MB
+PASS 50 renders p95 0.06s median 0.03s RSS 611->611 MB
+PASS memory guard soft 2400 MB evicts LRU + clears caches, hard 2700 MB quits 3
+exit 0
+== test_api_session
+PASS session open
+PASS session seeds cards from archived inputs
+PASS session echoes choices-only updates
+PASS session reuse only while clean
+PASS session close
+exit 0
+== test_api_roundtrip
+PASS roundtrip reopen returns the checkpoint, not later edits
+PASS roundtrip nexo->zip->nexo
+PASS roundtrip zip->team-validate
+PASS roundtrip keeps project records
+exit 0
+== test_api_export
+PASS export presets
+PASS export 400
+PASS export pca_2d members+csv+provenance match Team
+PASS export volcano members+csv+provenance match Team
+PASS export class_abundance members+csv+provenance match Team
+PASS export heatmap members+csv+provenance match Team
+PASS legacy dashboard data.csv without a live render
+PASS card data.csv from the module's download handler
+exit 0
+== test_api_statistics
+PASS stats describe
+PASS stats apply welch/bh
+PASS stats check
+PASS stats 400
+PASS stats violin-only
+PASS stats parity welch
+PASS group comparison confirm
+exit 0
+== test_api_engine
+PASS U1 synthetic 12x9, matches archived receipt
+PASS U1 legacy refused
+PASS U2 plots 5/5
+PASS U2 typed errors
+exit 0
+== test_api_http
+PASS I1 health 200
+PASS I1 catalog 58
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints
+PASS stats HTTP describe 200
+PASS I1 card schema 200
+PASS I1 card PNG bytes
+PASS I1 export presets 200, bad export 400
+PASS I1 checkpoint validate/save/download/upload/delete
+PASS I1 session delete 200
+exit 0
+== test_api_parity
+PASS parity 5/5
+exit 0
+== test_api_schema
+PASS schema family qc
+PASS schema family dashboard
+PASS schema boolean strict
+PASS schema card violin
+PASS schema card qc
+exit 0
+== test_api_storage
+PASS storage save/list/load/delete
+PASS storage list skips bad records
+exit 0

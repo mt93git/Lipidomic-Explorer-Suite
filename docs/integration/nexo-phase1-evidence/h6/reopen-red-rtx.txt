@@ -1,0 +1,9 @@
+[1] "DEBUG: Global Filtered Set length: 12"
+[1] "DEBUG: Global Filtered Set length: 12"
+[1] "DEBUG: Global Filtered Set length: 12"
+[1] "DEBUG: Global Filtered Set length: 12"
+[1] "DEBUG: Global Filtered Set length: 12"
+[1] "DEBUG: Global Filtered Set length: 12"
+Error in eval(quote({ : 
+Calls: local ... eval.parent -> eval -> eval -> eval -> eval -> eval -> stopifnot
+exit 1

@@ -1,0 +1,4 @@
+PASS H1 globalMd5 without a production root
+PASS H2 identical science matches production
+PASS H3 a changed and an extra module both differ
+PASS H4 an unreadable production root never reports a match

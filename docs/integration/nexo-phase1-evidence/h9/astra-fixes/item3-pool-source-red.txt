@@ -1,0 +1,4 @@
+   × bindPlotClick > binds when a render worker or the disk cache drew the figure (its source names that instance, same private source) 6ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected false to be true // Object.is equality
+      Tests  1 failed | 8 passed (9)

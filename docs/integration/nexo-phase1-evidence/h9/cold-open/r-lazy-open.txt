@@ -1,0 +1,41 @@
+R side of the cold open: hidden outputs wait behind the lazy gate (RTX, nexo-api env, R 4.4.3).
+
+Red (test_api_lazy_open.R before the fix):
+  Error: output computed eagerly at open: results_dashboard-plot_pca
+
+Green (after):
+  PASS the original dashboard outputs and the Data page slots wait behind the lazy gate at open
+  PASS the receipt matches and a dashboard copy still renders
+  PASS a wanted Data slot opens its gate and computes on request
+  PASS test_api_lazy_open
+  analysis_settings first failed (missing section Lipid Class Filters: slots read one by one before a flush);
+  fixed by opening every section slot then flushing once: 5 PASS.
+
+Every API R test on the fixed tree (exit=0, PASS count):
+== parity exit=0 pass=1 skip=0
+== render_all exit=0 pass=58 skip=0
+== restore_cards exit=0 pass=6 skip=0
+== cache exit=0 pass=10 skip=0
+== render_disk_cache exit=0 pass=7 skip=0
+== targeted_cohort exit=0 pass=5 skip=0
+== schema exit=0 pass=6 skip=0
+== schema_choices exit=0 pass=2 skip=0
+== schema_actions exit=0 pass=5 skip=0
+== statistics exit=0 pass=7 skip=0
+== export exit=0 pass=9 skip=0
+== roundtrip exit=0 pass=4 skip=0
+== engine exit=0 pass=4 skip=0
+== http exit=0 pass=11 skip=0
+== health exit=0 pass=4 skip=0
+== catalog exit=0 pass=2 skip=0
+== nexo_store exit=0 pass=4 skip=0
+== storage exit=0 pass=2 skip=0
+== record_warning exit=0 pass=1 skip=0
+== stress exit=0 pass=3 skip=0
+  plus lazy_open 4, session 5, analysis_settings 5, computed_controls 8
+test_api_render_all SUMMARY identical before and after: rendered=44 gated=7 silent=7 failed=0 of 58
+
+Pilot checkpoint (private; numbers only), api_session_for_checkpoint under Rprof:
+  before: 10.5 s, 63 outputs evaluated at open (6.5 s): data_hub-customColorClassUI 3.2 s (forces the lipid PCA svd),
+          original dashboard plots 7 evaluations each (~2.6 s), 60 Data page renderUI slots
+  after:  5.3 s, no output evaluated at open

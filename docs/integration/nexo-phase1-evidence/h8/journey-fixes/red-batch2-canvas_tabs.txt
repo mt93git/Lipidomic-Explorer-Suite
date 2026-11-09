@@ -1,0 +1,13 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+0 !== 1
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_canvas_tabs.cjs:64:12)
+    at async <repo>/tests/dual-ui/test_nexo_canvas_tabs.cjs:120:46 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 0,
+  expected: 1,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

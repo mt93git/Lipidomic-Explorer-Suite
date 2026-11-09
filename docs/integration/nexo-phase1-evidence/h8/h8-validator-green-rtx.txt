@@ -1,0 +1,28 @@
+ea830fcf API validator accepts Team's colour names and two-value ranges; adding a card sends no inputs
+## catalog
+PASS catalog 58
+PASS catalog defaults of 58 entries pass the validator; colour names and two-value ranges accepted
+## schema
+PASS schema family qc
+PASS schema family dashboard
+PASS schema boolean strict
+PASS schema card violin
+PASS schema card qc
+## session
+PASS session open
+PASS session seeds cards from archived inputs
+PASS session echoes choices-only updates
+PASS session reuse only while clean
+PASS session close
+## http
+PASS I1 health 200
+PASS I1 catalog 58
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints
+PASS stats HTTP describe 200
+PASS I1 card schema 200
+PASS I1 card PNG bytes
+PASS I1 export presets 200, bad export 400
+PASS I1 checkpoint validate/save/download/upload/delete
+PASS I1 session delete 200

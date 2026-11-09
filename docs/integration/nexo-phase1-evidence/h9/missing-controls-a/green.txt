@@ -1,0 +1,35 @@
+# missing-controls-a GREEN (M1, 2026-11-08). R test written, unrun on M1 (no R): the coordinator runs it on the RTX.
+
+$ cd frontends/nexo && npx vitest run src/ui/forms/missingControlsA.test.ts
+ ✓ src/ui/forms/missingControlsA.test.ts (4 tests) 9ms
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+
+$ cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+ Test Files  111 passed (111)
+      Tests  508 passed (508)
+tsc: exit 0
+
+$ node tests/dual-ui/test_nexo_missing_controls_a.cjs  (mock, Chromium + WebKit, 1440x900)
+PASS MCA chromium species-before-action-no-selector-titled-groups
+PASS MCA chromium species-selector-after-initiate-team-default
+PASS MCA chromium species-pick-shifts-load-draws
+PASS MCA chromium fla-index-picker-member-redraw
+PASS MCA chromium fla-duplicate-keeps-pick
+PASS MCA chromium fla-save-reopen-keeps-pick
+PASS MCA chromium no-console-errors
+PASS MCA webkit species-before-action-no-selector-titled-groups
+PASS MCA webkit species-selector-after-initiate-team-default
+PASS MCA webkit species-pick-shifts-load-draws
+PASS MCA webkit fla-index-picker-member-redraw
+PASS MCA webkit fla-duplicate-keeps-pick
+PASS MCA webkit fla-save-reopen-keeps-pick
+PASS MCA webkit no-console-errors
+missing-controls-a OK
+exit=0
+
+Regression suites (mock), exit codes and PASS line counts:
+  test_nexo_inspector.cjs: exit 0, 42 PASS lines, last: H3 OK
+  test_nexo_card_chrome.cjs: exit 0, 29 PASS lines, last: H6-0 OK
+  test_nexo_save.cjs: exit 0, 16 PASS lines, last: H4 OK
+  test_nexo_canvas_edit.cjs: exit 0, 34 PASS lines, last: H2F OK

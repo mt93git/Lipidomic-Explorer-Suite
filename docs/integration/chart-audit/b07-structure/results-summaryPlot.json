@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "summaryPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "study design confirmed (Animal, independent), then added from the Library; \"Initiate Structural Analysis\" → card redrew; docs/integration/chart-audit/b07-structure/summaryPlot-1-before-actions.png → docs/integration/chart-audit/b07-structure/summaryPlot-1-draws.png, docs/integration/chart-audit/b07-structure/summaryPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (67628 B); card image 620x720 shown at 618x682; textSize=10 (catalog default 10)"
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b07-structure/summaryPlot-3-larger.png, docs/integration/chart-audit/b07-structure/summaryPlot-3-smaller.png"
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "52 Team controls all present (allowedInputs not in Team's markup: structuralGrouping, topClassesCount, selectedDetails, prop_group_var, prop_target_classes, diff_target_classes, prop_renormalize_subset, diff_cohort_var, diff_ref_group, diff_comp_group, diff_strata_filter, diff_sn_cohort_filter, diff_patient_var); module actions: Apply Custom Colors / Initiate Structural Analysis / Show Statistic Detail / Show Statistic Detail / Show Statistic Detail / Select All / None / Saturated (:0) / Unsaturated (:1+) / Apply Color Changes / Reset to Default Colors / Switch to Cohort View (Group 1) / Load Species Plot / Show Statistic Detail; textSize→14 redrew (docs/integration/chart-audit/b07-structure/summaryPlot-4-data-changed.png); invalid 2: state=error, redrew=false, message=\"Could not update the plot: Invalid value for textSize: below the minimum 6 ×\" (docs/integration/chart-audit/b07-structure/summaryPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background, Size) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b07-structure/summaryPlot-5-appearance.png; canvas Undo → \"Audit summaryPlot\", Redo → \"Audit summaryPlot\""
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no Nexo statistics workflow for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "page.waitForEvent: Timeout 180000ms exceeded while waiting for event \"download\""
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit summaryPlot\" with textSize=14, background kept; remove + Undo brought it back drawn; docs/integration/chart-audit/b07-structure/summaryPlot-9-duplicate.png"
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "2 sizes × 4 Inspector tabs, every <details> open, 0 offenders; docs/integration/chart-audit/b07-structure/summaryPlot-12-layout-1440-data.png, docs/integration/chart-audit/b07-structure/summaryPlot-12-layout-1440-card.png, docs/integration/chart-audit/b07-structure/summaryPlot-12-layout-1024-data.png, docs/integration/chart-audit/b07-structure/summaryPlot-12-layout-1024-card.png"
+ },
+ {
+  "plot": "summaryPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 500 (Internal Server Error) | Failed to load resource: the server responded with a status of 409 (Conflict) | Failed to load resource: the server responded with a status of 409 (Conflict) | Failed to load resource: the server responded with a status of 409 (Conflict)"
+ }
+]

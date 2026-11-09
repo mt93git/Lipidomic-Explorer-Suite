@@ -1,0 +1,44 @@
+[
+ {
+  "plot": "heat",
+  "check": "1-draws",
+  "status": "PASS",
+  "detail": "card tcinstance_6794b1eaef6b-plot_heat current at 100% (docs/integration/chart-audit/b01-dashboard/heat-1-draws-100.png); zoomed out to 41%: image (docs/integration/chart-audit/b01-dashboard/heat-1-draws-zoomed-out.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "3-size",
+  "status": "FAIL",
+  "detail": "Size section: typed 560×480 → plot 560×442 NOT APPLIED; Nature 1-col (89 mm) → plot 336×442 ok (docs/integration/chart-audit/b01-dashboard/heat-3-size-section.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "5-appearance",
+  "status": "PASS",
+  "detail": "ok: title, font colour, x axis title, y axis title, plot background, title before undo, Undo, Redo, Reset, preset Nexo, preset Publication, preset Team original restores Team look, title kept for 8-10; not offered: font size, x grid toggle, palette: \"Color palette This chart uses continuous or per-point colors. Categorical palettes apply to charts with series or groups.\", legend section, orientation (disabled for this plot) (docs/integration/chart-audit/b01-dashboard/heat-5-appearance.png, docs/integration/chart-audit/b01-dashboard/heat-5-preset-nexo.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "8-finish",
+  "status": "PASS",
+  "detail": "finished snapshot 1000×1104×629×680 (docs/integration/chart-audit/b01-dashboard/heat-8-finished.png); Edit returns to the live plot titled \"Audit heat\""
+ },
+ {
+  "plot": "heat",
+  "check": "9-duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate tcinstance_0288eaf704e8-plot_heat has the same inputs and title \"Audit heat\" (docs/integration/chart-audit/b01-dashboard/heat-9-duplicate.png); Remove + Undo restored it with its title"
+ },
+ {
+  "plot": "heat",
+  "check": "10-save-reopen",
+  "status": "PASS",
+  "detail": "saved audit-b01-dashboard-synthetic (4a958608610b…), reopened in a new page: title \"Audit heat\" and inputs identical (docs/integration/chart-audit/b01-dashboard/heat-10-reopened.png); deleted it (HTTP 200)"
+ },
+ {
+  "plot": "heat",
+  "check": "11-console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]
