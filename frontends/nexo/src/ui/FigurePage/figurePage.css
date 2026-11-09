@@ -1,0 +1,10 @@
+/* Team's viewing guides are transient and excluded from every export. */
+.figure-sheet.figure-guides::after{content:'';position:absolute;inset:5.8% 7.5%;border:1px dashed #7995b7;pointer-events:none;z-index:10001}
+.figure-panel>fieldset{border:0;padding:0;margin:0;min-width:0}
+.figure-panel .figure-plot-group{border:0;border-top:1px solid var(--line);padding:var(--space-3) 0;margin:var(--space-3) 0;min-width:0}
+.figure-panel .figure-plot-group legend{padding:0 var(--space-2) 0 0;font-size:var(--font-small);font-weight:600;color:var(--navy)}
+.figure-panel .figure-plot-group>div{margin-bottom:var(--space-3)}
+
+/* A template layout hides free text and shapes (kept in the document); say how many and where they show. */
+.figure-hidden-note{margin:0 0 var(--space-2);padding:var(--space-1) var(--space-2);border-radius:var(--radius-sm);background:var(--blue-bg);color:var(--blue-fg);font-size:var(--font-small);line-height:1.4}
+.figure-left-out{color:var(--amber-fg);font-weight:600}
