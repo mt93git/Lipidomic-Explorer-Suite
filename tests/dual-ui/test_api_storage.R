@@ -4,8 +4,8 @@ for (pkg in c("digest", "jsonlite")) if (!requireNamespace(pkg, quietly = TRUE))
 # No Shiny/application startup required for the standalone files backend.
 api_abort <- function(class, message) stop(structure(list(message = message, call = NULL),
   class = c(class, "error", "condition")))
-source("R/frontends/api/storage_files.R")
-source("R/frontends/api/storage.R")
+source("frontends/nexo-api/storage_files.R")
+source("frontends/nexo-api/storage.R")
 local({
   root <- tempfile(); on.exit(unlink(root, recursive = TRUE))
   store <- api_store(root)

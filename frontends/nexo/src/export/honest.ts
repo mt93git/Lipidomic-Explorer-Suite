@@ -1,7 +1,7 @@
 // Honest exports: say why a download cannot work, what the export will be, and keep backgrounds when asked.
 import type { BodyStatus } from '../cardStatus';
 import { imageSize } from './presets';
-/** R/frontends/api/cards.R clamps a render to 100–4000 px per side. */
+/** frontends/nexo-api/cards.R clamps a render to 100–4000 px per side. */
 export const API_RENDER_MAX_PX = 4000;
 const TRANSPARENT = 'rgba(0,0,0,0)';
 const shorten = (text: string, max = 90) => {

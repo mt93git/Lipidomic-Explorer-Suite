@@ -8,8 +8,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_schema_actions")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_schema_actions")
+source("frontends/nexo-api/engine.R")
 # The label is the button's own text: never its tooltip (bslib::tooltip text sits inside the button).
 doc <- xml2::read_html(as.character(shiny::tags$div(class = "tab-pane", `data-value` = "Plot",
   shiny::actionButton("p-go", shiny::tags$span("Show Statistic Detail",

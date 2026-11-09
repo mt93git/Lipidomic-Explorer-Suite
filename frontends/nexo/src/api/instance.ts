@@ -10,7 +10,7 @@ export function cardInstanceId(node: Pick<Node, 'id' | 'instance'>): string {
 }
 /**
  * Older Team canvases keep a family's own view as a node with no instance, its id the source (`<family>-<output>`).
- * The server restores it as tcinstance_fixed_<id> (R/frontends/api/cards.R api_card_fixed_id).
+ * The server restores it as tcinstance_fixed_<id> (frontends/nexo-api/cards.R api_card_fixed_id).
  */
 export function fixedInstanceId(nodeId: string): string | undefined {
   return /^[a-z][a-z0-9_]*-[A-Za-z][A-Za-z0-9_]*$/.test(nodeId) && !nodeId.startsWith('tcinstance_') ? `tcinstance_fixed_${nodeId.replace(/[^A-Za-z0-9]+/g, '_').toLowerCase()}` : undefined;

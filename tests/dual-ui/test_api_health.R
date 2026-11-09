@@ -1,6 +1,6 @@
 # Health reports which science the API runs and whether it matches production.
 # Pure file comparison: needs no Shiny, no plumber and no study data.
-source("R/frontends/api/health.R", local = TRUE)
+source("frontends/nexo-api/health.R", local = TRUE)
 
 make_tree <- function(files) {
   root <- tempfile("api-health-")

@@ -1,7 +1,7 @@
 // Chart audit b07 F3: module buttons the user pressed on a Team card (e.g. structural "Initiate Structural Analysis").
 // Team's canvas saves only a card's inputs, so Nexo keeps the pressed action ids, in order, in its own member
 // (NexoNode.actions; never the instance inputs) and asks the API to replay them on a copy, after a reopen and after
-// a session recovery (POST .../cards/<id>/replay, R/frontends/api/cards.R api_card_replay). Download buttons are
+// a session recovery (POST .../cards/<id>/replay, frontends/nexo-api/cards.R api_card_replay). Download buttons are
 // never recorded; at most 20 ids are kept.
 import type {Command} from './commands';
 import {setNexoActions, type Nexo} from './nexo';

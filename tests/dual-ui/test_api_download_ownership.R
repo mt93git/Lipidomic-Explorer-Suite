@@ -13,7 +13,7 @@
 # Part 1 (synthetic markup) needs only xml2; part 2 (a live Team session) is skipped when Team cannot run.
 if (!requireNamespace("xml2", quietly = TRUE)) { cat("SKIP test_api_download_ownership: xml2 not installed\n"); quit(status = 0) }
 local({
-  source("R/frontends/api/export.R", local = TRUE)
+  source("frontends/nexo-api/export.R", local = TRUE)
   ids <- function(links) vapply(links, `[[`, "", "id")
   at <- function(doc, id) xml2::xml_find_first(doc, sprintf("//*[@id='%s']", id))
   # b07 F5 shape: summary and network in two tab panes (navset_card_tab), the proportions card beside them with its
@@ -100,8 +100,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_download_ownership")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_download_ownership")
+source("frontends/nexo-api/engine.R")
 Sys.setenv(LIPIDOMIC_API_RENDER_DISK_CACHE = "0")
 local({
   s <- api_session_for_checkpoint("tests/dual-ui/fixtures/classic-seed7-synthetic.zip")

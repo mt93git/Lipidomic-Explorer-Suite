@@ -430,7 +430,7 @@ async function audit(browser, plot) {
       }
       ok(reached.size === want.size, `keyboard did not reach: ${[...want].filter(w => !reached.has(w)).join(', ')}`);
       notes.push(`keyboard (Tab) reaches ${[...reached].join(', ')}`);
-      // Round 2 (Astra): wave 2 offers the module's action buttons (schema actionControls, R/frontends/api/schema.R:140-145)
+      // Round 2 (Astra): wave 2 offers the module's action buttons (schema actionControls, frontends/nexo-api/schema.R:140-145)
       // and the computed per-group colour/shape controls (customCol_/customShape_, schema.R:146-150) in the Data tab.
       const sch = await page.evaluate(async p => { const r = await fetch(`/api/v1${p}/schema`); return r.ok ? r.json() : { status: r.status }; }, cardPathOf(page, id));
       const acts = (sch.actionControls || []).map(a => a.label);

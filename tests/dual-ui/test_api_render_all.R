@@ -7,8 +7,8 @@ status <- tryCatch({
 Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_HOSTED = "1", LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_render_all")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_render_all")
+source("frontends/nexo-api/engine.R")
 # NEXO_RENDER_FIXTURE=complete uses the complete synthetic fixture (docs/integration/nexo-complete-fixture.md),
 # where every catalog plot draws once its per-card steps run; the only expected failure is Team's own
 # filtered-donut bug.

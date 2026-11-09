@@ -11,8 +11,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
 if (!requireNamespace("sortable", quietly = TRUE)) { cat("SKIP test_api_timecourse_designer: package sortable not installed\n"); quit(status = 0) }
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_timecourse_designer")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_timecourse_designer")
+source("frontends/nexo-api/engine.R")
 
 s <- api_session_open("tests/dual-ui/fixtures/nexo-complete-synthetic.zip")
 on.exit(api_session_close(s), add = TRUE)

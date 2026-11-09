@@ -2,7 +2,7 @@
  *  module's button is pressed the API refuses the render (422, a silent req() in Team), so the card names the step and
  *  offers the button, with Team's wording. */
 export interface RunNeed { button: string; action: string; status: string; reason: string }
-/** The API's message when the module's req() stops the render (R/frontends/api/cards.R api_card_render). */
+/** The API's message when the module's req() stops the render (frontends/nexo-api/cards.R api_card_render). */
 export const UNAVAILABLE_INPUTS = 'The plot inputs are unavailable for this session.';
 const generate: RunNeed = {
   button: 'submit_longitudinal_btn', action: 'Generate analysis', status: 'Needs Generate Analysis',

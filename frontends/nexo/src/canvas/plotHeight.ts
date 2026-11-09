@@ -1,5 +1,5 @@
 // Chart audit b05 F5: a card whose Team module sets its own plot height through an input (catalog heightInput,
-// R/frontends/api/catalog.R; today only the violin view's violin_zoom_pct) is as tall as that plot plus the card
+// frontends/nexo-api/catalog.R; today only the violin view's violin_zoom_pct) is as tall as that plot plus the card
 // chrome. The height is the module's value (the API's plotHeight or the input itself), never recomputed here.
 import { CARD_CHROME } from '../cards';
 import { setNodeInputs, type Command } from '../state/commands';

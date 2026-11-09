@@ -1,11 +1,11 @@
 `%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
 # Resolve this script before switching to a separate production application tree.
 # LIPIDOMIC_API_DIR wins (tests and callr children); otherwise the sourced file's
-# own directory, then the --file= argument, then R/frontends/api under the cwd.
+# own directory, then the --file= argument, then frontends/nexo-api under the cwd.
 api_run_candidates <- c(Sys.getenv("LIPIDOMIC_API_DIR", ""),
   dirname(tryCatch(sys.frame(1)$ofile, error = function(e) "") %||% ""),
   dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1] %||% "")),
-  file.path(getwd(), "R", "frontends", "api"))
+  file.path(getwd(), "frontends", "nexo-api"))
 api_run_candidates <- api_run_candidates[nzchar(api_run_candidates) & !is.na(api_run_candidates)]
 api_run_dir <- Filter(function(d) file.exists(file.path(d, "session.R")), api_run_candidates)
 if (!length(api_run_dir)) stop("Cannot locate the Nexo API directory (set LIPIDOMIC_API_DIR).")
