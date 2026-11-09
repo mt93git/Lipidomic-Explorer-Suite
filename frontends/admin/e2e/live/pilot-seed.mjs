@@ -10,7 +10,7 @@
 // Users and rows are found first and created only when missing. Each run gives both personas a new generated password
 // (GoTrue admin API) and writes the passwords, the display names, the client name and the new order code to the file
 // named by ADMIN_PILOT_CREDENTIALS (mode 600; keep it out of git, e.g. e2e/live/.pilot-credentials.local.json, which
-// is git-ignored). Nothing is archived or deleted. A persona whose lab_staff row is archived or has another role, or
+// is git-ignored). The pilot global teardown withdraws the run dataset and archives its order; this seed deletes nothing. A persona whose lab_staff row is archived or has another role, or
 // whose account has a verified TOTP factor, stops the seed: fix it by hand, the seed changes no existing row.
 //
 // Environment (never committed):

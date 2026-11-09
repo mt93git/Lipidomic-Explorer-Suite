@@ -40,7 +40,8 @@ The origin in `ADMIN_PILOT_BASE_URL` serves Admin at `/admin` (live mode, connec
 ```sh
 cd frontends/admin
 export ADMIN_PILOT_CREDENTIALS=e2e/live/.pilot-credentials.local.json   # git-ignored; or a path outside the repo
-NEXT_PUBLIC_SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node e2e/live/pilot-seed.mjs
+export NEXT_PUBLIC_SUPABASE_URL=… NEXT_PUBLIC_SUPABASE_ANON_KEY=…
+SUPABASE_SERVICE_ROLE_KEY=… node e2e/live/pilot-seed.mjs
 ADMIN_E2E_PILOT=1 ADMIN_PILOT_BASE_URL=https://… npx playwright test
 # if nginx asks for a password in front of Nexo: ADMIN_PILOT_NEXO_USER=… ADMIN_PILOT_NEXO_PASSWORD=…
 ```
@@ -82,9 +83,15 @@ Not worked around in the spec; the seed creates only what the story needs to sta
 - Step 1 replaces the **current release policy of the staging lab** with "Paula and Stephania, 2 signatures"
   (`set_release_policy` archives the previous one, which stays in the history). Other staging releases then need
   these two personas; the Owner restores the policy on the Release policy screen after the run if needed.
-- Each run leaves a Released order of the synthetic client, its Team project and its files in `admin-files` and
-  `case-files`, and two lab staff accounts on `admin-staging.test`. Nothing is cleaned up (by design: the seed
-  deletes nothing, and the app has no delete rights in those buckets).
+- In `ADMIN_E2E_PILOT=1`, Playwright global teardown runs after success or failure. It reads this run's order code
+  and Stephania's credentials from `ADMIN_PILOT_CREDENTIALS`, signs in with the anon key, withdraws any released
+  dataset of that order through `withdraw_dataset`, then archives the order with `archived_at` and
+  `archived_reason = 'E2E pilot run finished'`. It never deletes rows or uses the service key for cleanup.
+  The order code is removed from the credential file only after cleanup succeeds; a refusal fails teardown and
+  keeps it for retry (`ADMIN_E2E_PILOT=1 node -e 'import("./e2e/live/pilot-teardown.mjs").then(m => m.default())'`
+  from `frontends/admin` with the same environment). Do not reseed over a failed cleanup's credential file.
+- The fixed synthetic client and both personas stay. The Team project, files, audit history and evidence screenshots
+  stay; withdrawal revokes the dataset's Nexo access. Screenshots still capture the release before teardown.
 - Each seed run resets both personas' passwords.
 
 ## Not covered

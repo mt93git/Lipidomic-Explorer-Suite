@@ -1,4 +1,5 @@
 import "server-only";
+import { uploadThenRecord } from "./upload-then-record";
 import { createHash, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { requireWorkspace } from "@/lib/session";
@@ -78,14 +79,19 @@ export async function acceptResultFile(reviewId: string, reason: string) {
       await writeDemoState(recordResultFile(demo, { order, id: resultId, sha256: review.sha256, actor: demoSession.displayName, now: new Date() }));
     } else {
       const client = (await createAdminClient())!;
-      const upload = await client.storage.from("admin-files").upload(path, review.bytes, { contentType: "text/plain", upsert: false });
-      if (upload.error) throw new Error(upload.error.message);
-      const { data, error } = await client.schema("admin").rpc("accept_result_file", {
-        p_order_id: review.order.id, p_storage_path: path, p_sha256: review.sha256,
-        p_sciex_os_version: review.sciexOsVersion, p_processing_method: review.processingMethod, p_summary: summary,
+      const storage = client.storage.from("admin-files");
+      resultId = await uploadThenRecord([{ path, bytes: review.bytes }], async file => {
+        const { error } = await storage.upload(file.path, file.bytes, { contentType: "text/plain", upsert: false });
+        if (error) throw new Error(error.message);
+        return true;
+      }, paths => storage.remove(paths), async () => {
+        const { data, error } = await client.schema("admin").rpc("accept_result_file", {
+          p_order_id: review.order.id, p_storage_path: path, p_sha256: review.sha256,
+          p_sciex_os_version: review.sciexOsVersion, p_processing_method: review.processingMethod, p_summary: summary,
+        });
+        if (error) throw new Error(error.message);
+        return data;
       });
-      if (error) throw new Error(error.message);
-      resultId = data;
     }
     review.accepted = true;
     return { id: resultId, code: review.order.code, stage: "Processed" };

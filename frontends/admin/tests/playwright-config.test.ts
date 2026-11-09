@@ -28,6 +28,7 @@ describe("Playwright configuration", () => {
     expect(config.webServer).toBeUndefined();
     expect(config.use?.baseURL).toBe("https://staging.example.test");
     expect(config.testMatch).toBe("live/pilot.spec.ts");
+    expect(config.globalTeardown).toBe("./e2e/live/pilot-teardown.mjs");
   });
 
   it("in identity mode runs only the identity spec against the given origin, with no dev server", async () => {

@@ -1,4 +1,5 @@
 import "server-only";
+import { uploadThenRecord as recordUploads } from "./upload-then-record";
 import { randomUUID } from "node:crypto";
 import { demoClients, demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
@@ -235,14 +236,7 @@ async function upload(bucket: string, path: string, bytes: Buffer): Promise<bool
 // error is thrown. 0012 lets that token remove only what no admin row records (admin-files) or a still pending
 // analysis file (case-files), so a call that did commit despite the error keeps its files.
 async function uploadThenRecord<T>(bucket: string, files: { path: string; bytes: Buffer }[], record: () => Promise<T>): Promise<T> {
-  const written: string[] = [];
-  try {
-    for (const file of files) if (await upload(bucket, file.path, file.bytes)) written.push(file.path);
-    return await record();
-  } catch (error) {
-    await removeQuietly(bucket, written);
-    throw error;
-  }
+  return recordUploads(files, file => upload(bucket, file.path, file.bytes), paths => removeQuietly(bucket, paths), record);
 }
 async function removeQuietly(bucket: string, paths: string[]): Promise<void> {
   if (!paths.length) return;
