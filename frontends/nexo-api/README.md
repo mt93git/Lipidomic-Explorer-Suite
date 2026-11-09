@@ -1,5 +1,9 @@
 # Nexo API (R Plumber) — dataset v1 sessions
 
+The API is a separate process, not part of the Shiny app, so it lives in `frontends/nexo-api/` (next to
+`frontends/nexo/`), outside Team's `R/` tree. It still runs from the repository root with Team's `R/` beside
+it: `Rscript --vanilla frontends/nexo-api/run.R` (`LIPIDOMIC_API_ROOT` points it at another Team tree).
+
 Admin wave 1 added one entry point: `POST /api/v1/datasets/sessions` opens a Nexo session straight
 from an Admin dataset v1 workbook (multipart `file` + `settings` JSON, or JSON `datasetId` stored in
 the `<workspace>-datasets` project of the storage layer). It runs Team's own steps (upload, confirmed

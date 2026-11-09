@@ -1,10 +1,10 @@
 # Load the statistics adapter here so both run.R and direct router users get it.
-source(file.path(if (exists("api_run_dir")) api_run_dir else "R/frontends/api", "statistics.R"), local = TRUE)
-source(file.path(if (exists("api_run_dir")) api_run_dir else "R/frontends/api", "export.R"), local = TRUE)
+source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "statistics.R"), local = TRUE)
+source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "export.R"), local = TRUE)
 if (!exists("api_dataset_route", mode = "function"))
-  source(file.path(if (exists("api_run_dir")) api_run_dir else "R/frontends/api", "datasets.R"), local = globalenv())
+  source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "datasets.R"), local = globalenv())
 if (!exists("api_pool_status", mode = "function"))
-  source(file.path(if (exists("api_run_dir")) api_run_dir else "R/frontends/api", "pool.R"), local = globalenv())
+  source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "pool.R"), local = globalenv())
 
 # The router's default JSON serializer is installed in run.R.
 api_error <- function(res, status, error, message) {

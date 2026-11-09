@@ -8,8 +8,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_restore_cards")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_restore_cards")
+source("frontends/nexo-api/engine.R")
 is_drawn <- function(rendered) if (identical(rendered$render, "png"))
   length(rendered$png) > 8L && identical(rendered$png[1:8], as.raw(c(137, 80, 78, 71, 13, 10, 26, 10))) else
   length(rendered$figure$data) > 0L

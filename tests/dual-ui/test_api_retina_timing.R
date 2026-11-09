@@ -11,10 +11,10 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV", "LIPIDOMIC_API_WORKERS"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_retina_timing")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_retina_timing")
 cache_dir <- tempfile("retina-render-cache-"); dir.create(cache_dir)
 Sys.setenv(LIPIDOMIC_API_RENDER_CACHE_DIR = cache_dir, LIPIDOMIC_API_RENDER_DISK_CACHE = "1")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/engine.R")
 fails <- function(expr, class = "api_bad_request") tryCatch({ force(expr); FALSE }, error = function(e) inherits(e, class))
 png_dims <- function(raw) {
   stopifnot(is.raw(raw), length(raw) > 24L, identical(raw[2:4], charToRaw("PNG")))
@@ -65,7 +65,7 @@ stopifnot(isTRUE(p2$cached), is.null(p2$dpr), identical(p2$render, "plotly"))
 cat("PASS memory cache keeps 1x and 2x apart; a Plotly card ignores dpr\n")
 
 # 4. The route: dpr 3 or 0 -> 400; a dpr 2 render answers a PNG with a Server-Timing header.
-api_run_dir <- normalizePath("R/frontends/api"); root <- getwd()
+api_run_dir <- normalizePath("frontends/nexo-api"); root <- getwd()
 router <- plumber::pr_set_serializer(plumber::plumb(file.path(api_run_dir, "plumber.R")),
   plumber::serializer_unboxed_json(null = "null", na = "null", digits = NA))
 setwd(root)
@@ -125,7 +125,7 @@ cat("PASS route: a cached render says so in Server-Timing ", again_header, "\n",
 # with computed controls are not pooled, a worker drew a per-group colour card differently; test_api_pool.R 7b),
 # even with a ready worker: the main process draws it at 2x, and a second call is a cache hit.
 if (all(vapply(c("callr", "promises", "later"), requireNamespace, logical(1), quietly = TRUE))) {
-  source("R/frontends/api/pool.R")
+  source("frontends/nexo-api/pool.R")
   files <- c("health.R", "session.R", "schema.R", "catalog.R", "cards.R", "storage_files.R", "storage.R",
     "analysis.R", "palette.R", "cohort.R", "nexo_store.R", "render_disk.R", "pool.R")
   api_pool_start(1L, files, getwd(), api_run_dir)

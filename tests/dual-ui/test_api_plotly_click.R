@@ -12,8 +12,8 @@
 # when Team cannot run (the coordinator runs it).
 if (!requireNamespace("jsonlite", quietly = TRUE)) { cat("SKIP test_api_plotly_click: jsonlite not installed\n"); quit(status = 0) }
 local({
-  source("R/frontends/api/session.R", local = TRUE)
-  source("R/frontends/api/cards.R", local = TRUE)
+  source("frontends/nexo-api/session.R", local = TRUE)
+  source("frontends/nexo-api/cards.R", local = TRUE)
   if (!exists("api_card_click_sources") || !exists("api_plotly_points", mode = "function"))
     stop("FAIL the API has no plotly_click bridge (api_card_click_sources / api_plotly_points)")
   # Every allowed source is one Team registers for plotly_click on that output and observes on a canvas copy.
@@ -64,9 +64,9 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV", "LIPIDOMIC_API_WORKERS"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_plotly_click")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_plotly_click")
 Sys.setenv(LIPIDOMIC_API_RENDER_DISK_CACHE = "0")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/engine.R")
 fails <- function(expr, class = "api_bad_request") tryCatch({ force(expr); FALSE }, error = function(e) inherits(e, class))
 s <- api_session_for_checkpoint("tests/dual-ui/fixtures/nexo-complete-synthetic.zip") # registered: the route below looks it up
 on.exit(api_session_close(s), add = TRUE)
@@ -139,7 +139,7 @@ if (!fails(api_card_event(s, "tcinstance_000000000000", list(event = "plotly_cli
 cat("PASS refusals: plotly_hover, another plot's source and a plot without a click bridge are 400; an unknown card 404\n")
 
 # The HTTP route.
-api_run_dir <- normalizePath("R/frontends/api"); root <- getwd()
+api_run_dir <- normalizePath("frontends/nexo-api"); root <- getwd()
 router <- plumber::pr_set_serializer(plumber::plumb(file.path(api_run_dir, "plumber.R")),
   plumber::serializer_unboxed_json(null = "null", na = "null", digits = NA))
 setwd(root)

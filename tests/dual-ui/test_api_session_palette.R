@@ -20,8 +20,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0", LIPIDOMIC_API_RENDER_DISK_CACHE = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV", "LIPIDOMIC_API_WORKERS"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_session_palette")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_session_palette")
+source("frontends/nexo-api/engine.R")
 if (!exists("api_palette_update", mode = "function")) stop("FAIL palette.R is not loaded by engine.R (no api_palette_update)")
 
 fixture <- "tests/dual-ui/fixtures/nexo-complete-synthetic.zip"
@@ -134,7 +134,7 @@ cat(sprintf("PASS PATCH palette {context: Group1, colors: {%s: %s}} sets Team's 
 descriptor <- list(source = "qc_pca_tab-pca2dPlot", render = "png", fixed = FALSE, explicit = list())
 key_edited <- api_render_disk_key(s, descriptor, 620, 600, "png")
 # pool.R is in run.R's engine (not engine.R): the workers' state (api_pool_state) carries the palette too.
-if (!exists("api_pool_state", mode = "function")) source("R/frontends/api/pool.R", local = globalenv())
+if (!exists("api_pool_state", mode = "function")) source("frontends/nexo-api/pool.R", local = globalenv())
 stopifnot(identical(api_pool_state(s)$palette, api_palette_key(s)))
 
 state1 <- edited$state
@@ -184,7 +184,7 @@ cat("PASS round trip: Team's export saves the colour (state.json color_shape) an
 if (requireNamespace("plumber", quietly = TRUE)) local({
   s3 <- api_session_for_checkpoint(fixture)
   # plumber.R reads api_run_dir from the global environment (as in test_api_plotly_click.R).
-  assign("api_run_dir", normalizePath("R/frontends/api"), envir = globalenv()); root <- getwd()
+  assign("api_run_dir", normalizePath("frontends/nexo-api"), envir = globalenv()); root <- getwd()
   router <- plumber::pr_set_serializer(plumber::plumb(file.path(api_run_dir, "plumber.R")),
     plumber::serializer_unboxed_json(null = "null", na = "null", digits = NA))
   setwd(root)

@@ -10,8 +10,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 sink(diagnostics)
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_stress")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_stress")
+source("frontends/nexo-api/engine.R")
 sink()
 target <- as.integer(Sys.getenv("NEXO_STRESS_CARDS", "24"))
 timed <- function(expr) { t <- proc.time()[["elapsed"]]; value <- force(expr); list(value = value, s = proc.time()[["elapsed"]] - t) }

@@ -12,7 +12,7 @@ local({
     setwd(root)
     Sys.setenv(LIPIDOMIC_API_CHECKPOINT_DIR = directory, LIPIDOMIC_API_PORT = port,
       LIPIDOMIC_STORAGE_DIR = file.path(directory, "store"), LIPIDOMIC_API_WORKSPACE = "unknown-session-test")
-    source("R/frontends/api/run.R")
+    source("frontends/nexo-api/run.R")
   }, args = list(getwd(), directory, port), libpath = .libPaths(), cmdargs = "--vanilla")
   on.exit({ child$kill(); unlink(directory, recursive = TRUE) })
   base <- sprintf("http://127.0.0.1:%d/api/v1/sessions/nosuch999", port)

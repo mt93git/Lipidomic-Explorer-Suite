@@ -10,9 +10,9 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0", LIPIDOMIC_API_RENDER_DISK_CACHE = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV", "LIPIDOMIC_API_WORKERS"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_pool")
-source("R/frontends/api/engine.R"); source("R/frontends/api/pool.R")
-api_dir <- normalizePath("R/frontends/api")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_pool")
+source("frontends/nexo-api/engine.R"); source("frontends/nexo-api/pool.R")
+api_dir <- normalizePath("frontends/nexo-api")
 files <- c("health.R", "session.R", "schema.R", "catalog.R", "cards.R", "storage_files.R", "storage.R",
   "analysis.R", "palette.R", "cohort.R", "nexo_store.R", "render_disk.R", "pool.R")
 wait_for <- function(ok, timeout = 240) {
@@ -137,7 +137,7 @@ if (requireNamespace("plumber", quietly = TRUE) && requireNamespace("httr", quie
     setwd(root)
     Sys.setenv(LIPIDOMIC_API_CHECKPOINT_DIR = directory, LIPIDOMIC_API_PORT = port, LIPIDOMIC_API_WORKERS = "2",
       LIPIDOMIC_STORAGE_DIR = file.path(directory, "store"), LIPIDOMIC_API_WORKSPACE = "pool-test")
-    source("R/frontends/api/run.R")
+    source("frontends/nexo-api/run.R")
   }, args = list(getwd(), directory, port), libpath = .libPaths(), cmdargs = "--vanilla")
   on.exit({ child$kill(); unlink(directory, recursive = TRUE) })
   base <- sprintf("http://127.0.0.1:%d/api/v1", port)

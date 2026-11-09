@@ -4,9 +4,9 @@ for (pkg in c("jsonlite", "readxl", "writexl", "openxlsx")) if (!requireNamespac
 Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_HOSTED = "1", LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_dataset_session")
-source("R/frontends/api/engine.R")
-source("R/frontends/api/datasets.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_dataset_session")
+source("frontends/nexo-api/engine.R")
+source("frontends/nexo-api/datasets.R")
 fixture <- "tests/dual-ui/fixtures/admin-dataset-v1-synthetic.xlsx"
 stopifnot(file.exists(fixture))
 samples <- c("Control_1", "Control_2", "Control_3", "Treated_1", "Treated_2", "Treated_3")

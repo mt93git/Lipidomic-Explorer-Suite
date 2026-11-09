@@ -17,9 +17,9 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV",
   "LIPIDOMIC_API_WORKERS", "LIPIDOMIC_API_WORKER_REUSE"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_pool_warm")
-source("R/frontends/api/engine.R"); source("R/frontends/api/pool.R")
-api_dir <- normalizePath("R/frontends/api")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_pool_warm")
+source("frontends/nexo-api/engine.R"); source("frontends/nexo-api/pool.R")
+api_dir <- normalizePath("frontends/nexo-api")
 files <- c("health.R", "session.R", "schema.R", "catalog.R", "cards.R", "storage_files.R", "storage.R",
   "analysis.R", "palette.R", "cohort.R", "nexo_store.R", "render_disk.R", "pool.R")
 wait_for <- function(ok, timeout = 240) {
