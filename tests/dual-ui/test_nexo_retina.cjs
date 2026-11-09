@@ -1,6 +1,6 @@
 // Phase 1 close (retina-timing): on a Retina screen (deviceScaleFactor 2) a live PNG card at >= 100 % zoom asks the
 // render route for dpr 2, and its image has twice its CSS width in pixels; zoomed out (frozen tier, < 100 %) it asks
-// for dpr 1. The mock honours dpr as the API does (R/frontends/api/cards.R api_card_render: width*dpr x height*dpr).
+// for dpr 1. The mock honours dpr as the API does (frontends/nexo-api/cards.R api_card_render: width*dpr x height*dpr).
 // Mock build, Chromium and WebKit, 1440x900. node tests/dual-ui/test_nexo_retina.cjs
 'use strict';
 const { spawn, spawnSync } = require('node:child_process');

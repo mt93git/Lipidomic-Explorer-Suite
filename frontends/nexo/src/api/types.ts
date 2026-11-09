@@ -40,7 +40,7 @@ export interface ActionControl { id: string; label: string; tab?: string | null 
 export interface UploadControl { id: string; label: string; accept: string }
 export interface CardUpload { settled: boolean; inputs: Record<string, unknown>; file: {name: string; size: number} }
 export interface CardSchema { controls: SchemaControl[]; actions: string[]; actionControls?: ActionControl[]; tabs: Record<string, unknown>; uploads?: UploadControl[];
-  /** Pilot F1: this card's group colours follow Team's session palette (R/frontends/api/palette.R). */
+  /** Pilot F1: this card's group colours follow Team's session palette (frontends/nexo-api/palette.R). */
   sessionPalette?: boolean }
 
 export interface Checkpoint { near_limit?: boolean; id:string; name:string; sizeBytes:number; sha256:string; createdAt:string; source: 'store'|'folder' }

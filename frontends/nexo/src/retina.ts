@@ -1,7 +1,7 @@
 import type { Tier } from './tiers';
 
 /**
- * Pixel ratio a PNG card asks the render route for (POST …/render `dpr`, 1 or 2; R/frontends/api/cards.R).
+ * Pixel ratio a PNG card asks the render route for (POST …/render `dpr`, 1 or 2; frontends/nexo-api/cards.R).
  * A live card at >= 100 % zoom on a Retina screen asks for 2: Team's renderPlot draws width*2 x height*2 for a
  * Retina browser (same science, more pixels) and the <img> keeps its logical CSS size. Frozen, culled and
  * zoomed-out cards (the image is shown at or below its logical size) and prefetches stay at 1x.

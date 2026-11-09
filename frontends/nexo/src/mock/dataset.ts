@@ -6,7 +6,7 @@ export const mockDatasets: MockDataset[] = [{
   samples: ['Control_1', 'Control_2', 'Control_3', 'Treated_1', 'Treated_2', 'Treated_3'], lipids: 76
 }];
 export const mockDatasetRecord = (adminDatasetId: string) => mockDatasets.find(d => d.adminDatasetId === adminDatasetId);
-// Team's QC widgets with their defaults, as R/frontends/api/datasets.R lists them (api_dataset_required_settings).
+// Team's QC widgets with their defaults, as frontends/nexo-api/datasets.R lists them (api_dataset_required_settings).
 export const mockRequiredSettings: Record<string, Omit<PreparationChoice, 'name'>> = {
   minDetectionPct: { label: 'Minimum detection (%)', kind: 'number', min: 0, max: 100, step: 5, teamControlDefault: 0 },
   detectionScope: { label: 'Detection across', kind: 'choice', choices: ['global', 'group'], teamControlDefault: 'global' },

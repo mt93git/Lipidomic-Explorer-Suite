@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { prepareState, setSample, setSamples, setValue, settingsBody, canConfirm } from './datasetPrepare';
 import type { PreparationChoices } from '../api/types';
 
-// The 422 preparation_choices_required body as R/frontends/api/datasets.R builds it: Team's QC widget
+// The 422 preparation_choices_required body as frontends/nexo-api/datasets.R builds it: Team's QC widget
 // defaults in teamControlDefault, every Abundance sample in availableSamples.
 const samples = ['Control_1', 'Control_2', 'Control_3', 'Treated_1', 'Treated_2', 'Treated_3'];
 const body: PreparationChoices = {

@@ -1,4 +1,4 @@
-// Mock of R/frontends/api/palette.R: Team's session palette (data hub "Colors & palettes"), session-wide, never per
+// Mock of frontends/nexo-api/palette.R: Team's session palette (data hub "Colors & palettes"), session-wide, never per
 // card. Synthetic Group 1 levels (the dashboard mock traces' names); Team's defaults (initialize_color_map, Set1) and
 // Team's presets (R/utils_colors.R COLOR_PALETTE_PRESETS). Kept per session; travels with a saved checkpoint as
 // Team's state.json color_shape does.

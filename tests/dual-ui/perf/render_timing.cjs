@@ -56,10 +56,10 @@ function serverTiming(header) {
   return out;
 }
 const PNG_SIZE = buf => buf.length > 24 && buf.toString('ascii', 1, 4) === 'PNG' ? `${buf.readUInt32BE(16)}x${buf.readUInt32BE(20)}` : '';
-// Every phase the route measures (R/frontends/api/cards.R api_timing_*); "other" = total - the sum of the others.
+// Every phase the route measures (frontends/nexo-api/cards.R api_timing_*); "other" = total - the sum of the others.
 const PHASES = ['request', 'pool', 'queue', 'args', 'descriptor', 'memory', 'cache', 'open', 'card', 'input', 'flush', 'output',
   'encode', 'revision', 'store', 'rekey', 'disk', 'guard', 'other', 'total'];
-// The create route's phases (R/frontends/api/cards.R api_timing_create_log).
+// The create route's phases (frontends/nexo-api/cards.R api_timing_create_log).
 const CREATE_PHASES = ['request', 'validate', 'warm', 'defaults', 'inputs', 'instance', 'flush', 'seed', 'card', 'guard', 'other', 'total'];
 const rows = [];
 async function render(label, sessionId, instanceId, step, width, height, dpr) {

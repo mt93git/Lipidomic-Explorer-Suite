@@ -279,7 +279,7 @@ export const renderCard = sessionRoute('renderCard', (id: string, instance: stri
   prefetchMock.requests.push({instance,priority:options?.priority?.()??'HIGH',width,height});
   if(prefetchMock.delayMs)await new Promise(r=>setTimeout(r,prefetchMock.delayMs));
   const card = mockCard(id,instance), entry = catalog.outputs.find(e => e.id === card.source)!;
-  // As the server (R/frontends/api/cards.R): a card renders natively; "json" means its native JSON.
+  // As the server (frontends/nexo-api/cards.R): a card renders natively; "json" means its native JSON.
   if (format !== 'auto' && format !== 'json' && format !== card.render) throw new Error(`This card supports native ${card.render} rendering; requested ${format}`);
   // Team's own gate for the editable vector views (validate() in the QC module), as the real API answers it (422).
   if (card.source === 'qc_pca_tab-bqcDeviationPlot' && mockBqcPlaceholder(card.inputs)) throw new Error(MOCK_BQC_PLACEHOLDER);
@@ -353,7 +353,7 @@ function mockDataFingerprint(id:string, instance:string):string {
  const inputs=(cards.get(`${id}/${legacy}`)??cards.get(`${id}/${instance}`))?.inputs;
  return `mock-data:${String(inputs?.violin_lipid??'PC(16:0/18:1)')}`;
 }
-// As the server (R/frontends/api/statistics.R): only a violin card the session knows, or the dashboard violin's v0 instance.
+// As the server (frontends/nexo-api/statistics.R): only a violin card the session knows, or the dashboard violin's v0 instance.
 function mockViolinCard(id:string, instance:string) { mockSession(id); if (instance === 'tcinstance_v0_violin') return; if (cards.get(`${id}/${instance}`)?.source !== 'results_dashboard-plot_violin') throw new Error('Statistics are available for violin cards only'); }
 export const violinStatistics = sessionRoute('violinStatistics', (id:string, instance:string, body:import('./api/types').ViolinRequest):Promise<import('./api/types').ViolinReply> => mock ? enqueue(()=>(mockViolinCard(id,instance),mockViolinStatistics(instance,body,mockDataFingerprint(id,instance)))) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/statistics/violin`,body));
 export const violinPolicy = sessionRoute('violinPolicy', (id:string):Promise<import('./api/types').ViolinPolicy> => mock ? enqueue(async()=>({...mockViolinPolicy})) : request(`${path(id)}/statistics/violin/policy`));
@@ -448,7 +448,7 @@ export async function updateAnalysis(id:string, inputs:Inputs):Promise<import('.
  invalidateAnalysis(id); return result;
 }
 
-// Team's session palette (pilot F1; R/frontends/api/palette.R): session-wide group colours. A change redraws every card.
+// Team's session palette (pilot F1; frontends/nexo-api/palette.R): session-wide group colours. A change redraws every card.
 if (mock) Object.assign(window, {__nexoPaletteMock: mockPaletteCounters});
 export const getPalette = sessionRoute('getPalette', (id:string):Promise<SessionPalette> => mock ? enqueue(async () => (mockSession(id), mockPaletteGet(id))) : request(`${path(id)}/palette`));
 export async function updatePalette(id:string, change:PaletteChange):Promise<SessionPalette> {
@@ -465,7 +465,7 @@ function mockSessionColours<T>(id:string, figure:T):T {
  return figure;
 }
 
-// Targeted lipid cohort (Team's Single Lipid Analysis Mode; R/frontends/api/cohort.R). A change redraws every card.
+// Targeted lipid cohort (Team's Single Lipid Analysis Mode; frontends/nexo-api/cohort.R). A change redraws every card.
 export type CohortState = import('./mock/cohort').CohortState;
 if (mock) Object.assign(window, {__nexoCohortMock: mockCohortCounters});
 export const getCohort = sessionRoute('getCohort', (id:string, options?: RequestOptions):Promise<CohortState> => mock ? enqueue(async () => (mockSession(id), mockCohortGet(id)), {...options, shared:true}) : request(`${path(id)}/cohort`, undefined, undefined, undefined, {...options, shared:true}));

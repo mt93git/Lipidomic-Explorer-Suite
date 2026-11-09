@@ -1,5 +1,5 @@
 // Team's session palette (pilot F1): the data hub's "Colors & palettes" editor. Every group-coloured card takes its
-// group colours from the session (R/frontends/api/palette.R), so a change here redraws them all. Nexo sends the
+// group colours from the session (frontends/nexo-api/palette.R), so a change here redraws them all. Nexo sends the
 // change; Team's own inputs and observers compute the colours.
 import type { Command } from '../state/commands';
 import type { CanvasState } from '../state/types';

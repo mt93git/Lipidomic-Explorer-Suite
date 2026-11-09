@@ -134,7 +134,7 @@ async function addFromLibrary(page, plot) {
   const find = async () => { await page.getByRole('searchbox', { name: 'Search plots', exact: true }).fill(plot.label); await page.waitForTimeout(500); };
   await find();
   // Team gates the correlation network on a confirmed independent design; an API without the catalog gate
-  // (needs "de", fixed in R/frontends/api/catalog.R) offers no step for it, so confirm through a gated row.
+  // (needs "de", fixed in frontends/nexo-api/catalog.R) offers no step for it, so confirm through a gated row.
   if (plot.designVia && !(await page.locator(`button.library-add[aria-label="Confirm study design… (${plot.label})"]`).count())) {
     await page.getByRole('searchbox', { name: 'Search plots', exact: true }).fill(plot.designVia); await page.waitForTimeout(500);
   }

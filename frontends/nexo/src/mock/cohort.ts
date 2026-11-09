@@ -1,4 +1,4 @@
-// Mock of R/frontends/api/cohort.R: synthetic lipids only; the cohort is kept per session and travels
+// Mock of frontends/nexo-api/cohort.R: synthetic lipids only; the cohort is kept per session and travels
 // with a saved checkpoint as the real nexo-targeted-cohort-v1.json member does.
 export interface CohortState { active:boolean; lipids:string[]; available:{lipid:string;class:string}[] }
 const available = [

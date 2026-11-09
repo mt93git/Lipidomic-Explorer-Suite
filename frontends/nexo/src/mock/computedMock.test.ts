@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest';
 import {schemaFor,mockComputedLabel} from './schema';
-// The mock matches what the real API serves (R/frontends/api/schema.R, measured on the synthetic fixture). Pilot F1: the
+// The mock matches what the real API serves (frontends/nexo-api/schema.R, measured on the synthetic fixture). Pilot F1: the
 // per-group pickers live where they reach a canvas copy's plot (the cellular polar map); a QC copy offers none.
 it('serves Team\'s pch shape options and a lowercase checkboxgroup',()=>{
  const shape=schemaFor('cellular_org_tab-polarPlot').controls.find(c=>c.id==='customShape_Control');

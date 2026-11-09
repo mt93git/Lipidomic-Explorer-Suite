@@ -31,8 +31,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("pilot_team_roundtrip")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("pilot_team_roundtrip")
+source("frontends/nexo-api/engine.R")
 
 failed <- 0L
 pass <- function(...) cat("PASS", ..., "\n", sep = "")
@@ -83,7 +83,7 @@ main <- function() {
     paste(unique(vapply(instances, function(n) n$instance$source, "")), collapse = ", ")))
 
   # (iii) Team's restore through shared_data_server and team_canvas_server (the API engine's headless Team session,
-  # R/frontends/api/session.R api_session_open: the archive is imported by Team's own data_hub import).
+  # frontends/nexo-api/session.R api_session_open: the archive is imported by Team's own data_hub import).
   opened <- attempt(api_session_open(zip))
   if (!is.null(opened$error)) { fail(" (iii) Team's restore of the checkpoint failed: ", opened$error) } else {
     s <- opened$value
