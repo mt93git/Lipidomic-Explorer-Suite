@@ -184,9 +184,28 @@ api_pixelratio <- function(s, output, dpr) {
 api_loop <- later::create_loop()
 api_with_loop <- function(s, expr) later::with_loop(s$loop %||% api_loop,
   shiny::withReactiveDomain(s$domain, expr))
-api_guard <- function(s, expr) {
-  setTimeLimit(elapsed = 120, transient = TRUE)
-  on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE))
+# One request deadline for nested guarded calls (api_guard / api_flush run inside each other). The inner call
+# may shorten the deadline, never extend it, and on exit restores the outer call's remaining time (no limit when
+# it was the outermost). setTimeLimit treats elapsed <= 0 as no limit, hence the 1 ms floor. On an error exit
+# past the outer deadline the limit stays off: the error is already unwinding (a new one would replace it).
+api_deadline <- new.env(parent = emptyenv())
+api_time_limited <- function(expr, seconds = getOption("nexo.api.time_limit", 120)) {
+  outer <- api_deadline$at
+  start <- proc.time()[["elapsed"]]
+  api_deadline$at <- min(outer %||% Inf, start + seconds)
+  done <- FALSE
+  on.exit({
+    api_deadline$at <- outer
+    left <- if (is.null(outer)) Inf else outer - proc.time()[["elapsed"]]
+    if (is.finite(left) && (left > 0 || done)) setTimeLimit(elapsed = max(left, 0.001), transient = TRUE)
+    else setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE)
+  })
+  setTimeLimit(elapsed = max(api_deadline$at - start, 0.001), transient = TRUE)
+  value <- expr
+  done <- TRUE
+  value
+}
+api_guard <- function(s, expr) api_time_limited({
   tryCatch(expr, error = function(e) {
     if (grepl("time limit", conditionMessage(e), fixed = TRUE)) {
       s$broken <- TRUE
@@ -194,7 +213,7 @@ api_guard <- function(s, expr) {
     }
     stop(e)
   })
-}
+})
 api_inputs <- function(s, ...) {
   api_alive(s)
   values <- list(...)
@@ -227,9 +246,7 @@ api_domain <- function(mock, bus) {
 
 api_flush <- function(s, until = NULL, max = 8L) {
   api_alive(s)
-  setTimeLimit(elapsed = 120, transient = TRUE)
-  on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE))
-  tryCatch(api_with_loop(s, for (i in seq_len(max)) {
+  api_time_limited(tryCatch(api_with_loop(s, for (i in seq_len(max)) {
     api_debug("flush ", i, " queue=", length(s$bus$queue))
     if (is.function(s$on_flush)) s$on_flush()
     applied <- s$bus$drain_echo(s$mock)
@@ -241,7 +258,7 @@ api_flush <- function(s, until = NULL, max = 8L) {
       api_abort("session_lost", "Session flush timed out; reopen the checkpoint.")
     }
     stop(e)
-  })
+  }))
   invisible(s)
 }
 # Lazy outputs (H8). Team's browser computes only the outputs on screen (Shiny's

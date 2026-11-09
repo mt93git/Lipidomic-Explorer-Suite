@@ -61,25 +61,44 @@ api_catalog_copy <- list(
   "cell_comparison_plot" = list(label = "Cohort comparison", description = "Compare prepared feature values between cohorts.", group = "Cell comparisons", needs = NULL)
 )
 
+api_catalog_render_kinds <- c(renderPlotly = "plotly", renderPlot = "png", renderImage = "png",
+  renderVisNetwork = "visnetwork", renderUI = "html")
+# The Team frontend files, read once. A tree may define an output outside its family's module file
+# (Max's hooks tree: qc_pca_tab-guided_qc_plot in R/frontends/team/qc-server.R).
+api_catalog_team_texts <- local({
+  cache <- list()
+  function(dir) {
+    if (is.null(cache[[dir]])) {
+      files <- sort(list.files(dir, pattern = "\\.R$", recursive = TRUE, full.names = TRUE))
+      cache[[dir]] <<- vapply(files, function(f) paste(readLines(f, warn = FALSE), collapse = "\n"), character(1))
+    }
+    cache[[dir]]
+  }
+})
+# How Team renders output$<output>: the family file's definition, else the one render kind the Team
+# frontend files agree on; NULL when none or when they disagree.
+api_catalog_render_kind <- function(output, family_file, team_dir = "R/frontends/team") {
+  pattern <- paste0("output\\$", output,
+    "\\s*<-\\s*(?:[A-Za-z0-9.]+::)?(renderPlotly|renderPlot|renderImage|renderVisNetwork|renderUI)\\s*\\(")
+  renderers <- function(texts) unique(unlist(lapply(texts, function(text) {
+    hit <- regmatches(text, regexec(pattern, text, perl = TRUE))[[1L]]
+    if (length(hit) >= 2L) hit[[2L]]
+  })))
+  found <- renderers(paste(readLines(family_file, warn = FALSE), collapse = "\n"))
+  if (!length(found)) found <- renderers(api_catalog_team_texts(team_dir))
+  if (length(found) != 1L) return(NULL)
+  unname(api_catalog_render_kinds[[found]])
+}
 api_catalog_render <- function(id, family, output) {
   if (family %in% c("results_dashboard", "team_cell")) return("plotly")
-  # These two outputs are injected by legacy_vector_adapter.R, not the module file.
+  # Team adds these two next to the 2D plots under a generated name (legacy_vector_adapter.R on
+  # production, the qc_plot_outputs hook on the hooks tree), always as renderPlotly.
   if (id %in% c("qc_pca_tab-pca2dVectorPlot", "qc_pca_tab-load2dVectorPlot")) return("plotly")
   path <- if (family == "group_comparison_tab") "R/frontends/team/group_comparison.R" else
     team_plot_instance_family_files[[family]]
-  pattern <- paste0("output\\$", output,
-    "\\s*<-\\s*(?:[A-Za-z0-9.]+::)?(renderPlotly|renderPlot|renderImage|renderVisNetwork|renderUI)\\s*\\(")
-  # Upstream keeps Team-only renderers outside the module file (e.g. guided_qc_plot in
-  # R/frontends/team/qc-server.R, wired through R/core/hooks.R): look there when the module has none.
-  hit <- character()
-  for (file in c(path, sort(list.files("R/frontends/team", pattern = "\\.R$", recursive = TRUE, full.names = TRUE)))) {
-    text <- paste(readLines(file, warn = FALSE), collapse = "\n")
-    hit <- regmatches(text, regexec(pattern, text, perl = TRUE))[[1L]]
-    if (length(hit) >= 2L) break
-  }
-  if (length(hit) < 2L) stop("Cannot classify Team output: ", id, call. = FALSE)
-  unname(c(renderPlotly = "plotly", renderPlot = "png", renderImage = "png",
-    renderVisNetwork = "visnetwork", renderUI = "html")[[hit[[2L]]]])
+  kind <- api_catalog_render_kind(output, path)
+  if (is.null(kind)) stop("Cannot classify Team output: ", id, call. = FALSE)
+  kind
 }
 # Cards whose module sets its own plot height through an input (chart audit b05 F5): the card
 # reports that input's settled value as plotHeight (cards.R). Only the violin view for now.
