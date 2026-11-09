@@ -1,0 +1,37 @@
+.plot-editor { color:var(--ink); background:var(--paper); font-family:var(--font); font-size:var(--font-chrome); padding:var(--space-3); }
+.plot-editor details { border-block-end:1px solid var(--line); padding-block:var(--space-2); }
+.plot-editor summary { cursor:pointer; color:var(--navy); padding-block:var(--space-2); }
+.plot-editor p { color:var(--muted); overflow-wrap:anywhere; }
+.plot-editor label { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); margin-block:var(--space-2); }
+.plot-editor input, .plot-editor select, .plot-editor button { min-width:0; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm); padding:var(--space-1); font:inherit; }
+.plot-editor input, .plot-editor select { max-width:50%; }
+.plot-editor button { cursor:pointer; }
+.plot-editor button:disabled { color:var(--muted); cursor:default; }
+.plot-editor button[aria-pressed=true] { color:var(--accent); background:var(--tint); }
+.plot-editor :focus-visible { outline:2px solid var(--accent); outline-offset:var(--space-1); }
+.plot-editor fieldset { min-width:0; margin-block:var(--space-2); padding:var(--space-2); border:1px solid var(--line); border-radius:var(--radius-sm); }
+.plot-editor-toolbar, .plot-editor-chips { display:flex; flex-wrap:wrap; gap:var(--space-1); }
+.plot-editor-presets { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); flex-basis:100%; margin-block-start:var(--space-2); }
+.plot-editor-presets > span { color:var(--muted); font-size:var(--font-small); margin-inline-end:var(--space-1); }
+.plot-editor-positions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-1); }
+/* A narrow inspector leaves each cell under 90 px: "Middle Center" wraps onto two lines inside its button instead of spilling. */
+.plot-editor .plot-editor-positions button { white-space:normal; overflow-wrap:anywhere; height:auto; min-height:var(--control); line-height:1.2; }
+
+.plot-editor .palette-options { display:grid; gap:var(--space-1); }
+.plot-editor .palette-option { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); height:auto; min-height:32px; }
+.palette-swatches { display:flex; flex:none; gap:2px; }
+.palette-swatches i { display:block; width:14px; height:18px; border:1px solid var(--line); border-radius:2px; }
+
+.nexo-style-badge { font-size:10px; font-weight:700; color:var(--accent); border:1px solid currentColor; border-radius:3px; padding:1px 4px; white-space:nowrap; }
+.nexo-style-error { margin:4px 8px; color:#922b21; font-size:12px; }
+.nexo-style fieldset { margin:6px 0; border:1px solid var(--line,#e3e7ec); }
+
+/* Wave 2 part A: section summaries carry their state. */
+.plot-editor .pro-summary { color:var(--muted); font-size:var(--font-small); margin-inline-start:var(--space-1); }
+.plot-editor .pro-heat-presets .plot-editor-chips button { display:inline-flex; align-items:center; gap:var(--space-1); }
+.plot-editor .pro-style-list { list-style:none; margin:0; padding:0; display:grid; gap:var(--space-1); }
+.plot-editor .pro-style-list li { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); }
+.plot-editor .pro-style-list li > span { flex:1 1 8em; overflow-wrap:anywhere; }
+.plot-editor .pro-style-list li[aria-current=true] > span { color:var(--accent); font-weight:700; }
+.plot-editor .pro-ok { color:var(--ink); border-inline-start:4px solid #1e7a3c; padding-inline-start:var(--space-2); }
+.plot-editor .pro-warn { color:var(--ink); border-inline-start:4px solid #a86400; padding-inline-start:var(--space-2); }

@@ -1,0 +1,1080 @@
+{
+  "version": 1,
+  "outputs": [
+    {
+      "id": "results_dashboard-plot_pca",
+      "family": "results_dashboard",
+      "output": "plot_pca",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Principal components",
+      "group": "Dashboard",
+      "description": "Compare sample structure across the prepared data."
+    },
+    {
+      "id": "results_dashboard-plot_violin",
+      "family": "results_dashboard",
+      "output": "plot_violin",
+      "render": "plotly",
+      "needs": null,
+      "inputs": [{"id":"violin_lipid","type":"select","label":"Lipid","options":[{"value":"PC(16:0/18:1)","label":"PC(16:0/18:1)","class":"PC"},{"value":"PE(18:0/20:4)","label":"PE(18:0/20:4)","class":"PE"},{"value":"PC(18:0/18:2)","label":"PC(18:0/18:2)","class":"PC"},{"value":"PC(16:0/16:0)","label":"PC(16:0/16:0)","class":"PC"},{"value":"PC(18:1/18:1)","label":"PC(18:1/18:1)","class":"PC"},{"value":"PC(18:0/20:4)","label":"PC(18:0/20:4)","class":"PC"},{"value":"PE(16:0/18:1)","label":"PE(16:0/18:1)","class":"PE"},{"value":"PE(18:0/18:2)","label":"PE(18:0/18:2)","class":"PE"},{"value":"PE(18:1/18:1)","label":"PE(18:1/18:1)","class":"PE"},{"value":"PE(16:0/20:4)","label":"PE(16:0/20:4)","class":"PE"},{"value":"TG(16:0/18:1/18:1)","label":"TG(16:0/18:1/18:1)","class":"TG"},{"value":"TG(18:0/18:1/18:2)","label":"TG(18:0/18:1/18:2)","class":"TG"},{"value":"TG(16:0/16:0/18:1)","label":"TG(16:0/16:0/18:1)","class":"TG"},{"value":"TG(18:1/18:1/18:1)","label":"TG(18:1/18:1/18:1)","class":"TG"},{"value":"TG(16:0/18:0/18:2)","label":"TG(16:0/18:0/18:2)","class":"TG"},{"value":"PE(O-16:0/18:1(9Z))","label":"PE(O-16:0/18:1(9Z))","class":"PE-O plasmalogen ether"},{"value":"PE(P-18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"PE(P-18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"PE-O plasmalogen ether"},{"value":"TG(18:1(9Z)/18:1(9Z)/22:6)","label":"TG(18:1(9Z)/18:1(9Z)/22:6)","class":"Triacylglycerol neutral storage"},{"value":"TG(16:0/18:1(9Z)/18:2(9Z,12Z))","label":"TG(16:0/18:1(9Z)/18:2(9Z,12Z))","class":"Triacylglycerol neutral storage"},{"value":"TG(18:2/18:2/18:3)","label":"TG(18:2/18:2/18:3)","class":"Triacylglycerol neutral storage"},{"value":"TG(14:0/16:0/18:1)","label":"TG(14:0/16:0/18:1)","class":"Triacylglycerol neutral storage"},{"value":"Cer(d18:1/24:1(15Z))","label":"Cer(d18:1/24:1(15Z))","class":"Ceramide sphingolipid backbone"},{"value":"Cer(d18:0/16:0)","label":"Cer(d18:0/16:0)","class":"Ceramide sphingolipid backbone"},{"value":"Cer(d18:1/22:0)","label":"Cer(d18:1/22:0)","class":"Ceramide sphingolipid backbone"},{"value":"SM(d18:1/16:0)","label":"SM(d18:1/16:0)","class":"Sphingomyelin"},{"value":"SM(d18:1/24:1(15Z))","label":"SM(d18:1/24:1(15Z))","class":"Sphingomyelin"},{"value":"SM(d18:2/22:0)","label":"SM(d18:2/22:0)","class":"Sphingomyelin"},{"value":"HexCer(d18:1/24:1(15Z))","label":"HexCer(d18:1/24:1(15Z))","class":"Hexosylceramide glycosphingolipid"},{"value":"HexCer(d18:1/16:0)","label":"HexCer(d18:1/16:0)","class":"Hexosylceramide glycosphingolipid"},{"value":"LPE(18:1(9Z)/0:0)","label":"LPE(18:1(9Z)/0:0)","class":"Lysophosphatidylethanolamine"},{"value":"LPE(22:6/0:0)","label":"LPE(22:6/0:0)","class":"Lysophosphatidylethanolamine"},{"value":"PS(18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"PS(18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"Phosphatidylserine"},{"value":"PS(16:0/18:1(9Z))","label":"PS(16:0/18:1(9Z))","class":"Phosphatidylserine"},{"value":"PI(18:0/22:6)","label":"PI(18:0/22:6)","class":"Phosphatidylinositol"},{"value":"PI(16:0/18:1(9Z))","label":"PI(16:0/18:1(9Z))","class":"Phosphatidylinositol"},{"value":"PG(16:0/18:1(9Z))","label":"PG(16:0/18:1(9Z))","class":"Phosphatidylglycerol"},{"value":"DG(16:0/18:1(9Z)/0:0)","label":"DG(16:0/18:1(9Z)/0:0)","class":"Diacylglycerol"},{"value":"DG(18:1/18:2/0:0)","label":"DG(18:1/18:2/0:0)","class":"Diacylglycerol"},{"value":"CE(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"CE(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"Cholesteryl ester"},{"value":"CE(18:2(9Z,12Z))","label":"CE(18:2(9Z,12Z))","class":"Cholesteryl ester"},{"value":"CL(18:2/18:2/18:2/18:2)","label":"CL(18:2/18:2/18:2/18:2)","class":"Cardiolipin mitochondrial"},{"value":"CL(16:0/18:1/18:2/18:2)","label":"CL(16:0/18:1/18:2/18:2)","class":"Cardiolipin mitochondrial"},{"value":"FA(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"FA(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"Free fatty acid"},{"value":"FA(18:3(9Z,12Z,15Z))","label":"FA(18:3(9Z,12Z,15Z))","class":"Free fatty acid"},{"value":"PE-NMe2(16:0/18:1(9Z))","label":"PE-NMe2(16:0/18:1(9Z))","class":"Phosphatidylethanolamine dimethyl"}],"default":"PC(16:0/18:1)"}],
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Feature distributions",
+      "group": "Dashboard",
+      "description": "Review the distribution of selected features."
+    },
+    {
+      "id": "results_dashboard-plot_dist",
+      "family": "results_dashboard",
+      "output": "plot_dist",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Signal distribution",
+      "group": "Dashboard",
+      "description": "Inspect the distribution of measured signal."
+    },
+    {
+      "id": "results_dashboard-plot_comp",
+      "family": "results_dashboard",
+      "output": "plot_comp",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Composition overview",
+      "group": "Dashboard",
+      "description": "Compare signal shares across groups."
+    },
+    {
+      "id": "results_dashboard-plot_heat",
+      "family": "results_dashboard",
+      "output": "plot_heat",
+      "render": "plotly",
+      "needs": null,
+      "inputs": [{"id":"heat_lipid_selection","type":"text","label":"Lipids","options":[{"value":"PC(16:0/18:1)","label":"PC(16:0/18:1)","class":"PC"},{"value":"PE(18:0/20:4)","label":"PE(18:0/20:4)","class":"PE"},{"value":"PC(18:0/18:2)","label":"PC(18:0/18:2)","class":"PC"},{"value":"PC(16:0/16:0)","label":"PC(16:0/16:0)","class":"PC"},{"value":"PC(18:1/18:1)","label":"PC(18:1/18:1)","class":"PC"},{"value":"PC(18:0/20:4)","label":"PC(18:0/20:4)","class":"PC"},{"value":"PE(16:0/18:1)","label":"PE(16:0/18:1)","class":"PE"},{"value":"PE(18:0/18:2)","label":"PE(18:0/18:2)","class":"PE"},{"value":"PE(18:1/18:1)","label":"PE(18:1/18:1)","class":"PE"},{"value":"PE(16:0/20:4)","label":"PE(16:0/20:4)","class":"PE"},{"value":"TG(16:0/18:1/18:1)","label":"TG(16:0/18:1/18:1)","class":"TG"},{"value":"TG(18:0/18:1/18:2)","label":"TG(18:0/18:1/18:2)","class":"TG"},{"value":"TG(16:0/16:0/18:1)","label":"TG(16:0/16:0/18:1)","class":"TG"},{"value":"TG(18:1/18:1/18:1)","label":"TG(18:1/18:1/18:1)","class":"TG"},{"value":"TG(16:0/18:0/18:2)","label":"TG(16:0/18:0/18:2)","class":"TG"},{"value":"PE(O-16:0/18:1(9Z))","label":"PE(O-16:0/18:1(9Z))","class":"PE-O plasmalogen ether"},{"value":"PE(P-18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"PE(P-18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"PE-O plasmalogen ether"},{"value":"TG(18:1(9Z)/18:1(9Z)/22:6)","label":"TG(18:1(9Z)/18:1(9Z)/22:6)","class":"Triacylglycerol neutral storage"},{"value":"TG(16:0/18:1(9Z)/18:2(9Z,12Z))","label":"TG(16:0/18:1(9Z)/18:2(9Z,12Z))","class":"Triacylglycerol neutral storage"},{"value":"TG(18:2/18:2/18:3)","label":"TG(18:2/18:2/18:3)","class":"Triacylglycerol neutral storage"},{"value":"TG(14:0/16:0/18:1)","label":"TG(14:0/16:0/18:1)","class":"Triacylglycerol neutral storage"},{"value":"Cer(d18:1/24:1(15Z))","label":"Cer(d18:1/24:1(15Z))","class":"Ceramide sphingolipid backbone"},{"value":"Cer(d18:0/16:0)","label":"Cer(d18:0/16:0)","class":"Ceramide sphingolipid backbone"},{"value":"Cer(d18:1/22:0)","label":"Cer(d18:1/22:0)","class":"Ceramide sphingolipid backbone"},{"value":"SM(d18:1/16:0)","label":"SM(d18:1/16:0)","class":"Sphingomyelin"},{"value":"SM(d18:1/24:1(15Z))","label":"SM(d18:1/24:1(15Z))","class":"Sphingomyelin"},{"value":"SM(d18:2/22:0)","label":"SM(d18:2/22:0)","class":"Sphingomyelin"},{"value":"HexCer(d18:1/24:1(15Z))","label":"HexCer(d18:1/24:1(15Z))","class":"Hexosylceramide glycosphingolipid"},{"value":"HexCer(d18:1/16:0)","label":"HexCer(d18:1/16:0)","class":"Hexosylceramide glycosphingolipid"},{"value":"LPE(18:1(9Z)/0:0)","label":"LPE(18:1(9Z)/0:0)","class":"Lysophosphatidylethanolamine"},{"value":"LPE(22:6/0:0)","label":"LPE(22:6/0:0)","class":"Lysophosphatidylethanolamine"},{"value":"PS(18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"PS(18:0/22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"Phosphatidylserine"},{"value":"PS(16:0/18:1(9Z))","label":"PS(16:0/18:1(9Z))","class":"Phosphatidylserine"},{"value":"PI(18:0/22:6)","label":"PI(18:0/22:6)","class":"Phosphatidylinositol"},{"value":"PI(16:0/18:1(9Z))","label":"PI(16:0/18:1(9Z))","class":"Phosphatidylinositol"},{"value":"PG(16:0/18:1(9Z))","label":"PG(16:0/18:1(9Z))","class":"Phosphatidylglycerol"},{"value":"DG(16:0/18:1(9Z)/0:0)","label":"DG(16:0/18:1(9Z)/0:0)","class":"Diacylglycerol"},{"value":"DG(18:1/18:2/0:0)","label":"DG(18:1/18:2/0:0)","class":"Diacylglycerol"},{"value":"CE(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"CE(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"Cholesteryl ester"},{"value":"CE(18:2(9Z,12Z))","label":"CE(18:2(9Z,12Z))","class":"Cholesteryl ester"},{"value":"CL(18:2/18:2/18:2/18:2)","label":"CL(18:2/18:2/18:2/18:2)","class":"Cardiolipin mitochondrial"},{"value":"CL(16:0/18:1/18:2/18:2)","label":"CL(16:0/18:1/18:2/18:2)","class":"Cardiolipin mitochondrial"},{"value":"FA(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","label":"FA(22:6(4Z,7Z,10Z,13Z,16Z,19Z))","class":"Free fatty acid"},{"value":"FA(18:3(9Z,12Z,15Z))","label":"FA(18:3(9Z,12Z,15Z))","class":"Free fatty acid"},{"value":"PE-NMe2(16:0/18:1(9Z))","label":"PE-NMe2(16:0/18:1(9Z))","class":"Phosphatidylethanolamine dimethyl"}],"default":"__ALL__","allToken":"__EVERY__","defaultChoices":["PC(16:0/18:1)","PE(18:0/20:4)"]}],
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Abundance heatmap",
+      "group": "Dashboard",
+      "description": "Compare lipid patterns across groups."
+    },
+    {
+      "id": "qc_pca_tab-boxplotAfterNorm",
+      "family": "qc_pca_tab",
+      "output": "boxplotAfterNorm",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Normalized signal boxplots",
+      "group": "Quality check",
+      "description": "Compare sample distributions after normalization."
+    },
+    {
+      "id": "qc_pca_tab-outlierPlot",
+      "family": "qc_pca_tab",
+      "output": "outlierPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Outlier screening",
+      "group": "Quality check",
+      "description": "Review samples flagged by outlier checks."
+    },
+    {
+      "id": "qc_pca_tab-pca2dPlot",
+      "family": "qc_pca_tab",
+      "output": "pca2dPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA scores · 2D",
+      "group": "Quality check",
+      "description": "Explore sample separation in two dimensions."
+    },
+    {
+      "id": "qc_pca_tab-pca2dVectorPlot",
+      "family": "qc_pca_tab",
+      "output": "pca2dVectorPlot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {
+        "team_pca2dPlot_vector": true
+      },
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA scores · editable 2D",
+      "group": "Quality check",
+      "description": "Enable Editable vector view in Quality Check; original plot and downloads remain available."
+    },
+    {
+      "id": "qc_pca_tab-pca3dPlot",
+      "family": "qc_pca_tab",
+      "output": "pca3dPlot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA scores · 3D",
+      "group": "Quality check",
+      "description": "Rotate sample scores in three dimensions."
+    },
+    {
+      "id": "qc_pca_tab-load2dPlot",
+      "family": "qc_pca_tab",
+      "output": "load2dPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA loadings · 2D",
+      "group": "Quality check",
+      "description": "Inspect feature contributions to the PCA axes."
+    },
+    {
+      "id": "qc_pca_tab-load2dVectorPlot",
+      "family": "qc_pca_tab",
+      "output": "load2dVectorPlot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {
+        "team_load2dPlot_vector": true
+      },
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA loadings · editable 2D",
+      "group": "Quality check",
+      "description": "Enable Editable vector view in Quality Check; unsupported label layouts retain the original view."
+    },
+    {
+      "id": "qc_pca_tab-load3dPlot",
+      "family": "qc_pca_tab",
+      "output": "load3dPlot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA loadings · 3D",
+      "group": "Quality check",
+      "description": "Explore feature contributions in three dimensions."
+    },
+    {
+      "id": "qc_pca_tab-sampleCorrPlot",
+      "family": "qc_pca_tab",
+      "output": "sampleCorrPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Sample correlation",
+      "group": "Quality check",
+      "description": "Compare pairwise sample similarity."
+    },
+    {
+      "id": "qc_pca_tab-bqcPlot",
+      "family": "qc_pca_tab",
+      "output": "bqcPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Batch quality check",
+      "group": "Quality check",
+      "description": "Review batch-level quality metrics."
+    },
+    {
+      "id": "qc_pca_tab-bqcDeviationPlot",
+      "family": "qc_pca_tab",
+      "output": "bqcDeviationPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Batch deviation",
+      "group": "Quality check",
+      "description": "Inspect deviations across batches."
+    },
+    {
+      "id": "qc_pca_tab-bqcAbundancePlot",
+      "family": "qc_pca_tab",
+      "output": "bqcAbundancePlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Batch abundance",
+      "group": "Quality check",
+      "description": "Compare abundance across batches."
+    },
+    {
+      "id": "qc_pca_tab-outlierPcaPlot",
+      "family": "qc_pca_tab",
+      "output": "outlierPcaPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Outlier PCA",
+      "group": "Quality check",
+      "description": "PCA scores with samples marked by outlier flag and staged treatment."
+    },
+    {
+      "id": "qc_pca_tab-guided_qc_plot",
+      "family": "qc_pca_tab",
+      "output": "guided_qc_plot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Guided quality check",
+      "group": "Quality check",
+      "description": "Inspect the plot for the current guided QC step."
+    },
+    {
+      "id": "barchart-barPlotUnfiltered",
+      "family": "barchart",
+      "output": "barPlotUnfiltered",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Composition · unfiltered",
+      "group": "Composition",
+      "description": "Compare sample composition before differential filtering."
+    },
+    {
+      "id": "barchart-barPlotFiltered",
+      "family": "barchart",
+      "output": "barPlotFiltered",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Composition · filtered",
+      "group": "Composition",
+      "description": "Compare composition for the active contrast."
+    },
+    {
+      "id": "barchart-donutPlotUnfiltered",
+      "family": "barchart",
+      "output": "donutPlotUnfiltered",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Composition share · unfiltered",
+      "group": "Composition",
+      "description": "Review the unfiltered composition as a share."
+    },
+    {
+      "id": "barchart-donutPlotFiltered",
+      "family": "barchart",
+      "output": "donutPlotFiltered",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Composition share · filtered",
+      "group": "Composition",
+      "description": "Review filtered composition as a share."
+    },
+    {
+      "id": "volcano_tab-volcanoPlot",
+      "family": "volcano_tab",
+      "output": "volcanoPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Differential volcano",
+      "group": "Differential analysis",
+      "description": "Explore fold change and statistical significance."
+    },
+    {
+      "id": "lsea_tab-lseaPlot",
+      "family": "lsea_tab",
+      "output": "lseaPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Lipid set enrichment",
+      "group": "Differential analysis",
+      "description": "Review enrichment across lipid sets."
+    },
+    {
+      "id": "fla_tab-plotVolcano",
+      "family": "fla_tab",
+      "output": "plotVolcano",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Functional ratio volcano",
+      "group": "Differential analysis",
+      "description": "Inspect differential functional ratios."
+    },
+    {
+      "id": "structural_tab-diffAcylPlot",
+      "family": "structural_tab",
+      "output": "diffAcylPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Acyl chain remodeling",
+      "group": "Differential analysis",
+      "description": "Review differential acyl-chain changes."
+    },
+    {
+      "id": "heatmap_barchart_tab-heatmapPlot",
+      "family": "heatmap_barchart_tab",
+      "output": "heatmapPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Average signal heatmap",
+      "group": "Heatmaps",
+      "description": "Compare average signal across selected groups."
+    },
+    {
+      "id": "heatmap_barchart_tab-heatmapSDPlot",
+      "family": "heatmap_barchart_tab",
+      "output": "heatmapSDPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {
+        "condenseRowsSD": true
+      },
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Signal variability heatmap",
+      "group": "Heatmaps",
+      "description": "Compare signal variability across groups."
+    },
+    {
+      "id": "heatmap_barchart_tab-filteredHeatmapPlot",
+      "family": "heatmap_barchart_tab",
+      "output": "filteredHeatmapPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Filtered average heatmap",
+      "group": "Heatmaps",
+      "description": "Review average signal for the active contrast."
+    },
+    {
+      "id": "heatmap_barchart_tab-filteredHeatmapSDPlot",
+      "family": "heatmap_barchart_tab",
+      "output": "filteredHeatmapSDPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {
+        "condenseRowsSD": true
+      },
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Filtered variability heatmap",
+      "group": "Heatmaps",
+      "description": "Review signal variability for the active contrast."
+    },
+    {
+      "id": "heatmap_barchart_tab-violin_plot_render",
+      "family": "heatmap_barchart_tab",
+      "output": "violin_plot_render",
+      "render": "png",
+      "needs": null,
+      "heightInput": "violin_zoom_pct",
+      "allowedInputs": ["violin_zoom_pct"],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Selected-feature distributions",
+      "group": "Heatmaps",
+      "description": "Review selected features on a log2 or linear prepared-abundance scale."
+    },
+    {
+      "id": "structural_tab-summaryPlot",
+      "family": "structural_tab",
+      "output": "summaryPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Structural remodeling shifts",
+      "group": "Structure",
+      "description": "Per class, the difference in chain length, double bonds or positions between comparison- and reference-enriched lipid species."
+    },
+    {
+      "id": "structural_tab-speciesPlotPlot",
+      "family": "structural_tab",
+      "output": "speciesPlotPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Species structural features",
+      "group": "Structure",
+      "description": "For one class, a structural feature of each lipid species (each point is a species), split by enrichment direction."
+    },
+    {
+      "id": "structural_tab-networkPlot",
+      "family": "structural_tab",
+      "output": "networkPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Correlation network",
+      "group": "Structure",
+      "description": "Classes, chain lengths, double bonds or species joined by strong abundance correlations across samples."
+    },
+    {
+      "id": "structural_tab-propPlotPlot",
+      "family": "structural_tab",
+      "output": "propPlotPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Acyl chain proportions",
+      "group": "Structure",
+      "description": "Compare acyl-chain composition by class."
+    },
+    {
+      "id": "structural_grid_tab-heatmapPlot",
+      "family": "structural_grid_tab",
+      "output": "heatmapPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Structural grid · selected class heatmap",
+      "group": "Structure",
+      "description": "Map differential lipid changes across carbon length and unsaturation."
+    },
+    {
+      "id": "structural_grid_tab-dotplotPlot",
+      "family": "structural_grid_tab",
+      "output": "dotplotPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Structural grid · selected class dotplot",
+      "group": "Structure",
+      "description": "Compare differential lipid measurements across structural coordinates."
+    },
+    {
+      "id": "structural_grid_tab-mergedPlot",
+      "family": "structural_grid_tab",
+      "output": "mergedPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Structural grid · all classes",
+      "group": "Structure",
+      "description": "Compare structural changes across lipid classes."
+    },
+    {
+      "id": "structural_grid_tab-diffAllPlot",
+      "family": "structural_grid_tab",
+      "output": "diffAllPlot",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Structural grid · differential overview across all classes and chain lengths",
+      "group": "Structure",
+      "description": "Review the all-class differential structural overview."
+    },
+    {
+      "id": "group_comparison_tab-comparisonPlot",
+      "family": "group_comparison_tab",
+      "output": "comparisonPlot",
+      "render": "html",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Lipid class comparison",
+      "group": "Group comparison",
+      "description": "Compare lipid classes across conditions with local statistics."
+    },
+    {
+      "id": "logratio_tab-logratioPlot",
+      "family": "logratio_tab",
+      "output": "logratioPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": ["primary_grouping"],
+      "defaults": {"primary_grouping": ["Condition", "Time"]},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Violin distributions",
+      "group": "Distributions & ratios",
+      "description": "Compare distributions across selected groups."
+    },
+    {
+      "id": "fla_tab-logratioPlot",
+      "family": "fla_tab",
+      "output": "logratioPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Functional ratio distributions",
+      "group": "Distributions & ratios",
+      "description": "Compare functional ratios across groups."
+    },
+    {
+      "id": "fla_tab-plotCircos",
+      "family": "fla_tab",
+      "output": "plotCircos",
+      "render": "png",
+      "needs": "de",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Functional correlation circos",
+      "group": "Distributions & ratios",
+      "description": "Explore correlations among functional indices."
+    },
+    {
+      "id": "longitudinal_tab-macroclass_plot",
+      "family": "longitudinal_tab",
+      "output": "macroclass_plot",
+      "render": "png",
+      "needs": "time",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Time course · main class",
+      "group": "Longitudinal",
+      "description": "Track main-class signal across time points."
+    },
+    {
+      "id": "longitudinal_tab-subclass_plot",
+      "family": "longitudinal_tab",
+      "output": "subclass_plot",
+      "render": "png",
+      "needs": "time",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Time course · subclass",
+      "group": "Longitudinal",
+      "description": "Track subclass signal across time points."
+    },
+    {
+      "id": "longitudinal_tab-index_plot",
+      "family": "longitudinal_tab",
+      "output": "index_plot",
+      "render": "png",
+      "needs": "time",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Time course · functional index",
+      "group": "Longitudinal",
+      "description": "Track functional indices over time."
+    },
+    {
+      "id": "longitudinal_tab-struct_plot",
+      "family": "longitudinal_tab",
+      "output": "struct_plot",
+      "render": "png",
+      "needs": "time",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Time course · structure",
+      "group": "Longitudinal",
+      "description": "Track structural measures over time."
+    },
+    {
+      "id": "longitudinal_tab-allmetrics_plot",
+      "family": "longitudinal_tab",
+      "output": "allmetrics_plot",
+      "render": "png",
+      "needs": "time",
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Time course · all metrics",
+      "group": "Longitudinal",
+      "description": "Compare available metrics over time."
+    },
+    {
+      "id": "pathway_tab-pathwayPlot",
+      "family": "pathway_tab",
+      "output": "pathwayPlot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": ["active_classes_json", "custom_nodes_json", "added_edges_json", "removed_edges_json", "position_overrides_json"],
+      "defaults": {"active_classes_json": "[\"TG\",\"DG\",\"PA\",\"LPA\",\"LCB\",\"Cer\",\"SM\",\"PE\",\"LPE\",\"PC\",\"LPC\",\"PI\",\"LPI\",\"CDP-DAG\",\"PG\",\"LPG\",\"PS\",\"LPS\"]", "custom_nodes_json": "{}", "added_edges_json": "[]", "removed_edges_json": "[]", "position_overrides_json": "{}"},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Lipid pathway map",
+      "group": "Pathways",
+      "description": "Explore the selected pathway comparison."
+    },
+    {
+      "id": "pathway_tab-pathwayVisNetwork",
+      "family": "pathway_tab",
+      "output": "pathwayVisNetwork",
+      "render": "visnetwork",
+      "needs": null,
+      "allowedInputs": ["active_classes_json", "custom_nodes_json", "added_edges_json", "removed_edges_json", "position_overrides_json"],
+      "defaults": {"active_classes_json": "[\"TG\",\"DG\",\"PA\",\"LPA\",\"LCB\",\"Cer\",\"SM\",\"PE\",\"LPE\",\"PC\",\"LPC\",\"PI\",\"LPI\",\"CDP-DAG\",\"PG\",\"LPG\",\"PS\",\"LPS\"]", "custom_nodes_json": "{}", "added_edges_json": "[]", "removed_edges_json": "[]", "position_overrides_json": "{}"},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Interactive pathway network",
+      "group": "Pathways",
+      "description": "Explore the live network. Finish keeps it as an image."
+    },
+    {
+      "id": "cellular_org_tab-stressPlot",
+      "family": "cellular_org_tab",
+      "output": "stressPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Organelle stress proxies · mitochondrial and peroxisomal markers by treatment week",
+      "group": "Cellular organization",
+      "description": "Per-sample composition ratios (for example PE/PC, Cer/SM) by group, one panel per index. Compositional proxies."
+    },
+    {
+      "id": "cellular_org_tab-cpiPlot",
+      "family": "cellular_org_tab",
+      "output": "cpiPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Peroxidation index (CPI)",
+      "group": "Cellular organization",
+      "description": "Per-sample weighted share of polyunsaturated lipid signal by group, against a reference baseline. A compositional proxy."
+    },
+    {
+      "id": "cellular_org_tab-polarPlot",
+      "family": "cellular_org_tab",
+      "output": "polarPlot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Storage vs structural map",
+      "group": "Cellular organization",
+      "description": "Each sample placed by its neutral-storage share (x) and membrane structural/ether share (y). Quadrants are a hypothesis aid."
+    },
+    {
+      "id": "cell_lipid_plot",
+      "family": "team_cell",
+      "output": "cell_lipid_plot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Selected feature profile",
+      "group": "Cell comparisons",
+      "description": "Inspect measurements for the selected lipid feature."
+    },
+    {
+      "id": "cell_profile_plot",
+      "family": "team_cell",
+      "output": "cell_profile_plot",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Class profile",
+      "group": "Cell comparisons",
+      "description": "Compare the selected lipid class profile."
+    },
+    {
+      "id": "cell_class_plot",
+      "family": "team_cell",
+      "output": "cell_class_plot",
+      "render": "plotly",
+      "clickSource": "cell_class_profile",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Class totals · two cohorts",
+      "group": "Cell comparisons",
+      "description": "Median per-sample class total for the reference and comparison cohorts. Descriptive."
+    },
+    {
+      "id": "cell_comparison_plot",
+      "family": "team_cell",
+      "output": "cell_comparison_plot",
+      "render": "plotly",
+      "clickSource": "cell_comparison_points",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Cohort comparison",
+      "group": "Cell comparisons",
+      "description": "Compare prepared feature values between cohorts."
+    },
+    {
+      "id": "export_studio-studio_preview_plot",
+      "family": "export_studio",
+      "output": "studio_preview_plot",
+      "render": "png",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "Publication preview",
+      "group": "Export studio",
+      "description": "Set publication size and download the current figure in Export studio."
+    }
+  ]
+}
