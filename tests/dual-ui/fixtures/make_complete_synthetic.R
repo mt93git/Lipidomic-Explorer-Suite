@@ -9,7 +9,7 @@
 #
 # Run from the repository root:
 #   Rscript tests/dual-ui/fixtures/make_complete_synthetic.R [out.zip] [--verify]
-# --verify opens the ZIP through the headless API (R/frontends/api) and renders the 14
+# --verify opens the ZIP through the headless API (frontends/nexo-api) and renders the 14
 # outputs that the classic-seed7 checkpoint leaves gated or silent, with the per-card
 # inputs and actions listed in the doc. It never contacts a running server.
 
@@ -137,8 +137,8 @@ cat(sprintf("WROTE %s (%d lipids x %d samples, sha256 %s)\n", out, nrow(lipids),
 
 # ---- Optional: render the 14 previously gated/silent outputs through the headless API --
 if (verify) {
-  source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("make_complete_synthetic")
-  source("R/frontends/api/engine.R")
+  source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("make_complete_synthetic")
+  source("frontends/nexo-api/engine.R")
   s <- api_session_for_checkpoint(out)
   api_design(s, "Animal", "independent", TRUE)
   # inputs = per-card values at creation; steps = api_card_update calls afterwards.

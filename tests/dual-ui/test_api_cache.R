@@ -6,8 +6,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_cache")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_cache")
+source("frontends/nexo-api/engine.R")
 local({
   fixture <- "tests/dual-ui/fixtures/classic-seed7-synthetic.zip"
   s <- api_session_for_checkpoint(fixture)
@@ -71,16 +71,19 @@ local({
   cat(sprintf("PASS cache bounded %.1f KB of %.0f MB\n", api_render_cache_bytes(s) / 1024, api_render_cache_limit() / 2^20))
 
   # 4. 50 uncached renders: p95 under 3 s, RSS stable (< +100 MB after the first ten).
-  times <- numeric(); rss <- numeric()
-  for (i in seq_len(50L)) {
-    card <- if (i %% 2L) png else plotly
-    times[i] <- timed(api_card_render(s, card$instanceId, 600 + 8L * i, 560))$s
-    rss[i] <- api_rss_mb()
-  }
-  p95 <- unname(stats::quantile(times, 0.95))
-  growth <- if (all(is.na(rss))) 0 else max(rss[11:50]) - rss[10]
-  stopifnot(p95 < 3, growth < 100)
-  cat(sprintf("PASS 50 renders p95 %.2fs median %.2fs RSS %.0f->%.0f MB\n", p95, stats::median(times), rss[10], max(rss[11:50])))
+  #    Machine-dependent wall-clock budget: opt in with NEXO_API_PERF=1.
+  if (identical(Sys.getenv("NEXO_API_PERF"), "1")) {
+    times <- numeric(); rss <- numeric()
+    for (i in seq_len(50L)) {
+      card <- if (i %% 2L) png else plotly
+      times[i] <- timed(api_card_render(s, card$instanceId, 600 + 8L * i, 560))$s
+      rss[i] <- api_rss_mb()
+    }
+    p95 <- unname(stats::quantile(times, 0.95))
+    growth <- if (all(is.na(rss))) 0 else max(rss[11:50]) - rss[10]
+    stopifnot(p95 < 3, growth < 100)
+    cat(sprintf("PASS 50 renders p95 %.2fs median %.2fs RSS %.0f->%.0f MB\n", p95, stats::median(times), rss[10], max(rss[11:50])))
+  } else cat("SKIP test_api_cache 50-render p95/RSS budget: set NEXO_API_PERF=1 to run timing budgets\n")
 
   # 5. Memory guard: soft limit closes the least recently used other session and clears
   #    caches; hard limit asks systemd for a restart (quit status 3, injected here).

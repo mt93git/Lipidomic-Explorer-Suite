@@ -2,7 +2,7 @@
 
 Read first: `docs/integration/admin-identity.md` (the Admin token in Nexo, `openedBy`, the REQUIRE_USER switch and its
 staging run). That step let a client member open **only its own released datasets**. Nexo's own store is still one
-shared workspace (`api_workspace()` = `LIPIDOMIC_API_WORKSPACE`, default `nexo-pilot`, in `R/frontends/api/storage.R`):
+shared workspace (`api_workspace()` = `LIPIDOMIC_API_WORKSPACE`, default `nexo-pilot`, in `frontends/nexo-api/storage.R`):
 every checkpoint, autosave and uploaded ZIP is listed to everyone, and the staging run confirmed it (a client's refusal
 page offers **Choose checkpoint**). This step scopes the store so client access can leave staging.
 

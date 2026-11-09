@@ -7,7 +7,7 @@ local({
   cap <- 90 * 1024^2
   written <- 0; active_cap <- cap
   transport <- new.env(parent = globalenv())
-  sys.source("R/frontends/api/datasets.R", envir = transport)
+  sys.source("frontends/nexo-api/datasets.R", envir = transport)
   # Observe disk writes without replacing the real HTTP client.
   transport$writeBin <- function(object, con, ...) {
     written <<- written + length(object)

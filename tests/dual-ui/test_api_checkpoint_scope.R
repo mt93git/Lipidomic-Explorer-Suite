@@ -10,8 +10,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
 Sys.unsetenv(c("LIPIDOMIC_ADMIN_REQUIRE_USER", "LIPIDOMIC_API_WORKSPACE"))
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_checkpoint_scope")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_checkpoint_scope")
+source("frontends/nexo-api/engine.R")
 team_zip <- "tests/dual-ui/fixtures/classic-seed7-synthetic.zip"
 workbook <- "tests/dual-ui/fixtures/admin-dataset-v1-synthetic.xlsx"
 store_root <- tempfile("scope-store-"); dir.create(store_root)
@@ -20,7 +20,7 @@ stopifnot(file.copy("tests/dual-ui/fixtures/nexo-complete-synthetic.zip", file.p
 Sys.setenv(LIPIDOMIC_STORAGE_DIR = store_root, LIPIDOMIC_API_CHECKPOINT_DIR = legacy_dir,
   LIPIDOMIC_ADMIN_SUPABASE_URL = "https://admin.invalid/", LIPIDOMIC_ADMIN_ANON_KEY = "synthetic-anon",
   LIPIDOMIC_ADMIN_NEXO_TOKEN = "synthetic-reader")
-api_run_dir <- normalizePath("R/frontends/api"); root <- getwd()
+api_run_dir <- normalizePath("frontends/nexo-api"); root <- getwd()
 router <- plumber::pr_set_serializer(plumber::plumb(file.path(api_run_dir, "plumber.R")),
   plumber::serializer_unboxed_json(null = "null", na = "null", digits = NA))
 setwd(root)

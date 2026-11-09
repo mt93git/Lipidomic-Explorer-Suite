@@ -8,8 +8,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_schema_choices")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_schema_choices")
+source("frontends/nexo-api/engine.R")
 # Parsing what Team's update* functions send: <option>s and checkbox/radio markup.
 opts <- api_option_values('<option value="a">Alpha</option><option value="b" selected>Beta</option>')
 stopifnot(identical(opts$values, c("a", "b")), identical(opts$labels, c("Alpha", "Beta")), identical(opts$selected, "b"))

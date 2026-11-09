@@ -9,8 +9,8 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_schema_icon_buttons")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_schema_icon_buttons")
+source("frontends/nexo-api/engine.R")
 row <- function(i, id, icon) shiny::tags$div(class = "card-header d-flex",
   shiny::tags$span(paste0("Timecourse ", i)), shiny::actionButton(paste0("p-", id), "", icon = shiny::icon(icon)))
 doc <- xml2::read_html(as.character(shiny::tags$div(class = "tab-pane", `data-value` = "Design",

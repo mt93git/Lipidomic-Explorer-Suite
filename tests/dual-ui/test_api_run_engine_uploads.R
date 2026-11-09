@@ -11,13 +11,13 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_run_engine_uploads")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_run_engine_uploads")
 # run.R's list of engine files, read from run.R itself (not engine.R, which tests use).
-run <- parse("R/frontends/api/run.R")
+run <- parse("frontends/nexo-api/run.R")
 def <- Filter(function(e) is.call(e) && identical(e[[1L]], as.name("<-")) && identical(e[[2L]], as.name("api_engine_files")), as.list(run))
 if (length(def) != 1L) stop("run.R: api_engine_files not found")
 api_engine_files <- eval(def[[1L]][[3L]], globalenv())
-api_run_dir <- "R/frontends/api"
+api_run_dir <- "frontends/nexo-api"
 for (file in api_engine_files) source(file.path(api_run_dir, file), local = globalenv())
 
 s <- api_session_open("tests/dual-ui/fixtures/nexo-complete-synthetic.zip")

@@ -4,7 +4,7 @@
 # several downloads of one card now carries the heading it sits under; a unique label is unchanged.
 #   Rscript tests/dual-ui/test_api_download_labels.R
 if (!requireNamespace("xml2", quietly = TRUE)) { cat("SKIP test_api_download_labels: xml2 not installed\n"); quit(status = 0) }
-source("R/frontends/api/export.R")
+source("frontends/nexo-api/export.R")
 doc <- xml2::read_html(paste0(
   '<div id="p-wrap"><div id="p-logratioPlot"></div>',
   '<a id="p-downloadCsv" class="shiny-download-link">CSV</a>',

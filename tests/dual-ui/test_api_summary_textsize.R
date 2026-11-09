@@ -17,9 +17,9 @@ Sys.setenv(LIPIDOMIC_INTERFACE = "team", LIPIDOMIC_STORAGE = "files", LIPIDOMIC_
   LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_ALLOW_DEPENDENCY_INSTALL = "0")
 Sys.unsetenv(c("LIPIDOMIC_AUTH_URL", "LIPIDOMIC_REST_URL", "LIPIDOMIC_STORAGE_URL", "LIPIDOMIC_COMPANION_ENV", "LIPIDOMIC_API_WORKERS"))
 suppressPackageStartupMessages(source("R/global.R"))
-source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_summary_textsize")
+source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_api_summary_textsize")
 Sys.setenv(LIPIDOMIC_API_RENDER_DISK_CACHE = "0")
-source("R/frontends/api/engine.R")
+source("frontends/nexo-api/engine.R")
 is_png <- function(x) is.raw(x) && length(x) > 24L && identical(x[2:4], charToRaw("PNG"))
 attempt <- function(expr) tryCatch(list(ok = TRUE, value = expr),
   error = function(e) list(ok = FALSE, class = class(e), message = conditionMessage(e)))
@@ -54,7 +54,7 @@ if (small$ok) {
   cat("PASS step 3: textSize 14 at 390x520 is a 422 with the module's error:", small$message, "\n")
 }
 # The same render through the HTTP route: never plumber's generic 500.
-api_run_dir <- normalizePath("R/frontends/api"); root <- getwd()
+api_run_dir <- normalizePath("frontends/nexo-api"); root <- getwd()
 router <- plumber::pr_set_serializer(plumber::plumb(file.path(api_run_dir, "plumber.R")),
   plumber::serializer_unboxed_json(null = "null", na = "null", digits = NA))
 setwd(root)

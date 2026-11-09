@@ -11,7 +11,7 @@ check <- function(name, ok, detail = "") {
   if (isTRUE(ok)) cat("PASS", name, "\n") else { failures <<- failures + 1L; cat("FAIL", name, detail, "\n") }
 }
 local({
-  source("R/frontends/api/session.R", local = TRUE)
+  source("frontends/nexo-api/session.R", local = TRUE)
   options(nexo.api.time_limit = 2)
   now <- function() proc.time()[["elapsed"]]
   session <- function() { s <- new.env(); s$broken <- FALSE; s }
