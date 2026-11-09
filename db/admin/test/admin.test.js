@@ -666,10 +666,11 @@ describe('bucket admin-files', () => {
     await expect(put(good)).rejects.toThrow(/row-level security/);
   });
 
-  test('never overwrites or removes an existing object', async () => {
+  test('never overwrites an existing object, nor removes one a results file records (0012 removes only unrecorded ones)', async () => {
     await as(db, U.operator);
     await put(good);
     await expect(put(good)).rejects.toThrow(/duplicate key/);
+    await db.query("SELECT admin.accept_result_file($1, $2, $3, '3.4.5', 'Global v1', '{}'::jsonb)", [id(101), good, 'c'.repeat(64)]);
     for (const u of [U.operator, U.owner]) {
       await as(db, u);
       expect((await db.query("UPDATE storage.objects SET owner = NULL WHERE bucket_id = 'admin-files'")).affectedRows, u).toBe(0);

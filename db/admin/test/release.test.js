@@ -208,10 +208,19 @@ describe('0007: build, withdraw, supersede', () => {
     await expect(put(`${id(950)}/${manifest.analysis_sha256}`)).rejects.toThrow(/row-level security/); // never into a project that exists
     await put(good);
     await expect(put(good)).rejects.toThrow(/duplicate key/);
+    // 0012: while it is pending the signer who staged it can read it back and remove it (a failed release cleans up;
+    // test/storage_cleanup.test.js removes it); an operator can do neither.
+    expect(await count(db, "SELECT 1 FROM storage.objects WHERE bucket_id = 'case-files'")).toBe(1);
+    await as(db, U.operator);
+    expect(await count(db, "SELECT 1 FROM storage.objects WHERE bucket_id = 'case-files'")).toBe(0);
+    expect((await db.query("DELETE FROM storage.objects WHERE bucket_id = 'case-files'")).affectedRows).toBe(0);
+    await as(db, U.owner);
 
     await sign(ds, 'prepared');
     await as(db, U.admin); await sign(ds, 'approved');
     expect(await release(ds, project, manifest)).toBe(project);
+    // Released: the file is the project's now, and no signer may remove it (Team's rules only).
+    expect((await db.query("DELETE FROM storage.objects WHERE bucket_id = 'case-files'")).affectedRows).toBe(0);
     // Released: the digest is no longer pending, so it cannot be staged again under another project id ...
     await expect(put(`${id(902)}/${manifest.analysis_sha256}`)).rejects.toThrow(/row-level security/);
     // ... while Team's own rule still lets a project owner add a file, and a viewer not.

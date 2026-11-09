@@ -6,7 +6,9 @@
 //   node db/admin/test/staging.integration.mjs <staging stack directory>
 // Needs Node 22 (global fetch) and docker access to the "<project>-db-1" container.
 // Reads ports and keys from the stack's .env and never prints them. Creates throwaway users
-// and rows tagged with a run id; staging data is never deleted (the schema forbids it).
+// and rows tagged with a run id; staging data is never deleted (the schema forbids it). At the end, failed runs
+// included, archiveRun() retires what the run created: released datasets are withdrawn through withdraw_dataset (0008:
+// never through the archive columns), then the other datasets, the orders and the two clients are archived.
 import { execFileSync } from 'node:child_process';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -58,10 +60,55 @@ function api(token, path, init = {}) {
   });
 }
 
+async function rpc(token, fn, args) {
+  const res = await api(token, `rpc/${fn}`, { method: 'POST', body: JSON.stringify(args) });
+  const text = await res.text();
+  let body = null; try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+  return { ok: res.ok, status: res.status, body };
+}
+
+// The run's release signers (set below), whose tokens withdraw what the run released when it ends.
+const signers = [];
+const clientA = randomUUID(); const clientB = randomUUID();
+async function archiveRun() {
+  const reason = `${run} staging test run finished`;
+  const released = sql(`select id from admin.dataset where client_id in ('${clientA}', '${clientB}') and status = 'released'`).split('\n').filter(Boolean);
+  for (const id of released) {
+    let withdrawn = false;
+    for (const user of signers) {
+      try { withdrawn = (await rpc(await signIn(user), 'withdraw_dataset', { p_dataset_id: id, p_reason: reason })).ok; } catch { /* next signer */ }
+      if (withdrawn) break;
+    }
+    if (!withdrawn) console.log(`teardown: dataset ${id} is still released (no run signer could withdraw it); its order and client stay live`);
+  }
+  // A released dataset keeps its order and client live; everything else of the two run clients is archived.
+  sql(`update admin.dataset set archived_at = now(), archived_reason = '${reason}'
+         where client_id in ('${clientA}', '${clientB}') and archived_at is null and status <> 'released';
+       update admin."order" o set archived_at = now(), archived_reason = '${reason}'
+         where o.client_id in ('${clientA}', '${clientB}') and o.archived_at is null
+           and not exists (select 1 from admin.dataset d where d.order_id = o.id and d.status = 'released');
+       update admin.client c set archived_at = now(), archived_reason = '${reason}'
+         where c.id in ('${clientA}', '${clientB}') and c.archived_at is null
+           and not exists (select 1 from admin.dataset d where d.client_id = c.id and d.status = 'released');`);
+  console.log(`teardown: run ${run} archived (${sql(`select count(*) from admin."order" where client_id in ('${clientA}', '${clientB}') and archived_at is not null`)} orders)`);
+}
+
+// The run replaces the staging lab's release policy with its throwaway signers; at the end the policy that was live
+// before the run (e.g. the simulated pilot's signers) is set again by the run's Owner, so staging keeps working.
+const [priorSigners, priorRequired] = sql(`select eligible_signers, required_signatures from admin.release_policy where archived_at is null`).split('|');
+async function restorePolicy() {
+  const owner = signers[1];
+  if (!priorSigners || !owner) return;
+  const ids = priorSigners.replace(/[{}]/g, '').split(',').filter(Boolean);
+  const res = await rpc(await signIn(owner), 'set_release_policy', { p_eligible_signers: ids, p_required_signatures: Number(priorRequired) });
+  check('teardown: the release policy live before the run is set again', res.ok, `status ${res.status} ${JSON.stringify(res.body)}`);
+}
+
+// The checks below run inside try/finally (not re-indented, to keep the diff small) so a failed run archives too.
+try {
 // Seed: one operator, one requester of client A, two clients with one order each.
 const operator = await createUser('operator');
 const requester = await createUser('requester');
-const clientA = randomUUID(); const clientB = randomUUID();
 sql(`insert into admin.lab_staff (user_id, role) values ('${operator.id}', 'operator');
      insert into admin.client (id, name, kind) values ('${clientA}', '${run} Client A', 'pi_lab'), ('${clientB}', '${run} Client B', 'company');
      insert into admin.client_member (client_id, user_id, role) values ('${clientA}', '${requester.id}', 'requester');
@@ -105,14 +152,9 @@ check("Team's pilot tables live in the same database (shared sign-in reaches the
 const owner = await createUser('owner');
 const secondSigner = await createUser('admin');
 sql(`insert into admin.lab_staff (user_id, role) values ('${owner.id}', 'owner'), ('${secondSigner.id}', 'admin');`);
+signers.push(secondSigner, owner);
 const ownerToken = await signIn(owner);
 const adminToken = await signIn(secondSigner);
-async function rpc(token, fn, args) {
-  const res = await api(token, `rpc/${fn}`, { method: 'POST', body: JSON.stringify(args) });
-  const text = await res.text();
-  let body = null; try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-  return { ok: res.ok, status: res.status, body };
-}
 const hex = (c) => c.repeat(64);
 
 const w2 = await (await api(operatorToken, 'order', { method: 'POST', body: JSON.stringify({ client_id: clientA, title: `${run} wave2` }) })).json();
@@ -534,6 +576,48 @@ const scopeLeft = await nexoCaller(await signIn(leftClient));
 check('scope: a member whose only membership is archived gets an empty answer', empty(scopeLeft), show(scopeLeft));
 const scopeAnon = await nexoCaller(env.ANON_KEY);
 check('scope: anon is refused (42501)', pgRefused(scopeAnon), show(scopeAnon));
+
+// ---------------------------------------------------------------- storage orphan cleanup (0012_storage_orphan_cleanup.sql)
+// What the app does after a failed build_dataset or release_dataset: remove, with the same token, what it just
+// uploaded, through Storage's bulk remove (DELETE /object/<bucket> with {"prefixes": [...]}, what supabase-js remove()
+// sends). Storage removes only the rows RLS lets the token see and delete, and answers with those; the checks read
+// storage.objects directly. Uses the policy the 0007 block left in place (owner + admin) and the release order.
+const removeObjects = async (token, bucket, names) => {
+  const res = await objectApi(token, bucket, { method: 'DELETE', body: JSON.stringify({ prefixes: names }), headers: { 'Content-Type': 'application/json' } });
+  const text = await res.text();
+  let body = null; try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+  return { ok: res.ok, status: res.status, removed: Array.isArray(body) ? body.length : null };
+};
+const objectCount = (bucket, name) => sql(`select count(*) from storage.objects where bucket_id = '${bucket}' and name = '${name}'`);
+const orphanKey = `${clientA}/${rbOrder?.code}/datasets/${hex('e')}/dataset-v1.xlsx`; // no dataset records that digest
+const recordedKey = `${clientA}/${rbOrder?.code}/datasets/${hex('3')}/dataset-v1.xlsx`; // version 1's storage_path (superseded)
+const orphanPut = await put(operatorToken, orphanKey);
+const recordedPut = await put(operatorToken, recordedKey);
+const orphanByClient = await removeObjects(requesterToken, 'admin-files', [orphanKey]);
+const orphanAfterClient = objectCount('admin-files', orphanKey);
+const orphanRemoved = await removeObjects(operatorToken, 'admin-files', [orphanKey]);
+const recordedRemoved = await removeObjects(operatorToken, 'admin-files', [recordedKey]);
+check('0012: an Operator removes an admin-files object it just uploaded that no dataset records (a client token cannot), and cannot remove a recorded dataset file',
+  orphanPut.ok && recordedPut.ok && orphanAfterClient === '1' && orphanRemoved.ok && objectCount('admin-files', orphanKey) === '0' && objectCount('admin-files', recordedKey) === '1',
+  `statuses ${orphanPut.status}/${recordedPut.status}/${orphanByClient.status}/${orphanRemoved.status}/${recordedRemoved.status}, removed ${orphanRemoved.removed}/${recordedRemoved.removed}`);
+
+const v3 = await rpc(operatorToken, 'build_dataset', buildArgs(hex('8'), hex('0'), 3)); // built, never released: its digest stays pending
+const pendingKey = `${randomUUID()}/${hex('0')}`;
+const pendingStaged = await stage(ownerToken, pendingKey);
+const pendingByOperator = await removeObjects(operatorToken, 'case-files', [pendingKey]);
+const pendingAfterOperator = objectCount('case-files', pendingKey);
+const pendingRemoved = await removeObjects(ownerToken, 'case-files', [pendingKey]);
+const releasedRemoved = await removeObjects(ownerToken, 'case-files', [analysisKey]); // version 1's file in its released project
+check("0012: an eligible signer removes a pending analysis file it staged in case-files (an Operator cannot), and cannot remove a released project's file",
+  v3.ok && pendingStaged.ok && pendingAfterOperator === '1' && pendingRemoved.ok && objectCount('case-files', pendingKey) === '0' && objectCount('case-files', analysisKey) === '1',
+  `statuses ${v3.status}/${pendingStaged.status}/${pendingByOperator.status}/${pendingRemoved.status}/${releasedRemoved.status}, removed ${pendingRemoved.removed}/${releasedRemoved.removed}`);
+} catch (error) {
+  failures++;
+  console.log(`FAIL the run stopped: ${error instanceof Error ? error.message : error}`);
+} finally {
+  try { await archiveRun(); } catch (error) { failures++; console.log(`FAIL teardown: ${error instanceof Error ? error.message : error}`); }
+  try { await restorePolicy(); } catch (error) { failures++; console.log(`FAIL teardown policy: ${error instanceof Error ? error.message : error}`); }
+}
 
 console.log(failures ? `\n${failures} check(s) failed (run ${run})` : `\nAll checks passed (run ${run})`);
 process.exit(failures ? 1 : 0);
