@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { getEnvironment } from "@/lib/environment";
 import { SignInForm } from "@/components/sign-in-form";
 

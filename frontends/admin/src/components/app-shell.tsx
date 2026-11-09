@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { usePathname } from "next/navigation";
 import { signOut, switchView } from "@/app/actions";
 import type { AppSession } from "@/lib/models";

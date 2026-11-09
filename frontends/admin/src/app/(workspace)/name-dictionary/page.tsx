@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { getNameDictionary } from "@/lib/data/results";
 import { unmappedAnalytes } from "@/lib/results";
 import { EntryForm } from "./entry-form";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { redirect } from "next/navigation";
 import { auditEntities, auditHref, parseAuditFilters } from "@/lib/audit";
 import { listAuditEvents } from "@/lib/data/audit";

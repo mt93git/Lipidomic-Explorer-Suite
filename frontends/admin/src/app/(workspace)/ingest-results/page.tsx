@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { listResultOrders } from "@/lib/data/results";
 import { ResultsForm } from "./results-form";
 export default async function IngestResultsPage() {

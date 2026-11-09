@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { config as middlewareConfig } from "@/middleware";
+import { config as proxyConfig, proxy } from "@/proxy";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("@supabase/ssr", () => ({ createServerClient: vi.fn() }));
@@ -28,8 +28,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("cookie-backed client", () => {
-  it("runs refresh on the Node runtime supported by this Supabase release", () => {
-    expect(middlewareConfig).toHaveProperty("runtime", "nodejs");
+  it("runs refresh in Next 16's proxy, which is always on the Node runtime this Supabase release needs", () => {
+    expect(typeof proxy).toBe("function");
+    // Next 16 rejects a runtime option in proxy files; an edge runtime can no longer be selected.
+    expect(proxyConfig).not.toHaveProperty("runtime");
   });
   it("uses the anon key, admin schema, and the request's cookies", async () => {
     const response = new NextResponse();

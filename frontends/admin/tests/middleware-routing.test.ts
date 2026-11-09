@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import * as nextStaticInfo from "next/dist/build/analysis/get-page-static-info";
-import { config } from "@/middleware";
+import { config } from "@/proxy";
 
 // Exercise the pinned Next release's real basePath compiler, including its root special case.
 const { getMiddlewareMatchers } = nextStaticInfo as unknown as {

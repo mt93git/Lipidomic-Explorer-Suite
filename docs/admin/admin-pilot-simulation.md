@@ -113,3 +113,44 @@ Not worked around in the spec; the seed creates only what the story needs to sta
   step 5 on a test assumption (the dataset canvas already shows the plot library); fixed in 861e897d.
 - 2026-11-08, same stacks, Admin 7cca953e with the audit log screen, order ORD082: **all 7 steps passed** (26.6 s);
   the order filter of `/audit-log` (PostgREST `or=(…)` on `after->>order_id`) works against staging.
+- 2026-11-09, Admin e674a463 + Nexo staging API 97c431f4, with the new global setup/teardown: three runs. ORD135:
+  **all 7 steps passed** (29.3 s); the teardown withdrew v1 and archived the order. ORD133 and ORD134 failed in step 2
+  with a server action whose response never reached the browser (ORD133: still "Working…" after parsing; ORD134:
+  `build_dataset` committed 1.4 s after the click, but the page stayed on "Building…" for 60 s); both orders were still
+  archived by the teardown, which is what a failed run must do. ORD134's built (never released) v1 stays under its
+  archived order.
+- 2026-11-09, stall investigation (steps 1–2 only, straight to `/admin`, no proxy): the server answered each stalled
+  action in ~0.2 s with its redirect and the browser received the whole response, but the client router never applied
+  it (no request followed). With the side navigation prefetching (~20 RSC prefetches per page view, always some in
+  flight at the click) 3 of 30 runs stalled; with `prefetch={false}` on the navigation links, 0 of 30. Strong but not
+  conclusive evidence (p ≈ 0.04–0.12); the navigation no longer prefetches (`tests/nav-prefetch.test.tsx`).
+- 2026-11-09, full pilot through the proxy after the navigation fix (9e672b18): 3 runs, 1 stalled in step 4 (sign →
+  `?signed=1` never applied). Then next 15.5.29 / react 19.2.9 (433fe8a8, security and RSC-transport patches; the App
+  Router uses Next's vendored React): 10 full runs, 9 passed all 7 steps, 1 stalled in step 2 (ORD209: the parse
+  response arrived and the summary rendered, but the transition never settled, so "Accept" stayed disabled). The
+  trace shows RSC prefetches of `/pipeline` and `/name-dictionary` from in-page links started 70 ms before the parse
+  POST and still in flight when it left. Every traced stall so far overlaps an in-flight prefetch; the patch upgrade
+  did not remove it. Remaining prefetchers: in-page `<Link>`s (brand, breadcrumbs, scope control, order cards, release
+  version list, …). All runs' orders were archived by the teardown (staging dry run: nothing left to archive).
+- 2026-11-09, no link prefetches anywhere (078a5077, `@/components/app-link`, lint ban on `next/link`): 10 full runs
+  with traces kept, 0 prefetch requests in all 60 traces, and still 2 stalls (ORD213, ORD222: "Build dataset v1"
+  answered 303 with `x-action-redirect`, the redirect was never applied). **Prefetching is not the cause.** Then a
+  browser probe (an init script wrapping `fetch` that tees each action/RSC response and logs its chunks): 22 valid
+  runs, **0 stalls** (5 more runs failed only because the SSH tunnels dropped). Without the probe the stall rate was
+  about 4 in 23 full runs, so 0 of 22 by chance is ≈ 2 %. The probe only re-wraps the response and reads its body
+  concurrently; Next hands the response unchanged to React's Flight client (`createFromFetch`), so the stall looks
+  like a race in how the client consumes the action's response stream: Next/React, not Admin's code or the server.
+  No error is logged on either side. The server action itself commits (a reload shows the new state), so the effect
+  is a page that stays on "Working…" until reloaded, not lost or duplicated data.
+- 2026-11-09, **Next 16 experiment** (branch `experiment/next16` = 58a49165, not for merge: next 16.4.5 built with
+  `--webpack`, eslint-config-next left on 15.5.29 because the 16 config is flat-only; vitest 266/266, tsc clean). Run as
+  a separate instance on the RTX (:3981, transient unit, stopped afterwards) against the same staging database:
+  **20 full runs, 20 passed all 7 steps, 0 stalls**. On Next 15 the uninstrumented full runs stalled 4 of 23, so 0 of
+  20 by chance is ≈ 2 %. Conclusion: the stall is fixed by Next 16's router. Upgrading is a deliberate task of its own
+  (middleware → proxy convention, flat ESLint config, Turbopack vs the webpack font switch), not done here.
+- 2026-11-09, **Admin moved to Next 16.4.5** (fc7cb3ce, deployed to staging `/admin`): `proxy.ts` instead of
+  `middleware.ts`, Turbopack for dev and build (repository root as `turbopack.root`; the offline font switch is a
+  `resolveAlias`), `allowedDevOrigins: ["127.0.0.1"]`, flat ESLint config. The 15.5 stall is the router regression
+  vercel/next.js#86151 (from 15.5.1, fixed in 16.3); 15.4.x was not an option (30 open advisories, 3 critical). Checks:
+  vitest 266/266, tsc, lint, demo Playwright 6/6 in parallel twice (Next 16 dev with webpack failed in parallel, with
+  Turbopack it passes in half the time of 15.5), live E2E 2/2, and 5 full pilot runs on staging, all 7/7.

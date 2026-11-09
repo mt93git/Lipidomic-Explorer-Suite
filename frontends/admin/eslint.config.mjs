@@ -1,15 +1,21 @@
-import { FlatCompat } from "@eslint/eslintrc";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 
-const compat = new FlatCompat({ baseDirectory: path.dirname(fileURLToPath(import.meta.url)) });
+// Admin links never prefetch (see src/components/app-link.tsx).
+const nextLink = { name: "next/link", message: "Use @/components/app-link: Admin links do not prefetch." };
 const config = [
   { ignores: [".next/**", "node_modules/**", ".npm-cache/**", "next-env.d.ts", "verification/**"] },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...nextVitals,
+  ...nextTypescript,
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": ["error", { paths: [nextLink] }] },
+  },
   {
     files: ["src/components/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": ["error", {
+        paths: [nextLink],
         patterns: [{ group: ["@supabase/*", "@/lib/supabase/*", "@/lib/environment"], message: "Use server actions; credentials and Supabase clients stay on the server." }],
       }],
     },

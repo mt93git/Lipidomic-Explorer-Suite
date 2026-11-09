@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { gateStatus, stages, type Client, type Order, type View } from "@/lib/models";
 import { mayOpenInNexo, nexoDatasetLink } from "@/lib/release";
 import { OrderStepper } from "./order-stepper";

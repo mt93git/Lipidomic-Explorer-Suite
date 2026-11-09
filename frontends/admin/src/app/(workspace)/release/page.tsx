@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { listReleaseOrders, type ReleaseOrder, type VersionSummary } from "@/lib/data/release";
 import { formatLabInstant } from "@/lib/lab-time";
 import { stages } from "@/lib/models";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 export function GateActions({ ready, nextStage, reviewHref }: { ready: boolean; nextStage: string; reviewHref: string }) {
   const [preview, setPreview] = useState(false);

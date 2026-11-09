@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { formatClock, formatLabDay } from "@/lib/lab-time";
 import { gateStatus, stages, type Client, type Order } from "@/lib/models";
 import {

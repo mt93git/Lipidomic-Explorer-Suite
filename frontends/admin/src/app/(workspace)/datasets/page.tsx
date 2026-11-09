@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { listDatasets } from "@/lib/data/release";
 import { formatLabInstant } from "@/lib/lab-time";
 import { datasetStatusLabels, mayOpenInNexo, nexoDatasetLink, signerRoleLabels } from "@/lib/release";

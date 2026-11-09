@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { SampleRegistryGrid } from "@/components/sample-registry-grid";
 import { getRegistryOrder, listRegistryOrders } from "@/lib/data/samples";
 import { formatLabInstant } from "@/lib/lab-time";

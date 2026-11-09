@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { Client } from "@/lib/models";
 import { emptyFilters, parseFilters, scopeLabel, serializeFilters, toggleValue } from "@/lib/pipeline-filters";

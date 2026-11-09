@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { ReceiveShipmentForm } from "@/components/receive-shipment-form";
 import { getRegistryOrder, listReceivableOrders } from "@/lib/data/samples";
 import { formatLabInstant } from "@/lib/lab-time";

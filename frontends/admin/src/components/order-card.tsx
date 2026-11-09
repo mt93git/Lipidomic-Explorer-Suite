@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { gateStatus, type Client, type Order } from "@/lib/models";
 
 const statusLabels = { fail: "Gate blocked", pending: "Awaiting checks", ok: "Ready to advance" };
