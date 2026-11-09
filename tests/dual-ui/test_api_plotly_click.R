@@ -17,7 +17,10 @@ local({
   if (!exists("api_card_click_sources") || !exists("api_plotly_points", mode = "function"))
     stop("FAIL the API has no plotly_click bridge (api_card_click_sources / api_plotly_points)")
   # Every allowed source is one Team registers for plotly_click on that output and observes on a canvas copy.
-  cell <- paste(readLines("R/frontends/team/cell_show.R", warn = FALSE), collapse = "\n")
+  # Production keeps Team's cell views in R/cell_show.R; the hooks tree moved them to R/frontends/team/cell_show.R.
+  cell_file <- Filter(file.exists, c("R/frontends/team/cell_show.R", "R/cell_show.R"))[1L]
+  if (is.na(cell_file)) stop("FAIL Team's cell_show.R is in neither R/frontends/team nor R")
+  cell <- paste(readLines(cell_file, warn = FALSE), collapse = "\n")
   adapter <- paste(readLines("R/frontends/team/plot_instances.R", warn = FALSE), collapse = "\n")
   stopifnot(identical(sort(names(api_card_click_sources)), c("cell_class_plot", "cell_comparison_plot")))
   for (output in names(api_card_click_sources)) {
@@ -25,7 +28,7 @@ local({
     body <- regmatches(cell, regexpr(paste0("output\\$", output, "<-plotly::renderPlotly\\(\\{[^\n]*"), cell))
     if (!length(body) || !grepl(paste0('source="', source_id, '"'), body, fixed = TRUE) ||
         !grepl('event_register("plotly_click")', body, fixed = TRUE))
-      stop("FAIL ", output, " does not register plotly_click for source ", source_id, " in R/frontends/team/cell_show.R")
+      stop("FAIL ", output, " does not register plotly_click for source ", source_id, " in ", cell_file)
     if (!grepl(paste0("lipidomic_plotly_event('plotly_click',source=session$ns('", source_id, "')"), adapter, fixed = TRUE))
       stop("FAIL Team's canvas copy does not observe plotly_click on its private ", source_id)
   }

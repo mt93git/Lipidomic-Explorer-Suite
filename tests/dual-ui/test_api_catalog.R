@@ -5,6 +5,32 @@ suppressPackageStartupMessages(source("R/global.R"))
 source("R/frontends/api/requirements.R"); api_skip_unless_team_ready("test_api_catalog")
 source("R/frontends/api/engine.R")
 fixture <- "tests/dual-ui/fixtures/classic-seed7-synthetic.zip"
+# Unit, no app: Team may define an output outside its family's module file (Max's hooks tree defines
+# qc_pca_tab-guided_qc_plot in R/frontends/team/qc-server.R). The classifier reads the family file
+# first, then the files under the Team frontend directory. Synthetic files only.
+local({
+  root <- tempfile("catalog-classify-"); team <- file.path(root, "team")
+  dir.create(file.path(team, "hooks"), recursive = TRUE)
+  family_file <- file.path(root, "family_module.R")
+  writeLines(c("server <- function(input, output, session) {",
+    "  output$inFamily <- renderPlot({ plot(1) })",
+    "  output$both <- shiny::renderImage({ list(src = 'x') })", "}"), family_file)
+  writeLines(c("qc_extra <- function(input, output) {",
+    "  output$elsewhere <- plotly::renderPlotly({ NULL })",
+    "  output$both <- renderPlotly({ NULL })", "}"), file.path(team, "qc-server.R"))
+  writeLines("hook <- function(output) output$inHook <- renderVisNetwork({ NULL })", file.path(team, "hooks", "net.R"))
+  writeLines("conflict <- function(output) output$twice <- renderPlot({ NULL })", file.path(team, "a.R"))
+  writeLines("conflict <- function(output) output$twice <- renderPlotly({ NULL })", file.path(team, "b.R"))
+  kind <- function(output) api_catalog_render_kind(output, family_file, team)
+  stopifnot(identical(kind("inFamily"), "png"), identical(kind("elsewhere"), "plotly"),
+    identical(kind("both"), "png"), identical(kind("inHook"), "visnetwork"),
+    is.null(kind("nowhere")), is.null(kind("twice")))
+  # The editable vector PCA views are plotly whichever Team file adds them (legacy_vector_adapter.R or a hook).
+  stopifnot(identical(api_catalog_render("qc_pca_tab-pca2dVectorPlot", "qc_pca_tab", "pca2dVectorPlot"), "plotly"),
+    identical(api_catalog_render("qc_pca_tab-load2dVectorPlot", "qc_pca_tab", "load2dVectorPlot"), "plotly"))
+  unlink(root, recursive = TRUE)
+  cat("PASS catalog classifier: family file first, then other Team files; conflicting or missing definitions are unclassified\n")
+})
 local({
   entries <- api_catalog()
   ids <- unlist(lapply(names(team_plot_instance_families), function(family)
@@ -21,7 +47,8 @@ local({
   }
   stopifnot(api_catalog_entry("heatmap_barchart_tab-heatmapPlot")$render == "png",
     api_catalog_entry("pathway_tab-pathwayVisNetwork")$render == "visnetwork",
-    api_catalog_entry("group_comparison_tab-comparisonPlot")$render == "html")
+    api_catalog_entry("group_comparison_tab-comparisonPlot")$render == "html",
+    api_catalog_entry("qc_pca_tab-guided_qc_plot")$render == "plotly")
   cat(sprintf("PASS catalog %d\n", length(entries)))
   # Chart audit b09-fla: the FLA volcano (p-values) and circos (inferential_network_adapter.R) draw only a placeholder
   # until an independent design is confirmed, so the Library gates them like the differential rows.
