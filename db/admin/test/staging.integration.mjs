@@ -9,6 +9,9 @@
 // and rows tagged with a run id; staging data is never deleted (the schema forbids it). At the end, failed runs
 // included, archiveRun() retires what the run created: released datasets are withdrawn through withdraw_dataset (0008:
 // never through the archive columns), then the other datasets, the orders and the two clients are archived.
+// After restoring the prior release policy, all created users have their memberships archived and auth accounts banned.
+import { BAN_DURATION, retireThrowawayUsers } from './retire-users.mjs';
+import { restoreRunPolicy } from './restore-run-policy.mjs';
 import { execFileSync } from 'node:child_process';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -32,6 +35,7 @@ function sql(text) {
   return execFileSync('docker', ['exec', '-i', `${project}-db-1`, 'psql', '-U', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1', '-c', text],
     { encoding: 'utf8' }).trim();
 }
+const createdUsers = [];
 async function createUser(label) {
   const email = `${run}-${label}@example.test`;
   const password = randomBytes(18).toString('base64url');
@@ -42,6 +46,7 @@ async function createUser(label) {
   });
   if (!res.ok) throw new Error(`create ${label}: ${res.status} ${await res.text()}`);
   const user = await res.json();
+  createdUsers.push({ id: user.id, email });
   return { id: user.id, email, password };
 }
 async function signIn(user) {
@@ -97,11 +102,40 @@ async function archiveRun() {
 // before the run (e.g. the simulated pilot's signers) is set again by the run's Owner, so staging keeps working.
 const [priorSigners, priorRequired] = sql(`select eligible_signers, required_signatures from admin.release_policy where archived_at is null`).split('|');
 async function restorePolicy() {
-  const owner = signers[1];
-  if (!priorSigners || !owner) return;
-  const ids = priorSigners.replace(/[{}]/g, '').split(',').filter(Boolean);
-  const res = await rpc(await signIn(owner), 'set_release_policy', { p_eligible_signers: ids, p_required_signatures: Number(priorRequired) });
-  check('teardown: the release policy live before the run is set again', res.ok, `status ${res.status} ${JSON.stringify(res.body)}`);
+  await restoreRunPolicy({ priorSigners, priorRequired, sql, runUserIds: createdUsers.map(user => user.id),
+    restore: async (ids, required) => {
+      const owner = signers[1];
+      if (!owner) throw new Error('release policy restoration requires the run Owner');
+      return rpc(await signIn(owner), 'set_release_policy', { p_eligible_signers: ids, p_required_signatures: required });
+    },
+  });
+  check('teardown: prior release policy restored (including implicit default)', true);
+}
+
+// Run only after archiveRun and restorePolicy: both still need the run signers' active memberships and tokens.
+async function retireRunUsers() {
+  await retireThrowawayUsers(createdUsers, {
+    beforeRetire: async id => {
+      const literal = "'" + id.replaceAll("'", "''") + "'";
+      if (sql(`select count(*) from admin.release_policy where archived_at is null and ${literal}::uuid = any(eligible_signers)`) !== '0') {
+        throw new Error('user still named in live policy');
+      }
+    },
+    archive: async (table, ids) => {
+      // IDs come from GoTrue; quote them as SQL literals, even though GoTrue returns UUIDs.
+      const literals = ids.map(id => "'" + id.replaceAll("'", "''") + "'").join(',');
+      sql(`update admin.${table} set archived_at = now(), archived_reason = '${run} staging test run finished'
+           where user_id in (${literals}) and archived_at is null`);
+    },
+    ban: async id => {
+      const res = await fetch(`${auth}/admin/users/${encodeURIComponent(id)}`, {
+        method: 'PUT', headers: { Authorization: `Bearer ${env.SERVICE_KEY}`, apikey: env.SERVICE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ban_duration: BAN_DURATION }),
+      });
+      if (!res.ok) throw new Error(`user ban: ${res.status}`);
+    },
+  });
+  console.log(`teardown: retired ${createdUsers.length} throwaway user(s) (archived memberships, banned auth users)`);
 }
 
 // The checks below run inside try/finally (not re-indented, to keep the diff small) so a failed run archives too.
@@ -617,6 +651,7 @@ check("0012: an eligible signer removes a pending analysis file it staged in cas
 } finally {
   try { await archiveRun(); } catch (error) { failures++; console.log(`FAIL teardown: ${error instanceof Error ? error.message : error}`); }
   try { await restorePolicy(); } catch (error) { failures++; console.log(`FAIL teardown policy: ${error instanceof Error ? error.message : error}`); }
+  try { await retireRunUsers(); } catch (error) { failures++; console.log(`FAIL teardown users: ${error instanceof Error ? error.message : error}`); }
 }
 
 console.log(failures ? `\n${failures} check(s) failed (run ${run})` : `\nAll checks passed (run ${run})`);
