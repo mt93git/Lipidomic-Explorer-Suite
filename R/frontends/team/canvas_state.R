@@ -273,12 +273,12 @@ team_canvas_editor <- function(editor) {
   }
   indices <- numeric()
   if(!is.null(editor$traces)) editor$traces <- unname(lapply(team_canvas_array(editor$traces,100L),function(t) {
-    t <- team_canvas_object(t,c("index","sourceKey","name","hidden","points","innerBox","color","fillColor","fillOpacity","lineColor","markerLineColor","lineWidth","markerSize","markerSymbol","opacity","scaleLow","scaleMid","scaleHigh"),"index")
+    t <- team_canvas_object(t,c("index","sourceKey","name","hidden","points","innerBox","color","fillColor","fillOpacity","lineColor","markerLineColor","markerLineWidth","lineWidth","markerSize","markerSymbol","opacity","scaleLow","scaleMid","scaleHigh"),"index")
     t$index <- team_canvas_number(t$index,0,999)
     if(t$index!=floor(t$index)||t$index %in% indices)team_canvas_fail()
     indices <<- c(indices,t$index)
     scale_fields <- c("scaleLow","scaleMid","scaleHigh");if(any(scale_fields %in% names(t)) && !all(scale_fields %in% names(t)))team_canvas_fail()
-    for(k in setdiff(names(t),"index"))t[[k]] <- if(k %in% c("name","sourceKey"))team_canvas_editor_text(t[[k]]) else if(k=="markerSymbol"){if(!is.character(t[[k]])||length(t[[k]])!=1L||!t[[k]] %in% c("circle","square","triangle-up","star","diamond"))team_canvas_fail();t[[k]]} else if(k %in% c("color","fillColor","lineColor","markerLineColor",scale_fields))team_canvas_hex(t[[k]]) else if(k %in% c("hidden","points","innerBox"))team_canvas_boolean(t[[k]]) else team_canvas_number(t[[k]],0,if(k %in% c("opacity","fillOpacity"))1 else if(k=="lineWidth")20 else 100)
+    for(k in setdiff(names(t),"index"))t[[k]] <- if(k %in% c("name","sourceKey"))team_canvas_editor_text(t[[k]]) else if(k=="markerSymbol"){if(!is.character(t[[k]])||length(t[[k]])!=1L||!t[[k]] %in% c("circle","square","triangle-up","star","diamond"))team_canvas_fail();t[[k]]} else if(k %in% c("color","fillColor","lineColor","markerLineColor",scale_fields))team_canvas_hex(t[[k]]) else if(k %in% c("hidden","points","innerBox"))team_canvas_boolean(t[[k]]) else team_canvas_number(t[[k]],0,if(k %in% c("opacity","fillOpacity"))1 else if(k %in% c("lineWidth","markerLineWidth"))20 else 100)
     if("hidden" %in% names(t) && (is.null(t$sourceKey) || !nzchar(t$sourceKey)))team_canvas_fail("Series visibility requires a source identity.")
     t
   }))
