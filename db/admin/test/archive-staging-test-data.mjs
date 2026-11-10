@@ -14,7 +14,8 @@
 // named in ADMIN_STAGING_GATEWAY_URL; GoTrue and PostgREST are reached only under that gateway (/auth/v1, /rest/v1).
 // Admin rows use a lab owner or admin token (ADMIN_CLEANUP_EMAIL, ADMIN_CLEANUP_PASSWORD) and RLS decides;
 // Withdrawing needs that person to be an eligible signer under the current release policy. Never prints secrets.
-// Optional --retire-users also archives memberships and bans only <it run>-<label>@example.test users.
+// Optional --retire-users also archives memberships (through admin.archive_member: lab staff rows need the lab Owner's
+// token) and bans only <it run>-<label>@example.test users.
 // It requires SUPABASE_SERVICE_ROLE_KEY from env for the GoTrue admin API only (listing and banning), never admin rows.
 //
 //   ADMIN_STAGING_GATEWAY_URL=https://… NEXT_PUBLIC_SUPABASE_URL=https://… NEXT_PUBLIC_SUPABASE_ANON_KEY=… \
@@ -119,14 +120,14 @@ export async function main(env = process.env, args = process.argv.slice(2)) {
     clients: await patch('client', todo.archiveClients.filter(c => !blockedClients.has(c.id)).map(c => c.id)),
   };
   console.log(`archive-staging: withdrew ${todo.withdraw.length - blocked.size}, archived ${results.datasets.length} dataset(s), ${results.orders.length} order(s), ${results.clients.length} client(s)`);
+  // 0015: memberships are archived through admin.archive_member only (lab staff need an Owner token), then re-read.
   if (retireUsers) await retireThrowawayUsers(users, {
     archive: async (table, ids) => {
-      const query = `${table}?user_id=in.(${ids.join(',')})&archived_at=is.null`;
-      const live = await rest(`${query}&select=id`);
-      const returned = await rest(query, { method: 'PATCH', body: archived });
-      if (!Array.isArray(returned) || live.some(row => !returned.some(result => result.id === row.id && result.archived_at))) {
-        throw new Error('membership archive not confirmed');
+      const query = `${table}?user_id=in.(${ids.join(',')})&archived_at=is.null&select=id`;
+      for (const row of await rest(query)) {
+        await rest('rpc/archive_member', { method: 'POST', body: JSON.stringify({ p_kind: table, p_id: row.id, p_reason: REASON }) });
       }
+      if ((await rest(query)).length) throw new Error('membership archive not confirmed');
     },
     ban: id => authAdmin(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ ban_duration: BAN_DURATION }) }),
   });

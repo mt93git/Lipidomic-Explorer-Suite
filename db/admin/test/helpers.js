@@ -29,7 +29,7 @@ export const CLIENT_TABLES = {
 export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
-  'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy',
+  'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation',
 ];
 
 export async function freshDb({ seed = true } = {}) {
@@ -58,7 +58,7 @@ export const count = async (db, sql, params = []) =>
 // Populate every table, for two clients, as the migration owner.
 async function seedAll(db) {
   await as(db, null);
-  for (const u of Object.values(U)) await db.query('INSERT INTO auth.users(id) VALUES ($1)', [u]);
+  for (const [key, u] of Object.entries(U)) await db.query('INSERT INTO auth.users(id, email) VALUES ($1, $2)', [u, `${key.toLowerCase()}@example.test`]);
   const q = (sql, p) => db.query(sql, p);
   for (const [u, role] of [[U.owner, 'owner'], [U.admin, 'admin'], [U.operator, 'operator'], [U.member, 'member']]) {
     await q('INSERT INTO admin.lab_staff(user_id, role, display_name) VALUES ($1, $2, $2)', [u, role]);
@@ -88,6 +88,8 @@ async function seedAll(db) {
   await q("INSERT INTO admin.job(id, kind) VALUES ($1, 'parse_results')", [id(301)]);
   // Same meaning as having no policy: any lab owner or admin may sign, two signatures.
   await q("INSERT INTO admin.release_policy(eligible_signers, required_signatures) VALUES ('{}', 2)");
+  // One pending client invitation (0015); only the digest of a synthetic token is stored.
+  await q("INSERT INTO admin.invitation(id, email, client_id, client_role, token_sha256, expires_at, created_by) VALUES ($1, 'invitee@example.test', $2, 'viewer', $3, now() + interval '7 days', $4)", [id(600), C.A, 'c'.repeat(64), U.admin]);
 
   // Mixed batch: one injection of A, one of B, one QC (no client). A second batch holds only B.
   await q("INSERT INTO admin.batch(id, name, instrument_id, panel_id) VALUES ($1, 'B2026-001', $3, $4), ($2, 'B2026-002', $3, $4)", [id(400), id(410), id(500), id(501)]);

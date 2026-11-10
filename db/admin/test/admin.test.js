@@ -350,18 +350,18 @@ describe('role-based writes', () => {
     expect((await db.query("UPDATE admin.\"order\" SET title = 'viewer' WHERE client_id = $1", [C.A])).affectedRows).toBe(0);
   });
 
-  test('membership and lab staff are managed by owner/admin; client admins manage their own members only', async () => {
+  // Since 0015 nobody signed in writes memberships directly: invitations and the People functions do (people.test.js).
+  test('clients are managed by owner/admin; lab staff and client members are never written directly', async () => {
     await as(db, U.operator);
     await expect(db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')")).rejects.toThrow(/row-level security/);
-    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'operator')", [U.aView])).rejects.toThrow(/row-level security/);
+    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'operator')", [U.aView])).rejects.toThrow(/permission denied/);
     await as(db, U.admin);
     await db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')");
-    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'owner')", [U.aView])).rejects.toThrow(/row-level security/);
-    await as(db, U.aAdmin);
-    await db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.bReq]);
-    await expect(db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.B, U.aView])).rejects.toThrow(/row-level security/);
-    await as(db, U.aReq);
-    await expect(db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.aView])).rejects.toThrow(/row-level security/);
+    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'owner')", [U.aView])).rejects.toThrow(/permission denied/);
+    for (const user of [U.owner, U.admin, U.aAdmin, U.aReq]) {
+      await as(db, user);
+      await expect(db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.bReq])).rejects.toThrow(/permission denied/);
+    }
   });
 });
 
@@ -532,7 +532,7 @@ describe('wave 2 contract functions', () => {
     await sign(ds, 'prepared'); // eligible when signing
     await as(db, U.owner);
     await setPolicy([U.owner, U.admin], 2); // then removed from the policy ...
-    await db.query("UPDATE admin.lab_staff SET archived_at = now(), archived_reason = 'left the lab' WHERE user_id = $1", [U.operator]); // ... and from the lab
+    await db.query("SELECT admin.archive_member('lab_staff', (SELECT id FROM admin.lab_staff WHERE user_id = $1), 'left the lab')", [U.operator]); // ... and from the lab (0015)
     await sign(ds, 'reviewed');
     await expect(release(ds, `${id(900)}/${sha('9')}`)).rejects.toThrow(/needs 2 signatures.*has 1/);
     await as(db, U.admin);

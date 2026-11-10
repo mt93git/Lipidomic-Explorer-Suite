@@ -80,26 +80,54 @@ describe('optional leftover user retirement', () => {
     expect(fetch.mock.calls.filter(([, init]) => ['PATCH', 'PUT', 'DELETE'].includes(init?.method))).toEqual([]);
     expect(fetch.mock.calls.some(([url]) => String(url).includes('/admin/users?page=1&per_page=200'))).toBe(true);
   });
-  test('apply archives admin rows with the owner token and bans only matching GoTrue users with the service key', async () => {
+  // 0015: signed-in users no longer write memberships directly; each live row goes through admin.archive_member.
+  function withMemberships(fetch, refuse = () => false) {
+    const original = fetch.getMockImplementation();
+    const active = { client_member: ['m1'], lab_staff: ['s1'] };
+    fetch.mockImplementation(async (url, init) => {
+      const { pathname } = new URL(url);
+      const table = pathname.split('/').pop();
+      if (table in active && (init?.method ?? 'GET') === 'GET') return json(active[table].map(id => ({ id })));
+      if (pathname.endsWith('/rpc/archive_member')) {
+        const body = JSON.parse(init.body);
+        if (refuse(body)) return new Response(JSON.stringify({ message: 'Only the lab Owner can invite or manage lab staff' }), { status: 403 });
+        active[body.p_kind] = active[body.p_kind].filter(id => id !== body.p_id);
+        return new Response(null, { status: 204 });
+      }
+      return original(url, init);
+    });
+  }
+  test('apply archives memberships through archive_member with the owner token and bans only matching users with the service key', async () => {
     const { main, fetch } = await setup();
+    withMemberships(fetch);
     await main(env, ['--apply', '--retire-users']);
-    const writes = fetch.mock.calls.filter(([, init]) => ['PATCH', 'PUT'].includes(init?.method));
-    expect(writes.map(([url]) => new URL(url).pathname)).toEqual(['/rest/v1/client_member', '/rest/v1/lab_staff', '/auth/v1/admin/users/u1']);
-    for (const [url, init] of writes.slice(0, 2)) {
-      expect(String(url)).toContain('user_id=in.(u1)&archived_at=is.null');
+    const writes = fetch.mock.calls.filter(([u, init]) => ['POST', 'PATCH', 'PUT'].includes(init?.method) && !new URL(u).pathname.endsWith('/token'));
+    expect(writes.map(([u]) => new URL(u).pathname)).toEqual(['/rest/v1/rpc/archive_member', '/rest/v1/rpc/archive_member', '/auth/v1/admin/users/u1']);
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+    expect(JSON.parse(writes[0][1].body)).toEqual({ p_kind: 'client_member', p_id: 'm1', p_reason: expect.any(String) });
+    expect(JSON.parse(writes[1][1].body)).toEqual({ p_kind: 'lab_staff', p_id: 's1', p_reason: expect.any(String) });
+    for (const [, init] of writes.slice(0, 2)) {
       expect(init.headers.Authorization).toBe('Bearer owner-token');
       expect(init.headers.apikey).toBe('anon');
-      expect(JSON.parse(init.body)).toMatchObject({ archived_at: expect.any(String), archived_reason: expect.any(String) });
     }
+    expect(fetch.mock.calls.some(([u]) => String(u).includes('client_member?user_id=in.(u1)&archived_at=is.null'))).toBe(true);
     expect(writes[2][1].headers.Authorization).toBe('Bearer fake-service');
     expect(JSON.parse(writes[2][1].body)).toEqual({ ban_duration: '876000h' });
     expect(fetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   });
-  test('keeps an Owner unbanned when RLS hides a targeted membership from PATCH results', async () => {
+  test('keeps a user unbanned when archive_member refuses a membership (e.g. an Admin token on lab staff)', async () => {
     const { main, fetch } = await setup();
+    withMemberships(fetch, body => body.p_kind === 'lab_staff');
+    await expect(main(env, ['--apply', '--retire-users'])).rejects.toThrow(/retirement failed/);
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+  });
+  test('keeps a user unbanned when a membership is still active after archiving', async () => {
+    const { main, fetch } = await setup();
+    withMemberships(fetch);
     const original = fetch.getMockImplementation();
     fetch.mockImplementation(async (url, init) => {
-      if (String(url).includes('/lab_staff?') && init?.method !== 'PATCH') return json([{ id: 'owner-membership' }]);
+      if (String(url).includes('/lab_staff?') && (init?.method ?? 'GET') === 'GET') return json([{ id: 'owner-membership' }]);
+      if (String(url).endsWith('/rpc/archive_member')) return new Response(null, { status: 204 });
       return original(url, init);
     });
     await expect(main(env, ['--apply', '--retire-users'])).rejects.toThrow(/retirement failed/);

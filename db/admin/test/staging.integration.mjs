@@ -645,6 +645,300 @@ const releasedRemoved = await removeObjects(ownerToken, 'case-files', [analysisK
 check("0012: an eligible signer removes a pending analysis file it staged in case-files (an Operator cannot), and cannot remove a released project's file",
   v3.ok && pendingStaged.ok && pendingAfterOperator === '1' && pendingRemoved.ok && objectCount('case-files', pendingKey) === '0' && objectCount('case-files', analysisKey) === '1',
   `statuses ${v3.status}/${pendingStaged.status}/${pendingByOperator.status}/${pendingRemoved.status}/${releasedRemoved.status}, removed ${pendingRemoved.removed}/${releasedRemoved.removed}`);
+
+// ---------------------------------------------------------------- New order (0013_orders.sql)
+// admin.create_order through rpc with real tokens. Two run panels (one archived from the start) and a third run client
+// created archived; the active panel is archived at the end of the block. The created order belongs to client A, so
+// archiveRun retires it with the rest of the run.
+const coPanel = randomUUID(); const coOldPanel = randomUUID(); const coOldClient = randomUUID();
+sql(`insert into admin.panel (id, name, dataset_type) values ('${coPanel}', '${run} panel', 'global');
+     insert into admin.panel (id, name, dataset_type, archived_at, archived_reason) values ('${coOldPanel}', '${run} old panel', 'global', now(), '${run} retired');
+     insert into admin.client (id, name, kind, archived_at, archived_reason) values ('${coOldClient}', '${run} archived client', 'company', now(), '${run} archived');`);
+const coArgs = (client = clientA, panel = coPanel) => ({ p_client_id: client, p_panel_id: panel, p_title: `${run} new order`, p_matrix: 'plasma',
+  p_expected_samples: 12, p_billing_ref: `${run}-PO`, p_notes: 'synthetic' });
+const coCreated = await rpc(operatorToken, 'create_order', coArgs());
+const coRow = coCreated.ok ? sql(`select stage || '|' || requested_by || '|' || panel_id || '|' || expected_samples || '|' || billing_ref from admin."order" where id = '${coCreated.body}'`) : '';
+const coAudit = coCreated.ok ? sql(`select count(*) from admin.audit_event where entity = 'order' and entity_id = '${coCreated.body}' and action = 'INSERT' and actor = '${operator.id}'`) : '0';
+check('0013: an Operator creates an order through rpc: stage request, requested_by = the Operator, audited',
+  coCreated.ok && coRow === `request|${operator.id}|${coPanel}|12|${run}-PO` && coAudit === '1', `${show(coCreated)}, row ${coRow}, audit ${coAudit}`);
+const coByRequester = await rpc(requesterToken, 'create_order', coArgs());
+const coOldC = await rpc(operatorToken, 'create_order', coArgs(coOldClient));
+const coOldP = await rpc(operatorToken, 'create_order', coArgs(clientA, coOldPanel));
+const coCount = sql(`select count(*) from admin."order" where title = '${run} new order'`);
+check('0013: create_order refuses a client requester (42501), an archived client and an archived panel; nothing else was inserted',
+  pgRefused(coByRequester) && !coOldC.ok && /archived/.test(coOldC.body?.message ?? '') && !coOldP.ok && /archived/.test(coOldP.body?.message ?? '') && coCount === '1',
+  `${show(coByRequester)} | ${show(coOldC)} | ${show(coOldP)} | rows ${coCount}`);
+sql(`update admin.panel set archived_at = now(), archived_reason = '${run} staging test run finished' where id = '${coPanel}'`);
+
+// ---------------------------------------------------------------- Clients, wave 3 round 1 (0014_clients.sql)
+// Exact RPC contract through PostgREST, with the run's synthetic Owner/Admin/Operator/requester tokens.
+const clientArgs = { p_name: `${run} RPC client`, p_kind: 'pi_lab', p_billing_method: 'charge_code', p_notes: 'Synthetic round 1 client' };
+const clientCreated = await rpc(ownerToken, 'create_client', clientArgs);
+const rpcClientId = clientCreated.body;
+const validRpcClient = clientCreated.ok && typeof rpcClientId === 'string' && /^[0-9a-f-]{36}$/.test(rpcClientId);
+check('0014: Owner creates a client through rpc', validRpcClient, show(clientCreated));
+if (validRpcClient) {
+  try {
+    const editArgs = { p_client_id: rpcClientId, ...clientArgs, p_billing_method: 'po' };
+    const clientEdited = await rpc(adminToken, 'update_client', editArgs);
+    const visibleClient = await pgCall(await api(operatorToken, `client?select=name,kind,billing_method,client_member(user_id,role),order(code,stage)&id=eq.${rpcClientId}`));
+    check('0014: Admin edits billing and Operator reads client details with member/order embeds',
+      clientEdited.ok && visibleClient.ok && visibleClient.body?.[0]?.billing_method === 'po'
+        && Array.isArray(visibleClient.body?.[0]?.client_member) && Array.isArray(visibleClient.body?.[0]?.order), show(visibleClient));
+    const duplicateClient = await rpc(ownerToken, 'create_client', clientArgs);
+    const runClientName = sql(`select name from admin.client where id = '${clientA}'`);
+    const duplicateEdit = await rpc(adminToken, 'update_client', { ...editArgs, p_name: runClientName });
+    check('0014: duplicate create/update return a clear 23505 refusal',
+      [duplicateClient, duplicateEdit].every(r => !r.ok && r.status === 409 && r.body?.code === '23505' && /already exists/i.test(r.body?.message)),
+      [duplicateClient, duplicateEdit].map(show).join(' | '));
+    const clientDenied = [];
+    for (const token of [operatorToken, requesterToken]) {
+      clientDenied.push(await rpc(token, 'create_client', { ...clientArgs, p_name: `${run} forbidden` }),
+        await rpc(token, 'update_client', editArgs), await rpc(token, 'archive_client', { p_client_id: rpcClientId, p_reason: `${run} forbidden` }));
+    }
+    check('0014: non-managers are refused all three client RPCs with 42501', clientDenied.every(pgRefused), clientDenied.map(show).join(' | '));
+    // One open order, then a released order and an archived order: the exact archive gate.
+    sql(`insert into admin.client_member (client_id, user_id, role) values ('${rpcClientId}', '${requester.id}', 'requester');`);
+    const rpcOrder = await pgCall(await api(operatorToken, 'order', { method: 'POST', body: JSON.stringify({ client_id: rpcClientId, title: `${run} client archive gate` }) }));
+    const openRefusal = await rpc(adminToken, 'archive_client', { p_client_id: rpcClientId, p_reason: `${run} premature archive` });
+    check('0014: archive refuses an open order without changing the client', rpcOrder.ok && !openRefusal.ok && openRefusal.body?.code === '55000'
+      && /open order/i.test(openRefusal.body?.message) && sql(`select archived_at is null from admin.client where id = '${rpcClientId}'`) === 't', show(openRefusal));
+    sql(`update admin."order" set stage = 'released' where client_id = '${rpcClientId}';
+         insert into admin."order" (client_id, title, archived_at, archived_reason) values ('${rpcClientId}', '${run} cancelled', now(), '${run} synthetic cancellation');`);
+    const noReason = await rpc(adminToken, 'archive_client', { p_client_id: rpcClientId, p_reason: '  ' });
+    const clientArchived = await rpc(adminToken, 'archive_client', { p_client_id: rpcClientId, p_reason: `  ${run} finished  ` });
+    check('0014: reason is required; released/archived orders permit archival, audited as Admin',
+      !noReason.ok && noReason.body?.code === '22023' && clientArchived.ok
+        && sql(`select archived_reason from admin.client where id = '${rpcClientId}'`) === `${run} finished`
+        && sql(`select count(*) from admin.audit_event where entity = 'client' and entity_id = '${rpcClientId}' and actor = '${secondSigner.id}' and after->>'archived_at' is not null`) === '1',
+      `reason ${show(noReason)} | archive ${show(clientArchived)}`);
+    const archivedClientWrites = [];
+    for (const token of [operatorToken, requesterToken]) {
+      for (const [table, fields] of [
+        ['order', { title: `${run} archived client order` }],
+        ['shipment', { order_id: rpcOrder.body?.[0]?.id }],
+        ['sample', { order_id: rpcOrder.body?.[0]?.id, full_name: `${run} archived client sample` }],
+      ]) {
+        archivedClientWrites.push(await pgCall(await api(token, table, { method: 'POST', body: JSON.stringify({ client_id: rpcClientId, ...fields }) })));
+      }
+    }
+    check('0014: after archive_client, Operator and requester cannot insert orders, shipments or samples for that client',
+      clientArchived.ok && archivedClientWrites.every(pgRefused), archivedClientWrites.map(show).join(' | '));
+  } finally {
+    // Keep this block independent of the other tasks' teardown; no hard deletes, even on failure.
+    sql(`update admin."order" set archived_at = now(), archived_reason = '${run} client checks finished' where client_id = '${rpcClientId}' and archived_at is null;
+         update admin.client set archived_at = now(), archived_reason = '${run} client checks finished' where id = '${rpcClientId}' and archived_at is null;`);
+  }
+}
+
+// ---------------------------------------------------------------- People and invitations, wave 3 round 2 (0015_people.sql)
+// The invitation flow the Admin app runs, through PostgREST: an Owner/Admin creates a link (only its digest is stored),
+// anon previews it, the app server creates the GoTrue user and accepts with the stack's service key (SERVICE_KEY,
+// never printed), then roles change and memberships are archived. Invitees are throwaway run users (retired at the
+// end with the others); the block revokes its own pending links in `finally`.
+const serviceRpc = async (fn, args) => pgCall(await fetch(`${rest}/rpc/${fn}`, {
+  method: 'POST', body: JSON.stringify(args),
+  headers: { apikey: env.SERVICE_KEY, Authorization: `Bearer ${env.SERVICE_KEY}`, 'Accept-Profile': 'admin', 'Content-Profile': 'admin', 'Content-Type': 'application/json' },
+}));
+const runEmail = (label) => `${run}-${label}@example.test`;
+const digestOf = (token) => createHash('sha256').update(token).digest('hex');
+try {
+  const inviteArgs = (label, lab, client = null, role = null) => ({ p_email: runEmail(label), p_lab_role: lab, p_client_id: client, p_client_role: role });
+  const pInvite = await rpc(adminToken, 'create_invitation', inviteArgs('invitee', null, clientA, 'requester'));
+  const pToken = typeof pInvite.body === 'string' ? pInvite.body : '';
+  const pStored = pToken ? sql(`select count(*) from admin.invitation where token_sha256 = '${digestOf(pToken)}' and email = '${runEmail('invitee')}' and expires_at between now() + interval '6 days 23 hours' and now() + interval '7 days'`) : '0';
+  const pLeak = pToken ? sql(`select (select count(*) from admin.invitation i where to_jsonb(i)::text like '%${pToken}%') + (select count(*) from admin.audit_event a where coalesce(a.after::text, '') like '%${pToken}%')`) : '1';
+  check('0015: an Admin creates a client invitation through rpc; only its digest is stored, 7 days, the raw token is nowhere',
+    pInvite.ok && /^[0-9a-f]{64}$/.test(pToken) && pStored === '1' && pLeak === '0', `${pInvite.status}, stored ${pStored}, leak ${pLeak}`);
+  const pAdminLab = await rpc(adminToken, 'create_invitation', inviteArgs('lab-by-admin', 'operator'));
+  const pOperator = await rpc(operatorToken, 'create_invitation', inviteArgs('by-operator', null, clientA, 'viewer'));
+  const pRequester = await rpc(requesterToken, 'create_invitation', inviteArgs('by-requester', null, clientA, 'viewer'));
+  const pRead = await pgCall(await api(adminToken, `invitation?select=token_sha256&email=eq.${runEmail('invitee')}`));
+  check('0015: an Admin cannot invite lab staff, an Operator and a client requester invite nobody (42501); the digest is not readable',
+    [pAdminLab, pOperator, pRequester].every(pgRefused) && !pRead.ok, [pAdminLab, pOperator, pRequester, pRead].map(show).join(' | '));
+
+  const pPreview = await rpc(env.ANON_KEY, 'invitation_preview', { p_token: pToken });
+  const pBogus = await rpc(env.ANON_KEY, 'invitation_preview', { p_token: '0'.repeat(64) });
+  check('0015: anon previews a valid link (email, target in plain words, no account yet) and gets no row for an unknown one',
+    pPreview.ok && pPreview.body?.length === 1 && pPreview.body[0].email === runEmail('invitee') && pPreview.body[0].target === `Requester at ${run} Client A`
+      && pPreview.body[0].has_account === false && pBogus.ok && pBogus.body?.length === 0, `${show(pPreview)} | ${show(pBogus)}`);
+
+  const invitee = await createUser('invitee');
+  const pAnonAccept = await rpc(env.ANON_KEY, 'accept_invitation', { p_token: pToken, p_user_id: invitee.id });
+  const pOwnerAccept = await rpc(ownerToken, 'accept_invitation', { p_token: pToken, p_user_id: invitee.id });
+  check('0015: anon and a signed-in Owner cannot call accept_invitation', [pAnonAccept, pOwnerAccept].every(r => !r.ok && [401, 403].includes(r.status)),
+    `${show(pAnonAccept)} | ${show(pOwnerAccept)}`);
+  const pAccepted = await serviceRpc('accept_invitation', { p_token: pToken, p_user_id: invitee.id });
+  const pMember = sql(`select role from admin.client_member where client_id = '${clientA}' and user_id = '${invitee.id}' and archived_at is null`);
+  const pUsed = sql(`select count(*) from admin.invitation where token_sha256 = '${digestOf(pToken)}' and accepted_by = '${invitee.id}'`);
+  const pAgain = await serviceRpc('accept_invitation', { p_token: pToken, p_user_id: invitee.id });
+  const pAfter = await rpc(env.ANON_KEY, 'invitation_preview', { p_token: pToken });
+  check('0015: the service role accepts once: requester membership, link marked used, a second accept refused (55000), no preview any more',
+    pAccepted.ok && pMember === 'requester' && pUsed === '1' && !pAgain.ok && pAgain.body?.code === '55000' && pAfter.body?.length === 0,
+    `${show(pAccepted)}, member ${pMember}, used ${pUsed} | ${show(pAgain)}`);
+  const inviteeToken = await signIn(invitee);
+  const inviteeOrders = await pgCall(await api(inviteeToken, `order?select=client_id&client_id=eq.${clientA}`));
+  check('0015: the invited person signs in with the password the app set and reads their client', inviteeOrders.ok && inviteeOrders.body?.length >= 1, show(inviteeOrders));
+
+  const pOther = await rpc(ownerToken, 'create_invitation', inviteArgs('someone-else', null, clientB, 'viewer'));
+  const pMismatch = await serviceRpc('accept_invitation', { p_token: pOther.body, p_user_id: invitee.id });
+  const pRevokeMe = await rpc(ownerToken, 'create_invitation', inviteArgs('invitee', null, clientB, 'viewer'));
+  const pRevokeId = sql(`select id from admin.invitation where token_sha256 = '${digestOf(String(pRevokeMe.body))}'`);
+  const pRevokedByOp = await rpc(operatorToken, 'revoke_invitation', { p_invitation_id: pRevokeId });
+  const pRevoked = await rpc(adminToken, 'revoke_invitation', { p_invitation_id: pRevokeId });
+  const pRevokedAccept = await serviceRpc('accept_invitation', { p_token: pRevokeMe.body, p_user_id: invitee.id });
+  sql(`update admin.invitation set expires_at = now() - interval '1 second' where token_sha256 = '${digestOf(String(pOther.body))}'`);
+  const pExpired = await serviceRpc('accept_invitation', { p_token: pOther.body, p_user_id: invitee.id });
+  check('0015: accept refuses a different email (42501), a revoked link and an expired one (55000); an Operator cannot revoke',
+    pOther.ok && !pMismatch.ok && pMismatch.body?.code === '42501' && pgRefused(pRevokedByOp) && pRevoked.ok
+      && !pRevokedAccept.ok && /revoked/.test(pRevokedAccept.body?.message ?? '') && !pExpired.ok && /expired/.test(pExpired.body?.message ?? ''),
+    [pMismatch, pRevokedByOp, pRevoked, pRevokedAccept, pExpired].map(show).join(' | '));
+
+  // Security review finding 4: an existing account accepts while signed in (accept_my_invitation), password untouched.
+  const pMine = await rpc(ownerToken, 'create_invitation', inviteArgs('invitee', null, clientB, 'viewer'));
+  const pMinePreview = await rpc(env.ANON_KEY, 'invitation_preview', { p_token: pMine.body });
+  const pMineByOther = await rpc(requesterToken, 'accept_my_invitation', { p_token: pMine.body });
+  const pMineAnon = await rpc(env.ANON_KEY, 'accept_my_invitation', { p_token: pMine.body });
+  const pMineAccepted = await rpc(inviteeToken, 'accept_my_invitation', { p_token: pMine.body });
+  check('0015: preview says the invited email has an account; that person accepts signed in (viewer of client B); another person (42501) and anon cannot',
+    pMine.ok && pMinePreview.body?.[0]?.has_account === true && !pMineByOther.ok && pMineByOther.body?.code === '42501'
+      && !pMineAnon.ok && [401, 403].includes(pMineAnon.status) && pMineAccepted.ok
+      && sql(`select role from admin.client_member where client_id = '${clientB}' and user_id = '${invitee.id}' and archived_at is null`) === 'viewer',
+    [pMine, pMinePreview, pMineByOther, pMineAnon, pMineAccepted].map(show).join(' | '));
+  check('0015: no audit row of this run\'s invitations holds token_sha256',
+    sql(`select count(*) from admin.audit_event a join admin.invitation i on i.id = a.entity_id where a.entity = 'invitation' and i.email like '${run}-%'
+         and (a.after ? 'token_sha256' or coalesce(a.before ? 'token_sha256', false))`) === '0'
+      && sql(`select count(*) from admin.audit_event a join admin.invitation i on i.id = a.entity_id where a.entity = 'invitation' and i.email like '${run}-%'`) !== '0');
+
+  // Security review finding 1: memberships are never written directly through the API.
+  const pDirectPromote = await pgCall(await api(adminToken, `lab_staff?user_id=eq.${operator.id}`, { method: 'PATCH', body: JSON.stringify({ role: 'admin' }) }));
+  const pDirectInsert = await pgCall(await api(ownerToken, 'lab_staff', { method: 'POST', body: JSON.stringify({ user_id: invitee.id, role: 'owner' }) }));
+  const pDirectMember = await pgCall(await api(requesterToken, `client_member?client_id=eq.${clientA}`, { method: 'PATCH', body: JSON.stringify({ role: 'client_admin' }) }));
+  check('0015: direct INSERT/UPDATE on lab_staff and client_member is refused (42501) even for the Owner; the Operator is still an Operator',
+    [pDirectPromote, pDirectInsert, pDirectMember].every(pgRefused)
+      && sql(`select role from admin.lab_staff where user_id = '${operator.id}' and archived_at is null`) === 'operator',
+    [pDirectPromote, pDirectInsert, pDirectMember].map(show).join(' | '));
+
+  // Lab staff: only the Owner invites; the role changes and the person is archived, never deleted.
+  const pLab = await rpc(ownerToken, 'create_invitation', inviteArgs('lab-member', 'member'));
+  const labMember = await createUser('lab-member');
+  const pLabAccepted = await serviceRpc('accept_invitation', { p_token: pLab.body, p_user_id: labMember.id });
+  const pPromoteByAdmin = await rpc(adminToken, 'set_lab_role', { p_user_id: labMember.id, p_role: 'operator' });
+  const pPromoted = await rpc(ownerToken, 'set_lab_role', { p_user_id: labMember.id, p_role: 'operator' });
+  const pLabRow = sql(`select id || '|' || role from admin.lab_staff where user_id = '${labMember.id}' and archived_at is null`);
+  const [pLabId, pLabRole] = pLabRow.split('|');
+  const pArchiveByAdmin = await rpc(adminToken, 'archive_member', { p_kind: 'lab_staff', p_id: pLabId, p_reason: `${run} synthetic` });
+  const pArchived = await rpc(ownerToken, 'archive_member', { p_kind: 'lab_staff', p_id: pLabId, p_reason: `${run} synthetic departure` });
+  check('0015: the Owner invites lab staff, changes the lab role and archives them; an Admin cannot (42501); the row stays, audited',
+    pLab.ok && pLabAccepted.ok && pgRefused(pPromoteByAdmin) && pPromoted.ok && pLabRole === 'operator' && pgRefused(pArchiveByAdmin) && pArchived.ok
+      && sql(`select archived_reason from admin.lab_staff where id = '${pLabId}'`) === `${run} synthetic departure`
+      && sql(`select count(*) from admin.audit_event where entity = 'lab_staff' and entity_id = '${pLabId}' and actor = '${owner.id}'`) === '2',
+    [pLab, pLabAccepted, pPromoteByAdmin, pPromoted, pArchiveByAdmin, pArchived].map(show).join(' | '));
+
+  const pMemberId = sql(`select id from admin.client_member where client_id = '${clientA}' and user_id = '${invitee.id}'`);
+  const pRoleByOp = await rpc(operatorToken, 'set_client_member_role', { p_member_id: pMemberId, p_role: 'viewer' });
+  const pRole = await rpc(adminToken, 'set_client_member_role', { p_member_id: pMemberId, p_role: 'viewer' });
+  const pMemberArchived = await rpc(adminToken, 'archive_member', { p_kind: 'client_member', p_id: pMemberId, p_reason: `${run} synthetic` });
+  check('0015: an Admin changes a client role and archives the membership; an Operator cannot (42501)',
+    pgRefused(pRoleByOp) && pRole.ok && pMemberArchived.ok
+      && sql(`select role || '|' || (archived_at is not null) from admin.client_member where id = '${pMemberId}'`) === 'viewer|true',
+    [pRoleByOp, pRole, pMemberArchived].map(show).join(' | '));
+} finally {
+  sql(`update admin.invitation set revoked_at = now() where email like '${run}-%' and accepted_at is null and revoked_at is null`);
+}
+
+// ---------------------------------------------------------------- Batches, wave 3 round 2 (0016_batches.sql)
+// create_batch → mark_batch_exported → mark_batch_acquired through rpc with real tokens, on two Registered run orders
+// (client A: two samples, client B: one). Unknown injections are named by the sample code. Batches cannot be deleted:
+// the block archives its versions and batches itself (the injections of an exported version stay as they are; an
+// unexported version's are archived too); archiveRun retires the orders and clients.
+const bPanel = randomUUID(); const bOrderA = randomUUID(); const bOrderB = randomUUID();
+const bSamples = [randomUUID(), randomUUID(), randomUUID()];
+sql(`insert into admin.panel (id, name, dataset_type) values ('${bPanel}', '${run} batch panel', 'global');
+     insert into admin."order" (id, client_id, title, stage) values ('${bOrderA}', '${clientA}', '${run} batch order A', 'registered'),
+       ('${bOrderB}', '${clientB}', '${run} batch order B', 'registered');
+     insert into admin.sample (id, client_id, order_id, full_name) values ('${bSamples[0]}', '${clientA}', '${bOrderA}', '${run}_S1'),
+       ('${bSamples[1]}', '${clientA}', '${bOrderA}', '${run}_S2'), ('${bSamples[2]}', '${clientB}', '${bOrderB}', '${run}_S3');`);
+const bCode = Object.fromEntries(sql(`select id || '=' || sample_code from admin.sample where id in ('${bSamples.join("', '")}')`).split('\n').map(line => line.split('=')));
+const bInjections = [
+  { seq: 1, sample_type: 'Blank', sample_name: 'Blank_001', sample_id: null, plate: 'Plate 1', vial: 'A1' },
+  ...bSamples.map((id, i) => ({ seq: i + 2, sample_type: 'Unknown', sample_name: bCode[id], sample_id: id, plate: 'Plate 1', vial: `B${i + 1}` })),
+  { seq: 5, sample_type: 'Quality Control', sample_name: 'QC_001', sample_id: null, plate: 'Plate 1', vial: 'A2' },
+];
+const bArgs = { p_name: null, p_panel_id: bPanel, p_rules: { rules: { seed: run }, minutesPerInjection: 12 }, p_injections: bInjections };
+const bBatches = [];
+try {
+  const bCreated = await rpc(operatorToken, 'create_batch', bArgs);
+  const bId = bCreated.body;
+  if (bCreated.ok) bBatches.push(bId);
+  const bFacts = bCreated.ok ? sql(`select b.name || '|' || b.status || '|' || b.panel_id || '|' || (select count(*) from admin.injection i where i.batch_version_id = v.id)
+                                      || '|' || v.version || '|' || (v.rules->'rules'->>'seed')
+                                      || '|' || (select string_agg(stage, ',' order by stage) from admin."order" where id in ('${bOrderA}', '${bOrderB}'))
+                                    from admin.batch b join admin.batch_version v on v.batch_id = b.id where b.id = '${bId}'`) : '';
+  const bAudit = bCreated.ok ? sql(`select count(*) from admin.audit_event where entity = 'batch' and entity_id = '${bId}' and action = 'INSERT' and actor = '${operator.id}'`) : '0';
+  check('0016: an Operator creates a planned batch through rpc: B<yyyy>-<nnn>, version 1 with its rules, 5 injections, both orders In batch, audited',
+    bCreated.ok && new RegExp(`^B\\d{4}-\\d{3,}\\|planned\\|${bPanel}\\|5\\|1\\|${run}\\|in_batch,in_batch$`).test(bFacts) && bAudit === '1', `${show(bCreated)}, facts ${bFacts}, audit ${bAudit}`);
+
+  const bByRequester = await rpc(requesterToken, 'create_batch', bArgs);
+  const bAgain = await rpc(operatorToken, 'create_batch', bArgs);
+  const bFullName = await rpc(operatorToken, 'create_batch', { ...bArgs, p_injections: bInjections.map(r => r.sample_id === bSamples[0] ? { ...r, sample_name: `${run}_S1` } : r) });
+  const bCount = sql(`select count(*) from admin.batch_version v join admin.injection i on i.batch_version_id = v.id where i.sample_name = '${bCode[bSamples[0]]}'`);
+  check('0016: create_batch refuses a client requester (42501), samples already in a planned batch (55000) and an Unknown named by its FullName (23514); nothing else was inserted',
+    pgRefused(bByRequester) && !bAgain.ok && bAgain.body?.code === '55000' && /already in a planned batch/.test(bAgain.body?.message ?? '')
+      && !bFullName.ok && bFullName.body?.code === '23514' && /named by its sample code/.test(bFullName.body?.message ?? '') && bCount === '1',
+    `${show(bByRequester)} | ${show(bAgain)} | ${show(bFullName)} | injections ${bCount}`);
+
+  // RLS on what the function wrote: client A's requester sees the batch and only client A's injections.
+  const bRead = await pgCall(await api(requesterToken, `injection?select=sample_name,client_id&batch_version_id=in.(${sql(`select id from admin.batch_version where batch_id = '${bId}'`)})`));
+  check("0016: a client requester reads only their client's injections of the mixed batch (no blanks, QC or other clients)",
+    bRead.ok && bRead.body.length === 2 && bRead.body.every(r => r.client_id === clientA), show(bRead));
+
+  const sha = createHash('sha256').update(`${run} sequence`).digest('hex');
+  // What the app hashes and sends: the version's live injections as the operator reads them, in seq order.
+  const bVersion = sql(`select id from admin.batch_version where batch_id = '${bId}'`);
+  const bRows = await pgCall(await api(operatorToken, `injection?select=seq,sample_type,sample_name,client_id,aliquot_id,plate,vial&batch_version_id=eq.${bVersion}&archived_at=is.null&order=seq`));
+  const bHashed = (bRows.body ?? []).map(r => ({ ...r, plate: r.plate ?? '', vial: r.vial ?? '' }));
+  const bExp = (token, extra = {}) => rpc(token, 'mark_batch_exported', { p_batch_id: bId, p_sequence_sha256: sha, p_injections: bHashed, ...extra });
+  const bExpByRequester = await bExp(requesterToken);
+  const bExpBadHash = await bExp(operatorToken, { p_sequence_sha256: 'xyz' });
+  const bExpStale = await bExp(operatorToken, { p_injections: bHashed.map(r => r.seq === 2 ? { ...r, vial: 'H12' } : r) });
+  const bAckEarly = await rpc(operatorToken, 'mark_batch_acquired', { p_batch_id: bId });
+  check('0016: mark_batch_exported refuses injections that differ from the version\'s rows (PT409), so a concurrent edit cannot be frozen under the hash',
+    bRows.ok && bHashed.length === 5 && !bExpStale.ok && bExpStale.body?.code === 'PT409' && /changed after it was read/.test(bExpStale.body?.message ?? ''),
+    `${show(bRows)} | ${show(bExpStale)}`);
+  const bExported = await bExp(operatorToken);
+  const bExpFacts = sql(`select v.sequence_sha256 || '|' || v.exported_by || '|' || b.status || '|' || (select string_agg(stage, ',') from admin."order" where id in ('${bOrderA}', '${bOrderB}'))
+                           from admin.batch b join admin.batch_version v on v.batch_id = b.id where b.id = '${bId}'`);
+  check('0016: only lab staff export; a bad hash and acquiring a planned batch are refused; export freezes the version with the hash and moves the orders to Sequence exported',
+    pgRefused(bExpByRequester) && !bExpBadHash.ok && !bAckEarly.ok && bAckEarly.body?.code === '55000' && bExported.ok
+      && bExpFacts === `${sha}|${operator.id}|sequence_exported|sequence_exported,sequence_exported`,
+    `${show(bExpByRequester)} | ${show(bExpBadHash)} | ${show(bAckEarly)} | ${show(bExported)} | ${bExpFacts}`);
+
+  const bS1 = bCode[bSamples[0]];
+  const bRename = await pgCall(await api(operatorToken, `injection?sample_name=eq.${bS1}`, { method: 'PATCH', body: JSON.stringify({ sample_name: `${bS1}-renamed` }) }));
+  const bArchive = await pgCall(await api(operatorToken, `injection?sample_name=eq.${bS1}`, { method: 'PATCH', body: JSON.stringify({ archived_at: new Date().toISOString(), archived_reason: `${run} archive check` }) }));
+  const bTwice = await bExp(operatorToken);
+  check('0016: the exported sequence is frozen against a direct edit or archive through the API, and a second export is refused (55000)',
+    !bRename.ok && !bArchive.ok && sql(`select count(*) from admin.injection where sample_name = '${bS1}' and archived_at is null`) === '1' && !bTwice.ok && bTwice.body?.code === '55000',
+    `${show(bRename)} | ${show(bArchive)} | ${show(bTwice)}`);
+
+  const bAckByRequester = await rpc(requesterToken, 'mark_batch_acquired', { p_batch_id: bId });
+  const bAcquired = await rpc(operatorToken, 'mark_batch_acquired', { p_batch_id: bId });
+  const bAckFacts = sql(`select b.status || '|' || (select string_agg(distinct i.status, ',') from admin.injection i where i.batch_version_id = v.id)
+                           || '|' || (select string_agg(stage, ',') from admin."order" where id in ('${bOrderA}', '${bOrderB}'))
+                           from admin.batch b join admin.batch_version v on v.batch_id = b.id where b.id = '${bId}'`);
+  check('0016: only lab staff mark acquired; the batch and its injections read acquired and both orders Acquired',
+    pgRefused(bAckByRequester) && bAcquired.ok && bAckFacts === 'acquired|acquired|acquired,acquired', `${show(bAckByRequester)} | ${show(bAcquired)} | ${bAckFacts}`);
+} finally {
+  const bReason = `${run} batch checks finished`;
+  for (const bId of bBatches) {
+    sql(`update admin.injection set archived_at = now(), archived_reason = '${bReason}' where batch_version_id in (select id from admin.batch_version where batch_id = '${bId}' and exported_at is null) and archived_at is null;
+         update admin.batch_version set archived_at = now(), archived_reason = '${bReason}' where batch_id = '${bId}' and archived_at is null;
+         update admin.batch set archived_at = now(), archived_reason = '${bReason}' where id = '${bId}' and archived_at is null;`);
+  }
+  sql(`update admin.panel set archived_at = now(), archived_reason = '${bReason}' where id = '${bPanel}' and archived_at is null`);
+}
+
 } catch (error) {
   failures++;
   console.log(`FAIL the run stopped: ${error instanceof Error ? error.message : error}`);
