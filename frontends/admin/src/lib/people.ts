@@ -120,7 +120,9 @@ export function previewDemoInvitation(state: PeopleState, token: string, now: Da
 }
 
 // accept_invitation for a person who has just set a password (the demo creates no account and keeps no password).
-export function acceptDemoInvitation(state: PeopleState, input: { token: string; userId: string; now: Date }): PeopleState {
+// nameFor: the full name of the access request an invitation came from (0023: the member is named after it, else the
+// invited email).
+export function acceptDemoInvitation(state: PeopleState, input: { token: string; userId: string; now: Date; nameFor?: (invitationId: string) => string | null | undefined }): PeopleState {
   const item = TOKEN.test(input.token) ? state.invitations.find(invitation => invitation.tokenSha256 === tokenDigest(input.token)) : undefined;
   if (!item) throw new DataError("This invitation link is not valid.");
   if (item.revokedAt) throw new DataError("This invitation was revoked.");
@@ -128,7 +130,7 @@ export function acceptDemoInvitation(state: PeopleState, input: { token: string;
   if (new Date(item.expiresAt) <= input.now) throw new DataError("This invitation has expired.");
   const person: DemoPerson = {
     kind: item.labRole ? "lab_staff" : "client_member", id: `${item.labRole ? "lab" : "member"}-${input.userId}`, userId: input.userId,
-    name: item.email, email: item.email, role: (item.labRole ?? item.clientRole) as string, clientId: item.clientId, clientName: invitationClient(item),
+    name: (!item.labRole && input.nameFor?.(item.id)) || item.email, email: item.email, role: (item.labRole ?? item.clientRole) as string, clientId: item.clientId, clientName: invitationClient(item),
     twoStep: false, archivedAt: null, archivedReason: null,
   };
   const at = input.now.toISOString();

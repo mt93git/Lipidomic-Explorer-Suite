@@ -1,6 +1,6 @@
 .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
 .form select, .form textarea, .link input { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
-.link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 10px; }
+.link { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-top: 10px; }
 .link label { grid-column: 1 / -1; }
 .link input { font-family: var(--font-mono), monospace; font-size: var(--text-xs); }
 .link :global(.button) { margin-left: 0; }
@@ -17,7 +17,8 @@
 @media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
 /* F3: access requests. The row under review and its panel share a tint, like the proposal's drawing. */
 .reviewing > td { background: var(--tint); }
-.toggle { border: 0; background: none; padding: 0; color: var(--blue); font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
+/* position: relative keeps the button's .sr-only name inside the table's sideways scroll on a phone (as .nav-link). */
+.toggle { position: relative; border: 0; background: none; padding: 0; color: var(--blue); font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .review { padding: 18px; border: 1px solid #a8c2d7; border-radius: 6px; background: white; }
 .review :global(.radio-group) { margin-bottom: 4px; }
 .review :global(.radio) small { display: block; margin-top: 2px; }
@@ -26,3 +27,6 @@
 .review select, .review input:not([type="radio"]), .review textarea { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
 .decline { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .sectionFirst { margin-bottom: 22px; }
+/* Copy message after a decline; on a phone the link takes its own row above its two buttons. */
+.copy { margin-top: 10px; }
+@media (max-width: 760px) { .link { grid-template-columns: 1fr 1fr; } .link input { grid-column: 1 / -1; } }

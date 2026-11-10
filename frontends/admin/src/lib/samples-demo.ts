@@ -18,8 +18,9 @@ export type DemoResult = { id: string; orderCode: string; sha256: string; accept
 // Datasets, their signatures and releases, and the release policy are the release side's records (release-demo.ts).
 // Orders created with New order (create_order) join the example orders in applyDemoState, so every screen sees them.
 // shipping: the lab's shipping instructions (set_shipping_instructions), shown to clients on an accepted request.
+// contact: the lab's contact for clients (set_client_contact, 0023), stored the same way.
 export type DemoShipping = { text: string; setAt: string; setBy: string };
-export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null };
+export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null; contact?: DemoShipping | null };
 
 export const emptyDemoState = (): DemoState => ({ shipments: [], samples: [], results: [], datasets: [] });
 

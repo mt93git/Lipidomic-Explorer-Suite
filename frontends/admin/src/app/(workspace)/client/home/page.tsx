@@ -4,6 +4,9 @@ import { clientDay, clientStepLabels, declined, homeCounts, reachedOn, samplePhr
 import { mayRequestOrders } from "@/lib/order-request";
 import { listClientOrders } from "@/lib/data/client-orders";
 import { clientNexoAccess } from "@/lib/data/clients";
+import { countClientDeliverables } from "@/lib/data/deliverables";
+import { getClientContact } from "@/lib/data/order-requests";
+import { LabContact } from "@/components/lab-contact";
 import { clientMayOpenNexo } from "@/lib/deliverables";
 import { mayOpenInNexo, nexoDatasetLink } from "@/lib/release";
 import { requireWorkspace } from "@/lib/session";
@@ -13,13 +16,15 @@ export const metadata: Metadata = { title: "Your orders" };
 
 // Client home: the selected client's orders, each at its client-facing step, and the datasets released to it.
 // ?requested=ORD059 after Request an order. A request the lab declined stays in the list, closed, with its reason.
+// Released datasets say how many files the client has; "you can open" only while this client can open Nexo.
 export default async function ClientHomePage({ searchParams }: { searchParams: Promise<{ requested?: string }> }) {
   const session = await requireWorkspace("client");
   const client = session.selectedClient;
   if (!client) return <p className="empty-state">No client memberships are assigned. Ask the lab to add your client access.</p>;
   const { requested } = await searchParams;
   const sent = requested && /^ORD\d{3,}$/.test(requested) ? requested : null;
-  const [orders, nexoAccess] = await Promise.all([listClientOrders(client.id), clientNexoAccess(client.id)]);
+  const [orders, nexoAccess, fileCounts, contact] = await Promise.all([listClientOrders(client.id), clientNexoAccess(client.id), countClientDeliverables(client.id), getClientContact()]);
+  const opensNexo = clientMayOpenNexo(mayOpenInNexo("client"), nexoAccess);
   const counts = homeCounts(orders);
   const mayRequest = mayRequestOrders(client.role);
   const inProgress = orders.filter(order => !declined(order) && stepOf(order) < 6).concat(orders.filter(declined));
@@ -28,7 +33,7 @@ export default async function ClientHomePage({ searchParams }: { searchParams: P
     { title: "Waiting for the lab", value: counts.waitingForLab, note: "Requests the lab has not answered yet" },
     { title: "Waiting for your samples", value: counts.waitingForSamples, note: "Accepted: ship with the order code" },
     { title: "With the lab", value: counts.withLab, note: "Received, in analysis or in review" },
-    { title: "Released", value: counts.released, note: "Datasets you can open", ready: true },
+    { title: "Released", value: counts.released, note: opensNexo ? "Datasets you can open" : "Results released by the lab", ready: true },
   ];
   return <>
     <div className="page-heading"><div>
@@ -48,7 +53,7 @@ export default async function ClientHomePage({ searchParams }: { searchParams: P
         </section>
         <section className="panel" aria-labelledby="datasets-title">
           <div className="eyebrow">Released</div><h2 id="datasets-title">Datasets</h2>
-          {released.length ? <ul className={styles.list}>{released.map(order => <DatasetRow order={order} nexoAccess={nexoAccess} key={order.code} />)}</ul>
+          {released.length ? <ul className={styles.list}>{released.map(order => <DatasetRow order={order} opensNexo={opensNexo} files={fileCounts.get(order.code) ?? 0} key={order.code} />)}</ul>
             : <p className="muted">No dataset has been released yet.</p>}
         </section>
       </div>
@@ -58,6 +63,7 @@ export default async function ClientHomePage({ searchParams }: { searchParams: P
         <div className="eyebrow">Sending samples</div>
         <p className="muted">Ship only after a request shows Accepted, with the order code on every box. The lab records the arrival here.</p>
         {session.clients.length > 1 && <p className="muted"><Link href="/choose-client">Change client</Link></p>}
+        <LabContact text={contact?.text} />
       </section>
     </div>
   </>;
@@ -80,15 +86,16 @@ function OrderRow({ order }: { order: ClientOrder }) {
   </li>;
 }
 
-// Open in Nexo needs the environment gate and the lab's switch for this client (F4, decision 1).
-function DatasetRow({ order, nexoAccess }: { order: ClientOrder; nexoAccess: boolean }) {
+// Open in Nexo needs the environment gate and the lab's switch for this client (F4, decision 1). files: how many the
+// client sees for the order.
+function DatasetRow({ order, opensNexo, files }: { order: ClientOrder; opensNexo: boolean; files: number }) {
   const release = order.release;
-  const nexo = release?.datasetId ? nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, { id: release.datasetId, status: "released" }, clientMayOpenNexo(mayOpenInNexo("client"), nexoAccess)) : null;
+  const nexo = release?.datasetId ? nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, { id: release.datasetId, status: "released" }, opensNexo) : null;
   const what = !release ? "Released" : release.retired ? `Dataset v${release.version} ${release.retired.status}`
     : `Dataset v${release.version}${release.releasedAt ? ` · released ${clientDay(release.releasedAt, true)}` : ""}`;
   return <li className={styles.dataset}>
     <span className={styles.code}>{order.code}</span>
-    <span className={styles.datasetText}><span className={styles.title}>{order.title || order.code}</span><span className={styles.meta}>{what} · {samplePhrase(order)}</span></span>
+    <span className={styles.datasetText}><span className={styles.title}>{order.title || order.code}</span><span className={styles.meta}>{what} · {samplePhrase(order)}{files ? ` · ${files} file${files === 1 ? "" : "s"}` : ""}</span></span>
     <span className={styles.actions}>
       <Link className="button secondary" href={`/orders/${order.code}`} aria-label={`Order ${order.code}`}>Order →</Link>
       {nexo && <a className="button" href={nexo} target="_blank" rel="noreferrer">Open in Nexo</a>}

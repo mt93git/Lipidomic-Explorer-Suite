@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
 import { getEnvironment } from "@/lib/environment";
 import { POST as upload } from "@/app/(workspace)/orders/[code]/deliverables/route";
 import { GET as download } from "@/app/(workspace)/deliverables/[id]/route";
-import { listClientDeliverables, listOrderDeliverables, retireDeliverable, setDeliverableVisibility } from "@/lib/data/deliverables";
+import { countClientDeliverables, listClientDeliverables, listOrderDeliverables, retireDeliverable, setDeliverableVisibility } from "@/lib/data/deliverables";
 import { clientNexoAccess, setClientNexoAccess } from "@/lib/data/clients";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
@@ -149,5 +149,16 @@ describe("the per-client Nexo switch (demo)", () => {
     expect(await clientNexoAccess("example-harbor")).toBe(false);
     await setClientNexoAccess({ clientId: "example-cedar", enabled: false, actorId: "example-reviewer-a" });
     expect(await clientNexoAccess("example-cedar")).toBe(false);
+  });
+});
+
+describe("Client home's file counts (UX review top 2)", () => {
+  test("count only the files the client sees, by order: hidden and retired ones do not count, nor another client's", async () => {
+    await post("ORD040", { name: "a.pdf", bytes: PDF, type: "application/pdf" }, { title: "Shown", visible: "1" });
+    await post("ORD040", { name: "b.png", bytes: PNG, type: "image/png" }, { title: "Hidden", kind: "figure" });
+    await post("ORD040", { name: "c.pdf", bytes: new TextEncoder().encode("%PDF-1.7\n% retired\n%%EOF\n"), type: "application/pdf" }, { title: "Retired", visible: "1" });
+    await retireDeliverable(await idOf("Retired"), "Synthetic: wrong file");
+    expect(Object.fromEntries(await countClientDeliverables("example-cedar"))).toEqual({ ORD040: 1 });
+    expect((await countClientDeliverables("example-harbor")).size).toBe(0);
   });
 });

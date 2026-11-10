@@ -1,6 +1,7 @@
 /* Deliverables (F4): the lab's section on the order detail and the client's list. One column under 760 px. */
 .section { margin-top: 22px; }
-.upload { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 18px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+/* The form follows the list of files. */
+.upload { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 18px; align-items: end; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
 .upload select, .upload input[type="file"] { width: 100%; border: 1px solid #bfcbd5; padding: 9px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
 .wide { grid-column: 1 / -1; }
 .check { display: flex; align-items: center; gap: 8px; margin: 6px 0 14px; font-size: var(--text-sm); }

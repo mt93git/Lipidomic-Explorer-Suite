@@ -152,6 +152,24 @@ describe("live orders: the signed-in user's own token, RLS decides", () => {
     expect(await getOrder("ORD999")).toBeNull();
   });
 
+  it("names who asked for a client request from client_member (0023), a lab name first; the fixed text only when there is none", async () => {
+    tables.client_member = [
+      { user_id: "user-rowan", display_name: "Rowan Example", archived_at: null },
+      { user_id: "user-left", display_name: "Former Member", archived_at: "2026-11-05T00:00:00Z", archived_reason: "left" },
+      { user_id: "user-operator", display_name: "Also a client name", archived_at: null },
+      { user_id: "user-unnamed", display_name: null, archived_at: null },
+    ];
+    tables.order.push(
+      order({ id: "o-45", code: "ORD045", order_number: 45, title: "Asked", stage: "request", created_at: "2026-11-09T14:00:00Z", review: "pending", requested_by: "user-rowan" }),
+      order({ id: "o-46", code: "ORD046", order_number: 46, title: "Asked and left", stage: "request", created_at: "2026-11-09T14:00:00Z", review: "accepted", reviewed_at: "2026-11-09T15:00:00Z", requested_by: "user-left" }),
+      order({ id: "o-47", code: "ORD047", order_number: 47, title: "Unnamed", stage: "request", created_at: "2026-11-09T14:00:00Z", review: "pending", requested_by: "user-unnamed" }),
+      order({ id: "o-48", code: "ORD048", order_number: 48, title: "Lab", stage: "request", created_at: "2026-11-09T14:00:00Z", review: "pending", requested_by: "user-operator" }),
+    );
+    const requested = Object.fromEntries((await listOrders()).filter(item => item.request).map(item => [item.code, item.request?.requestedBy]));
+    expect(requested).toEqual({ ORD045: "Rowan Example", ORD046: "Former Member", ORD047: "A client member", ORD048: "Op One" });
+    expect((await getOrder("ORD045"))?.order.history.at(-1)?.actor).toBe("Rowan Example");
+  });
+
   it("fails closed without an authenticated client", async () => {
     vi.mocked(createAdminClient).mockResolvedValue(null);
     await expect(listOrders()).rejects.toThrow(DataError);

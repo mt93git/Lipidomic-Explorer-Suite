@@ -48,7 +48,8 @@ small { font-size: var(--text-sm); }
 .sidebar { background: var(--surface); border-right: 1px solid var(--line); padding: 24px 14px; min-width: 0; }
 .nav-group + .nav-group { margin-top: 22px; }
 .nav-heading { margin: 0 10px 7px; color: var(--muted); font-size: 10px; letter-spacing: .14em; font-weight: 500; }
-.nav-link { display: flex; align-items: center; gap: 9px; color: #415365; border-radius: 4px; padding: 6px 10px; font-size: var(--text-sm); }
+/* position: relative keeps the counter's .sr-only text inside the link (on a phone the nav strip scrolls sideways). */
+.nav-link { position: relative; display: flex; align-items: center; gap: 9px; color: #415365; border-radius: 4px; padding: 6px 10px; font-size: var(--text-sm); }
 .nav-link:hover { background: var(--subtle); text-decoration: none; }
 .nav-link[aria-current="page"] { background: var(--tint); color: var(--blue); font-weight: 700; }
 .nav-mark { width: 14px; text-align: center; font-size: 14px; opacity: .65; }
@@ -157,7 +158,7 @@ small { font-size: var(--text-sm); }
 .scope-menu a { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 4px; color: var(--ink); font-size: var(--text-sm); }
 .scope-menu a:hover { background: var(--subtle); text-decoration: none; }
 .scope-menu a[aria-current="true"] { background: var(--tint); color: var(--blue); font-weight: 700; }
-.kanban-scroll { width: 100%; max-width: 100%; overflow-x: auto; padding: 2px 2px 14px; overscroll-behavior-x: contain; scrollbar-color: #b9c8d5 var(--subtle); }
+.kanban-scroll { position: relative; width: 100%; max-width: 100%; overflow-x: auto; padding: 2px 2px 14px; overscroll-behavior-x: contain; scrollbar-color: #b9c8d5 var(--subtle); }
 .kanban { display: flex; gap: 12px; width: max-content; align-items: stretch; }
 .kanban-column { flex: 0 0 242px; width: 242px; min-height: 410px; padding: 10px; border: 1px solid #e1e7eb; border-radius: var(--radius); background: var(--subtle); }
 .column-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 3px 10px; }

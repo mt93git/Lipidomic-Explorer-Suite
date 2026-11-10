@@ -46,7 +46,7 @@ export const permissions: readonly Permission[] = [
   { key: "answer_access", area: "Clients and people", action: "Approve or decline an access request from the public form", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["list_access_requests", "approve_access_request", "decline_access_request"], note: "Anyone may ask, without an account; approving creates the 7-day invitation link with the role you pick. A declined request's personal data is erased after 90 days." },
   { key: "invite_lab", area: "Clients and people", action: "Invite lab staff, change lab roles, archive lab staff", roles: ["owner"], rule: "lab_owner", rpcs: ["create_invitation", "set_lab_role", "archive_member"], note: "The lab always keeps at least one active Owner." },
   { key: "release_policy", area: "Lab administration", action: "Set the release policy (who signs, how many signatures)", roles: ["owner"], rule: "lab_owner", rpcs: ["set_release_policy"] },
-  { key: "shipping_instructions", area: "Lab administration", action: "Set the shipping instructions clients read", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["set_shipping_instructions"], note: "Everyone signed in reads them." },
+  { key: "shipping_instructions", area: "Lab administration", action: "Set the shipping instructions and the contact for clients", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["set_shipping_instructions", "set_client_contact"], note: "Everyone signed in reads them; the contact also shows on the public Request access page." },
 ];
 
 export type PermissionKey = (typeof permissions)[number]["key"];

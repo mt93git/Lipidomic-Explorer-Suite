@@ -193,3 +193,22 @@ export function answerDemoAccess(state: AccessRequestState, input: { id: string;
     })();
   return { ...state, requests: state.requests.map(item => item.id === input.id ? { ...item, ...change } : item) };
 }
+
+// Ready text the lab copies and sends itself (the app sends no email): the invitation after approving, the answer after
+// declining. The lab's reason for declining is internal and never in it.
+const greeting = (fullName: string | null | undefined) => fullName ? `Hello ${fullName},` : "Hello,";
+export function approvalMessage(input: { fullName?: string | null; reference?: string | null; link: string }): string {
+  return [
+    greeting(input.fullName), "",
+    `The lipidomics lab has approved your access request${input.reference ? ` ${input.reference}` : ""}. Open this link to set your password and join:`,
+    input.link, "",
+    "The link works once and is valid for 7 days. If it expires before you use it, reply to this message and the lab will send you a new one.",
+  ].join("\n");
+}
+export function declineMessage(input: { fullName?: string | null; reference?: string | null }): string {
+  return [
+    greeting(input.fullName), "",
+    `Thank you for your access request${input.reference ? ` ${input.reference}` : ""} to the lipidomics service. The lab cannot give you access at this time.`, "",
+    "If you have a question about it, reply to this message.",
+  ].join("\n");
+}

@@ -93,6 +93,9 @@ test("request access from Sign in, then the lab approves into a new client with 
   await expect(notice).toBeVisible(slow);
   const link = await notice.getByLabel("Invitation link").inputValue();
   expect(link).toMatch(/\/admin\/invite\/[0-9a-f]{64}$/);
+  // A ready message to send next to the link (UX review top 10): nothing is sent by the app.
+  await expect(notice.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await expect(notice.getByRole("button", { name: "Copy message" })).toBeVisible();
   await expect(section.getByText("2 waiting")).toBeVisible(slow);
   await expect(nav(page).getByRole("link", { name: "People 2 access requests waiting" })).toBeVisible(slow);
   await expect(page.getByRole("table", { name: "Pending invitations" })).toContainText("Requester at Example Birch");
@@ -119,7 +122,21 @@ test("the lab declines a request with an internal reason", async ({ page }) => {
   await decline.getByLabel("Reason").fill("Asked the PI first: Example Cedar adds its own people through the lab.");
   await shot(page, "decline-desktop");
   await decline.getByRole("button", { name: "Decline request" }).click();
-  await expect(section.getByRole("status").filter({ hasText: "Request AR-0011 declined." })).toBeVisible(slow);
+  // The notice keeps who asked, so the lab can still write to them, with a ready message (UX review top 10).
+  const declined = section.getByRole("status").filter({ hasText: "Request AR-0011 from Kai Sample, kai@cedar.example.test declined." });
+  await expect(declined).toBeVisible(slow);
+  await expect(declined.getByRole("button", { name: "Copy message" })).toBeVisible();
   await expect(section.getByRole("row").filter({ hasText: "kai@cedar.example.test" })).toHaveCount(0);
   await expect(nav(page).getByRole("link", { name: "People 1 access requests waiting" })).toBeVisible(slow);
+});
+
+// UX review top 1: the People counter's screen-reader text made every lab page 1327 px wide on a phone.
+test("lab pages fit a 390 px phone while access requests are waiting", async ({ page }) => {
+  await enterLab(page);
+  await page.setViewportSize(phone);
+  for (const path of ["/admin/pipeline", "/admin/people", "/admin/orders/ORD040"]) {
+    await page.goto(path);
+    await expect(nav(page).getByRole("link", { name: "People 2 access requests waiting" })).toBeAttached(slow);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBeLessThanOrEqual(390);
+  }
 });

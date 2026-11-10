@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { FormAlert } from "@/components/error-summary";
-import { clientKindNames, clientKinds, defaultRoleFor, type AccessRequest } from "@/lib/access-requests";
+import { approvalMessage, clientKindNames, clientKinds, declineMessage, defaultRoleFor, type AccessRequest } from "@/lib/access-requests";
 import { formatLabInstant } from "@/lib/lab-time";
 import type { LabPerson } from "@/lib/release";
 import { clientRoleNames, clientRoles, type ClientRoleKey } from "@/lib/roles";
@@ -15,7 +15,8 @@ const answerHint = "Answering needs the demo Owner or an Admin.";
 
 // People asked for access on the public form. The lab approves into an existing or a new client with the role it
 // picks (approving creates the 7-day invitation link, shown here once) or declines with an internal reason. One
-// action state for the section: the link stays on screen after the request leaves the list.
+// action state for the section: the link stays on screen after the request leaves the list. The app sends nothing:
+// Copy message gives the lab a ready text to send (the link, 7 days, single use; or the answer to a declined request).
 export function AccessRequests({ requests, clients, actors }: { requests: AccessRequest[]; clients: Client[]; actors: LabPerson[] | null }) {
   const [state, action, pending] = useActionState<AccessAnswerState, FormData>(answerAccessAction, {});
   const [open, setOpen] = useState<string | null>(null);
@@ -36,9 +37,13 @@ export function AccessRequests({ requests, clients, actors }: { requests: Access
         <label className="field-label" htmlFor="access-link">Invitation link</label>
         <input id="access-link" readOnly value={link} onFocus={event => event.currentTarget.select()} />
         <button type="button" className="button secondary" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
+        <CopyButton key={link} label="Copy message" text={approvalMessage({ fullName: answered?.fullName, reference: answered?.reference, link })} />
       </div>
     </div>}
-    {state.declined && <p className="notice success" role="status">Request {answered?.reference ?? ""} declined. The app does not tell the requester; its personal data is erased after 90 days.</p>}
+    {state.declined && <div className="notice success" role="status">
+      Request {answered?.reference ?? ""}{answered?.email ? ` from ${answered.fullName ? `${answered.fullName}, ` : ""}${answered.email}` : ""} declined. The app does not tell the requester: write to them yourself if you want to. Its personal data is erased after 90 days.
+      <div className={styles.copy}><CopyButton key={state.requestId} label="Copy message" text={declineMessage({ fullName: answered?.fullName, reference: answered?.reference })} /></div>
+    </div>}
     {waiting.length ? <div className={styles.scroll}><table className={styles.table} aria-label="Access requests">
       <thead><tr><th scope="col">Person</th><th scope="col">Organisation</th><th scope="col">Asked for</th><th scope="col">Received</th><th scope="col"><span className="sr-only">Review</span></th></tr></thead>
       <tbody>{waiting.flatMap(request => {
@@ -61,6 +66,14 @@ export function AccessRequests({ requests, clients, actors }: { requests: Access
       })}</tbody>
     </table></div> : <p className="empty-state">No access requests are waiting.</p>}
   </section>;
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setCopied(false); }
+  }
+  return <button type="button" className="button secondary" onClick={copy}>{copied ? "Copied" : label}</button>;
 }
 
 function Review({ request, clients, actors, action, pending, error }: {

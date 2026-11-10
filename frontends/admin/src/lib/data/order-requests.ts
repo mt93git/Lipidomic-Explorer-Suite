@@ -1,4 +1,5 @@
 import "server-only";
+import { createClient } from "@supabase/supabase-js";
 import { demoClients, demoOrders, demoSession } from "../demo";
 import { getEnvironment } from "../environment";
 import { answerRequest, recordRequest, type Answer, type RequestInput } from "../order-request";
@@ -8,9 +9,10 @@ import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
 import { listPanels } from "./orders";
 
-// Client order requests (0019) and the lab's shipping instructions. Live mode calls the SECURITY DEFINER functions
-// through the signed-in user's own token, so the database decides who may (request_order: a client admin or requester
-// of that client; accept_order / decline_order: lab writers; set_shipping_instructions: lab Owner or Admin).
+// Client order requests (0019), the lab's shipping instructions and its contact for clients (0023). Live mode calls
+// the SECURITY DEFINER functions through the signed-in user's own token, so the database decides who may (request_order:
+// a client admin or requester of that client; accept_order / decline_order: lab writers; set_shipping_instructions and
+// set_client_contact: lab Owner or Admin).
 const live = () => !getEnvironment().mock;
 
 async function admin() {
@@ -90,5 +92,40 @@ export async function setShippingInstructions(text: string | null): Promise<void
     return;
   }
   const { error } = await (await admin()).rpc("set_shipping_instructions", { p_body: text ?? "" });
+  if (error) throw refusal(error);
+}
+
+// ---------------------------------------------------------------- the lab's contact for clients (0023)
+
+// The current text, or null when the lab has not set one (clients then see no contact line).
+export async function getClientContact(): Promise<ShippingInstructions | null> {
+  if (!live()) {
+    const contact = (await readDemoState()).contact;
+    return contact ? { text: contact.text, setAt: contact.setAt, setBy: contact.setBy } : null;
+  }
+  const { data, error } = await (await admin()).from("client_contact").select("body, created_at, set_by").is("archived_at", null).maybeSingle();
+  if (error) throw new Error(`The contact for clients could not be read: ${error.message}`);
+  const row = data as { body: string; created_at: string; set_by: string | null } | null;
+  return row ? { text: row.body, setAt: row.created_at, setBy: row.set_by } : null;
+}
+
+// The public Request access page has no session: admin.client_contact_text() with the anon key returns the text only.
+// A failure shows no contact line rather than breaking the form.
+export async function publicClientContact(): Promise<string | null> {
+  if (!live()) return (await readDemoState()).contact?.text ?? null;
+  const env = getEnvironment();
+  const anon = createClient(env.url, env.anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, db: { schema: "admin" } });
+  const { data, error } = await anon.rpc("client_contact_text");
+  return error || typeof data !== "string" || !data ? null : data;
+}
+
+// admin.set_client_contact(p_body); null clears.
+export async function setClientContact(text: string | null): Promise<void> {
+  if (!live()) {
+    const state = await readDemoState();
+    await writeDemoState({ ...state, contact: text ? { text, setAt: new Date().toISOString(), setBy: demoSession.displayName } : null });
+    return;
+  }
+  const { error } = await (await admin()).rpc("set_client_contact", { p_body: text ?? "" });
   if (error) throw refusal(error);
 }

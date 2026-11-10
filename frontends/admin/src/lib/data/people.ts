@@ -15,7 +15,7 @@ import { DataError } from "../samples";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { createServiceClient } from "../supabase/service";
-import { readDemoPeople, writeDemoPeople } from "./demo-store";
+import { readDemoAccess, readDemoPeople, writeDemoPeople } from "./demo-store";
 
 export { DataError };
 
@@ -58,7 +58,7 @@ function anon() {
 type One<T> = T | T[] | null;
 const one = <T>(value: One<T>) => Array.isArray(value) ? value[0] ?? null : value;
 type StaffRow = { id: string; user_id: string; role: string; display_name: string | null };
-type MemberRow = { id: string; user_id: string; role: string; client: One<{ id: string; name: string }> };
+type MemberRow = { id: string; user_id: string; role: string; display_name?: string | null; client: One<{ id: string; name: string }> };
 type InvitationRow = {
   id: string; email: string; lab_role: LabRoleKey | null; client_id: string | null; client_role: ClientRoleKey | null; created_at: string; expires_at: string;
   accepted_by: string | null; revoked_at: string | null; archived_at: string | null; client: One<{ name: string }>;
@@ -74,7 +74,7 @@ async function livePeople(): Promise<Omit<PeopleView, "canInviteLab" | "canInvit
   const admin = await db();
   const [staff, members, invitations, clients] = await Promise.all([
     admin.from("lab_staff").select("id, user_id, role, display_name").is("archived_at", null),
-    admin.from("client_member").select("id, user_id, role, client:client(id, name)").is("archived_at", null),
+    admin.from("client_member").select("id, user_id, role, display_name, client:client(id, name)").is("archived_at", null),
     // Lab Owners and Admins only (RLS); an Operator reads none.
     admin.from("invitation").select(invitationColumns).order("created_at"),
     admin.from("client").select("id, name").is("archived_at", null).order("name"),
@@ -92,7 +92,8 @@ async function livePeople(): Promise<Omit<PeopleView, "canInviteLab" | "canInvit
       email: emails.get(row.user_id) ?? null, role: row.role, clientId: null, clientName: null, twoStep: null })),
     ...((members.data ?? []) as unknown as MemberRow[]).map((row): Person => {
       const client = one(row.client);
-      return { kind: "client_member", id: row.id, userId: row.user_id, name: fallback(row.user_id), email: emails.get(row.user_id) ?? null, role: row.role,
+      // Named when they accepted their invitation (0023); older rows fall back to the invitation's email.
+      return { kind: "client_member", id: row.id, userId: row.user_id, name: row.display_name || fallback(row.user_id), email: emails.get(row.user_id) ?? null, role: row.role,
         clientId: client?.id ?? null, clientName: client?.name ?? null, twoStep: null };
     }),
   ].sort(byPerson);
@@ -216,7 +217,9 @@ export async function acceptInvitation(input: { token: string; password: string 
   const invitation = await previewInvitation(input.token);
   if (!invitation) throw new DataError("This invitation link is not valid any more. Ask the lab for a new one.");
   if (!live()) {
-    await writeDemoPeople(acceptDemoInvitation(await demoState(), { token: input.token, userId: `example-${randomUUID()}`, now: new Date() }));
+    const requests = (await readDemoAccess())?.requests ?? [];
+    const nameFor = (invitationId: string) => requests.find(request => request.invitationId === invitationId)?.fullName;
+    await writeDemoPeople(acceptDemoInvitation(await demoState(), { token: input.token, userId: `example-${randomUUID()}`, now: new Date(), nameFor }));
     return { email: invitation.email };
   }
   const service = createServiceClient();

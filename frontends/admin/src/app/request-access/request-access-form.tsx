@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "@/components/app-link";
 import { ErrorSummary, FormAlert } from "@/components/error-summary";
+import { LabContact } from "@/components/lab-contact";
 import { clientKindNames, clientKinds, type AccessForm } from "@/lib/access-requests";
 import { requestAccessAction, type RequestAccessState } from "./actions";
 
@@ -10,19 +11,22 @@ const fieldLabels: [keyof AccessForm, string][] = [["fullName", "Full name"], ["
 
 // Five fields and a trap field; noValidate so the server's error summary names every problem. After a send the
 // card shows what happened in place of the form. The wording is the same whether or not the email has an account.
-export function RequestAccessForm() {
+// contact: the lab's contact for clients (0023), shown under the form and after a send; nothing when it is not set.
+export function RequestAccessForm({ contact = null }: { contact?: string | null }) {
   const [state, action, pending] = useActionState<RequestAccessState, FormData>(requestAccessAction, {});
   const outcome = state.outcome;
   if (outcome?.kind === "sent") return <>
     <h1 id="access-title">Request received.</h1>
     <p className="notice success" role="status"><strong>The lab has your request.</strong> It is reviewed by hand and the lab will write to {outcome.email}.</p>
     <p className="muted">{outcome.reference && <>Reference <span className="mono">{outcome.reference}</span>. </>}Nothing else is needed from you now. If the request is approved you will receive a link, valid for 7 days, to set your password.</p>
+    <LabContact text={contact} quote={outcome.reference} />
     <Link className="button secondary" href="/sign-in">Back to sign in</Link>
   </>;
   if (outcome?.kind === "pending") return <>
     <h1 id="access-title">Request already received.</h1>
     <p className="notice" role="status"><strong>A request for {outcome.email} is already waiting for the lab.</strong> You do not need to send another; it is reviewed by hand and the lab will write to that address.</p>
-    <p className="muted">If something has changed, wait for the lab&apos;s answer and reply to it.</p>
+    <p className="muted">If something has changed, wait for the lab&apos;s answer and reply to it{contact ? ", or write to the lab" : ""}.</p>
+    <LabContact text={contact} />
     <Link className="button secondary" href="/sign-in">Back to sign in</Link>
   </>;
   const values = state.values;
@@ -83,6 +87,7 @@ export function RequestAccessForm() {
       </div>
       <button className="button" disabled={pending}>{pending ? "Sending…" : "Send request"}</button>
     </form>
+    <LabContact text={contact} />
     <p className="sso-note auth-switch">Already have an account? <Link href="/sign-in">Sign in →</Link></p>
   </>;
 }

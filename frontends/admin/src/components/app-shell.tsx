@@ -35,9 +35,10 @@ export function AppShell({ session, children, counts = {} }: { session: AppSessi
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="topbar" onKeyDown={closeOnEscape}>
       <Link className="brand" href={staff ? "/pipeline" : "/client/home"}>
-        <span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span>
+        <span className="brand-name">Lipidomic Explorer</span><span className="badge">{staff ? "ADMIN" : "CLIENT PORTAL"}</span>
       </Link>
-      <GlobalSearch staff={staff} clients={session.clients} />
+      {/* A client has few orders, all on Client home: no search box until client search exists. */}
+      {staff && <GlobalSearch staff clients={session.clients} />}
       <button type="button" className="menu-button" ref={menuButton} aria-expanded={menuOpen} aria-controls="topbar-menu" onClick={() => setMenuOpen(!menuOpen)}>
         Menu <span aria-hidden="true">{menuOpen ? "▴" : "▾"}</span>
       </button>
@@ -73,7 +74,7 @@ export function AppShell({ session, children, counts = {} }: { session: AppSessi
             </Link>; })}
           </details>}
         </nav>
-        <div className="sidebar-footer">LIPIDOMICS SERVICE<br />Admin · Phase 1</div>
+        <div className="sidebar-footer">LIPIDOMICS SERVICE<br />{staff ? "Admin · Phase 1" : "Client portal"}</div>
       </aside>
       <main className="main" id="main-content" tabIndex={-1}>
         {session.mock && <div className="example-banner"><span className="example-label">Example data</span><span>A demo workspace. No lab records are changed.</span></div>}

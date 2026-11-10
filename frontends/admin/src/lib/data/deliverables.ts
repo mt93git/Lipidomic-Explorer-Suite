@@ -111,6 +111,26 @@ export async function listClientDeliverables(code: string, clientIds: string[]):
     .map(row => ({ id: row.id, title: row.title, kind: row.kind, fileName: row.file_name, contentType: row.content_type, sizeBytes: Number(row.size_bytes), addedAt: row.added_at }));
 }
 
+// Client home's Datasets rows: how many files the client sees, by order code (the same read rule as above).
+export async function countClientDeliverables(clientId: string): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  const add = (code: string) => counts.set(code, (counts.get(code) ?? 0) + 1);
+  if (!live()) {
+    for (const item of (await readDemoDeliverables()) ?? []) if (item.clientId === clientId && clientMaySee(item)) add(item.orderCode);
+    return counts;
+  }
+  const client = (await db()).schema("admin");
+  const { data, error } = await client.from("deliverable").select("order_id").eq("client_id", clientId);
+  if (error) throw new DataError(`Your files could not be read: ${error.message}`);
+  const orderIds = [...new Set(((data ?? []) as { order_id: string }[]).map(row => row.order_id))];
+  if (!orderIds.length) return counts;
+  const orders = await client.from("order").select("id, code").in("id", orderIds);
+  if (orders.error) throw new DataError(`Your orders could not be read: ${orders.error.message}`);
+  const codes = new Map(((orders.data ?? []) as { id: string; code: string }[]).map(row => [row.id, row.code]));
+  for (const row of (data ?? []) as { order_id: string }[]) { const code = codes.get(row.order_id); if (code) add(code); }
+  return counts;
+}
+
 // ---------------------------------------------------------------- writes (lab writers)
 
 export type AddResult = "added" | "added-visible" | "duplicate" | "closed" | "failed" | "not-found" | "demo-size";

@@ -43,6 +43,10 @@ export type ClientOrder = {
   panel: string | null;
   matrix: string | null;
   billingRef: string | null;
+  // A client request (0019): who of the client asked and the notes they wrote. Absent or null for an order the lab
+  // opened (its notes are the lab's, never shown to the client).
+  requestedBy?: string | null;
+  notes?: string | null;
   expectedSamples: number | null;
   registeredSamples: number;
   // ISO instants (or a YYYY-MM-DD lab day in demo mode).

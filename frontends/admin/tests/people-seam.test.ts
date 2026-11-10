@@ -123,7 +123,9 @@ test("live: one list of lab staff and client members, emails from accepted invit
   const future = new Date(Date.now() + 86_400_000).toISOString();
   const db = fakePostgrest({
     lab_staff: [{ id: "s1", user_id: "u-op", role: "operator", display_name: null, archived_at: null }, { id: "s2", user_id: "u-owner", role: "owner", display_name: "Synthetic Owner", archived_at: null }],
-    client_member: [{ id: "m1", user_id: "u-member", role: "viewer", client: { id: "c1", name: "Synthetic Client" }, archived_at: null }],
+    client_member: [{ id: "m1", user_id: "u-member", role: "viewer", client: { id: "c1", name: "Synthetic Client" }, archived_at: null },
+      // Named on accepting the invitation (0023).
+      { id: "m2", user_id: "u-named", role: "requester", display_name: "Robin Example", client: { id: "c1", name: "Synthetic Client" }, archived_at: null }],
     invitation: [
       { id: "i1", email: "member@example.test", lab_role: null, client_id: "c1", client_role: "viewer", created_at: "2026-11-01T00:00:00Z", expires_at: future, accepted_by: "u-member", revoked_at: null, archived_at: null, client: { name: "Synthetic Client" } },
       { id: "i2", email: "pending@example.test", lab_role: "operator", client_id: null, client_role: null, created_at: "2026-11-02T00:00:00Z", expires_at: future, accepted_by: null, revoked_at: null, archived_at: null, client: null },
@@ -134,7 +136,7 @@ test("live: one list of lab staff and client members, emails from accepted invit
   vi.mocked(createAdminClient).mockResolvedValue({ schema: vi.fn(() => db) } as never);
   const view = await listPeople();
   expect(view.people.map(person => [person.kind, person.name, person.role])).toEqual([
-    ["lab_staff", "Synthetic Owner", "owner"], ["lab_staff", "User u-op", "operator"], ["client_member", "member@example.test", "viewer"],
+    ["lab_staff", "Synthetic Owner", "owner"], ["lab_staff", "User u-op", "operator"], ["client_member", "member@example.test", "viewer"], ["client_member", "Robin Example", "requester"],
   ]);
   expect(view.invitations.map(item => [item.email, item.target])).toEqual([["pending@example.test", "Lab Operator"]]);
   expect(view).toMatchObject({ canInviteLab: false, canInviteClient: true, demoActors: null });

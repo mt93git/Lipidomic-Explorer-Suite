@@ -13,8 +13,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   return <>
     <header className="topbar"><Link className="brand" href="/"><span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span></Link></header>
     <main className="auth-page"><section className="auth-card" aria-labelledby="sign-in-title">
-      <div className="eyebrow">Lab administration</div>{mock && <span className="example-label">Example data</span>}
-      <h1 id="sign-in-title">Welcome back.</h1><p className="muted">Sign in to your lab workspace.</p>
+      <div className="eyebrow">Lipidomics service</div>{mock && <span className="example-label">Example data</span>}
+      <h1 id="sign-in-title">Welcome back.</h1><p className="muted">Sign in to follow your orders or to work in the lab.</p>
       {error === "sign-out" && <p className="error" role="alert">Sign-out could not be completed. Your session may still be active; return to the workspace and try again.</p>}
       {invitation && <p className="notice">Sign in with the invited email address; you will return to the invitation to accept it.</p>}
       <SignInForm mock={mock} next={invitation} />

@@ -48,3 +48,8 @@
   .dot { margin: 0; }
   .stepDate { margin: 0; font-family: var(--font-mono), monospace; font-size: var(--text-xs); }
 }
+/* 0023: the lab's contact for clients (Request access, a waiting or declined request, Your access). */
+.contact { border-left: 3px solid var(--line); background: var(--subtle); padding: 12px 16px; margin: 14px 0 0; }
+.contact p { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+/* The client's own notes on their order (Order facts): kept as typed. */
+.notes { white-space: pre-line; overflow-wrap: anywhere; }

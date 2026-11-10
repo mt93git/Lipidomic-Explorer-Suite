@@ -21,11 +21,11 @@ export type AuditFilters = { entity: string | null; order: string | null; before
 export const AUDIT_PAGE_SIZE = 50;
 
 // Every table the audit trigger is attached to (0003, release_policy in 0005, shipping_instructions in 0019, access_request
-// in 0020, recorded without its personal data, deliverable in 0021), in the order the menu lists them.
+// in 0020, recorded without its personal data, deliverable in 0021, client_contact in 0023), in the order the menu lists them.
 const entityLabels: Record<string, string> = {
   order: "Order", shipment: "Shipment", sample: "Sample", aliquot: "Aliquot", box_position: "Box position", exclusion: "Exclusion",
   batch: "Batch", batch_version: "Batch version", injection: "Injection", result_file: "Results file", name_map: "Name dictionary entry",
-  dataset: "Dataset", signature: "Signature", release_policy: "Release policy", shipping_instructions: "Shipping instructions", job: "Job",
+  dataset: "Dataset", signature: "Signature", release_policy: "Release policy", shipping_instructions: "Shipping instructions", client_contact: "Contact for clients", job: "Job",
   client: "Client", client_member: "Client member", lab_staff: "Lab staff", instrument: "Instrument", panel: "Panel",
   access_request: "Access request", deliverable: "Deliverable",
 };
@@ -80,6 +80,7 @@ function specific(event: AuditEvent, ctx: AuditContext): string | null {
       return `Release policy changed: ${row.required_signatures} of ${signers.length ? signers.join(", ") : "any lab owner or admin"}`;
     }
     case "shipping_instructions": return insert ? "Shipping instructions changed" : null;
+    case "client_contact": return insert ? "Contact for clients changed" : null;
     case "access_request": {
       const name = typeof row.number === "number" ? `Access request ${accessReference(row.number)}` : "Access request";
       if (insert) return `${name} received`;

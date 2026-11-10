@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "@/components/app-link";
 import { gateStatus, stages, type Client, type Order, type View } from "@/lib/models";
 import { mayOpenInNexo, nexoDatasetLink } from "@/lib/release";
@@ -15,8 +16,10 @@ const date = (value: string, missing = "Not set") => {
 
 // Lab staff get the gate actions (links into their workflows); a client user reads the same record without them.
 // A client request still waiting for an answer shows the lab's decision (accept or decline) in place of the next gate.
-type Props = { order: Order; client: Client; audience?: View; example?: boolean; panels?: Panel[]; accepted?: boolean };
-export function OrderDetail({ order, client, audience = "staff", example = true, panels = [], accepted = false }: Props) {
+// Once answered, the request's facts and the client's notes stay on the page. children: the lab's Deliverables
+// section, shown right after the gate panel and before History.
+type Props = { order: Order; client: Client; audience?: View; example?: boolean; panels?: Panel[]; accepted?: boolean; children?: ReactNode };
+export function OrderDetail({ order, client, audience = "staff", example = true, panels = [], accepted = false, children }: Props) {
   const staff = audience === "staff";
   const pending = staff && order.request?.status === "pending";
   const status = gateStatus(order.gates);
@@ -36,7 +39,9 @@ export function OrderDetail({ order, client, audience = "staff", example = true,
     ["Client", client.name], ["Order", order.code], ["Requested by", request.requestedBy], ["Requested", formatLabInstant(request.requestedAt)],
     ["Panel", request.panelId ? order.panel : "Let the lab advise"], ["Matrix", order.sampleType], ["Billing ref.", request.billingRef ?? "Not given"],
   ] : [
-    ["Client", client.name], ["Order", order.code], ["Samples", String(order.sampleCount)], ["Material", order.sampleType],
+    ["Client", client.name], ["Order", order.code],
+    ...(request ? [["Requested by", request.requestedBy], ["Panel", request.panelId ? order.panel : "Not set yet"], ["Billing ref.", request.billingRef ?? "Not given"]] : []),
+    ["Samples", String(order.sampleCount)], ["Material", order.sampleType],
     ["Received", date(order.received, "Not yet")], ["Target date", date(order.due)], ["Assigned to", order.owner],
   ];
   return <>
@@ -54,11 +59,13 @@ export function OrderDetail({ order, client, audience = "staff", example = true,
         {pending ? <RequestReview order={order} client={client} panels={panels} /> : <section className="panel" aria-labelledby="gate-title">
           <div className="panel-heading"><div><div className="eyebrow">{order.released ? "Final gate" : "Next gate"}</div><h2 id="gate-title">{heading}</h2></div><span className={`pill ${pill.className}`}>{pill.label}</span></div>
           <p className={retired ? "notice" : "muted"}>{summary}</p>
+          {staff && request?.notes && <div className="notice"><div className="eyebrow">Notes from the client</div>{request.notes}</div>}
           <GateChecklist gates={order.gates} />
           {staff && !order.released && <GateActions ready={status === "ok"} nextStage={nextStage} reviewHref={reviewHref} />}
           {staff && order.released && <div className="heading-actions"><Link className="button secondary" href="/datasets">View datasets</Link>{nexo && <a className="button" href={nexo} target="_blank" rel="noreferrer">Open in Nexo</a>}</div>}
           {!staff && nexo && <div className="heading-actions"><a className="button" href={nexo} target="_blank" rel="noreferrer">Open in Nexo</a></div>}
         </section>}
+        {children}
         <section className="panel" aria-labelledby="history-title"><div className="eyebrow">Order record</div><h2 id="history-title">History</h2>
           <ol className="history">{order.history.map(event => <li key={`${event.date}-${event.title}`}><time dateTime={event.date}>{date(event.date)} · {event.date.slice(11,16)} UTC</time>{event.title}<small>{event.actor}</small></li>)}</ol>
         </section>

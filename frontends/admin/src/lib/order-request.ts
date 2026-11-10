@@ -16,6 +16,7 @@ export const requestFields = ["panelId", "title", "matrix", "expectedSamples", "
 export type RequestField = typeof requestFields[number];
 export type RequestFormErrors = Partial<Record<RequestField, string>>;
 export const SHIPPING_LIMIT = 2000;
+export const CONTACT_LIMIT = 500;
 export const REASON_LIMIT = 1000;
 
 const field = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
@@ -50,6 +51,13 @@ export function parseDeclineReason(form: FormData): { ok: true; reason: string }
 export function parseShippingText(form: FormData): { ok: true; text: string | null } | { ok: false; error: string } {
   const text = field(form, "text");
   if (text.length > SHIPPING_LIMIT) return { ok: false, error: `Keep the instructions under ${SHIPPING_LIMIT} characters (now ${text.length}).` };
+  return { ok: true, text: text || null };
+}
+
+// The lab's contact for clients (0023): the same rule, 500 characters (set_client_contact).
+export function parseContactText(form: FormData): { ok: true; text: string | null } | { ok: false; error: string } {
+  const text = field(form, "text");
+  if (text.length > CONTACT_LIMIT) return { ok: false, error: `Keep the contact under ${CONTACT_LIMIT} characters (now ${text.length}).` };
   return { ok: true, text: text || null };
 }
 

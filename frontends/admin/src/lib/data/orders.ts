@@ -171,11 +171,19 @@ export function toOrder(row: OrderRow, names: Names): Order {
   };
 }
 
-// Display names of lab staff (staff read every row; anyone else only their own).
-async function staffNames(db: Awaited<ReturnType<typeof admin>>): Promise<Names> {
-  const { data, error } = await db.from("lab_staff").select("user_id, display_name").is("archived_at", null);
-  if (error) throw readFailure("Lab staff", error);
-  return new Map(((data ?? []) as { user_id: string; display_name: string | null }[]).filter(row => row.display_name).map(row => [row.user_id, row.display_name!]));
+// Display names of lab staff (staff read every row; anyone else only their own) and of client members, who are named
+// when they accept their invitation (0023; lab staff, Operators included, read every client's members). A member who
+// has since left keeps their name on what they asked for. A lab name wins over a client one.
+type NameRow = { user_id: string; display_name: string | null };
+async function personNames(db: Awaited<ReturnType<typeof admin>>): Promise<Names> {
+  const [staff, members] = await Promise.all([
+    db.from("lab_staff").select("user_id, display_name").is("archived_at", null),
+    db.from("client_member").select("user_id, display_name").not("display_name", "is", null),
+  ]);
+  if (staff.error) throw readFailure("Lab staff", staff.error);
+  if (members.error) throw readFailure("Client members", members.error);
+  const named = (rows: unknown) => ((rows ?? []) as NameRow[]).filter(row => row.display_name).map(row => [row.user_id, row.display_name!] as const);
+  return new Map([...named(members.data), ...named(staff.data)]);
 }
 
 async function liveClients(db: Awaited<ReturnType<typeof admin>>): Promise<Client[]> {
@@ -192,7 +200,7 @@ export async function listOrders(): Promise<Order[]> {
   const db = await admin();
   const [orders, names] = await Promise.all([
     db.from("order").select(orderSelect).is("archived_at", null).order("order_number"),
-    staffNames(db),
+    personNames(db),
   ]);
   if (orders.error) throw readFailure("Orders", orders.error);
   return ((orders.data ?? []) as unknown as OrderRow[]).map(row => toOrder(row, names));
@@ -215,7 +223,7 @@ export async function getOrder(code: string): Promise<{ order: Order; client: Cl
   if (found.error) throw readFailure("The order", found.error);
   if (!found.data) return null;
   const row = found.data as unknown as OrderRow;
-  const [names, clients] = await Promise.all([staffNames(db), liveClients(db)]);
+  const [names, clients] = await Promise.all([personNames(db), liveClients(db)]);
   const client = clients.find(item => item.id === row.client_id) ?? { id: row.client_id, name: "Client", color: "shared" };
   return { order: toOrder(row, names), client };
 }
