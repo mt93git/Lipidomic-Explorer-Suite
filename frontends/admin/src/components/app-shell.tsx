@@ -10,7 +10,10 @@ import { sidebarNavigation, waveTag } from "@/lib/navigation";
 import { GlobalSearch } from "./global-search";
 import { ScopeControl } from "./scope-control";
 
-export function AppShell({ session, children }: { session: AppSession; children: ReactNode }) {
+const countLabels: Record<string, string> = { "/people": "access requests waiting" };
+
+// counts: waiting items per sidebar href (only numbers above zero are shown).
+export function AppShell({ session, children, counts = {} }: { session: AppSession; children: ReactNode; counts?: Record<string, number> }) {
   const pathname = (usePathname() || "/").replace(/^\/admin(?=\/|$)/, "") || "/";
   const staff = session.view === "staff";
   // Phone only (CSS decides): the view switch, scope, user chip and sign-out sit behind a Menu button.
@@ -25,9 +28,9 @@ export function AppShell({ session, children }: { session: AppSession; children:
     setMenuOpen(false);
     menuButton.current?.focus();
   };
-  const { groups, comingNext } = sidebarNavigation(session.view);
+  const { groups, comingNext } = sidebarNavigation(session.view, session.role);
   // Order pages are reached from cards and tables; the sidebar marks their home.
-  const current = (href: string) => pathname === href || (href === "/pipeline" && pathname.startsWith("/orders/")) ? "page" as const : undefined;
+  const current = (href: string) => pathname === href || (href === (staff ? "/pipeline" : "/client/home") && pathname.startsWith("/orders/")) ? "page" as const : undefined;
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="topbar" onKeyDown={closeOnEscape}>
@@ -60,6 +63,7 @@ export function AppShell({ session, children }: { session: AppSession; children:
             <h2 className="nav-heading">{group.title}</h2>
             {group.items.map(item => <Link className="nav-link" href={item.href} key={item.href} aria-current={current(item.href)}>
               <span className="nav-mark" aria-hidden="true">{item.label === "Pipeline" ? "▥" : "◇"}</span>{item.label}
+              {(counts[item.href] ?? 0) > 0 && <span className="nav-count">{counts[item.href]}<span className="sr-only"> {countLabels[item.href] ?? "waiting"}</span></span>}
             </Link>)}
           </div>)}
           {comingNext.length > 0 && <details className="nav-group nav-coming" open={comingNext.some(item => item.href === pathname) || undefined}>

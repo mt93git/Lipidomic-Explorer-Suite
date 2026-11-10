@@ -15,3 +15,14 @@
 .change select, .change input { width: 100%; border: 1px solid #bfcbd5; padding: 8px 10px; border-radius: 5px; background: white; font: inherit; }
 .section { margin-top: 22px; }
 @media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+/* F3: access requests. The row under review and its panel share a tint, like the proposal's drawing. */
+.reviewing > td { background: var(--tint); }
+.toggle { border: 0; background: none; padding: 0; color: var(--blue); font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.review { padding: 18px; border: 1px solid #a8c2d7; border-radius: 6px; background: white; }
+.review :global(.radio-group) { margin-bottom: 4px; }
+.review :global(.radio) small { display: block; margin-top: 2px; }
+.reviewFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 14px; }
+.reviewFields :global(.field) { margin: 12px 0; }
+.review select, .review input:not([type="radio"]), .review textarea { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
+.decline { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sectionFirst { margin-bottom: 22px; }

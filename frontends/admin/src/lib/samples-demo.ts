@@ -17,7 +17,9 @@ export type DemoResult = { id: string; orderCode: string; sha256: string; accept
 // One record set per browser, shared by every demo screen (receive, registry, results, release, pipeline, detail).
 // Datasets, their signatures and releases, and the release policy are the release side's records (release-demo.ts).
 // Orders created with New order (create_order) join the example orders in applyDemoState, so every screen sees them.
-export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[] };
+// shipping: the lab's shipping instructions (set_shipping_instructions), shown to clients on an accepted request.
+export type DemoShipping = { text: string; setAt: string; setBy: string };
+export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null };
 
 export const emptyDemoState = (): DemoState => ({ shipments: [], samples: [], results: [], datasets: [] });
 
@@ -35,11 +37,13 @@ export function sampleCode(orderCode: string, sampleNumber: number): string {
   return `${orderCode}-S${sampleNumber < 1000 ? String(sampleNumber).padStart(3, "0") : String(sampleNumber)}`;
 }
 
-type ShipmentArgs = { order: Pick<Order, "code" | "stage">; shipment: Omit<ShipmentInput, "orderId">; actor: string; now: Date; id: string };
+type ShipmentArgs = { order: Pick<Order, "code" | "stage" | "request">; shipment: Omit<ShipmentInput, "orderId">; actor: string; now: Date; id: string };
 
-// receive_shipment: only an order at Request can arrive; the order then reads Received.
+// receive_shipment: only an order at Request can arrive, and not a client request still waiting for an answer; the
+// order then reads Received.
 export function recordShipment(state: DemoState, { order, shipment, actor, now, id }: ShipmentArgs): { state: DemoState; shipment: DemoShipment } {
   if (order.stage !== REQUEST) throw new DataError(`${order.code} is already ${stages[order.stage]}; a shipment can only be received for an order at Request.`);
+  if (order.request?.status === "pending") throw new DataError(`${order.code} is a client request waiting for an answer. Accept the request first.`);
   const saved: DemoShipment = {
     id, orderCode: order.code, carrier: shipment.carrier, trackingNumber: shipment.trackingNumber, condition: shipment.condition,
     boxCount: shipment.boxCount, notes: shipment.notes, receivedAt: now.toISOString(), receivedBy: actor,

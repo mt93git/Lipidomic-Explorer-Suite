@@ -5,12 +5,12 @@ import { billingLabels, clientPermissions, getClient, kindLabels, memberRoleLabe
 import { formatLabInstant } from "@/lib/lab-time";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../../release/action-form";
-import { archiveClientAction, updateClientAction } from "../actions";
+import { archiveClientAction, setNexoAccessAction, updateClientAction } from "../actions";
 import { ClientFields, DemoActor } from "../client-fields";
 import styles from "../clients.module.css";
 
 export const metadata: Metadata = { title: "Client details" };
-export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; created?: string }> }) {
+export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; created?: string; nexo?: string }> }) {
   await requireWorkspace("staff");
   const { id } = await params;
   const [client, permissions, query] = await Promise.all([getClient(id), clientPermissions(), searchParams]);
@@ -19,6 +19,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
     <div className="page-heading"><div><div className="eyebrow"><Link href="/clients">Clients</Link> / Details</div><h1>{client.name}</h1><p>{kindLabels[client.kind]} · {client.memberCount} members · {client.openOrders} open orders</p></div><div className="heading-actions"><Link className="button secondary" href="/clients">Back to clients</Link></div></div>
     {query.created === "1" && <p className="notice success" role="status">Client created.</p>}
     {query.saved === "1" && <p className="notice success" role="status">Client details saved.</p>}
+    {(query.nexo === "on" || query.nexo === "off") && <p className="notice success" role="status">Nexo access turned {query.nexo} for {client.name}.</p>}
     {client.archivedAt && <p className="notice">Archived {formatLabInstant(client.archivedAt)} · {client.archivedReason}</p>}
     <div className={styles.layout}>
       <section className="panel" aria-labelledby="edit-client"><h2 id="edit-client">{permissions.canEdit && !client.archivedAt ? "Edit client" : "Client details"}</h2>
@@ -30,6 +31,17 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
         {client.members.length ? <div className={styles.scroll}><table className={styles.table} aria-label="Client members"><thead><tr><th scope="col">Member (user ID)</th><th scope="col">Role</th></tr></thead><tbody>{client.members.map(member => <tr key={member.userId}><td className={styles.userId}>{member.userId}</td><td>{memberRoleLabels[member.role] ?? member.role}</td></tr>)}</tbody></table></div> : <p className="muted">No active members.</p>}
       </section>
     </div>
+    <section className={`panel ${styles.section}`} aria-labelledby="nexo-access"><h2 id="nexo-access">Nexo access</h2>
+      <div className={styles.switch}>
+        <p className="muted">When on, {client.name}&apos;s people see Open in Nexo on their released datasets (where this environment lets clients open Nexo). Off by default; the lab decides per client.</p>
+        <span className={`pill ${client.nexoAccess ? "ok" : "pending"}`} data-testid="nexo-state">{client.nexoAccess ? "On" : "Off"}</span>
+      </div>
+      {permissions.canEdit && !client.archivedAt
+        ? <ActionForm action={setNexoAccessAction} submit={client.nexoAccess ? "Turn Nexo access off" : "Turn Nexo access on"} pendingLabel="Saving…" secondary={client.nexoAccess} className={styles.form}>
+          <input type="hidden" name="clientId" value={client.id} /><input type="hidden" name="enabled" value={String(!client.nexoAccess)} /><DemoActor actors={permissions.demoActors} id="nexo-actor" />
+        </ActionForm>
+        : !client.archivedAt && <p className="notice">Only a lab Owner or Admin can change Nexo access.</p>}
+    </section>
     <section className={`panel ${styles.section}`} aria-labelledby="orders"><h2 id="orders">Orders</h2>
       {client.orders.length ? <div className={styles.scroll}><table className={styles.table} aria-label="Client orders"><thead><tr><th scope="col">Order</th><th scope="col">Title</th><th scope="col">Stage</th></tr></thead><tbody>{client.orders.map(order => <tr key={order.code}><td>{order.archivedAt ? order.code : <Link href={`/orders/${encodeURIComponent(order.code)}`}>{order.code}</Link>}</td><td>{order.title || "Untitled"}</td><td>{order.stage}{order.archivedAt ? " · Archived" : ""}</td></tr>)}</tbody></table></div> : <p className="empty-state">No orders for this client.</p>}
     </section>

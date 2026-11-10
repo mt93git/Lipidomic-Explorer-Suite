@@ -18,6 +18,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       {error === "sign-out" && <p className="error" role="alert">Sign-out could not be completed. Your session may still be active; return to the workspace and try again.</p>}
       {invitation && <p className="notice">Sign in with the invited email address; you will return to the invitation to accept it.</p>}
       <SignInForm mock={mock} next={invitation} />
+      <hr className="auth-divider" />
+      <p className="sso-note auth-switch">New to the lipidomics service? <Link href="/request-access">Request access →</Link></p>
     </section></main>
   </>;
 }

@@ -17,10 +17,12 @@ type Props = {
   ownClients?: string[];
   // Server instant (ISO) used for the first render on both sides, so hydration matches; refreshed on interaction and once a minute.
   today: string;
+  // A request the lab just declined (from ?declined=ORD059).
+  declined?: string | null;
 };
 
 // The URL query is the only filter state: shareable, survives reload, and the top-bar scope control reads the same params.
-export function PipelineOverview({ orders, clients, audience = "staff", ownClients = noClients, today }: Props) {
+export function PipelineOverview({ orders, clients, audience = "staff", ownClients = noClients, today, declined = null }: Props) {
   const params = useSearchParams();
   const data = useMemo(() => scopeToAudience(orders, clients, audience, ownClients), [orders, clients, audience, ownClients]);
   const filters = useMemo(() => parseFilters(params ?? new URLSearchParams(), data.clients), [params, data.clients]);
@@ -35,5 +37,5 @@ export function PipelineOverview({ orders, clients, audience = "staff", ownClien
     // Native history integration keeps useSearchParams in sync without a server round trip.
     window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
   }, []);
-  return <Pipeline data={data} filters={filters} onChange={onChange} now={now} />;
+  return <Pipeline data={data} filters={filters} onChange={onChange} now={now} declined={declined} />;
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireWorkspace } from "@/lib/session";
 import { notFound } from "next/navigation";
 import Link from "@/components/app-link";
 import { getSampleDetail, SAMPLE_EVENT_LIMIT } from "@/lib/data/samples";
@@ -21,6 +22,7 @@ const labeled = (rows: [string, string | null | undefined, string?][]) => <dl cl
 // Read-only: one registered sample, where it came from and where it went. Lab staff only (getSampleDetail asks for
 // the staff workspace); every empty section says so in one line.
 export default async function SamplePage({ params }: Props) {
+  await requireWorkspace("staff");
   const { code } = await params;
   const detail = CODE.test(code) ? await getSampleDetail(code) : null;
   if (!detail) notFound();

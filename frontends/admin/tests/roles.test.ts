@@ -19,7 +19,7 @@ function rolesOf(helper: string): string[] {
 
 test("every matrix row tied to a role helper lists exactly the roles that helper admits", () => {
   const tied = permissions.filter(row => bodies.has(row.rule));
-  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer"]);
+  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
   for (const row of tied) expect([...row.roles].sort(), row.key).toEqual(rolesOf(row.rule));
 });
 
@@ -44,11 +44,12 @@ const guards: Record<string, RegExp> = {
   is_lab_writer: /admin\.(require_lab_writer|is_lab_writer)\(/,
   is_lab_manager: /admin\.is_lab_manager\(\)/,
   lab_owner: /admin\.lab_role\(auth\.uid\(\)\) IS DISTINCT FROM 'owner'/,
+  client_requester: /FROM admin\.client_member\s+WHERE user_id = auth\.uid\(\) AND client_id = p_client_id AND archived_at IS NULL\s+AND role IN \('client_admin', 'requester'\)/,
 };
 
 test("each action row names the functions the app calls for it, and the row's rule is what guards them", () => {
   const withRpcs = permissions.filter(row => row.rpcs?.length);
-  expect(withRpcs.map(row => row.key).sort()).toEqual(["invite_client", "invite_lab", "manage_clients", "release_policy", "run_lab", "submit"]);
+  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "invite_client", "invite_lab", "manage_clients", "nexo_access", "release_policy", "request_order", "run_lab", "shipping_instructions", "submit"]);
   for (const row of withRpcs) {
     for (const fn of row.rpcs ?? []) expect(guardedBody(fn), `${row.key}: ${fn}`).toMatch(guards[row.rule]);
   }
@@ -57,6 +58,24 @@ test("each action row names the functions the app calls for it, and the row's ru
   expect(submit.rpcs).toEqual(["create_order", "receive_shipment", "register_samples"]);
   expect([...submit.roles].sort()).toEqual(rolesOf("is_lab_writer"));
   for (const role of ["client_admin", "requester", "viewer", "member"]) expect(allows("submit", role), role).toBe(false);
+});
+
+test("F2 rows: client admins and requesters request, any lab writer answers, Owner and Admin set the shipping text", () => {
+  expect(permissions.find(row => row.key === "request_order")?.roles).toEqual(["client_admin", "requester"]);
+  for (const role of ["viewer", "owner", "admin", "operator", "member"]) expect(allows("request_order", role), role).toBe(false);
+  // A client role must not be able to answer its own request, and the request_order guard names exactly those two roles.
+  expect([...permissions.find(row => row.key === "answer_request")!.roles].sort()).toEqual(rolesOf("is_lab_writer"));
+  expect(latestBody("request_order")).toMatch(/role IN \('client_admin', 'requester'\)/);
+  expect(latestBody("receive_shipment")).toMatch(/Accept the request first/);
+  expect(allows("shipping_instructions", "operator")).toBe(false);
+});
+
+test("F3 row: only a lab Owner or Admin answers access requests; nobody signed in submits them (the app server does)", () => {
+  expect([...permissions.find(row => row.key === "answer_access")!.roles].sort()).toEqual(rolesOf("is_lab_manager"));
+  for (const role of ["operator", "member", "client_admin", "requester", "viewer"]) expect(allows("answer_access", role), role).toBe(false);
+  expect(guardedBody("approve_access_request")).toMatch(/admin\.create_invitation\(/);
+  expect(allSql).toMatch(/GRANT EXECUTE ON FUNCTION admin\.submit_access_request\(text, text, text, text, text\) TO service_role;/);
+  expect(allSql).not.toMatch(/GRANT EXECUTE ON FUNCTION[^;]*submit_access_request[^;]*TO[^;]*(anon|authenticated)/);
 });
 
 test("Owner-only rows and the people rules the demo uses", () => {

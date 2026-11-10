@@ -10,6 +10,9 @@ import { defineConfig, devices } from "@playwright/test";
 // ADMIN_E2E_LIVE=1 (e2e/live/live.spec.ts): after the run, failed or not, e2e/live/teardown.mjs archives the two
 // orders e2e/live/seed.mjs created for it.
 process.env.NEXT_PUBLIC_NEXO_URL ||= "http://127.0.0.1:3120/nexo";
+// The environment gate for clients' Open in Nexo is on in the demo run, so the per-client switch (F4, off by default)
+// decides what the example client sees (e2e/deliverables.spec.ts).
+process.env.NEXT_PUBLIC_NEXO_CLIENT_ACCESS ||= "1";
 const live = process.env.ADMIN_E2E_PILOT === "1" ? "live/pilot.spec.ts"
   : process.env.ADMIN_E2E_IDENTITY === "1" ? "live/identity.spec.ts" : undefined;
 export default defineConfig({

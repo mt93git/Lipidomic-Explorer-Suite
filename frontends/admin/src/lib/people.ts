@@ -18,8 +18,9 @@ export type Invitation = {
   target: string; createdAt: string; expiresAt: string;
 };
 export type DemoPerson = Person & { archivedAt: string | null; archivedReason: string | null };
+// clientName: kept when the client is not one of the fixed demo clients (one created while approving an access request).
 export type DemoInvitation = Omit<Invitation, "target"> & {
-  tokenSha256: string; createdBy: string; acceptedAt: string | null; acceptedBy: string | null; revokedAt: string | null; revokedBy: string | null;
+  clientName?: string | null; tokenSha256: string; createdBy: string; acceptedAt: string | null; acceptedBy: string | null; revokedAt: string | null; revokedBy: string | null;
 };
 export type PeopleState = { people: DemoPerson[]; invitations: DemoInvitation[] };
 export type InvitationTarget = { labRole: string | null; clientId: string | null; clientRole: string | null };
@@ -32,6 +33,7 @@ export const MIN_PASSWORD = 12;
 export const tokenDigest = (token: string) => createHash("sha256").update(token, "utf8").digest("hex");
 export const invitePath = (token: string) => `/invite/${token}`;
 const clientName = (id: string | null) => demoClients.find(client => client.id === id)?.name ?? null;
+const invitationClient = (item: DemoInvitation) => item.clientName ?? clientName(item.clientId);
 
 export function targetLabel(target: { labRole: string | null; clientRole: string | null; clientName?: string | null }) {
   if (target.labRole) return `Lab ${labRoleNames[target.labRole as LabRoleKey] ?? target.labRole}`;
@@ -75,7 +77,7 @@ export function normaliseEmail(email: string) {
 const active = <T extends { archivedAt: string | null }>(items: T[]) => items.filter(item => !item.archivedAt);
 const pending = (invitation: DemoInvitation, now: Date) => !invitation.acceptedAt && !invitation.revokedAt && new Date(invitation.expiresAt) > now;
 
-export function createDemoInvitation(state: PeopleState, input: InvitationTarget & { email: string; actor: { userId: string; role: string }; token: string; id: string; now: Date }): PeopleState {
+export function createDemoInvitation(state: PeopleState, input: InvitationTarget & { email: string; actor: { userId: string; role: string }; token: string; id: string; now: Date; clientName?: string }): PeopleState {
   const target = validateTarget(input);
   requireInviter(input.actor.role, target.labRole);
   const email = normaliseEmail(input.email);
@@ -84,7 +86,7 @@ export function createDemoInvitation(state: PeopleState, input: InvitationTarget
     const held = people.find(person => person.kind === "lab_staff" && person.email === email);
     if (held) throw new DataError(`${email} already holds a lab role (${held.role}); change it in People instead.`);
   } else {
-    const name = clientName(target.clientId);
+    const name = input.clientName ?? clientName(target.clientId);
     if (!name) throw new DataError("Client not found.");
     const held = people.find(person => person.kind === "client_member" && person.clientId === target.clientId && person.email === email);
     if (held) throw new DataError(`${email} is already a member of ${name} (${held.role}); change the role in People instead.`);
@@ -94,7 +96,7 @@ export function createDemoInvitation(state: PeopleState, input: InvitationTarget
   }
   const invitation: DemoInvitation = {
     id: input.id, email, labRole: target.labRole, clientId: target.labRole ? null : target.clientId, clientRole: target.labRole ? null : target.clientRole,
-    tokenSha256: tokenDigest(input.token), createdAt: input.now.toISOString(),
+    ...(input.clientName && !target.labRole ? { clientName: input.clientName } : {}), tokenSha256: tokenDigest(input.token), createdAt: input.now.toISOString(),
     expiresAt: new Date(input.now.getTime() + INVITATION_DAYS * 86_400_000).toISOString(), createdBy: input.actor.userId,
     acceptedAt: null, acceptedBy: null, revokedAt: null, revokedBy: null,
   };
@@ -104,7 +106,7 @@ export function createDemoInvitation(state: PeopleState, input: InvitationTarget
 export function pendingInvitations(state: PeopleState, now: Date): Invitation[] {
   return state.invitations.filter(item => pending(item, now)).map(item => ({
     id: item.id, email: item.email, labRole: item.labRole, clientId: item.clientId, clientRole: item.clientRole,
-    target: targetLabel({ ...item, clientName: clientName(item.clientId) }), createdAt: item.createdAt, expiresAt: item.expiresAt,
+    target: targetLabel({ ...item, clientName: invitationClient(item) }), createdAt: item.createdAt, expiresAt: item.expiresAt,
   }));
 }
 
@@ -114,7 +116,7 @@ export function previewDemoInvitation(state: PeopleState, token: string, now: Da
   const item = state.invitations.find(invitation => invitation.tokenSha256 === tokenDigest(token));
   if (!item || !pending(item, now)) return null;
   // The demo creates no accounts, so an invited email never has one yet.
-  return { email: item.email, target: targetLabel({ ...item, clientName: clientName(item.clientId) }), expiresAt: item.expiresAt, hasAccount: false };
+  return { email: item.email, target: targetLabel({ ...item, clientName: invitationClient(item) }), expiresAt: item.expiresAt, hasAccount: false };
 }
 
 // accept_invitation for a person who has just set a password (the demo creates no account and keeps no password).
@@ -126,7 +128,7 @@ export function acceptDemoInvitation(state: PeopleState, input: { token: string;
   if (new Date(item.expiresAt) <= input.now) throw new DataError("This invitation has expired.");
   const person: DemoPerson = {
     kind: item.labRole ? "lab_staff" : "client_member", id: `${item.labRole ? "lab" : "member"}-${input.userId}`, userId: input.userId,
-    name: item.email, email: item.email, role: (item.labRole ?? item.clientRole) as string, clientId: item.clientId, clientName: clientName(item.clientId),
+    name: item.email, email: item.email, role: (item.labRole ?? item.clientRole) as string, clientId: item.clientId, clientName: invitationClient(item),
     twoStep: false, archivedAt: null, archivedReason: null,
   };
   const at = input.now.toISOString();

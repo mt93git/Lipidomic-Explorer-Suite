@@ -78,3 +78,4 @@
 .column-help-toggle { margin-top: 10px; font-size: var(--text-sm); }
 .column-help-toggle summary { cursor: pointer; color: var(--blue); font-size: var(--text-xs); }
 .column-help-toggle .column-help { margin-top: 8px; max-width: 560px; }
+.rule { border: 0; border-top: 1px solid var(--line); margin: 6px 0 20px; }

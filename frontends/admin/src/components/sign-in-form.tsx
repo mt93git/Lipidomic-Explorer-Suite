@@ -16,7 +16,11 @@ export function SignInForm({ mock, next }: { mock: boolean; next?: string }) {
       <p id="two-step-help" className="muted"><small>Required if two-step verification is enabled on your account.</small></p>
       <button className="button" disabled={mock || pending}>{pending ? "Signing in…" : "Sign in"}</button>
     </form>
-    {mock && <form action={enterDemo} style={{ marginTop: 12 }}><button className="button">Enter example workspace</button><p className="sso-note">Demo access needs no email, password, or backend.</p></form>}
+    {mock && <form action={enterDemo} style={{ marginTop: 12 }}>
+      <button className="button">Enter example workspace</button>
+      <button className="button secondary" name="view" value="client" style={{ marginTop: 8 }}>Enter as an example client</button>
+      <p className="sso-note">Demo access needs no email, password, or backend.</p>
+    </form>}
     <hr className="auth-divider" />
     <button className="button secondary" type="button" disabled aria-describedby="sso-note">Use Yale SSO</button>
     <p className="sso-note" id="sso-note">Yale SSO is not configured yet.</p>

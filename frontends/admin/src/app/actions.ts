@@ -32,10 +32,14 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
   return redirectAfterAction(/^\/invite\/[0-9a-f]{64}$/.test(next) ? next : "/choose-client");
 }
 
-export async function enterDemo() {
+// The example workspace as lab staff (default) or as the example client user (view=client).
+export async function enterDemo(form?: FormData) {
   if (!getEnvironment().mock) return redirectAfterAction("/sign-in");
   const store = await cookies();
   store.set(signedOutCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
+  store.set(clientCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
+  const client = form?.get("view") === "client";
+  store.set(viewCookie, client ? "client" : "staff", preferenceCookieOptions);
   return redirectAfterAction("/choose-client");
 }
 

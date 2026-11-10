@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Zona de clientes · propuesta visual · 2026-11-10</title>
+<!-- The app loads these three families through next/font/google (frontends/admin/src/app/fonts.ts). System fallbacks apply offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet">
+<style>
+/* ---- App tokens, copied from frontends/admin/src/app/tokens.css ---- */
+:root {
+  --navy: #162230; --blue: #2d5f8a; --focus-dark: #78afe0; --paper: #fafaf8; --tint: #eaf1f7; --muted: #526477;
+  --ink: #202e3b; --surface: #ffffff; --line: #dce3e8; --subtle: #f0f3f5; --ok: #276b50; --ok-tint: #e9f3ed;
+  --danger: #ac353b; --danger-tint: #fbeef0; --warning: #865b18; --warning-tint: #fbf1d9;
+  --client-atlas: #476b95; --client-cedar: #73805a; --client-meridian: #a66a4b; --client-harbor: #3f7d86; --client-juniper: #7d6a9e;
+  --text-xs: 11px; --text-sm: 12px; --radius: 8px; --shadow: 0 2px 5px rgb(22 34 48 / 4%);
+  --font-title: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+a { color: var(--blue); text-decoration: none; }
+
+/* ---- Document (prefix d-) ---- */
+.d-top { background: var(--navy); color: white; padding: 16px 32px; display: flex; align-items: center; gap: 12px; }
+.d-top .brand-name { font-family: var(--font-title); font-size: 25px; font-weight: 500; letter-spacing: -.4px; }
+.d-top .badge { font-family: var(--font-mono); font-size: 9px; letter-spacing: .09em; padding: 3px 6px; border: 1px solid #6f8ca9; border-radius: 3px; color: #cbdfee; }
+.d-top .right { margin-left: auto; font-size: 12px; color: #b9c9d7; font-family: var(--font-mono); }
+.d-page { max-width: 1320px; margin: 0 auto; padding: 40px 32px 96px; }
+.d-eyebrow { font-family: var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .13em; font-size: 10px; margin-bottom: 8px; }
+.d-h1 { font-family: var(--font-title); font-weight: 600; font-size: 50px; line-height: 1.08; letter-spacing: -.025em; margin: 0 0 12px; }
+.d-h2 { font-family: var(--font-title); font-weight: 600; font-size: 34px; line-height: 1.15; letter-spacing: -.02em; margin: 64px 0 10px; }
+.d-h3 { font-family: var(--font-title); font-weight: 600; font-size: 25px; line-height: 1.2; margin: 38px 0 6px; }
+.d-lead { max-width: 860px; font-size: 16px; }
+.d-text { max-width: 860px; margin: 0 0 12px; }
+.d-text code, .d-table code, .d-list code, .d-cap code { font-family: var(--font-mono); font-size: .86em; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+.d-meta { display: flex; gap: 8px 26px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 14px 0 30px; font-family: var(--font-mono); }
+.d-meta b { color: var(--ink); font-weight: 500; }
+.d-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 22px 0 8px; }
+.d-key > div { background: white; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; font-size: 14px; }
+.d-key .n { font-family: var(--font-title); font-size: 30px; font-weight: 600; color: var(--blue); line-height: 1; display: block; margin-bottom: 6px; }
+.d-key b { display: block; margin-bottom: 3px; }
+.d-key span { color: var(--muted); }
+.d-list { max-width: 860px; margin: 0 0 12px; padding-left: 20px; }
+.d-list li { margin-bottom: 6px; }
+.d-callout { max-width: 860px; border-left: 3px solid var(--danger); background: var(--danger-tint); padding: 12px 16px; font-size: 14px; margin: 14px 0; }
+.d-callout.info { border-left-color: var(--blue); background: var(--tint); }
+.d-callout b { color: var(--ink); }
+.d-tag { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; vertical-align: middle; white-space: nowrap; }
+.d-tag.new { background: var(--tint); color: var(--blue); border: 1px solid #a8c2d7; }
+.d-tag.exists { background: var(--subtle); color: var(--muted); border: 1px solid var(--line); }
+.d-tag.fix { background: var(--danger-tint); color: var(--danger); border: 1px solid #e6bcc0; }
+.d-tag.size { background: var(--warning-tint); color: var(--warning); border: 1px solid #ddc895; }
+.d-fig { margin: 22px 0 10px; padding: 0; }
+.d-cap { font-size: 13px; color: var(--muted); max-width: 900px; margin: 10px 0 0; }
+.d-cap b { color: var(--ink); }
+.d-frame { border: 1px solid #c3cfd8; border-radius: 10px; overflow: hidden; background: var(--paper); box-shadow: 0 8px 26px rgb(22 34 48 / 9%); }
+.d-url { background: #e6ecf0; border-bottom: 1px solid #cfd9e0; padding: 7px 12px; display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.d-url i { width: 9px; height: 9px; border-radius: 50%; background: #c2ccd4; display: inline-block; }
+.d-url i + i { margin-left: -5px; }
+.d-url span { background: white; border-radius: 4px; padding: 2px 10px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-row { display: grid; gap: 22px; align-items: start; }
+.d-row.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.d-row.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.d-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.d-phones { display: flex; gap: 28px; align-items: flex-start; justify-content: flex-start; flex-wrap: wrap; }
+.d-phone { width: 390px; flex: 0 0 390px; border: 1px solid #b9c6d0; border-radius: 28px; overflow: hidden; background: var(--paper); box-shadow: 0 10px 28px rgb(22 34 48 / 12%); }
+.d-table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: white; border: 1px solid var(--line); margin: 14px 0 8px; }
+.d-table th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--subtle); font-weight: 700; }
+.d-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.d-table tr:last-child td { border-bottom: 0; }
+.d-table td.c, .d-table th.c { text-align: center; }
+.d-table .yes { color: var(--ok); font-weight: 800; }
+.d-table .no { color: #b3bec8; }
+.d-table .was { color: var(--danger); font-weight: 700; font-size: 11px; display: block; }
+.d-table .mono { font-family: var(--font-mono); font-size: 12px; }
+.d-flow { background: white; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 18px 10px; }
+.d-flow svg { display: block; width: 100%; height: auto; }
+.d-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 4px 8px; }
+.d-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+.d-phase { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 16px 0; }
+.d-phase > div { background: white; border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: var(--radius); padding: 16px 18px; font-size: 13.5px; box-shadow: var(--shadow); }
+.d-phase h4 { font-family: var(--font-body); font-size: 14px; margin: 6px 0 8px; }
+.d-phase ul { margin: 0; padding-left: 17px; }
+.d-phase li { margin-bottom: 5px; }
+.d-q { max-width: 900px; counter-reset: q; list-style: none; padding: 0; margin: 14px 0; }
+.d-q li { counter-increment: q; background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px 14px 56px; margin-bottom: 10px; position: relative; font-size: 14px; }
+.d-q li::before { content: counter(q); position: absolute; left: 18px; top: 10px; font-family: var(--font-title); font-size: 28px; font-weight: 600; color: var(--blue); }
+.d-q b { display: block; margin-bottom: 2px; }
+.d-q em { font-style: normal; color: var(--muted); }
+
+/* ---- The app, scoped under .app: rules copied from globals.css, samples.css and people.module.css ---- */
+.app { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.55; text-align: left; }
+.app a { color: var(--blue); }
+.app h1, .app h2, .app h3, .app p { margin-top: 0; }
+.app h1, .app h2, .app .number { font-family: var(--font-title); font-weight: 600; }
+.app h1 { font-size: 46px; line-height: 1.1; margin-bottom: 10px; letter-spacing: -.025em; }
+.app h2 { font-size: 28px; line-height: 1.2; margin-bottom: 14px; }
+.app h3 { font-size: 14px; }
+.app small { font-size: var(--text-sm); }
+.app .mono, .app .eyebrow, .app .badge, .app .nav-heading { font-family: var(--font-mono); }
+.app .eyebrow { color: var(--muted); text-transform: uppercase; letter-spacing: .13em; font-size: 10px; margin-bottom: 9px; }
+.app .muted { color: var(--muted); }
+.app .topbar { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; gap: 22px; min-width: 0; }
+.app .topbar a { color: white; }
+.app .brand { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.app .brand-name { font-family: var(--font-title); font-size: 25px; font-weight: 500; letter-spacing: -.4px; }
+.app .badge { display: inline-flex; align-items: center; font-size: 9px; line-height: 1.4; letter-spacing: .09em; padding: 3px 6px; border: 1px solid #6f8ca9; border-radius: 3px; color: #cbdfee; }
+.app .search { display: flex; flex: 1; min-width: 110px; max-width: 350px; }
+.app .search input { width: 100%; min-width: 0; color: white; border: 1px solid #4a5d70; border-radius: 5px; background: #243442; padding: 8px 12px; font: inherit; }
+.app .search input::placeholder { color: #bbc8d2; }
+.app .topbar-tools { display: flex; align-items: center; justify-content: flex-end; gap: 14px; flex: 1; min-width: 0; }
+.app .menu-button { display: none; font: inherit; }
+.app .client-context { font-size: var(--text-sm); }
+.app .scope { font-size: var(--text-sm); padding: 6px 10px; border: 1px solid #4a5d70; border-radius: 5px; background: #243442; color: white; white-space: nowrap; }
+.app .user-chip { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.app .avatar { border-radius: 50%; width: 32px; height: 32px; display: grid; place-items: center; background: #35516a; color: #e8f0f8; font-size: var(--text-xs); }
+.app .user-name { font-size: var(--text-sm); display: block; }
+.app .user-role { font-size: var(--text-xs); display: block; color: #b9c9d7; }
+.app .sign-out { border: 0; padding: 4px 0; background: transparent; color: #cad9e7; text-decoration: underline; font: inherit; font-size: var(--text-xs); }
+.app .workspace { display: grid; grid-template-columns: 214px minmax(0, 1fr); }
+.app .sidebar { background: var(--surface); border-right: 1px solid var(--line); padding: 24px 14px; min-width: 0; }
+.app .nav-group + .nav-group { margin-top: 22px; }
+.app .nav-heading { margin: 0 10px 7px; color: var(--muted); font-size: 10px; letter-spacing: .14em; font-weight: 500; line-height: 1.55; }
+.app .nav-link { display: flex; align-items: center; gap: 9px; color: #415365; border-radius: 4px; padding: 6px 10px; font-size: var(--text-sm); }
+.app .nav-link[aria-current="page"] { background: var(--tint); color: var(--blue); font-weight: 700; }
+.app .nav-mark { width: 14px; text-align: center; font-size: 14px; opacity: .65; }
+.app .nav-tag { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); }
+.app .nav-count { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs); background: var(--warning-tint); color: var(--warning); border-radius: 10px; padding: 0 7px; font-weight: 500; }
+.app .sidebar-footer { border-top: 1px solid var(--line); padding: 18px 10px 0; margin-top: 28px; color: var(--muted); font-size: var(--text-xs); }
+.app .main { padding: 30px 32px 44px; min-width: 0; }
+.app .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 26px; }
+.app .page-heading p { margin-bottom: 0; color: var(--muted); max-width: 720px; }
+.app .heading-actions { display: flex; gap: 8px; flex-wrap: wrap; flex: 0 0 auto; }
+.app .button { display: inline-flex; justify-content: center; align-items: center; gap: 7px; border: 1px solid var(--blue); border-radius: 5px; padding: 9px 14px; background: var(--blue); color: white; font: inherit; font-size: var(--text-sm); font-weight: 700; text-align: center; white-space: nowrap; }
+.app .button.secondary { background: white; color: var(--blue); border-color: var(--line); }
+.app .link-button { color: var(--blue); font-size: var(--text-xs); text-decoration: underline; }
+.app .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 28px; }
+.app .metric { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px 14px; box-shadow: var(--shadow); }
+.app .metric-title { font-size: var(--text-xs); font-weight: 700; color: var(--muted); }
+.app .metric .number { display: block; font-size: 42px; line-height: 1.1; margin: 7px 0; }
+.app .metric small { color: var(--muted); font-size: var(--text-xs); display: block; line-height: 1.4; }
+.app .metric.attention .number { color: var(--warning); }
+.app .metric.ready .number { color: var(--ok); }
+.app .color-square { width: 9px; height: 9px; flex: 0 0 9px; display: inline-block; border-radius: 2px; background: var(--blue); }
+.app .color-square[data-color="cedar"] { background: var(--client-cedar); }
+.app .color-square[data-color="meridian"] { background: var(--client-meridian); }
+.app .color-square[data-color="atlas"] { background: var(--client-atlas); }
+.app .color-square[data-color="harbor"] { background: var(--client-harbor); }
+.app .section-title { font-size: var(--text-xs); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 10px; }
+.app .kanban { display: flex; gap: 12px; align-items: stretch; overflow: hidden; }
+.app .kanban-column { flex: 0 0 242px; width: 242px; padding: 10px; border: 1px solid #e1e7eb; border-radius: var(--radius); background: var(--subtle); }
+.app .column-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 3px 10px; }
+.app .column-heading h2 { font-family: var(--font-body); font-size: var(--text-sm); margin: 0; font-weight: 700; letter-spacing: 0; }
+.app .column-index { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); display: block; margin-bottom: 3px; font-weight: 400; }
+.app .column-count { background: #dfe7ed; border-radius: 12px; padding: 1px 7px; font-family: var(--font-mono); font-size: var(--text-xs); }
+.app .order-card { background: white; border: 1px solid var(--line); border-left: 3px solid transparent; border-radius: 6px; padding: 14px 12px 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.app .order-card[data-review="pending"] { border-left-color: var(--warning); }
+.app .order-card[data-gate="fail"] { border-left-color: var(--danger); }
+.app .card-client { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: var(--text-xs); margin-bottom: 10px; }
+.app .order-code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--blue); font-weight: 500; }
+.app .order-card h3 { font-size: var(--text-sm); font-weight: 700; line-height: 1.45; margin: 7px 0 12px; }
+.app .card-progress { color: var(--muted); font-size: var(--text-xs); margin-bottom: 6px; }
+.app .bar { height: 5px; border-radius: 5px; background: var(--subtle); overflow: hidden; }
+.app .bar i { display: block; height: 100%; background: var(--blue); }
+.app .pill { display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 4px; font-size: var(--text-xs); font-weight: 700; margin-top: 12px; white-space: nowrap; }
+.app .pill.fail { background: var(--danger-tint); color: var(--danger); }
+.app .pill.ok { background: var(--ok-tint); color: var(--ok); }
+.app .pill.pending { background: var(--warning-tint); color: var(--warning); }
+.app .pill.info { background: var(--tint); color: var(--blue); }
+.app .card-problem { display: block; font-size: var(--text-xs); margin: 6px 0 0; color: var(--danger); }
+.app .card-note { display: block; font-size: var(--text-xs); margin: 6px 0 0; color: var(--muted); }
+.app .stepper { list-style: none; padding: 0; margin: 0 0 30px; display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); }
+.app .stepper.ten { grid-template-columns: repeat(10, minmax(0,1fr)); }
+.app .step { position: relative; padding: 0 8px 0 0; font-size: var(--text-xs); color: var(--muted); }
+.app .step::before { content: ""; position: absolute; height: 1px; background: #cbd7e0; left: 30px; right: 0; top: 14px; }
+.app .step:last-child::before { display: none; }
+.app .step-dot { position: relative; width: 29px; height: 29px; border-radius: 50%; border: 1px solid #c2cfd9; background: var(--paper); display: grid; place-items: center; font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 10px; }
+.app .step.complete .step-dot { background: var(--blue); border-color: var(--blue); color: white; }
+.app .step.current .step-dot { border: 2px solid var(--blue); color: var(--blue); box-shadow: 0 0 0 3px var(--tint); }
+.app .step.current .step-name { color: var(--blue); font-weight: 800; }
+.app .step-name { display: block; font-size: var(--text-xs); }
+.app .step-status { display: block; font-size: var(--text-xs); margin-top: 4px; }
+.app .detail-grid { display: grid; grid-template-columns: minmax(0,1.8fr) minmax(240px,1fr); gap: 22px; align-items: start; }
+.app .panel { padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: white; box-shadow: var(--shadow); min-width: 0; }
+.app .panel + .panel { margin-top: 22px; }
+.app .panel-heading { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; }
+.app .panel-heading .pill { margin-top: 0; }
+.app .notice { border-left: 3px solid var(--blue); padding: 9px 12px; background: var(--tint); color: var(--muted); font-size: var(--text-sm); margin-bottom: 18px; }
+.app .notice strong { color: var(--ink); }
+.app .notice .button { padding: 5px 10px; margin-left: 8px; vertical-align: middle; }
+.app .notice.success { border-left-color: var(--ok); background: var(--ok-tint); color: var(--ink); }
+.app .notice.success::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+.app .notice.error { border-left-color: var(--danger); background: var(--danger-tint); color: var(--ink); }
+.app .notice.error::before { content: "⚠ "; color: var(--danger); font-weight: 700; }
+.app .notice.attention { border-left-color: var(--warning); background: var(--warning-tint); color: var(--ink); }
+.app .facts { margin: 0; }
+.app .fact-row { display: grid; grid-template-columns: 104px minmax(0,1fr); gap: 15px; border-bottom: 1px solid var(--line); padding: 12px 0; font-size: var(--text-sm); }
+.app .fact-row:last-child { border-bottom: 0; }
+.app .fact-row dt { color: var(--muted); }
+.app .fact-row dd { margin: 0; overflow-wrap: anywhere; }
+.app .history { list-style: none; padding: 0; margin: 16px 0 0; }
+.app .history li { border-left: 1px solid #c6d3de; margin-left: 4px; padding: 0 0 23px 18px; position: relative; font-size: var(--text-sm); }
+.app .history li:last-child { padding-bottom: 2px; }
+.app .history li::before { position: absolute; content: ""; width: 7px; height: 7px; background: #8ca9c0; border-radius: 50%; left: -4px; top: 6px; }
+.app .history time { display: block; color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 4px; }
+.app .history small { display: block; color: var(--muted); font-size: var(--text-xs); }
+.app .auth-page { padding: 55px 20px; }
+.app .auth-card { width: 100%; max-width: 460px; margin: 0 auto; padding: 34px; border: 1px solid var(--line); border-radius: 10px; background: white; box-shadow: var(--shadow); }
+.app .auth-card h1 { margin-top: 18px; font-size: 44px; }
+.app .auth-card .button { width: 100%; }
+.app .auth-divider { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
+.app .sso-note { text-align: center; font-size: var(--text-xs); color: var(--muted); margin: 10px 0 0; }
+.app .field { display: block; margin: 18px 0; }
+.app .field-label { display: block; font-size: var(--text-sm); font-weight: 700; margin-bottom: 7px; }
+.app .field input, .app .field select, .app .field textarea, .app .field .control { display: block; width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; line-height: 1.4; }
+.app .field .control.select { display: flex; justify-content: space-between; gap: 8px; }
+.app .field .control.select::after { content: "▾"; color: var(--muted); }
+.app .field .control.area { min-height: 84px; }
+.app .field .control.readonly { background: var(--subtle); color: var(--muted); }
+.app .field .control.placeholder { color: #8b99a6; }
+.app .field small, .app .field-hint { display: block; color: var(--muted); font-size: var(--text-xs); margin-top: 5px; }
+.app .record-form .field { margin: 0 0 18px; }
+.app .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.app .form-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.app .radio-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.app .radio { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: white; font-size: var(--text-sm); }
+.app .radio.checked { border-color: var(--blue); background: var(--tint); box-shadow: inset 0 0 0 1px var(--blue); }
+.app .radio .dot { width: 13px; height: 13px; flex: 0 0 13px; border-radius: 50%; border: 1px solid #8fa0ae; margin-top: 3px; background: white; }
+.app .radio.checked .dot { border: 4px solid var(--blue); }
+.app .radio strong { display: block; }
+.app .radio small { color: var(--muted); font-size: var(--text-xs); }
+.app .table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm); }
+.app .table th { color: var(--muted); font-weight: 700; }
+.app .table th, .app .table td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
+.app .table .email { display: block; color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); overflow-wrap: anywhere; }
+.app .table .change { color: var(--blue); font-weight: 700; white-space: nowrap; }
+.app .people-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
+.app .link-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 10px; }
+.app .link-row .control { border: 1px solid #bfcbd5; padding: 9px 12px; border-radius: 5px; background: white; font-family: var(--font-mono); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* New pieces this proposal adds (few, built from the same tokens) */
+.app .order-rows { list-style: none; margin: 0; padding: 0; }
+.app .order-row { display: grid; grid-template-columns: 74px minmax(0,1fr) 216px; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: var(--text-sm); }
+.app .order-row:last-child { border-bottom: 0; padding-bottom: 2px; }
+.app .order-row .title { font-weight: 700; display: block; }
+.app .order-row .sub { color: var(--muted); font-size: var(--text-xs); display: block; margin-top: 2px; }
+.app .steps6 { display: flex; gap: 3px; }
+.app .steps6 i { flex: 1; height: 5px; border-radius: 3px; background: #e3e9ee; }
+.app .steps6 i.done { background: var(--blue); }
+.app .steps6 i.now { background: #8fb3d1; }
+.app .steps6.wait i.now { background: #d9b566; }
+.app .step-text { font-size: var(--text-xs); color: var(--muted); margin-top: 6px; display: block; }
+.app .step-text b { color: var(--ink); }
+.app .release-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: var(--text-sm); }
+.app .release-row:last-child { border-bottom: 0; padding-bottom: 2px; }
+.app .release-row .grow { flex: 1; min-width: 0; }
+.app .next-steps { margin: 0; padding: 0; list-style: none; counter-reset: s; font-size: var(--text-sm); }
+.app .next-steps li { counter-increment: s; position: relative; padding: 0 0 16px 34px; }
+.app .next-steps li:last-child { padding-bottom: 0; }
+.app .next-steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #c2cfd9; display: grid; place-items: center; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); }
+.app .next-steps strong { display: block; }
+.app .next-steps span { color: var(--muted); }
+.app .request-detail { background: var(--subtle); border-radius: 6px; padding: 16px 18px; }
+.app .request-detail .field { margin: 0 0 14px; }
+.app .state-card { height: 100%; }
+.app .vsteps { list-style: none; margin: 0 0 22px; padding: 0; font-size: var(--text-sm); }
+.app .vsteps li { display: flex; gap: 12px; align-items: center; padding: 7px 0; color: var(--muted); }
+.app .vsteps .step-dot { margin: 0; width: 24px; height: 24px; flex: 0 0 24px; font-size: 10px; }
+.app .vsteps li.complete .step-dot { background: var(--blue); border-color: var(--blue); color: white; }
+.app .vsteps li.complete { color: var(--ink); }
+.app .vsteps time { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); }
+
+/* Phone (the app's max-width: 760px rules, applied to the 390 px frames) */
+.app.phone .topbar { gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+.app.phone .brand { flex: 1; min-width: 0; }
+.app.phone .brand-name { font-size: 22px; }
+.app.phone .menu-button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #4a5d70; border-radius: 5px; background: #243442; color: white; font-size: var(--text-sm); }
+.app.phone .search { flex-basis: 100%; max-width: none; }
+.app.phone .topbar-tools { display: none; }
+.app.phone .workspace { display: block; }
+.app.phone .sidebar { padding: 7px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+.app.phone .sidebar nav, .app.phone .nav-group { display: flex; align-items: center; gap: 3px; }
+.app.phone .nav-heading { margin: 0 6px; white-space: nowrap; }
+.app.phone .nav-link { white-space: nowrap; padding: 8px 10px; }
+.app.phone .nav-mark, .app.phone .sidebar-footer { display: none; }
+.app.phone .main { padding: 24px 16px 35px; }
+.app.phone h1 { font-size: 34px; }
+.app.phone .page-heading { flex-wrap: wrap; margin-bottom: 22px; }
+.app.phone .heading-actions { width: 100%; }
+.app.phone .heading-actions .button { width: 100%; }
+.app.phone .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 22px; }
+.app.phone .metric { padding: 13px 14px; }
+.app.phone .metric .number { font-size: 36px; }
+.app.phone .detail-grid { grid-template-columns: minmax(0,1fr); }
+.app.phone .panel { padding: 20px; }
+.app.phone .form-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.app.phone .order-row { grid-template-columns: minmax(0,1fr); gap: 8px; }
+.app.phone .auth-page { padding: 30px 16px; }
+.app.phone .auth-card { padding: 24px; }
+.app.phone .auth-card h1 { font-size: 34px; }
+.app.phone .release-row { flex-wrap: wrap; }
+.app.phone .release-row .button { width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="d-top"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span><span class="right">propuesta · zona de clientes · 2026-11-10</span></div>
+
+<div class="d-page">
+
+<div class="d-eyebrow">Admin · fase 1 · propuesta de diseño, sin código</div>
+<h1 class="d-h1">Zona de clientes</h1>
+<p class="d-lead">Tu idea, Gerardo: «una zona de clientes donde un usuario que no existe se registra con un formulario, y uno que existe puede solicitar pedidos». Este documento la contrasta con lo que el Admin ya hace y propone el diseño más pequeño que la entrega, con las pantallas dibujadas con los tokens reales de la app.</p>
+<div class="d-meta">
+  <span>base <b>admin/phase1 · cc9cbfc6</b></span>
+  <span>ámbito <b>frontends/admin · db/admin</b></span>
+  <span>datos <b>sintéticos (Example Cedar, example.test)</b></span>
+  <span>pantallas <b>en inglés, como la app</b></span>
+  <span>cambios en la app <b>ninguno</b></span>
+</div>
+
+<div class="d-key">
+  <div><span class="n">1</span><b>Entrar: se pide acceso, no se abre el registro</b><span>Un formulario público «Request access» crea una solicitud pendiente y ninguna cuenta. El lab la aprueba en People y de ahí sale la invitación de 7 días que ya existe.</span></div>
+  <div><span class="n">2</span><b>Pedir: «Request an order» crea el pedido en Request</b><span>Requester y Client admin rellenan los mismos campos que New order. La fila nace en <code style="font-family:var(--font-mono);font-size:12px">admin.order</code> con revisión pendiente; el lab acepta o rechaza desde Pipeline.</span></div>
+  <div><span class="n">3</span><b>Seguir: seis pasos en lenguaje de cliente</b><span>Client home y el detalle del pedido traducen las once etapas internas a seis. Al publicarse el dataset aparece «Open in Nexo».</span></div>
+  <div><span class="n">4</span><b>Cerrar el hueco de escritura directa</b><span>Hoy un Requester puede insertar y también modificar pedidos, envíos y muestras de su cliente saltándose las funciones. Se cierra antes de abrir la puerta a clientes.</span></div>
+  <div><span class="n">5</span><b>Sin correo, sin cambios de infraestructura</b><span>El lab sigue copiando el enlace y enviándolo a mano. Lo pendiente se ve con un aviso en Pipeline y un contador en People.</span></div>
+  <div><span class="n">6</span><b>Cuatro fases pequeñas</b><span>Una S y tres M, cada una entregable por separado. La primera no depende de nada y arregla un problema que ya existe.</span></div>
+</div>
+
+<!-- ============================================================ 1. HOY -->
+<h2 class="d-h2" id="hoy">1. De dónde partimos</h2>
+<p class="d-text">Lo que sigue está leído en el código y las migraciones de <code>cc9cbfc6</code>.</p>
+<ul class="d-list">
+  <li><b>No hay registro público.</b> GoTrue tiene <code>DISABLE_SIGNUP</code>. Una persona solo entra con un enlace de invitación de 7 días y un solo uso, que un Owner o Admin crea en People y copia; la app no envía correo (<code>0015_people.sql</code>, <code>/invite/[token]</code>).</li>
+  <li><b>La segunda mitad del alta ya está hecha.</b> Una persona nueva pone contraseña; una cuenta existente inicia sesión y acepta. Quien pertenece a varios clientes elige en <code>/choose-client</code>.</li>
+  <li><b>Los pedidos los abre solo el lab.</b> <code>create_order</code> exige Owner, Admin u Operator. El cliente puede leer el detalle de sus pedidos y abrir datasets publicados en Nexo.</li>
+  <li><b>El portal de cliente no existe todavía.</b> Client home y Client order son marcadores de «Phase 2» en <code>navigation.ts</code>.</li>
+  <li><b>El detalle de pedido que ve hoy un cliente es el del lab</b>: diez etapas internas, la lista de comprobaciones de cada puerta y los nombres del personal en el historial.</li>
+</ul>
+<div class="d-callout">
+  <b>El hueco es más ancho de lo que parecía.</b> Me pediste revisar el <code>INSERT</code> directo sobre pedidos. Las políticas <code>order_insert</code>, <code>order_update</code>, <code>shipment_insert/update</code> y <code>sample_insert/update</code> de <code>0004_policies.sql</code> usan todas <code>can_submit</code>, que incluye a Client admin y Requester, y el <code>GRANT INSERT, UPDATE</code> a <code>authenticated</code> sigue en pie para esas tres tablas. No hay ningún trigger que limite qué columnas de un pedido se pueden cambiar. Es decir: un Requester, con su propio token contra PostgREST, puede crear pedidos sin pasar por <code>create_order</code> y también cambiar el <code>stage</code> de un pedido de su cliente. La interfaz dice que no puede (<code>roles.ts</code>: «client roles cannot yet»). <code>db/admin/test/clients.test.js:87</code> comprueba de hecho que la inserción directa de un Requester funciona. Lo he leído en las migraciones y en ese test; no lo he ejecutado contra staging.
+</div>
+
+<!-- ============================================================ 2. FLUJO -->
+<h2 class="d-h2" id="flujo">2. El recorrido completo</h2>
+<p class="d-text">Diez pasos, de la primera visita al dataset abierto en Nexo. En azul lo que hay que construir; en blanco lo que ya funciona.</p>
+<figure class="d-fig" data-shot="01-flujo">
+<div class="d-flow">
+<svg viewBox="0 0 1400 286" role="img" aria-label="Flujo: solicitud de acceso, invitación, alta, solicitud de pedido, aceptación, envío, trabajo del lab, publicación y Nexo">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#526477"/></marker>
+  </defs>
+  <style>
+    .lane { fill: #f0f3f5; }
+    .lane-t { font: 500 11px "IBM Plex Mono", monospace; fill: #526477; letter-spacing: .12em; }
+    .bx { fill: #fff; stroke: #c3cfd8; stroke-width: 1.2; }
+    .bx.new { fill: #eaf1f7; stroke: #2d5f8a; stroke-width: 1.6; }
+    .bt { font: 700 12px "Nunito Sans", system-ui, sans-serif; fill: #202e3b; }
+    .bs { font: 400 11px "Nunito Sans", system-ui, sans-serif; fill: #526477; }
+    .num { font: 600 15px "Cormorant Garamond", Georgia, serif; fill: #2d5f8a; }
+    .ln { fill: none; stroke: #526477; stroke-width: 1.3; }
+  </style>
+  <rect class="lane" x="0" y="26" width="1400" height="108" rx="8"/>
+  <rect class="lane" x="0" y="156" width="1400" height="108" rx="8"/>
+  <text class="lane-t" x="16" y="74">PERSONA /</text><text class="lane-t" x="16" y="90">CLIENTE</text>
+  <text class="lane-t" x="16" y="204">LABORATORIO</text><text class="lane-t" x="16" y="220">+ SISTEMA</text>
+
+  <path class="ln" marker-end="url(#arr)" d="M195,116 V210 H264"/>
+  <path class="ln" marker-end="url(#arr)" d="M376,210 H390"/>
+  <path class="ln" marker-end="url(#arr)" d="M447,174 V80 H516"/>
+  <path class="ln" marker-end="url(#arr)" d="M628,80 H642"/>
+  <path class="ln" marker-end="url(#arr)" d="M699,116 V210 H768"/>
+  <path class="ln" marker-end="url(#arr)" d="M825,174 V80 H894"/>
+  <path class="ln" marker-end="url(#arr)" d="M951,116 V210 H1020"/>
+  <path class="ln" marker-end="url(#arr)" d="M1132,210 H1146"/>
+  <path class="ln" marker-end="url(#arr)" d="M1203,174 V80 H1272"/>
+
+  <g><rect class="bx new" x="140" y="44" width="110" height="72" rx="6"/><text class="num" x="149" y="62">1</text><text class="bt" x="163" y="62">Pide acceso</text><text class="bs" x="149" y="80">Formulario web.</text><text class="bs" x="149" y="94">No crea cuenta.</text></g>
+  <g><rect class="bx new" x="266" y="174" width="110" height="72" rx="6"/><text class="num" x="275" y="192">2</text><text class="bt" x="289" y="192">Aprueba</text><text class="bs" x="275" y="210">People: elige</text><text class="bs" x="275" y="224">cliente y rol.</text></g>
+  <g><rect class="bx" x="392" y="174" width="110" height="72" rx="6"/><text class="num" x="401" y="192">3</text><text class="bt" x="415" y="192">Invitación</text><text class="bs" x="401" y="210">7 días, un uso.</text><text class="bs" x="401" y="224">El lab la envía.</text></g>
+  <g><rect class="bx" x="518" y="44" width="110" height="72" rx="6"/><text class="num" x="527" y="62">4</text><text class="bt" x="541" y="62">Se une</text><text class="bs" x="527" y="80">Contraseña nueva</text><text class="bs" x="527" y="94">o inicia sesión.</text></g>
+  <g><rect class="bx new" x="644" y="44" width="110" height="72" rx="6"/><text class="num" x="653" y="62">5</text><text class="bt" x="667" y="62">Pide pedido</text><text class="bs" x="653" y="80">Order en Request,</text><text class="bs" x="653" y="94">por revisar.</text></g>
+  <g><rect class="bx new" x="770" y="174" width="110" height="72" rx="6"/><text class="num" x="779" y="192">6</text><text class="bt" x="793" y="192">Acepta</text><text class="bs" x="779" y="210">En Pipeline: sí</text><text class="bs" x="779" y="224">o no, con motivo.</text></g>
+  <g><rect class="bx" x="896" y="44" width="110" height="72" rx="6"/><text class="num" x="905" y="62">7</text><text class="bt" x="919" y="62">Envía</text><text class="bs" x="905" y="80">Muestras con el</text><text class="bs" x="905" y="94">código ORD.</text></g>
+  <g><rect class="bx" x="1022" y="174" width="110" height="72" rx="6"/><text class="num" x="1031" y="192">8</text><text class="bt" x="1045" y="192">Trabaja</text><text class="bs" x="1031" y="210">Recibe, registra,</text><text class="bs" x="1031" y="224">mide, procesa.</text></g>
+  <g><rect class="bx" x="1148" y="174" width="110" height="72" rx="6"/><text class="num" x="1157" y="192">9</text><text class="bt" x="1171" y="192">Publica</text><text class="bs" x="1157" y="210">Dos firmas, de</text><text class="bs" x="1157" y="224">dos personas.</text></g>
+  <g><rect class="bx" x="1274" y="44" width="110" height="72" rx="6"/><text class="num" x="1281" y="62">10</text><text class="bt" x="1301" y="62">Abre</text><text class="bs" x="1283" y="80">El dataset en</text><text class="bs" x="1283" y="94">Nexo.</text></g>
+</svg>
+<div class="d-legend"><span><i style="background:#eaf1f7;border:1.5px solid #2d5f8a"></i>Nuevo en esta propuesta (pasos 1, 2, 5 y 6)</span><span><i style="background:#fff;border:1px solid #c3cfd8"></i>Ya existe y no cambia (3, 4, 8, 9, 10; el 7 ocurre fuera de la app)</span></div>
+</div>
+</figure>
+
+<!-- ============================================================ 3. ENTRADA -->
+<h2 class="d-h2" id="entrada">3. Cómo entra una persona nueva o una organización nueva</h2>
+<p class="d-text"><b>Recomiendo solicitud de acceso con aprobación del lab, y no registro abierto.</b> Para quien llega, la experiencia es la que pedías: rellena un formulario y acaba con una cuenta. La diferencia es que la cuenta se crea cuando el lab dice que sí.</p>
+<ul class="d-list">
+  <li><b>Sin correo no se puede verificar a nadie.</b> Un registro abierto sin verificación deja que cualquiera cree una cuenta con la dirección de otra persona. La invitación sí prueba algo: el lab envió el enlace a esa dirección y alguien que la lee lo abrió.</li>
+  <li><b>La decisión que importa la toma el lab de todos modos.</b> Una cuenta sin membresía no ve nada por RLS. A qué cliente pertenece una persona y con qué rol lo decide el lab; el registro abierto añadiría cuentas huérfanas sin quitar ese paso.</li>
+  <li><b>El mismo inicio de sesión sirve a Team y Nexo.</b> Activar el registro en GoTrue lo activa para toda la suite, no solo para Admin.</li>
+  <li><b>Es lo más pequeño.</b> La invitación ya resuelve contraseña, caducidad, un solo uso y auditoría. Solo falta que la persona pueda pedirla.</li>
+</ul>
+<p class="d-text">Una organización nueva entra por el mismo formulario: al aprobar, el lab elige un cliente existente o crea uno nuevo con los datos que la persona escribió (<code>create_client</code> ya existe). Una persona que ya tiene cuenta y necesita un segundo cliente usa el mismo formulario; al aceptar la invitación no cambia su contraseña (<code>accept_my_invitation</code> ya existe).</p>
+
+<h3 class="d-h3">Request access <span class="d-tag new">nuevo</span></h3>
+<figure class="d-fig" data-shot="02-request-access-desktop">
+<div class="d-frame"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/request-access</span></div>
+<div class="app">
+  <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a></header>
+  <main class="auth-page"><section class="auth-card" style="max-width:520px">
+    <div class="eyebrow">Lipidomics service</div>
+    <h1>Request access.</h1>
+    <p class="muted">Tell the lab who you are. A lab administrator reviews every request by hand; if it is approved you receive a personal link to set your password. No account is created now.</p>
+    <div class="form-row">
+      <div class="field"><span class="field-label">Full name</span><span class="control">Robin Example</span></div>
+      <div class="field"><span class="field-label">Work email</span><span class="control">robin@larch.example.test</span><small>The lab replies to this address.</small></div>
+    </div>
+    <div class="form-row">
+      <div class="field" style="margin-top:0"><span class="field-label">Organisation or lab</span><span class="control">Example Larch</span><small>Your PI's lab, your group or your company.</small></div>
+      <div class="field" style="margin-top:0"><span class="field-label">Type</span><span class="control select">Company</span><small>PI lab, internal group or company.</small></div>
+    </div>
+    <div class="field" style="margin-top:0"><span class="field-label">What would you like to measure?</span><span class="control area">About 40 plasma samples on the broad lipidome panel, starting in January.</span><small>Optional. Do not include patient names or sample details.</small></div>
+    <button class="button">Send request</button>
+    <p class="sso-note">Already have an account? <a>Sign in →</a></p>
+  </section></main>
+</div></div>
+<figcaption class="d-cap"><b>Pública, sin sesión.</b> Cinco campos; «Type» corresponde a <code>client.kind</code> y sirve para crear el cliente si es nuevo. La respuesta es siempre la misma, exista o no esa dirección, para no revelar quién tiene cuenta. La acción del servidor limita envíos por IP y lleva un campo trampa; no hay CAPTCHA.</figcaption>
+</figure>
+
+<figure class="d-fig" data-shot="03-acceso-estados">
+<div class="d-row c3">
+  <div><p class="d-sub">SIGN IN <span class="d-tag exists">existe</span> + un enlace <span class="d-tag new">nuevo</span></p>
+  <div class="d-frame"><div class="app phone">
+    <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a></header>
+    <main class="auth-page"><section class="auth-card">
+      <div class="eyebrow">Lab administration</div>
+      <h1>Welcome back.</h1><p class="muted">Sign in to your lab workspace.</p>
+      <div class="field"><span class="field-label">Email</span><span class="control placeholder">you@example.test</span></div>
+      <div class="field"><span class="field-label">Password</span><span class="control">&nbsp;</span></div>
+      <div class="field"><span class="field-label">Two-step code</span><span class="control">&nbsp;</span><small>Required if two-step verification is enabled on your account.</small></div>
+      <button class="button">Sign in</button>
+      <hr class="auth-divider">
+      <p class="sso-note" style="font-size:12px">New to the lipidomics service? <a><b>Request access →</b></a></p>
+    </section></main>
+  </div></div></div>
+
+  <div><p class="d-sub">REQUEST RECEIVED <span class="d-tag new">nuevo</span></p>
+  <div class="d-frame"><div class="app phone">
+    <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a></header>
+    <main class="auth-page"><section class="auth-card">
+      <div class="eyebrow">Request access</div>
+      <h1>Request received.</h1>
+      <p class="notice success"><strong>The lab has your request.</strong> It is reviewed by hand and the lab will write to robin@larch.example.test.</p>
+      <p class="muted">Reference <span class="mono" style="color:var(--ink)">AR-0012</span>. Nothing else is needed from you now. If the request is approved you will receive a link, valid for 7 days, to set your password.</p>
+      <a class="button secondary">Back to sign in</a>
+    </section></main>
+  </div></div></div>
+
+  <div><p class="d-sub">INVITATION <span class="d-tag exists">existe, no cambia</span></p>
+  <div class="d-frame"><div class="app phone">
+    <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a></header>
+    <main class="auth-page"><section class="auth-card">
+      <div class="eyebrow">Invitation</div>
+      <h1>Join as Client admin at Example Larch.</h1>
+      <p class="muted">This invitation is for <strong>robin@larch.example.test</strong> and expires Nov 17, 2026, 09:40 EST. Choose a password to create your account.</p>
+      <div class="field"><span class="field-label">Password</span><span class="control">••••••••••••••</span></div>
+      <div class="field"><span class="field-label">Repeat password</span><span class="control">••••••••••••••</span></div>
+      <p class="muted"><small>At least 12 characters.</small></p>
+      <button class="button">Set password and join</button>
+    </section></main>
+  </div></div></div>
+</div>
+<figcaption class="d-cap">Los tres estados alrededor del formulario, a ancho de teléfono. A la izquierda, lo único que cambia en Sign in: una línea al pie. A la derecha, la página de invitación tal como está hoy; es donde la persona «se registra» de verdad.</figcaption>
+</figure>
+
+<!-- ============================================================ 4. CLIENT HOME -->
+<h2 class="d-h2" id="home">4. Client home: lo primero que ve un cliente</h2>
+<p class="d-text">Sustituye al marcador de <code>/client/home</code>. Responde a tres preguntas en este orden: qué espera algo de mí, dónde están mis pedidos y qué resultados puedo abrir. Todo lo que muestra se lee ya con las políticas de lectura actuales; no necesita cambios en la base de datos.</p>
+<figure class="d-fig" data-shot="04-client-home-desktop">
+<div class="d-frame"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/client/home</span></div>
+<div class="app">
+  <header class="topbar">
+    <a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a>
+    <div class="search"><input placeholder="Search your orders…" disabled></div>
+    <div class="topbar-tools">
+      <span class="client-context">Example Cedar</span>
+      <div class="user-chip"><span class="avatar">RO</span><span><span class="user-name">rowan@cedar.example.test</span><span class="user-role">Requester</span></span></div>
+      <span class="sign-out">Sign out</span>
+    </div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar"><nav>
+      <div class="nav-group"><h2 class="nav-heading">CLIENT PORTAL</h2>
+        <a class="nav-link" aria-current="page"><span class="nav-mark">◇</span>Home</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Request an order</a>
+      </div></nav>
+      <div class="sidebar-footer">LIPIDOMICS SERVICE<br>Admin · Phase 1</div>
+    </aside>
+    <main class="main">
+      <div class="page-heading">
+        <div><div class="eyebrow">Client portal / Example Cedar</div><h1>Your orders</h1><p>Everything the lab is doing for Example Cedar, and the datasets it has released to you.</p></div>
+        <div class="heading-actions"><a class="button">+ Request an order</a></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><span class="metric-title">Waiting for the lab</span><span class="number">1</span><small>Requests the lab has not answered yet</small></div>
+        <div class="metric attention"><span class="metric-title">Waiting for your samples</span><span class="number">1</span><small>Accepted: ship with the order code</small></div>
+        <div class="metric"><span class="metric-title">With the lab</span><span class="number">2</span><small>Received, in analysis or in review</small></div>
+        <div class="metric ready"><span class="metric-title">Released</span><span class="number">1</span><small>Datasets you can open</small></div>
+      </div>
+      <div class="detail-grid">
+        <div>
+          <section class="panel">
+            <div class="eyebrow">In progress</div><h2>Orders</h2>
+            <ul class="order-rows">
+              <li class="order-row"><span class="order-code">ORD059</span>
+                <span><a class="title">Plasma lipidome · diet study</a><span class="sub">24 samples expected · requested Nov 10</span></span>
+                <span><span class="steps6 wait"><i class="now"></i><i></i><i></i><i></i><i></i><i></i></span><span class="step-text"><b>Requested</b> · waiting for the lab's review</span></span></li>
+              <li class="order-row"><span class="order-code">ORD042</span>
+                <span><a class="title">Example lipid panel · feasibility</a><span class="sub">12 samples expected · accepted Nov 6</span></span>
+                <span><span class="steps6 wait"><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i></span><span class="step-text"><b>Accepted</b> · send your samples</span></span></li>
+              <li class="order-row"><span class="order-code">ORD044</span>
+                <span><a class="title">Example extraction series</a><span class="sub">32 samples · received Nov 2</span></span>
+                <span><span class="steps6"><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i></span><span class="step-text"><b>In analysis</b> · step 4 of 6</span></span></li>
+              <li class="order-row"><span class="order-code">ORD047</span>
+                <span><a class="title">Synthetic acquisition series</a><span class="sub">28 samples · received Oct 26</span></span>
+                <span><span class="steps6"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i></span><span class="step-text"><b>Quality review</b> · step 5 of 6</span></span></li>
+            </ul>
+          </section>
+          <section class="panel">
+            <div class="eyebrow">Released</div><h2>Datasets</h2>
+            <div class="release-row"><span class="order-code">ORD040</span><span class="grow"><b>Released example dataset</b><span class="muted" style="display:block;font-size:11px">Dataset v1 · 12 samples · released Nov 5, 2026 · two reviewer signatures</span></span><a class="button secondary">Order →</a><a class="button">Open in Nexo ↗</a></div>
+          </section>
+        </div>
+        <div>
+          <section class="panel">
+            <div class="eyebrow">Your access</div><h2>Requester</h2>
+            <p class="muted" style="font-size:12px;margin-bottom:12px">at <strong style="color:var(--ink)">Example Cedar</strong>. You can request orders and follow every order of this client. The lab decides who belongs to it.</p>
+            <p class="notice" style="margin-bottom:0">Need a colleague added? They can <a>request access</a> and name Example Cedar.</p>
+          </section>
+          <section class="panel">
+            <div class="eyebrow">Sending samples</div><h2>Ship after the lab accepts</h2>
+            <p class="muted" style="font-size:12px;margin-bottom:0">Wait until a request shows <strong style="color:var(--ink)">Accepted</strong>. Write the order code on every box. The lab records the arrival here, usually the same day.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div></div>
+<figcaption class="d-cap">Un <b>Viewer</b> ve lo mismo sin el botón «Request an order» ni la entrada del menú. El chip de usuario muestra el correo porque <code>client_member</code> no guarda nombre; no lo cambio. Quien pertenece a varios clientes sigue pasando por Choose client, que ya existe.</figcaption>
+</figure>
+
+<!-- ============================================================ 5. REQUEST ORDER -->
+<h2 class="d-h2" id="pedido">5. Request an order</h2>
+<p class="d-text">Los mismos campos que el New order del lab, menos el cliente, que es el seleccionado. El pedido se crea en <code>admin.order</code> con <code>stage = 'request'</code>, <code>requested_by</code> = quien lo envía y revisión pendiente. Recibe su código ORD en ese momento.</p>
+<figure class="d-fig" data-shot="05-request-order-desktop">
+<div class="d-frame"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/client/request-order</span></div>
+<div class="app">
+  <header class="topbar">
+    <a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a>
+    <div class="search"><input placeholder="Search your orders…" disabled></div>
+    <div class="topbar-tools">
+      <span class="client-context">Example Cedar</span>
+      <div class="user-chip"><span class="avatar">RO</span><span><span class="user-name">rowan@cedar.example.test</span><span class="user-role">Requester</span></span></div>
+      <span class="sign-out">Sign out</span>
+    </div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar"><nav>
+      <div class="nav-group"><h2 class="nav-heading">CLIENT PORTAL</h2>
+        <a class="nav-link"><span class="nav-mark">◇</span>Home</a>
+        <a class="nav-link" aria-current="page"><span class="nav-mark">◇</span>Request an order</a>
+      </div></nav>
+      <div class="sidebar-footer">LIPIDOMICS SERVICE<br>Admin · Phase 1</div>
+    </aside>
+    <main class="main">
+      <div class="page-heading">
+        <div><div class="eyebrow"><a>Client portal / Example Cedar</a> / Request an order</div><h1>Request an order</h1><p>Tell the lab what you would like measured. The lab reviews the request and answers before you ship anything.</p></div>
+        <a class="button secondary">← Back to your orders</a>
+      </div>
+      <div class="detail-grid">
+        <section class="panel">
+          <div class="eyebrow">Order request</div><h2>What you need</h2>
+          <div class="record-form">
+            <div class="form-row">
+              <div class="field"><span class="field-label">Requesting for</span><span class="control readonly">Example Cedar</span><small>Your selected client.</small></div>
+              <div class="field"><span class="field-label">Panel</span><span class="control select">Panel A · broad lipidome</span><small>Not sure? Choose “Let the lab advise”.</small></div>
+            </div>
+            <div class="field"><span class="field-label">Title</span><span class="control">Plasma lipidome · diet study</span><small>A short name you and the lab will both recognise. No patient names.</small></div>
+            <div class="form-row">
+              <div class="field"><span class="field-label">Matrix</span><span class="control">Plasma</span></div>
+              <div class="field"><span class="field-label">Expected samples</span><span class="control">24</span></div>
+            </div>
+            <div class="field"><span class="field-label">Billing reference</span><span class="control placeholder">Charge code, PO or grant number (optional)</span></div>
+            <div class="field"><span class="field-label">Notes</span><span class="control area">Two diets, 12 animals each, EDTA plasma, 50 µL per tube. We can ship the week of Nov 16.</span><small>Anything the lab should know before the samples arrive.</small></div>
+            <div class="form-actions"><button class="button">Send request</button><span class="muted"><small>Nothing is shipped yet: wait for the lab to accept.</small></span></div>
+          </div>
+        </section>
+        <div>
+          <section class="panel">
+            <div class="eyebrow">After you send it</div><h2>What happens next</h2>
+            <ol class="next-steps">
+              <li><strong>The lab reviews it</strong><span>You see it at once in your orders, marked Requested.</span></li>
+              <li><strong>The lab accepts, or tells you why not</strong><span>The answer appears on the order.</span></li>
+              <li><strong>You ship the samples</strong><span>With the order code on every box.</span></li>
+              <li><strong>You follow it here</strong><span>Six steps, up to the released dataset you open in Nexo.</span></li>
+            </ol>
+          </section>
+          <section class="panel">
+            <p class="notice" style="margin:0">Sample names and groups are not entered here. The lab registers them from your manifest when the shipment arrives.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div></div>
+<figcaption class="d-cap">Tras enviar, vuelve a Client home con el aviso «<b>Request ORD059 sent.</b> The lab will review it.» y el pedido ya en la lista. «Let the lab advise» guarda el pedido sin panel (la columna ya admite nulo) y el lab lo fija al aceptar. No hay edición posterior: si algo cambia, el cliente escribe al lab.</figcaption>
+</figure>
+
+<!-- ============================================================ 6. CLIENT ORDER -->
+<h2 class="d-h2" id="seguimiento">6. Cómo sigue el cliente su pedido</h2>
+<p class="d-text">La misma ruta <code>/orders/[code]</code> de hoy, con una vista propia para el cliente. Las once etapas internas se agrupan en seis pasos. El cliente deja de ver la lista de comprobaciones de cada puerta, los nombres de lotes y los nombres del personal; no es una medida de seguridad (RLS ya decide qué filas lee), es que no le sirven.</p>
+<figure class="d-fig" data-shot="06-client-order-desktop">
+<div class="d-frame"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/orders/ORD044</span></div>
+<div class="app">
+  <header class="topbar">
+    <a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a>
+    <div class="search"><input placeholder="Search your orders…" disabled></div>
+    <div class="topbar-tools">
+      <span class="client-context">Example Cedar</span>
+      <div class="user-chip"><span class="avatar">RO</span><span><span class="user-name">rowan@cedar.example.test</span><span class="user-role">Requester</span></span></div>
+      <span class="sign-out">Sign out</span>
+    </div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar"><nav>
+      <div class="nav-group"><h2 class="nav-heading">CLIENT PORTAL</h2>
+        <a class="nav-link" aria-current="page"><span class="nav-mark">◇</span>Home</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Request an order</a>
+      </div></nav>
+      <div class="sidebar-footer">LIPIDOMICS SERVICE<br>Admin · Phase 1</div>
+    </aside>
+    <main class="main">
+      <div class="page-heading">
+        <div><div class="eyebrow"><a>Your orders</a> / Order detail</div><h1>ORD044</h1><p>Example extraction series</p></div>
+        <a class="button secondary">← Back to your orders</a>
+      </div>
+      <ol class="stepper">
+        <li class="step complete"><span class="step-dot">✓</span><span class="step-name">Requested</span><span class="step-status">Oct 28</span></li>
+        <li class="step complete"><span class="step-dot">✓</span><span class="step-name">Accepted</span><span class="step-status">Oct 29</span></li>
+        <li class="step complete"><span class="step-dot">✓</span><span class="step-name">Samples received</span><span class="step-status">Nov 2</span></li>
+        <li class="step current"><span class="step-dot">4</span><span class="step-name">In analysis</span><span class="step-status">Current</span></li>
+        <li class="step"><span class="step-dot">5</span><span class="step-name">Quality review</span><span class="step-status">Upcoming</span></li>
+        <li class="step"><span class="step-dot">6</span><span class="step-name">Released</span><span class="step-status">Upcoming</span></li>
+      </ol>
+      <div class="detail-grid">
+        <div>
+          <section class="panel">
+            <div class="panel-heading"><div><div class="eyebrow">Where it is now</div><h2>In analysis</h2></div><span class="pill info">With the lab</span></div>
+            <p class="muted" style="margin-bottom:0">Your 32 samples are registered and in the lab's workflow: extraction, the instrument run and data processing. Nothing is needed from you. The next step you will see here is the quality review, where two lab reviewers sign before anything is released.</p>
+          </section>
+          <section class="panel">
+            <div class="eyebrow">Registered by the lab</div><h2>32 samples</h2>
+            <table class="table">
+              <thead><tr><th>Sample code</th><th>Your name</th><th>Group</th><th>Matrix</th></tr></thead>
+              <tbody>
+                <tr><td class="mono" style="color:var(--blue)">ORD044-S001</td><td>Ctrl_1</td><td>Control</td><td>Plasma</td></tr>
+                <tr><td class="mono" style="color:var(--blue)">ORD044-S002</td><td>Ctrl_2</td><td>Control</td><td>Plasma</td></tr>
+                <tr><td class="mono" style="color:var(--blue)">ORD044-S003</td><td>Trt_1</td><td>Treated</td><td>Plasma</td></tr>
+              </tbody>
+            </table>
+            <p style="margin:12px 0 0"><a class="link-button">Show all 32 samples</a> <span class="muted" style="font-size:11px">· If a name is wrong, write to the lab and quote the sample code.</span></p>
+          </section>
+          <section class="panel">
+            <div class="eyebrow">Order record</div><h2>Timeline</h2>
+            <ol class="history">
+              <li><time>Nov 4, 2026</time>Samples registered<small>32 samples</small></li>
+              <li><time>Nov 2, 2026 · 10:41 EST</time>Shipment received<small>Intact and cold · 2 boxes</small></li>
+              <li><time>Oct 29, 2026</time>Request accepted by the lab</li>
+              <li><time>Oct 28, 2026</time>Requested<small>rowan@cedar.example.test</small></li>
+            </ol>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="eyebrow">At a glance</div><h2>Order facts</h2>
+          <dl class="facts">
+            <div class="fact-row"><dt>Client</dt><dd>Example Cedar</dd></div>
+            <div class="fact-row"><dt>Order</dt><dd class="mono">ORD044</dd></div>
+            <div class="fact-row"><dt>Panel</dt><dd>Panel A · broad lipidome</dd></div>
+            <div class="fact-row"><dt>Matrix</dt><dd>Plasma</dd></div>
+            <div class="fact-row"><dt>Samples</dt><dd>32 registered · 32 expected</dd></div>
+            <div class="fact-row"><dt>Billing ref.</dt><dd class="mono">PO-EXAMPLE-0044</dd></div>
+            <div class="fact-row"><dt>Requested by</dt><dd>rowan@cedar.example.test</dd></div>
+          </dl>
+          <p class="notice" style="margin:14px 0 0">Scientific values are never edited in Admin.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</div></div>
+<figcaption class="d-cap">Las fechas de la línea de tiempo salen solo de hechos que el cliente ya puede leer: el pedido, su aceptación, el envío recibido, las muestras registradas y el dataset publicado. Entre «Samples received» y «Released» no hay fechas intermedias, a propósito.</figcaption>
+</figure>
+
+<h3 class="d-h3">Lo que cambia en el primer panel según el paso</h3>
+<figure class="d-fig" data-shot="07-client-order-estados">
+<div class="app" style="background:transparent">
+<div class="d-row c4">
+  <section class="panel state-card">
+    <div class="panel-heading"><div><div class="eyebrow">Step 1 of 6</div><h2>Waiting for the lab</h2></div></div>
+    <span class="pill pending" style="margin:0 0 12px">Requested Nov 10</span>
+    <p class="muted" style="font-size:12px;margin:0">The lab has your request and will accept it or tell you why not. <strong style="color:var(--ink)">Do not ship samples yet.</strong></p>
+  </section>
+  <section class="panel state-card" style="margin-top:0">
+    <div class="panel-heading"><div><div class="eyebrow">Step 2 of 6</div><h2>Send your samples</h2></div></div>
+    <span class="pill ok" style="margin:0 0 12px">Accepted Nov 11</span>
+    <p class="muted" style="font-size:12px;margin:0">Write <strong class="mono" style="color:var(--ink)">ORD059</strong> on every box and ship as agreed with the lab. 24 samples expected. The lab records the arrival here.</p>
+  </section>
+  <section class="panel state-card" style="margin-top:0">
+    <div class="panel-heading"><div><div class="eyebrow">Step 6 of 6</div><h2>Released</h2></div></div>
+    <span class="pill ok" style="margin:0 0 12px">Dataset v1 · Nov 5, 2026</span>
+    <p class="muted" style="font-size:12px;margin:0 0 14px">Signed by two different lab reviewers. Open it in Nexo to explore the results.</p>
+    <a class="button">Open in Nexo ↗</a>
+  </section>
+  <section class="panel state-card" style="margin-top:0">
+    <div class="panel-heading"><div><div class="eyebrow">Request closed</div><h2>Declined by the lab</h2></div></div>
+    <p class="notice attention" style="margin:0 0 12px"><strong>Reason from the lab.</strong> The custom MRM list needs a method we cannot run before March. Write to us and we will plan it.</p>
+    <a class="link-button">Request another order →</a>
+  </section>
+</div>
+</div>
+<figcaption class="d-cap">Si un dataset publicado se retira o se sustituye, el panel usa el aviso que ya existe en el detalle del lab («Released, then withdrawn») y el botón de Nexo desaparece.</figcaption>
+</figure>
+
+<table class="d-table">
+  <thead><tr><th style="width:23%">Etapa interna (<code>order.stage</code>)</th><th style="width:19%">Paso que ve el cliente</th><th>Qué ve</th><th style="width:22%">Qué no ve</th></tr></thead>
+  <tbody>
+    <tr><td><span class="mono">request</span>, revisión pendiente</td><td><b>1 · Requested</b></td><td>Lo que envió y que el lab aún no ha respondido.</td><td rowspan="2">Quién del lab lo revisa.</td></tr>
+    <tr><td><span class="mono">request</span>, aceptado</td><td><b>2 · Accepted</b></td><td>Fecha de aceptación, el código ORD para las cajas, muestras esperadas.</td></tr>
+    <tr><td><span class="mono">received</span>, <span class="mono">registered</span></td><td><b>3 · Samples received</b></td><td>Fecha de llegada, estado y número de cajas; después, las muestras registradas con su código y el nombre que él les dio.</td><td>Posiciones de congelador, alícuotas.</td></tr>
+    <tr><td><span class="mono">extracted</span>, <span class="mono">in_batch</span>, <span class="mono">sequence_exported</span>, <span class="mono">acquired</span></td><td><b>4 · In analysis</b></td><td>Que el pedido está en el flujo del lab y que no se necesita nada de él.</td><td>Nombre del lote, secuencia, instrumento, QC y blancos, otros clientes del mismo lote.</td></tr>
+    <tr><td><span class="mono">processed</span>, <span class="mono">qc_checked</span>, <span class="mono">excel_built</span></td><td><b>5 · Quality review</b></td><td>Que dos revisores firman antes de publicar.</td><td>Comprobaciones de cada puerta, exclusiones, firmas a medias.</td></tr>
+    <tr><td><span class="mono">released</span></td><td><b>6 · Released</b></td><td>Versión del dataset, fecha, «Open in Nexo». Si se retira, el aviso y el motivo.</td><td>El fichero compañero (IS, QC, Provenance).</td></tr>
+    <tr><td><span class="mono">request</span>, rechazado</td><td><b>Declined</b></td><td>El motivo que escribió el lab y un enlace para pedir otro.</td><td></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ 7. PHONE -->
+<h3 class="d-h3">Las tres pantallas de cliente en el teléfono (390 px)</h3>
+<figure class="d-fig" data-shot="08-phone">
+<div class="d-phones">
+  <!-- phone 1: home -->
+  <div class="d-phone"><div class="app phone">
+    <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a><span class="menu-button">Menu ▾</span>
+      <div class="search"><input placeholder="Search your orders…" disabled></div></header>
+    <div class="workspace">
+      <aside class="sidebar"><nav><div class="nav-group"><h2 class="nav-heading">CLIENT PORTAL</h2><a class="nav-link" aria-current="page">Home</a><a class="nav-link">Request an order</a></div></nav></aside>
+      <main class="main">
+        <div class="page-heading"><div><div class="eyebrow">Client portal / Example Cedar</div><h1>Your orders</h1><p>Everything the lab is doing for Example Cedar.</p></div>
+          <div class="heading-actions"><a class="button">+ Request an order</a></div></div>
+        <div class="metrics">
+          <div class="metric"><span class="metric-title">Waiting for the lab</span><span class="number">1</span></div>
+          <div class="metric attention"><span class="metric-title">Waiting for your samples</span><span class="number">1</span></div>
+          <div class="metric"><span class="metric-title">With the lab</span><span class="number">2</span></div>
+          <div class="metric ready"><span class="metric-title">Released</span><span class="number">1</span></div>
+        </div>
+        <section class="panel"><div class="eyebrow">In progress</div><h2>Orders</h2>
+          <ul class="order-rows">
+            <li class="order-row"><span><span class="order-code">ORD059</span><a class="title">Plasma lipidome · diet study</a></span>
+              <span><span class="steps6 wait"><i class="now"></i><i></i><i></i><i></i><i></i><i></i></span><span class="step-text"><b>Requested</b> · waiting for the lab's review</span></span></li>
+            <li class="order-row"><span><span class="order-code">ORD042</span><a class="title">Example lipid panel · feasibility</a></span>
+              <span><span class="steps6 wait"><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i></span><span class="step-text"><b>Accepted</b> · send your samples</span></span></li>
+            <li class="order-row"><span><span class="order-code">ORD044</span><a class="title">Example extraction series</a></span>
+              <span><span class="steps6"><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i></span><span class="step-text"><b>In analysis</b> · step 4 of 6</span></span></li>
+          </ul>
+        </section>
+      </main>
+    </div>
+  </div></div>
+
+  <!-- phone 2: request order -->
+  <div class="d-phone"><div class="app phone">
+    <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a><span class="menu-button">Menu ▾</span>
+      <div class="search"><input placeholder="Search your orders…" disabled></div></header>
+    <div class="workspace">
+      <aside class="sidebar"><nav><div class="nav-group"><h2 class="nav-heading">CLIENT PORTAL</h2><a class="nav-link">Home</a><a class="nav-link" aria-current="page">Request an order</a></div></nav></aside>
+      <main class="main">
+        <div class="page-heading"><div><div class="eyebrow">Client portal / Request an order</div><h1>Request an order</h1><p>The lab reviews the request and answers before you ship anything.</p></div></div>
+        <section class="panel"><div class="eyebrow">Order request</div><h2>What you need</h2>
+          <div class="record-form">
+            <div class="field"><span class="field-label">Requesting for</span><span class="control readonly">Example Cedar</span></div>
+            <div class="field"><span class="field-label">Panel</span><span class="control select">Panel A · broad lipidome</span></div>
+            <div class="field"><span class="field-label">Title</span><span class="control">Plasma lipidome · diet study</span><small>No patient names.</small></div>
+            <div class="field"><span class="field-label">Matrix</span><span class="control">Plasma</span></div>
+            <div class="field"><span class="field-label">Expected samples</span><span class="control">24</span></div>
+            <div class="field"><span class="field-label">Billing reference</span><span class="control placeholder">Optional</span></div>
+            <div class="field"><span class="field-label">Notes</span><span class="control area">Two diets, 12 animals each, EDTA plasma.</span></div>
+            <button class="button" style="width:100%">Send request</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div></div>
+
+  <!-- phone 3: order detail, released -->
+  <div class="d-phone"><div class="app phone">
+    <header class="topbar"><a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a><span class="menu-button">Menu ▾</span>
+      <div class="search"><input placeholder="Search your orders…" disabled></div></header>
+    <div class="workspace">
+      <aside class="sidebar"><nav><div class="nav-group"><h2 class="nav-heading">CLIENT PORTAL</h2><a class="nav-link" aria-current="page">Home</a><a class="nav-link">Request an order</a></div></nav></aside>
+      <main class="main">
+        <div class="page-heading"><div><div class="eyebrow"><a>Your orders</a> / Order detail</div><h1>ORD040</h1><p>Released example dataset</p></div></div>
+        <section class="panel">
+          <div class="panel-heading"><div><div class="eyebrow">Step 6 of 6</div><h2>Released</h2></div><span class="pill ok">Dataset v1</span></div>
+          <p class="muted" style="font-size:12px">Released Nov 5, 2026, signed by two different lab reviewers.</p>
+          <a class="button" style="width:100%">Open in Nexo ↗</a>
+        </section>
+        <section class="panel"><div class="eyebrow">Order record</div><h2>Progress</h2>
+          <ol class="vsteps" style="margin-bottom:0">
+            <li class="complete"><span class="step-dot">✓</span>Requested<time>Oct 8</time></li>
+            <li class="complete"><span class="step-dot">✓</span>Accepted<time>Oct 9</time></li>
+            <li class="complete"><span class="step-dot">✓</span>Samples received<time>Oct 12</time></li>
+            <li class="complete"><span class="step-dot">✓</span>In analysis</li>
+            <li class="complete"><span class="step-dot">✓</span>Quality review</li>
+            <li class="complete"><span class="step-dot">✓</span>Released<time>Nov 5</time></li>
+          </ol>
+        </section>
+      </main>
+    </div>
+  </div></div>
+</div>
+<figcaption class="d-cap">Mismas reglas que el resto de la app por debajo de 760 px: barra con Menu, navegación en una tira, una sola columna. En el teléfono los seis pasos se listan en vertical en lugar del paso a paso horizontal, que hoy obliga a desplazarse de lado.</figcaption>
+</figure>
+
+<!-- ============================================================ 8. LAB -->
+<h2 class="d-h2" id="lab">7. El lado del laboratorio</h2>
+<p class="d-text">Dos colas nuevas, cada una dentro de la pantalla donde ya se hace ese trabajo. Como no hay correo, el lab se entera al entrar: un contador junto a People y un aviso encima del tablero de Pipeline.</p>
+
+<h3 class="d-h3">People: solicitudes de acceso <span class="d-tag new">sección nueva</span></h3>
+<figure class="d-fig" data-shot="09-lab-people">
+<div class="d-frame"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/people</span></div>
+<div class="app">
+  <header class="topbar">
+    <a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a>
+    <div class="search"><input placeholder="Search orders, descriptions…" disabled></div>
+    <div class="topbar-tools">
+      <span class="scope">All clients ▾</span>
+      <div class="user-chip"><span class="avatar">DA</span><span><span class="user-name">Demo Admin</span><span class="user-role">Admin</span></span></div>
+      <span class="sign-out">Sign out</span>
+    </div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar"><nav>
+      <div class="nav-group"><h2 class="nav-heading">LAB WORK</h2>
+        <a class="nav-link"><span class="nav-mark">▥</span>Pipeline</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>New order</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Receive shipment</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Sample registry</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Batch builder</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Batch run</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Ingest results</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Release</a>
+      </div>
+      <div class="nav-group"><h2 class="nav-heading">CLIENTS</h2><a class="nav-link"><span class="nav-mark">◇</span>Clients</a></div>
+      <div class="nav-group"><h2 class="nav-heading">ORGANIZATION</h2>
+        <a class="nav-link" aria-current="page"><span class="nav-mark">◇</span>People<span class="nav-count">2</span></a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Roles &amp; permissions</a>
+        <a class="nav-link"><span class="nav-mark">◇</span>Audit log</a>
+      </div></nav>
+    </aside>
+    <main class="main">
+      <div class="page-heading"><div><div class="eyebrow">Organization</div><h1>People</h1>
+        <p>Lab staff and client members, their roles, access requests and pending invitations. The app sends no email: you copy the link and send it yourself.</p></div>
+        <div class="heading-actions"><a class="button secondary">Roles &amp; permissions</a></div></div>
+      <div class="people-layout">
+        <div>
+          <section class="panel">
+            <div class="panel-heading"><h2>Access requests</h2><span class="pill pending">2 waiting</span></div>
+            <p class="muted" style="font-size:12px">People who asked for access from the public form. Approving creates an invitation link; nothing is sent until you send it.</p>
+            <table class="table">
+              <thead><tr><th style="width:27%">Person</th><th style="width:21%">Organisation</th><th>Asked for</th><th style="width:13%">Received</th><th style="width:13%"></th></tr></thead>
+              <tbody>
+                <tr style="background:var(--tint)"><td>Robin Example<span class="email">robin@larch.example.test</span></td><td>Example Larch<span class="email">company · not a client yet</span></td><td>About 40 plasma samples on the broad lipidome panel, starting in January.</td><td style="white-space:nowrap">Nov 10, 09:12</td><td><span class="change">Reviewing ▴</span></td></tr>
+                <tr><td colspan="5" style="padding:0 12px 16px;background:var(--tint)">
+                  <div class="request-detail" style="background:white;border:1px solid #a8c2d7">
+                    <div class="field" style="margin-bottom:12px"><span class="field-label">Add to</span>
+                      <div class="radio-options">
+                        <span class="radio"><span class="dot"></span><span><strong>An existing client</strong><small>Choose from the list</small></span></span>
+                        <span class="radio checked"><span class="dot"></span><span><strong>A new client</strong><small>Created when you approve</small></span></span>
+                      </div></div>
+                    <div class="form-row" style="grid-template-columns:1.4fr 1fr 1fr">
+                      <div class="field"><span class="field-label">Client name</span><span class="control">Example Larch</span></div>
+                      <div class="field"><span class="field-label">Kind</span><span class="control select">Company</span></div>
+                      <div class="field"><span class="field-label">Role</span><span class="control select">Client admin</span></div>
+                    </div>
+                    <div class="form-actions" style="margin-top:0"><button class="button">Approve and create invitation link</button><a class="button secondary">Decline…</a>
+                      <span class="muted"><small>A 7-day, single-use link for robin@larch.example.test.</small></span></div>
+                  </div>
+                </td></tr>
+                <tr><td>Kai Sample<span class="email">kai@cedar.example.test</span></td><td>Example Cedar<span class="email">matches a client</span></td><td>Postdoc in the group; I need to follow ORD044.</td><td style="white-space:nowrap">Nov 9, 16:40</td><td><span class="change">Review ▾</span></td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section class="panel">
+            <h2>Pending invitations</h2>
+            <p class="muted" style="font-size:12px">A link is shown once, when it is created. If it was lost, revoke it and invite again.</p>
+            <table class="table">
+              <thead><tr><th>Email</th><th>Invited as</th><th>Expires</th><th></th></tr></thead>
+              <tbody><tr><td>morgan@harbor.example.test</td><td>Requester at Example Harbor</td><td>Nov 14, 2026, 11:05 EST</td><td><a class="button secondary" style="padding:5px 10px">Revoke</a></td></tr></tbody>
+            </table>
+          </section>
+        </div>
+        <section class="panel">
+          <h2>Invite</h2>
+          <div class="record-form">
+            <div class="field"><span class="field-label">Email</span><span class="control">&nbsp;</span></div>
+            <div class="field"><span class="field-label">Role</span><span class="control select">Requester</span></div>
+            <div class="field"><span class="field-label">Client</span><span class="control select">Example Atlas</span></div>
+            <button class="button" style="width:100%">Create invitation link</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div></div>
+<figcaption class="d-cap">Owner y Admin, igual que hoy para invitar a roles de cliente. Al aprobar aparece el mismo aviso verde de hoy con el enlace para copiar, y la solicitud pasa a «Pending invitations». Rechazar pide un motivo interno; el solicitante no recibe nada de la app. La lista «People» sigue debajo, sin cambios (no dibujada).</figcaption>
+</figure>
+
+<h3 class="d-h3">Pipeline y detalle del pedido: aceptar o rechazar <span class="d-tag new">nuevo</span></h3>
+<figure class="d-fig" data-shot="10-lab-pipeline-review">
+<div class="d-frame"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/pipeline</span></div>
+<div class="app">
+  <header class="topbar">
+    <a class="brand"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span></a>
+    <div class="search"><input placeholder="Search orders, descriptions…" disabled></div>
+    <div class="topbar-tools">
+      <span class="scope">All clients ▾</span>
+      <div class="user-chip"><span class="avatar">DO</span><span><span class="user-name">Demo Operator</span><span class="user-role">Operator</span></span></div>
+      <span class="sign-out">Sign out</span>
+    </div>
+  </header>
+  <div class="workspace" style="grid-template-columns:minmax(0,1fr)">
+    <main class="main" style="padding-bottom:26px">
+      <div class="page-heading" style="margin-bottom:18px"><div><div class="eyebrow">Lab work / All clients</div><h1>Pipeline</h1></div>
+        <div class="heading-actions"><a class="button secondary">Receive shipment</a><a class="button">+ New order</a></div></div>
+      <p class="notice attention"><strong>2 client requests are waiting for an answer.</strong> ORD059 · Example Cedar and ORD060 · Example Harbor. <a class="button">Review ORD059 →</a></p>
+      <div class="kanban">
+        <section class="kanban-column">
+          <div class="column-heading"><h2><span class="column-index">01</span>Request</h2><span class="column-count">3</span></div>
+          <article class="order-card" data-review="pending"><span class="card-client"><span class="color-square" data-color="cedar"></span>Example Cedar</span><span class="order-code">ORD059</span><h3>Plasma lipidome · diet study</h3><div class="card-progress">24 samples expected</div><span class="pill pending" style="margin-top:4px">Client request · needs an answer</span><span class="card-note">Requested Nov 10 by rowan@cedar.example.test</span></article>
+          <article class="order-card" data-review="pending"><span class="card-client"><span class="color-square" data-color="harbor"></span>Example Harbor</span><span class="order-code">ORD060</span><h3>Sterol screen · follow-up</h3><div class="card-progress">8 samples expected</div><span class="pill pending" style="margin-top:4px">Client request · needs an answer</span></article>
+          <article class="order-card"><span class="card-client"><span class="color-square" data-color="cedar"></span>Example Cedar</span><span class="order-code">ORD042</span><h3>Example lipid panel · feasibility</h3><div class="card-progress">0 of 12 samples</div><div class="bar"><i style="width:0"></i></div><span class="pill pending">Awaiting checks</span></article>
+        </section>
+        <section class="kanban-column">
+          <div class="column-heading"><h2><span class="column-index">02</span>Received</h2><span class="column-count">1</span></div>
+          <article class="order-card"><span class="card-client"><span class="color-square" data-color="meridian"></span>Example Meridian</span><span class="order-code">ORD043</span><h3>Synthetic serum · arrival review</h3><div class="card-progress">4 of 18 samples</div><div class="bar"><i style="width:22%"></i></div><span class="pill ok">Ready to advance</span></article>
+        </section>
+        <section class="kanban-column">
+          <div class="column-heading"><h2><span class="column-index">03</span>Registered</h2><span class="column-count">1</span></div>
+          <article class="order-card" data-gate="fail"><span class="card-client"><span class="color-square" data-color="atlas"></span>Example Atlas</span><span class="order-code">ORD041</span><h3>Synthetic plasma pilot · cohort A</h3><div class="card-progress">7 of 24 samples</div><div class="bar"><i style="width:29%"></i></div><span class="pill fail">Gate blocked</span><span class="card-problem">Two example sample identifiers need review</span></article>
+        </section>
+        <section class="kanban-column">
+          <div class="column-heading"><h2><span class="column-index">04</span>Extracted</h2><span class="column-count">1</span></div>
+          <article class="order-card"><span class="card-client"><span class="color-square" data-color="cedar"></span>Example Cedar</span><span class="order-code">ORD044</span><h3>Example extraction series</h3><div class="card-progress">13 of 32 samples</div><div class="bar"><i style="width:40%"></i></div><span class="pill ok">Ready to advance</span></article>
+        </section>
+        <section class="kanban-column">
+          <div class="column-heading"><h2><span class="column-index">05</span>In batch</h2><span class="column-count">1</span></div>
+          <article class="order-card"><span class="card-client"><span class="color-square" data-color="atlas"></span>Example Atlas</span><span class="order-code">ORD045</span><h3>Synthetic reference pool</h3><div class="card-progress">8 of 16 samples</div><div class="bar"><i style="width:50%"></i></div><span class="pill pending">Awaiting checks</span></article>
+        </section>
+      </div>
+    </main>
+  </div>
+</div></div>
+
+<div class="d-frame" style="margin-top:22px"><div class="d-url"><i></i><i></i><i></i><span>https://admin.example.test/admin/orders/ORD059</span></div>
+<div class="app">
+  <div class="workspace" style="grid-template-columns:minmax(0,1fr)">
+    <main class="main">
+      <div class="page-heading"><div><div class="eyebrow"><a>Lab work / Pipeline</a> / Order detail</div><h1>ORD059</h1><p>Plasma lipidome · diet study</p></div>
+        <a class="button secondary">← Back to pipeline</a></div>
+      <div class="detail-grid">
+        <section class="panel">
+          <div class="panel-heading"><div><div class="eyebrow">Client request</div><h2>Accept this request?</h2></div><span class="pill pending">Needs an answer</span></div>
+          <p class="muted">Example Cedar asked for this order. Until you accept it, no shipment can be received for it and the client sees “Waiting for the lab”.</p>
+          <div class="request-detail" style="margin-bottom:18px">
+            <div class="eyebrow">Notes from the client</div>
+            <p style="margin:0;font-size:12px">Two diets, 12 animals each, EDTA plasma, 50 µL per tube. We can ship the week of Nov 16.</p>
+          </div>
+          <div class="record-form">
+            <div class="form-row">
+              <div class="field"><span class="field-label">Panel</span><span class="control select">Panel A · broad lipidome</span><small>As the client chose it; change it if you agreed otherwise.</small></div>
+              <div class="field"><span class="field-label">Expected samples</span><span class="control readonly">24</span></div>
+            </div>
+            <div class="form-actions"><button class="button">Accept request</button></div>
+            <hr class="auth-divider">
+            <div class="field"><span class="field-label">Or decline, with a reason</span><span class="control area placeholder" style="min-height:58px">The client reads this reason on the order.</span></div>
+            <div class="form-actions"><button class="button secondary">Decline request</button><span class="muted"><small>The order is archived, never deleted, and leaves the pipeline.</small></span></div>
+          </div>
+        </section>
+        <section class="panel" style="margin-top:0">
+          <div class="eyebrow">At a glance</div><h2>Order facts</h2>
+          <dl class="facts">
+            <div class="fact-row"><dt>Client</dt><dd>Example Cedar</dd></div>
+            <div class="fact-row"><dt>Order</dt><dd class="mono">ORD059</dd></div>
+            <div class="fact-row"><dt>Requested by</dt><dd>rowan@cedar.example.test<br><span class="muted">Requester</span></dd></div>
+            <div class="fact-row"><dt>Requested</dt><dd>Nov 10, 2026, 09:31 EST</dd></div>
+            <div class="fact-row"><dt>Matrix</dt><dd>Plasma</dd></div>
+            <div class="fact-row"><dt>Billing ref.</dt><dd class="muted">Not given</dd></div>
+          </dl>
+        </section>
+      </div>
+    </main>
+  </div>
+</div></div>
+<figcaption class="d-cap">Arriba, el tablero (recortado, sin la barra lateral): las solicitudes de cliente caen en la columna Request, que es donde ya viven los pedidos nuevos, con borde ámbar y su propia etiqueta. Abajo, el detalle del pedido mientras está pendiente: el panel «Next gate» de siempre se sustituye por la decisión. Un pedido que abre el lab con New order nace ya aceptado y no pasa por aquí.</figcaption>
+</figure>
+
+<!-- ============================================================ 9. ROLES -->
+<h2 class="d-h2" id="roles">8. Quién puede hacer qué</h2>
+<table class="d-table">
+  <thead><tr><th>Acción</th><th class="c">Sin cuenta</th><th class="c">Viewer</th><th class="c">Requester</th><th class="c">Client admin</th><th class="c">Operator</th><th class="c">Admin</th><th class="c">Owner</th><th>Regla</th></tr></thead>
+  <tbody>
+    <tr><td>Enviar una solicitud de acceso <span class="d-tag new">nuevo</span></td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td>Formulario público, con límite de envíos</td></tr>
+    <tr><td>Aprobar o rechazar una solicitud de acceso <span class="d-tag new">nuevo</span></td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c yes">✓</td><td class="c yes">✓</td><td><code>is_lab_manager</code>, como invitar hoy</td></tr>
+    <tr><td>Unirse con un enlace de invitación <span class="d-tag exists">existe</span></td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td>Solo el correo invitado</td></tr>
+    <tr><td>Ver Client home y los pedidos de su cliente <span class="d-tag new">pantalla nueva</span></td><td class="c no">·</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">todos</td><td class="c yes">todos</td><td class="c yes">todos</td><td><code>can_read_client</code>, sin cambios</td></tr>
+    <tr><td>Solicitar un pedido <span class="d-tag new">nuevo</span></td><td class="c no">·</td><td class="c no">·</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td>Rol en ese cliente, cliente activo</td></tr>
+    <tr><td>Aceptar o rechazar una solicitud de pedido <span class="d-tag new">nuevo</span></td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td><code>is_lab_writer</code>, como New order</td></tr>
+    <tr><td>Abrir un pedido directamente (New order) <span class="d-tag exists">existe</span></td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td><code>create_order</code></td></tr>
+    <tr><td>Escribir directamente en las tablas de pedidos, envíos y muestras <span class="d-tag fix">se cierra</span></td><td class="c no">·</td><td class="c no">·</td><td class="c no">·<span class="was">hoy sí</span></td><td class="c no">·<span class="was">hoy sí</span></td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td>Políticas pasan a <code>is_lab_writer</code></td></tr>
+    <tr><td>Abrir un dataset publicado en Nexo <span class="d-tag exists">existe</span></td><td class="c no">·</td><td class="c yes">✓*</td><td class="c yes">✓*</td><td class="c yes">✓*</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td>* con <code>NEXT_PUBLIC_NEXO_CLIENT_ACCESS=1</code></td></tr>
+    <tr><td>Gestionar las personas de un cliente <span class="d-tag exists">existe</span></td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c yes">✓</td><td class="c yes">✓</td><td>El Client admin, todavía no</td></tr>
+  </tbody>
+</table>
+<p class="d-text">Con este diseño <b>Client admin y Requester hacen lo mismo</b>. La diferencia queda reservada para cuando un Client admin pueda gestionar a su propia gente. El lab Member (pertenece al lab, no es personal) sigue sin ver datos de clientes.</p>
+
+<!-- ============================================================ 10. DATOS -->
+<h2 class="d-h2" id="datos">9. Cambios de datos y de contrato</h2>
+<p class="d-text">Tres migraciones aditivas, una por fase que toca la base de datos. Todas las funciones siguen el estilo actual: <code>SECURITY DEFINER</code>, <code>search_path</code> fijo, comprobación de permisos dentro, auditadas por el trigger existente. Las migraciones se escriben con sus tests y las aplicas tú.</p>
+<table class="d-table">
+  <thead><tr><th style="width:27%">Cambio</th><th style="width:33%">Qué hace</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td colspan="3" style="background:var(--subtle)"><b>0018 · cerrar la escritura directa</b> <span class="d-tag fix">arreglo</span></td></tr>
+    <tr><td>Políticas <code>order_insert/update</code>, <code>shipment_insert/update</code>, <code>sample_insert/update</code> pasan de <code>can_submit</code> a <code>is_lab_writer()</code></td><td>Los roles de cliente dejan de poder escribir esas tablas con su token. El personal del lab no nota nada: la app ya escribe solo mediante <code>create_order</code>, <code>receive_shipment</code> y <code>register_samples</code>.</td><td>Hoy la base de datos permite lo que la interfaz dice que no se puede, incluido cambiar el <code>stage</code>. Abrir un portal de clientes con ese hueco sería invitar a usarlo. Hay que reescribir el caso de <code>clients.test.js</code> que hoy da por buena la inserción directa.</td></tr>
+
+    <tr><td colspan="3" style="background:var(--subtle)"><b>0019 · solicitudes de pedido</b> <span class="d-tag new">nuevo</span></td></tr>
+    <tr><td><code>admin."order"</code>: columnas <code>review</code> (<span class="mono">pending | accepted | declined</span>, por defecto <span class="mono">accepted</span>), <code>reviewed_at</code>, <code>reviewed_by</code></td><td>Marca si un pedido en Request está pendiente de respuesta. El valor por defecto deja intactos los pedidos existentes y <code>create_order</code>.</td><td>Sin esto, en la columna Request no se distingue «el cliente lo pidió y nadie ha contestado» de «aceptado, esperando el envío». Añadir etapas nuevas obligaría a tocar las once etapas en todas partes.</td></tr>
+    <tr><td><code>request_order(p_client_id, p_panel_id, p_title, p_matrix, p_expected_samples, p_billing_ref, p_notes) returns uuid</code></td><td>Requester o Client admin de ese cliente, cliente activo. Inserta en <code>request</code> con <code>review = 'pending'</code> y <code>requested_by = auth.uid()</code>. Mismas validaciones que <code>create_order</code>; panel opcional.</td><td>Es la puerta única para el cliente, con las mismas comprobaciones que la del lab. Sustituye al INSERT directo que se cierra en 0018.</td></tr>
+    <tr><td><code>accept_order(p_order_id, p_panel_id) returns void</code></td><td>Owner, Admin u Operator. Solo sobre un pedido pendiente: lo marca aceptado, con quién y cuándo, y fija el panel si cambió.</td><td>Deja constancia de la decisión y da al cliente la fecha de «Accepted».</td></tr>
+    <tr><td><code>decline_order(p_order_id, p_reason) returns void</code></td><td>Mismos roles. Motivo obligatorio. Marca <code>declined</code> y archiva el pedido con ese motivo (<code>archived_at</code>, <code>archived_reason</code>).</td><td>Respeta «nada se borra». Al archivarse, sale de Pipeline y de todas las listas del lab sin tocar ninguna consulta; el cliente sigue pudiendo leer la fila y el motivo.</td></tr>
+    <tr><td><code>receive_shipment</code>: una comprobación más</td><td>Rechaza un pedido con revisión pendiente: «Accept the request first».</td><td>Evita recibir cajas de algo que el lab no ha aceptado. Es la única función existente que se toca.</td></tr>
+
+    <tr><td colspan="3" style="background:var(--subtle)"><b>0020 · solicitudes de acceso</b> <span class="d-tag new">nuevo</span></td></tr>
+    <tr><td>Tabla <code>admin.access_request</code></td><td>Nombre, correo, organización, tipo, mensaje, estado (<span class="mono">pending | approved | declined</span>), quién decidió y cuándo, motivo, <code>client_id</code> e <code>invitation_id</code> resultantes. Lectura solo para Owner y Admin. Sin borrado, auditada.</td><td>Es lo único que hay que guardar de alguien que aún no tiene cuenta. Va aparte de <code>invitation</code> porque una solicitud no tiene todavía ni cliente ni rol.</td></tr>
+    <tr><td><code>submit_access_request(p_full_name, p_email, p_organisation, p_kind, p_message) returns text</code></td><td>Devuelve la referencia (AR-0012). Solo la ejecuta <code>service_role</code>, desde la acción del servidor, como <code>accept_invitation</code>. Una sola solicitud pendiente por correo y un tope de pendientes en total.</td><td>Al no concederla a <code>anon</code>, nadie puede llamar a PostgREST saltándose el límite de envíos de la app. Los topes impiden llenar la cola del lab.</td></tr>
+    <tr><td><code>approve_access_request(p_request_id, p_client_id, p_client_role) returns text</code></td><td>Owner o Admin. Crea la invitación con las reglas de <code>create_invitation</code>, enlaza ambas filas y devuelve el token una sola vez.</td><td>Reutiliza la invitación entera. Si el cliente es nuevo, la pantalla llama antes a <code>create_client</code>, que ya existe.</td></tr>
+    <tr><td><code>decline_access_request(p_request_id, p_reason) returns void</code></td><td>Owner o Admin. Motivo interno.</td><td>Cierra la solicitud sin borrarla.</td></tr>
+
+    <tr><td colspan="3" style="background:var(--subtle)"><b>En la app, sin migración</b></td></tr>
+    <tr><td><code>navigation.ts</code>, <code>roles.ts</code></td><td>Menú de cliente: Home y Request an order, marcadas como listas. La matriz de Roles &amp; permissions gana las filas nuevas y su test.</td><td>La matriz es la fuente única de «quién puede qué»; tiene que seguir coincidiendo con la base de datos.</td></tr>
+    <tr><td>No cambia</td><td colspan="2"><code>DISABLE_SIGNUP</code> sigue activo. Las tablas y funciones de invitación, la sesión, el segundo factor del personal, la publicación y el enlace con Nexo quedan como están.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ 11. FUERA -->
+<h2 class="d-h2" id="fuera">10. Qué dejar fuera</h2>
+<ul class="d-list">
+  <li><b>Registro abierto y verificación por correo.</b> Por lo dicho en la sección 3.</li>
+  <li><b>Envío de correo y la pantalla Notifications.</b> No hay infraestructura; el lab escribe desde su propio correo, como hoy con las invitaciones.</li>
+  <li><b>Que el cliente suba su manifiesto de muestras o registre envíos.</b> Lo sigue haciendo el lab al recibir. Es el siguiente paso natural, pero toca la regla de nombres de muestra y merece su propio diseño.</li>
+  <li><b>Que el Client admin invite o gestione a su gente.</b> La migración 0015 lo retiró a propósito: el lab decide quién ve qué.</li>
+  <li><b>Mensajes o comentarios dentro del pedido.</b> Un solo campo de motivo al rechazar; el resto, por correo citando el código ORD.</li>
+  <li><b>Editar o cancelar una solicitud ya enviada.</b> El cliente avisa al lab, que la rechaza con el motivo «retirada por el solicitante».</li>
+  <li><b>Presupuestos, precios, facturación, adjuntos.</b> Queda la referencia de facturación que ya existe.</li>
+  <li><b>Consulta pública del estado de una solicitud de acceso.</b> Obligaría a dar otro secreto o revelaría quién ha pedido acceso.</li>
+  <li><b>CAPTCHA, SSO de Yale y segundo factor para clientes.</b> Dependencias externas o decisiones aparte.</li>
+  <li><b>Visibilidad por pedido dentro de un cliente.</b> Todos los miembros de un cliente ven todos sus pedidos, como hoy.</li>
+</ul>
+
+<!-- ============================================================ 12. FASES -->
+<h2 class="d-h2" id="fases">11. Plan por fases</h2>
+<p class="d-text">Cada fase se entrega y se prueba sola, con la práctica de siempre: tests de PGlite para cada función y sus rechazos, y un Playwright en modo demo por pantalla nueva.</p>
+<div class="d-phase">
+  <div><span class="d-tag size">S</span> <span class="d-tag fix">primero</span><h4>F0 · Cerrar la escritura directa</h4><ul><li>Migración 0018 y sus tests.</li><li>Comprobación en <code style="font-family:var(--font-mono);font-size:11px">staging.integration.mjs</code>: un Requester ya no inserta ni modifica.</li><li>No depende de nada y arregla algo que ya está mal.</li></ul></div>
+  <div><span class="d-tag size">M</span><h4>F1 · Portal de lectura</h4><ul><li>Client home.</li><li>Vista de cliente del detalle del pedido, con los seis pasos.</li><li>Sin migración: solo lecturas que RLS ya permite.</li><li>Sirve desde el primer día a los clientes que el lab invite a mano.</li></ul></div>
+  <div><span class="d-tag size">M</span><h4>F2 · Solicitar pedidos</h4><ul><li>Migración 0019 y sus tests.</li><li>Formulario Request an order.</li><li>Aviso y etiqueta en Pipeline; panel de aceptar o rechazar en el detalle.</li><li>Filas nuevas en Roles &amp; permissions.</li></ul></div>
+  <div><span class="d-tag size">M</span><h4>F3 · Solicitar acceso</h4><ul><li>Migración 0020 y sus tests.</li><li>Formulario público con límite de envíos.</li><li>Sección Access requests en People y contador en el menú.</li><li>Enlace desde Sign in.</li></ul></div>
+</div>
+<p class="d-text">El orden pone el acceso al final a propósito: hasta entonces el lab invita a mano, que ya funciona, y cuando el formulario público exista habrá detrás un portal que enseñar. Si prefieres ver antes tu frase completa, F3 puede ir antes de F2 sin cambios.</p>
+
+<!-- ============================================================ 13. PREGUNTAS -->
+<h2 class="d-h2" id="preguntas">12. Preguntas abiertas para ti</h2>
+<ol class="d-q">
+  <li><b>¿Publicamos el portal antes de que los clientes puedan abrir Nexo en producción?</b>«Open in Nexo» para clientes está apagado en producción hasta que el almacén de Nexo se separe por cliente (<code style="font-family:var(--font-mono);font-size:12px">docs/integration/admin-identity.md</code>). <em>Mi recomendación: sí. F0 a F3 no dependen de eso; el botón aparece solo cuando actives la variable. Mientras tanto el paso «Released» mostraría la fecha y la versión, sin botón.</em></li>
+  <li><b>¿Quién acepta una solicitud de pedido?</b><em>Propongo Operator, Admin y Owner, los mismos que hoy abren pedidos. Si aceptar compromete capacidad o facturación y quieres que lo decidan solo Owner y Admin, es cambiar una comprobación.</em></li>
+  <li><b>¿Qué rol recibe la primera persona de un cliente nuevo?</b><em>Propongo Client admin por defecto, editable al aprobar. Hoy no hay diferencia práctica con Requester.</em></li>
+  <li><b>Contraseña olvidada.</b>Sin correo no hay recuperación y la app no tiene hoy ningún flujo para ello; aceptar una invitación con una cuenta existente no cambia la contraseña. Con clientes reales va a ocurrir. <em>No lo he diseñado: ¿lo resuelve el lab a mano por ahora, o lo metemos como fase aparte?</em></li>
+  <li><b>Instrucciones de envío.</b>El paso «Accepted» necesita un texto del lab (dirección, hielo seco, días de recepción). <em>En los dibujos he puesto una frase genérica. ¿Texto fijo en la app, o prefieres que cada aceptación lleve su nota?</em></li>
+  <li><b>Solicitudes de acceso rechazadas.</b>Guardan nombre y correo de personas ajenas al lab y, por la regla de no borrar, se quedan. <em>¿Te parece bien conservarlas, o definimos un plazo tras el cual se anonimizan?</em></li>
+</ol>
+
+<p class="d-cap" style="margin-top:44px">Propuesta de diseño. No se ha modificado código de la app, migraciones ni tests. Las pantallas son maquetas HTML/CSS con los tokens de <code>frontends/admin/src/app/tokens.css</code> y las reglas de <code>globals.css</code>; las capturas PNG de cada figura están en <code>screenshots/</code>, generadas con <code>capture.mjs</code>.</p>
+
+</div>
+</body>
+</html>

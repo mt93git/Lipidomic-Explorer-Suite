@@ -8,6 +8,7 @@ import {
   applyFilters, batchNote, clientBreakdown, describeFilters, emptyFilters, focusCounts, focusKeys, focusLabels,
   scopeLabel, toggleValue, type AudienceData, type PipelineFilters,
 } from "@/lib/pipeline-filters";
+import { requestNotice } from "@/lib/order-request";
 import { OrderCard } from "./order-card";
 import { PipelineBoard } from "./pipeline-board";
 
@@ -18,6 +19,8 @@ type Props = {
   onChange: (next: PipelineFilters) => void;
   // The instant the counts refer to; the parent refreshes it on each interaction and once a minute.
   now?: Date;
+  // A request the lab just declined (?declined=ORD059): it left the board, so the answer is confirmed here.
+  declined?: string | null;
 };
 
 const MENU_WIDTH = 320; // keep in step with .menu-list max-width
@@ -38,7 +41,7 @@ function FilterMenu({ label, selected, children }: { label: string; selected: nu
   </details>;
 }
 
-export function Pipeline({ data, filters, onChange, now = new Date() }: Props) {
+export function Pipeline({ data, filters, onChange, now = new Date(), declined = null }: Props) {
   const { orders, clients, companions, sharedBatches } = data;
   const clientOf = (id: string) => clients.find(client => client.id === id) ?? unknownClient(id);
   const scoped = applyFilters(orders, filters, { now });
@@ -47,6 +50,8 @@ export function Pipeline({ data, filters, onChange, now = new Date() }: Props) {
   const counts = focusCounts(orders, filters, now);
   const rows = clientBreakdown(orders, clients, filters, now);
   const chips = describeFilters(filters, clients);
+  // Client requests waiting for an answer, whatever the filters (there is no email: this is how the lab finds out).
+  const requests = requestNotice(orders, clients);
   const panels = Array.from(new Set(orders.map(order => order.panel)));
   const owners = Array.from(new Set(orders.map(order => order.owner)));
   // Facet counts describe exactly the population that option would leave on the page (board and released list), ignoring only its own dimension.
@@ -84,6 +89,11 @@ export function Pipeline({ data, filters, onChange, now = new Date() }: Props) {
       <div><div className="eyebrow">Lab work / {scopeLabel(filters.clients, clients)}</div><h1>Pipeline</h1><p>Every order from every client, from first request to a signed dataset. Pick a state, a client or a stage to narrow the board.</p></div>
       <div className="heading-actions"><Link className="button secondary" href="/receive-shipment">Receive shipment</Link><Link className="button" href="/new-order">+ New order</Link></div>
     </div>
+    {declined && <p className="notice success" role="status"><strong>Request <span className="mono">{declined}</span> declined.</strong> The order is archived; the client reads your reason on it.</p>}
+    {requests && <p className="notice warning" role="status" aria-label="Client requests">
+      <strong>{requests.count === 1 ? "1 client request is" : `${requests.count} client requests are`} waiting for an answer.</strong> {requests.text}.
+      <Link className="button" href={`/orders/${requests.first}`}>Review {requests.first} →</Link>
+    </p>}
 
     <section aria-labelledby="needs-title" className="summary-block">
       <div className="section-heading"><h2 id="needs-title" className="section-title">What needs you now</h2><span className="as-of">as of <time dateTime={now.toISOString()}>{formatClock(now)}</time></span></div>

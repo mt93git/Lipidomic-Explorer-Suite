@@ -16,5 +16,10 @@ describe("session middleware routing", () => {
     expect(matches("/admin/pipeline")).toBe(true);
     expect(matches("/admin/sign-in")).toBe(true);
     expect(matches("/admin/_next/static/app.js")).toBe(false);
+    // The deliverable upload route only (its body must not be buffered); the order page and downloads still pass.
+    expect(matches("/admin/orders/ORD041/deliverables")).toBe(false);
+    expect(matches("/admin/orders/ORD041")).toBe(true);
+    expect(matches("/admin/orders/ORD041/deliverables-x")).toBe(true);
+    expect(matches("/admin/deliverables/0b4c9b38-0000-4000-8000-000000000001")).toBe(true);
   });
 });

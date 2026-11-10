@@ -16,15 +16,16 @@ export const roleDescriptions: Record<RoleKey, string> = {
   admin: "Manages clients and their people and runs the lab's work.",
   operator: "Runs the lab's work: shipments, samples, batches, results and datasets.",
   member: "Belongs to the lab but is not staff: sees no client's data.",
-  client_admin: "Reads their own client's orders and released datasets. The lab manages their client's people.",
-  requester: "Reads their own client's orders and released datasets. The lab opens orders and registers samples for them.",
+  client_admin: "Reads their own client's orders and released datasets and requests orders for it. The lab manages their client's people.",
+  requester: "Reads their own client's orders and released datasets and requests orders for it. The lab registers the samples.",
   viewer: "Reads their own client's orders and released datasets.",
 };
 
 // rule: the database check the row mirrors. A 0002 helper name (checked by the test), 'lab_owner' (the 0015 functions'
-// Owner check, and set_release_policy's) or 'release_policy' (the signers the Owner chooses).
+// Owner check, and set_release_policy's), 'release_policy' (the signers the Owner chooses) or 'client_requester' (a
+// client admin or requester of that client, active: request_order in 0019).
 // rpcs: the admin functions the app calls for the action (the test checks each is guarded by the rule).
-export type PermissionRule = "is_lab_staff" | "is_lab_writer" | "is_lab_manager" | "can_read_client" | "lab_owner" | "release_policy";
+export type PermissionRule = "is_lab_staff" | "is_lab_writer" | "is_lab_manager" | "can_read_client" | "lab_owner" | "release_policy" | "client_requester";
 export type Permission = {
   key: string; area: "Lab work" | "Clients and people" | "Lab administration"; action: string; roles: readonly RoleKey[]; rule: PermissionRule;
   rpcs?: readonly string[]; note?: string;
@@ -32,14 +33,20 @@ export type Permission = {
 
 export const permissions: readonly Permission[] = [
   { key: "read_client_data", area: "Lab work", action: "See a client's orders, samples and released datasets", roles: ["owner", "admin", "operator", "client_admin", "requester", "viewer"], rule: "can_read_client", note: "Client roles see their own client only; lab staff see every client." },
-  { key: "submit", area: "Lab work", action: "Open orders, record shipments and register samples", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["create_order", "receive_shipment", "register_samples"], note: "Lab staff enter these for every client; client roles cannot yet." },
+  { key: "submit", area: "Lab work", action: "Open orders, record shipments and register samples", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["create_order", "receive_shipment", "register_samples"], note: "Lab staff enter these for every client; client roles request orders instead." },
+  { key: "request_order", area: "Lab work", action: "Request an order for their client", roles: ["client_admin", "requester"], rule: "client_requester", rpcs: ["request_order"], note: "Only for their own, active client. The request waits for the lab's answer." },
+  { key: "answer_request", area: "Lab work", action: "Accept or decline a client's order request", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["accept_order", "decline_order"], note: "Declining needs a reason the client reads; the order is archived." },
+  { key: "deliverables", area: "Lab work", action: "Add, show, hide or retire the files a client downloads for an order", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["add_deliverable", "set_deliverable_visibility", "retire_deliverable"], note: "PDF, PNG, JPEG, SVG, XLSX or CSV, 50 MB at most. A new file stays hidden until shown; a file is retired, never deleted." },
   { key: "run_lab", area: "Lab work", action: "Run the lab: batches, results files, name dictionary, dataset builds", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["accept_result_file", "build_dataset"] },
   { key: "sign_release", area: "Lab work", action: "Sign and release a dataset", roles: ["owner", "admin"], rule: "release_policy", note: "Any Owner or Admin by default; the Owner may name other lab staff. Always two different people." },
   { key: "read_audit", area: "Lab administration", action: "Read the audit log", roles: ["owner", "admin", "operator"], rule: "is_lab_staff" },
   { key: "manage_clients", area: "Clients and people", action: "Create, edit and archive clients", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["create_client", "update_client", "archive_client"] },
   { key: "invite_client", area: "Clients and people", action: "Invite client members, change or archive their client roles", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["create_invitation", "revoke_invitation", "set_client_member_role", "archive_member"] },
+  { key: "nexo_access", area: "Clients and people", action: "Turn a client's Nexo access on or off", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["set_client_nexo_access"], note: "Off by default. The client's people see Open in Nexo only when it is on and this environment lets clients open Nexo." },
+  { key: "answer_access", area: "Clients and people", action: "Approve or decline an access request from the public form", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["list_access_requests", "approve_access_request", "decline_access_request"], note: "Anyone may ask, without an account; approving creates the 7-day invitation link with the role you pick. A declined request's personal data is erased after 90 days." },
   { key: "invite_lab", area: "Clients and people", action: "Invite lab staff, change lab roles, archive lab staff", roles: ["owner"], rule: "lab_owner", rpcs: ["create_invitation", "set_lab_role", "archive_member"], note: "The lab always keeps at least one active Owner." },
   { key: "release_policy", area: "Lab administration", action: "Set the release policy (who signs, how many signatures)", roles: ["owner"], rule: "lab_owner", rpcs: ["set_release_policy"] },
+  { key: "shipping_instructions", area: "Lab administration", action: "Set the shipping instructions clients read", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["set_shipping_instructions"], note: "Everyone signed in reads them." },
 ];
 
 export type PermissionKey = (typeof permissions)[number]["key"];

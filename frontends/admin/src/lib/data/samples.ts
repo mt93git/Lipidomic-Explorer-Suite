@@ -63,9 +63,10 @@ function toSample(row: SampleRow): RegisteredSample {
   };
 }
 
+// A client request still waiting for the lab's answer cannot arrive (receive_shipment refuses it), so it is not offered.
 async function liveOrders(stageList: string[]): Promise<OrderSummary[]> {
   const db = await admin();
-  const { data, error } = await db.from("order").select(orderSelect).in("stage", stageList).is("archived_at", null).order("order_number");
+  const { data, error } = await db.from("order").select(orderSelect).in("stage", stageList).is("archived_at", null).neq("review", "pending").order("order_number");
   if (error) throw refusal(error);
   return ((data ?? []) as unknown as OrderRow[]).map(toSummary);
 }
@@ -180,7 +181,8 @@ async function demoOrder(orderId: string) {
 // Orders waiting to arrive (stage Request): what Receive shipment offers.
 export async function listReceivableOrders(): Promise<OrderSummary[]> {
   if (live()) return liveOrders(["request"]);
-  return applyDemoState(demoOrders, await readDemoState()).filter(order => order.stage === 0 && !order.released).map(demoSummary);
+  return applyDemoState(demoOrders, await readDemoState())
+    .filter(order => order.stage === 0 && !order.released && (!order.request || order.request.status === "accepted")).map(demoSummary);
 }
 
 // Orders whose registry is open (Received, or Registered with more to add): what Sample registry offers.

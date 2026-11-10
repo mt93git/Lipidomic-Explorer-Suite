@@ -21,7 +21,7 @@ describe("app shell", () => {
     expect(screen.getByRole("searchbox", { name: "Search orders" })).toBeVisible();
     expect(groupLinks("LAB WORK")).toEqual(["/pipeline", "/new-order", "/receive-shipment", "/sample-registry", "/batch-builder", "/batch-run", "/ingest-results", "/name-dictionary", "/release", "/datasets"]);
     expect(groupLinks("CLIENTS")).toEqual(["/clients"]);
-    expect(groupLinks("ORGANIZATION")).toEqual(["/people", "/roles-permissions", "/audit-log", "/release-policy"]);
+    expect(groupLinks("ORGANIZATION")).toEqual(["/people", "/roles-permissions", "/audit-log", "/release-policy", "/shipping-instructions"]);
     for (const name of ["Pipeline", "Receive shipment", "Sample registry", "Ingest results", "Name dictionary", "Release", "Datasets", "Audit log"]) expect(within(nav()).getByRole("link", { name })).toBeVisible();
     expect(within(nav()).getByRole("link", { name: "Release policy" })).toHaveAttribute("href", "/release-policy");
     expect(within(nav()).getByRole("link", { name: "Pipeline" })).toHaveAttribute("aria-current", "page");
@@ -62,8 +62,8 @@ describe("app shell", () => {
     render(<AppShell session={{ ...demoSession, view: "client", role: "Client admin", selectedClient: demoSession.clients[0] }}>Portal</AppShell>);
     expect(screen.getByRole("link", { name: /Example Atlas/ })).toHaveAttribute("href", "/choose-client");
     expect(screen.queryByRole("group", { name: "Client scope" })).not.toBeInTheDocument();
-    expect(within(nav()).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/client/home", "/client/order"]);
-    expect(within(nav()).getByRole("link", { name: "Client home" })).toBeVisible();
+    expect(within(nav()).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/client/home", "/client/request-order"]);
+    expect(within(nav()).getByRole("link", { name: "Home" })).toBeVisible();
     expect(within(nav()).queryByText(/Coming next/)).not.toBeInTheDocument();
     expect(screen.queryByText("ORGANIZATION")).not.toBeInTheDocument();
   });

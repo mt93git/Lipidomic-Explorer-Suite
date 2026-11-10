@@ -4,6 +4,7 @@ import { getEnvironment } from "../environment";
 import { LAB_TIME_ZONE } from "../lab-time";
 import type { Client, Gate, HistoryEvent, Order, Retirement } from "../models";
 import { recordOrder, type OrderInput, type Panel } from "../new-order";
+import { pendingGates } from "../order-request";
 import { conditionLabels, DataError, plural, stageFromDb, type Condition } from "../samples";
 import { applyDemoState } from "../samples-demo";
 import { createAdminClient } from "../supabase/server";
@@ -25,14 +26,15 @@ type SignatureRow = { user_id: string; signed_at: string; archived_at: string | 
 type DatasetRow = { id: string; version: number; status: string; created_at: string; released_at: string | null; archived_at: string | null; archived_reason?: string | null; signature: SignatureRow[] | null };
 type OrderRow = {
   id: string; code: string; title: string | null; stage: string; matrix: string | null; expected_samples: number | null; client_id: string; created_at: string;
-  requested_by: string | null; panel: One<{ name: string }>; sample: SampleRow[] | null; shipment: ShipmentRow[] | null; result_file: ResultRow[] | null; dataset: DatasetRow[] | null;
+  requested_by: string | null; review?: string; reviewed_at?: string | null; notes?: string | null; billing_ref?: string | null; panel_id?: string | null;
+  panel: One<{ name: string }>; sample: SampleRow[] | null; shipment: ShipmentRow[] | null; result_file: ResultRow[] | null; dataset: DatasetRow[] | null;
 };
 type Names = Map<string, string>;
 
 // One request per screen: the order rows with their children embedded (PostgREST follows the foreign keys).
 // Archived children are filtered here so the select stays a plain column list.
 const orderSelect = [
-  "id, code, title, stage, matrix, expected_samples, client_id, created_at, requested_by",
+  "id, code, title, stage, matrix, expected_samples, client_id, created_at, requested_by, review, reviewed_at, notes, billing_ref, panel_id",
   "panel:panel(name)",
   "sample(created_at, archived_at)",
   "shipment(received_at, received_by, carrier, tracking_number, box_count, condition, archived_at)",
@@ -104,7 +106,9 @@ function gatesFor(stage: number, current: boolean, facts: { arrival?: ShipmentRo
 
 function historyFor(row: OrderRow, arrivals: ShipmentRow[], samples: SampleRow[], results: ResultRow[], datasets: DatasetRow[], names: Names): HistoryEvent[] {
   const who = (id: string | null, fallback: string) => (id && names.get(id)) || fallback;
-  const events: HistoryEvent[] = [{ date: row.created_at, title: "Order created", actor: who(row.requested_by, "Client") }];
+  const requested = row.review === "pending" || Boolean(row.reviewed_at);
+  const events: HistoryEvent[] = [{ date: row.created_at, title: requested ? "Requested by the client" : "Order created", actor: who(row.requested_by, "Client") }];
+  if (row.reviewed_at && row.review === "accepted") events.push({ date: row.reviewed_at, title: "Request accepted", actor: "Lab staff" });
   for (const shipment of arrivals) events.push({ date: shipment.received_at!, title: arrivalTitle(shipment), actor: who(shipment.received_by, "Lab staff") });
   const batches = new Map<string, number>();
   for (const sample of samples) batches.set(sample.created_at, (batches.get(sample.created_at) ?? 0) + 1);
@@ -120,6 +124,16 @@ function historyFor(row: OrderRow, arrivals: ShipmentRow[], samples: SampleRow[]
   return events.map((event, index) => ({ event, index }))
     .sort((a, b) => Date.parse(b.event.date) - Date.parse(a.event.date) || b.index - a.index)
     .map(({ event }) => event);
+}
+
+// A client request (0019): pending, or answered (reviewed_at). An order the lab opened is accepted with no answer.
+function requestOf(row: OrderRow, names: Names): Order["request"] {
+  const status = row.review === "pending" || row.review === "declined" ? row.review : "accepted";
+  if (status === "accepted" && !row.reviewed_at) return undefined;
+  return {
+    status, requestedAt: row.created_at, requestedBy: (row.requested_by && names.get(row.requested_by)) || "A client member",
+    notes: row.notes ?? null, billingRef: row.billing_ref ?? null, panelId: row.panel_id ?? null, reviewedAt: row.reviewed_at ?? null, reason: null,
+  };
 }
 
 export function toOrder(row: OrderRow, names: Names): Order {
@@ -139,6 +153,7 @@ export function toOrder(row: OrderRow, names: Names): Order {
     : undefined;
   const dataset = releasedDataset ?? [...datasets].filter(item => item.status === "built").sort((a, b) => b.version - a.version)[0] ?? lastRetired;
   const sampleCount = Math.max(row.expected_samples ?? 0, samples.length);
+  const request = requestOf(row, names);
   return {
     code: row.code, clientId: row.client_id, description: row.title ?? "", stage, released,
     sampleCount, completedSamples: released ? sampleCount : Math.min(sampleCount, samples.length),
@@ -147,11 +162,12 @@ export function toOrder(row: OrderRow, names: Names): Order {
     due: "", owner: "Unassigned",
     received: arrival?.received_at ? labDay.format(new Date(arrival.received_at)) : "",
     batch: result ? one(result.batch)?.name : undefined,
-    gates: gatesFor(stage, Boolean(released && releasedDataset), { arrival, samples: samples.length, result, dataset }, names),
+    gates: row.review === "pending" ? pendingGates : gatesFor(stage, Boolean(released && releasedDataset), { arrival, samples: samples.length, result, dataset }, names),
     history: historyFor(row, arrivals, samples, results, datasets, names),
     releasedAt: releasedDataset?.released_at ?? undefined,
     ...(released && releasedDataset ? { currentDatasetId: releasedDataset.id } : {}),
     ...(retired ? { retired } : {}),
+    ...(request ? { request } : {}),
   };
 }
 
@@ -171,7 +187,8 @@ async function liveClients(db: Awaited<ReturnType<typeof admin>>): Promise<Clien
 // ---------------------------------------------------------------- the seam
 
 export async function listOrders(): Promise<Order[]> {
-  if (!live()) return applyDemoState(demoOrders, await readDemoState());
+  // A declined request is archived: it leaves every lab list, as live (archived_at IS NULL).
+  if (!live()) return applyDemoState(demoOrders, await readDemoState()).filter(order => order.request?.status !== "declined");
   const db = await admin();
   const [orders, names] = await Promise.all([
     db.from("order").select(orderSelect).is("archived_at", null).order("order_number"),

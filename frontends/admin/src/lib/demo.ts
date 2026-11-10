@@ -18,6 +18,13 @@ export const demoSession: AppSession = {
   clients: demoClients, selectedClient: null,
 };
 
+// The example client user: a Requester at Example Cedar and a Viewer at Example Harbor, so the portal shows both a
+// client choice and a client's orders. Live client members show their email (client_member stores no name).
+export const demoClientSession: AppSession = {
+  userId: "example-client", displayName: "rowan@cedar.example.test", role: "Requester", view: "client", mock: true,
+  clients: [demoClients[1], { ...demoClients[3], role: "Viewer" }], selectedClient: null,
+};
+
 const ready: Gate[] = [
   { label: "Order information reviewed", status: "ok" },
   { label: "Sample identifiers verified", status: "ok" },
@@ -68,6 +75,8 @@ function example(code: string, client: number, stage: number, description: strin
     completedSamples: released ? sampleCount : Math.min(sampleCount, Math.round(sampleCount * (stage + 1) / 10)),
     sampleType: "Synthetic plasma", panel: demoPanels[extra.panel ?? 0], due: extra.due ?? "2026-11-18", received: extra.received ?? "2026-11-02",
     owner: demoOwners[extra.owner ?? 0], batch: extra.batch, gates, released, releasedAt: extra.released,
+    // A released example has a current (synthetic) dataset, so Open in Nexo and deliverables can refer to it.
+    ...(released ? { currentDatasetId: `example-dataset-${code.toLowerCase()}-v1` } : {}),
     history: [
       { date: "2026-11-06T14:35:00Z", title: gates.some(g => g.status === "fail") ? "Gate flagged for review" : "Current stage checks reviewed", actor: demoOwners[extra.owner ?? 0] },
       { date: "2026-11-04T10:15:00Z", title: "Example sample manifest registered", actor: "Demo Operator" },

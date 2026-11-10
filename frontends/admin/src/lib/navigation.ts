@@ -2,7 +2,8 @@ import type { View } from "@/lib/models";
 
 // `ready` marks a screen that works today; the others are placeholders rendered by the [...path] route and listed
 // in the sidebar's collapsed "Coming next" group. Items are in the order of the lab's flow.
-export type NavItem = { label: string; href: string; phase: string; description: string; ready?: boolean };
+// roles: only these session roles see the item (the page itself still checks); absent = everyone in the group's view.
+export type NavItem = { label: string; href: string; phase: string; description: string; ready?: boolean; roles?: readonly string[] };
 export type NavGroup = { title: string; audience: "all" | "staff" | "client"; items: NavItem[] };
 
 export const navigation: NavGroup[] = [
@@ -28,12 +29,13 @@ export const navigation: NavGroup[] = [
     { label: "Roles & permissions", href: "/roles-permissions", phase: "Phase 1 · Wave 2", description: "Manage lab, project, and client roles.", ready: true },
     { label: "Audit log", href: "/audit-log", phase: "Phase 1 · Wave 2", description: "Inspect the append-only record of changes.", ready: true },
     { label: "Release policy", href: "/release-policy", phase: "Phase 1 · Wave 4", description: "Who may sign a release and how many signatures it needs.", ready: true },
+    { label: "Shipping instructions", href: "/shipping-instructions", phase: "Phase 1 · Client portal", description: "What clients read on an accepted request before they ship.", ready: true },
     { label: "Instruments & panels", href: "/instruments-panels", phase: "Phase 2", description: "Configure instrument and assay panel records." },
     { label: "Notifications", href: "/notifications", phase: "Phase 2", description: "Manage workflow notifications and preferences." },
   ] },
   { title: "CLIENT PORTAL", audience: "client", items: [
-    { label: "Client home", href: "/client/home", phase: "Phase 2", description: "View your selected client's orders and released datasets." },
-    { label: "Client order", href: "/client/order", phase: "Phase 2", description: "Follow an order and review its shared deliverables." },
+    { label: "Home", href: "/client/home", phase: "Phase 1 · Client portal", description: "Your selected client's orders, each at its step, and the datasets released to it.", ready: true },
+    { label: "Request an order", href: "/client/request-order", phase: "Phase 1 · Client portal", description: "Ask the lab for an order; it accepts or tells you why not.", ready: true, roles: ["Client admin", "Requester"] },
   ] },
 ];
 
@@ -46,9 +48,10 @@ export function findRoute(path: string) {
 }
 
 // What the sidebar shows: for lab staff, the working screens in their groups and the placeholders apart; the
-// client view keeps its own items as they are.
-export function sidebarNavigation(view: View): { groups: NavGroup[]; comingNext: NavItem[] } {
-  const groups = navigation.filter(group => group.audience === "all" || group.audience === view);
+// client view keeps its own items, less those its role does not use (a Viewer requests no orders).
+export function sidebarNavigation(view: View, role?: string | null): { groups: NavGroup[]; comingNext: NavItem[] } {
+  const groups = navigation.filter(group => group.audience === "all" || group.audience === view)
+    .map(group => ({ ...group, items: group.items.filter(item => !item.roles || (!!role && item.roles.includes(role))) }));
   if (view !== "staff") return { groups, comingNext: [] };
   return {
     groups: groups.map(group => ({ ...group, items: group.items.filter(item => item.ready) })).filter(group => group.items.length > 0),

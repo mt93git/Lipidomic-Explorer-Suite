@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirectAfterAction } from "@/lib/action-redirect";
+import { validateApprove } from "@/lib/access-requests";
+import { approveAccessRequest, declineAccessRequest } from "@/lib/data/access-requests";
 import { archiveMember, createInvitation, DataError, revokeInvitation, setRole } from "@/lib/data/people";
 import { invitePath, type PersonKind } from "@/lib/people";
 import { getAppSession } from "@/lib/session";
@@ -49,4 +51,37 @@ export async function setRoleAction(_previous: PeopleActionState, form: FormData
 }
 export async function archiveMemberAction(_previous: PeopleActionState, form: FormData) {
   return attempt(() => archiveMember({ kind: kindOf(form), id: value(form, "id"), reason: value(form, "reason"), actorId: actor(form) }), "archived");
+}
+
+// Access requests (F3). One state per section, so the link survives the request leaving the list. requestId names
+// the request the result (or the error) is about.
+export type AccessAnswerState = { error?: string; requestId?: string; link?: string; declined?: boolean };
+// intent = "approve" (target existing|new, clientId or newClientName + newClientKind, role) or "decline" (reason).
+export async function answerAccessAction(_previous: AccessAnswerState, form: FormData): Promise<AccessAnswerState> {
+  return value(form, "intent") === "decline" ? decline(form) : approve(form);
+}
+async function approve(form: FormData): Promise<AccessAnswerState> {
+  await authorize();
+  const requestId = value(form, "requestId");
+  try {
+    const { target, role } = validateApprove({ target: value(form, "target"), clientId: value(form, "clientId"), newClientName: value(form, "newClientName"), newClientKind: value(form, "newClientKind"), role: value(form, "role") });
+    const token = await approveAccessRequest({ requestId, target, role, actorId: actor(form) });
+    revalidatePath("/people");
+    return { requestId, link: `/admin${invitePath(token)}` };
+  } catch (error) {
+    if (error instanceof DataError) return { requestId, error: error.message };
+    throw error;
+  }
+}
+async function decline(form: FormData): Promise<AccessAnswerState> {
+  await authorize();
+  const requestId = value(form, "requestId");
+  try {
+    await declineAccessRequest({ requestId, reason: value(form, "reason"), actorId: actor(form) });
+    revalidatePath("/people");
+    return { requestId, declined: true };
+  } catch (error) {
+    if (error instanceof DataError) return { requestId, error: error.message };
+    throw error;
+  }
 }

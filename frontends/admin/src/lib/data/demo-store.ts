@@ -50,3 +50,27 @@ export async function writeDemoPeople(people: import("../people").PeopleState) {
   const state: PeopleDemoState = { ...await readDemoState(), people };
   await writeDemoState(state);
 }
+
+// ---------------------------------------------------------------- Access requests, F3
+// Same pattern. The public Request access page writes here too (a server action can set the cookie without a
+// session), so a request sent on this browser shows up in this browser's demo People screen.
+type AccessDemoState = DemoState & { accessRequests?: import("../access-requests").AccessRequestState };
+export async function readDemoAccess() {
+  return (await readDemoState() as AccessDemoState).accessRequests;
+}
+export async function writeDemoAccess(accessRequests: import("../access-requests").AccessRequestState) {
+  const state: AccessDemoState = { ...await readDemoState(), accessRequests };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Deliverables, F4
+// Same pattern. The files' bytes are kept here (base64, 5 MB each at most) so the demo client can download them.
+export type DemoDeliverable = import("../deliverables").Deliverable & { data: string };
+type DeliverableDemoState = DemoState & { deliverables?: DemoDeliverable[] };
+export async function readDemoDeliverables() {
+  return (await readDemoState() as DeliverableDemoState).deliverables;
+}
+export async function writeDemoDeliverables(deliverables: DemoDeliverable[]) {
+  const state: DeliverableDemoState = { ...await readDemoState(), deliverables };
+  await writeDemoState(state);
+}

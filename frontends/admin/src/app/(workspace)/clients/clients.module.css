@@ -11,3 +11,6 @@
 .disclosure summary { cursor: pointer; color: var(--blue); font-weight: 700; padding: 12px 0; }
 .userId { font-family: var(--font-mono), monospace; overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.switch { display: flex; gap: 12px 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.switch p { flex: 1 1 280px; margin: 0; }
+.switch .pill { margin-top: 0; }

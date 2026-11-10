@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { listAccessRequests } from "@/lib/data/access-requests";
 import { listPeople } from "@/lib/data/people";
 import { formatLabInstant } from "@/lib/lab-time";
 import type { Person } from "@/lib/people";
@@ -7,6 +8,7 @@ import type { LabPerson } from "@/lib/release";
 import { clientRoleNames, clientRoles, labRoleNames, labRoles, type ClientRoleKey, type LabRoleKey } from "@/lib/roles";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../release/action-form";
+import { AccessRequests } from "./access-requests";
 import { archiveMemberAction, revokeAction, setRoleAction } from "./actions";
 import { DemoActor } from "./demo-actor";
 import { InviteForm } from "./invite-form";
@@ -36,16 +38,17 @@ function Change({ person, actors }: { person: Person; actors: LabPerson[] | null
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {
   await requireWorkspace("staff");
-  const [view, query] = await Promise.all([listPeople(), searchParams]);
+  const [view, access, query] = await Promise.all([listPeople(), listAccessRequests(), searchParams]);
   const canChange = (person: Person) => person.kind === "lab_staff" ? view.canInviteLab : view.canInviteClient;
   return <>
     <div className="page-heading"><div><div className="eyebrow">Organization</div><h1>People</h1>
-      <p>Lab staff and client members, their roles, and pending invitations. The app sends no email: you copy the link and send it yourself.</p></div>
+      <p>Lab staff and client members, their roles, access requests and pending invitations. The app sends no email: you copy the link and send it yourself.</p></div>
       <div className="heading-actions"><Link className="button secondary" href="/roles-permissions">Roles &amp; permissions</Link></div>
     </div>
     {query.done && banners[query.done] && <p className="notice success" role="status">{banners[query.done]}</p>}
     <div className={styles.layout}>
       <div>
+        {access.canAnswer && <div className={styles.sectionFirst}><AccessRequests requests={access.requests} clients={access.clients} actors={access.demoActors} /></div>}
         <section className="panel" aria-labelledby="people-title"><h2 id="people-title">People</h2>
           {view.people.length ? <div className={styles.scroll}><table className={styles.table} aria-label="People">
             <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Client</th><th scope="col">Two-step</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>

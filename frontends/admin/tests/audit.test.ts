@@ -63,6 +63,18 @@ describe("auditSummary: one human line per event", () => {
     // A dataset update that is not a status change, or an event whose row is missing.
     expect(auditSummary(event({ action: "UPDATE", before: builtRow, after: { ...builtRow, companion_path: "x" } }), ctx)).toBe("Dataset updated");
     expect(auditSummary(event({ entity: "signature", after: null }), ctx)).toBe("Signature inserted");
+    expect(auditSummary(event({ entity: "client", action: "UPDATE", before: { name: "A", nexo_access: false }, after: { name: "B", nexo_access: false } }), ctx)).toBe("Client updated");
+  });
+
+  it("names deliverables (F4) by title and order, and the per-client Nexo switch", () => {
+    const file = { title: "Study report", order_id: "o-1", visible_to_client: false, archived_at: null };
+    const fctx = { ...ctx, orders: { ...ctx.orders, "o-1": "ORD040" } };
+    expect(auditSummary(event({ entity: "deliverable", after: file }), fctx)).toBe('File "Study report" for ORD040 added');
+    expect(auditSummary(event({ entity: "deliverable", after: { ...file, visible_to_client: true } }), fctx)).toBe('File "Study report" for ORD040 added and shown to the client');
+    expect(auditSummary(event({ entity: "deliverable", action: "UPDATE", before: file, after: { ...file, visible_to_client: true } }), fctx)).toBe('File "Study report" for ORD040 shown to the client');
+    expect(auditSummary(event({ entity: "deliverable", action: "UPDATE", before: { ...file, visible_to_client: true }, after: file }), fctx)).toBe('File "Study report" for ORD040 hidden from the client');
+    expect(auditSummary(event({ entity: "deliverable", action: "UPDATE", before: file, after: { ...file, archived_at: "2026-11-10T10:00:00Z" } }), fctx)).toBe('File "Study report" for ORD040 retired');
+    expect(auditSummary(event({ entity: "client", action: "UPDATE", before: { name: "Example Cedar", nexo_access: false }, after: { name: "Example Cedar", nexo_access: true } }), ctx)).toBe("Nexo access turned on for Example Cedar");
   });
 
   it("still reads when the order or dataset is not in the context", () => {

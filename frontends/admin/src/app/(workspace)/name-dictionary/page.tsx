@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireWorkspace } from "@/lib/session";
 import Link from "@/components/app-link";
 import { getNameDictionary } from "@/lib/data/results";
 import { unmappedAnalytes } from "@/lib/results";
@@ -10,6 +11,7 @@ export const metadata: Metadata = { title: "Name dictionary" };
 
 // Lab-wide clean names for SCIEX export names. The last parsed file shows which analytes still have none.
 export default async function NameDictionaryPage() {
+  await requireWorkspace("staff");
   const { entries, analytes } = await getNameDictionary();
   const missing = unmappedAnalytes(analytes, entries);
   return <>

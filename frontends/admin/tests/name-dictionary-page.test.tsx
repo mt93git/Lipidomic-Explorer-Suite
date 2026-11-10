@@ -5,6 +5,7 @@ import NameDictionaryPage from "@/app/(workspace)/name-dictionary/page";
 import { UnmappedTable } from "@/app/(workspace)/name-dictionary/unmapped-table";
 import { saveDictionaryEntry } from "@/app/(workspace)/name-dictionary/actions";
 
+vi.mock("@/lib/session", () => ({ requireWorkspace: vi.fn(async () => ({ view: "staff" })) }));
 vi.mock("@/app/(workspace)/name-dictionary/actions", () => ({ saveDictionaryEntry: vi.fn() }));
 vi.mock("@/lib/data/results", () => ({ getNameDictionary: vi.fn(async () => ({
   entries: [{ id: "e1", export_name: "PC 34:1", clean_name: "PC(34:1)" }], analytes: ["PC 34:1", "CE 18:1", "TG 52:2"],
