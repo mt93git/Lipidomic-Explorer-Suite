@@ -3,7 +3,7 @@
 // checkpoint workspaces. Lab staff: one row ('staff', client_id null). A client member: one row per active membership
 // of an unarchived client ('client'). Anyone else: no rows. Synthetic data only.
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { freshDb, as, id, U, C } from './helpers.js';
+import { freshDb, as, id, U, C, setNexoAccess } from './helpers.js';
 
 let db;
 afterEach(async () => { await db?.close(); });
@@ -39,7 +39,8 @@ describe('0011: admin.nexo_caller (definition)', () => {
 });
 
 describe('0011: admin.nexo_caller (who gets which rows)', () => {
-  beforeEach(async () => { db = await freshDb(); });
+  // Both clients have Nexo switched on (0022); the switch itself is tested in nexo_caller.test.js.
+  beforeEach(async () => { db = await freshDb(); await setNexoAccess(db, C.A, true); await setNexoAccess(db, C.B, true); });
 
   test('lab staff (owner, admin, operator) get one staff row with a null client_id', async () => {
     for (const u of [U.owner, U.admin, U.operator]) {

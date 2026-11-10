@@ -23,13 +23,13 @@ export const CLIENT_TABLES = {
   client: 'id', client_member: 'client_id', order: 'client_id', shipment: 'client_id',
   sample: 'client_id', aliquot: 'client_id', box_position: 'client_id', exclusion: 'client_id',
   injection: 'client_id', name_map: 'client_id', dataset: 'client_id', signature: 'client_id',
-  job: 'client_id', audit_event: 'client_id',
+  job: 'client_id', audit_event: 'client_id', deliverable: 'client_id',
 };
 
 export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
-  'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation',
+  'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
 ];
 
 export async function freshDb({ seed = true } = {}) {
@@ -88,8 +88,13 @@ async function seedAll(db) {
   await q("INSERT INTO admin.job(id, kind) VALUES ($1, 'parse_results')", [id(301)]);
   // Same meaning as having no policy: any lab owner or admin may sign, two signatures.
   await q("INSERT INTO admin.release_policy(eligible_signers, required_signatures) VALUES ('{}', 2)");
+  // The lab's current shipping instructions (0019), shown to clients on an accepted order.
+  await q("INSERT INTO admin.shipping_instructions(body, set_by) VALUES ('Ship on dry ice, Monday to Wednesday, to the synthetic lab address.', $1)", [U.admin]);
   // One pending client invitation (0015); only the digest of a synthetic token is stored.
   await q("INSERT INTO admin.invitation(id, email, client_id, client_role, token_sha256, expires_at, created_by) VALUES ($1, 'invitee@example.test', $2, 'viewer', $3, now() + interval '7 days', $4)", [id(600), C.A, 'c'.repeat(64), U.admin]);
+
+  // One pending access request from the public form (0020), from someone without an account.
+  await q("INSERT INTO admin.access_request(id, full_name, email, organisation, kind, message) VALUES ($1, 'Robin Example', 'robin@larch.example.test', 'Example Larch', 'company', 'About 40 synthetic plasma samples')", [id(700)]);
 
   // Mixed batch: one injection of A, one of B, one QC (no client). A second batch holds only B.
   await q("INSERT INTO admin.batch(id, name, instrument_id, panel_id) VALUES ($1, 'B2026-001', $3, $4), ($2, 'B2026-002', $3, $4)", [id(400), id(410), id(500), id(501)]);
@@ -109,5 +114,15 @@ async function seedAll(db) {
     await q("INSERT INTO admin.dataset(id, client_id, order_id, result_file_id, version, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes) VALUES ($1, $2, $3, $4, 1, 'datasets/x.xlsx', $5, $6, 100, $7, 50)", [id(b + 9), c, id(b + 1), id(405), 'b'.repeat(64), '9'.repeat(64), '7'.repeat(64)]);
     await q("INSERT INTO admin.signature(id, client_id, dataset_id, user_id, role) VALUES ($1, $2, $3, $4, 'prepared'), ($5, $2, $3, $6, 'reviewed')", [id(b + 10), c, id(b + 9), U.owner, id(b + 12), U.admin]);
     await q("UPDATE admin.dataset SET status = 'released' WHERE id = $1", [id(b + 9)]);
+    // A report the lab shared with the client for that release (0021). The object itself is not seeded.
+    await q("INSERT INTO admin.deliverable(id, client_id, order_id, dataset_id, title, kind, file_name, content_type, size_bytes, sha256, storage_path, visible_to_client, added_by) VALUES ($1, $2, $3, $4, 'Study report', 'report', 'report.pdf', 'application/pdf', 1000, $5, $6, true, $7)",
+      [id(b + 13), c, id(b + 1), id(b + 9), String(k).repeat(64), `${c}/ORD00${k}/deliverables/${String(k).repeat(64)}/report.pdf`, U.operator]);
   }
+}
+
+// 0021/0022: a client's people reach Nexo only while its switch is on. Set it as the lab's Admin, through the function.
+export async function setNexoAccess(db, client, on) {
+  await as(db, U.admin);
+  await db.query('SELECT admin.set_client_nexo_access($1, $2)', [client, on]);
+  await as(db, null);
 }

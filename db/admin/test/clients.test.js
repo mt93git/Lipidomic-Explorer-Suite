@@ -84,7 +84,7 @@ describe('0014: client RPCs', () => {
     }
     await expect(create('Synthetic Lab Alpha')).rejects.toThrow(/client named.*already exists/i);
   });
-  test.each([['Operator', U.operator], ['client requester', U.aReq]])('archival blocks order, shipment and sample inserts by %s; an active client still accepts them', async (_role, user) => {
+  test.each([['Operator', U.operator, null], ['client requester', U.aReq, '42501']])('archival blocks order, shipment and sample inserts by %s; an active client still accepts them only from the lab (0018)', async (_role, user, activeCode) => {
     await db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'requester')", [C.B, U.aReq]);
     await db.query("UPDATE admin.\"order\" SET stage = 'released' WHERE client_id = $1", [C.A]);
     await as(db, U.admin);
@@ -96,14 +96,16 @@ describe('0014: client RPCs', () => {
       ['INSERT INTO admin.sample(client_id, order_id, full_name) VALUES ($1, $2, $3)', ['Synthetic post-archive sample']],
     ];
     const archivedWrites = [];
+    const activeWrites = [];
     for (const [sql, values] of inserts) {
       const params = client => sql.includes('order_id')
         ? [client, client === C.A ? id(101) : id(201), ...values]
         : [client, ...values];
       archivedWrites.push(await db.query(sql, params(C.A)).then(() => null, error => error.code));
-      await db.query(sql, params(C.B));
+      activeWrites.push(await db.query(sql, params(C.B)).then(() => null, error => error.code));
     }
     expect(archivedWrites).toEqual(['42501', '42501', '42501']);
+    expect(activeWrites).toEqual([activeCode, activeCode, activeCode]);
     expect((await db.query('SELECT admin.can_submit($1) AS archived, admin.can_submit($2) AS active, admin.can_submit($3) AS missing', [C.A, C.B, id(999)])).rows[0])
       .toEqual({ archived: false, active: true, missing: false });
   });

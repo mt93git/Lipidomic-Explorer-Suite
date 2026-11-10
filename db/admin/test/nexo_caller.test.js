@@ -3,7 +3,7 @@
 // A row only for a released, unarchived dataset of an unarchived order, and only when the caller is lab staff
 // ('staff') or an active member of the dataset's client ('client'). Synthetic data only.
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { freshDb, as, id, U, C } from './helpers.js';
+import { freshDb, as, id, U, C, setNexoAccess } from './helpers.js';
 
 let db;
 afterEach(async () => { await db?.close(); });
@@ -70,7 +70,8 @@ describe('0010: admin.nexo_dataset_for_caller (definition)', () => {
 });
 
 describe('0010: admin.nexo_dataset_for_caller (who gets a row)', () => {
-  beforeEach(async () => { db = await freshDb(); await scenario(); });
+  // Both clients have Nexo switched on (0022); the switch itself is tested below.
+  beforeEach(async () => { db = await freshDb(); await scenario(); await setNexoAccess(db, C.A, true); await setNexoAccess(db, C.B, true); });
 
   test('lab staff (owner, admin, operator) get the released, current dataset with caller_view staff', async () => {
     for (const u of [U.owner, U.admin, U.operator]) {
@@ -182,5 +183,60 @@ describe('0010: admin.nexo_dataset_for_caller (who gets a row)', () => {
     expect(r.caller).toBe(U.aReq);
     const args = (await db.query("SELECT pronargs FROM pg_proc WHERE oid = 'admin.nexo_dataset_for_caller(uuid)'::regprocedure")).rows[0].pronargs;
     expect(args).toBe(1);
+  });
+});
+
+// 0022: the per-client Nexo switch (0021's admin.client.nexo_access) in all three functions the Nexo API reads.
+describe('0022: the per-client Nexo switch', () => {
+  beforeEach(async () => { db = await freshDb(); await scenario(); });
+  const scope = () => db.query('SELECT * FROM admin.nexo_caller() ORDER BY client_id').then((r) => r.rows);
+  const people = (c) => db.query('SELECT user_id, kind FROM admin.nexo_people($1) ORDER BY kind DESC, user_id', [c]).then((r) => r.rows);
+  const staffPeople = [U.owner, U.admin, U.operator].sort().map((user_id) => ({ user_id, kind: 'staff' }));
+  const members = (...us) => us.sort().map((user_id) => ({ user_id, kind: 'member' }));
+
+  // What each function gives client A's requester and the Owner, with client B left on.
+  async function answers() {
+    await as(db, U.aReq);
+    const member = { dataset: await forCaller(D.current), scope: await scope(), people: await people(C.A) };
+    await as(db, U.both);
+    const both = await scope();
+    await as(db, U.owner);
+    const staff = { dataset: await forCaller(D.current), scope: await scope(), people: await people(C.A), peopleB: await people(C.B) };
+    return { member, both, staff };
+  }
+  const staffAnswers = () => ({ dataset: [row('staff', U.owner)], scope: [{ caller: U.owner, caller_view: 'staff', client_id: null }] });
+
+  test('off (the default for every client): no row for the client member from any of the three; staff keep theirs', async () => {
+    await setNexoAccess(db, C.B, true);
+    const a = await answers();
+    expect(a.member).toEqual({ dataset: [], scope: [], people: staffPeople }); // the member is not listed; staff entries stay
+    expect(a.both).toEqual([{ caller: U.both, caller_view: 'client', client_id: C.B }]); // client B's switch is its own
+    expect(a.staff).toEqual({ ...staffAnswers(), people: staffPeople, peopleB: [...staffPeople, ...members(U.bReq, U.both)] });
+    await as(db, U.both);
+    expect(await forCaller(B_DATASET)).toHaveLength(1);
+  });
+
+  test('on: the member gets it back from all three; off again: gone again, staff unchanged throughout', async () => {
+    await setNexoAccess(db, C.B, true);
+    await setNexoAccess(db, C.A, true);
+    const on = await answers();
+    expect(on.member).toEqual({ dataset: [row('client', U.aReq)], scope: [{ caller: U.aReq, caller_view: 'client', client_id: C.A }],
+      people: [...staffPeople, ...members(U.aAdmin, U.aReq, U.aView, U.both)] });
+    expect(on.both).toEqual([C.A, C.B].sort().map((client_id) => ({ caller: U.both, caller_view: 'client', client_id })));
+    expect(on.staff).toEqual({ ...staffAnswers(), people: [...staffPeople, ...members(U.aAdmin, U.aReq, U.aView, U.both)],
+      peopleB: [...staffPeople, ...members(U.bReq, U.both)] });
+
+    await setNexoAccess(db, C.A, false);
+    const off = await answers();
+    expect(off.member).toEqual({ dataset: [], scope: [], people: staffPeople });
+    expect(off.staff).toEqual({ ...staffAnswers(), people: staffPeople, peopleB: [...staffPeople, ...members(U.bReq, U.both)] });
+  });
+
+  test('a lab staff member who is also a member of a switched-off client is still answered as staff', async () => {
+    await as(db, null);
+    await db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.operator]);
+    await as(db, U.operator);
+    expect(await forCaller(D.current)).toEqual([row('staff', U.operator)]);
+    expect(await scope()).toEqual([{ caller: U.operator, caller_view: 'staff', client_id: null }]);
   });
 });

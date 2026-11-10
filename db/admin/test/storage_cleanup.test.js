@@ -54,7 +54,7 @@ describe('0012: the helper and the policies', () => {
   test('adds one DELETE policy on admin-files and a SELECT + DELETE pair on case-files; Team\'s own policies are unchanged', async () => {
     const rows = (await db.query("SELECT policyname, cmd, roles::text AS roles FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' ORDER BY policyname")).rows;
     expect(rows.map((r) => [r.policyname, r.cmd])).toEqual([
-      ['admin_files_nexo_read', 'SELECT'], ['admin_files_orphan_delete', 'DELETE'], ['admin_files_staff_insert', 'INSERT'], ['admin_files_staff_read', 'SELECT'],
+      ['admin_files_client_deliverable_read', 'SELECT'], ['admin_files_nexo_read', 'SELECT'], ['admin_files_orphan_delete', 'DELETE'], ['admin_files_staff_insert', 'INSERT'], ['admin_files_staff_read', 'SELECT'],
       ['case_files_pending_delete', 'DELETE'], ['case_files_pending_read', 'SELECT'], ['case_files_release_insert', 'INSERT'],
       ['pilot_object_insert', 'INSERT'], ['pilot_object_read', 'SELECT'],
     ]);

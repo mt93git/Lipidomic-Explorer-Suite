@@ -1,8 +1,9 @@
 // Synthetic identities only; migrations run exclusively in an ephemeral in-memory PGlite.
 import { beforeEach, afterEach, test, expect } from 'vitest';
-import { freshDb, as, U, C } from './helpers.js';
+import { freshDb, as, U, C, setNexoAccess } from './helpers.js';
 let db;
-beforeEach(async () => { db = await freshDb(); });
+// Client A has Nexo switched on (0022); the switch itself is tested in nexo_caller.test.js.
+beforeEach(async () => { db = await freshDb(); await setNexoAccess(db, C.A, true); });
 afterEach(async () => { await db?.close(); });
 const people = () => db.query('SELECT * FROM admin.nexo_people($1) ORDER BY user_id', [C.A]).then(r => r.rows);
 
