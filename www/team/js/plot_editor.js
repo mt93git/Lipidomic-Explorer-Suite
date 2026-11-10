@@ -116,9 +116,9 @@
   function publicationStyle(gd,state){
     var next=resolveTraceAliases(gd,state);if(!gd||!Array.isArray(gd.data)||!gd.layout)return next;
     var source=baseline(gd);
-    // Publication style changes only: a full frame around the plot, black zero lines and Arial 10. Colors, backgrounds and grid stay as they are.
+    // Publication style changes only: a full frame around the plot, black zero lines and Arial 10. Grid lines are removed; colors and backgrounds stay as they are.
     Object.assign(next.layout,{'font.family':'Arial','font.size':10,'title.font.family':'Arial','title.font.size':10,'legend.font.family':'Arial','legend.font.size':10});
-    ['xaxis','yaxis'].forEach(function(axis){if(!readPath(gd._fullLayout||gd.layout,axis))return;Object.assign(next.layout,{[axis+'.showline']:true,[axis+'.mirror']:true,[axis+'.linecolor']:'#000000',[axis+'.linewidth']:1,[axis+'.zeroline']:true,[axis+'.zerolinecolor']:'#000000',[axis+'.zerolinewidth']:1,[axis+'.title.font.size']:10,[axis+'.tickfont.size']:10});});
+    ['xaxis','yaxis'].forEach(function(axis){if(!readPath(gd._fullLayout||gd.layout,axis))return;Object.assign(next.layout,{[axis+'.showgrid']:false,[axis+'.showline']:true,[axis+'.mirror']:true,[axis+'.linecolor']:'#000000',[axis+'.linewidth']:1,[axis+'.zeroline']:true,[axis+'.zerolinecolor']:'#000000',[axis+'.zerolinewidth']:1,[axis+'.title.font.size']:10,[axis+'.tickfont.size']:10});});
     return clean(next);
   }
   function safeText(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
