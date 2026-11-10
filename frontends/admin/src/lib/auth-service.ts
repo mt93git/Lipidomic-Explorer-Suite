@@ -34,3 +34,34 @@ export async function authenticate(client: AuthClient, email: string, password: 
     return fail("Sign-in could not be completed. Please try again.");
   }
 }
+
+// First enrollment of an app authenticator (TOTP) for a signed-in account without a verified factor: the lab-role
+// accounts the session gate sends to /two-step-setup. Unverified leftovers of an abandoned attempt are removed first
+// so the account holds at most one pending factor. The QR code and secret go to that person's page only, never a log.
+export type Enrollment = { ok: true; factorId: string; qrCode: string; secret: string } | { ok: false; error: string };
+
+export async function startTotpEnrollment(client: AuthClient): Promise<Enrollment> {
+  try {
+    const factors = await client.auth.mfa.listFactors();
+    if (factors.error || !factors.data) return { ok: false, error: "We could not load your two-step settings. Please try again." };
+    if (factors.data.all.some(f => f.status === "verified")) return { ok: false, error: "Two-step sign-in is already set up. Sign in again with your code." };
+    for (const stale of factors.data.all.filter(f => f.status === "unverified")) await client.auth.mfa.unenroll({ factorId: stale.id });
+    const enrolled = await client.auth.mfa.enroll({ factorType: "totp", friendlyName: "Lipidomic Explorer Admin" });
+    if (enrolled.error || !enrolled.data || enrolled.data.type !== "totp") return { ok: false, error: "We could not start two-step setup. Please try again." };
+    return { ok: true, factorId: enrolled.data.id, qrCode: enrolled.data.totp.qr_code, secret: enrolled.data.totp.secret };
+  } catch {
+    return { ok: false, error: "We could not start two-step setup. Please try again." };
+  }
+}
+
+export async function verifyTotpEnrollment(client: AuthClient, factorId: string, code: string): Promise<AuthResult> {
+  if (!factorId) return { ok: false, error: "Start two-step setup again." };
+  if (!/^\d{6}$/.test(code)) return { ok: false, error: "Enter the six-digit code from your authenticator app." };
+  try {
+    const verification = await client.auth.mfa.challengeAndVerify({ factorId, code });
+    if (verification.error) return { ok: false, error: "That code was not accepted. Check your authenticator app and try the new code." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "That code could not be checked. Please try again." };
+  }
+}

@@ -104,7 +104,7 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
           <table className="registry-table registered" aria-label="Registered samples">
             <thead><tr><th scope="col" className="pinned">Code</th>{columns.map(column => <th key={column.field} scope="col">{column.label}</th>)}</tr></thead>
             <tbody>{detail.samples.map(sample => <tr key={sample.id}>
-              <td className="mono code-cell pinned">{sample.code}</td>
+              <td className="mono code-cell pinned"><Link href={`/samples/${sample.code}`}>{sample.code}</Link></td>
               {columns.map(column => <td key={column.field} className={column.field === "full_name" || column.field === "client_sample_id" ? "mono" : undefined}>{sample[column.field] ?? ""}</td>)}
             </tr>)}</tbody>
           </table>

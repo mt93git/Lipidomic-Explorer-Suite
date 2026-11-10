@@ -1,0 +1,17 @@
+.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
+.form select, .form textarea, .link input { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
+.link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 10px; }
+.link label { grid-column: 1 / -1; }
+.link input { font-family: var(--font-mono), monospace; font-size: var(--text-xs); }
+.link :global(.button) { margin-left: 0; }
+.scroll { max-width: 100%; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm); }
+.table th { color: var(--muted); font-weight: 700; }
+.table th, .table td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
+.table td:first-child { overflow-wrap: anywhere; }
+.email { display: block; color: var(--muted); font-family: var(--font-mono), monospace; font-size: var(--text-xs); overflow-wrap: anywhere; }
+.change summary { cursor: pointer; color: var(--blue); font-weight: 700; }
+.change form { margin-top: 10px; display: grid; gap: 8px; min-width: 220px; }
+.change select, .change input { width: 100%; border: 1px solid #bfcbd5; padding: 8px 10px; border-radius: 5px; background: white; font: inherit; }
+.section { margin-top: 22px; }
+@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }

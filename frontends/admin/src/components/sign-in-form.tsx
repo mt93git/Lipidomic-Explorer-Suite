@@ -3,11 +3,13 @@
 import { useActionState } from "react";
 import { enterDemo, signIn } from "@/app/actions";
 
-export function SignInForm({ mock }: { mock: boolean }) {
+// next: an invitation link to return to after signing in (the server accepts nothing else).
+export function SignInForm({ mock, next }: { mock: boolean; next?: string }) {
   const [state, action, pending] = useActionState(signIn, {});
   return <>
     <form action={action}>
       {state.error && <p className="error" role="alert">{state.error}</p>}
+      {next && <input type="hidden" name="next" value={next} />}
       <label className="field"><span className="field-label">Email</span><input name="email" type="email" autoComplete="username" placeholder="you@example.invalid" required disabled={mock || pending} /></label>
       <label className="field"><span className="field-label">Password</span><input name="password" type="password" autoComplete="current-password" required disabled={mock || pending} /></label>
       <label className="field"><span className="field-label">Two-step code</span><input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} aria-describedby="two-step-help" disabled={mock || pending} /></label>

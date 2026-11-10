@@ -12,20 +12,26 @@ Admin staging stack and the Nexo staging API. Brief: `docs/admin/admin-pilot-sim
 | **Stephania (simulated)** | `steph.sim@admin-staging.test` | Owner |
 | **Paula (simulated)** | `paula.sim@admin-staging.test` | Admin |
 
-Everything is synthetic: the client **Pilot Simulation Client (synthetic)**, a fresh order per run (title
-`Admin pilot simulation <UTC minute>`), three samples named `S1`, `S2`, `S3` in two groups (Control ×2, Treated ×1),
-and the results file `packages/admin-ingest/test/fixtures/sciex-synthetic.txt` (Unknown injections `S1`–`S3`, one
-blank, one QC). No lab data, no real person.
+Everything is synthetic: the client **Pilot Simulation Client (synthetic)** and panel **Pilot Simulation Panel
+(synthetic)**, a fresh order per run that Paula creates in New order (title `Admin pilot simulation <UTC minute> · run
+<8 hex>`, chosen by the seed), three samples with FullNames `S1`, `S2`, `S3` in two groups (Control ×2, Treated ×1),
+one batch (1 blank, the 3 samples, 1 pooled QC), and the results file
+`packages/admin-ingest/test/fixtures/sciex-synthetic.txt` (one blank, one QC) with its Sample Name row renamed to
+that batch's injections: `ORDnnn-S001…003` and the batch's `Blank_001` / `QC_001`, as SCIEX OS would name them after
+running the exported sequence (`e2e/live/pilot-results.mjs`, `tests/pilot-results.test.ts`). No lab data, no real
+person.
 
 Files:
 
 - `frontends/admin/e2e/live/pilot-seed.mjs`: creates what no screen can create yet (see the gaps). With the stack's
   service key it finds or creates the two GoTrue users (display names in `user_metadata`), their `admin.lab_staff`
-  rows, the synthetic client, and one new order at Request. Each run sets a new generated password for both personas
-  and writes the passwords, names, client and order code to the file named by `ADMIN_PILOT_CREDENTIALS` (mode 600).
-  It prints no password or key, archives nothing, deletes nothing, and changes no existing row: a persona whose
-  `lab_staff` row is archived or has another role, an archived client, or a persona with a verified TOTP factor stops
-  it with a message.
+  rows, the synthetic client and the synthetic panel (no Instruments & panels screen yet). It no longer inserts the
+  order: it chooses this run's order title, the teardown's run marker. Each run sets a new generated password for both
+  personas, removes their old TOTP factors and enrolls a fresh verified one (lab staff must pass two-step sign-in), and
+  writes the passwords, TOTP secrets, names, client, panel and order title to the file named by
+  `ADMIN_PILOT_CREDENTIALS` (mode 600). It prints no password, secret or key, archives nothing, deletes nothing but
+  those factors, and changes no existing row: a persona whose `lab_staff` row is archived or has another role, or an
+  archived client or panel, stops it with a message.
 - `frontends/admin/e2e/live/pilot.spec.ts`: one serial Playwright spec, every step in the UI, by role and accessible
   name. Skipped unless `ADMIN_E2E_PILOT=1`.
 - `frontends/admin/playwright.config.ts`: with `ADMIN_E2E_PILOT=1` it runs only the pilot spec, against
@@ -40,14 +46,15 @@ The origin in `ADMIN_PILOT_BASE_URL` serves Admin at `/admin` (live mode, connec
 ```sh
 cd frontends/admin
 export ADMIN_PILOT_CREDENTIALS=e2e/live/.pilot-credentials.local.json   # git-ignored; or a path outside the repo
-export NEXT_PUBLIC_SUPABASE_URL=… NEXT_PUBLIC_SUPABASE_ANON_KEY=…
+export NEXT_PUBLIC_SUPABASE_URL=… NEXT_PUBLIC_SUPABASE_ANON_KEY=…   # the anon key: factor enrolment and teardown
 SUPABASE_SERVICE_ROLE_KEY=… node e2e/live/pilot-seed.mjs
-ADMIN_E2E_PILOT=1 ADMIN_PILOT_BASE_URL=https://… npx playwright test
+ADMIN_E2E_PILOT=1 ADMIN_PILOT_BASE_URL=https://… npx playwright test   # sign-ins type the TOTP code from the file
 # if nginx asks for a password in front of Nexo: ADMIN_PILOT_NEXO_USER=… ADMIN_PILOT_NEXO_PASSWORD=…
 ```
 
-Run the seed before every run (each run needs a fresh order at Request). The service key needs `USAGE` on schema
-`admin` and `SELECT, INSERT` on `client`, `lab_staff` and `"order"` (the same grants as `e2e/live/seed.mjs`). Without
+Run the seed before every run (each run needs its own order title). The service key needs `USAGE` on schema `admin`
+and `SELECT, INSERT` on `client`, `lab_staff` and `panel` (`panel` is new with the batch steps; `"order"` is no longer
+needed). The order, shipment, samples, batch, results and dataset are all written through the screens by the personas. Without
 GoTrue/PostgREST behind one gateway, set `ADMIN_E2E_AUTH_URL` / `ADMIN_E2E_REST_URL` as for the live seed.
 
 Screenshots (full page) land in `frontends/admin/e2e/live/pilot-evidence/` (git-ignored), one per step, numbered in
@@ -57,13 +64,13 @@ story order. The Playwright HTML report (`npx playwright show-report`) holds the
 
 | # | Step (who) | Evidence | What it proves |
 |---|---|---|---|
-| 1 | Stephania signs in; on **Release policy** unticks everyone, ticks Paula and herself, sets 2, saves | `01-policy.png` | Password sign-in of an Owner lands on the pipeline; the Owner can edit the policy through `admin.set_release_policy`; the saved policy reads back as exactly those two people |
-| 2 | Paula signs in; **Receive shipment** for the seeded order; **Sample registry** pastes three rows and registers them; **Ingest results** uploads the TXT, parses, accepts; **Release → Build dataset v1** | `02-receive-shipment.png`, `03-sample-registry.png`, `04-ingest-results.png`, `05-dataset-built.png` | An Admin can carry an order from Request to Excel built on the real RPCs and Storage: codes `ORDnnn-S001…003` assigned by the database, the TXT accepted (order at Processed), the build matched the SCIEX injections to the registry and recorded three files with their SHA-256 |
-| 3 | Paula signs **Prepared** | `06-paula-signed.png` | 1 of 2 signatures; the page says one more signature by a different eligible person is needed; Paula can neither sign again nor release (button disabled) |
-| 4 | Stephania signs **Approved** and **Releases** | `07-steph-signed.png`, `08-released.png`, `09-order-released.png` | Two different eligible people met the policy; the release uploaded the analysis file to Team's `case-files` with the signer's own token and created the Team project (its id is shown); the order detail reads **Release complete** |
-| 5 | Stephania clicks **Open in Nexo** | `10-nexo-prepare.png`, `11-nexo-canvas.png`, `12-nexo-plot.png` | The link carries this dataset id; Nexo reads the released workbook from Admin's own record (first call 422 `preparation_choices_required`), the **Prepare dataset** dialog lists S1–S3 ticked with Team's defaults (minimum detection 0, global, median, impute on); after confirming, the window title is `<ORDER> · v1` and the band shows the lipid count and 3 samples; **PCA scores · 2D** added from the library reaches *current* and draws; no error toast, and no console error other than the browser's report of the 422 |
-| 6 | Stephania opens **Datasets** for the order | `13-datasets.png` | v1 is listed as Released with both signers (`Paula (simulated) · Prepared`, `Stephania (simulated) · Approved`) and the Open in Nexo link |
-| 7 | Stephania opens the **Audit log** filtered by the order | `14-audit-log.png` | `admin.audit_event` read through the screen: the release (`Dataset <ORDER> v1 released`) has Stephania as actor, the signatures `(Prepared)` by Paula and `(Approved)` by Stephania; the release row expands to `Status built → released` (changed fields only, no JSON). Written against the code; not yet run on staging |
+| 1 | Stephania signs in; on **Release policy** unticks everyone, ticks Paula and herself, sets 2, saves | `01-policy.png` | Password and two-step (TOTP) sign-in of an Owner lands on the pipeline; the Owner can edit the policy through `admin.set_release_policy`; the saved policy reads back as exactly those two people |
+| 2 | Paula signs in; **New order** for the synthetic client and panel with the run's title; **Receive shipment** from the created notice; **Sample registry** pastes three rows and registers them; **Batch builder**: "Select all of" the order, 1 blank, QC at the end, seed `pilot-<order>`, preview, save; **Batch run**: download the sequence and bench sheet CSVs, Mark exported, Mark acquired; **Ingest results** (from the acquired notice) uploads the TXT renamed to the batch's injections, parses, accepts; **Release → Build dataset v1** | `02-new-order.png`, `03-receive-shipment.png`, `04-sample-registry.png`, `05-batch-preview.png`, `06-batch-saved.png`, `07-batch-acquired.png`, `08-ingest-results.png`, `09-dataset-built.png`; `<batch>-sequence.csv`, `<batch>-bench-sheet.csv`, `<order>-results.txt` | An Admin can carry an order from creation to Excel built on the real RPCs and Storage: `create_order` (order at Request, code shown), codes `ORDnnn-S001…003` assigned by the database, `create_batch` (only this order's samples checked although staging may list others; 5 injections, Unknowns named by code with FullName only beside them), `mark_batch_exported` / `mark_batch_acquired` (order at Acquired; the sequence CSV holds each code once), the TXT accepted for the order's batch (order at Processed), and the build matched the code-named injections to the registry and recorded three files with their SHA-256 |
+| 3 | Paula signs **Prepared** | `10-paula-signed.png` | 1 of 2 signatures; the page says one more signature by a different eligible person is needed; Paula can neither sign again nor release (button disabled) |
+| 4 | Stephania signs **Approved** and **Releases** | `11-steph-signed.png`, `12-released.png`, `13-order-released.png` | Two different eligible people met the policy; the release uploaded the analysis file to Team's `case-files` with the signer's own token and created the Team project (its id is shown); the order detail reads **Release complete** |
+| 5 | Stephania clicks **Open in Nexo** | `14-nexo-prepare.png`, `15-nexo-canvas.png`, `16-nexo-plot.png` | The link carries this dataset id; Nexo reads the released workbook from Admin's own record (first call 422 `preparation_choices_required`), the **Prepare dataset** dialog lists S1–S3 ticked (the build turned the code-named injections back into FullName headers) with Team's defaults (minimum detection 0, global, median, impute on); after confirming, the window title is `<ORDER> · v1` and the band shows the lipid count and 3 samples; **PCA scores · 2D** added from the library reaches *current* and draws; no error toast, and no console error other than the browser's report of the 422 |
+| 6 | Stephania opens **Datasets** for the order | `17-datasets.png` | v1 is listed as Released with both signers (`Paula (simulated) · Prepared`, `Stephania (simulated) · Approved`) and the Open in Nexo link |
+| 7 | Stephania opens the **Audit log** filtered by the order | `18-audit-log.png` | `admin.audit_event` read through the screen: the release (`Dataset <ORDER> v1 released`) has Stephania as actor, the signatures `(Prepared)` by Paula and `(Approved)` by Stephania; the release row expands to `Status built → released` (changed fields only, no JSON); `Order <ORDER> created` and `moved to Acquired` have Paula as actor (New order, the batch run) |
 
 ## Gaps found (screens that cannot do a step in live mode)
 
@@ -73,26 +80,34 @@ Not worked around in the spec; the seed creates only what the story needs to sta
    with entity and order filters, and step 7 checks the release there. Left open: an actor who is not lab staff and is
    not the signed-in user shows as `User <id prefix>…`, not by email (`auth.users` is not readable with the app's token;
    a SECURITY DEFINER read would need a migration).
-2. **New order** (`/admin/new-order`) is a placeholder: the seed inserts the order at Request.
-3. **People / Clients** are placeholders: lab staff rows, accounts and the synthetic client come from the seed.
-4. **TOTP enrolment** is a later phase: the personas sign in with a password only (TOTP sign-in is covered by
-   `e2e/live/live.spec.ts`).
+2. ~~**New order**~~: closed (wave 3). Paula creates the order in step 2; the seed only chooses its title.
+3. **People / Clients** are not used by the pilot: lab staff rows, accounts and the synthetic client come from the seed.
+   **Instruments & panels** has no screen (phase 2): the seed creates the synthetic panel.
+4. **TOTP enrolment** through `/two-step-setup` is not exercised: the seed enrolls each persona's factor through
+   GoTrue, and every pilot sign-in types the current code (as `e2e/live/live.spec.ts`).
 
 ## Side effects on staging
 
 - Step 1 replaces the **current release policy of the staging lab** with "Paula and Stephania, 2 signatures"
   (`set_release_policy` archives the previous one, which stays in the history). Other staging releases then need
   these two personas; the Owner restores the policy on the Release policy screen after the run if needed.
-- In `ADMIN_E2E_PILOT=1`, Playwright global teardown runs after success or failure. It reads this run's order code
-  and Stephania's credentials from `ADMIN_PILOT_CREDENTIALS`, signs in with the anon key, withdraws any released
-  dataset of that order through `withdraw_dataset`, then archives the order with `archived_at` and
-  `archived_reason = 'E2E pilot run finished'`. It never deletes rows or uses the service key for cleanup.
-  The order code is removed from the credential file only after cleanup succeeds; a refusal fails teardown and
-  keeps it for retry (`ADMIN_E2E_PILOT=1 node -e 'import("./e2e/live/pilot-teardown.mjs").then(m => m.default())'`
-  from `frontends/admin` with the same environment). Do not reseed over a failed cleanup's credential file.
-- The fixed synthetic client and both personas stay. The Team project, files, audit history and evidence screenshots
+- In `ADMIN_E2E_PILOT=1`, Playwright global teardown runs after success or failure. Global setup captures this run's
+  order title from `ADMIN_PILOT_CREDENTIALS` (an older seed's `orderCode` still works); teardown signs in as Stephania
+  with the anon key, finds the live order with that exact title (none: the run stopped before New order, nothing to
+  do), withdraws its released dataset through `withdraw_dataset`, then archives, like the 0016 block of
+  `db/admin/test/staging.integration.mjs`, the batch the order's aliquots were injected in (its injections, versions
+  and the batch), then those aliquots, and last the order, all with `archived_reason = 'E2E pilot run finished'`. A
+  batch that also holds another order's injections is refused and left alone. It never deletes rows or uses the
+  service key for cleanup. The order is archived last, so a failed attempt leaves it live and a retry finds the rest
+  again (the lookups do not filter on `archived_at`). The title is removed from the credential file only after
+  cleanup succeeds; a refusal fails teardown and keeps it for retry (`ADMIN_E2E_PILOT=1
+  ADMIN_PILOT_RUN_ORDER_TITLE="<orderTitle from the file>" node -e 'import("./e2e/live/pilot-teardown.mjs").then(m =>
+  m.default())'` from `frontends/admin` with the same environment). Do not reseed over a failed cleanup's file.
+- Samples, the shipment and the accepted results file stay under the archived order (as before). Each run uses one
+  batch name `B<yyyy>-<nnn>` of the year's sequence; it stays taken after archiving.
+- The fixed synthetic client, panel and both personas stay. The Team project, files, audit history and evidence screenshots
   stay; withdrawal revokes the dataset's Nexo access. Screenshots still capture the release before teardown.
-- Each seed run resets both personas' passwords.
+- Each seed run resets both personas' passwords and replaces their TOTP factors.
 
 ## Not covered
 
@@ -102,9 +117,12 @@ Not worked around in the spec; the seed creates only what the story needs to sta
 - **Real data.** One small synthetic export (3 samples, 33 analytes); real batch sizes, shared batches with other
   clients' samples, odd injection names and real SCIEX OS versions are not exercised.
 - The client's side (a client member seeing the released order), withdraw and supersede on staging, opening the
-  release from Team's library (wave 2b finding 5), TOTP, narrow screens (390 px).
+  release from Team's library (wave 2b finding 5), the `/two-step-setup` screen, narrow screens (390 px).
 - **Not run here.** The spec and the seed were written against the code and checked with `tsc`, lint and the existing
-  suites; this sandbox cannot reach staging. The coordinator runs them.
+  suites; this sandbox cannot reach staging. The coordinator runs them. The batch steps (2026-11-10, New order →
+  batch builder → batch run → code-named ingest, teardown of batch/aliquots) have not run on staging yet.
+- The SCIEX OS sequence template (the generic CSV is used) and acquisition on a real instrument; the results TXT is
+  the synthetic export renamed by the test, not produced by SCIEX OS from the downloaded sequence.
 
 ## Runs
 

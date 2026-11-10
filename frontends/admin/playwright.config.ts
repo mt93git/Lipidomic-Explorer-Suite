@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
 // started); the dev server and the workers inherit it.
 // ADMIN_E2E_PILOT=1 (docs/admin/admin-pilot-simulation.md): only e2e/live/pilot.spec.ts, against the deployed origin in
 // ADMIN_PILOT_BASE_URL that serves /admin and /nexo-staging; no dev server is started.
-// Pilot global teardown withdraws released datasets and archives the run order, failed runs included.
+// Pilot global teardown withdraws released datasets and archives the run batch, aliquots and order, failed runs included.
 // ADMIN_E2E_IDENTITY=1 (docs/admin/admin-identity-e2e.md): the same, with only e2e/live/identity.spec.ts.
 // ADMIN_E2E_LIVE=1 (e2e/live/live.spec.ts): after the run, failed or not, e2e/live/teardown.mjs archives the two
 // orders e2e/live/seed.mjs created for it.

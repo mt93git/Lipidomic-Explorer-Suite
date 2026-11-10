@@ -28,3 +28,25 @@ export async function writeDemoState(state: DemoState): Promise<void> {
   if (!stores.has(id) && stores.size >= MAX_BROWSERS) stores.delete(stores.keys().next().value as string);
   stores.set(id, state);
 }
+
+// ---------------------------------------------------------------- Clients, wave 3 (round 1)
+// An optional block preserves the existing sample/release state and the same browser cookie.
+type ClientState = DemoState & { clients?: import("./clients").ClientRecord[] };
+export async function readDemoClients() {
+  return (await readDemoState() as ClientState).clients;
+}
+export async function writeDemoClients(clients: import("./clients").ClientRecord[]) {
+  const state: ClientState = { ...await readDemoState(), clients };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- People, wave 3 (round 2)
+// Same pattern: an optional block on the browser's demo state; undefined until the first people write.
+type PeopleDemoState = DemoState & { people?: import("../people").PeopleState };
+export async function readDemoPeople() {
+  return (await readDemoState() as PeopleDemoState).people;
+}
+export async function writeDemoPeople(people: import("../people").PeopleState) {
+  const state: PeopleDemoState = { ...await readDemoState(), people };
+  await writeDemoState(state);
+}

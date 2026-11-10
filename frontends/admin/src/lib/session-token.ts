@@ -6,7 +6,7 @@ import type { View } from "./models";
 // The route's path as the middleware sees it: without the /admin basePath once Next applies it, with it otherwise.
 export const isSessionTokenPath = (pathname: string) => pathname === "/api/session-token" || pathname === "/admin/api/session-token";
 
-export type SessionToken = { accessToken: string; expiresAt: number; userId: string; view: View };
+export type SessionToken = { accessToken: string; expiresAt: number; userId: string; view: View; displayName: string | null };
 
 // Same origin only. A browser's Sec-Fetch-Site is authoritative when present: only "same-origin" passes ("same-site",
 // "cross-site" and "none", a typed or bookmarked URL, do not). Without it (an older browser or a non-browser client),
@@ -54,5 +54,5 @@ export async function sessionTokenResponse(headers: Headers, load: () => Promise
     return answer(503, { error: "unavailable" });
   }
   if (!token) return answer(401, { error: "signed_out" });
-  return answer(200, { accessToken: token.accessToken, expiresAt: token.expiresAt, userId: token.userId, view: token.view });
+  return answer(200, { accessToken: token.accessToken, expiresAt: token.expiresAt, userId: token.userId, view: token.view, displayName: token.displayName });
 }

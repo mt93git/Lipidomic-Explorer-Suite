@@ -5,6 +5,7 @@ import { stages, type Gate, type HistoryEvent, type Order } from "./models";
 import { conditionLabels, DataError, plural, registryClosedProblem, type SampleInput, type ShipmentInput } from "./samples";
 import { applyReleaseState, demoPolicy, type DemoDataset } from "./release-demo";
 import type { ReleasePolicy } from "./release";
+import { applyBatchState, type DemoBatch } from "./batch-demo";
 
 export type DemoShipment = {
   id: string; orderCode: string; carrier: string; trackingNumber: string | null; condition: ShipmentInput["condition"];
@@ -15,7 +16,8 @@ export type DemoSample = SampleInput & { id: string; orderCode: string; shipment
 export type DemoResult = { id: string; orderCode: string; sha256: string; acceptedAt: string; acceptedBy: string };
 // One record set per browser, shared by every demo screen (receive, registry, results, release, pipeline, detail).
 // Datasets, their signatures and releases, and the release policy are the release side's records (release-demo.ts).
-export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy };
+// Orders created with New order (create_order) join the example orders in applyDemoState, so every screen sees them.
+export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[] };
 
 export const emptyDemoState = (): DemoState => ({ shipments: [], samples: [], results: [], datasets: [] });
 
@@ -86,7 +88,12 @@ function shipmentTitle(shipment: DemoShipment): string {
 
 // The example orders with the demo's shipments and samples applied: stage, received date, gates, history and
 // progress follow what was recorded. Orders without records are returned untouched.
-export function applyDemoState(orders: Order[], state: DemoState): Order[] {
+export function applyDemoState(examples: Order[], state: DemoState): Order[] {
+  return applyBatchState(applyRecordedState(examples, state), state);
+}
+
+function applyRecordedState(examples: Order[], state: DemoState): Order[] {
+  const orders = state.orders?.length ? [...examples, ...state.orders] : examples;
   const results = state.results ?? [];
   const datasets = state.datasets ?? [];
   if (!state.shipments.length && !state.samples.length && !results.length && !datasets.length) return orders;
@@ -120,10 +127,12 @@ export function applyDemoState(orders: Order[], state: DemoState): Order[] {
       events.push({ date, title: `${plural(batch.length, "sample")} registered · ${range}`, actor: batch[0].registeredBy });
     }
     if (result) events.push(resultEvent(result));
+    // As live: the expected count, or more when more samples were registered (an order created without one).
+    const sampleCount = Math.max(order.sampleCount, samples.length);
     return {
-      ...order, stage, gates,
+      ...order, stage, gates, sampleCount,
       received: shipment ? labDay.format(new Date(shipment.receivedAt)) : order.received,
-      completedSamples: samples.length ? Math.min(order.sampleCount, samples.length) : Math.min(order.sampleCount, Math.round(order.sampleCount * (stage + 1) / 10)),
+      completedSamples: samples.length ? Math.min(sampleCount, samples.length) : Math.min(sampleCount, Math.round(sampleCount * (stage + 1) / 10)),
       history: [...events.reverse(), ...order.history],
     };
   }

@@ -19,24 +19,24 @@ describe("app shell", () => {
     expect(screen.getByText("Example data")).toBeVisible();
     expect(screen.getByText("Operator")).toBeVisible();
     expect(screen.getByRole("searchbox", { name: "Search orders" })).toBeVisible();
-    expect(groupLinks("LAB WORK")).toEqual(["/pipeline", "/receive-shipment", "/sample-registry", "/ingest-results", "/name-dictionary", "/release", "/datasets"]);
-    expect(groupLinks("ORGANIZATION")).toEqual(["/audit-log", "/release-policy"]);
+    expect(groupLinks("LAB WORK")).toEqual(["/pipeline", "/new-order", "/receive-shipment", "/sample-registry", "/batch-builder", "/batch-run", "/ingest-results", "/name-dictionary", "/release", "/datasets"]);
+    expect(groupLinks("CLIENTS")).toEqual(["/clients"]);
+    expect(groupLinks("ORGANIZATION")).toEqual(["/people", "/roles-permissions", "/audit-log", "/release-policy"]);
     for (const name of ["Pipeline", "Receive shipment", "Sample registry", "Ingest results", "Name dictionary", "Release", "Datasets", "Audit log"]) expect(within(nav()).getByRole("link", { name })).toBeVisible();
     expect(within(nav()).getByRole("link", { name: "Release policy" })).toHaveAttribute("href", "/release-policy");
     expect(within(nav()).getByRole("link", { name: "Pipeline" })).toHaveAttribute("aria-current", "page");
     for (const gone of ["Sign in", "Choose client", "Order detail", "Sample detail", "Client detail"]) expect(within(nav()).queryByRole("link", { name: gone })).not.toBeInTheDocument();
     expect(within(nav()).queryByText("ACCESS")).not.toBeInTheDocument();
-    expect(within(nav()).queryByText("CLIENTS")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lab staff" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("main")).toHaveTextContent("Pipeline content");
   });
   it("folds the placeholder screens into a collapsed Coming next group, tagged with their wave when the plan names one", () => {
     render(<AppShell session={demoSession}>Board</AppShell>);
-    const coming = within(nav()).getByText("Coming next · 12 screens").closest("details") as HTMLDetailsElement;
+    const coming = within(nav()).getByText("Coming next · 4 screens").closest("details") as HTMLDetailsElement;
     expect(coming).not.toHaveAttribute("open");
     const links = within(coming).getAllByRole("link", { hidden: true });
-    expect(links.map(link => link.getAttribute("href"))).toEqual(["/new-order", "/sample-detail", "/storage", "/batch-builder", "/batch-run", "/qc-review", "/clients", "/client-detail", "/people", "/roles-permissions", "/instruments-panels", "/notifications"]);
-    expect(within(coming).getByRole("link", { name: "New order Wave 2", hidden: true })).toBeInTheDocument();
+    expect(links.map(link => link.getAttribute("href"))).toEqual(["/storage", "/qc-review", "/instruments-panels", "/notifications"]);
+    expect(within(coming).getByRole("link", { name: "Storage Wave 2", hidden: true })).toBeInTheDocument();
     expect(within(coming).getByRole("link", { name: "QC review Wave 4", hidden: true })).toBeInTheDocument();
     expect(within(coming).getByRole("link", { name: "Notifications", hidden: true }).querySelector(".nav-tag")).toBeNull();
   });
@@ -44,7 +44,7 @@ describe("app shell", () => {
     pathname.current = "/storage";
     try {
       render(<AppShell session={demoSession}>Soon</AppShell>);
-      const coming = within(nav()).getByText("Coming next · 12 screens").closest("details") as HTMLDetailsElement;
+      const coming = within(nav()).getByText("Coming next · 4 screens").closest("details") as HTMLDetailsElement;
       expect(coming).toHaveAttribute("open");
       expect(within(coming).getByRole("link", { name: "Storage Wave 2" })).toHaveAttribute("aria-current", "page");
     } finally { pathname.current = "/pipeline"; }

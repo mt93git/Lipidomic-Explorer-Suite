@@ -17,6 +17,12 @@ const clientRoles: Record<string, string> = { client_admin: "Client admin", requ
 const palette = ["atlas", "cedar", "meridian", "harbor", "juniper"];
 
 export async function sessionFromDatabase(client: Db, user: User): Promise<AppSession> {
+  return (await identityFromDatabase(client, user)).session;
+}
+
+// labRole: the database key of the user's active admin.lab_staff row ('owner' … 'member'), or null. A lab member is a
+// client-view user here but still holds a lab role (the two-step rule, ../two-step.ts, applies to every lab role).
+export async function identityFromDatabase(client: Db, user: User): Promise<{ session: AppSession; labRole: string | null }> {
   const db = client.schema("admin");
   const [staff, members, readable] = await Promise.all([
     db.from("lab_staff").select("role, display_name").eq("user_id", user.id).is("archived_at", null),
@@ -36,7 +42,7 @@ export async function sessionFromDatabase(client: Db, user: User): Promise<AppSe
     clients.push({ id: item.id, name: item.name, color: "", role: clientRoles[row.role] ?? "Viewer" });
   }
   clients.sort((a, b) => a.name.localeCompare(b.name)).forEach((c, index) => { c.color = palette[index % palette.length]; });
-  return {
+  const session: AppSession = {
     userId: user.id,
     displayName: own?.display_name || user.email || "Admin user",
     role: labRole ?? "Viewer",
@@ -45,4 +51,5 @@ export async function sessionFromDatabase(client: Db, user: User): Promise<AppSe
     clients: labRole ? ((readable.data ?? []) as { id: string; name: string }[]).map((row, index) => ({ id: row.id, name: row.name, color: palette[index % palette.length] })) : clients,
     selectedClient: null,
   };
+  return { session, labRole: own?.role ?? null };
 }

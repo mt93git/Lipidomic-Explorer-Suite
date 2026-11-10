@@ -62,12 +62,18 @@ clients are ignored. The user chip shows `lab_staff.display_name`, else the acco
 `user_metadata` no longer grant anything. Accounts without memberships have no client access.
 
 Sign-in is email + password against GoTrue, then the six-digit code when the account has a verified TOTP
-factor (assurance level `aal2` required); a missing or wrong code ends the partial session. Lab staff land on
-the global pipeline; a client user lands on the client home and may open only their clients' orders.
+factor (assurance level `aal2` required); a missing or wrong code ends the partial session. Every lab-role
+account (Owner, Admin, Operator or lab Member) must have one: a lab-role session at `aal1` with no verified factor
+gets no app session (no workspace page, server action or session token) and is sent to `/two-step-setup`, which
+enrolls a TOTP factor (QR code + key, then the six-digit code; `src/lib/two-step.ts`, `src/lib/auth-service.ts`).
+Client users keep password sign-in. Lab staff land on the global pipeline; a client user lands on the client home
+and may open only their clients' orders.
 
 ## Screens and routes
 
-- `/sign-in`, `/choose-client`: password/TOTP sign-in, demo entry, and validated client selection.
+- `/sign-in`, `/choose-client`: password/TOTP sign-in, demo entry, and validated client selection. `next` is
+  followed only for an invitation link (`/invite/<64 hex>`).
+- `/two-step-setup`: first enrollment of an app authenticator for a lab-role account without one (above).
 - `/pipeline`: the lab's home. A global, all-clients overview: six attention tiles that act as filters
   (blocked, ready, awaiting checks, on the instrument, waiting for results, released this week), a
   per-client strip (open and blocked counts, multi-select), stage/panel/owner menus, free-text search
@@ -88,6 +94,23 @@ the global pipeline; a client user lands on the client home and may open only th
   Chromium. `verification/samples/RESULTS.md` lists the wave 2 commands and outcomes.
 - `/orders/ORD041`: example detail, ten-step progress, gate checklist, facts, and dated history. In demo
   mode it reflects the shipments and samples recorded in this browser (stage, gates, history).
+- `/new-order` (waves 2 rest / 3, lab staff): client (active clients), panel (active panels), title, matrix,
+  expected samples, billing reference and notes; no sample list and no quote (the registry handles samples).
+  `createOrder` calls `admin.create_order` (`db/admin/migrations/0013_orders.sql`). On success
+  `?created=ORD055` shows the code with **Receive shipment →** and **Open order →**; the order is at **Request**.
+  Demo mode records the order in the browser's demo state (next `ORDnnn` after every order it sees).
+- `/batch-builder` (wave 3 round 2, lab staff): the registered samples of orders from Registered to Acquired that are not
+  already in a planned batch, grouped by order (`?order=ORD042` preselects an order's samples); a panel, blanks at start,
+  pooled QC every n, QC at the end, blank after QC, randomize, seed, minutes per injection and plate order. **Preview
+  sequence** is a GET (the URL holds the whole plan) and shows the run time, the 8 x 12 plate map and the sequence from
+  the engine in `src/lib/batch/`. **Save planned batch** re-reads the fields, plans again on the server and calls
+  `admin.create_batch` (`db/admin/migrations/0016_batches.sql`): version 1 with its rules and seed, the orders move to
+  **In batch**; the database numbers the batch (`B<yyyy>-<nnn>`).
+- `/batch-run` and `/batch-run/B2026-033` (wave 3 round 2): the batch list, and one batch with **Download sequence CSV**
+  and **Download bench sheet CSV** (generic columns; the SCIEX OS adapter waits for the lab's template), **Mark exported**
+  (`admin.mark_batch_exported` with the SHA-256 of the sequence file, computed on the server from the saved rows: freezes
+  the version, orders to **Sequence exported**) and **Mark acquired** (`admin.mark_batch_acquired`: orders to
+  **Acquired**). Results are then ingested as before in `/ingest-results`.
 - `/receive-shipment` (wave 2): pick an order at **Request**, record carrier, tracking number, condition on
   arrival (`ok`, `thawed`, `damaged`, `partial`), box count and notes. The order moves to **Received** and
   the page continues to its sample registry. A condition other than `ok` shows up as a blocked gate on the
@@ -101,6 +124,27 @@ the global pipeline; a client user lands on the client home and may open only th
   order's registered samples, numeric volume (`12,5` accepted). Saving is all-or-nothing; the page then
   shows the generated codes (`ORD042-S001`…), assigned by the database (or the demo store), never typed, and
   the order reads **Registered** on the board. `?received=` and `?saved=` only choose the banner.
+- `/people` (wave 3 round 2, lab staff): lab staff and client members in one list (role, client, two-step:
+  `Not readable` in live mode, where other people's factors are not visible to the user's token), pending
+  invitations with **Revoke**, and **Invite** (email, a client role and client, or a lab role for the Owner).
+  The link is shown once with **Copy link**; only its digest is stored, so a lost link is revoked and re-sent. The
+  app sends no email. Per person, **Change** sets the role or archives the membership with a reason (lab staff:
+  Owner; client members: Owner/Admin; never the last Owner). Functions: `db/admin/migrations/0015_people.sql`.
+- `/invite/[token]` (public, no session): who is invited for what (`invitation_preview` with the anon key); the
+  person sets a password (at least 12 characters); the server creates the account with
+  `SUPABASE_SERVICE_ROLE_KEY` (server-only, `src/lib/supabase/service.ts`) and calls `accept_invitation`, removing
+  the account again if accepting fails; then **Sign in →**. Lab staff then sign in and enroll two-step on first use.
+  If that removal fails too, the server logs it (ids and messages, never the password) and the person is told to
+  contact the lab. An email that already has an account (`has_account` in the preview, including one left by a
+  failed removal) is asked to sign in (returning to the link) and accepts with one button: `accept_my_invitation`
+  with their own token, password untouched. Demo mode: random token, no account, no key; the person joins the
+  browser's demo records.
+- `/roles-permissions` (lab staff, read-only): the permission matrix from `src/lib/roles.ts`, the one source also
+  used by the demo's people rules; it states what the app really allows (opening orders, recording shipments and
+  registering samples is lab staff only: those functions call `require_lab_writer`). `tests/roles.test.ts` checks
+  its rows against the role helpers in `db/admin/migrations/0002_helpers.sql` and that each row's rule guards the
+  functions the app calls for it. `tests/service-key.test.ts` proves no client component imports the
+  service-role module (server actions are the boundary). `e2e/people.spec.ts` is the demo happy path.
 - All sidebar entries have routes. The placeholder route registry in `src/lib/navigation.ts` names
   the planned phase for each future screen, including `/client/home` and `/client/order`.
 
@@ -141,6 +185,16 @@ Excel quoting), `tests/samples-validation.test.ts` (row checks, contract convers
 contract's exact argument names and maps rows and refusals; demo mode is keyed by the browser cookie),
 `tests/sample-registry.test.tsx` and `tests/receive-shipment.test.tsx` (the two client components).
 
+New order adds `tests/new-order.test.ts` (form parsing, the live `create_order` call and refusals, `listPanels`, the demo
+record at Request in pipeline and Receive shipment) and `e2e/new-order.spec.ts` (create an order, see it at Request).
+
+Batches add `tests/batch-builder.test.ts` (form parsing, planning over the engine, plate map, run time, the save payload),
+`tests/batch-demo.test.ts` (the demo's create / export / acquire and the order stages), `tests/batches-seam.test.ts` (the demo
+flow end to end through the seam; the exact live RPC arguments, the hash, the refusals), `tests/batch-run.test.ts` and
+`e2e/batch.spec.ts` (register three samples, pick them, preview, save, download the CSV, mark exported, mark acquired, see the
+order at Acquired). `data/batches.ts` is the seam: `listBuilderSamples`, `createBatch`, `listBatches`, `getBatch`, `batchFile`,
+`markBatchExported`, `markBatchAcquired`; demo batches live in `DemoState.batches` (`src/lib/batch-demo.ts`).
+
 ## Data seam (wave 2)
 
 `src/lib/data/` holds one small module per area, exporting async functions named after the database
@@ -154,6 +208,7 @@ checks apply); demo mode works on in-memory records.
 | | `registerSamples` | `rpc('register_samples', { p_order_id, p_shipment_id, p_samples })` → `setof admin.sample`, mapped to `{ id, code, sampleNumber, …metadata }` | `recordSamples`: sequential `ORDnnn-Snnn`, duplicate `FullName` refused |
 | | `listReceivableOrders`, `listRegistryOrders`, `getRegistryOrder` | PostgREST reads of `order`, `shipment`, `sample` (`client:client(name)` embedded); the arrival shown and registered against is the newest shipment with `received_at` set (a client-submitted shipment that never arrived is not an arrival) | example orders with the demo state applied |
 | `data/orders.ts` | `listOrders`, `listClients`, `getOrder` | one PostgREST read of `order` with `panel`, `sample`, `shipment`, `result_file` (+ `batch`), `dataset` (+ `signature`) embedded, plus `lab_staff` names and `client`, through the user's token: RLS decides (staff: every client; a client member: their clients; results files staff-only; datasets visible to clients once released). Rows map to the existing `Order` view model: stage, sample counts, arrival day (lab time zone), batch, gates for the current stage, history newest first. Withdrawn and superseded versions stay in the history with their status and reason (a build archived before release is left out); when the order reached Released but no version is current, `Order.retired` carries the last retirement (version, status, reason, instant), `releasedAt` is unset, the last gate fails, the order page says **Released, then withdrawn** (staff and client) and the pipeline's Released list adds "then withdrawn". The schema has no target date or assignee yet (shown as not set / Unassigned) | example orders with the demo state applied; used by `/pipeline` and `/orders/[code]` |
+| `data/orders.ts` | `createOrder`, `listPanels` | `rpc('create_order', { p_client_id, p_panel_id, p_title, p_matrix, p_expected_samples, p_billing_ref, p_notes })` → uuid, then the generated `code` is read back; refusals become a sentence. `listPanels`: active `panel` rows by name | `recordOrder` (`src/lib/new-order.ts`) adds the order to `DemoState.orders`; `applyDemoState` appends those orders to the examples, so every demo screen sees them. Panels are `demoPanels` (id = name) |
 | `data/demo-store.ts` | `readDemoState`, `writeDemoState` | — | one record set per browser (shipments, samples, accepted results files), keyed by the HttpOnly `/admin` cookie `le-admin-demo-store`, kept on `globalThis` for the life of the process (at most 50 browsers; nothing is written anywhere). Receive, registry, results picker, acceptance, pipeline and order detail all read this one record, so a demo order carries its progress across them |
 
 Pure logic lives next to it: `src/lib/samples.ts` (columns and aliases, `parsePaste`, `validateSamples`,

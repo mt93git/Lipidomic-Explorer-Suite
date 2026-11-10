@@ -12,7 +12,7 @@ vi.mock("@/lib/session", () => ({ getAppSession: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createAdminClient: vi.fn() }));
 
 const userId = "00000000-0000-4000-8000-000000000011";
-const token: SessionToken = { accessToken: "synthetic.access.token", expiresAt: 1_900_000_000, userId, view: "client" };
+const token: SessionToken = { accessToken: "synthetic.access.token", expiresAt: 1_900_000_000, userId, view: "client", displayName: null };
 const headers = (values: Record<string, string>) => new Headers(values);
 // A JWT-shaped synthetic token (unsigned: only its subject is read here; GoTrue and PostgREST verify real ones).
 const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -56,12 +56,12 @@ describe("same-origin rule", () => {
 
 describe("responses", () => {
   const same = headers({ "sec-fetch-site": "same-origin" });
-  it("200 with exactly accessToken, expiresAt, userId and view, never cached", async () => {
+  it("200 with accessToken, expiresAt, userId, view and nullable displayName, never cached", async () => {
     const response = await sessionTokenResponse(same, async () => token);
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("content-type")).toMatch(/^application\/json/);
-    expect(await response.json()).toEqual({ accessToken: "synthetic.access.token", expiresAt: 1_900_000_000, userId, view: "client" });
+    expect(await response.json()).toEqual({ accessToken: "synthetic.access.token", expiresAt: 1_900_000_000, userId, view: "client", displayName: null });
   });
   it("401 {error: signed_out} when nobody is signed in, never cached", async () => {
     const response = await sessionTokenResponse(same, async () => null);
@@ -87,6 +87,9 @@ describe("responses", () => {
 
 describe("GET /admin/api/session-token", () => {
   const getSession = vi.fn();
+  const maybeSingle = vi.fn();
+  const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), maybeSingle };
+  const from = vi.fn(() => query);
   const request = (init: Record<string, string> = { "sec-fetch-site": "same-origin" }) =>
     new NextRequest("http://127.0.0.1:3110/admin/api/session-token", { headers: init });
   const appSession = (view: "staff" | "client", mock = false) =>
@@ -94,8 +97,13 @@ describe("GET /admin/api/session-token", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    from.mockImplementation(() => query);
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    maybeSingle.mockResolvedValue({ data: { display_name: "Synthetic profile" }, error: null });
     getSession.mockResolvedValue({ data: { session: { access_token: jwt(userId), expires_at: 1_900_000_000 } }, error: null });
-    vi.mocked(createAdminClient).mockResolvedValue({ auth: { getSession } } as never);
+    vi.mocked(createAdminClient).mockResolvedValue({ auth: { getSession }, schema: vi.fn(() => ({ from })) } as never);
   });
 
   it("answers the signed-in user's GoTrue access token, its expiry, id and view", async () => {
@@ -103,7 +111,20 @@ describe("GET /admin/api/session-token", () => {
     const response = await GET(request());
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ accessToken: jwt(userId), expiresAt: 1_900_000_000, userId, view: "staff" });
+    expect(await response.json()).toEqual({ accessToken: jwt(userId), expiresAt: 1_900_000_000, userId, view: "staff", displayName: "Synthetic profile" });
+  });
+  it.each(["Synthetic member", null])("uses the selected client's member display_name (%s), never the session fallback", async (display_name) => {
+    const session = { ...appSession("client"), selectedClient: { id: "synthetic-client", name: "Synthetic client", color: "atlas", role: "Viewer" } };
+    vi.mocked(getAppSession).mockResolvedValue(session);
+    maybeSingle.mockResolvedValue({ data: { display_name }, error: null });
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).displayName).toBe(display_name);
+    expect(from).toHaveBeenCalledWith("client_member");
+    expect(query.select).toHaveBeenCalledWith("display_name");
+    expect(query.eq).toHaveBeenCalledWith("user_id", userId);
+    expect(query.eq).toHaveBeenCalledWith("client_id", "synthetic-client");
+    expect(query.is).toHaveBeenCalledWith("archived_at", null);
   });
   it("is signed_out with no session, an incomplete second factor (getAppSession is null) or no stored token", async () => {
     vi.mocked(getAppSession).mockResolvedValue(null);

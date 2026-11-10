@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { chooseClient, enterDemo, signOut, switchView } from "@/app/actions";
+import { chooseClient, enterDemo, signIn, signOut, switchView } from "@/app/actions";
 import { getEnvironment } from "@/lib/environment";
 import { getAppSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/server";
-import { endAppSession } from "@/lib/auth-service";
+import { authenticate, endAppSession } from "@/lib/auth-service";
 import { demoSession } from "@/lib/demo";
 import { clientCookie, signedOutCookie } from "@/lib/auth-cookies";
 
@@ -58,6 +58,17 @@ describe("server action boundaries", () => {
     expect(setCookie).toHaveBeenCalledWith(signedOutCookie, "1", expect.objectContaining({ path: "/admin" }));
     expect(endAppSession).not.toHaveBeenCalled();
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+  it("after sign-in, returns to an invitation link (and only that) given as next", async () => {
+    vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
+    vi.mocked(createAdminClient).mockResolvedValue({ auth: {} } as never);
+    vi.mocked(authenticate).mockResolvedValue({ ok: true });
+    const form = (next?: string) => { const data = new FormData(); data.set("email", "person@example.test"); data.set("password", "synthetic"); if (next !== undefined) data.set("next", next); return data; };
+    const invite = `/invite/${"a".repeat(64)}`;
+    await expect(signIn({}, form(invite))).rejects.toThrow(`redirect:${invite}`);
+    for (const other of [undefined, "", "/people", "https://evil.example/invite/" + "a".repeat(64), "//evil.example", `${invite}/x`, "/invite/abc"]) {
+      await expect(signIn({}, form(other)), String(other)).rejects.toThrow(/^redirect:\/choose-client$/);
+    }
   });
   it("uses the app-scoped sign-out service for a live session", async () => {
     const client = { auth: {} } as never;

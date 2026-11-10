@@ -91,7 +91,7 @@ export function auditSummary(event: AuditEvent, ctx: AuditContext): string {
 
 // ---------------------------------------------------------------- changed fields
 
-const fieldLabels: Record<string, string> = { order_id: "Order", dataset_id: "Dataset", user_id: "User", sha256: "SHA-256" };
+const fieldLabels: Record<string, string> = { volume_ul: "Volume (µL)", order_id: "Order", dataset_id: "Dataset", user_id: "User", sha256: "SHA-256" };
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const MAX_TEXT = 120;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;

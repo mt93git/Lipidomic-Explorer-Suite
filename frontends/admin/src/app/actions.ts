@@ -27,7 +27,9 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
   }
   // Discard a previous account's preference before resolving this account's memberships.
   (await cookies()).set(clientCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
-  return redirectAfterAction("/choose-client");
+  // An existing account signing in to accept an invitation returns to that link; nothing else is followed.
+  const next = String(form.get("next") ?? "");
+  return redirectAfterAction(/^\/invite\/[0-9a-f]{64}$/.test(next) ? next : "/choose-client");
 }
 
 export async function enterDemo() {

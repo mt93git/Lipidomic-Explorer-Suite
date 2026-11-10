@@ -5,8 +5,11 @@ import type { Order } from "../models";
 import {
   DataError, registryClosedProblem, stageFromDb, type Condition, type OrderSummary, type RegisteredSample, type RegistryDetail, type SampleInput, type ShipmentInput, type ShipmentRecord,
 } from "../samples";
+import { sampleHistory, type SampleAliquot, type SampleDetail, type SampleInjection } from "../sample-detail";
 import { applyDemoState, recordSamples, recordShipment, type DemoSample, type DemoShipment } from "../samples-demo";
+import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
+import { demoEvents, liveContext } from "./audit";
 import { readDemoState, writeDemoState } from "./demo-store";
 
 export { DataError };
@@ -89,6 +92,66 @@ async function liveDetail(code: string): Promise<RegistryDetail | null> {
   };
 }
 
+// ---------------------------------------------------------------- sample detail (live)
+
+type AliquotRow = { id: string; volume_ul: number | string | null; extracted_at: string | null; extracted_by: string | null; archived_at: string | null };
+type Embedded<T> = T | T[] | null;
+type InjectionRow = {
+  id: string; seq: number; sample_name: string; status: string; plate: string | null; vial: string | null;
+  batch_version: Embedded<{ version: number; batch: Embedded<{ name: string }> }>;
+};
+const one = <T,>(value: Embedded<T>): T | null => (Array.isArray(value) ? value[0] : value) ?? null;
+export const SAMPLE_EVENT_LIMIT = 200;
+const EVENT_LIMIT = SAMPLE_EVENT_LIMIT;
+type EventRow = { id: number; created_at: string; actor: string | null; entity: string; entity_id: string | null; action: "INSERT" | "UPDATE"; before: Record<string, unknown> | null; after: Record<string, unknown> | null };
+
+async function liveSampleDetail(code: string, session: { userId: string; displayName: string }): Promise<SampleDetail | null> {
+  const db = await admin();
+  const found = await db.from("sample").select(`${sampleSelect}, order_id, shipment_id, archived_reason`).eq("sample_code", code).maybeSingle();
+  if (found.error) throw refusal(found.error);
+  if (!found.data) return null;
+  const row = found.data as unknown as SampleRow & { order_id: string; shipment_id: string | null; archived_reason: string | null };
+  const [order, shipment, aliquots] = await Promise.all([
+    db.from("order").select(orderSelect).eq("id", row.order_id).maybeSingle(),
+    row.shipment_id ? db.from("shipment").select(shipmentSelect).eq("id", row.shipment_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    db.from("aliquot").select("id, volume_ul, extracted_at, extracted_by, archived_at").eq("sample_id", row.id).order("created_at"),
+  ]);
+  for (const result of [order, shipment, aliquots]) if (result.error) throw refusal(result.error);
+  const aliquotRows = (aliquots.data ?? []) as unknown as AliquotRow[];
+  const aliquotIds = aliquotRows.map(item => item.id);
+  // Ids in the filters come from the database (uuids), never from the URL: the code was matched with eq above.
+  const clauses = [`and(entity.eq.sample,entity_id.eq.${row.id})`, `and(entity.eq.exclusion,after->>sample_id.eq.${row.id})`];
+  if (aliquotIds.length) clauses.push(`and(entity.eq.aliquot,entity_id.in.(${aliquotIds.join(",")}))`, `and(entity.eq.injection,after->>aliquot_id.in.(${aliquotIds.join(",")}))`);
+  const [injections, events] = await Promise.all([
+    aliquotIds.length
+      ? db.from("injection").select("id, seq, sample_name, status, plate, vial, batch_version:batch_version(version, batch:batch(name))").in("aliquot_id", aliquotIds).is("archived_at", null)
+      : Promise.resolve({ data: [], error: null }),
+    db.from("audit_event").select("id, created_at, actor, entity, entity_id, action, before, after").or(clauses.join(",")).order("id", { ascending: false }).limit(EVENT_LIMIT),
+  ]);
+  if (injections.error) throw refusal(injections.error);
+  if (events.error) throw refusal(events.error);
+  const audit = ((events.data ?? []) as unknown as EventRow[]).map(item => ({
+    id: Number(item.id), createdAt: item.created_at, actor: item.actor, entity: item.entity, entityId: item.entity_id, action: item.action, before: item.before, after: item.after,
+  }));
+  const ctx = await liveContext(db, audit, session);
+  const shipmentRecord = shipment.data ? toShipment(shipment.data as unknown as ShipmentRow) : null;
+  const sample = toSample(row);
+  return {
+    sample: { ...sample, archivedReason: row.archived_reason },
+    order: order.data ? toSummary(order.data as unknown as OrderRow) : null,
+    shipment: shipmentRecord && { ...shipmentRecord, receivedBy: shipmentRecord.receivedBy ? ctx.people[shipmentRecord.receivedBy] ?? "Lab staff" : null },
+    aliquots: aliquotRows.map((item): SampleAliquot => ({
+      id: item.id, volumeUl: item.volume_ul === null ? null : Number(item.volume_ul), extractedAt: item.extracted_at,
+      extractedBy: item.extracted_by ? ctx.people[item.extracted_by] ?? "Lab staff" : null, archived: item.archived_at !== null,
+    })),
+    injections: ((injections.data ?? []) as unknown as InjectionRow[]).map((item): SampleInjection => {
+      const version = one(item.batch_version);
+      return { id: item.id, seq: item.seq, name: item.sample_name, batch: one(version?.batch ?? null)?.name ?? null, version: version?.version ?? null, status: item.status, plate: item.plate, vial: item.vial };
+    }).sort((a, b) => (a.batch ?? "").localeCompare(b.batch ?? "") || (a.version ?? 0) - (b.version ?? 0) || a.seq - b.seq),
+    history: sampleHistory(audit, ctx, { id: row.id, code, aliquotIds }),
+  };
+}
+
 // ---------------------------------------------------------------- demo
 
 const demoActor = demoSession.displayName;
@@ -133,6 +196,26 @@ export async function getRegistryOrder(code: string): Promise<RegistryDetail | n
   if (!order) return null;
   const shipment = state.shipments.filter(item => item.orderCode === code).at(-1);
   return { order: demoSummary(order), shipment: shipment ? demoShipment(shipment) : null, samples: state.samples.filter(item => item.orderCode === code).map(demoSample) };
+}
+
+// One sample by its code (ORD041-S001) with its order, shipment, aliquots, injections and audit history, or null when
+// there is no such sample or RLS hides it. Lab staff only. The demo has no aliquots or injections: those sections are empty.
+export async function getSampleDetail(code: string): Promise<SampleDetail | null> {
+  const session = await requireWorkspace("staff");
+  if (live()) return liveSampleDetail(code, session);
+  const state = await readDemoState();
+  const found = state.samples.find(item => item.code === code);
+  if (!found) return null;
+  const order = applyDemoState(demoOrders, state).find(item => item.code === found.orderCode);
+  const shipment = state.shipments.find(item => item.id === found.shipmentId);
+  const { events, ctx } = demoEvents(state);
+  return {
+    sample: { ...demoSample(found), archivedReason: null },
+    order: order ? demoSummary(order) : null,
+    shipment: shipment ? demoShipment(shipment) : null,
+    aliquots: [], injections: [],
+    history: sampleHistory(events, ctx, { id: found.id, code, aliquotIds: [] }),
+  };
 }
 
 // admin.receive_shipment(p_order_id, p_carrier, p_tracking_number, p_condition, p_box_count, p_notes) returns uuid

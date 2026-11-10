@@ -75,7 +75,7 @@ function demoActor(session: { userId: string; displayName: string }, actorId?: s
 }
 const demoVersion = (dataset: DemoDataset): VersionSummary => ({ id: dataset.id, version: dataset.version, status: dataset.status, signatures: dataset.signatures.length, releasedAt: dataset.releasedAt, projectId: dataset.projectId });
 function fromDemo(dataset: DemoDataset, state: DemoState): DatasetRecord {
-  const order = demoOrders.find(item => item.code === dataset.orderCode);
+  const order = applyDemoState(demoOrders, state).find(item => item.code === dataset.orderCode);
   const file = (key: "full" | "analysis" | "companion", path: string): DatasetFile => ({ label: labels[key], sheets: dataset[key].sheets, sha256: dataset[key].sha256, sizeBytes: dataset[key].sizeBytes, path });
   const paths = datasetPaths(dataset.clientId, dataset.orderCode, { full: dataset.full.sha256, analysis: dataset.analysis.sha256, companion: dataset.companion.sha256 });
   return {
@@ -434,7 +434,7 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
   if (!live()) {
     return demoWrite((state, actor) => {
       const dataset = (state.datasets ?? []).find(item => item.id === input.datasetId);
-      const order = dataset ? demoOrders.find(item => item.code === dataset.orderCode) : undefined;
+      const order = dataset ? applyDemoState(demoOrders, state).find(item => item.code === dataset.orderCode) : undefined;
       const projectId = randomUUID();
       const next = recordRelease(state, { datasetId: input.datasetId, actor, now: new Date(), projectId, projectName: projectName(dataset?.orderCode ?? "", order?.description ?? null) });
       return { state: next, result: { projectId } };
