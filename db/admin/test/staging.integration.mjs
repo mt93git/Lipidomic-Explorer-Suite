@@ -1175,6 +1175,47 @@ try {
   }
 }
 
+// ---------------------------------------------------------------- Member names and the contact for clients (0023_client_member_names.sql)
+// The run's Admin approves a throwaway access request into client A as Requester; the server (service key) accepts
+// the invitation for a throwaway account with that email, as the invitation page does. The membership carries the
+// name the person wrote, and the run's Operator reads it through PostgREST. A plain invitation names its member by
+// the invited email. The contact for clients: the Operator is refused, the Admin sets it, the requester reads it from
+// the table, anon only through client_contact_text (the table stays closed to anon). In `finally` the text that was
+// there before the run is set again; the memberships are retired with the run's users, the client by archiveRun.
+const cnPrior = sql(`select coalesce((select body from admin.client_contact where archived_at is null), '')`);
+try {
+  const cnNamed = await createUser('f5-named');
+  const cnPlain = await createUser('f5-plain');
+  const cnSent = await serviceRpc('submit_access_request', { p_full_name: `${run} Named Person`, p_email: cnNamed.email, p_organisation: `${run} F5 org`, p_kind: 'pi_lab', p_message: null });
+  const cnList = await rpc(adminToken, 'list_access_requests', {});
+  const cnRequestId = Array.isArray(cnList.body) ? cnList.body.find(r => r.email === cnNamed.email)?.id : undefined;
+  const cnApproved = await rpc(adminToken, 'approve_access_request', { p_request_id: cnRequestId, p_client_id: clientA, p_new_client_name: null, p_new_client_kind: null, p_client_role: 'requester' });
+  const cnAccepted = typeof cnApproved.body === 'string' ? await serviceRpc('accept_invitation', { p_token: cnApproved.body, p_user_id: cnNamed.id }) : cnApproved;
+  const cnInvited = await rpc(adminToken, 'create_invitation', { p_email: cnPlain.email, p_lab_role: null, p_client_id: clientA, p_client_role: 'viewer' });
+  const cnAcceptedPlain = typeof cnInvited.body === 'string' ? await serviceRpc('accept_invitation', { p_token: cnInvited.body, p_user_id: cnPlain.id }) : cnInvited;
+  const cnRead = await pgCall(await api(operatorToken, `client_member?select=user_id,display_name&client_id=eq.${clientA}&user_id=in.(${cnNamed.id},${cnPlain.id})`));
+  const cnName = (user) => cnRead.body?.find?.(r => r.user_id === user.id)?.display_name;
+  check('0023: accepting an invitation names the member (the access request\'s full name, else the invited email); the Operator reads both names',
+    cnSent.ok && cnApproved.ok && cnAccepted.ok && cnInvited.ok && cnAcceptedPlain.ok && cnRead.ok
+      && cnName(cnNamed) === `${run} Named Person` && cnName(cnPlain) === cnPlain.email,
+    [cnSent, cnApproved, cnAccepted, cnInvited, cnAcceptedPlain, cnRead].map(show).join(' | '));
+
+  const cnByOperator = await rpc(operatorToken, 'set_client_contact', { p_body: `${run} operator text` });
+  const cnSet = await rpc(adminToken, 'set_client_contact', { p_body: `${run} write to lab@example.test` });
+  const cnSeen = await pgCall(await api(requesterToken, 'client_contact?select=body&archived_at=is.null'));
+  const cnAnon = await rpc(env.ANON_KEY, 'client_contact_text', {});
+  const cnAnonTable = await pgCall(await api(env.ANON_KEY, 'client_contact?select=body'));
+  const cnDirect = await pgCall(await api(adminToken, 'client_contact', { method: 'POST', body: JSON.stringify({ body: `${run} direct` }) }));
+  check('0023: only lab Owner/Admin set the contact for clients (42501 for the Operator); a requester reads it; anon reads only the text through client_contact_text; no direct insert',
+    pgRefused(cnByOperator) && cnSet.ok && cnSeen.ok && cnSeen.body?.length === 1 && cnSeen.body[0].body === `${run} write to lab@example.test`
+      && cnAnon.ok && cnAnon.body === `${run} write to lab@example.test` && !cnAnonTable.ok && !cnDirect.ok,
+    [cnByOperator, cnSet, cnSeen, cnAnon, cnAnonTable, cnDirect].map(show).join(' | '));
+} finally {
+  const restored = await rpc(adminToken, 'set_client_contact', { p_body: cnPrior });
+  check('0023 teardown: the contact for clients is back to what it was before the run',
+    restored.ok && sql(`select coalesce((select body from admin.client_contact where archived_at is null), '')`) === cnPrior, show(restored));
+}
+
 } catch (error) {
   failures++;
   console.log(`FAIL the run stopped: ${error instanceof Error ? error.message : error}`);

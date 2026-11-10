@@ -59,9 +59,9 @@ describe('0015: grants', () => {
     });
   });
 
-  test('anon can execute nothing in admin but invitation_preview and reads no admin table', async () => {
+  test('anon can execute nothing in admin but invitation_preview and client_contact_text (0023) and reads no admin table', async () => {
     const fns = (await db.query("SELECT proname FROM pg_proc WHERE pronamespace = 'admin'::regnamespace AND has_function_privilege('anon', oid, 'EXECUTE')")).rows;
-    expect(fns.map(r => r.proname)).toEqual(['invitation_preview']);
+    expect(fns.map(r => r.proname).sort()).toEqual(['client_contact_text', 'invitation_preview']);
     const rels = (await db.query("SELECT relname FROM pg_class WHERE relnamespace = 'admin'::regnamespace AND relkind IN ('r', 'v', 'm', 'S') AND (has_table_privilege('anon', oid, 'SELECT') OR has_table_privilege('anon', oid, 'INSERT') OR has_table_privilege('anon', oid, 'UPDATE'))")).rows;
     expect(rels).toEqual([]);
   });
@@ -163,7 +163,9 @@ describe('0015: preview and accept', () => {
     const used = await invitationOf(clientToken);
     expect(used).toMatchObject({ accepted_by: viewer, accepted_at: expect.any(Date) });
     expect((await db.query("SELECT action FROM admin.audit_event WHERE entity = 'invitation' AND entity_id = $1 ORDER BY id", [used.id])).rows.map(r => r.action)).toEqual(['INSERT', 'UPDATE']);
-    expect(Number((await db.query("SELECT count(*) FROM admin.audit_event WHERE entity = 'client_member' AND after->>'user_id' = $1", [viewer])).rows[0].count)).toBe(1);
+    // The membership is inserted, then named from the invitation (0023): two audited writes.
+    expect((await db.query("SELECT action, after->>'display_name' AS name FROM admin.audit_event WHERE entity = 'client_member' AND after->>'user_id' = $1 ORDER BY id", [viewer])).rows)
+      .toEqual([{ action: 'INSERT', name: null }, { action: 'UPDATE', name: 'new.viewer@example.test' }]);
 
     await asRole('service_role');
     await expect(accept(clientToken, viewer)).rejects.toThrow(/already used/);

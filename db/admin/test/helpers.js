@@ -30,6 +30,7 @@ export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
   'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
+  'client_contact',
 ];
 
 export async function freshDb({ seed = true } = {}) {
@@ -90,6 +91,8 @@ async function seedAll(db) {
   await q("INSERT INTO admin.release_policy(eligible_signers, required_signatures) VALUES ('{}', 2)");
   // The lab's current shipping instructions (0019), shown to clients on an accepted order.
   await q("INSERT INTO admin.shipping_instructions(body, set_by) VALUES ('Ship on dry ice, Monday to Wednesday, to the synthetic lab address.', $1)", [U.admin]);
+  // The lab's contact for clients (0023), shown on Request access, a waiting or declined order and Your access.
+  await q("INSERT INTO admin.client_contact(body, set_by) VALUES ('Write to lab@example.test, quoting your reference.', $1)", [U.admin]);
   // One pending client invitation (0015); only the digest of a synthetic token is stored.
   await q("INSERT INTO admin.invitation(id, email, client_id, client_role, token_sha256, expires_at, created_by) VALUES ($1, 'invitee@example.test', $2, 'viewer', $3, now() + interval '7 days', $4)", [id(600), C.A, 'c'.repeat(64), U.admin]);
 
