@@ -1,26 +1,44 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "@/components/app-link";
 import { usePathname } from "next/navigation";
 import { signOut, switchView } from "@/app/actions";
 import type { AppSession } from "@/lib/models";
 import { initials } from "@/lib/initials";
-import { navigation } from "@/lib/navigation";
+import { sidebarNavigation, waveTag } from "@/lib/navigation";
 import { GlobalSearch } from "./global-search";
 import { ScopeControl } from "./scope-control";
 
 export function AppShell({ session, children }: { session: AppSession; children: ReactNode }) {
   const pathname = (usePathname() || "/").replace(/^\/admin(?=\/|$)/, "") || "/";
-    const staff = session.view === "staff";
+  const staff = session.view === "staff";
+  // Phone only (CSS decides): the view switch, scope, user chip and sign-out sit behind a Menu button.
+  // Desktop always shows them; the state only drives aria-expanded and the data-open hook.
+  // It is remembered with the page it was opened on, so navigating (a scope link, say) closes it.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const menuOpen = openOn === pathname;
+  const setMenuOpen = (open: boolean) => setOpenOn(open ? pathname : null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const closeOnEscape = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !menuOpen) return;
+    setMenuOpen(false);
+    menuButton.current?.focus();
+  };
+  const { groups, comingNext } = sidebarNavigation(session.view);
+  // Order pages are reached from cards and tables; the sidebar marks their home.
+  const current = (href: string) => pathname === href || (href === "/pipeline" && pathname.startsWith("/orders/")) ? "page" as const : undefined;
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
-    <header className="topbar">
+    <header className="topbar" onKeyDown={closeOnEscape}>
       <Link className="brand" href={staff ? "/pipeline" : "/client/home"}>
         <span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span>
       </Link>
       <GlobalSearch staff={staff} clients={session.clients} />
-      <div className="topbar-tools">
+      <button type="button" className="menu-button" ref={menuButton} aria-expanded={menuOpen} aria-controls="topbar-menu" onClick={() => setMenuOpen(!menuOpen)}>
+        Menu <span aria-hidden="true">{menuOpen ? "▴" : "▾"}</span>
+      </button>
+      <div className="topbar-tools" id="topbar-menu" data-open={menuOpen || undefined} onClick={event => { if ((event.target as HTMLElement).closest("a")) setMenuOpen(false); }}>
         {session.mock && <form action={switchView} className="view-switch" aria-label="Example view">
           <button name="view" value="staff" aria-pressed={staff}>Lab staff</button>
           <button name="view" value="client" aria-pressed={!staff}>Client</button>
@@ -38,12 +56,18 @@ export function AppShell({ session, children }: { session: AppSession; children:
     <div className="workspace">
       <aside className="sidebar">
         <nav aria-label="Admin navigation">
-          {navigation.filter(group => group.audience === "all" || group.audience === session.view).map(group => <div className="nav-group" key={group.title}>
+          {groups.map(group => <div className="nav-group" key={group.title}>
             <h2 className="nav-heading">{group.title}</h2>
-            {group.items.filter(item => item.href !== "/choose-client" || !staff).map(item => <Link className="nav-link" href={item.href} key={item.href} aria-current={pathname === item.href || (item.label === "Order detail" && pathname.startsWith("/orders/")) ? "page" : undefined}>
+            {group.items.map(item => <Link className="nav-link" href={item.href} key={item.href} aria-current={current(item.href)}>
               <span className="nav-mark" aria-hidden="true">{item.label === "Pipeline" ? "▥" : "◇"}</span>{item.label}
             </Link>)}
           </div>)}
+          {comingNext.length > 0 && <details className="nav-group nav-coming" open={comingNext.some(item => item.href === pathname) || undefined}>
+            <summary className="nav-heading">Coming next · {comingNext.length} screens</summary>
+            {comingNext.map(item => { const tag = waveTag(item.phase); return <Link className="nav-link" href={item.href} key={item.href} aria-current={current(item.href)}>
+              <span className="nav-mark" aria-hidden="true">◇</span>{item.label}{tag && <span className="nav-tag">{tag}</span>}
+            </Link>; })}
+          </details>}
         </nav>
         <div className="sidebar-footer">LIPIDOMICS SERVICE<br />Admin · Phase 1</div>
       </aside>

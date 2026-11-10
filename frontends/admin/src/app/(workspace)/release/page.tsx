@@ -12,14 +12,20 @@ import styles from "./release.module.css";
 export const metadata: Metadata = { title: "Release" };
 
 const latest = (order: ReleaseOrder): VersionSummary | null => order.versions.at(-1) ?? null;
-const describe = (version: VersionSummary) => version.status === "built" ? `v${version.version} built · ${version.signatures} signature${version.signatures === 1 ? "" : "s"}` : `v${version.version} ${datasetStatusLabels[version.status].toLowerCase()}`;
+const describe = (version: VersionSummary) => version.status === "built" ? `v${version.version} built · ${version.signatures} signature${version.signatures === 1 ? "" : "s"}`
+  : `v${version.version} ${datasetStatusLabels[version.status].toLowerCase()}${version.releasedAt && version.status === "released" ? ` · ${formatLabInstant(version.releasedAt)}` : ""}`;
+// What a row needs next: a version in progress is opened, a released order may get a new version, the rest is built.
+type Need = "open" | "build" | "rebuild";
+const need = (order: ReleaseOrder): Need => latest(order)?.status === "built" ? "open" : order.releasedAt || order.versions.some(version => version.status === "released") ? "rebuild" : "build";
+const rank: Record<Need, number> = { open: 0, build: 1, rebuild: 2 };
+const stageIndex = (stage: number) => String(stage + 1).padStart(2, "0");
 
 // The release side starts here: orders whose results file was accepted can be built into a frozen dataset
 // version; each version then collects its signatures and is released from its own page.
 export default async function ReleasePage() {
   const session = await requireWorkspace("staff");
-  const orders = await listReleaseOrders();
-  const awaiting = orders.flatMap(order => order.versions.filter(version => version.status === "built").map(version => ({ order, version })));
+  const orders = (await listReleaseOrders()).map(order => ({ order, need: need(order) })).sort((a, b) => rank[a.need] - rank[b.need]);
+  const awaiting = orders.flatMap(({ order }) => order.versions.filter(version => version.status === "built").map(version => ({ order, version })));
   const canBuild = ["Owner", "Admin", "Operator"].includes(session.role);
   return <>
     <div className="page-heading">
@@ -34,18 +40,16 @@ export default async function ReleasePage() {
       </div>
     </div>
 
-    <section className="panel" aria-labelledby="awaiting-title">
+    {awaiting.length > 0 && <section className="panel" aria-labelledby="awaiting-title">
       <div className="eyebrow">Awaiting signatures or release</div>
-      <h2 id="awaiting-title">Built versions</h2>
-      {awaiting.length
-        ? <ul className="order-list" aria-label="Built dataset versions">
-          {awaiting.map(({ order, version }) => <li key={version.id}><Link className="order-choice" href={`/release/${version.id}`}>
-            <span className="order-code">{order.code} · v{version.version}</span>{order.title}
-            <small>{order.clientName} · {version.signatures} signature{version.signatures === 1 ? "" : "s"} so far</small>
-          </Link></li>)}
-        </ul>
-        : <p className="empty-state">No built version is waiting. Build one below.</p>}
-    </section>
+      <h2 id="awaiting-title">Built versions · {awaiting.length}</h2>
+      <ul className="order-list" aria-label="Built dataset versions">
+        {awaiting.map(({ order, version }) => <li key={version.id}><Link className="order-choice" href={`/release/${version.id}`}>
+          <span className="order-code">{order.code} · v{version.version}</span>{order.title}
+          <small>{order.clientName} · {version.signatures} signature{version.signatures === 1 ? "" : "s"} so far</small>
+        </Link></li>)}
+      </ul>
+    </section>}
 
     <section className="panel" aria-labelledby="build-title">
       <div className="eyebrow">From an accepted results file</div>
@@ -54,21 +58,26 @@ export default async function ReleasePage() {
       {orders.length
         ? <div className={styles.scroll}><table className={styles.orders} aria-label="Orders with an accepted results file">
           <thead><tr><th scope="col">Order</th><th scope="col">Client</th><th scope="col">Stage</th><th scope="col">Results accepted</th><th scope="col">Versions</th><th scope="col"><span className="sr-only">Build</span></th></tr></thead>
-          <tbody>{orders.map(order => {
+          <tbody>{orders.map(({ order, need }) => {
             const last = latest(order);
+            const releasedAt = order.versions.filter(version => version.status === "released").at(-1)?.releasedAt ?? order.releasedAt;
             return <tr key={order.id}>
               <td><span className="order-code">{order.code}</span><br /><small>{order.title}</small></td>
-              <td>{order.clientName}</td>
-              <td>{order.stage >= 9 && order.versions.some(version => version.releasedAt) ? "Released" : stages[order.stage]}</td>
+              <td><span className="client-name"><span className="color-square" data-color={order.clientId.replace(/^example-/, "")} aria-hidden="true" />{order.clientName}</span></td>
+              <td>{need === "rebuild"
+                ? <span className={styles.state} data-status="released">Released{releasedAt ? ` · ${formatLabInstant(releasedAt)}` : ""}</span>
+                : <span className={styles.state} data-status="stage">{stageIndex(order.stage)} · {stages[order.stage]}</span>}</td>
               <td>{order.acceptedAt ? formatLabInstant(order.acceptedAt) : "Accepted"}</td>
               <td>{order.versions.length
                 ? <ul className={styles.versions}>{order.versions.map(version => <li key={version.id}><Link href={`/release/${version.id}`}>{describe(version)}</Link></li>)}</ul>
                 : <span className="muted">None yet</span>}</td>
-              <td>{canBuild
-                ? <ActionForm action={buildDatasetAction} submit={`Build dataset v${(last?.version ?? 0) + 1}`} pendingLabel="Building…" secondary={Boolean(last)}>
-                  <input type="hidden" name="orderId" value={order.id} />
-                </ActionForm>
-                : <span className="muted">Operator access needed</span>}</td>
+              <td>{need === "open" && last
+                ? <Link className="button secondary" href={`/release/${last.id}`}>Open v{last.version} →</Link>
+                : canBuild
+                  ? <ActionForm action={buildDatasetAction} submit={need === "rebuild" ? `Build v${(last?.version ?? 0) + 1}` : `Build dataset v${(last?.version ?? 0) + 1}`} pendingLabel="Building…" secondary={need === "rebuild"}>
+                    <input type="hidden" name="orderId" value={order.id} />
+                  </ActionForm>
+                  : <span className="muted">Operator access needed</span>}</td>
             </tr>;
           })}</tbody>
         </table></div>

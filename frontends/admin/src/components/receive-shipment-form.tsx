@@ -3,9 +3,12 @@
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { receiveShipmentAction, type ReceiveShipmentState } from "@/app/(workspace)/receive-shipment/actions";
+import { ErrorSummary, FormAlert } from "@/components/error-summary";
 import { conditionLabels, conditionNotes, conditions, type OrderSummary } from "@/lib/samples";
 
 const carriers = ["FedEx", "UPS", "DHL", "USPS", "World Courier", "Hand delivered"];
+// Field order of the form, for the error summary; each control carries the id ship-<field>.
+const fieldLabels: [keyof NonNullable<ReceiveShipmentState["errors"]>, string][] = [["orderId", "Order"], ["carrier", "Carrier"], ["trackingNumber", "Tracking number"], ["condition", "Condition on arrival"], ["boxCount", "Boxes"], ["notes", "Notes"]];
 
 // The arrival record. The order is chosen here and mirrored into the URL so the page can show its facts;
 // the other fields are plain form fields validated by the browser first and by the server action again.
@@ -20,7 +23,8 @@ export function ReceiveShipmentForm({ orders, selected }: { orders: OrderSummary
   const fieldError = (field: keyof NonNullable<ReceiveShipmentState["errors"]>) => error(field) ? <small id={`ship-${field}-error`} className="field-error">{error(field)}</small> : null;
 
   return <form action={action} className="record-form">
-    {state.error && <p className="error" role="alert">{state.error}</p>}
+    {state.error && <FormAlert>{state.error}</FormAlert>}
+    <ErrorSummary fields={fieldLabels.filter(([field]) => error(field)).map(([field, label]) => ({ id: `ship-${field}`, label }))} />
     <input type="hidden" name="orderCode" value={current?.code ?? ""} />
     <div className="field">
       <label className="field-label" htmlFor="ship-orderId">Order</label>
@@ -45,7 +49,7 @@ export function ReceiveShipmentForm({ orders, selected }: { orders: OrderSummary
         {fieldError("trackingNumber")}
       </div>
     </div>
-    <fieldset className="field radio-group" {...describe("condition")}>
+    <fieldset className="field radio-group" id="ship-condition" tabIndex={-1} {...describe("condition")}>
       <legend className="field-label">Condition on arrival</legend>
       <div className="radio-options">
         {conditions.map(condition => <label key={condition} className="radio">

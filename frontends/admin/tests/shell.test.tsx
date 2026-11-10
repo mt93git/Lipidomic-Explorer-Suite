@@ -1,28 +1,53 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/app-shell";
 import { demoSession } from "@/lib/demo";
-import { navigation } from "@/lib/navigation";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/pipeline", useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams("client=example-cedar") }));
+const pathname = vi.hoisted(() => ({ current: "/pipeline" }));
+vi.mock("next/navigation", () => ({ usePathname: () => pathname.current, useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams("client=example-cedar") }));
 vi.mock("@/app/actions", () => ({ signOut: vi.fn(), switchView: vi.fn() }));
 
+const nav = () => screen.getByRole("navigation", { name: "Admin navigation" });
+const groupLinks = (title: string) => within(within(nav()).getByText(title).closest(".nav-group") as HTMLElement).getAllByRole("link").map(link => link.getAttribute("href"));
+
 describe("app shell", () => {
-  it("shows the brand, client scope, staff role, example label, and grouped navigation", () => {
+  it("shows the brand, client scope, staff role, example label, and the working screens grouped by the flow", () => {
     render(<AppShell session={demoSession}><h1>Pipeline content</h1></AppShell>);
     expect(screen.getByText("Lipidomic Explorer")).toBeVisible();
     expect(screen.getByText("ADMIN")).toBeVisible();
     expect(screen.getByText("Example data")).toBeVisible();
     expect(screen.getByText("Operator")).toBeVisible();
     expect(screen.getByRole("searchbox", { name: "Search orders" })).toBeVisible();
-    const nav = screen.getByRole("navigation", { name: "Admin navigation" });
-    for (const group of navigation.filter(g => g.audience !== "client")) {
-      expect(within(nav).getByText(group.title)).toBeVisible();
-      for (const item of group.items.filter(item => item.href !== "/choose-client")) expect(within(nav).getByRole("link", { name: item.label })).toHaveAttribute("href", item.href);
-    }
-    expect(within(nav).queryByRole("link", { name: "Choose client" })).not.toBeInTheDocument();
+    expect(groupLinks("LAB WORK")).toEqual(["/pipeline", "/receive-shipment", "/sample-registry", "/ingest-results", "/name-dictionary", "/release", "/datasets"]);
+    expect(groupLinks("ORGANIZATION")).toEqual(["/audit-log", "/release-policy"]);
+    for (const name of ["Pipeline", "Receive shipment", "Sample registry", "Ingest results", "Name dictionary", "Release", "Datasets", "Audit log"]) expect(within(nav()).getByRole("link", { name })).toBeVisible();
+    expect(within(nav()).getByRole("link", { name: "Release policy" })).toHaveAttribute("href", "/release-policy");
+    expect(within(nav()).getByRole("link", { name: "Pipeline" })).toHaveAttribute("aria-current", "page");
+    for (const gone of ["Sign in", "Choose client", "Order detail", "Sample detail", "Client detail"]) expect(within(nav()).queryByRole("link", { name: gone })).not.toBeInTheDocument();
+    expect(within(nav()).queryByText("ACCESS")).not.toBeInTheDocument();
+    expect(within(nav()).queryByText("CLIENTS")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lab staff" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("main")).toHaveTextContent("Pipeline content");
+  });
+  it("folds the placeholder screens into a collapsed Coming next group, tagged with their wave when the plan names one", () => {
+    render(<AppShell session={demoSession}>Board</AppShell>);
+    const coming = within(nav()).getByText("Coming next · 12 screens").closest("details") as HTMLDetailsElement;
+    expect(coming).not.toHaveAttribute("open");
+    const links = within(coming).getAllByRole("link", { hidden: true });
+    expect(links.map(link => link.getAttribute("href"))).toEqual(["/new-order", "/sample-detail", "/storage", "/batch-builder", "/batch-run", "/qc-review", "/clients", "/client-detail", "/people", "/roles-permissions", "/instruments-panels", "/notifications"]);
+    expect(within(coming).getByRole("link", { name: "New order Wave 2", hidden: true })).toBeInTheDocument();
+    expect(within(coming).getByRole("link", { name: "QC review Wave 4", hidden: true })).toBeInTheDocument();
+    expect(within(coming).getByRole("link", { name: "Notifications", hidden: true }).querySelector(".nav-tag")).toBeNull();
+  });
+  it("opens Coming next when the page is one of its screens, so the current entry is visible", () => {
+    pathname.current = "/storage";
+    try {
+      render(<AppShell session={demoSession}>Soon</AppShell>);
+      const coming = within(nav()).getByText("Coming next · 12 screens").closest("details") as HTMLDetailsElement;
+      expect(coming).toHaveAttribute("open");
+      expect(within(coming).getByRole("link", { name: "Storage Wave 2" })).toHaveAttribute("aria-current", "page");
+    } finally { pathname.current = "/pipeline"; }
   });
   it("reflects the overview's client filter in the top-bar scope and links every client into it", () => {
     render(<AppShell session={demoSession}>Board</AppShell>);
@@ -33,18 +58,79 @@ describe("app shell", () => {
     expect(within(scope).getByRole("link", { name: "Example Atlas" })).toHaveAttribute("href", "/pipeline?client=example-cedar&client=example-atlas");
     expect(screen.queryByRole("link", { name: /Choose client/ })).not.toBeInTheDocument();
   });
-  it("shows only access and portal navigation for a client, with the client chooser", () => {
+  it("shows only the portal navigation for a client, with the client chooser in the top bar", () => {
     render(<AppShell session={{ ...demoSession, view: "client", role: "Client admin", selectedClient: demoSession.clients[0] }}>Portal</AppShell>);
     expect(screen.getByRole("link", { name: /Example Atlas/ })).toHaveAttribute("href", "/choose-client");
     expect(screen.queryByRole("group", { name: "Client scope" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Client home" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Client order" })).toBeVisible();
-    expect(screen.queryByRole("link", { name: "Pipeline" })).not.toBeInTheDocument();
+    expect(within(nav()).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/client/home", "/client/order"]);
+    expect(within(nav()).getByRole("link", { name: "Client home" })).toBeVisible();
+    expect(within(nav()).queryByText(/Coming next/)).not.toBeInTheDocument();
     expect(screen.queryByText("ORGANIZATION")).not.toBeInTheDocument();
   });
   it("never offers the mock view switch or example label in live mode", () => {
     render(<AppShell session={{ ...demoSession, mock: false }}>Live</AppShell>);
     expect(screen.queryByRole("button", { name: "Lab staff" })).not.toBeInTheDocument();
     expect(screen.queryByText("Example data")).not.toBeInTheDocument();
+  });
+});
+
+describe("phone top bar menu", () => {
+  const menu = () => document.getElementById("topbar-menu") as HTMLElement;
+  it("renders a Menu button that starts collapsed and controls the panel holding the tools", () => {
+    render(<AppShell session={demoSession}>Board</AppShell>);
+    const button = screen.getByRole("button", { name: "Menu" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveAttribute("aria-controls", "topbar-menu");
+    expect(menu()).not.toHaveAttribute("data-open");
+    // brand and search stay in the bar itself, the rest moves into the panel
+    expect(menu()).not.toContainElement(screen.getByRole("searchbox", { name: "Search orders" }));
+    expect(menu()).not.toContainElement(screen.getByText("Lipidomic Explorer"));
+    for (const control of [screen.getByRole("button", { name: "Lab staff" }), screen.getByRole("button", { name: "Client" }), screen.getByRole("group", { name: "Client scope" }), screen.getByText("Operator"), screen.getByRole("button", { name: "Sign out" })]) expect(menu()).toContainElement(control);
+  });
+  it("toggles open and closed from the button", async () => {
+    const user = userEvent.setup();
+    render(<AppShell session={demoSession}>Board</AppShell>);
+    const button = screen.getByRole("button", { name: "Menu" });
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(menu()).toHaveAttribute("data-open", "true");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(menu()).not.toHaveAttribute("data-open");
+  });
+  it("closes on Escape and returns focus to the button", async () => {
+    const user = userEvent.setup();
+    render(<AppShell session={demoSession}>Board</AppShell>);
+    const button = screen.getByRole("button", { name: "Menu" });
+    await user.click(button);
+    screen.getByRole("button", { name: "Sign out" }).focus();
+    await user.keyboard("{Escape}");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(menu()).not.toHaveAttribute("data-open");
+    expect(button).toHaveFocus();
+  });
+  it("leaves Escape alone while the menu is closed", async () => {
+    const user = userEvent.setup();
+    render(<AppShell session={demoSession}>Board</AppShell>);
+    screen.getByRole("button", { name: "Sign out" }).focus();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "Sign out" })).toHaveFocus();
+  });
+  it("still posts sign-out and the view switch to the same server actions", async () => {
+    const user = userEvent.setup();
+    const actions = await import("@/app/actions");
+    render(<AppShell session={demoSession}>Board</AppShell>);
+    await user.click(screen.getByRole("button", { name: "Menu" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
+    await waitFor(() => expect(actions.signOut).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Client" }));
+    await waitFor(() => expect(actions.switchView).toHaveBeenCalledTimes(1));
+    expect((vi.mocked(actions.switchView).mock.calls[0][0] as FormData).get("view")).toBe("client");
+  });
+  it("offers the client chooser and no view switch in a live client session", () => {
+    render(<AppShell session={{ ...demoSession, mock: false, view: "client", role: "Client admin", selectedClient: demoSession.clients[0] }}>Portal</AppShell>);
+    expect(menu()).toContainElement(screen.getByRole("link", { name: /Example Atlas/ }));
+    expect(screen.queryByRole("button", { name: "Lab staff" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu" })).toBeInTheDocument();
   });
 });

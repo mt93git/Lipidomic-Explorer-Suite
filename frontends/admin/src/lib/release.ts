@@ -41,6 +41,24 @@ export function releaseProgress(policy: ReleasePolicy, signatures: SignatureLike
   return { counted, required, missing: Math.max(0, required - counted), met: counted >= required };
 }
 
+// The one thing a person can do on a dataset version, for the page's "Your turn" card: sign, release, or nothing
+// with the reason. Built from the same rules the server actions enforce; the actions stay the authority.
+export type PersonTurn = { action: "sign" | "release"; reason: string } | { action: "none"; reason: string };
+export function personTurn({ status, policy, signatures, people, person }:
+  { status: DatasetStatus; policy: ReleasePolicy; signatures: SignatureLike[]; people: LabPerson[]; person: LabPerson | null | undefined }): PersonTurn {
+  if (status === "released") return { action: "none", reason: "Released. Nothing left to sign; use Withdraw only if this version must be pulled." };
+  if (status === "superseded") return { action: "none", reason: "Superseded by a newer version. Nothing left to sign or release." };
+  if (status === "withdrawn") return { action: "none", reason: "Withdrawn. Nothing left to sign or release." };
+  const progress = releaseProgress(policy, signatures, people);
+  if (!isEligibleSigner(policy, person)) return { action: "none", reason: progress.met ? "Only an eligible signer may release." : "You are not an eligible signer under the current policy." };
+  if (progress.met) return { action: "release", reason: `The policy count is met (${progress.counted} of ${progress.required}).` };
+  if (signatures.some(signature => signature.userId === person?.userId)) {
+    const waiting = progress.missing === 1 ? (progress.required === 2 ? "a second signer" : "one more signer") : `${progress.missing} more signers`;
+    return { action: "none", reason: `You already signed. Waiting for ${waiting}.` };
+  }
+  return { action: "sign", reason: "You are eligible under the current policy. Signing freezes the three digests of the manifest." };
+}
+
 // admin.set_release_policy's checks, worded for the Owner; null when the policy can be saved.
 export function policyProblem(eligible: string[], required: number, staff: LabPerson[]): string | null {
   if (!Number.isInteger(required) || required < 2) return "A release needs at least 2 signatures.";

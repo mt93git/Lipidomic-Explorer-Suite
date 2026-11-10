@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, type ReactNode } from "react";
+import { FormAlert } from "@/components/error-summary";
 import type { ActionState } from "./actions";
 
 type Action = (previous: ActionState, form: FormData) => Promise<ActionState>;
@@ -13,6 +14,6 @@ export function ActionForm({ action, submit, pendingLabel = "Working…", disabl
   return <form action={formAction} className={className} aria-busy={pending}>
     {children}
     <button className={`button${secondary ? " secondary" : ""}`} disabled={pending || disabled}>{pending ? pendingLabel : submit}</button>
-    {state.error && <p role="alert" className="error">{state.error}</p>}
+    {state.error && <FormAlert>{state.error}</FormAlert>}
   </form>;
 }

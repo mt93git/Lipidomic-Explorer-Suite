@@ -57,11 +57,11 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames }: Props) 
     {issues.length > 0 && <p className="error" role="alert">{plural(rowsWithIssues, "row")} need{rowsWithIssues === 1 ? "s" : ""} attention before saving. Each problem is written under its cell.</p>}
     {state.error && !issues.length && <p className="error" role="alert">{state.error}</p>}
 
-    {drafts.length > 0 ? <div className="grid-scroll" role="region" aria-label="Sample grid" tabIndex={0}>
+    {drafts.length > 0 ? <div className="grid-frame"><div className="grid-scroll" role="region" aria-label="Sample grid" tabIndex={0}>
       <table className="registry-table" aria-label="Samples to register">
         <thead><tr>
           <th scope="col">#</th>
-          {columns.map(column => <th key={column.field} scope="col" title={column.hint}>{column.label}{column.required && <span className="required-mark" aria-hidden="true"> *</span>}</th>)}
+          {columns.map(column => <th key={column.field} scope="col" title={column.hint} className={column.field === "full_name" ? "pinned" : undefined}>{column.label}{column.required && <span className="required-mark" aria-hidden="true"> *</span>}</th>)}
           <th scope="col"><span className="sr-only">Remove</span></th>
         </tr></thead>
         <tbody>{drafts.map((draft, row) => <tr key={row}>
@@ -69,7 +69,7 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames }: Props) 
           {columns.map(column => {
             const issue = issueFor(row, column.field);
             const errorId = `${idBase}-r${row}-${column.field}-error`;
-            return <td key={column.field} className={issue ? "cell invalid" : "cell"}>
+            return <td key={column.field} className={`cell${issue ? " invalid" : ""}${column.field === "full_name" ? " pinned" : ""}`}>
               <input value={draft[column.field]} aria-label={`Row ${row + 1} ${column.label}`} aria-invalid={issue ? true : undefined} aria-describedby={issue ? errorId : undefined}
                 className={column.field === "full_name" || column.field === "client_sample_id" ? "mono" : undefined} inputMode={column.field === "volume_ul" ? "decimal" : undefined}
                 autoComplete="off" spellCheck={false} style={{ width: column.width }} onChange={event => update(row, column.field, event.target.value)} />
@@ -79,7 +79,7 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames }: Props) 
           <td><button type="button" className="link-button" aria-label={`Remove row ${row + 1}`} onClick={() => remove(row)}>Remove</button></td>
         </tr>)}</tbody>
       </table>
-    </div> : <p className="empty-state">No rows yet. Paste the order&apos;s Metadata sheet above or add a row by hand.</p>}
+    </div><p className="grid-hint">↔ {columns.length - 1} more columns · FullName stays pinned</p></div> : <p className="empty-state">No rows yet. Paste the order&apos;s Metadata sheet above or add a row by hand.</p>}
 
     <div className="registry-toolbar">
       <span className="muted"><small>{drafts.length ? `${plural(drafts.length, "sample")} in the grid${order.expectedSamples ? ` · ${order.expectedSamples} expected` : ""}` : "Codes are assigned when you save and never contain a client name."}</small></span>

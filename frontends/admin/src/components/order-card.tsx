@@ -29,7 +29,7 @@ export function OrderCard({ order, client, companions = [], shared = false, note
       </span>
       <span className="order-code">{order.code}</span>
       <h3>{order.description}</h3>
-      <div className="card-progress"><span>{order.completedSamples} / {order.sampleCount} samples</span><span>{Math.round(order.completedSamples / order.sampleCount * 100)}%</span></div>
+      <div className="card-progress"><span>{order.completedSamples} of {order.sampleCount} samples</span></div>
       <progress max={order.sampleCount} value={order.completedSamples} aria-label={`${order.code} progress`} />
       <span className={`pill ${status}`}>{statusLabels[status]}</span>
       {problem && <span className="card-problem">{problem.label}</span>}

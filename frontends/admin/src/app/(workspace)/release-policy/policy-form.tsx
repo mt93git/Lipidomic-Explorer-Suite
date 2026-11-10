@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { FormAlert } from "@/components/error-summary";
 import { labRoleLabels, type LabPerson, type ReleasePolicy } from "@/lib/release";
 import { setReleasePolicyAction } from "./actions";
 import styles from "../release/release.module.css";
@@ -25,9 +26,10 @@ export function PolicyForm({ policy, staff, demoActors }: { policy: ReleasePolic
       </label>)}
       <p className="muted"><small>{chosen.length ? `${chosen.length} chosen.` : "Nobody chosen: any lab Owner or Admin may sign."}</small></p>
     </fieldset>
-    <label>Required signatures<input name="required" type="number" min={2} max={Math.max(2, staff.length)} step={1} value={required} onChange={event => setRequired(Number(event.target.value) || 2)} disabled={pending} required /></label>
-    {tooFew && <p className="notice">Fewer eligible signers ({chosen.length}) than required signatures ({required}). Tick more people or lower the count.</p>}
+    <label htmlFor="policy-required">Required signatures</label>
+    <input id="policy-required" name="required" type="number" min={2} max={Math.max(2, staff.length)} step={1} value={required} onChange={event => setRequired(Number(event.target.value) || 2)} disabled={pending} required className={styles.count} aria-invalid={tooFew || undefined} />
+    {tooFew && <p className="error error-summary" role="alert"><strong>Fewer eligible signers ({chosen.length}) than required signatures ({required}).</strong> Tick more people or lower <a href="#policy-required">Required signatures</a>.</p>}
     <button className="button" disabled={pending || required < 2 || tooFew}>{pending ? "Saving…" : "Save policy"}</button>
-    {state.error && <p role="alert" className="error">{state.error}</p>}
+    {state.error && <FormAlert>{state.error}</FormAlert>}
   </form>;
 }

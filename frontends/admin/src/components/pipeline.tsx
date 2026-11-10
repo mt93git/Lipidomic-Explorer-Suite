@@ -9,6 +9,7 @@ import {
   scopeLabel, toggleValue, type AudienceData, type PipelineFilters,
 } from "@/lib/pipeline-filters";
 import { OrderCard } from "./order-card";
+import { PipelineBoard } from "./pipeline-board";
 
 type Props = {
   // Already restricted to what this audience may see (scopeToAudience): a client user never receives other clients' records.
@@ -137,19 +138,7 @@ export function Pipeline({ data, filters, onChange, now = new Date() }: Props) {
 
     {scoped.length === 0 && <div className="empty-state" role="status"><strong>No orders match these filters.</strong><p>{emptyHint}</p>{chips.length > 0 && <button type="button" className="button secondary" onClick={clearAll}>Clear all filters</button>}</div>}
 
-    {showBoard && filters.group === "stage" && <>
-      <p className="board-help" id="board-help">Ten stages · scroll to follow the work →</p>
-      <div className="kanban-scroll" role="region" aria-label="Order pipeline" aria-describedby="board-help" tabIndex={0}>
-        <div className="kanban">{stages.map((stage, index) => {
-          const column = active.filter(order => order.stage === index);
-          return <section className="kanban-column" key={stage} aria-label={stage}>
-            <div className="column-heading"><div><span className="column-index">{String(index + 1).padStart(2, "0")}</span><h2>{stage}</h2></div><span className="column-count">{column.length}</span></div>
-            {column.map(order => card(order))}
-            {!column.length && <p className="empty-column">No orders at this stage</p>}
-          </section>;
-        })}</div>
-      </div>
-    </>}
+    {showBoard && filters.group === "stage" && <PipelineBoard orders={scoped} renderOrder={card} />}
 
     {showBoard && filters.group === "client" && <div className="lanes" role="region" aria-label="Orders by client">
       {rows.filter(row => row.selected || active.some(order => order.clientId === row.client.id)).map(row => {

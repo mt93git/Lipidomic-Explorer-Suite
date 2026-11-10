@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { Digest } from "@/components/digest";
 import { notFound } from "next/navigation";
-import { getDataset, type DatasetFile, type ReleaseView } from "@/lib/data/release";
+import { getDataset, type DatasetFile, type DatasetRecord, type ReleaseView } from "@/lib/data/release";
 import { formatLabInstant } from "@/lib/lab-time";
 import {
-  datasetStatusLabels, formatBytes, isEligibleSigner, labRoleLabels, mayOpenInNexo, nexoDatasetLink, releaseProgress, signerRoleLabels, signerRoles, teamLink, type LabPerson,
+  datasetStatusLabels, formatBytes, isEligibleSigner, labRoleLabels, mayOpenInNexo, nexoDatasetLink, personTurn, releaseProgress, signerRoleLabels, signerRoles, teamLink, type LabPerson,
+  type ReleaseProgress,
 } from "@/lib/release";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../action-form";
@@ -15,14 +17,16 @@ export const metadata: Metadata = { title: "Release dataset" };
 type Params = { id: string };
 type Query = { built?: string; signed?: string; released?: string; withdrawn?: string; superseded?: string };
 
-function Banner({ query, view }: { query: Query; view: ReleaseView }) {
+// The outcome of the last action, as a success banner with the next step; the dataset is what the page shows.
+function Banner({ query, view, met, missing }: { query: Query; view: ReleaseView; met: boolean; missing: number }) {
   const { dataset } = view;
-  const text = query.built ? `Dataset v${dataset.version} built for ${dataset.orderCode}: three files recorded with their digests. It can now be signed.`
-    : query.signed ? `Signature recorded on dataset v${dataset.version}.`
-    : query.released ? `Dataset v${dataset.version} released. ${dataset.orderCode} is now Released and its Team project exists.`
-    : query.withdrawn ? `Dataset v${dataset.version} withdrawn. The Team project it created stays in the library.`
-    : query.superseded ? `Dataset v${dataset.version} is now superseded.` : null;
-  return text ? <p className="notice" role="status">{text}</p> : null;
+  const next = (href: string, label: string) => <Link className="button" href={href}>{label}</Link>;
+  if (query.built) return <p className="notice success" role="status"><strong>Dataset v{dataset.version} built for {dataset.orderCode}.</strong> Three files recorded with their digests. It can now be signed.{next("#turn-title", "Sign this version →")}</p>;
+  if (query.signed) return <p className="notice success" role="status"><strong>Signature recorded on dataset v{dataset.version}.</strong> {met ? "The policy count is met; it can be released." : `${missing} more signature${missing === 1 ? "" : "s"} by a different eligible person before release.`}{met && next("#turn-title", "Release it →")}</p>;
+  if (query.released) return <p className="notice success" role="status"><strong>Dataset v{dataset.version} released.</strong> {dataset.orderCode} is now Released and its Team project exists.{next(`/datasets?order=${dataset.orderCode}`, "Datasets →")}</p>;
+  if (query.withdrawn) return <p className="notice error" role="status"><strong>Dataset v{dataset.version} withdrawn.</strong> The Team project it created stays in the library.</p>;
+  if (query.superseded) return <p className="notice" role="status">Dataset v{dataset.version} is now superseded.</p>;
+  return null;
 }
 
 // Demo mode only: whom a form acts as. Live mode has no such choice; the signed-in person acts.
@@ -33,8 +37,30 @@ function ActorField({ label, actors, defaultActor }: { label: string; actors: La
   </label>;
 }
 
+type Step = { name: string; detail: string; state: "done" | "current" | "todo" };
+
+// Where the version is, under the title: Built → Signatures n of m → Release; once released, Released → Team project → Withdraw.
+function StatusStrip({ dataset, progress }: { dataset: DatasetRecord; progress: ReleaseProgress }) {
+  const signers = dataset.signatures.map(signature => signature.name);
+  const steps: Step[] = dataset.status === "released" ? [
+    { name: "Released", detail: dataset.releasedAt ? formatLabInstant(dataset.releasedAt) : "Released", state: "done" },
+    { name: "Team project", detail: dataset.projectName ?? dataset.orderCode, state: "done" },
+    { name: "Withdraw", detail: "Only if this version must be pulled", state: "todo" },
+  ] : [
+    { name: "Built", detail: `${formatLabInstant(dataset.builtAt)}${dataset.builtBy ? ` · ${dataset.builtBy}` : ""}`, state: "done" },
+    { name: `Signatures ${progress.counted} of ${progress.required}`, state: progress.met ? "done" : "current",
+      detail: `${signers.length ? `${signers.join(", ")} signed` : "No signature yet"}${progress.met ? "" : ` · ${progress.missing === 1 ? "one more person" : `${progress.missing} more people`}`}` },
+    { name: "Release", detail: "Creates the Team project", state: progress.met ? "current" : "todo" },
+  ];
+  return <ol className={styles.steps} aria-label="Release progress">{steps.map((step, index) =>
+    <li key={step.name} data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>
+      <span className={styles.dot} aria-hidden="true">{step.state === "done" ? "✓" : index + 1}</span>
+      <span><strong>{step.name}</strong><small>{step.detail}</small></span>
+    </li>)}</ol>;
+}
+
 function FileRow({ file }: { file: DatasetFile }) {
-  return <tr><td>{file.label}</td><td className={styles.sheets}>{file.sheets.join(", ")}</td><td><span className={styles.digest}>{file.sha256 || "not recorded"}</span></td><td>{file.sizeBytes ? formatBytes(file.sizeBytes) : "—"}</td></tr>;
+  return <tr><td>{file.label}</td><td className={styles.sheets}>{file.sheets.join(", ")}</td><td><Digest sha={file.sha256} label={file.label} /></td><td>{file.sizeBytes ? formatBytes(file.sizeBytes) : "—"}</td></tr>;
 }
 
 export default async function ReleaseDatasetPage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<Query> }) {
@@ -49,8 +75,10 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
   // Who the demo forms act as by default: the first eligible demo person who has not signed yet.
   const demoSigner = demoActors?.find(person => eligible(person) && !signedBy.has(person.userId)) ?? demoActors?.find(eligible) ?? demoActors?.[0];
   const demoReleaser = demoActors?.find(person => eligible(person) && signedBy.has(person.userId)) ?? demoActors?.find(eligible) ?? demoActors?.[0];
-  const canSign = dataset.status === "built" && (demoActors ? true : eligible(me) && !signedBy.has(me?.userId ?? ""));
-  const canRelease = dataset.status === "built" && progress.met && (demoActors ? true : eligible(me));
+  // Whose turn: the signed-in person; in the demo, the person the forms act as by default.
+  const turn = personTurn({ status: dataset.status, policy, signatures: dataset.signatures, people, person: demoActors ? demoSigner : me });
+  const turnTitle = turn.action === "sign" ? "Sign this version" : turn.action === "release" ? "Release this version" : "Nothing to do now";
+  const active = dataset.status === "built" || dataset.status === "released";
   const canRetire = dataset.status === "released" && (demoActors ? true : eligible(me));
   const newer = versions.filter(version => version.status === "released" && version.version > dataset.version);
   const eligibleNames = policy.eligibleSigners.length
@@ -78,12 +106,30 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
         <Link className="button secondary" href="/release">← All releases</Link>
       </div>
     </div>
-    <Banner query={query} view={view} />
-    {dataset.status === "withdrawn" && <p className="error" role="status">Withdrawn{dataset.archivedAt ? ` ${formatLabInstant(dataset.archivedAt)}` : ""}{dataset.archivedReason ? ` · ${dataset.archivedReason}` : ""}.</p>}
+    <Banner query={query} view={view} met={progress.met} missing={progress.missing} />
+    {dataset.status === "withdrawn" && !query.withdrawn && <p className="notice error" role="status"><strong>Withdrawn{dataset.archivedAt ? ` ${formatLabInstant(dataset.archivedAt)}` : ""}.</strong>{dataset.archivedReason ? ` ${dataset.archivedReason}` : ""}</p>}
     {dataset.status === "superseded" && <p className="notice">{dataset.archivedReason ?? "Superseded"}{dataset.archivedAt ? ` · ${formatLabInstant(dataset.archivedAt)}` : ""}.</p>}
+
+    {active && <StatusStrip dataset={dataset} progress={progress} />}
 
     <div className="detail-grid">
       <div>
+        {active && <section className={styles.turn} aria-labelledby="turn-eyebrow turn-title">
+          <div className="eyebrow" id="turn-eyebrow">Your turn</div>
+          <h2 id="turn-title">{turnTitle}</h2>
+          <p className="muted">{turn.reason}{turn.action === "release" && " Releasing stages the analysis file in Team's library, creates the project with the client's people as viewers and the signers as owners, and freezes this version."}</p>
+          {turn.action === "sign" && <ActionForm action={signDatasetAction} submit="Sign" pendingLabel="Signing…" className={styles.form}>
+            <input type="hidden" name="datasetId" value={dataset.id} />
+            <ActorField label="Sign as" actors={demoActors} defaultActor={demoSigner?.userId ?? ""} />
+            <label>Role<select name="role" defaultValue="reviewed">{signerRoles.map(role => <option key={role} value={role}>{signerRoleLabels[role]}</option>)}</select></label>
+            <label>Note (optional)<input name="note" maxLength={2000} placeholder="What you checked" /></label>
+          </ActionForm>}
+          {turn.action === "release" && <ActionForm action={releaseDatasetAction} submit="Release dataset" pendingLabel="Releasing…" className={styles.form}>
+            <input type="hidden" name="datasetId" value={dataset.id} />
+            <ActorField label="Release as" actors={demoActors} defaultActor={demoReleaser?.userId ?? ""} />
+          </ActionForm>}
+        </section>}
+
         <section className="panel" aria-labelledby="manifest-title">
           <div className="eyebrow">Manifest</div>
           <h2 id="manifest-title">Files of this version</h2>
@@ -92,7 +138,7 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
             <thead><tr><th scope="col">File</th><th scope="col">Sheets</th><th scope="col">SHA-256</th><th scope="col">Size</th></tr></thead>
             <tbody><FileRow file={dataset.full} /><FileRow file={dataset.analysis} /><FileRow file={dataset.companion} /></tbody>
           </table></div>
-          <dl className="facts">{facts.map(([label, value]) => <div className="fact-row" key={label}><dt>{label}</dt><dd className={label === "Source TXT" ? styles.digest : undefined}>{value}</dd></div>)}</dl>
+          <dl className="facts">{facts.map(([label, value]) => <div className="fact-row" key={label}><dt>{label}</dt><dd>{label === "Source TXT" && dataset.provenance.sourceSha256 ? <Digest sha={value} label="Source TXT" /> : value}</dd></div>)}</dl>
         </section>
 
         <section className="panel" aria-labelledby="signatures-title">
@@ -105,14 +151,6 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
               <span><strong>{signature.name}</strong> · {signerRoleLabels[signature.role]}{signature.note ? ` · ${signature.note}` : ""}<small>{formatLabInstant(signature.signedAt)}{eligible(people.find(person => person.userId === signature.userId)) ? "" : " · no longer eligible; kept as evidence"}</small></span>
             </li>)}</ul>
             : <p className="muted">No signature yet.</p>}
-          {dataset.status === "built" && (canSign
-            ? <ActionForm action={signDatasetAction} submit="Sign" pendingLabel="Signing…" className={styles.form}>
-              <input type="hidden" name="datasetId" value={dataset.id} />
-              <ActorField label="Sign as" actors={demoActors} defaultActor={demoSigner?.userId ?? ""} />
-              <label>Role<select name="role" defaultValue="reviewed">{signerRoles.map(role => <option key={role} value={role}>{signerRoleLabels[role]}</option>)}</select></label>
-              <label>Note (optional)<input name="note" maxLength={2000} placeholder="What you checked" /></label>
-            </ActionForm>
-            : <p className="notice">{signedBy.has(me?.userId ?? "") ? "You have signed this version; the next signature must come from someone else." : "You are not an eligible signer under the current policy."}</p>)}
         </section>
       </div>
 
@@ -122,11 +160,6 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
           <h2 id="release-title">{dataset.status === "built" ? "Release" : "Team project"}</h2>
           {dataset.status === "built" && <>
             <p className="muted">{progress.met ? "The policy count is met. Releasing stages the analysis file in Team's library, creates the project with the client's people as viewers and the signers as owners, and freezes this version." : `${progress.missing} more signature${progress.missing === 1 ? "" : "s"} by a different eligible person before this version can be released.`}</p>
-            <ActionForm action={releaseDatasetAction} submit="Release dataset" pendingLabel="Releasing…" disabled={!canRelease} className={styles.form}>
-              <input type="hidden" name="datasetId" value={dataset.id} />
-              <ActorField label="Release as" actors={demoActors} defaultActor={demoReleaser?.userId ?? ""} />
-            </ActionForm>
-            {!demoActors && progress.met && !eligible(me) && <p className="notice">Only an eligible signer may release.</p>}
           </>}
           {dataset.projectId && <div className={styles.project}>
             <strong>{dataset.projectName ?? dataset.orderCode}</strong>

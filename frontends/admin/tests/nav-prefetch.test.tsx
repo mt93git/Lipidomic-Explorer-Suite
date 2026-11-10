@@ -16,8 +16,9 @@ vi.mock("@/app/actions", () => ({ signOut: vi.fn(), switchView: vi.fn() }));
 describe("side navigation", () => {
   it("does not prefetch its links", () => {
     render(<AppShell session={demoSession}>Board</AppShell>);
-    const links = within(screen.getByRole("navigation", { name: "Admin navigation" })).getAllByRole("link");
-    expect(links.length).toBeGreaterThan(10);
+    // hidden: true also reaches the links inside the collapsed "Coming next" group.
+    const links = within(screen.getByRole("navigation", { name: "Admin navigation" })).getAllByRole("link", { hidden: true });
+    expect(links.length).toBeGreaterThan(15);
     for (const link of links) expect(link, link.textContent ?? "").toHaveAttribute("data-prefetch", "false");
   });
 });

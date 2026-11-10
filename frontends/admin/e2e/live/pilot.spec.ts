@@ -147,9 +147,9 @@ test("3 · Paula signs (Prepared); one more signature by someone else is needed 
   await expect(page.getByText("1 of 2 required signatures")).toBeVisible(slow);
   await expect(page.getByRole("list", { name: "Signatures" })).toContainText(`${paula.name} · Prepared`);
   await expect(page.getByText("1 more signature by a different eligible person before this version can be released.")).toBeVisible();
-  await expect(page.getByText("You have signed this version; the next signature must come from someone else.")).toBeVisible();
+  await expect(page.getByRole("region", { name: /^Your turn/ })).toContainText("You already signed. Waiting for a second signer.");
   await expect(page.getByRole("button", { name: "Sign", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Release dataset" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Release dataset" })).toHaveCount(0);
   await shot(page, "06-paula-signed.png");
 });
 

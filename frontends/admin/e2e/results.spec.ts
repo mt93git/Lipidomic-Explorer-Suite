@@ -21,5 +21,9 @@ test("review a flagged synthetic blank and accept results", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Accept", exact: true })).toBeDisabled();
   await page.getByLabel("Override reason").fill("Reviewed synthetic blank; approved for demonstration.");
   await page.getByRole("button", { name: "Accept", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("ORD041 · Processed", slow);
+  const notice = page.getByRole("status");
+  await expect(notice).toContainText("Results accepted for ORD041", slow);
+  await expect(notice).toContainText("The order is now Processed");
+  await expect(notice.getByRole("link", { name: /Build dataset v1/ })).toHaveAttribute("href", /\/admin\/release$/);
+  await expect(page.getByRole("button", { name: "Accept", exact: true })).toHaveCount(0);
 });

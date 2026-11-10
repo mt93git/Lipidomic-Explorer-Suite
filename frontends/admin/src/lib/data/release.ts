@@ -31,7 +31,9 @@ const PROCESSED = 7;
 // ---------------------------------------------------------------- what the screens read
 
 export type VersionSummary = { id: string; version: number; status: DatasetStatus; signatures: number; releasedAt: string | null; projectId: string | null };
-export type ReleaseOrder = { id: string; code: string; clientId: string; clientName: string; title: string; stage: number; resultFileId: string | null; acceptedAt: string | null; versions: VersionSummary[] };
+// releasedAt: when the order was released (a demo order may be released without a recorded version; live orders
+// through their latest released version), so the list can tell a released order from a build candidate.
+export type ReleaseOrder = { id: string; code: string; clientId: string; clientName: string; title: string; stage: number; resultFileId: string | null; acceptedAt: string | null; releasedAt: string | null; versions: VersionSummary[] };
 export type DatasetFile = { label: string; sheets: string[]; sha256: string; sizeBytes: number; path: string | null };
 export type SignatureRecord = { id: string; userId: string; name: string; role: SignerRole; note: string | null; signedAt: string };
 export type DatasetRecord = {
@@ -262,6 +264,7 @@ export async function listReleaseOrders(): Promise<ReleaseOrder[]> {
     return applyDemoState(demoOrders, state).filter(order => order.stage >= PROCESSED).map(order => ({
       id: order.code, code: order.code, clientId: order.clientId, clientName: clientName(order.clientId), title: order.description, stage: order.stage,
       resultFileId: order.code, acceptedAt: (state.results ?? []).filter(result => result.orderCode === order.code).at(-1)?.acceptedAt ?? null,
+      releasedAt: order.releasedAt ?? null,
       versions: datasets.filter(dataset => dataset.orderCode === order.code).map(demoVersion),
     }));
   }
@@ -286,6 +289,7 @@ export async function listReleaseOrders(): Promise<ReleaseOrder[]> {
     return {
       id: row.id, code: row.code, clientId: row.client_id, clientName: clientById.get(row.client_id) ?? "Client", title: row.title ?? "", stage: stageFromDb(row.stage),
       resultFileId: file?.id ?? null, acceptedAt: file?.accepted_at ?? null,
+      releasedAt: records.filter(record => record.orderId === row.id && record.status === "released").at(-1)?.releasedAt ?? null,
       versions: records.filter(record => record.orderId === row.id).map(liveVersion),
     };
   }).filter(order => order.resultFileId || order.versions.length);
