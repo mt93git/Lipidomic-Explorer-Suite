@@ -831,8 +831,8 @@ structural_grid_server <- function(id, shared_data) {
       
       if (team_legend) {
         p <- p +
-          guides(color = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 16, size = 2.6, alpha = 1)), fill = "none") +
-          theme(legend.position = "right", legend.key.size = grid::unit(0.9, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
+          guides(color = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 19, size = 4, alpha = 1, stroke = 0)), fill = "none") +
+          theme(legend.position = "right", legend.key.size = grid::unit(1.1, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
       }
       p
     })

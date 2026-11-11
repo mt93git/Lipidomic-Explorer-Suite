@@ -2734,7 +2734,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        border_col <- if (isTRUE(input$circledDots) && !is.null(input$borderColor) && nzchar(input$borderColor)) input$borderColor else "black"
        if (structural_team_view()) {
          # Team look: round nodes sized by how many links they have, each link drawn in the color of the node
-         # it leaves (split at its middle), 1 pt for the strongest correlations down to 0.5 pt for the weakest,
+         # it leaves (split at its middle), 3 pt for the strongest correlations down to 1.5 pt for the weakest,
          # dashed when the correlation is negative.
          g <- g |> tidygraph::activate(nodes) |> dplyr::mutate(degree = tidygraph::centrality_degree())
          pt_to_linewidth <- 1 / (ggplot2::.pt * 0.75)
@@ -2743,14 +2743,14 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
            ggraph::geom_edge_link2(aes(edge_colour = node.color_val, edge_width = AbsCor, filter = Direction == "+ (Positive)"), alpha = 0.9, lineend = "round") +
            ggraph::geom_edge_link(aes(edge_colour = .N()$color_val[from], edge_width = AbsCor, filter = Direction == "- (Negative)"), alpha = 0.9, linetype = "dashed", lineend = "round") +
            ggraph::scale_edge_colour_identity() +
-           ggraph::scale_edge_width_continuous(range = c(0.5, 1) * pt_to_linewidth, name = "|Correlation|") +
+           ggraph::scale_edge_width_continuous(range = c(1.5, 3) * pt_to_linewidth, name = "|Correlation|") +
            ggraph::geom_node_point(aes(fill = I(color_val), size = degree), shape = 21, color = "#b0b0b0", stroke = 0.8, alpha = 0.95) +
            ggplot2::scale_size(range = c(4, 11), guide = "none") +
            do.call(ggraph::geom_node_text, c(list(mapping = aes(label = name, fontface = ifelse(degree >= hub_cut & degree > 2, "bold", "plain")), repel = TRUE, size = 10 / ggplot2::.pt, family = "Arial", color = "#222222", bg.color = "white", bg.r = 0.15),
              list(force = 4, box.padding = 1, point.padding = 0.8, max.overlaps = Inf))) +
            ggplot2::theme_void() +
            ggplot2::theme(legend.position = "right", legend.title = element_text(face = "plain"), plot.title = element_text(face = "bold", size = 16)) +
-           ggplot2::labs(title = paste("Undirected Correlation Network:", net$mode), subtitle = "Line width: correlation strength (1 pt strongest, 0.5 pt weakest). Dashed: negative correlation.")
+           ggplot2::labs(title = paste("Undirected Correlation Network:", net$mode), subtitle = "Line width: correlation strength (3 pt strongest, 1.5 pt weakest). Dashed: negative correlation.")
          return(p)
        }
        p <- ggraph::ggraph(g, layout = input$networkLayout) +
@@ -5065,8 +5065,8 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       
       if (acyl_team_legend) {
         p <- p +
-          guides(fill = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 21, size = 3, colour = "white", stroke = 0.3))) +
-          theme(legend.position = "right", legend.key.size = grid::unit(0.9, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
+          guides(fill = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 21, size = 4, colour = "white", stroke = 0.3))) +
+          theme(legend.position = "right", legend.key.size = grid::unit(1.1, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
       }
       
       if (is_pct) {
