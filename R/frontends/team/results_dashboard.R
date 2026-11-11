@@ -178,9 +178,9 @@ rd_comp_label_js <- "function(el, x) {
 
 rd_layout <- function(p, ..., margin = list(l = 60, r = 20, t = 10, b = 60)) {
   plotly::layout(p, paper_bgcolor = "#ffffff", plot_bgcolor = "#ffffff",
-                 font = list(family = "Inter, system-ui, sans-serif", size = 12, color = "#52514e"),
+                 font = list(family = "Arial, Helvetica, sans-serif", size = 10, color = "#52514e"),
                  hoverlabel = list(bgcolor = "#ffffff", bordercolor = "#d9e1e3",
-                                   font = list(family = "Inter, system-ui, sans-serif", size = 12,
+                                   font = list(family = "Arial, Helvetica, sans-serif", size = 10,
                                                color = "#20323b"), align = "left"),
                  margin = margin, ...) |>
     plotly::event_register("plotly_click") |>

@@ -49,6 +49,7 @@
       ['structural_tab-summaryPlot','Structural remodeling shifts','Per class, the difference in chain length, double bonds or positions between comparison- and reference-enriched lipid species.','Structural'],
       ['structural_tab-speciesPlotPlot','Species structural features','For one class, a structural feature of each lipid species (each point is a species), split by enrichment direction.','Structural'],
       ['structural_tab-networkPlot','Correlation network','Classes, chain lengths, double bonds or species joined by strong abundance correlations across samples.','Structural'],
+      ['structural_tab-moduleTraitPlot','Module-trait relationships','Groups of correlated lipid classes from the network (modules) and how each one tracks the sample traits.','Structural'],
       ['structural_tab-propPlotPlot','Acyl chain proportions','Compare acyl-chain composition by class.','Main Class & Acyl Chain Proportions'],
       ['structural_grid_tab-heatmapPlot','Structural grid · selected class heatmap','Map differential lipid changes across carbon length and unsaturation.','Structural Grid'],
       ['structural_grid_tab-dotplotPlot','Structural grid · selected class dotplot','Compare differential lipid measurements across structural coordinates.','Structural Grid'],

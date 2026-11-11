@@ -1662,7 +1662,7 @@
     // 840px plot; a 620px card squeezed their panel titles into each other.
     var widePanels=source==='cellular_org_tab-stressPlot';
     // Raster figures with many labels (network, acyl chain proportions) open larger so their text stays legible.
-    var bigRaster=/^structural_tab-(networkPlot|propPlotPlot)$/.test(source);
+    var bigRaster=/^structural_tab-(networkPlot|moduleTraitPlot|propPlotPlot)$/.test(source);
     // Shell cards show only title, plot and footer (card_frame.js): a composition card opens compact,
     // at RC4's 380 px maximum so the figure keeps as much height as the card allows.
     var compactCard=document.body.classList.contains('ts-shell-app')&&/^(results_dashboard-plot_(comp|dist)|barchart-(bar|donut)Plot(Unf|F)iltered)$/.test(source);

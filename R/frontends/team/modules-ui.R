@@ -907,6 +907,10 @@ structural_ui <- function(id) {
                         plotOutput(ns("networkPlot"), height = "800px"),
                         options = list(handles = "s, se")
                       ),
+                      jqui_resizable(
+                        plotOutput(ns("moduleTraitPlot"), height = "520px"),
+                        options = list(handles = "s, se")
+                      ),
                      shiny::HTML("<div style='margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-left: 4px solid #0072b2; font-size: 13px; line-height: 1.4; color: #333; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; border-radius: 0 4px 4px 0;'><b>Methodology Note (Correlation Networks):</b> Correlation networks illustrate inter-lipid correlations. Nodes represent either aggregated lipid main classes, chain lengths, double bonds, or individual species. Edges indicate pairwise Pearson correlation coefficients (|r|) exceeding the user-specified threshold. Undirected graph layout is optimized using the selected algorithm (e.g. Stress or Fruchterman-Reingold).</div>")
                    )
                  )

@@ -8,6 +8,37 @@ structural_run_hint <- function() {
   else "Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"
 }
 
+# --- Team look for the structural figures ---
+# Canvas 1 draws its figures with dark-gray text (#52514e), regular-weight axis labels and a dot legend
+# outside the plot. The structural figures are ggplot images, so the same look is applied here, in Team
+# only, to the finished plot: colors and weights are restyled, nothing that is plotted changes.
+STRUCTURE_TEAM_TEXT <- "#52514e"
+structure_team_style <- function(p) {
+  if (!structure_team_look_on() || !inherits(p, "ggplot")) return(p)
+  restyle <- function(p, element, ...) {
+    current <- p$theme[[element]]
+    if (inherits(current, "element_blank")) return(p)
+    p + do.call(ggplot2::theme, stats::setNames(list(ggplot2::element_text(...)), element))
+  }
+  tx <- STRUCTURE_TEAM_TEXT; fam <- "Arial"; sz <- 10   # default text: Arial 10
+  p <- p + ggplot2::theme(text = ggplot2::element_text(family = fam, size = sz, color = tx))
+  p <- restyle(p, "axis.text", family = fam, size = sz, color = tx, face = "plain")
+  p <- restyle(p, "axis.title", family = fam, size = sz, color = tx, face = "plain")
+  p <- restyle(p, "legend.text", family = fam, size = sz, color = tx)
+  p <- restyle(p, "legend.title", family = fam, size = sz, color = tx, face = "plain")
+  p <- restyle(p, "plot.title", family = fam, size = sz, color = tx, face = "bold")
+  p <- restyle(p, "plot.subtitle", family = fam, size = sz, color = tx)
+  p <- restyle(p, "strip.text", family = fam, size = sz, color = tx)
+  if (!inherits(p$theme[["legend.key"]], "element_blank")) p <- p + ggplot2::theme(legend.key = ggplot2::element_blank())
+  p
+}
+structure_team_look_on <- function() structural_team_view()
+# renderPlot that restyles the plot it returns (Team) and is otherwise the same.
+structure_render_plot <- function(expr, env = parent.frame(), quoted = FALSE, ...) {
+  func <- shiny::installExprFunction(expr, "func", env, quoted)
+  shiny::renderPlot({ structure_team_style(func()) }, ...)
+}
+
 # Order display categories by chain length and unsaturation without rewriting labels.
 # Unknown or malformed labels remain in their original order; Other is last.
 structural_order_acyl_chains <- function(chains) {
@@ -294,6 +325,10 @@ structural_ui <- function(id) {
                    div(style = "display: flex; flex-direction: column;",
                       jqui_resizable(
                         plotOutput(ns("networkPlot"), height = "800px"),
+                        options = list(handles = "s, se")
+                      ),
+                      jqui_resizable(
+                        plotOutput(ns("moduleTraitPlot"), height = "520px"),
                         options = list(handles = "s, se")
                       ),
                      shiny::HTML("<div style='margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-left: 4px solid #0072b2; font-size: 11px; line-height: 1.4; color: #333; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; border-radius: 0 4px 4px 0;'><b>Methodology Note (Correlation Networks):</b> Correlation networks illustrate inter-lipid correlations. Nodes represent either aggregated lipid main classes, chain lengths, double bonds, or individual species. Edges indicate pairwise Pearson correlation coefficients (|r|) exceeding the user-specified threshold. Undirected graph layout is optimized using the selected algorithm (e.g. Stress or Fruchterman-Reingold).</div>")
@@ -1474,6 +1509,9 @@ generate_prop_stats_report <- function(raw_data, shared_data, input) {
 
 structural_server <- function(id, shared_data, global_color_map = NULL) {
   moduleServer(id, function(input, output, session) {
+    # Team: the figures of this module are restyled on their way out (Arial 10, Canvas colors);
+    # renderPlot below is shiny::renderPlot behind that restyle. Other interfaces are untouched.
+    renderPlot <- structure_render_plot
     
     # Store custom factor level orderings across variables
     level_prefs <- reactiveValues()
@@ -2681,7 +2719,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       }
       
       g <- tidygraph::tbl_graph(nodes = nodes, edges = cor_df, directed = FALSE)
-      return(list(graph = g, mode = mode))
+      return(list(graph = g, mode = mode, abundance = df_agg))
     })
     
     output$networkPlot <- renderPlot({
@@ -2694,6 +2732,27 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        }
        g <- net$graph
        border_col <- if (isTRUE(input$circledDots) && !is.null(input$borderColor) && nzchar(input$borderColor)) input$borderColor else "black"
+       if (structural_team_view()) {
+         # Team look: round nodes sized by how many links they have, each link drawn in the color of the node
+         # it leaves (split at its middle), 1 pt for the strongest correlations down to 0.5 pt for the weakest,
+         # dashed when the correlation is negative.
+         g <- g |> tidygraph::activate(nodes) |> dplyr::mutate(degree = tidygraph::centrality_degree())
+         pt_to_linewidth <- 1 / (ggplot2::.pt * 0.75)
+         hub_cut <- stats::quantile(igraph::degree(g), 0.85, names = FALSE)
+         p <- ggraph::ggraph(g, layout = input$networkLayout) +
+           ggraph::geom_edge_link2(aes(edge_colour = node.color_val, edge_width = AbsCor, filter = Direction == "+ (Positive)"), alpha = 0.9, lineend = "round") +
+           ggraph::geom_edge_link(aes(edge_colour = .N()$color_val[from], edge_width = AbsCor, filter = Direction == "- (Negative)"), alpha = 0.9, linetype = "dashed", lineend = "round") +
+           ggraph::scale_edge_colour_identity() +
+           ggraph::scale_edge_width_continuous(range = c(0.5, 1) * pt_to_linewidth, name = "|Correlation|") +
+           ggraph::geom_node_point(aes(fill = I(color_val), size = degree), shape = 21, color = "#b0b0b0", stroke = 0.8, alpha = 0.95) +
+           ggplot2::scale_size(range = c(4, 11), guide = "none") +
+           do.call(ggraph::geom_node_text, c(list(mapping = aes(label = name, fontface = ifelse(degree >= hub_cut & degree > 2, "bold", "plain")), repel = TRUE, size = 10 / ggplot2::.pt, family = "Arial", color = "#222222", bg.color = "white", bg.r = 0.15),
+             list(force = 4, box.padding = 1, point.padding = 0.8, max.overlaps = Inf))) +
+           ggplot2::theme_void() +
+           ggplot2::theme(legend.position = "right", legend.title = element_text(face = "plain"), plot.title = element_text(face = "bold", size = 16)) +
+           ggplot2::labs(title = paste("Undirected Correlation Network:", net$mode), subtitle = "Line width: correlation strength (1 pt strongest, 0.5 pt weakest). Dashed: negative correlation.")
+         return(p)
+       }
        p <- ggraph::ggraph(g, layout = input$networkLayout) +
          ggraph::geom_edge_link(aes(color = Direction, edge_width = Significance), alpha = 0.7) +
          ggraph::scale_edge_width_manual(values = c("p < 0.05" = 0.5, "p < 0.01" = 1.2, "p < 0.001" = 2.0)) +
@@ -2712,7 +2771,93 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
                        edge_color = "Correlation", edge_width = "Significance")
        p
     })
-    
+
+    # --- 5b. Module-trait relationships (next to the correlation network) ---
+    # Modules are the communities of the correlation network. A module is summarized per sample by its
+    # eigengene (first principal component of its classes, z-scored, signed to follow their mean) and
+    # correlated (Pearson) with each trait: groups from the sample metadata, one 0/1 column per level,
+    # and numeric metadata columns. Nothing here changes the network or the statistics of other views.
+    moduleTraitData <- reactive({
+      net <- networkData()
+      req(!is.null(net), !is.null(net$abundance))
+      g <- net$graph
+      ab <- as.matrix(net$abundance); storage.mode(ab) <- "double"
+      nodes <- igraph::V(g)$name
+      ab <- ab[intersect(nodes, rownames(ab)), , drop = FALSE]
+      validate(need(nrow(ab) >= 3 && ncol(ab) >= 6, "Module-trait relationships need at least 3 network nodes and 6 samples."))
+      comm <- tryCatch(igraph::cluster_louvain(igraph::as.undirected(g), weights = igraph::E(g)$AbsCor), error = function(e) NULL)
+      member <- if (is.null(comm)) stats::setNames(rep(1L, length(nodes)), nodes) else stats::setNames(as.integer(igraph::membership(comm)), igraph::V(g)$name)
+      member <- member[rownames(ab)]
+      mods <- names(sort(table(member), decreasing = TRUE))
+      z <- t(scale(t(ab))); z[!is.finite(z)] <- 0
+      eig <- vapply(mods, function(m) {
+        rows <- names(member)[member == as.integer(m)]
+        zz <- z[rows, , drop = FALSE]
+        if (nrow(zz) == 1) return(zz[1, ])
+        pc <- stats::prcomp(t(zz), center = TRUE, scale. = FALSE)$x[, 1]
+        if (isTRUE(stats::cor(pc, colMeans(zz)) < 0)) pc <- -pc
+        pc
+      }, numeric(ncol(ab)))
+      eig <- matrix(eig, nrow = ncol(ab), dimnames = list(colnames(ab), NULL))
+      module_label <- vapply(seq_along(mods), function(i) {
+        rows <- names(member)[member == as.integer(mods[i])]
+        txt <- paste(rows, collapse = ", ")
+        paste0("M", i, " (", if (nchar(txt) > 38) paste0(substr(txt, 1, 36), "...") else txt, ")")
+      }, character(1))
+      colnames(eig) <- module_label
+      meta <- tryCatch(shared_data$grouped_metadata(), error = function(e) NULL)
+      validate(need(!is.null(meta) && nrow(meta) > 0, "Module-trait relationships need sample metadata."))
+      sid <- intersect(c("Sample", "SampleName", "Sample_Name", "Sample Name", "sample"), names(meta))
+      sid <- if (length(sid)) sid[1] else names(meta)[1]
+      meta <- meta[match(colnames(ab), as.character(meta[[sid]])), , drop = FALSE]
+      keep <- !is.na(meta[[sid]])
+      validate(need(sum(keep) >= 6, "The samples of the network could not be matched to the sample metadata."))
+      eig <- eig[keep, , drop = FALSE]; meta <- meta[keep, , drop = FALSE]
+      n <- nrow(meta)
+      cols <- setdiff(names(meta), c(sid, "Dynamic_DE_Group", "TimePoint"))
+      cols <- c(intersect(c("Group1", "Group2"), cols), setdiff(cols, c("Group1", "Group2")))
+      traits <- list()
+      for (cn in cols) {
+        x <- meta[[cn]]
+        if (is.numeric(x) && length(unique(x[!is.na(x)])) >= 5 && stats::sd(x, na.rm = TRUE) > 0) {
+          traits[[cn]] <- as.numeric(x)
+        } else {
+          x <- as.character(x); lv <- unique(x[!is.na(x) & nzchar(x)])
+          if (length(lv) < 2 || length(lv) > 4) next
+          for (l in lv) { k <- sum(x == l, na.rm = TRUE); if (k >= 3 && k <= n - 3) traits[[paste0(cn, ": ", l)]] <- as.numeric(x == l) }
+        }
+        if (length(traits) >= 12) break
+      }
+      validate(need(length(traits) >= 1, "No usable sample traits were found in the metadata."))
+      tm <- do.call(cbind, traits)
+      r <- p <- matrix(NA_real_, nrow = ncol(eig), ncol = ncol(tm), dimnames = list(colnames(eig), colnames(tm)))
+      for (i in seq_len(ncol(eig))) for (j in seq_len(ncol(tm))) {
+        ct <- tryCatch(stats::cor.test(eig[, i], tm[, j]), error = function(e) NULL)
+        if (!is.null(ct)) { r[i, j] <- unname(ct$estimate); p[i, j] <- ct$p.value }
+      }
+      list(r = r, p = p, n = n)
+    })
+
+    output$moduleTraitPlot <- renderPlot({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "structural")) return(generate_empty_plot_message("Module-trait relationships require a confirmed independent study design."))
+      mt <- moduleTraitData()
+      df <- as.data.frame(as.table(mt$r)); names(df) <- c("Module", "Trait", "r")
+      df$p <- as.vector(mt$p)
+      df$stars <- ifelse(is.na(df$p), "", ifelse(df$p < 0.001, "***", ifelse(df$p < 0.01, "**", ifelse(df$p < 0.05, "*", ""))))
+      df$label <- ifelse(is.na(df$r), "", paste0(sprintf("%.2f", df$r), df$stars))
+      df$Module <- factor(df$Module, levels = rev(rownames(mt$r)))
+      df$Trait <- factor(df$Trait, levels = colnames(mt$r))
+      ggplot2::ggplot(df, ggplot2::aes(x = Trait, y = Module, fill = r)) +
+        ggplot2::geom_tile(color = "white", linewidth = 0.6) +
+        ggplot2::geom_text(ggplot2::aes(label = label), size = 10 / ggplot2::.pt, color = "#222222") +
+        ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#FFFFFF", high = "#B2182B", midpoint = 0, limits = c(-1, 1), name = "Pearson r") +
+        ggplot2::scale_x_discrete(position = "bottom", expand = c(0, 0)) + ggplot2::scale_y_discrete(expand = c(0, 0)) +
+        ggplot2::theme_minimal(base_size = 10) +
+        ggplot2::theme(panel.grid = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(angle = 40, hjust = 1), legend.position = "right") +
+        ggplot2::labs(x = NULL, y = NULL, title = "Module-trait relationships",
+                      subtitle = paste0("Modules from the correlation network; eigengene vs trait, Pearson r (n = ", mt$n, " samples). * p < 0.05, ** p < 0.01, *** p < 0.001"))
+    })
+
    # --- Downloads ---
     output$downloadSummaryPDF <- downloadHandler(
       filename = function() { paste0("structural_summary_", format(Sys.Date(), "%Y%m%d"), ".pdf") },
@@ -4900,12 +5045,15 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         return(p)
       }
       
+      # Team: the legend reads like the Composition overview one (no title, one column of dots to the right).
+      acyl_team_legend <- structural_team_view()
       p <- ggplot(df_plot, aes(y = GroupingVal, x = Mean_Value, fill = AcylChain)) +
         geom_bar(
           stat = "identity", 
           position = "stack",
           color = "white",
-          linewidth = 0.3
+          linewidth = 0.3,
+          key_glyph = if (acyl_team_legend) "point" else "polygon"
         ) +
         theme_pubr(base_size = input$textSize %||% 12) +
         labs(x = x_label, y = NULL, fill = "Acyl Chain") +
@@ -4914,6 +5062,12 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
           axis.text.y = element_text(face = "bold"),
           legend.title = element_text(face = "bold")
         )
+      
+      if (acyl_team_legend) {
+        p <- p +
+          guides(fill = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 21, size = 3, colour = "white", stroke = 0.3))) +
+          theme(legend.position = "right", legend.key.size = grid::unit(0.9, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
+      }
       
       if (is_pct) {
         p <- p + scale_x_continuous(labels = function(x) paste0(x, "%"), expand = expansion(mult = c(0, 0.05)))

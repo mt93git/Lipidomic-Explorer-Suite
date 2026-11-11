@@ -7,7 +7,7 @@ team_plot_instance_families <- list(
   heatmap_barchart_tab = list(ui='heatmap_ui',server='heatmap_server',outputs=c('heatmapPlot','heatmapSDPlot','filteredHeatmapPlot','filteredHeatmapSDPlot','violin_plot_render')),
   volcano_tab=list(ui='volcano_ui',server='volcano_server',outputs='volcanoPlot'),
   lsea_tab=list(ui='lsea_ui',server='lsea_server',outputs='lseaPlot'),
-  structural_tab=list(ui='structural_ui',server='structural_server',colors=TRUE,outputs=c('summaryPlot','speciesPlotPlot','networkPlot','propPlotPlot','diffAcylPlot')),
+  structural_tab=list(ui='structural_ui',server='structural_server',colors=TRUE,outputs=c('summaryPlot','speciesPlotPlot','networkPlot','moduleTraitPlot','propPlotPlot','diffAcylPlot')),
   structural_grid_tab=list(ui='structural_grid_ui',server='structural_grid_server',outputs=c('heatmapPlot','dotplotPlot','mergedPlot','diffAllPlot')),
   logratio_tab=list(ui='logratio_ui',server='logratio_server',colors=TRUE,outputs='logratioPlot'),
   group_comparison_tab=list(ui='team_group_comparison_ui',server='team_group_comparison_server',colors=TRUE,outputs='comparisonPlot'),

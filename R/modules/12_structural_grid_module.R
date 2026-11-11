@@ -258,6 +258,9 @@ structural_grid_ui <- function(id) {
 
 structural_grid_server <- function(id, shared_data) {
   moduleServer(id, function(input, output, session) {
+    # Team: the figures of this module are restyled on their way out (Arial 10, Canvas colors);
+    # renderPlot below is shiny::renderPlot behind that restyle. Other interfaces are untouched.
+    renderPlot <- structure_render_plot
     
     # --- 1. Dynamic Controls & Ingestion ---
     
@@ -803,6 +806,10 @@ structural_grid_server <- function(id, shared_data) {
         seq(min(res$DB, na.rm=T), max(res$DB, na.rm=T), by = 1)
       }
       
+      # Team: the legend reads like the Composition overview one: no title, one column of small dots,
+      # only the classes drawn, ordered from fewest to most species.
+      team_legend <- structural_team_view()
+      if (team_legend) res$Class_Var <- factor(res$Class_Var, levels = names(sort(table(res$Class_Var))))
       p <- ggplot(res, aes(x = Carbon, y = DB, color = Class_Var, fill = Class_Var)) +
         geom_point(position = position_jitter(width = 0.18, height = 0.18), size = input$pointSize %||% 6, alpha = 0.85) +
         scale_color_manual(values = color_map, labels = format_class_name, name = "Lipid Class") +
@@ -822,6 +829,11 @@ structural_grid_server <- function(id, shared_data) {
           subtitle = paste("Position:", toupper(input$position), "| Colored by Class")
         )
       
+      if (team_legend) {
+        p <- p +
+          guides(color = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 16, size = 2.6, alpha = 1)), fill = "none") +
+          theme(legend.position = "right", legend.key.size = grid::unit(0.9, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
+      }
       p
     })
     
