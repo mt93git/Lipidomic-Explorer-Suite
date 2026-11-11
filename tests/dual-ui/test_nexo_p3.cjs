@@ -29,10 +29,13 @@ async function browserTests(pw, name, base) {
     const page = await browser.newPage({viewport:{width:1440,height:1000}});
     await page.route('https://fonts.googleapis.com/**', route => route.fulfill({body:'',contentType:'text/css'}));
     await page.goto(`${base}/nexo/`);
-    assert.equal(await page.getByLabel('Upload ZIP').count(), 1, 'start page accepts Team ZIPs');
+    // Start shows once Admin says the person is signed in (nexo-entry-build.md "Flow"), after the first paint.
+    await page.getByRole('heading', {name:'Welcome back', exact:true}).waitFor();
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', {name:'Import a Team checkpoint (.zip)', exact:true}).click()]);
+    assert.equal(chooser.isMultiple(), false, 'start page accepts Team ZIPs');
     let failScript = true, releaseScript; const scriptPending = new Promise(resolve => { releaseScript=resolve; });
     await page.route('**/vendor/plotly.min.js', async route => { await scriptPending; return failScript ? route.abort() : route.continue(); });
-    await page.getByRole('button', {name:/Synthetic demo/}).click();
+    await page.getByRole('link', {name:/Open Synthetic demo/}).click();
     await page.waitForSelector('.card');
     await page.waitForFunction(() => document.activeElement?.id === 'viewport');
     const pca=card(page,'results_dashboard-plot_pca');

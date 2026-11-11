@@ -1,7 +1,7 @@
 import type { DatasetSettings, PreparationChoice, PreparationChoices } from '../api/types';
 /** One preparation setting to ask for: Team's QC widget, with its default exactly as the API sent it. */
 export interface PrepareField { name: string; label: string; kind: 'number' | 'choice' | 'boolean' | 'text'; choices?: string[]; min?: number; max?: number; step?: number; default: unknown }
-export interface PrepareState { samples: string[]; selected: string[]; fields: PrepareField[]; values: Record<string, unknown> }
+export interface PrepareState { samples: string[]; selected: string[]; fields: PrepareField[]; values: Record<string, unknown>; groups?: Record<string, string> }
 const kindOf = (choice: PreparationChoice): PrepareField['kind'] =>
   choice.kind === 'number' || choice.kind === 'choice' || choice.kind === 'boolean' ? choice.kind
   : choice.choices?.length ? 'choice' : typeof choice.teamControlDefault === 'boolean' ? 'boolean' : typeof choice.teamControlDefault === 'number' ? 'number' : 'text';
@@ -12,7 +12,7 @@ export function prepareState(body: PreparationChoices): PrepareState {
   const ticked = Array.isArray(sampleChoice?.teamControlDefault) ? samples.filter(s => (sampleChoice!.teamControlDefault as unknown[]).includes(s)) : [...samples];
   const settings = body.missing.filter(m => m !== sampleChoice);
   return {
-    samples, selected: ticked,
+    samples, selected: ticked, groups: body.sampleGroups,
     fields: settings.map(m => ({ name: m.name, label: m.label, kind: kindOf(m), choices: m.choices, min: m.min, max: m.max, step: m.step, default: m.teamControlDefault })),
     values: Object.fromEntries(settings.map(m => [m.name, m.teamControlDefault]))
   };
@@ -37,6 +37,15 @@ export function setValue(state: PrepareState, name: string, raw: string | boolea
 /** The settings body: the ticked samples plus every setting, untouched values exactly as received. */
 export const settingsBody = (state: PrepareState): DatasetSettings => ({ samples: [...state.selected], ...state.values });
 export const canConfirm = (state: PrepareState): boolean => state.selected.length > 0;
+/** "n changes from Team's defaults": each setting off its default, plus one when any sample is left out. */
+export const changeCount = (state: PrepareState): number =>
+  state.fields.filter(f => state.values[f.name] !== f.default).length + (state.selected.length < state.samples.length ? 1 : 0);
+/** The samples by condition group (the 422's sampleGroups), groups and samples in workbook order; one group "Samples" without them. */
+export function sampleGroups(state: PrepareState): [string, string[]][] {
+  const out = new Map<string, string[]>();
+  for (const sample of state.samples) { const group = state.groups?.[sample] ?? 'Samples'; out.set(group, [...out.get(group) ?? [], sample]); }
+  return [...out];
+}
 
 // The opened dataset session in the shell: its title (top bar, window) and the band's summary.
 import type { DatasetSession, Session } from '../api/types';

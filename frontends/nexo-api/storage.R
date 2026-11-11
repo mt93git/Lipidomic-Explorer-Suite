@@ -14,7 +14,7 @@ api_workspace <- function() api_storage_project(Sys.getenv("LIPIDOMIC_API_WORKSP
 # a client member reads the workspaces of its clients and never the folder.
 api_client_workspace <- function(client_id) api_storage_project(paste0("nexo-client-", tolower(client_id)))
 api_caller_member <- function(caller) !is.null(caller) && !isTRUE(caller$staff)
-api_caller_workspaces <- function(caller) if (api_caller_member(caller))
+api_caller_workspaces <- function(caller) if (isTRUE(caller$service)) caller$workspaces else if (api_caller_member(caller))
   vapply(caller$clients, api_client_workspace, character(1), USE.NAMES = FALSE) else api_workspace()
 # A session saves where it came from: a member's dataset or a checkpoint of a client workspace keep that workspace.
 api_session_workspace <- function(s, caller) if (is.null(caller)) api_workspace() else s$workspace %||% api_workspace()
@@ -62,33 +62,39 @@ api_checkpoint_list <- function(caller = NULL) {
   records
 }
 # Outside the caller's scope is "Unknown checkpoint." (404), the same answer as an id that does not exist.
-api_checkpoint_resolve <- function(id, caller = NULL) {
+api_checkpoint_resolve <- function(id, caller = NULL, workspace = NULL) {
   if (!is.character(id) || length(id) != 1L || is.na(id) || !nzchar(id) ||
       grepl("[/\\\\]", id) || grepl("..", id, fixed = TRUE) || grepl("[[:cntrl:]]", id))
     api_abort("api_bad_request", "Invalid checkpointId.")
-  for (workspace in api_caller_workspaces(caller)) {
+  workspaces <- if (is.null(workspace)) api_caller_workspaces(caller) else
+    api_scope_allow(caller, api_storage_project(workspace))
+  for (workspace in workspaces) {
     matches <- Filter(function(x) identical(x$id, id), api_checkpoint_stored(workspace))
     if (length(matches)) return(list(path = api_store()$load(workspace, id),
       record = api_checkpoint_scoped_record(matches[[1L]], workspace), workspace = workspace))
   }
-  paths <- if (api_caller_member(caller)) character() else api_checkpoint_folder()
+  paths <- if (api_caller_member(caller) || !api_workspace() %in% workspaces) character() else api_checkpoint_folder()
   found <- paths[sub("[.]zip$", "", basename(paths)) == id]
   if (length(found)) return(list(path = found[[1L]], record = list(id = id, name = id, source = "folder"),
     workspace = api_workspace()))
   api_abort("api_not_found", "Unknown checkpoint.")
 }
 api_checkpoint_path <- function(id, caller = NULL) api_checkpoint_resolve(id, caller)$path
-api_checkpoint_delete <- function(id, caller = NULL) {
-  x <- api_checkpoint_resolve(id, caller)
+api_checkpoint_delete <- function(id, caller = NULL, workspace = NULL) {
+  x <- api_checkpoint_resolve(id, caller, workspace)
   if (identical(x$record$source, "folder")) api_abort("api_method_not_allowed", "Folder checkpoints are read-only.")
   api_store()$delete(x$workspace, id)
   list(ok = TRUE)
 }
 # POST /sessions with checkpointId. Switch on, the session keeps the workspace it came from; a clean session of
 # another workspace with the same bytes is left to its tab (marked dirty, so the open below starts a fresh one).
-api_checkpoint_session <- function(id, caller = NULL) {
-  x <- api_checkpoint_resolve(id, caller)
-  if (is.null(caller)) return(api_session_for_checkpoint(x$path))
+api_checkpoint_session <- function(id, caller = NULL, workspace = NULL, collab = NULL) {
+  x <- api_checkpoint_resolve(id, caller, workspace)
+  if (!is.null(collab) || is.null(caller)) {
+    s <- if (is.null(collab)) api_session_for_checkpoint(x$path) else api_session_for_checkpoint(x$path, collab)
+    s$lineage <- id
+    return(s)
+  }
   sha <- digest::digest(file = x$path, algo = "sha256")
   for (sid in ls(api_sessions)) {
     other <- api_sessions[[sid]]
@@ -96,6 +102,7 @@ api_checkpoint_session <- function(id, caller = NULL) {
   }
   s <- api_session_for_checkpoint(x$path)
   s$workspace <- x$workspace
+  s$lineage <- id
   s
 }
 api_canvas_current <- function(s) api_read(s, s$domain$userData$team_canvas_export())
@@ -116,7 +123,6 @@ api_canvas_validate <- function(s, token, state) {
   ok <- isTRUE(reply$ok) && identical(accepted, token) &&
     as.numeric(difftime(Sys.time(), started, units = "secs")) < 120
   current <- api_canvas_current(s)
-  if (ok && !identical(api_canonical_json(current), api_canonical_json(s$canvas))) api_session_dirty(s)
   if (ok) s$canvas <- current
   list(ok = ok, message = if (ok || !isTRUE(reply$ok)) reply$message else
     "Canvas acknowledgement expired or no longer matches.", state = current)
@@ -131,7 +137,29 @@ api_project_records_append <- function(path, bytes) {
   zip::zip_append(path, files = member, root = stage)
   invisible(TRUE)
 }
-api_checkpoint_save <- function(s, label, canvas, nexo = s$nexo, caller = NULL) {
+# Team's exporter can only collect mounted inputs. Nexo does not mount every Team
+# panel; carry untouched archived inputs, including explicit NULLs, through save.
+api_checkpoint_preserve_inputs <- function(path, s) {
+  if (!length(s$archived_inputs) && is.null(s$archived_qc_decisions)) return(invisible(path))
+  stage <- tempfile("nexo-state-"); dir.create(stage)
+  on.exit(unlink(stage, recursive = TRUE))
+  zip::unzip(path, files = "state.json", exdir = stage)
+  member <- file.path(stage, "state.json")
+  state <- jsonlite::read_json(member, simplifyVector = FALSE)
+  archived <- s$archived_inputs %||% list()
+  untouched <- setdiff(names(archived), s$changed_inputs %||% character())
+  state$inputs[untouched] <- archived[untouched]
+  # Explicit edits must also survive Team's filtering of UI-only inputs.
+  for (id in intersect(names(archived), s$changed_inputs %||% character()))
+    state$inputs[id] <- list(api_read(s, s$mock$input[[id]]))
+  # Nexo has no QC decision editor/bridge. Team rebuilds outliers from external
+  # settings, which need not contain the separately archived decision history.
+  if (!is.null(s$archived_qc_decisions)) state$outliers$qc_decisions <- s$archived_qc_decisions
+  jsonlite::write_json(state, member, auto_unbox = TRUE, digits = 17, null = "null")
+  zip::zip_append(path, "state.json", root = stage)
+  invisible(path)
+}
+api_checkpoint_save <- function(s, label, canvas, nexo = s$nexo, caller = NULL, collab = FALSE) {
   project <- api_scope_allow(caller, api_session_workspace(s, caller))
   api_storage_label(label)
   if (!is.list(canvas)) api_abort("api_bad_request", "Expected canvas with token and state.")
@@ -143,17 +171,20 @@ api_checkpoint_save <- function(s, label, canvas, nexo = s$nexo, caller = NULL) 
     if (inherits(e, "session_lost")) stop(e)
     api_abort("api_unprocessable", conditionMessage(e))
   })
+  api_checkpoint_preserve_inputs(tmp, s)
   api_project_records_append(tmp, s$project_records)
   api_cohort_append(tmp, s)
   previous <- s$nexo; s$nexo <- nexo
   tryCatch(api_nexo_append(tmp, s), error = function(e) { s$nexo <- previous; stop(e) })
   store <- api_store()
-  record <- store$save(project, tmp, label)
+  record <- store$save(project, tmp, label,
+    lineage = if (identical(label, "autosave")) s$lineage else NULL, collab = collab)
   # The live session now equals the checkpoint just written: reopening it may reuse
   # this session, reopening the one it came from opens that file fresh.
   s$sha256 <- record$sha256; s$dirty <- FALSE
-  if (identical(label, "autosave")) {
-    autosaves <- Filter(function(x) identical(x$name, "autosave"), store$list(project))
+  if (identical(label, "autosave") && !isTRUE(record$collab)) {
+    autosaves <- Filter(function(x) identical(x$name, "autosave") && !isTRUE(x$collab) &&
+      identical(x$lineage, record$lineage), store$list(project))
     if (length(autosaves) > 5L) for (x in autosaves[-seq_len(5L)]) store$delete(project, x$id)
   }
   c(if (is.null(caller)) api_checkpoint_record(record) else api_checkpoint_scoped_record(record, project), list(near_limit = api_project_records_near_limit(s$project_records)))

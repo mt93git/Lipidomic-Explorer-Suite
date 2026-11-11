@@ -4,3 +4,5 @@ if (!nzchar(api_dir)) api_dir <- tryCatch(dirname(normalizePath(sys.frame(1)$ofi
 if (!nzchar(api_dir) || !file.exists(file.path(api_dir, "session.R"))) api_dir <- file.path(getwd(), "frontends", "nexo-api")
 for (file in c("session.R", "schema.R", "catalog.R", "cards.R", "storage_files.R", "storage.R", "export.R", "analysis.R", "palette.R", "cohort.R", "nexo_store.R", "render_disk.R"))
   source(file.path(api_dir, file), local = globalenv())
+
+source(file.path(api_dir, "revision.R"), local = globalenv())

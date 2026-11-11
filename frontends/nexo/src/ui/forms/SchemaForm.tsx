@@ -1,3 +1,4 @@
+import { collab } from '../../collab/mode';
 import { notifyFailure } from '../model';
 import { strings as s } from '../strings';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ export function SchemaForm({schema, sessionId, instanceId, onUpdated, onStatus, 
   /** A module button was pressed: the card redraws with these inputs (not an undo step). */
   onActed?: (inputs: Inputs, action: string) => Promise<void>;
 }) {
+  useEffect(() => () => { if (collab()) void import('../../collab/provider').then(m => m.getAwareness()?.setLocalStateField('editing', null)); }, []);
   const initial: Inputs = Object.fromEntries(schema.controls.filter(c => c.type !== 'action').map(c => [c.id,coerceValue(c,c.value ?? c.default ?? (c.multiple || c.type === 'multiselect' || c.type === 'checkboxgroup' ? [] : c.type === 'boolean' ? false : ''))]));
   const [values, setValues] = useState<Inputs>(initial);
   const saved = useRef(initial), latest = useRef(initial), timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -111,5 +113,5 @@ export function SchemaForm({schema, sessionId, instanceId, onUpdated, onStatus, 
   }
   // Team's note under the control (role=status, as Team's <p class="rd-heat-significance-note">).
   const noteFor = (c: SchemaControl) => { const note = statusNote(c); return note ? <p className="control-status-note" id={note.id} role="status" data-allowed={String(note.allowed)}>{note.text}</p> : null; };
-  return <form className="schema-form" onSubmit={e => e.preventDefault()}>{Object.entries(controlsByGroup(formControls(schema))).map(([group,controls]) => <fieldset key={group}>{group && <legend>{groupTitle(group, controls)}</legend>}{controls.map(c => { const [title, help] = splitLabel(c.label); return <div key={c.id} className={`field field-${c.type}`}>{c.type !== 'action' && <label htmlFor={c.id}>{title}</label>}{control(c)}{help && c.type !== 'action' && <small className="field-help" id={`${c.id}-help`}>{help}</small>}{noteFor(c)}</div>; })}</fieldset>)}{dialog && <ModuleDialog dialog={dialog} onClose={() => setDialog(undefined)}/>}</form>;
+  return <form className="schema-form" onFocus={e => { const field = (e.target as HTMLElement).closest('.field')?.querySelector('label[for]')?.getAttribute('for'); if (collab() && field) void import('../../collab/provider').then(m => (() => { const awareness = m.getAwareness(), nodeId = awareness?.getLocalState()?.selection?.[0]; if (nodeId) awareness?.setLocalStateField('editing', { nodeId, field }); })()); }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as globalThis.Node | null) && collab()) void import('../../collab/provider').then(m => m.getAwareness()?.setLocalStateField('editing', null)); }} onSubmit={e => e.preventDefault()}>{Object.entries(controlsByGroup(formControls(schema))).map(([group,controls]) => <fieldset key={group}>{group && <legend>{groupTitle(group, controls)}</legend>}{controls.map(c => { const [title, help] = splitLabel(c.label); return <div key={c.id} className={`field field-${c.type}`}>{c.type !== 'action' && <label htmlFor={c.id}>{title}</label>}{control(c)}{help && c.type !== 'action' && <small className="field-help" id={`${c.id}-help`}>{help}</small>}{noteFor(c)}</div>; })}</fieldset>)}{dialog && <ModuleDialog dialog={dialog} onClose={() => setDialog(undefined)}/>}</form>;
 }

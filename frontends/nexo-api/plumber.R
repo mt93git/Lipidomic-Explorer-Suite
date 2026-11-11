@@ -6,6 +6,8 @@ if (!exists("api_dataset_route", mode = "function"))
 if (!exists("api_pool_status", mode = "function"))
   source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "pool.R"), local = globalenv())
 
+source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "service.R"), local = globalenv())
+
 # The router's default JSON serializer is installed in run.R.
 api_error <- function(res, status, error, message) {
   res$status <- status
@@ -19,7 +21,10 @@ api_handle <- function(res, expr) {
     kind <- intersect(class(e), names(codes))[[1L]]
     api_error(res, codes[[kind]], sub("^api_", "", kind), conditionMessage(e))
   }
-  tryCatch(expr, api_bad_request = handler, api_not_found = handler,
+  tryCatch(expr, api_capacity = function(e) {
+    res$status <- 503L; res$setHeader("Retry-After", "60")
+    list(error = "capacity", liveProjects = e$liveProjects, retryAfter = 60L)
+  }, api_bad_request = handler, api_not_found = handler,
     api_conflict = handler, api_unprocessable = handler, api_too_large = handler,
     api_unavailable = handler, api_method_not_allowed = handler, session_lost = handler,
     api_forbidden_scope = handler, api_staff_only = handler,
@@ -27,10 +32,11 @@ api_handle <- function(res, expr) {
     api_dataset_admin_error = function(e) api_error(res, e$status, e$error, e$error))
 }
 api_busy <- FALSE
-api_exclusive <- function(res, expr) {
+api_exclusive <- function(res, expr, id = NULL) {
   if (api_busy) {
     res$setHeader("Retry-After", "1")
-    return(api_error(res, 503L, "busy", "The engine is busy with another request; retry shortly."))
+    return(api_revision_header(res,
+      api_error(res, 503L, "busy", "The engine is busy with another request; retry shortly."), id))
   }
   api_busy <<- TRUE
   assign("api_busy_global", TRUE, envir = globalenv())
@@ -41,7 +47,7 @@ api_exclusive <- function(res, expr) {
     tryCatch(api_memory_guard(), error = function(e) message("memory guard: ", conditionMessage(e)))
     if (exists("api_timing_add", mode = "function")) api_timing_add("guard", guarded)
   })
-  api_handle(res, expr)
+  api_revision_header(res, api_handle(res, expr), id)
 }
 api_body <- function(req) {
   body <- req$body
@@ -75,7 +81,7 @@ function(req, res) {
 #* @get /api/v1/health
 function() list(ok = TRUE, commit = api_commit, root = getwd(), r = as.character(getRversion()),
   shiny = as.character(utils::packageVersion("shiny")), plotly = as.character(utils::packageVersion("plotly")),
-  sessions = length(ls(api_sessions)), rssMb = api_rss_mb(), science = api_science_health(), workers = api_pool_status())
+  sessions = length(ls(api_sessions)), leases = api_session_leases(), pressure = api_pressure, rssMb = api_rss_mb(), science = api_science_health(), workers = api_pool_status())
 
 #* Team output catalog
 #* @get /api/v1/catalog
@@ -87,18 +93,18 @@ function(res) list(version = "1", outputs = api_catalog())
 # api_admin_caller() is NULL while it is off, and every route behaves as before.
 #* Available checkpoints
 #* @get /api/v1/checkpoints
-function(req, res) api_handle(res, api_checkpoint_list(api_admin_caller(req$HTTP_AUTHORIZATION)))
+function(req, res) api_handle(res, api_checkpoint_list(api_admin_caller(api_admin_authorization(req))))
 
 #* Upload a Team checkpoint ZIP
 #* @parser multi
 #* @post /api/v1/checkpoints
-function(req, res) api_exclusive(res, { api_admin_staff_only(req$HTTP_AUTHORIZATION); api_checkpoint_upload(req) })
+function(req, res) api_exclusive(res, { api_admin_staff_only(api_admin_authorization(req)); api_checkpoint_upload(req) })
 
 #* Download a checkpoint ZIP
 #* @get /api/v1/checkpoints/<id>/download
 function(id, req, res) {
   result <- api_exclusive(res, {
-    x <- api_checkpoint_resolve(id, api_admin_caller(req$HTTP_AUTHORIZATION))
+    x <- api_checkpoint_resolve(id, api_admin_caller(api_admin_authorization(req)), req$argsQuery$workspace)
     # Labels are display names, never paths; escape HTTP quoted-string delimiters.
     name <- gsub('["\\\\/]', "_", sub("[.]zip$", "", x$record$name))
     bytes <- readBin(x$path, "raw", n = file.info(x$path)$size)
@@ -113,111 +119,141 @@ function(id, req, res) {
 
 #* Delete a stored checkpoint (legacy folder files are read-only)
 #* @delete /api/v1/checkpoints/<id>
-function(id, req, res) api_exclusive(res, api_checkpoint_delete(id, api_admin_caller(req$HTTP_AUTHORIZATION)))
+function(id, req, res) api_exclusive(res, api_checkpoint_delete(id, api_admin_caller(api_admin_authorization(req)), req$argsQuery$workspace))
 
 #* Validate and acknowledge a canvas using Team's observer
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/canvas/validate
-function(id, req, res) api_exclusive(res, {
+function(id, req, res) api_exclusive(res, id = id, {
   # The session first: an unknown one is a 404, not an error raised later inside the module flush.
-  s <- api_session_get(id); body <- api_body(req)
-  api_canvas_validate(s, body$token, body$state)
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, {
+    previous <- s$canvas
+    answer <- api_canvas_validate(s, body$token, body$state)
+    if (isTRUE(answer$ok) && !identical(api_canonical_json(previous), api_canonical_json(s$canvas)))
+      api_session_dirty(s)
+    answer
+  }, handle = api_handle)
 })
 
 #* Current validated canvas
 #* @get /api/v1/sessions/<id>/canvas
-function(id, res) api_exclusive(res, api_canvas_current(api_session_get(id)))
+function(id, req, res) api_exclusive(res, id = id, api_canvas_current(api_session_get(id, api_session_caller(req))))
 
 #* Save the current session and an acknowledged canvas
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/checkpoints
-function(id, req, res) api_exclusive(res, {
-  caller <- api_admin_caller(req$HTTP_AUTHORIZATION)
+function(id, req, res) api_exclusive(res, id = id, {
+  caller <- api_session_caller(req)
   body <- api_body(req)
-  s <- api_session_get(id)
-  api_checkpoint_save(s, body$label, body$canvas, api_nexo_from_body(body, s), caller)
+  s <- api_session_get(id, caller)
+  # Only a collab session (opened by the sidecar's service identity) may mark a save as collab.
+  api_checkpoint_save_revision(s, req, res, body$label, body$canvas, api_nexo_from_body(body, s), caller,
+    collab = identical(s$kind, "collab") && isTRUE(body$collab), handle = api_handle)
 })
 
 #* Restore or reuse a checkpoint
 #* @post /api/v1/sessions
 function(req, res) api_exclusive(res, {
-  caller <- api_admin_caller(req$HTTP_AUTHORIZATION)
-  s <- api_checkpoint_session(api_body(req)$checkpointId, caller)
-  list(sessionId = s$sessionId, checkpointSha256 = s$sha256, near_limit = api_project_records_near_limit(s$project_records),
+  body <- api_body(req)
+  caller <- api_collab_open(req, body$collab)
+  if (is.null(caller)) caller <- api_admin_caller(api_admin_authorization(req))
+  s <- api_checkpoint_session(body$checkpointId, caller, body$workspace, body$collab)
+  list(sessionId = s$sessionId, workspace = s$workspace, generation = api_session_generation, engineRevision = s$engineRevision %||% 0L, checkpointSha256 = s$sha256, near_limit = api_project_records_near_limit(s$project_records),
     preparation = list(revision = s$revision, check = s$receipt), samples = s$samples, lipids = s$lipids,
     inputs = s$inputs, canvas = s$canvas, nexo = s$nexo, design = api_design_state(s), deState = api_de_state(s),
     renderWorkers = length(api_pool_alive()))
 })
 
-#* Open a session from an Admin dataset v1 workbook (multipart file + settings JSON, or JSON datasetId)
-#* @parser multi
+#* Upload an extra Excel workbook
+#* @post /api/v1/datasets/upload
+function(req, res) api_exclusive(res, api_dataset_upload_route(req, res))
+
+#* Released datasets visible to the caller
+#* @get /api/v1/datasets
+function(req, res) api_exclusive(res, api_datasets_list(api_admin_authorization(req)))
+
+#* Detection preview without opening a session
+#* @post /api/v1/datasets/preview
+function(req, res) api_exclusive(res, api_dataset_preview_route(req, res))
+
 #* @parser json list(simplifyVector = FALSE)
+#* @parser multi
 #* @post /api/v1/datasets/sessions
 function(req, res) api_exclusive(res, api_dataset_route(req, res))
 
+#* Join a project session without its personal canvas
+#* @get /api/v1/sessions/<id>/join
+function(id, req, res) api_exclusive(res, id = id, api_session_join(api_session_get(id, api_session_caller(req))))
+
+#* Renew the project's live connection and in-flight lease
+#* @parser json list(simplifyVector = FALSE)
+#* @post /api/v1/sessions/<id>/lease
+function(id, req, res) api_exclusive(res, id = id, api_session_lease(api_session_get(id, api_session_caller(req)), api_body(req)))
+
 #* Inspect a session
 #* @get /api/v1/sessions/<id>
-function(id, res) api_exclusive(res, {
-  s <- api_session_get(id, touch = FALSE)
+function(id, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req), touch = FALSE)
   idle <- as.numeric(difftime(Sys.time(), s$last_used, units = "secs"))
   s$last_used <- Sys.time()
-  list(revision = api_read(s, s$shared$preparation_state()$revision),
+  list(engineRevision = s$engineRevision, revision = api_read(s, s$shared$preparation_state()$revision),
     cards = unname(as.list(s$cards)), idleSeconds = idle, rssMb = api_rss_mb())
 })
 
 #* Close a session
 #* @delete /api/v1/sessions/<id>
-function(id, res) api_exclusive(res, {
-  if (!exists(id, api_sessions, inherits = FALSE)) api_abort("api_not_found", "Unknown session.")
-  api_session_close(api_sessions[[id]])
+function(id, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req))
+  api_mutation(s, req, res, api_session_close(s), handle = api_handle)
   list(ok = TRUE)
 })
 
 #* Confirm study design
 #* @post /api/v1/sessions/<id>/design
-function(id, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
-  api_design(s, body$unit, body$type, body$confirm)
+function(id, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, api_design(s, body$unit, body$type, body$confirm), handle = api_handle)
 })
 
 #* Shared analysis settings (Team's sidebar: Run comparison and global filters)
 #* @get /api/v1/sessions/<id>/analysis
-function(id, res) api_exclusive(res, {
-  api_analysis_schema(api_session_get(id))
+function(id, req, res) api_exclusive(res, id = id, {
+  api_analysis_schema(api_session_get(id, api_session_caller(req)))
 })
 
 #* Change shared analysis settings; every card redraws
 #* @patch /api/v1/sessions/<id>/analysis
-function(id, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
-  api_analysis_update(s, body$inputs %||% list())
+function(id, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, api_analysis_update(s, body$inputs %||% list()), handle = api_handle)
 })
 
 #* Team's session palette (data hub "Colors & palettes"): presets, saved palettes, per-group colours
 #* @get /api/v1/sessions/<id>/palette
-function(id, res) api_exclusive(res, {
-  api_palette_get(api_session_get(id))
+function(id, req, res) api_exclusive(res, id = id, {
+  api_palette_get(api_session_get(id, api_session_caller(req)))
 })
 
 #* Change the session palette through Team's own editor inputs; every group-coloured card redraws
 #* @parser json list(simplifyVector = FALSE)
 #* @patch /api/v1/sessions/<id>/palette
-function(id, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
-  api_palette_update(s, body)
+function(id, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, api_palette_update(s, body), handle = api_handle)
 })
 
 #* Targeted lipid cohort (Team's Single Lipid Analysis Mode)
 #* @get /api/v1/sessions/<id>/cohort
-function(id, res) api_exclusive(res, {
-  api_cohort_get(api_session_get(id))
+function(id, req, res) api_exclusive(res, id = id, {
+  api_cohort_get(api_session_get(id, api_session_caller(req)))
 })
 
 #* Set or clear the targeted lipid cohort; every card redraws
 #* @put /api/v1/sessions/<id>/cohort
-function(id, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
-  api_cohort_set(s, body$lipids %||% character())
+function(id, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, api_cohort_set(s, body$lipids %||% character()), handle = api_handle)
 })
 
 #* Create an independent card
@@ -228,11 +264,11 @@ function(id, req, res) {
   api_timing_reset(); api_timing$scope <- "create"; t0 <- Sys.time()
   on.exit(api_timing$scope <- NULL, add = TRUE)
   body <- NULL
-  result <- api_exclusive(res, {
+  result <- api_exclusive(res, id = id, {
     started <- Sys.time()
-    s <- api_session_get(id); body <- api_body(req)
+    s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
     api_timing_add("request", started)
-    api_card_create(s, body$source, body$inputs %||% list(), body$instanceId)
+    api_mutation(s, req, res, api_card_create(s, body$source, body$inputs %||% list(), body$instanceId), handle = api_handle)
   })
   timing <- api_timing_snapshot()
   total <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
@@ -244,37 +280,39 @@ function(id, req, res) {
 
 #* Inspect live card controls
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/schema
-function(id, instanceId, res) api_exclusive(res, {
-  api_card_schema(api_session_get(id), instanceId)
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  api_card_schema(api_session_get(id, api_session_caller(req)), instanceId)
 })
 
 #* Update card controls or click actions
 #* @patch /api/v1/sessions/<id>/cards/<instanceId>
-function(id, instanceId, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
   # A changed input warms a render worker's copy of the new content, in parallel with this update (pool.R).
-  api_card_update(s, instanceId, body$inputs %||% list(), body$actions %||% character(), warm = TRUE)
+  api_card_update(s, instanceId, body$inputs %||% list(), body$actions %||% character(),
+    warm = TRUE, req = req, res = res, handle = api_handle)
 })
 
 #* Replay a card's recorded module actions (duplicate, reopen, session recovery; chart audit b07 F3)
 #* @post /api/v1/sessions/<id>/cards/<instanceId>/replay
-function(id, instanceId, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
-  api_card_replay(s, instanceId, body$actions %||% character())
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, api_card_replay(s, instanceId, body$actions %||% character()), handle = api_handle)
 })
 
 #* Forward a Plotly click on a card to Team's module (chart audit b12: cell class / comparison selection)
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/cards/<instanceId>/events
-function(id, instanceId, req, res) api_exclusive(res, {
-  s <- api_session_get(id)
-  api_card_event(s, instanceId, api_body(req))
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req))
+  api_mutation(s, req, res, api_card_event(s, instanceId, api_body(req)), handle = api_handle)
 })
 
 #* Park a card
 #* @delete /api/v1/sessions/<id>/cards/<instanceId>
-function(id, instanceId, res) api_exclusive(res, {
-  api_card_park(api_session_get(id), instanceId)
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req))
+  api_mutation(s, req, res, api_card_park(s, instanceId), handle = api_handle)
   list(ok = TRUE)
 })
 
@@ -287,15 +325,15 @@ function(id, instanceId, res) api_exclusive(res, {
 function(id, instanceId, req, res) {
   format <- "auto"; dpr <- 1L
   api_timing_reset(); t0 <- Sys.time()
-  plan <- api_exclusive(res, {
+  plan <- api_exclusive(res, id = id, {
     started <- Sys.time()
-    s <- api_session_get(id); body <- api_body(req); format <- body$format %||% "auto"
+    s <- api_session_get(id, api_session_caller(req)); body <- api_body(req); format <- body$format %||% "auto"
     dpr <- api_render_dpr(body$dpr)
     size <- api_card_render_size(body$width %||% 800, body$height %||% 600)
     api_timing_add("request", started); started <- Sys.time()
     job <- if (length(api_pool$workers)) api_pool_job(s, instanceId, size[[1L]], size[[2L]], format, dpr) else NULL
     if (length(api_pool$workers)) api_timing_add("pool", started)
-    if (is.null(job)) { api_timing_note("where", "main"); api_card_render(s, instanceId, size[[1L]], size[[2L]], format, dpr = dpr) } else job
+    if (is.null(job)) { api_timing_note("where", "main"); api_card_render(s, instanceId, size[[1L]], size[[2L]], format, dpr = dpr, res = res) } else job
   })
   timed <- function(result, timing = api_timing_snapshot()) {
     if (is.null(result$render)) return(result)
@@ -311,6 +349,8 @@ function(id, instanceId, req, res) {
   }
   respond <- function(result) {
     result <- timed(result)
+    result$where <- NULL
+    if (!is.null(result$engineRevision)) res$headers[["X-Nexo-Engine-Revision"]] <- as.character(result$engineRevision)
     if (identical(result$render, "png")) {
       res$setHeader("Content-Type", "image/png")
       res$setHeader("X-Nexo-Revision", as.character(result$provenance$revision))
@@ -330,17 +370,17 @@ function(id, instanceId, req, res) {
       # held: the worker already had the card (warm job or an earlier render); open: it created it; update: reuse.
       if (is.character(out$card)) api_timing_note("workercard", out$card)
     } else api_timing_note("where", "main-fallback")
-    respond(api_exclusive(res, api_pool_finish(plan, out,
-      function() api_card_render(api_session_get(id), instanceId, plan$width, plan$height, format, dpr = dpr))))
+    respond(api_exclusive(res, id = id, api_pool_finish(plan, out,
+      function() api_card_render(api_session_get(id, api_session_caller(req)), instanceId, plan$width, plan$height, format, dpr = dpr, res = res))))
   })
 }
 
 #* Compatibility with the Nexo v0 dashboard client
 #* @post /api/v1/sessions/<id>/plots/results_dashboard/<output>
-function(id, output, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
+function(id, output, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
   result <- api_dashboard_v0_render(s, output, body$inputs %||% list(), body$width %||% 900, body$height %||% 600)
-  list(figure = result$figure, provenance = result$provenance)
+  list(figure = result$figure, provenance = result$provenance, engineRevision = result$engineRevision %||% s$engineRevision)
 })
 
 #* Journal presets, figures and formats of Team's Export studio
@@ -351,7 +391,7 @@ function() api_export_presets()
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/export
 function(id, req, res) {
-  result <- api_exclusive(res, api_export_bundle(api_session_get(id), api_body(req)))
+  result <- api_exclusive(res, id = id, api_export_bundle(api_session_get(id, api_session_caller(req)), api_body(req)))
   if (is.null(result$bytes)) return(result)
   res$setHeader("Content-Type", "application/zip")
   res$setHeader("Content-Disposition", paste0('attachment; filename="', result$name, '"'))
@@ -361,8 +401,8 @@ function(id, req, res) {
 
 #* The card's data, from its module's own download handler
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/data.csv
-function(id, instanceId, res) {
-  result <- api_exclusive(res, api_card_csv(api_session_get(id), instanceId))
+function(id, instanceId, req, res) {
+  result <- api_exclusive(res, id = id, api_card_csv(api_session_get(id, api_session_caller(req)), instanceId))
   if (is.null(result$bytes)) return(result)
   res$setHeader("Content-Type", "text/csv; charset=utf-8")
   res$setHeader("Content-Disposition", paste0('attachment; filename="', result$name, '"'))
@@ -372,19 +412,22 @@ function(id, instanceId, res) {
 
 #* "More downloads from this analysis": the module's own download buttons for this card
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/downloads
-function(id, instanceId, res) api_exclusive(res, api_card_downloads(api_session_get(id), instanceId))
+function(id, instanceId, req, res) api_exclusive(res, id = id, api_card_downloads(api_session_get(id, api_session_caller(req)), instanceId))
 
 #* A configuration file for the card's module (b11 F3: the pathway "Upload Layout JSON (.json):"),
 #* body {name, content}; the module receives it as Shiny's fileInput gives it
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/cards/<instanceId>/uploads/<inputId>
 function(id, instanceId, inputId, req, res)
-  api_exclusive(res, api_card_upload(api_session_get(id), instanceId, inputId, api_body(req)))
+  api_exclusive(res, id = id, {
+    s <- api_session_get(id, api_session_caller(req))
+    api_mutation(s, req, res, api_card_upload(s, instanceId, inputId, api_body(req)), handle = api_handle)
+  })
 
 #* One of those downloads, produced by the module's download handler
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/downloads/<downloadId>
-function(id, instanceId, downloadId, res) {
-  result <- api_exclusive(res, api_card_download(api_session_get(id), instanceId, downloadId))
+function(id, instanceId, downloadId, req, res) {
+  result <- api_exclusive(res, id = id, api_card_download(api_session_get(id, api_session_caller(req)), instanceId, downloadId))
   if (is.null(result$bytes)) return(result)
   res$setHeader("Content-Type", result$type)
   res$setHeader("Content-Disposition", paste0('attachment; filename="', result$name, '"'))
@@ -395,22 +438,29 @@ function(id, instanceId, downloadId, res) {
 #* Request Team violin statistics
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/cards/<instanceId>/statistics/violin
-function(id, instanceId, req, res) api_exclusive(res, {
-  s <- api_session_get(id); body <- api_body(req)
-  api_violin_stats(s, instanceId, body$mode, body$settings, body$dataFingerprint)
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
+  api_mutation(s, req, res, api_violin_stats(s, instanceId, body$mode, body$settings, body$dataFingerprint), handle = api_handle)
 })
 
 #* Current Team violin inference policy
 #* @get /api/v1/sessions/<id>/statistics/violin/policy
-function(id, res) api_exclusive(res, api_violin_policy(api_session_get(id)))
+function(id, req, res) api_exclusive(res, id = id, api_violin_policy(api_session_get(id, api_session_caller(req))))
 
 #* Confirm the reference group for this card
 #* @parser json list(simplifyVector = FALSE)
 #* @post /api/v1/sessions/<id>/cards/<instanceId>/group-comparison/confirm
-function(id, instanceId, req, res) api_exclusive(res, {
-  api_group_comparison(api_session_get(id), instanceId, api_body(req)$confirmationToken)
+function(id, instanceId, req, res) api_exclusive(res, id = id, {
+  s <- api_session_get(id, api_session_caller(req))
+  api_mutation(s, req, res, api_group_comparison(s, instanceId, api_body(req)$confirmationToken), handle = api_handle)
 })
 
 #* Current Team group comparison data
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/group-comparison
-function(id, instanceId, res) api_exclusive(res, api_group_comparison(api_session_get(id), instanceId))
+function(id, instanceId, req, res) api_exclusive(res, id = id, api_group_comparison(api_session_get(id, api_session_caller(req)), instanceId))
+
+#* Prepared dataset quality check
+#* @get /api/v1/sessions/<id>/quality
+function(id, req, res) api_exclusive(res, id = id, {
+  api_dataset_quality(api_session_get(id, api_session_caller(req)))
+})

@@ -282,6 +282,7 @@ api_upload_limit <- 256 * 1024
 # (name, size, type, datapath). Only a .json file (Team's accept) within the limit that parses is passed on;
 # a file that does not parse is refused with Team's own message (13_pathway_module.R upload_config observer).
 api_card_upload <- function(s, instanceId, inputId, file) {
+  api_mutation(s, NULL, NULL, (function() {
   card <- api_card_get(s, instanceId)
   controls <- api_card_upload_controls(card$family)
   if (!is.character(inputId) || length(inputId) != 1L || !inputId %in% vapply(controls, `[[`, "", "id"))
@@ -315,4 +316,5 @@ api_card_upload <- function(s, instanceId, inputId, file) {
   card$settled <- s$bus$settled(instanceId)
   s$cards[[instanceId]] <- card
   list(settled = card$settled, inputs = card$inputs, file = list(name = basename(name), size = size))
+  })())
 }

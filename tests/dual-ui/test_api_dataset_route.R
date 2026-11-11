@@ -56,6 +56,11 @@ stopifnot(opened$status == 200L, nzchar(session$sessionId), nchar(session$checkp
   identical(session$dataset$sha256, stored$sha256), identical(session$dataset$name, "released.xlsx"),
   is.list(session$design), is.null(session$nexo))
 cat("PASS route opens a session from an uploaded workbook\n")
+quality <- call("GET", paste0("/api/v1/sessions/", session$sessionId, "/quality"))
+stopifnot(quality$status == 200L, length(quality$body$pca) == 6L,
+  length(quality$body$spread) == 6L, length(quality$body$missing) == 6L,
+  quality$body$limit == 2.5, quality$body$missing[[2L]]$missing > 0)
+cat("PASS quality route summarizes Team prepared dataset\n")
 again <- json("/api/v1/datasets/sessions", list(datasetId = stored$id, settings = settings))
 stopifnot(again$status == 200L, identical(again$body$sessionId, session$sessionId))
 unknown <- json("/api/v1/datasets/sessions", list(datasetId = strrep("a", 64L), settings = settings))
@@ -141,6 +146,9 @@ caller_identity <- list(userId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", view = 
 options(lipidomic.admin.http_fetcher = function(method, url, headers, body = NULL) {
   requests[[length(requests) + 1L]] <<- list(url = url, headers = headers)
   stopifnot(headers[["apikey"]] == "synthetic-anon")
+  if (endsWith(url, "/rpc/nexo_caller")) return(list(status = 200L,
+    body = charToRaw(jsonlite::toJSON(list(list(caller_view = caller_identity$view,
+      client_id = caller_identity$clientId)), auto_unbox = TRUE))))
   if (method == "POST") {
     stopifnot(endsWith(url, "/rpc/nexo_dataset_for_caller"),
       headers[["Authorization"]] == "Bearer synthetic-user", headers[["Content-Profile"]] == "admin")
@@ -160,6 +168,9 @@ stopifnot(a$status == 200L, identical(a$body$dataset$openedBy, caller_identity),
   identical(api_sessions[[a$body$sessionId]]$dataset$openedBy, caller_identity), length(requests) == 2L,
   !grepl("synthetic-user", jsonlite::toJSON(a$body, auto_unbox = TRUE)))
 cat("PASS caller RPC forwards user authorization only to RPC and records openedBy in session and body\n")
+stopifnot(identical(a$body$workspace, api_sessions[[a$body$sessionId]]$workspace),
+  identical(a$body$workspace, api_client_workspace(caller_identity$clientId)))
+cat("PASS dataset open answer carries session workspace\n")
 for (case in list(list("unauthorized", 401L, "admin_auth_required"),
     list("unauthorized-curl", 401L, "admin_auth_required"), list("other-client", 404L, "dataset_not_found"))) {
   mode <- case[[1L]]; requests <- list(); a <- caller_open()
@@ -172,6 +183,34 @@ stopifnot(a$status == 401L, a$body$error == "admin_auth_required", length(reques
 cat("PASS required user without token returns 401 before fetching\n")
 mode <- "ok"; a <- caller_open()
 stopifnot(a$status == 200L, identical(a$body$dataset$openedBy, caller_identity))
+stopifnot(call("GET", paste0("/api/v1/sessions/", a$body$sessionId, "/quality"))$status == 401L)
+stopifnot(call("GET", paste0("/api/v1/sessions/", a$body$sessionId, "/quality"),
+  authorization = "Bearer synthetic-user")$status == 200L)
+cat("PASS quality route uses session caller authorization\n")
+requests <- list()
+preview_body <- c(list(adminDatasetId = admin_id), settings[c("samples", "minDetectionPct", "detectionScope", "dropNonDetected")])
+p1 <- json("/api/v1/datasets/preview", preview_body, "Bearer synthetic-user")
+preview_body$minDetectionPct <- 100
+p2 <- json("/api/v1/datasets/preview", preview_body, "Bearer synthetic-user")
+stopifnot(p1$status == 200L, p2$status == 200L, p1$body$kept > p2$body$kept, p1$body$kept == a$body$lipids,
+  length(requests) == 3L, sum(vapply(requests, function(x) grepl("/storage/", x$url), logical(1))) == 1L)
+stopifnot(json("/api/v1/datasets/preview", preview_body)$status == 401L)
+mode <- "other-client"
+stopifnot(json("/api/v1/datasets/preview", preview_body, "Bearer synthetic-user")$status == 404L)
+mode <- "ok"
+cat("PASS preview route reauthorizes cached SHA workbook without redownloading\n")
+stopifnot(call("GET", "/api/v1/datasets")$status == 401L)
+options(lipidomic.admin.http_fetcher = function(method, url, headers, body = NULL) {
+  stopifnot(endsWith(url, "/rpc/nexo_datasets_for_caller"), headers[["Authorization"]] == "Bearer synthetic-user")
+  list(status = 200L, body = charToRaw(jsonlite::toJSON(list(list(dataset_id = admin_id,
+    order_code = "SYN001", version = 1L, client_id = caller_identity$clientId,
+    client_name = "Synthetic lab", released_at = "2026-01-01T00:00:00Z", members_prepare = FALSE)), auto_unbox = TRUE)))
+})
+listed <- call("GET", "/api/v1/datasets", authorization = "Bearer synthetic-user")
+stopifnot(listed$status == 200L, listed$body$datasets[[1L]]$adminDatasetId == admin_id,
+  identical(listed$body$datasets[[1L]]$membersPrepare, FALSE))
+cat("PASS datasets GET maps released rows and refuses anonymous caller\n")
+
 Sys.unsetenv("LIPIDOMIC_ADMIN_REQUIRE_USER")
 Sys.unsetenv("LIPIDOMIC_ADMIN_NEXO_TOKEN")
 a <- admin_open(settings)

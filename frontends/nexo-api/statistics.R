@@ -44,6 +44,7 @@ api_violin_settings <- function(settings, required = FALSE) {
 }
 
 api_violin_stats <- function(s, instanceId, mode, settings = NULL, dataFingerprint = NULL) {
+  api_mutation(s, NULL, NULL, (function() {
   card <- tryCatch(api_card_get(s, instanceId), api_not_found = function(e)
     api_abort("api_unprocessable", "Statistics are available for violin cards only"))
   api_require(identical(card$source, "results_dashboard-plot_violin"),
@@ -68,10 +69,13 @@ api_violin_stats <- function(s, instanceId, mode, settings = NULL, dataFingerpri
   if (!length(messages)) api_abort("api_unavailable", "No Team violin statistics reply after 8 flushes")
   reply <- tail(messages, 1L)[[1L]]
   reply$policy <- api_violin_policy(s)
+  if (identical(mode, "apply") && identical(reply$status, "ok")) api_session_dirty(s)
   reply
+  })())
 }
 
 api_group_comparison <- function(s, instanceId, confirmationToken = NULL) {
+  api_mutation(s, NULL, NULL, (function() {
   card <- api_card_get(s, instanceId)
   api_require(identical(card$source, "group_comparison_tab-comparisonPlot"),
     "Group comparison is available for group comparison cards only")
@@ -86,4 +90,5 @@ api_group_comparison <- function(s, instanceId, confirmationToken = NULL) {
   api_flush(s)
   messages <- Filter(function(x) identical(x$id, instanceId), s$bus$messages("team-group-comparison-data"))
   if (length(messages)) tail(messages, 1L)[[1L]] else list(id = instanceId, requiresConfirmation = TRUE)
+  })())
 }

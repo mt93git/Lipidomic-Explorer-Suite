@@ -10,3 +10,7 @@ export function bodyStatus(b: { rendering: number; text: string; drawn: boolean;
   if (b.text && b.text !== 'Snapshot unavailable') return 'error';
   return undefined;
 }
+/** The card status line: a change note (Phase 3, "Updated by <name>", collab/render.ts) while it lasts, else the state's label. */
+export function statusLabel(label: string, note: { text: string; until: number } | undefined, now: number): string {
+  return note && now < note.until ? note.text : label;
+}

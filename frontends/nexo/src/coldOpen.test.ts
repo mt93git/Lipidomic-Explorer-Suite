@@ -3,6 +3,8 @@
 // pilot checkpoint). The catalog is asked once; panel data (the cohort) waits behind the cards in view, never paused.
 // The checkpoint list stays first: it names the project in the top bar.
 import {expect,it,vi,afterEach} from 'vitest';
+import { useAdminTokenFetch } from './api/adminToken';
+useAdminTokenFetch(async () => new Response('{}', {status: 401}));
 import {RequestQueue} from './prefetch';
 afterEach(()=>{vi.unstubAllGlobals();});
 it('serves background work after HIGH and before LOW, even while LOW is paused',async()=>{

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdminSignInRequired, adminSignInUrl, adminToken, adminTokenUrl, forgetAdminToken } from './adminToken';
+import { AdminSignInRequired, adminDisplayName, adminSignInUrl, adminToken, adminHeaders, adminTokenUrl, adminUserId, forgetAdminToken } from './adminToken';
 import { datasetStrings as d } from '../ui/strings';
 afterEach(() => { forgetAdminToken(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -9,6 +9,15 @@ const issued = (token: string, expiresAt = now + 3600) => json(200, { accessToke
 const at = (seconds: number) => vi.spyOn(Date, 'now').mockReturnValue(seconds * 1000);
 
 describe('adminToken', () => {
+  it("keeps the signed-in person's userId from Admin's answer, forgotten with the token", async () => {
+    at(now);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(issued('t1')));
+    expect(adminUserId()).toBeNull();
+    await adminToken();
+    expect(adminUserId()).toBe('00000000-0000-4000-8000-0000000000aa');
+    forgetAdminToken();
+    expect(adminUserId()).toBeNull();
+  });
   it('asks Admin same-origin with credentials and keeps the token until 60 s before it expires', async () => {
     at(now);
     const fetch = vi.fn().mockResolvedValueOnce(issued('t1')).mockResolvedValueOnce(issued('t2', now + 7200));
@@ -25,14 +34,19 @@ describe('adminToken', () => {
     await expect(adminToken()).resolves.toBe('t2');
     expect(fetch).toHaveBeenCalledTimes(2);
   });
-  it('says the person must sign in to Admin on 401, and caches nothing', async () => {
+  it('remembers signed out for 60 seconds and keeps requiring sign-in', async () => {
     at(now);
     const fetch = vi.fn().mockResolvedValueOnce(json(401, { error: 'signed_out' })).mockResolvedValueOnce(issued('t3'));
     vi.stubGlobal('fetch', fetch);
     const error = await adminToken().catch(e => e);
     expect(error).toBeInstanceOf(AdminSignInRequired);
     expect(error.message).toBe(d.signedOut);
+    at(now + 59);
+    await expect(adminToken()).rejects.toBeInstanceOf(AdminSignInRequired);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    at(now + 60);
     await expect(adminToken()).resolves.toBe('t3');
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
   it.each([
     ['a 403 (not same-origin)', () => Promise.resolve(json(403, { error: 'forbidden' }))],
@@ -43,11 +57,28 @@ describe('adminToken', () => {
     at(now);
     const fetch = vi.fn(answer); vi.stubGlobal('fetch', fetch);
     await expect(adminToken()).resolves.toBeNull();
+    at(now + 59);
+    await expect(adminToken()).resolves.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    at(now + 60);
+    await expect(adminToken()).resolves.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+  it.each([401, 404])('forgets a cached no-token answer on request (%s)', async (status) => {
+    at(now);
+    const fetch = vi.fn().mockResolvedValueOnce(json(status, {})).mockResolvedValueOnce(issued('new'));
+    vi.stubGlobal('fetch', fetch);
+    if (status === 401) await expect(adminToken()).rejects.toBeInstanceOf(AdminSignInRequired);
+    else await expect(adminToken()).resolves.toBeNull();
+    forgetAdminToken();
+    await expect(adminToken()).resolves.toBe('new');
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
   it('lets a cancel through as a cancel', async () => {
     const controller = new AbortController(); controller.abort();
     vi.stubGlobal('fetch', vi.fn((_: string, init: RequestInit) => { init.signal?.throwIfAborted(); return Promise.resolve(issued('t')); }));
     await expect(adminToken(controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(adminToken()).resolves.toBe('t');
   });
   it('forgets the token on request (an API 401)', async () => {
     at(now);
@@ -64,4 +95,22 @@ describe('adminSignInUrl', () => {
     expect(adminSignInUrl('https://lab.example/nexo/?dataset=11111111-1111-4111-8111-111111111111&x=1'))
       .toBe('/admin/sign-in?next=https%3A%2F%2Flab.example%2Fnexo%2F%3Fdataset%3D11111111-1111-4111-8111-111111111111%26x%3D1');
   });
+});
+
+it('uses the dedicated admin header and omits it without a token', async () => {
+  at(now);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(issued('synthetic')).mockResolvedValueOnce(json(404, {})));
+  expect(await adminHeaders()).toEqual({'X-Nexo-Admin-Token':'synthetic'});
+  forgetAdminToken();
+  expect(await adminHeaders()).toEqual({});
+});
+
+// ENTRY-INT step 4: "Prepared by <name>" on a board this person prepared, named as the sidecar names them (admission.mjs identity).
+it('names the signed-in person by the token\'s displayName claim, else as Lab staff or Member', async () => {
+  at(now);
+  const named = `x.${btoa(JSON.stringify({ displayName: 'Ana Synthetic' })).replace(/=+$/, '')}.y`;
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(issued(named)).mockResolvedValueOnce(issued('opaque')));
+  expect(adminDisplayName()).toBeNull();
+  await adminToken(); expect(adminDisplayName()).toBe('Ana Synthetic');
+  forgetAdminToken(); await adminToken(); expect(adminDisplayName()).toBe('Member');
 });

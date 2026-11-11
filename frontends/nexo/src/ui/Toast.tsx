@@ -16,5 +16,5 @@ export function Toast() {
     el.addEventListener('mouseenter', enter); el.addEventListener('mouseleave', leave); el.addEventListener('focusin', focusIn); el.addEventListener('focusout', focusOut); resume();
     return () => { pause(); el.removeEventListener('mouseenter', enter); el.removeEventListener('mouseleave', leave); el.removeEventListener('focusin', focusIn); el.removeEventListener('focusout', focusOut); };
   }, [toast]);
-  return toast && <div ref={ref} className={`toast ${toast.error ? 'is-error' : ''}`} role={toast.error ? 'alert' : 'status'}>{toast.message}{toast.undo && <><button onClick={() => { toast.undo?.(); dismiss(); }}>{s.undo}</button></>}<button aria-label={s.dismiss} data-tip={s.dismiss} onClick={dismiss}>{s.close}</button></div>;
+  return toast && <div ref={ref} className={`toast ${toast.error ? 'is-error' : ''}`} role={toast.error ? 'alert' : 'status'}>{toast.message}{toast.undo && <><button onClick={() => { toast.undo?.(); dismiss(); }}>{toast.action ?? s.undo}</button></>}<button aria-label={s.dismiss} data-tip={s.dismiss} onClick={dismiss}>{s.close}</button></div>;
 }

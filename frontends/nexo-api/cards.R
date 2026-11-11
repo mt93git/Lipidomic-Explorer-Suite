@@ -42,7 +42,8 @@ api_card_saved <- function(s, instanceId) {
 # no longer accepts falls back to Team's default instead of losing the whole card.
 api_card_restore <- function(s, instanceId, saved) {
   dirty <- isTRUE(s$dirty)
-  on.exit(s$dirty <- dirty, add = TRUE)
+  restoring <- s$restoring; s$restoring <- TRUE
+  on.exit({ s$dirty <- dirty; s$restoring <- restoring }, add = TRUE)
   api_debug("restore saved card ", instanceId, " (", saved$source, ")")
   # Warm a render worker's copy first (pool.R; none for a fixed copy or a card with replayed actions: the saved
   # descriptor says so), in parallel with this restore.
@@ -117,6 +118,7 @@ api_card_warm <- function(s, instanceId, descriptor = NULL) {
 # create nested in a render's "open" or in a worker never adds phases to that render's timing.
 api_create_phase <- function(phase, since) if (identical(api_timing$scope, "create")) api_timing_add(phase, since)
 api_card_create <- function(s, source, inputs = list(), instanceId = NULL, warm = TRUE) {
+  api_mutation(s, NULL, NULL, (function() {
   started <- Sys.time()
   api_alive(s)
   resolved <- tryCatch(team_plot_instance_source(source), error = function(e)
@@ -195,6 +197,7 @@ api_card_create <- function(s, source, inputs = list(), instanceId = NULL, warm 
   s$explicit[[instanceId]] <- as.list(inputs)
   api_create_phase("card", started)
   card
+  })())
 }
 # Legacy dashboard nodes (no instance) render through one fixed v0 instance per output.
 # Lenient on purpose (the v0 client sends the whole saved input set): keep only the
@@ -236,7 +239,8 @@ api_dashboard_v0_render <- function(s, output, inputs = list(), width = 900, hei
 }
 # warm = TRUE (the PATCH route): a changed static input sends a render worker a warm job for the new content before
 # this process applies it, so both run in parallel (pool.R; never for actions, which make the card unpoolable).
-api_card_update <- function(s, instanceId, inputs = list(), actions = character(), warm = FALSE) {
+api_card_update <- function(s, instanceId, inputs = list(), actions = character(), warm = FALSE, req = NULL, res = NULL, handle = NULL) {
+  out <- api_mutation(s, req, res, (function() {
   card <- api_card_get(s, instanceId)
   schema <- NULL
   allowed <- card$allowedInputs
@@ -298,6 +302,19 @@ api_card_update <- function(s, instanceId, inputs = list(), actions = character(
   modal <- api_modal_parts(s$bus$modal$html)
   s$bus$modal <- NULL
   if (!is.null(modal)) out$modal <- modal
+    out
+  })(), handle = handle)
+  # Test-only crash after application; no test state or timers when the options are unset.
+  fail <- getOption("nexo.api.fail_after_apply")
+  if (!is.null(fail) && isTRUE(fail(s$sessionId, instanceId))) stop("test: PATCH failed after apply")
+  delay <- getOption("nexo.api.delay_patch")
+  if (!is.null(delay)) {
+    s$test_patch_n <- (s$test_patch_n %||% 0L) + 1L
+    seconds <- delay(s$sessionId, instanceId, s$test_patch_n)
+    # Yield while waiting so an in-process test can apply the next PATCH before this answer.
+    until <- Sys.time() + seconds
+    while (Sys.time() < until) later::run_now(max(0, min(0.01, as.numeric(until - Sys.time()))))
+  }
   out
 }
 # The module's own plot height for a card whose catalog entry names a height input (catalog.R):
@@ -340,10 +357,11 @@ api_render_module_error <- function(e) {
     else "Team's module could not draw this plot (it stopped without a message).")
 }
 api_card_render <- function(s, instanceId, width = 800, height = 600,
-                            format = c("auto", "plotly", "png", "svg"), dpr = 1L) {
+                            format = c("auto", "plotly", "png", "svg"), dpr = 1L, res = NULL) {
+  if (missing(format)) format <- "auto"
+  api_render_answer(s, res, (function() {
   started <- Sys.time()
   size <- api_card_render_size(width, height); width <- size[[1L]]; height <- size[[2L]]
-  if (missing(format)) format <- "auto"
   dpr <- api_render_dpr(dpr)
   api_timing_add("args", started); started <- Sys.time()
   # Disk cache (render_disk.R): a saved card whose content was drawn before is served
@@ -445,6 +463,7 @@ api_card_render <- function(s, instanceId, width = 800, height = 600,
     api_timing_add("disk", started)
   }
   result
+  })())
 }
 # Retina (Phase 1 close): a PNG render may be drawn at pixel ratio 2. 1 (the default) or 2 only.
 api_render_dpr <- function(dpr) {
@@ -457,6 +476,7 @@ api_render_dpr <- function(dpr) {
 # back). 1x keys are unchanged, so the disk cache written before this change still hits.
 api_render_format_key <- function(format, dpr = 1L) if (isTRUE(dpr > 1L)) paste0(format, "@", dpr, "x") else format
 api_card_park <- function(s, instanceId) {
+  api_mutation(s, NULL, NULL, (function() {
   api_card_get(s, instanceId)
   # This production tree implements the park event in plot_instances.R.
   api_session_dirty(s)
@@ -464,6 +484,7 @@ api_card_park <- function(s, instanceId) {
   api_flush(s)
   rm(list = instanceId, envir = s$cards)
   invisible(NULL)
+  })())
 }
 api_commit <- tryCatch(unname(system2("git", c("rev-parse", "HEAD"), stdout = TRUE)[1L]),
   error = function(e) NA_character_)
@@ -547,6 +568,7 @@ api_card_member_actions <- function(s, instanceId) {
 # A restore, not an edit: it never dirties the session. An action the card's module does not offer, or one that
 # fails, is reported in `failed` (the card keeps Team's placeholder; Nexo's Inspector asks to press it again).
 api_card_replay <- function(s, instanceId, actions) {
+  api_mutation(s, NULL, NULL, (function() {
   actions <- api_card_action_ids(actions)
   api_card_get(s, instanceId)
   dirty <- isTRUE(s$dirty)
@@ -564,6 +586,7 @@ api_card_replay <- function(s, instanceId, actions) {
   }
   list(replayed = I(setdiff(todo, failed)), failed = I(failed), pressed = I(api_card_pressed(s, instanceId)),
     settled = isTRUE(s$cards[[instanceId]]$settled))
+  })())
 }
 
 # Chart audit b12 (Astra review 2026-11-08): Team turns a click on a cell plot's Plotly point into an input change
@@ -605,6 +628,7 @@ api_plotly_points <- function(points) {
 # The input value Shiny receives: JSON.stringify of plotly's array (a list stays an array, a scalar stays a scalar).
 api_plotly_click_json <- function(points) as.character(jsonlite::toJSON(points, auto_unbox = TRUE, null = "null", na = "null", digits = NA))
 api_card_event <- function(s, instanceId, body) {
+  api_mutation(s, NULL, NULL, (function() {
   card <- api_card_get(s, instanceId)
   if (!is.list(body)) api_abort("api_bad_request", "Expected a JSON object.")
   if (!identical(body$event %||% "plotly_click", "plotly_click")) api_abort("api_bad_request", "Only plotly_click events are forwarded.")
@@ -635,6 +659,7 @@ api_card_event <- function(s, instanceId, body) {
   card$plotHeight <- api_card_plot_height(card)
   s$cards[[instanceId]] <- card
   list(settled = card$settled, inputs = card$inputs, changed = I(changed))
+  })())
 }
 
 # Per-phase render timing (Phase 1 close): the render route answers a Server-Timing header and

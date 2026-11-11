@@ -276,7 +276,7 @@ async function browserTests(pw, name, base) {
 
 function unitTests() {
   const esbuild = require(require.resolve('esbuild', {paths:[nexo]}));
-  const code = esbuild.buildSync({stdin:{contents:"export { cardMenuPlacement } from './src/cards.ts'",resolveDir:nexo},bundle:true,write:false,platform:'node',format:'cjs',define:{'import.meta.env.VITE_API_MOCK':'"0"','import.meta.env.VITE_API_BASE':'"/api/v1"'}}).outputFiles[0].text;
+  const code = esbuild.buildSync({stdin:{contents:"export { cardMenuPlacement } from './src/cards.ts'",resolveDir:nexo},bundle:true,write:false,platform:'node',format:'cjs',define:{'import.meta.env.VITE_API_MOCK':'"0"','import.meta.env.VITE_API_BASE':'"/api/v1"','import.meta.env.VITE_ADMIN_TOKEN_URL':'undefined'}}).outputFiles[0].text;
   const mod = {exports:{}}; new Function('module','exports','require',code)(mod,mod.exports,require);
   const place=mod.exports.cardMenuPlacement;
   assert.deepEqual(place({top:400,bottom:440,left:300,right:500},{top:0,bottom:800,left:0,right:800},200),{below:false,maxHeight:396,shiftX:0});

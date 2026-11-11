@@ -18,6 +18,8 @@ local({
   stopifnot(is.list(canvas), identical(canvas$version, "1"), length(canvas$nodes) == 0L)
   roundtrip <- jsonlite::fromJSON(api_canonical_json(canvas), simplifyVector = FALSE)
   stopifnot(identical(api_canonical_json(canvas), api_canonical_json(roundtrip)))
+  if (!grepl("^[0-9a-f]{12}\\.[0-9a-f]{32}$", s$sessionId)) stop("FAIL generation-prefixed session id")
+  cat("PASS generation-prefixed session id\n")
   cat("PASS session open\n")
   same <- api_session_for_checkpoint(fixture)
   stopifnot(identical(s, same), identical(s$sessionId, same$sessionId), length(ls(api_sessions)) == 1L)
@@ -43,6 +45,8 @@ local({
   # Once a card exists the live session no longer equals the checkpoint: a fresh one opens.
   fresh <- api_session_for_checkpoint(fixture)
   stopifnot(!identical(fresh$sessionId, s$sessionId), isTRUE(s$dirty), length(ls(api_sessions)) == 2L)
+  stopifnot(!identical(fresh$sessionId, s$sessionId))
+  cat("PASS two creates never reuse session id\n")
   api_session_close(fresh)
   cat("PASS session reuse only while clean\n")
   api_session_close(s)

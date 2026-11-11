@@ -21,3 +21,11 @@ const pairs: [string, string][] = [
 describe('colour tokens', () => {
   it.each(pairs)('%s on %s is at least 7:1', (fg, bg) => { expect(ratio(fg, bg)).toBeGreaterThanOrEqual(7); });
 });
+// Nexo entry (nexo-entry-build.md C6): the field border, the field height (44 px on touch) and the two title sizes.
+describe('entry tokens', () => {
+  it('field border is at least 3:1 on paper', () => { expect(ratio('field', 'paper')).toBeGreaterThanOrEqual(3); });
+  it.each([['field', '#7d8a99'], ['field-h', '40px'], ['h1', '24px'], ['h2', '18px']])('--%s is %s', (name, value) => {
+    expect(css).toMatch(new RegExp(`--${name}:\\s*${value};`));
+  });
+  it('fields are 44 px on touch', () => { expect(css).toMatch(/@media \(pointer:coarse\) \{\s*:root \{ --field-h:44px; \}/); });
+});

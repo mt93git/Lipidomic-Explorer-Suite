@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { uploadCardFile, type CardUpload } from '../../api';
 import type { UploadControl } from '../../api/types';
 import { checkUploadFile, uploadRefused } from '../../state/layoutUpload';
+import { collab } from '../../collab/mode';
 export function UploadControls({uploads, sessionId, instanceId, onUploaded, onStatus}: {
   uploads: UploadControl[]; sessionId: string; instanceId: string;
   /** The module took the file: record the instance inputs it set and the file (Nexo's member); redraw the card. */
@@ -26,10 +27,12 @@ export function UploadControls({uploads, sessionId, instanceId, onUploaded, onSt
     } catch (error) { say(error instanceof Error ? error.message : String(error), true); onStatus(uploadRefused(error) ? 'Up to date' : 'Update failed'); }
     finally { setBusy(false); }
   }
-  return <div className="schema-form upload-controls">{uploads.map(control => { const id = `upload-${instanceId}-${control.id}`, note = message[control.id];
+  // Phase 3 as cut: uploads are not intents yet; on a shared board the control says so.
+  const single = collab() !== null;
+  return <div className="schema-form upload-controls">{uploads.map(control => { const id = `upload-${instanceId}-${control.id}`, note = single ? {text: 'Uploads are single-user for now', error: false} : message[control.id];
     return <div key={control.id} className="field">
       <label htmlFor={id}>{control.label}</label>
-      <input id={id} type="file" accept={control.accept || undefined} disabled={busy} aria-describedby={note ? `${id}-note` : undefined}
+      <input id={id} type="file" accept={control.accept || undefined} disabled={busy || single} aria-describedby={note ? `${id}-note` : undefined}
         onChange={e => void pick(control, e.currentTarget)}/>
       {note && <p id={`${id}-note`} className={note.error ? 'field-error' : 'field-help'} role={note.error ? 'alert' : 'status'}>{note.text}</p>}
     </div>; })}</div>;

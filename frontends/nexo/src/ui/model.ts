@@ -7,16 +7,18 @@ export const store = createStore({
   ui: { design: undefined as Design | undefined, libraryFocus: 0, saveStatus: strings.ready as string, mode: 'select' as 'select' | 'move', inspectorOpen: false,
     figureMode: false, libraryOpen: false, library: 'plots' as 'plots' | 'illustrations' | 'text' | 'palettes',
     /** Pilot F1: Team's session palette panel (rail Palettes, a card's Data tab). */
-    paletteOpen: false },
+    paletteOpen: false,
+    /** UX-B4: the collab Version history panel (rail clock, Checkpoints title in collab mode). */
+    versionsOpen: false },
   tabs: tabs.initial([]), past: [] as tabs.TabState[], future: [] as tabs.TabState[],
-  toast: null as null | { id: number; message: string; error: boolean; undo?: () => void }
+  toast: null as null | { id: number; message: string; error: boolean; undo?: () => void; action?: string }
 });
 const subscription = store.subscribe(s => s, () => {});
 export function useShell() { return useSyncExternalStore(subscription.subscribe, subscription.getSnapshot, subscription.getSnapshot); }
 export function ui(patch: Partial<ReturnType<typeof store.get>['ui']>) { store.set(s => ({ ...s, ui: { ...s.ui, ...patch } })); }
 /** One notice path: the toast is the only place a message is shown and announced (review R15). */
-export function notify(message: string, error = false, undo?: () => void) {
-  store.set(s => ({ ...s, toast: { id: Date.now(), message, error, undo } }));
+export function notify(message: string, error = false, undo?: () => void, action?: string) {
+  store.set(s => ({ ...s, toast: { id: Date.now(), message, error, undo, ...(action ? { action } : {}) } }));
 }
 /** A failed action: an error toast with a human sentence; the inspector status line keeps showing state. */
 export function notifyFailure(action: string, error: unknown) {

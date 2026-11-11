@@ -32,6 +32,7 @@ api_pool_reuse_id <- function(source, instanceId) paste0("tcinstance_poolr", sub
 api_pool_card_ids <- function(job) c(card = job$cardId, reuse = job$reuseId %||% NA_character_)
 api_pool <- new.env(parent = emptyenv())
 api_pool$workers <- list(); api_pool$queue <- list(); api_pool$ticking <- FALSE
+api_pool$inflight <- new.env(parent = emptyenv())
 api_pool$warm_queue <- list(); api_pool$warm_log <- list(); api_pool$warm_submit_ms <- NA_real_
 
 api_pool_size <- function() {
@@ -65,7 +66,7 @@ api_pool_worker_open <- function(path) {
   assign("api_worker_cards", 0L, envir = globalenv())
   # What each worker card shows: list(card = its content id api_pool_card_id(source, explicit), explicit).
   assign("api_worker_content", new.env(parent = emptyenv()), envir = globalenv())
-  s$sha256
+  s$openedSha256 %||% s$sha256
 }
 # The worker's session, aligned with the job's session-level state (cohort, design, analysis settings).
 api_pool_worker_session <- function(job) {
@@ -91,7 +92,7 @@ api_pool_worker_session <- function(job) {
     same(s)
   }
   s <- get("api_worker_session", envir = globalenv())
-  if (!identical(s$sha256, job$sha256)) stop("worker holds another checkpoint")
+  if (!identical(s$openedSha256 %||% s$sha256, job$sha256)) stop("worker holds another checkpoint")
   # Team's limit is 160 card instances per session; start afresh well before it.
   if (get("api_worker_cards", envir = globalenv()) >= 100L) {
     api_pool_worker_open(get("api_worker_path", envir = globalenv())); s <- get("api_worker_session", envir = globalenv())
@@ -192,6 +193,7 @@ api_pool_stop <- function() {
   for (w in api_pool$workers) try(w$proc$kill(), silent = TRUE)
   for (job in api_pool$queue) job$resolve(list(ok = FALSE, fallback = TRUE))
   api_pool$workers <- list(); api_pool$queue <- list(); api_pool$warm_queue <- list()
+  api_pool$inflight <- new.env(parent = emptyenv())
   invisible(NULL)
 }
 api_pool_spawn <- function(i) {
@@ -211,7 +213,9 @@ api_pool_status <- function() {
   warming <- sum(vapply(api_pool$workers, function(w) inherits(w$job, "api_pool_warm"), logical(1)))
   list(size = length(api_pool$workers), idle = sum(states == "idle"), busy = sum(states == "busy"),
     starting = sum(states %in% c("booting", "opening")), queued = length(api_pool$queue),
-    warming = warming, warmQueued = length(api_pool$warm_queue))
+    warming = warming, warmQueued = length(api_pool$warm_queue), inFlight = length(ls(api_pool$inflight)),
+    workers = lapply(api_pool$workers, function(w) list(index = w$index, state = w$state,
+      checkpoint = w$loaded, cards = length(w$cards))))
 }
 # A session opens: every worker opens the same checkpoint (in parallel with the main open).
 api_pool_prepare <- function(path, sha) {
@@ -227,16 +231,6 @@ api_pool_open <- function(w) {
   api_pool_tick_soon()
 }
 
-# A descriptor a worker may draw from (render_disk.R api_card_descriptor), or NULL: the main process draws the card.
-api_pool_poolable <- function(descriptor) {
-  if (is.null(descriptor) || isTRUE(descriptor$fixed) || !descriptor$render %in% c("plotly", "png")) return(NULL)
-  # Controls the module builds at run time (schema.R api_is_computed_id: customCol_/customShape_, bqcSamples,
-  # gridLog2fcThresh, FLA sel_<category>, case_bucket_) keep the card on the main process (H9 review P1). Setting
-  # them on a worker after create was tried (retina-timing) and drew a per-group colour card differently from the
-  # main process (test_api_pool.R 7b), so the guard stays until that difference is understood.
-  if (any(api_is_computed_id(names(descriptor$explicit)))) return(NULL)
-  descriptor
-}
 # The session-level state a worker aligns before creating or drawing a card (the disk-cache key's).
 api_pool_state <- function(s) {
   order <- api_read(s, if (isTRUE(s$shared$targeted_mode_active())) as.character(s$shared$targeted_lipids_list()) else character())
@@ -245,7 +239,7 @@ api_pool_state <- function(s) {
 }
 # What a worker needs to draw this card, or NULL when the main process must draw it.
 api_pool_job <- function(s, instanceId, width, height, format, dpr = 1L) {
-  if (!length(api_pool_serving(s$sha256))) return(NULL)
+  if (!length(api_pool_serving(s$openedSha256 %||% s$sha256))) return(NULL)
   descriptor <- api_pool_poolable(api_card_descriptor(s, instanceId))
   if (is.null(descriptor)) return(NULL)
   if (!(identical(format, "auto") || identical(format, descriptor$render) ||
@@ -258,7 +252,7 @@ api_pool_job <- function(s, instanceId, width, height, format, dpr = 1L) {
   if (!is.null(api_render_cache_get(s, memory_key)) ||
       (!is.null(disk_key) && !is.null(api_render_disk_dir()) && file.exists(file.path(api_render_disk_dir(), paste0(disk_key, ".rds")))))
     return(NULL)
-  structure(list(sessionId = s$sessionId, instanceId = instanceId, sha256 = s$sha256, source = descriptor$source,
+  structure(list(sessionId = s$sessionId, instanceId = instanceId, engineRevision = s$engineRevision %||% 0L, sha256 = s$openedSha256 %||% s$sha256, source = descriptor$source,
     explicit = descriptor$explicit, render = descriptor$render, width = width, height = height, format = descriptor$render,
     state = api_pool_state(s), memoryKey = memory_key, diskKey = disk_key, dpr = dpr, keyFormat = key_format,
     cardId = api_pool_card_id(descriptor$source, descriptor$explicit),
@@ -268,7 +262,7 @@ api_pool_job <- function(s, instanceId, width, height, format, dpr = 1L) {
 # A warm job for this card, or NULL (no worker serves the checkpoint; not poolable). `descriptor`: what a card being
 # created right now will be (api_card_create sends it before its own flush, so the worker creates in parallel).
 api_pool_warm_job <- function(s, instanceId, descriptor = NULL) {
-  if (!length(api_pool_serving(s$sha256)) || !is.character(instanceId) || length(instanceId) != 1L) return(NULL)
+  if (!length(api_pool_serving(s$openedSha256 %||% s$sha256)) || !is.character(instanceId) || length(instanceId) != 1L) return(NULL)
   # A card being created: its own inputs win over a saved canvas node with the same id (api_card_descriptor would
   # read the saved ones); the same exclusions as api_card_descriptor (acted, replayed member actions).
   current <- if (!is.null(descriptor) && !exists(instanceId, envir = s$cards, inherits = FALSE)) {
@@ -276,7 +270,7 @@ api_pool_warm_job <- function(s, instanceId, descriptor = NULL) {
   } else api_card_descriptor(s, instanceId)
   current <- api_pool_poolable(current)
   if (is.null(current)) return(NULL)
-  structure(list(warm = TRUE, sessionId = s$sessionId, instanceId = instanceId, sha256 = s$sha256, source = current$source,
+  structure(list(warm = TRUE, sessionId = s$sessionId, instanceId = instanceId, engineRevision = s$engineRevision %||% 0L, sha256 = s$openedSha256 %||% s$sha256, source = current$source,
     explicit = current$explicit, render = current$render, state = api_pool_state(s), descriptor = descriptor,
     cardId = api_pool_card_id(current$source, current$explicit),
     reuseId = if (api_pool_reuse_on()) api_pool_reuse_id(current$source, instanceId) else NULL,
@@ -316,7 +310,7 @@ api_pool_holds <- function(w, job) {
 api_pool_holder <- function(s, instanceId) {
   job <- api_pool_warm_job(s, instanceId)
   if (is.null(job)) return(NULL)
-  for (w in api_pool_serving(s$sha256)) if (api_pool_holds(w, job) == 2L) return(w)
+  for (w in api_pool_serving(s$openedSha256 %||% s$sha256)) if (api_pool_holds(w, job) == 2L) return(w)
   NULL
 }
 api_pool_ready <- function(sha) Filter(function(w) identical(w$state, "idle") && identical(w$sha256, sha) && identical(w$loaded, sha),
@@ -325,11 +319,23 @@ api_pool_dispatch <- function(w, job, fn, fields) {
   w$job <- job; w$state <- "busy"; w$since <- Sys.time()
   w$proc$call(fn, list(job[fields]))
 }
-api_pool_submit <- function(job) promises::promise(function(resolve, reject) {
-  job$resolve <- resolve
-  api_pool$queue[[length(api_pool$queue) + 1L]] <- job
-  api_pool_pump()
-})
+api_pool_submit <- function(job) {
+  key <- paste(job$sessionId, job$engineRevision, job$memoryKey, sep = "|")
+  held <- api_pool$inflight[[key]]
+  if (!is.null(held)) return(held)
+  settled <- FALSE
+  answer <- promises::promise(function(resolve, reject) {
+    job$resolve <- function(result) {
+      settled <<- TRUE
+      if (exists(key, api_pool$inflight, inherits = FALSE)) rm(list = key, envir = api_pool$inflight)
+      resolve(result)
+    }
+    api_pool$queue[[length(api_pool$queue) + 1L]] <- job
+    api_pool_pump()
+  })
+  if (!settled) api_pool$inflight[[key]] <- answer
+  answer
+}
 api_pool_pump <- function() {
   # A worker that died while idle starts again (boot, then open the checkpoint).
   for (w in api_pool$workers) if (identical(w$state, "idle") && !w$proc$is_alive()) api_pool_restart(w)
@@ -361,7 +367,7 @@ api_pool_pump_warm <- function() {
     if (!length(api_pool_serving(job$sha256))) next
     if (!length(api_pool_ready(job$sha256))) { keep[[length(keep) + 1L]] <- job; next }
     # Rebuilt now: the card's inputs or the session state may have changed while it waited, or it may be gone.
-    s <- tryCatch(api_session_get(job$sessionId, touch = FALSE), error = function(e) NULL)
+    s <- tryCatch(api_session_find(job$sessionId), error = function(e) NULL)
     fresh <- if (is.null(s)) NULL else tryCatch(api_pool_warm_job(s, job$instanceId, job$descriptor), error = function(e) NULL)
     if (is.null(fresh)) next
     serving <- api_pool_serving(fresh$sha256)
@@ -416,6 +422,10 @@ api_pool_tick <- function() {
 api_pool_tick_worker <- function(w) {
   was <- w$state
   if (!was %in% c("booting", "opening", "busy")) return(invisible(NULL))
+  # Test-only delivery barrier: the real worker draws its captured state, but its answer waits
+  # until the test releases it. Nothing is polled/read while held; the normal tick retries.
+  hold <- getOption("nexo.api.hold_worker")
+  if (identical(was, "busy") && !is.null(hold) && isTRUE(hold(w$job))) return(invisible(NULL))
   limit <- if (identical(was, "booting")) 300 else api_pool_job_timeout()
   timed_out <- as.numeric(difftime(Sys.time(), w$since, units = "secs")) > limit
   alive <- w$proc$is_alive()
@@ -459,18 +469,25 @@ api_pool_tick_worker <- function(w) {
 # (only if nothing that feeds the plot changed meanwhile), or its own render if the
 # worker could not draw the card.
 api_pool_finish <- function(job, out, render_here) {
+  s <- api_session_find(job$sessionId)
+  key_format <- job$keyFormat %||% job$render
+  if (!identical(job$engineRevision, s$engineRevision %||% 0L) ||
+      !identical(api_render_key(s, job$instanceId, job$width, job$height, key_format), job$memoryKey)) {
+    api_timing_note("where", "main")
+    return(render_here())
+  }
   if (!isTRUE(out$ok)) {
     # The module's own refusal (req()/validate()) is the same in any process: forward it. Any other
     # worker error (its session lost, a 400 from its card) is the worker's: draw here (H9 review P1).
     if (identical(out$class, "api_unprocessable")) api_abort(out$class, out$message)
     return(render_here())
   }
-  s <- api_session_get(job$sessionId, touch = FALSE)
   result <- out$value
+  result$engineRevision <- job$engineRevision
+  result$where <- "worker"
   result$provenance <- list(commit = api_commit, checkpointSha256 = s$sha256,
     preparationCheck = s$receipt, revision = s$revision %||% result$provenance$revision, hooks = "team")
   result$cached <- FALSE
-  key_format <- job$keyFormat %||% job$render
   if (identical(api_render_key(s, job$instanceId, job$width, job$height, key_format), job$memoryKey))
     api_render_cache_put(s, job$memoryKey, result)
   if (!is.null(job$diskKey) && identical(job$diskKey,

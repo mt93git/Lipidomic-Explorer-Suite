@@ -11,7 +11,7 @@ import { availability, availabilityReasons, groupCatalog, renderKindFor } from '
 import { clickSourceFor } from './plotlyClick';
 import { place } from './place';
 import { Card } from './cards';
-import { getCatalog, createCard, confirmDesign, updateCard, updatePalette, replayActions, violinStatistics, type CatalogEntry, type Node, type Session } from './api';
+import { getCatalog, createCard, confirmDesign, updateCard, updatePalette, replayActions, violinStatistics, parkCards, figureIntent, type CatalogEntry, type Node, type Session } from './api';
 import { setSessionPalette, type WithPalette } from './palette/sessionPalette';
 import { forgetPaletteRedraw } from './palette/paletteRedraw';
 import {applyNexoStyle} from './editor/applyNexoStyle';
@@ -40,16 +40,36 @@ import { validate as validateTabs, setActive as setActiveTab, serialize as seria
 import { fitScale, revealCamera, revealAddedCamera, type Cam } from './canvas/reveal';
 import { focusCamera, FOCUS_BELOW } from './canvas/focus';
 import { titleEditCommand } from './canvas/titleEdit';
-import { overviewCamera, ZOOM_MIN } from './canvas/overview';
-import { minimapVisible } from './canvas/minimap';
+import { overviewCamera, refitOnResize, ZOOM_MIN } from './canvas/overview';
+import { adminSignInUrl, adminUserId } from './api/adminToken';
+import { minimapVisible, remoteViewports, type RemoteViewport } from './canvas/minimap';
 import { dropWorldPoint, type DropPoint } from './canvas/drop';
 import { notify, notifyFailure, ui as shellUi } from './ui/model';
 import { assign as assignTab } from './state/tabs';
 import { tabsCommand, moveNodesToTab, visibleNodeIds } from './ui/tabsWiring';
-import { isReadOnly } from './state/readonly';
+import { isReadOnly, setRoleReadOnly } from './state/readonly';
+import { collab } from './collab/mode';
 import { clipboard, copyPlot, pasteTemplate } from './clipboard';
 import { cardInstanceId } from './api/instance';
 export type { CanvasHandle } from './canvas/handle';
+/** A refused input intent restores the authoritative baseline before store subscribers reconcile the card. */
+export function restoreRefusedInputs<S extends { nodes: Node[]; nexo: import('./state/nexo').Nexo }>(
+  doc: import('yjs').Doc, store: { set(update: (state: S) => S): void },
+  card: Pick<Card, 'node' | 'inputs' | 'fixedInputs'>,
+) {
+  const node = doc.getMap<import('yjs').Map<unknown>>('nodes').get(card.node.id)?.toJSON() as Node | undefined;
+  if (!node) return;
+  const shared = doc.getMap('nexo').toJSON() as import('./state/nexo').Nexo;
+  const inputs = shared.nodes?.[node.id]?.inputs;
+  if (card.node.instance) card.node.instance.inputs = structuredClone(node.instance?.inputs ?? {});
+  card.fixedInputs = !node.instance && inputs ? structuredClone(inputs) : undefined;
+  Object.keys(card.inputs).forEach(k => delete card.inputs[k]);
+  Object.assign(card.inputs, structuredClone({ ...node.instance?.inputs, ...inputs }));
+  store.set(state => ({ ...state,
+    nodes: state.nodes.map(n => n.id === node.id && n.instance ? { ...n, instance: { ...n.instance, inputs: structuredClone(node.instance?.inputs ?? {}) } } : n),
+    nexo: { ...state.nexo, nodes: { ...state.nexo.nodes, [node.id]: { ...state.nexo.nodes[node.id], inputs: structuredClone(inputs) } } },
+  }));
+}
 /** A motion token (tokens.css) in milliseconds: 0 under prefers-reduced-motion, where every token is 0ms. */
 function motionMs(token: string): number {
   const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
@@ -62,9 +82,43 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   }
   const store = createStore({...structuredClone(session.canvas),nexo:validateNexo(session.nexo,session.canvas.nodes.map(n=>n.id))});
   const teamView=new Set<string>();
-  const history = createHistory(store);
+  let history: Pick<ReturnType<typeof createHistory>, 'dispatch' | 'undo' | 'redo' | 'canUndo' | 'canRedo' | 'cursor'> & { origin?: { kind: string } } = createHistory(store);
   const perf = { lastDrawMs: NaN, draws: 0 };
   if (import.meta.env.VITE_API_MOCK === '1') Object.assign(window, { __nexo: { store, perf } });
+  // Collaboration on (collab/mode.ts): every edit goes through the shared document (collab/history.ts) and Ctrl+Z undoes
+  // this person's own. Off, `history` stays createHistory's, `joined` is undefined and nothing collab is loaded.
+  const board = collab();
+  let shareView: ((activeTab: string, camera: Cam, viewport: { width: number; height: number }) => void) | undefined;
+  let following: { moved(activeTab: string, camera: Cam): void } | undefined;
+  let presence: { render(): void; selection(ids: string[]): void } | undefined;
+  // Other people on this tab are rectangles in the minimap (prototype scene 1); `drawnTab` is the tab draw() last showed.
+  let viewports: (() => RemoteViewport[]) | undefined, drawnTab = '';
+  const joined = board ? import('./collab/provider').then(m => m.joinBoard(board, store, shared => { history = shared; })).then(shared => {
+    shareView = shared.view;
+    void Promise.all([import('./collab/provider'), import('./canvas/presence'), import('./canvas/pins'), import('./canvas/following')]).then(([provider, ui, pins, follow]) => { const awareness = provider.getAwareness(); if (awareness) {
+      presence = ui.mountPresence(awareness, vp, world, camera, () => cards); pins.mountPins(awareness.doc, vp, world, camera);
+      following = follow.mountFollowing(awareness, stage, { size: () => vp.getBoundingClientRect(), adopt: adoptView });
+      viewports = () => remoteViewports(awareness.getStates(), awareness.clientID, drawnTab);
+      awareness.on('change', () => minimap(vp.clientWidth, vp.clientHeight)); draw(); } });
+    // My userId comes from Admin's token answer: the sidecar never echoes it into my own awareness state.
+    // Phase 3: a card someone else changed says so and draws again at the new revision (collab/render.ts); its Data
+    // form, open or cached, reloads from the engine (UX review 2: a form left behind sent the old values back).
+    void Promise.all([import('./collab/provider'), import('./collab/render')]).then(([provider, render]) => { const meta = provider.getProvider()?.document.getMap('meta');
+      if (meta) render.followChanges(meta, () => adminUserId() ?? provider.getAwareness()?.getLocalState()?.userId, (id, text) => { cards.find(c => c.node.id === id)?.changedBy(text); window.dispatchEvent(new CustomEvent('nexo-inputs-restored', { detail: id })); },
+        // Someone else's new card may be off this person's screen: say so, Show takes the camera there.
+        (id, text) => notify(text, false, () => { const c = cards.find(c => c.node.id === id); if (!c) return; selected = new Set([c]); draw(); revealAddedAfterLayout(id); flash(c); }, 'Show')); });
+    if (import.meta.env.VITE_API_MOCK === '1') Object.assign((window as unknown as { __nexo: object }).__nexo, { collab: shared.history });
+    return shared;
+  }, error => {
+    // A refused or signed-out join: one sentence, and no editing tools (edits here would never reach the board).
+    setRoleReadOnly(true);
+    if (String(error instanceof Error ? error.message : error).includes('AdminSignInRequired'))
+      notify('Sign in to Admin to work on this board.', true, () => location.assign(adminSignInUrl(location.href)), 'Sign in to Admin');
+    else notify('This project is not available to your account.', true);
+    return undefined;
+  }) : undefined;
+  // A change another person made, or the first opener's seed, is drawn but never sent to the engine (plan 2.3).
+  const quiet = () => history.origin?.kind === 'remote' || history.origin?.kind === 'init';
   const listeners = new Set<() => void>();
   root.innerHTML = `<header class="top"><strong>Nexo v0</strong><span>Read-only canvas</span>${host.shellOwnsLibrary ? '' : '<button id="library-toggle">Library</button>'}<button id="select" aria-pressed="true">Select</button><button id="hand" aria-pressed="false">Pan</button><button id="inspect">Inspector</button></header><div class="canvas-main"><section class="stage"><div id="viewport" tabindex="0" aria-label="Canvas"><div id="world"></div><div id="marquee"></div></div>${host.shellOwnsLibrary ? '' : '<nav id="library" hidden aria-label="Plot library"></nav>'}<div class="zoom"><button id="out" aria-label="Zoom out">−</button><select id="zoom" aria-label="Zoom"><option value="0.25">25%</option><option value="0.5">50%</option><option value="1" selected>100%</option><option value="2">200%</option></select><button id="in" aria-label="Zoom in">+</button><button id="fit">Fit</button></div><svg id="minimap" aria-label="Minimap" role="img" preserveAspectRatio="none"></svg><output id="hud" aria-hidden="true"></output></section><aside id="inspector" aria-label="Read-only inspector"></aside></div>`;
   const $ = <T extends HTMLElement>(id: string) => root.querySelector<T>(`#${id}`)!;
@@ -94,7 +148,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   let selected = new Set<Card>(), hand = false, space = false, wheelTimer = 0, wheelActive = false;
   let gesture: { kind: 'pan' | 'marquee' | 'pinch'; x: number; y: number; cx: number; cy: number; base: Set<Card>; distance?: number; scale?: number } | undefined;
   const pointers = new Map<number, { x: number; y: number }>();
-  let catalog: CatalogEntry[] = [];
+  let catalog: CatalogEntry[] = [], catalogKnown = false;
   // Chart audit b05 F5: the input holding the module's own plot height (catalog heightInput), for a Team card.
   const heightInputFor = (n: { instance?: unknown } | undefined) => { const source = (n?.instance as { source?: unknown } | null | undefined)?.source; return hasTeamInstance(n) && typeof source === 'string' ? catalog.find(e => e.id === source)?.heightInput : undefined; };
   // Such a card's size change, its neighbours settled and the input written back: one undo step (with fold, part of the current one).
@@ -164,7 +218,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     cards.forEach(c => { if (editing?.card !== c || !editing.resize) delete c.el.dataset.resizeSize; });
     const doc = store.get(), { sessionPalette, ...canvasDoc } = doc as WithPalette; Object.assign(session.canvas, canvasDoc); session.nexo=doc.nexo;
     // Undo/redo of a session palette change: send the restored state; every card redraws (updatePalette invalidates them).
-    if (sessionPalette && sentPalette !== undefined && JSON.stringify(sessionPalette) !== sentPalette) {
+    if (!quiet() && sessionPalette && sentPalette !== undefined && JSON.stringify(sessionPalette) !== sentPalette) {
       sentPalette = JSON.stringify(sessionPalette);
       void updatePalette(session.sessionId, { restore: sessionPalette }).then(value => window.dispatchEvent(new CustomEvent('nexo-palette-restored', { detail: value })),
         error => notify(`Could not restore the session palette: ${error instanceof Error ? error.message : String(error)}`, true));
@@ -176,6 +230,9 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     for (const n of doc.nodes) {
       let c = cards.find(c => c.node.id === n.id);
       if (!c) {
+        // A card is made once the catalog is known (it gives the renderer): a joiner's shared document can come first,
+        // and a card made then was drawn as plotly, so a png card asked for json and failed (FIX-JOINER-PNG).
+        if (!catalogKnown) continue;
         c = add(structuredClone(n));
         const handle = document.createElement('div'); handle.className = 'resize-handle'; handle.setAttribute('aria-label', 'Resize card');
         Object.assign(handle.style, { position: 'absolute', right: '0', bottom: '0', width: '16px', height: '16px', cursor: 'nwse-resize', touchAction: 'none' });
@@ -199,10 +256,11 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       c.plotBody = !!heightInputFor(n);
       // Undo removes an appearance field the node never had (visualCommands): the card's copy drops it too.
       for (const k of ['color', 'visual'] as const) if (!(k in n)) delete (c.node as Partial<typeof c.node>)[k];
-      if (restored) restoreInputs(c, target as Record<string, unknown>);
+      if (restored && quiet()) { Object.assign(c.inputs, structuredClone(target)); c.reload(); }
+      else if (restored) restoreInputs(c, target as Record<string, unknown>);
       // Undo/redo of a computed control (Nexo's member): send the restored values to the Team card and redraw it.
       if (hasTeamInstance(n)) { const now = validateComputed(doc.nexo.nodes[n.id]?.inputs), key = JSON.stringify(now), instance = n.instance?.instanceId ?? n.instance?.id;
-        if (sentComputed.has(n.id) && sentComputed.get(n.id) !== key && instance && Object.keys(now).length) void updateCard(session.sessionId, instance, now, designerActions(now)).then(() => { c.reload(); window.dispatchEvent(new CustomEvent('nexo-inputs-restored', {detail:n.id})); }, error => notify(`Could not restore the plot: ${error instanceof Error ? error.message : String(error)}`, true));
+        if (!quiet() && sentComputed.has(n.id) && sentComputed.get(n.id) !== key && instance && Object.keys(now).length) void updateCard(session.sessionId, instance, now, designerActions(now)).then(() => { c.reload(); window.dispatchEvent(new CustomEvent('nexo-inputs-restored', {detail:n.id})); }, error => notify(`Could not restore the plot: ${error instanceof Error ? error.message : String(error)}`, true));
         sentComputed.set(n.id, key); }
       if(snapshotChanged)c.refreshSnapshot();
       c.el.style.background = (n.visual as Visual | undefined)?.background ?? '';
@@ -243,9 +301,22 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       if (restoreTurn.get(c) !== turn) return;
       Object.keys(c.inputs).forEach(k => delete c.inputs[k]); Object.assign(c.inputs, result.inputs);
       c.setTier('culled'); draw(); window.dispatchEvent(new CustomEvent('nexo-inputs-restored', { detail: c.node.id }));
-    }, error => { c.setStatus('error'); notify(`Could not restore the plot settings: ${error instanceof Error ? error.message : String(error)}`, true); });
+    }, async error => {
+      if (board && restoreTurn.get(c) === turn) {
+        const { getProvider } = await import('./collab/provider'), doc = getProvider()?.document;
+        if (doc) {
+          const nexo = doc.getMap('nexo').toJSON() as import('./state/nexo').Nexo;
+          sentComputed.set(c.node.id, JSON.stringify(validateComputed(nexo.nodes?.[c.node.id]?.inputs)));
+          restoreRefusedInputs(doc, store, c);
+          window.dispatchEvent(new CustomEvent('nexo-inputs-restored', { detail: c.node.id }));
+        }
+      }
+      c.setStatus('error'); notify(`Could not restore the plot settings: ${error instanceof Error ? error.message : String(error)}`, true);
+    });
   }
   vp.addEventListener('dragover',e=>{if(e.dataTransfer?.types.includes('application/nexo-illustration'))e.preventDefault();});
+  // Keyboard: Tab onto a card brings it into view with the camera, before the browser would scroll the stage to it.
+  world.addEventListener('focusin', e => { const c = cards.find(c => c.el.contains(e.target as globalThis.Node)); if (c && (e.target as Element).matches(':focus-visible')) reveal(c.node.id); });
   vp.addEventListener('drop',e=>{if(isReadOnly())return;const id=e.dataTransfer?.getData('application/nexo-illustration');if(id){e.preventDefault();handle.addIllustration(id);}});
   const selection = () => [...selected].map(c => c.node.id);
   let sequence = 0;
@@ -263,6 +334,8 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   function settleDrop(ids: string[], key: string) { applyMoves(settle(store.get().nodes, ids), key, true); }
   function remove(ids: string[]) {
     if (!ids.some(id => store.get().nodes.some(n => n.id === id))) return;
+    // Collab mode: the sidecar parks them and takes them out of the document (api.ts parkCards).
+    if (parkCards(ids)) { vp.focus({preventScroll:true}); return; }
     history.dispatch(removeNodes(ids)); notify(ids.length === 1 ? 'Card removed' : 'Cards removed', false, () => history.undo());
     vp.focus({preventScroll:true});
   }
@@ -276,7 +349,9 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       if (n.kind === 'plot') {
         const entry = catalog.find(e => e.id === copy.instance!.source || e.output === n.id.replace(/^.*-plot_/, 'plot_'));
         if (!entry) throw new Error('Unknown source');
-        const result = await createCard(session.sessionId, entry.id, n.instance?.inputs ?? store.get().nexo.nodes[n.id]?.inputs ?? session.inputs, copy.instance!.instanceId);
+        // Collab mode: the sidecar writes the placed copy into the document (api.ts createCard); this page adds no node.
+        const placed = board ? { ...copy, id: `${copy.instance!.instanceId}-${entry.output}` } : undefined;
+        const result = await createCard(session.sessionId, entry.id, n.instance?.inputs ?? store.get().nexo.nodes[n.id]?.inputs ?? session.inputs, copy.instance!.instanceId, undefined, placed);
         if (result.error) throw new Error(String(result.error));
         copy.id = result.nodeId; copy.instance = { instanceId: result.instanceId, source: entry.id, inputs: result.inputs };
       }
@@ -294,7 +369,9 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     // it is drawn; the copy records them too. A failed replay leaves Team's placeholder and the Inspector says so.
     const pressed = copies.map((copy,i) => hasTeamInstance(copy) ? recordedActions(store.get().nexo.nodes[originals[i].id]?.actions) : []);
     await Promise.all(copies.map((copy,i) => pressed[i].length ? replayRecorded(copy.id, pressed[i], actions => replayActions(session.sessionId, copy.instance!.instanceId!, actions)) : undefined));
-    history.dispatch(tabsCommand(tabs, copies.flatMap((copy,i)=>[addNode(copy),setNexoStyle(copy.id,pastedStyle??store.get().nexo.nodes[originals[i].id]?.style??{}),...(Object.keys(carried[i]).length||Object.keys(uploads[i]).length?[Object.keys(uploads[i]).length?carryUploads(copy.id,uploads[i],carried[i]):carryComputed(copy.id,carried[i])]:[]),...(pressed[i].length?[setNexoActions(copy.id,pressed[i])]:[])])));
+    // Collab mode: only the tab is this page's write (a new node and Nexo's member are the server's, admission.mjs).
+    if (board) history.dispatch(tabsCommand(tabs, copies.filter(copy => copy.kind !== 'plot').map(addNode)));
+    else history.dispatch(tabsCommand(tabs, copies.flatMap((copy,i)=>[addNode(copy),setNexoStyle(copy.id,pastedStyle??store.get().nexo.nodes[originals[i].id]?.style??{}),...(Object.keys(carried[i]).length||Object.keys(uploads[i]).length?[Object.keys(uploads[i]).length?carryUploads(copy.id,uploads[i],carried[i]):carryComputed(copy.id,carried[i])]:[]),...(pressed[i].length?[setNexoActions(copy.id,pressed[i])]:[])])));
     selected = new Set(cards.filter(c => copies.some(n => n.id === c.node.id))); draw();
     // Focus follows the new selection: a focused card stacks above a selected one (shell.css), so the original,
     // still holding focus from its Duplicate button, would cover the copy placed 24 px below it.
@@ -363,7 +440,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   function requestDraw() { if (!frame) frame = requestAnimationFrame(draw); }
   function draw() {
     if (frame) { cancelAnimationFrame(frame); frame = 0; }
-    if (fitOnShow && reconciled && !figureMode && vp.clientWidth) { fitOnShow = false; if (shownCards().length) { fit(); return; } }
+    if (fitOnShow && reconciled && !figureMode && vp.clientWidth) { fitOnShow = false; if (shownCards().length) { fit(); fitted = { camera: { ...camera }, view: size() }; return; } }
     const started = performance.now();
     // Read layout first, then write: no forced reflow inside the frame.
     const rect = vp.getBoundingClientRect(); const counts = { live: 0, frozen: 0, culled: 0 };
@@ -374,6 +451,8 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     vp.style.backgroundSize = `${24 * camera.scale}px ${24 * camera.scale}px`;
     const doc = store.get(), tabs = validateTabs((doc as typeof doc & { tabs?: unknown }).tabs, doc.nodes.map(n => n.id));
     const visible = new Set(visibleNodeIds(doc, tabs, tabs.active));
+    if (!figureMode) shareView?.(tabs.active, camera, rect); // the figure page is not shared (as cut: camera and tab)
+    following?.moved(tabs.active, camera); drawnTab = tabs.active;
     const shown = cards.filter(c => visible.has(c.node.id)), ids = new Set(shown.map(c => c.node.id));
     const editingIds = new Set(editing?.starts.map(n => n.id));
     // Cards being dragged stay live and take their slots in the live cap.
@@ -391,6 +470,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       c.el.classList.toggle('selected', selected.has(c)); c.el.style.outline = selected.has(c) ? '2px solid var(--accent)' : '';
       c.setTier(current, snapshots); counts[current]++;
     }
+    if (presence) { presence.selection([...selected].map(c => c.node.id)); presence.render(); }
     schedulePrefetch();
     $('hud').textContent = `live ${counts.live} · frozen ${counts.frozen} · culled ${counts.culled} | ${Math.round(camera.scale * 100)}%`;
     const zoom = $<HTMLSelectElement>('zoom');
@@ -405,26 +485,34 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     const visible = cards.filter(c => !c.el.hidden);
     // Wave 2 library/canvas: figure sheets and queued cards count as board content too.
     const sheets = figureMode ? Array.from(figureLayer.children).map(e => { const p = e as HTMLElement; return { x: figureLayer.offsetLeft + p.offsetLeft, y: p.offsetTop, width: p.offsetWidth, height: p.offsetHeight }; }) : [];
-    const show = minimapVisible({ width, height }, camera, [...visible.map(c => c.node), ...ghosts.map(g => g.rect), ...sheets], minimapPinned, minimapCorner);
+    const remote = viewports?.() ?? [];
+    // Someone else on this tab keeps the map up: where they are looking is the point of it.
+    const show = minimapVisible({ width, height }, camera, [...visible.map(c => c.node), ...ghosts.map(g => g.rect), ...sheets], minimapPinned || remote.length > 0, minimapCorner);
     map.dataset.visible = String(show); map.dataset.pinned = String(minimapPinned);
     map.setAttribute('aria-hidden', String(!show)); map.setAttribute('tabindex', show ? '0' : '-1');
     const vx = -camera.x / camera.scale, vy = -camera.y / camera.scale;
-    const x = Math.min(vx, ...visible.map(c => c.node.x)) - 60, y = Math.min(vy, ...visible.map(c => c.node.y)) - 60;
-    const right = Math.max(vx + width / camera.scale, ...visible.map(c => c.node.x + c.node.width)) + 60;
-    const bottom = Math.max(vy + height / camera.scale, ...visible.map(c => c.node.y + c.node.height)) + 60;
+    const rects = [...visible.map(c => c.node), ...remote.map(r => r.rect)];
+    const x = Math.min(vx, ...rects.map(r => r.x)) - 60, y = Math.min(vy, ...rects.map(r => r.y)) - 60;
+    const right = Math.max(vx + width / camera.scale, ...rects.map(r => r.x + r.width)) + 60;
+    const bottom = Math.max(vy + height / camera.scale, ...rects.map(r => r.y + r.height)) + 60;
     map.setAttribute('viewBox', `${x} ${y} ${right - x} ${bottom - y}`); map.replaceChildren();
     function box(x: number, y: number, w: number, h: number, cls: string) { const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); for (const [k, v] of Object.entries({ x, y, width: w, height: h })) r.setAttribute(k, String(v)); r.setAttribute('class', cls); map.append(r); }
     if(figureMode)Array.from(figureLayer.children).forEach(e=>{const p=e as HTMLElement;box(figureLayer.offsetLeft+p.offsetLeft,p.offsetTop,p.offsetWidth,p.offsetHeight,'node');});
     visible.forEach(c => box(c.node.x, c.node.y, c.node.width, c.node.height, selected.has(c) ? 'node selected' : 'node'));
     ghosts.forEach(g => box(g.rect.x, g.rect.y, g.rect.width, g.rect.height, 'node pending'));
     box(vx, vy, width / camera.scale, height / camera.scale, 'view');
+    for (const r of remote) {
+      box(r.rect.x, r.rect.y, r.rect.width, r.rect.height, 'view remote-view'); const el = map.lastElementChild!, title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      el.setAttribute('style', `stroke:${r.colour};fill:${r.colour};fill-opacity:.12;cursor:pointer`); el.setAttribute('data-client', String(r.id));
+      title.textContent = `${r.name}'s view · click to follow`; el.append(title);
+    }
   }
   // Wheel zoom is a camera event (one draw per frame); buttons, the zoom menu and keys draw at once.
   function zoom(scale: number, x = vp.clientWidth / 2, y = vp.clientHeight / 2, perFrame = false) {
     scale = Math.min(4, Math.max(ZOOM_MIN, scale));
     camera.x = x - (x - camera.x) / camera.scale * scale; camera.y = y - (y - camera.y) / camera.scale * scale; camera.scale = scale; if (perFrame) requestDraw(); else draw();
   }
-  function fit() {
+  function fit(say = true) {
     setOverview(undefined);
     if(figureMode){const sheets=Array.from(figureLayer.children) as HTMLElement[];if(!sheets.length)return;const x=figureLayer.offsetLeft,y=0,w=Math.max(...sheets.map(e=>e.offsetLeft+e.offsetWidth)),h=Math.max(...sheets.map(e=>e.offsetHeight));camera.scale=Math.max(.1,Math.min(1,(vp.clientWidth-60)/w,(vp.clientHeight-60)/h));camera.x=(vp.clientWidth-w*camera.scale)/2-x*camera.scale;camera.y=(vp.clientHeight-h*camera.scale)/2-y*camera.scale;draw();return;}
     const visible = shownCards();
@@ -433,7 +521,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     const w = Math.max(...visible.map(c => c.node.x + c.node.width)) - x, h = Math.max(...visible.map(c => c.node.y + c.node.height)) - y;
     const next = overviewCamera({ width: vp.clientWidth, height: vp.clientHeight }, { x, y, width: w, height: h });
     camera.scale = next.scale; camera.x = next.x; camera.y = next.y; draw();
-    if (next.limited) notify(s.overviewLimited);
+    if (next.limited && say) notify(s.overviewLimited);
   }
   // Wave 2 library/canvas: fit only the selection into the unobscured viewport.
   function fitSelection() {
@@ -445,12 +533,17 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   }
   // Wave 1: a tab is fitted the first time it is shown, once the catalog has turned its nodes into cards.
   let fitOnShow = true, reconciled = false;
+  // The opening fit holds while nobody moves the camera: a window that changes size after it (resized, a phone turned, a
+  // page opened wide then narrowed) fits again (FIX-JOINER-PHONE: a 390 px board kept a desktop fit's 100 %). A panel
+  // opening narrows the canvas, not the window: the board stays where it is.
+  let fitted: { camera: Cam; view: { width: number; height: number } } | null = null;
+  const size = () => ({ width: innerWidth, height: innerHeight });
   function shownCards() {
     const doc = store.get(), tabs = validateTabs((doc as typeof doc & { tabs?: unknown }).tabs, doc.nodes.map(n => n.id));
     const visible = new Set(visibleNodeIds(doc, tabs, tabs.active));
     return cards.filter(c => visible.has(c.node.id));
   }
-  $('in').onclick = () => zoom(camera.scale * 1.25); $('out').onclick = () => zoom(camera.scale / 1.25); $('fit').onclick = fit;
+  $('in').onclick = () => zoom(camera.scale * 1.25); $('out').onclick = () => zoom(camera.scale / 1.25); $('fit').onclick = () => fit();
   $<HTMLSelectElement>('zoom').onchange = e => zoom(Number((e.target as HTMLSelectElement).value));
   $('inspect').onclick = () => { inspector.hidden = !inspector.hidden; draw(); };
   function setHand(on: boolean) { hand = on; $('hand').setAttribute('aria-pressed', String(on)); $('select').setAttribute('aria-pressed', String(!on)); vp.classList.toggle('hand', on); }
@@ -503,6 +596,12 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       if (t < 1) panning = requestAnimationFrame(step); else { panning = 0; draw(); }
     };
     panning = requestAnimationFrame(step);
+  }
+  // Phase 6: show the followed person's tab and camera (collab/follow.ts); the tab's own camera and first fit give way.
+  function adoptView(view: { activeTab: string; camera: Cam }) {
+    const doc = store.get(), ids = doc.nodes.map(n => n.id), tabs = validateTabs((doc as typeof doc & { tabs?: unknown }).tabs, ids);
+    if (setActiveTab(tabs, view.activeTab)) { (doc as typeof doc & { tabs?: unknown }).tabs = serializeTabs(tabs, ids); draw(); }
+    fitOnShow = false; Object.assign(camera, view.camera); draw();
   }
   function reveal(id: string) {
     const doc = store.get(), node = doc.nodes.find(n => n.id === id); if (!node) return;
@@ -594,10 +693,23 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       const ghost = addGhost(slot, entry.label, !position);
       const clearGhost = () => removeGhost(ghost);
       signal?.addEventListener('abort', clearGhost, { once: true });
+      // Collab mode: the node is placed here and sent; the sidecar writes it into the document (api.ts createCard), and
+      // its update arrives before the intent's answer. Only the card's tab is this page's write.
+      const plotNow = plotHeightOf(entry.heightInput, entry.defaults), tallNow = plotNow === undefined ? height : cardHeightFor(plotNow);
+      const placed: Node | undefined = board ? {kind:'plot', id:`${instanceId}-${entry.output}`, label:entry.label, visual:{}, finished:null,
+        ...(position ?? place([...cards.map(c => c.node), ...ghosts.map(g => g.rect)], {...slot, height:tallNow})), width, height:tallNow} : undefined;
       try {
-        await completeQueuedAdd(createCard(session.sessionId, entry.id, {}, instanceId, signal), signal, (result, dropped) => {
+        await completeQueuedAdd(createCard(session.sessionId, entry.id, {}, instanceId, signal, placed), signal, (result, dropped) => {
           if (result.error) throw new Error(String(result.error));
           clearGhost();
+          if (placed) {
+            const doc = store.get(), tabs = validateTabs(doc.tabs, doc.nodes.map(n => n.id));
+            assignTab(tabs, placed.id, tabs.active); history.dispatch(tabsCommand(tabs));
+            const c = cards.find(c => c.node.id === placed.id); if (!c) return;
+            selected = new Set([c]); inspector.hidden = false; library.hidden = true;
+            if (host.shellOwnsInspector) shellUi({ inspectorOpen: true });
+            draw(); revealAddedAfterLayout(placed.id); flash(c); return;
+          }
           // Chart audit b05 F5: a card with a module plot height is that tall plus its chrome (width stays the default).
           const plot = plotHeightOf(entry.heightInput, result.inputs, result.plotHeight), tall = plot === undefined ? height : cardHeightFor(plot);
           const spot = dropped ?? place([...cards.map(c => c.node), ...ghosts.map(g => g.rect)], {...slot, height:tall});
@@ -633,8 +745,10 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     }
   }
   search.oninput = renderLibrary;
-  const catalogReady = getCatalog().then(value => { catalog = value.outputs; renderLibrary(); cards.forEach(c => { c.clickSource ??= clickSourceFor(c.node, catalog); }); });
-  void catalogReady.catch(error => { status.textContent = String(error); }).then(() => { reconcile(); reconciled = true; syncPlotHeights(); requestAnimationFrame(() => draw()); resendComputed(); resendActions(); });
+  const catalogReady = getCatalog().then(value => { catalog = value.outputs; renderLibrary(); }).finally(() => { catalogKnown = true; });
+  if (!joined) void catalogReady.catch(error => { status.textContent = String(error); }).then(() => { reconcile(); reconciled = true; syncPlotHeights(); requestAnimationFrame(() => draw()); resendComputed(); resendActions(); });
+  // Collaboration: only the first opener (who seeded the document) runs the reopen chain; a joiner never sends it again.
+  else void catalogReady.catch(error => { status.textContent = String(error); }).then(() => joined).then(shared => { reconcile(); reconciled = true; if (shared?.seeded) syncPlotHeights(); requestAnimationFrame(() => draw()); if (shared?.seeded) { resendComputed(); resendActions(); } });
   // Chart audit b05 F5, reopen: a plot-height card whose stored geometry disagrees with its height input keeps the
   // geometry (what the user last saw and placed) and writes it back to the input; reconcile sends it to the instance.
   function syncPlotHeights() {
@@ -775,7 +889,10 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     }
     pointers.delete(e.pointerId); gesture = undefined; marquee.style.display = 'none'; draw(); }
   vp.onpointerup = end; vp.onpointercancel = end; vp.onlostpointercapture = end;
-  map.onpointerdown = e => { const r = map.getBoundingClientRect(), b = map.viewBox.baseVal; camera.x = vp.clientWidth / 2 - (b.x + (e.clientX - r.left) / r.width * b.width) * camera.scale; camera.y = vp.clientHeight / 2 - (b.y + (e.clientY - r.top) / r.height * b.height) * camera.scale; requestDraw(); };
+  map.onpointerdown = e => {
+    // Another person's rectangle: follow them (canvas/following.ts listens).
+    const other = (e.target as Element).closest('[data-client]'); if (other) { dispatchEvent(new CustomEvent('nexo-follow', { detail: Number(other.getAttribute('data-client')) })); return; }
+    const r = map.getBoundingClientRect(), b = map.viewBox.baseVal; camera.x = vp.clientWidth / 2 - (b.x + (e.clientX - r.left) / r.width * b.width) * camera.scale; camera.y = vp.clientHeight / 2 - (b.y + (e.clientY - r.top) / r.height * b.height) * camera.scale; requestDraw(); };
   window.addEventListener('keydown', e => { if (e.defaultPrevented || (e.target as HTMLElement).closest('select,input,textarea,[contenteditable],dialog')) return;
     // Wave 2 library/canvas: M pins/unpins; unpinned visibility follows the board and corner hover.
     if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); minimapPinned = !minimapPinned; draw(); return; }
@@ -789,7 +906,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       if (!host.shellOwnsInspector && !inspector.hidden && !inspector.parentElement?.hidden) inspector.hidden = true;
       else if (selected.size || !overview) selected.clear(); else { backToOverview(); return; } draw();
     }
-    if (!isReadOnly() && (e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) { e.preventDefault(); if (e.shiftKey || e.key.toLowerCase() === 'y') history.redo(); else history.undo(); return; }
+    if (!isReadOnly() && (e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) { e.preventDefault(); if (e.shiftKey || e.key.toLowerCase() === 'y') history.redo(); else if (board && !history.canUndo) void import('./collab/intents').then(m => m.undoMine()); else history.undo(); return; }
     if (!host.shellOwnsLibrary && e.key === 'Delete') { e.preventDefault(); removeSelection(); }
     // F4/F5: Ctrl/⌘+Alt+C copy style, +Alt+V paste style onto the selection, +Alt+Shift+V opens Apply to tab (e.code: Alt changes e.key on macOS).
     if (!isReadOnly() && (e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyC' || e.code === 'KeyV')) {
@@ -817,6 +934,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     const shortcut = zoomShortcut(e); if (shortcut) { e.preventDefault(); if (shortcut === 'fit') fit(); else if (shortcut === 'selection') fitSelection(); else zoom(1); } });
   window.addEventListener('keyup', e => { if (e.code === 'Space') space = false; });
   window.addEventListener('blur', () => { space = false; pointers.clear(); gesture = undefined; editing = undefined; showGuides([]); reconcile(); });
+  window.addEventListener('resize', () => { if (!figureMode && refitOnResize(fitted, camera, size())) { fit(false); fitted = { camera: { ...camera }, view: size() }; } });
   new ResizeObserver(requestDraw).observe(vp); draw();
   const handle: CanvasHandle = {
     get figureMode(){return figureMode;},figureLayer:()=>figureLayer,
@@ -926,9 +1044,9 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     finishCard: id => {
       const c=cards.find(c=>c.node.id===id);if(!c)return;
       if(c.node.finished){handle.editFigure(id);return;}
-      void c.finish().then(finished=>{if(store.get().nodes.some(n=>n.id===id))history.dispatch(setFinished(id,finished));}).catch(error=>notify(error.message,true));
+      void c.finish().then(finished=>{if(!store.get().nodes.some(n=>n.id===id))return;const sent=figureIntent(id,finished);if(sent)return sent;history.dispatch(setFinished(id,finished));}).catch(error=>notify(error.message,true));
     },
-    editFigure: id => {if((store.get().nodes.find(n=>n.id===id) as Node|undefined)?.kind==='plot')history.dispatch(setFinished(id,null));},
+    editFigure: id => {if((store.get().nodes.find(n=>n.id===id) as Node|undefined)?.kind!=='plot')return;const sent=figureIntent(id,null);if(sent)void sent.catch(error=>notify(error.message,true));else history.dispatch(setFinished(id,null));},
     currentNode: () => store.get().nodes.find(n => n.id === selection()[0]),
     updateCardInputs(nodeId, inputs) {
       const c = cards.find(c => c.node.id === nodeId);

@@ -1,4 +1,4 @@
-import { openSession, confirmDesign, createCard, updateCard, replayActions, replayHeldEdits, isSessionLost, SessionLostError, type Design, type Inputs, type Node } from '../api';
+import { openSession, openDatasetSession, confirmDesign, createCard, updateCard, replayActions, replayHeldEdits, isSessionLost, SessionLostError, type Design, type Inputs, type Node, type DatasetSettings } from '../api';
 import { cardInstanceId } from '../api/instance';
 import { replayRecorded } from '../state/actions';
 
@@ -10,6 +10,7 @@ export function changedInputs(want: Record<string, unknown>, have: Record<string
 export interface RecoveryContext {
   /** The checkpoint this page opened (or last saved). */
   checkpoint: string | null;
+  dataset?: {adminDatasetId: string; settings?: DatasetSettings};
   design: Design | undefined;
   /** Plot cards on the canvas now (every tab). */
   nodes: Node[];
@@ -25,8 +26,14 @@ export interface RecoveryContext {
  * A card the reopened session cannot take keeps going (it shows its own error when drawn); a new loss aborts.
  */
 export async function reopenSession(lost: string, ctx: RecoveryContext): Promise<string> {
-  if (!ctx.checkpoint) throw new SessionLostError();
-  const opened = await openSession(ctx.checkpoint), next = opened.sessionId;
+  let opened;
+  if (ctx.checkpoint) opened = await openSession(ctx.checkpoint);
+  else if (ctx.dataset?.settings) {
+    const result = await openDatasetSession(ctx.dataset.adminDatasetId, ctx.dataset.settings);
+    if (result.status !== 'ready') throw new SessionLostError();
+    opened = result.session;
+  } else throw new SessionLostError();
+  const next = opened.sessionId;
   const design = ctx.design;
   if (design?.confirmed && design.unit && design.type) await confirmDesign(next, design.unit, design.type);
   await replayHeldEdits(lost, next);

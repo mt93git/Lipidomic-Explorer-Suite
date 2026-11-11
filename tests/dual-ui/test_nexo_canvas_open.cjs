@@ -1,5 +1,5 @@
 // H9 wave 1: how the canvas opens (library closed, every card in view, library icons) in Chromium and WebKit (mock build).
-// node tests/dual-ui/test_nexo_canvas_open.cjs
+// node tests/dual-ui/test_nexo_canvas_open.cjs      (NEXO_BROWSERS=chromium limits the run)
 'use strict';
 const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net');
@@ -113,6 +113,19 @@ async function browserTests(pw, name, base) {
       for (const sel of ['.zoom-pill', '#minimap', '.canvas-header']) { const o = await page.locator(sel).boundingBox();
         if (o) assert(t.x >= o.x + o.width || o.x >= t.x + t.width || t.y >= o.y + o.height || o.y >= t.y + t.height, `narrow toast overlaps ${sel}`); } }
     console.log(`PASS H9 ${name} toast-clear-of-zoom-controls`);
+    const datasetPage = await context.newPage();
+    await datasetPage.goto(`${base}/nexo/?dataset=3f6c1e2a-7b4d-4a8e-9c01-5d2f8e7a0041`);
+    await datasetPage.getByRole('button', {name:'Prepare and check', exact:true}).click();
+    await datasetPage.getByRole('heading', {name:'Quality check', exact:true}).waitFor();
+    await datasetPage.getByRole('button', {name:/^Open the Canvas/}).click();
+    await datasetPage.locator('.canvas-empty').waitFor();
+    const settings = await datasetPage.evaluate(() => window.__nexoDatasetMock.last);
+    await datasetPage.evaluate(() => { window.__nexoPrefetchMock.evict(409); window.__nexo.autosave.markDirty(); return window.__nexo.autosave.flush(); });
+    await datasetPage.waitForFunction(() => window.__nexoDatasetMock.opened === 2, null, {timeout:20000});
+    assert.deepEqual(await datasetPage.evaluate(() => window.__nexoDatasetMock.last), settings);
+    assert.equal(await datasetPage.getByText('Session lost', {exact:false}).count(), 0);
+    console.log(`PASS H9 ${name} dataset-eviction-recovered`);
+    await datasetPage.close();
     assert.deepEqual(errors, []); console.log(`PASS H9 ${name} no-console-errors`);
     await context.close();
   } finally { await browser.close(); }
@@ -132,6 +145,6 @@ async function browserTests(pw, name, base) {
     if (Date.now() > deadline) throw new Error('preview server did not start');
     await new Promise(r => setTimeout(r, 100));
   }
-  for (const name of ['chromium', 'webkit']) await browserTests(pw, name, base);
+  for (const name of (process.env.NEXO_BROWSERS || 'chromium,webkit').split(',')) await browserTests(pw, name, base);
   console.log('H9-open OK');
 })().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => server?.kill());

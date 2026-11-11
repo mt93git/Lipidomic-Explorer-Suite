@@ -17,6 +17,8 @@ import { followsSessionPalette, PALETTE_FOLLOWERS_EVENT } from '../../palette/pa
 // confirmation or an analysis change every cached schema is stale, and the open Data tab reloads its own.
 export const SCHEMA_STALE_EVENTS = ['nexo-design-confirmed', 'nexo-analysis-applied'] as const; // an analysis undo applies through accept() too
 if (typeof window !== 'undefined') SCHEMA_STALE_EVENTS.forEach(name => window.addEventListener(name, () => cache.clear()));
+// A card's inputs changed on the server (undo/redo, another person's change, a restore): no cached form keeps the old values.
+if (typeof window !== 'undefined') window.addEventListener('nexo-inputs-restored', () => cache.clear());
 export function DataTab({node,handle,onStatus}:{node:Node;handle:CanvasHandle;onStatus:(s:string)=>void}) {
   const sessionId = handle.getSession().sessionId, instanceId = cardInstanceId(node), key = sessionId + '/' + instanceId;
   const [schema,setSchema] = useState(cache.get(key));

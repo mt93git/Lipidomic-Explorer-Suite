@@ -278,7 +278,8 @@ api_card_schema <- function(s, instanceId) {
     status <- api_control_status(s, instanceId, controls[[i]]$id)
     if (!is.null(status)) controls[[i]]$status <- status
   }
-  list(controls = unname(controls), actions = unname(as.list(actions)), actionControls = unname(action_controls),
+  list(cacheable = !is.null(api_pool_poolable(api_card_descriptor(s, instanceId))),
+    controls = unname(controls), actions = unname(as.list(actions)), actionControls = unname(action_controls),
     tabs = team_plot_instance_layout(card$source)$tabs,
     # Pilot F1: this card's group colours follow Team's session palette (palette.R); the Data tab says so.
     sessionPalette = exists("api_palette_session_families", mode = "function") && card$family %in% api_palette_session_families(),
@@ -341,4 +342,14 @@ api_validate_inputs <- function(controls, inputs) {
     } else if (type %in% c("action", "file")) bad("not settable")
   }
   inputs
+}
+
+api_pool_poolable <- function(descriptor) {
+  if (is.null(descriptor) || isTRUE(descriptor$fixed) || !descriptor$render %in% c("plotly", "png")) return(NULL)
+  # Controls the module builds at run time (schema.R api_is_computed_id: customCol_/customShape_, bqcSamples,
+  # gridLog2fcThresh, FLA sel_<category>, case_bucket_) keep the card on the main process (H9 review P1). Setting
+  # them on a worker after create was tried (retina-timing) and drew a per-group colour card differently from the
+  # main process (test_api_pool.R 7b), so the guard stays until that difference is understood.
+  if (any(api_is_computed_id(names(descriptor$explicit)))) return(NULL)
+  descriptor
 }

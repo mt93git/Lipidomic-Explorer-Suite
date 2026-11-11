@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { overviewCamera, ZOOM_MIN } from './overview';
+import { overviewCamera, refitOnResize, ZOOM_MIN } from './overview';
 const view = { width: 1200, height: 800 };
 const centre = (cam: { x: number; y: number; scale: number }, b: { x: number; y: number; width: number; height: number }) =>
   [cam.x + (b.x + b.width / 2) * cam.scale, cam.y + (b.y + b.height / 2) * cam.scale];
@@ -20,5 +20,22 @@ describe('overviewCamera (opening zoom and Fit)', () => {
   it('centres a board that does not start at the origin', () => {
     const b = { x: -3000, y: 9000, width: 800, height: 400 }, cam = overviewCamera(view, b);
     expect(cam.scale).toBe(1); expect(centre(cam, b)).toEqual([600, 400]);
+  });
+});
+// FIX-JOINER-PHONE: a board fitted on opening at a desktop width kept 100 % when its viewport became a phone's (390 px),
+// its only card off-screen to the right. The opening fit holds through a window resize until the person moves the camera.
+describe('refitOnResize (the opening fit through a resize)', () => {
+  const fitted = { camera: { x: 270, y: 120, scale: 1 }, view: { width: 1440, height: 900 } };
+  it('a board still at its opening fit fits again when the window changes size', () => {
+    expect(refitOnResize(fitted, { x: 270, y: 120, scale: 1 }, { width: 390, height: 844 })).toBe(true);
+  });
+  it('a camera the person moved keeps its place', () => {
+    expect(refitOnResize(fitted, { x: 200, y: 120, scale: 1 }, { width: 390, height: 844 })).toBe(false);
+  });
+  it('the same size does not fit again', () => {
+    expect(refitOnResize(fitted, { x: 270, y: 120, scale: 1 }, { width: 1440, height: 900 })).toBe(false);
+  });
+  it('a board not fitted yet waits for its opening fit', () => {
+    expect(refitOnResize(null, { x: 24, y: 24, scale: 1 }, { width: 390, height: 844 })).toBe(false);
   });
 });

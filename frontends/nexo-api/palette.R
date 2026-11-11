@@ -89,6 +89,7 @@ api_palette_click <- function(s, id) {
 # body: list(palette = "<name>") | list(context = "<id>", colors = list(<group> = "#RRGGBB", ...)) |
 #       list(restore = <state as returned in $state>) (undo, a reopened session, a render worker).
 api_palette_update <- function(s, body) {
+  api_mutation(s, NULL, NULL, (function() {
   if (!is.list(body)) api_abort("api_bad_request", "Expected palette, context with colors, or restore.")
   kinds <- intersect(names(body), c("palette", "context", "restore"))
   if (length(kinds) != 1L) api_abort("api_bad_request", "Expected exactly one of palette, context (with colors) or restore.")
@@ -149,4 +150,5 @@ api_palette_update <- function(s, body) {
     api_render_epoch_bump(s)
   }
   api_palette_get(s)
+  })())
 }

@@ -18,7 +18,7 @@ import type { RenderKind } from './api/types';
 import { fixedInstanceId } from './api/instance';
 import { unpackFigure } from './api/plotPayload';
 import { bindPlotClick, type ClickTarget } from './plotlyClick';
-import { bodyStatus } from './cardStatus';
+import { bodyStatus, statusLabel } from './cardStatus';
 import type { CardShown } from './inspectorStatus';
 import { runNeedFor, runNeedKey, runNeedWaiting, markRunNeed, UNAVAILABLE_INPUTS } from './runNeeds';
 import { cardView, statusLabels, type CardStatus } from './cardView';
@@ -84,6 +84,8 @@ export class Card {
   readonly exportNotice = document.createElement('p');
   private designRequired = false;
   private statusTimer = 0;
+  /** Collab mode: "Updated by <name>" on the status line for about 10 s (changedBy), drawn, and named in the loading veil. */
+  private changeNote?: { text: string; until: number }; private noteTimer = 0;
   private chromeObserver: MutationObserver;
   /** Chart audit b05 F5: the card is sized from its module's plot height; the image is drawn at the body height. */
   plotBody = false;
@@ -270,9 +272,11 @@ export class Card {
       // Row 11: label, tone and offered action come from the one mapping (cardView.ts); the card carries state and tone for its body styling.
       const view = cardView(state, { designRequired: this.designRequired });
       this.el.dataset.state = state; this.el.dataset.tone = view.tone;
-      this.status.dataset.state = state; this.status.setAttribute('aria-label', view.label); this.status.title = view.label;
+      const text = statusLabel(view.label, this.changeNote, Date.now());
+      this.status.dataset.state = state; this.status.setAttribute('aria-label', text); this.status.title = text;
+      this.status.toggleAttribute('data-note', text !== view.label); // shell.css draws the note's text
       const dot = document.createElement('i'); dot.setAttribute('aria-hidden','true');
-      const label = document.createElement('span'); label.className = 'card-status-text'; label.textContent = view.label;
+      const label = document.createElement('span'); label.className = 'card-status-text'; label.textContent = text;
       this.status.replaceChildren(dot, label);
       this.announceShown();
       if (view.action) {
@@ -455,7 +459,7 @@ export class Card {
   dispose() {
     if (this.disposed) return;
     this.cancelTitleEdit?.();
-    this.offAnalysis(); this.disposed = true; this.revision++; clearTimeout(this.resizeTimer); this.observer.disconnect(); this.chromeObserver.disconnect(); clearTimeout(this.statusTimer);
+    this.offAnalysis(); this.disposed = true; this.revision++; clearTimeout(this.resizeTimer); this.observer.disconnect(); this.chromeObserver.disconnect(); clearTimeout(this.statusTimer); clearTimeout(this.noteTimer);
     if (this.plot) purgePlot(window.Plotly, this.plot);
     if (this.parked) purgePlot(window.Plotly, this.parked);
     this.parked = undefined;
@@ -519,6 +523,7 @@ export class Card {
   private showLoading() {
     const box = document.createElement('div'); box.className = 'card-skeleton'; box.setAttribute('aria-busy', 'true');
     const text = document.createElement('span'); text.textContent = this.restoring ? p.restoringPlot(this.node.label) : 'Loading figure…';
+    if (this.changeNote && Date.now() < this.changeNote.until) box.dataset.note = this.changeNote.text; // shell.css draws it
     box.append(text); this.body.classList.remove('message'); this.body.replaceChildren(box);
   }
   private renderFailed(error: unknown) {
@@ -647,6 +652,12 @@ export class Card {
     box.append(text, b); this.body.replaceChildren(box);
   }
   /** A module action ran on the server (Data tab button): drop this card's cached renders and draw it again. */
+  /** Phase 3 (collab/render.ts): another person changed this card. Say so for about 10 s and draw it again. */
+  changedBy(text: string) {
+    this.changeNote = { text, until: Date.now() + 10_000 }; clearTimeout(this.noteTimer);
+    const repaint = () => { this.pendingStatus = undefined; this.syncStatus(); };
+    this.noteTimer = window.setTimeout(repaint, 10_000); repaint(); this.reload();
+  }
   reload() {
     this.actionRuns++; this.cache.clear(); this.png = undefined; this.pngFor = undefined;
     const tier = this.current; if (tier && !this.disposed) { this.current = undefined; this.setTier(tier); }

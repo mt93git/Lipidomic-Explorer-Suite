@@ -174,7 +174,8 @@ async function browserTests(pw, name, base) {
     assert.equal(await inspector.getByRole('button',{name:'Plot data (CSV)',exact:true}).count(),0);
     assert.equal(await inspector.getByRole('group',{name:'More downloads from this analysis',exact:true}).count(),0);
     const [artSvg]=await Promise.all([page.waitForEvent('download'),inspector.getByRole('button',{name:'Download SVG',exact:true}).click()]);
-    assert.equal(artSvg.suggestedFilename(),'Synthetic sample.svg');assert.match(fs.readFileSync(await artSvg.path(),'utf8'),/#abcdef/);
+    // WebKit on Linux sanitizes spaces in the app's suggested download name.
+    assert(name === 'webkit' ? ['Synthetic sample.svg', 'Synthetic_sample.svg'].includes(artSvg.suggestedFilename()) : artSvg.suggestedFilename() === 'Synthetic sample.svg');assert.match(fs.readFileSync(await artSvg.path(),'utf8'),/#abcdef/);
     const [artPng]=await Promise.all([page.waitForEvent('download'),inspector.getByRole('button',{name:'Download PNG',exact:true}).click()]);
     const artBytes=fs.readFileSync(await artPng.path());assert.equal(artBytes.toString('hex',0,8),'89504e470d0a1a0a');assert(artBytes.readUInt32BE(16)>0&&artBytes.readUInt32BE(20)>0);
     await inspector.getByRole('button',{name:'More export options…',exact:true}).click();await dialog.waitFor();

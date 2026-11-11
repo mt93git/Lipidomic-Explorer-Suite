@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nexo collaboration · interactive prototype v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,600;0,6..12,700&display=swap" rel="stylesheet">
+<style>
+/* Tokens: frontends/nexo/src/tokens.css (AAA values) */
+:root{--accent:#235273;--navy:#162230;--ink:#141b24;--muted:#44505e;--line:#e3e7ec;--line-strong:#cfd6de;--tint:#eaf1f7;--paper:#fff;--canvas:#f3f5f7;--grid-dot:#cdd6e2;
+--amber-bg:#fff4e0;--amber-fg:#6b4200;--blue-bg:#e7f0fa;--blue-fg:#1d4f7c;--red-bg:#fdecea;--red-fg:#8a1f11;--green:#2e8b57;--green-strong:#1b5e3a;--saving:#d9a12b;--error:#e0634f;--danger:#9b2c2c;
+--font:'Nunito Sans',system-ui,sans-serif;--r-sm:6px;--r-md:8px;--r-lg:12px;--shadow-card:0 2px 10px #16223014;--shadow-pop:0 2px 6px #16223014,0 10px 28px #16223018;
+--bar-top:48px;--bar-tabs:42px;--rail:56px;--insp:320px;--motion:150ms;
+--u-me:#235273;--u-tomas:#c2410c;--u-lee:#6d28d9;--u-okafor:#0f766e;--u-mia:#be185d}
+@media(prefers-reduced-motion:reduce){:root{--motion:0ms}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}[hidden]{display:none!important}
+body{font:14px/1.55 var(--font);color:var(--ink);background:var(--canvas);overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{background:none;border:0;padding:0;cursor:pointer;border-radius:var(--r-sm)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+svg.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* Reviewer bar (Spanish, not product UI) */
+#scenes{position:fixed;left:0;right:0;top:0;height:30px;z-index:1000;display:flex;align-items:center;gap:4px;padding:0 8px;background:#fde68a;color:#3b2f05;font-size:12px;border-bottom:1px solid #d9b52a;overflow-x:auto;white-space:nowrap}
+#scenes strong{margin-right:4px}#scenes button{padding:3px 8px;border:1px solid #c9a227;background:#fff7d6;border-radius:999px;font-size:12px}
+#scenes button[aria-pressed=true]{background:#3b2f05;color:#fff;border-color:#3b2f05}
+body.scenes #app{top:30px}body:not(.scenes) #scenes{display:none}
+#note{position:absolute;right:16px;top:132px;z-index:900;max-width:360px;background:#fff7d6;border:1px solid #d9b52a;color:#3b2f05;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;box-shadow:var(--shadow-pop)}
+#note b{display:block;margin-bottom:2px}#note button{position:absolute;top:4px;right:6px;color:#8a6d00;font-size:14px}
+body.insp-open #note{right:calc(var(--insp) + 16px)}body.scene-8 #note{top:auto;bottom:16px}body.scene-9 #note{top:auto;bottom:16px;right:auto;left:72px}
+
+/* App shell */
+#app{position:absolute;inset:0;display:grid;grid-template-rows:var(--bar-top) minmax(0,1fr)}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--navy);color:#fff;font-size:13px}
+.topbar .logo{width:28px;height:28px;border-radius:7px;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:700;font-size:12px}
+.topbar h1{font-size:14px;font-weight:700;margin:0 4px 0 0}
+.topbar .project{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;color:#fff}
+.topbar .project:hover{background:#ffffff14}
+.topbar .origin{height:22px;padding:0 8px;border-radius:999px;background:#efe6ff;color:#4c1d95;font-size:11px;font-weight:700;display:inline-flex;align-items:center;white-space:nowrap}
+.topbar nav{display:flex;gap:2px;margin-left:12px}.topbar nav a{color:#c4d1dc;text-decoration:none;padding:5px 12px;border-radius:999px}
+.topbar nav [aria-current]{color:#fff;background:var(--accent)}.topbar .grow{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:1px solid #ffffff2e;color:#e6edf3;font-size:12px;white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:#7fd1a1}.pill.syncing .dot{background:#8fc5f7}.pill.reconnecting .dot{background:#f2c14e;animation:blink 1s infinite}.pill.offline .dot{background:#ff8a7a}.pill.readonly .dot{background:#c4d1dc}.pill.busy .dot{background:#f2c14e}.pill.signedout .dot{background:#ff8a7a}
+@keyframes blink{50%{opacity:.3}}
+.share{height:30px;padding:0 12px;border-radius:999px;background:#fff;color:var(--navy);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.presence{display:flex;align-items:center}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;border:2px solid var(--navy);margin-left:-8px;position:relative;background:var(--c)}
+.av:first-child{margin-left:0}.av.me{box-shadow:0 0 0 2px #fff}
+.av .dev{position:absolute;right:-4px;bottom:-4px;width:14px;height:14px;border-radius:50%;background:var(--navy);display:grid;place-items:center}
+.av .dev svg{width:9px;height:9px;stroke:#fff}
+.av.presenting::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid #7fd1a1}
+.iconbtn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#c4d1dc}.iconbtn:hover{background:#ffffff14;color:#fff}
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr) 0;min-height:0;position:relative;transition:grid-template-columns var(--motion)}
+.shell.insp-open{grid-template-columns:var(--rail) minmax(0,1fr) var(--insp)}
+.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;background:var(--paper);border-right:1px solid var(--line)}
+.rail button{width:38px;height:38px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-md);position:relative}.rail button[aria-pressed=true]{background:var(--tint);color:var(--accent);box-shadow:inset 0 0 0 1px #235273;}
+.rail .sep{width:28px;height:1px;background:var(--line);margin:4px 0}
+.rail .badge{position:absolute;top:3px;right:3px;min-width:16px;height:16px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.main{display:grid;grid-template-rows:var(--bar-tabs) 30px minmax(0,1fr);min-height:0;background:var(--canvas)}
+.tabsbar{display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--paper);border-bottom:1px solid var(--line);font-size:13px;overflow:hidden;white-space:nowrap}
+.tab{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:var(--r-md);background:var(--tint);color:var(--accent);font-weight:600}
+.tab small{background:#fff;border-radius:999px;padding:0 6px;font-weight:600;color:var(--muted)}
+.tabsbar .act{padding:4px 8px;border-radius:var(--r-sm);color:var(--ink)}.tabsbar .act:hover{background:var(--tint)}.tabsbar .act.muted{color:#8a95a3}
+.tabsbar .draft{background:var(--blue-bg);color:var(--blue-fg);padding:4px 10px;border-radius:999px;font-weight:600}
+.tabsbar .sp{width:14px}.tabsbar .grow{flex:1}
+.engine{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--amber-bg);color:var(--amber-fg);font-weight:600;font-size:12px}
+.engine .spin{width:10px;height:10px;border:2px solid #d9a12b;border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hintbar{display:flex;align-items:center;padding:0 12px;font-size:12px;color:var(--muted);background:var(--paper);border-bottom:1px solid var(--line)}
+.hintbar .follow{margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:#efe6ff;color:#4c1d95;padding:3px 4px 3px 10px;border-radius:999px;font-weight:600}
+.hintbar .follow button{background:#fff;border:1px solid #c4b5fd;padding:1px 8px;border-radius:999px;font-size:12px}
+
+/* Viewport & board */
+#viewport{position:relative;overflow:hidden;background:var(--canvas);background-image:radial-gradient(var(--grid-dot) 1px,transparent 1px);background-size:24px 24px}
+#board{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.card{position:absolute;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--shadow-card);border:1px solid var(--line);overflow:visible;display:flex;flex-direction:column}
+.card .head{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px 0 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px}
+.card .head .st{width:7px;height:7px;border-radius:50%;background:var(--green)}.card .head .st.amber{background:#d9a12b}
+.card .head .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .head .hb{width:26px;height:26px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-sm)}
+.card .body{flex:1;display:grid;place-items:center;padding:8px;overflow:hidden;min-height:0}.card .body svg{width:100%;height:100%}
+.card.sel{outline:2px solid var(--uc,var(--accent));outline-offset:-1px;box-shadow:0 0 0 4px color-mix(in srgb,var(--uc,var(--accent)) 16%,transparent),var(--shadow-card)}
+.card .tag{position:absolute;top:-11px;left:12px;background:var(--uc);color:#fff;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;line-height:18px;white-space:nowrap}
+.card.sel .tag{display:block}.card .tag{display:none}
+.card .upd{position:absolute;left:10px;bottom:8px;display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;font-size:11px;padding:3px 9px;border-radius:999px;opacity:0;transition:opacity var(--motion)}
+.card .upd.on{opacity:1}.card .upd .mini{width:14px;height:14px;border-radius:50%;font-size:8px;font-weight:700;display:grid;place-items:center;background:var(--uc)}
+.card .veil{position:absolute;inset:40px 0 0 0;background:#ffffffb3;display:none;place-items:center;color:var(--muted);font-size:12px;font-weight:600;gap:8px}
+.card.updating .veil{display:grid}.card .veil .spin{width:14px;height:14px;border:2px solid var(--accent);border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite}
+.card .editing{position:absolute;right:10px;top:46px;display:none;align-items:center;gap:6px;background:#fff;border:1px solid var(--uc);color:var(--uc);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.card.editing-on .editing{display:inline-flex}
+.card .pin{position:absolute;width:26px;height:26px;border-radius:50% 50% 50% 4px;background:var(--uc);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;transform:translate(-50%,-100%) ;box-shadow:0 2px 6px #00000033}
+.card .pin.resolved{background:#8a95a3}.card .pin.active{outline:3px solid #fff;box-shadow:0 0 0 2px var(--uc)}
+.card .votes{position:absolute;right:10px;bottom:8px;display:inline-flex;align-items:center;gap:4px;background:var(--tint);color:var(--accent);font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.bpin{position:absolute;width:26px;height:26px;border-radius:50% 50% 50% 4px;background:var(--uc);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;transform:translate(-50%,-100%);box-shadow:0 2px 6px #00000033}
+.ghost{position:absolute;border:2px dashed var(--uc);border-radius:var(--r-lg);pointer-events:none;opacity:.8}
+/* cursors (screen coordinates after transform) */
+#cursors{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.cur{position:absolute;left:0;top:0;transition:transform 90ms linear;will-change:transform}
+.cur svg{width:18px;height:18px;filter:drop-shadow(0 1px 2px #00000040)}
+.cur .name{position:absolute;left:14px;top:16px;background:var(--uc);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.cur .name small{font-weight:400;opacity:.85;margin-left:4px}
+/* minimap */
+.minimap{position:absolute;left:16px;bottom:56px;width:116px;height:76px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-card);overflow:hidden}
+.minimap .mc{position:absolute;background:#c3cfdb;border-radius:1px}.minimap .mc.fin{background:#8fa6bb}
+.minimap .vp{position:absolute;border:1.5px solid var(--uc,var(--accent));background:color-mix(in srgb,var(--uc,var(--accent)) 12%,transparent);border-radius:2px}
+.minimap .vp.me{border-width:2px}
+.minimap .vp i{position:absolute;left:-1px;top:-9px;font:700 8px/10px var(--font);font-style:normal;color:#fff;background:var(--uc);padding:0 3px;border-radius:3px}
+.zoom{position:absolute;left:16px;bottom:16px;display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 10px;background:#fff;border:1px solid var(--line);border-radius:999px;box-shadow:var(--shadow-card);font-size:12px}
+.zoom b{font-weight:600}
+/* Inspector */
+.inspector{background:var(--paper);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:auto}
+.inspector .ih{display:flex;align-items:center;gap:8px;padding:14px 16px 8px}.inspector .ih h2{font-size:14px;margin:0;flex:1}
+.inspector .row{display:flex;gap:8px;padding:0 16px 10px}
+.btn{height:30px;padding:0 10px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:#fff;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.danger{color:var(--danger);border-color:#e0c7c7}
+.inspector .status{padding:0 16px 8px;font-size:12px;color:var(--muted)}
+.inspector .tabs{display:flex;gap:14px;padding:0 16px;border-bottom:1px solid var(--line);font-size:13px}.inspector .tabs span{padding:8px 0}.inspector .tabs span[aria-current]{color:var(--accent);font-weight:600;border-bottom:2px solid var(--accent)}
+.inspector .sec{padding:12px 16px;border-bottom:1px solid var(--line)}.inspector .sec h3{font-size:12px;margin:0 0 8px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.field{display:grid;gap:4px;margin-bottom:10px;font-size:12px}.field label{color:var(--muted)}.field .ctl{height:30px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#fff;font-size:13px;position:relative}
+.field.locked .ctl{border-color:var(--uc);background:color-mix(in srgb,var(--uc) 6%,#fff)}
+.field .who{position:absolute;right:-6px;top:-10px;background:var(--uc);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
+.lockbanner{margin:10px 16px;padding:8px 10px;border-radius:var(--r-md);background:color-mix(in srgb,var(--uc) 10%,#fff);border:1px solid color-mix(in srgb,var(--uc) 45%,#fff);font-size:12px;display:flex;gap:8px;align-items:flex-start}
+.lockbanner .mini{width:20px;height:20px;border-radius:50%;background:var(--uc);color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;flex:none}
+.lockbanner b{display:block}
+/* Side panels (comments, versions) reuse inspector */
+.cm{padding:10px 16px;border-bottom:1px solid var(--line)}
+.cm .by{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px}.cm .by .mini{width:22px;height:22px;border-radius:50%;background:var(--uc);color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center}
+.cm .by b{font-weight:700}.cm .by small{color:var(--muted)}.cm p{margin:0 0 0 30px;font-size:13px}.cm .m{color:var(--accent);font-weight:600;background:var(--tint);padding:0 4px;border-radius:4px}
+.cm .anchor{margin-left:30px;font-size:11px;color:var(--muted)}
+.composer{margin:10px 16px;border:1px solid var(--line-strong);border-radius:var(--r-md);padding:8px;font-size:13px;position:relative}
+.composer .ph{color:#8a95a3}.composer .mention{position:absolute;left:8px;top:40px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:4px;min-width:200px;z-index:2}
+.composer .mention div{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12px}.composer .mention div[aria-selected]{background:var(--tint)}
+.composer .mention .mini{width:18px;height:18px;border-radius:50%;background:var(--uc);color:#fff;font-size:8px;font-weight:700;display:grid;place-items:center}
+.composer .foot{display:flex;justify-content:flex-end;gap:6px;margin-top:28px}
+.ver{display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:12px;align-items:flex-start}
+.ver .mini{width:22px;height:22px;border-radius:50%;background:var(--uc);color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;flex:none;margin-top:2px}
+.ver b{display:block;font-size:13px}.ver .grow{flex:1}.ver .auto b{font-weight:600;color:var(--muted)}
+.ver.current{background:var(--tint)}.ver .curbadge{background:var(--green);color:#fff;font-size:10px;padding:0 6px;border-radius:999px;font-weight:700}
+.act{display:flex;gap:8px;padding:6px 16px;font-size:12px;align-items:center}.act .mini{width:18px;height:18px;border-radius:50%;background:var(--uc);color:#fff;font-size:8px;font-weight:700;display:grid;place-items:center;flex:none}
+.act small{color:var(--muted);margin-left:auto;white-space:nowrap}
+/* Toast */
+.toast{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:8px 8px 8px 14px;border-radius:var(--r-md);font-size:13px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-pop);opacity:0;transition:opacity var(--motion);white-space:nowrap}
+.toast.on{opacity:1}.toast button{background:#ffffff1f;padding:3px 10px;border-radius:999px;font-weight:600}
+/* Modal (share) */
+.modal{position:absolute;inset:0;background:#16223066;display:grid;place-items:center;z-index:50}
+.dlg{width:560px;max-width:calc(100% - 32px);background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-pop);padding:20px 22px}
+.dlg h2{margin:0 0 4px;font-size:18px}.dlg .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+.dlg .invite{display:flex;gap:8px;margin-bottom:12px}.dlg .invite .ctl{flex:1;height:34px;border:1px solid var(--line-strong);border-radius:var(--r-sm);display:flex;align-items:center;padding:0 10px;color:#8a95a3}
+.member{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.member .mini{width:30px;height:30px;border-radius:50%;background:var(--uc);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.member .n b{display:block}.member .n small{color:var(--muted)}.member .org{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--tint);color:var(--accent)}.member .org.client{background:#efe6ff;color:#4c1d95}
+.member .role{margin-left:auto;height:28px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 8px;background:#fff;font-size:12px}
+.linkrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--canvas);font-size:12px;margin-bottom:12px}
+.linkrow b{display:block;font-size:13px}.linkrow .grow{flex:1}
+.dlg .note{font-size:11px;color:var(--muted);background:var(--amber-bg);color:var(--amber-fg);padding:8px 10px;border-radius:var(--r-sm);margin-top:12px}
+.dlg .note.info{background:var(--tint);color:var(--blue-fg)}.dlg .people{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}.dlg .people span{height:22px;padding:0 8px;border-radius:999px;background:var(--canvas);border:1px solid var(--line);font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}.dlg .people span b{color:var(--ink)}
+/* Connection states gallery (scene 7) */
+.states{position:absolute;left:16px;right:16px;bottom:16px;display:grid;grid-template-columns:repeat(7,1fr);gap:10px;z-index:5}
+.state{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;font-size:12px;box-shadow:var(--shadow-card)}
+.state.on{outline:2px solid var(--accent)}.state b{display:block;font-size:13px;margin-bottom:2px}.state .pill{color:var(--ink);border-color:var(--line-strong);height:24px;margin-bottom:6px}
+/* Phone */
+@media(max-width:480px){
+  .shell{grid-template-columns:minmax(0,1fr)!important}.rail{display:none}.inspector{display:none}#note{display:none}.states{display:none!important}.topbar .origin{display:none}
+  .topbar nav,.topbar h1,.topbar .share span,.topbar .pill span:last-child{display:none}.topbar{gap:6px;padding:0 8px}.topbar .share{width:32px;padding:0;justify-content:center}
+  .tabsbar .act,.tabsbar .draft,.tabsbar .sp{display:none}.tabsbar .view{display:inline-flex!important}
+  .hintbar{font-size:11px}.minimap{display:none}.zoom{display:none}#note{max-width:calc(100% - 32px);right:16px;left:16px;bottom:12px}
+  .states{grid-template-columns:repeat(2,1fr);bottom:auto;top:90px}
+  .sheet{display:block!important}
+}
+.tabsbar .view{display:none;align-items:center;gap:6px;background:var(--tint);color:var(--accent);padding:3px 10px;border-radius:999px;font-weight:600;font-size:12px}
+.sheet{display:none;position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 24px #16223022;padding:10px 16px 16px;font-size:13px;z-index:6}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--line-strong);margin:0 auto 10px}
+.sheet .pl{display:flex;gap:8px;align-items:center;margin-top:8px}
+/* Architecture */
+#arch{position:absolute;inset:0;overflow:auto;background:#fff;padding:16px 24px}
+#arch h2{font-size:16px;margin:0 0 6px}#arch p{margin:0 0 10px;font-size:12px;color:var(--muted);max-width:980px}
+#arch svg{max-width:1200px;width:100%;height:auto;display:block}
+#arch .two{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1300px}@media(max-width:1000px){#arch .two{grid-template-columns:1fr}}
+.panelhead{display:flex;align-items:center;gap:8px;padding:14px 16px 8px}.panelhead h2{font-size:14px;margin:0;flex:1}.panelhead .x{color:var(--muted)}
+.seg{display:flex;margin:0 16px 8px;border:1px solid var(--line-strong);border-radius:999px;overflow:hidden;font-size:12px}.seg span{flex:1;text-align:center;padding:4px 0}.seg span[aria-current]{background:var(--accent);color:#fff;font-weight:600}
+/* Plan (scene 9): roadmap of phases 0-6 */
+#plan{position:absolute;inset:0;overflow:auto;background:#fff;padding:8px 24px 8px}
+#plan h2{font-size:16px;margin:0 0 2px}#plan .lead{margin:0 0 6px;font-size:12px;line-height:1.45;color:var(--muted);max-width:960px}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin:0 0 6px;flex-wrap:wrap}.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.legend .s::before{background:var(--tint);border:1px solid #c9d8e6}.legend .a::before{background:#efe6ff;border:1px solid #d8c8ff}.legend .r::before{background:#e6f4ec;border:1px solid #bfe0cc}.legend .d::before{background:#f3f5f7;border:1px solid var(--line)}
+.road{display:grid;grid-template-columns:repeat(8,minmax(140px,1fr));gap:12px;align-items:stretch}
+.ph{position:relative;border:1px solid var(--line);border-radius:var(--r-md);background:#fff;padding:8px 10px;font-size:11px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:3px}
+.ph.on{outline:2px solid var(--accent)}
+.ph .num{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;line-height:1.2}.ph .num i{font-style:normal;flex:none;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:11px}
+.ph .eff{font-weight:600;color:var(--muted);font-size:11px}
+.ph ul{margin:0;padding-left:14px}.ph li{margin:0;line-height:1.3}
+.ph .lab{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--muted);margin-top:1px}
+.ph .chips{display:flex;flex-wrap:wrap;gap:4px}.ph .chips button{height:22px;padding:0 8px;border-radius:999px;background:var(--tint);color:var(--accent);font-weight:700;font-size:11px;border:1px solid #c9d8e6}.ph .chips button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ph .dep{display:flex;flex-wrap:wrap;gap:4px}.ph .dep span{min-height:20px;padding:2px 7px;border-radius:10px;background:#f3f5f7;border:1px solid var(--line);font-size:10.5px;line-height:1.25;color:var(--muted);display:inline-flex;align-items:center;white-space:normal;text-align:left}.ph .dep span.admin{background:#efe6ff;color:#4c1d95;border-color:#d8c8ff}.ph .dep span.r{background:#e6f4ec;color:#1b5e3a;border-color:#bfe0cc}
+.ph .tests{font-size:10px;line-height:1.3;color:var(--muted);margin-top:auto;padding-top:4px;border-top:1px dashed var(--line)}
+.ph::after{content:"→";position:absolute;right:-14px;top:12px;color:#8a95a3;font-size:16px;line-height:1}.ph:last-child::after{content:""}
+.lanes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px}
+.lane{border:1px solid var(--line);border-radius:var(--r-md);padding:7px 10px;font-size:10.5px;background:var(--canvas)}.lane b{display:block;margin-bottom:2px;font-size:12px}.lane ul{margin:0;padding-left:14px}.lane li{margin:0;line-height:1.3}
+@media(max-width:1000px){.road{grid-template-columns:repeat(2,1fr)}.ph::after{content:""}.lanes{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="scenes">
+<div id="scenes" role="toolbar" aria-label="Escenas del prototipo">
+  <strong>v2 · Escenas:</strong>
+  <button data-scene="1">1 · Tres personas</button>
+  <button data-scene="2">2 · Misma tarjeta</button>
+  <button data-scene="3">3 · Comentarios</button>
+  <button data-scene="4">4 · Compartir</button>
+  <button data-scene="5">5 · Seguir / convocar</button>
+  <button data-scene="6">6 · Versiones</button>
+  <button data-scene="7">7 · Conexión / móvil</button>
+  <button data-scene="8">8 · Arquitectura</button>
+  <button data-scene="9">9 · Plan</button>
+  <button id="hidebar" style="margin-left:auto">Ocultar barra</button>
+</div>
+<div id="app">
+  <header class="topbar">
+    <span class="logo" aria-hidden="true">LE</span><h1>Lipidomic Explorer</h1>
+    <button class="project" title="Opened from Admin · released dataset ORD041, version 1 · open or save a version">ORD041 · v1 ▾</button><span class="origin" title="Opened from the Admin back office: identity, client scope and the dataset come from Admin">from Admin</span>
+    <nav aria-label="Analysis steps"><a href="#">Data</a><a href="#">Review</a><span aria-current="step" style="padding:5px 12px;border-radius:999px">Canvas</span></nav>
+    <span class="grow"></span>
+    <span id="conn" class="pill live" role="status"><span class="dot"></span><span>Live · saved</span></span>
+    <div id="presence" class="presence" aria-label="People on this board"></div>
+    <button class="share" id="sharebtn"><svg class="ic" viewBox="0 0 20 20"><circle cx="6" cy="10" r="2.2"/><circle cx="14" cy="5" r="2.2"/><circle cx="14" cy="15" r="2.2"/><path d="M8 9l4-3M8 11l4 3"/></svg><span>Share</span></button>
+    <button class="iconbtn" id="accountbtn" aria-label="Account · signed in through Admin"><svg class="ic" viewBox="0 0 18 18"><circle cx="9" cy="6" r="3"/><path d="M3 16c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg></button>
+  </header>
+  <div class="shell" id="shell">
+    <aside class="rail" aria-label="Tools">
+      <button aria-label="Plot library"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/></svg></button>
+      <button aria-label="Illustrations"><svg class="ic" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="2.5"/></svg></button>
+      <button aria-label="Text"><svg class="ic" viewBox="0 0 20 20"><path d="M4 5h12M10 5v11"/></svg></button>
+      <span class="sep"></span>
+      <button aria-label="Select" aria-pressed="true"><svg class="ic" viewBox="0 0 20 20"><path d="M5 3l11 7-5 1-3 5z"/></svg></button>
+      <button aria-label="Pan"><svg class="ic" viewBox="0 0 20 20"><path d="M10 3v14M3 10h14M7 6l3-3 3 3M7 14l3 3 3-3M6 7l-3 3 3 3M14 7l3 3-3 3"/></svg></button>
+      <span class="sep"></span>
+      <button id="railComments" aria-label="Comments"><svg class="ic" viewBox="0 0 20 20"><path d="M3 4h14v9H8l-4 3v-3H3z"/></svg><span class="badge">3</span></button>
+      <button id="railHistory" aria-label="Version history"><svg class="ic" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg></button>
+    </aside>
+    <div class="main">
+      <div class="tabsbar">
+        <span class="tab">Canvas 1 <small>4</small></span><button class="act">+</button><button class="act">···</button>
+        <span class="sp"></span>
+        <button class="act">Targeted lipids</button><button class="act">Analysis settings</button><button class="act">+ Add plot</button><button class="act">Tidy up</button>
+        <button class="act muted">↶ Undo</button><button class="act muted">↷ Redo</button>
+        <span class="draft">Draft · 2 to finish</span>
+        <span class="view"><svg class="ic" viewBox="0 0 20 20" style="width:14px;height:14px"><path d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5z"/><circle cx="10" cy="10" r="2"/></svg>View only</span>
+        <span class="grow"></span>
+        <span id="engine" class="engine" hidden><span class="spin"></span><span id="engineTxt">Engine busy</span></span>
+        <button class="act">Figure page →</button><button class="act">Export figure ▾</button><button class="act">···</button>
+      </div>
+      <div class="hintbar"><span id="hint">Draft: edit live plots. Finish a plot to place it on the figure page.</span><span id="followbar" class="follow" hidden></span></div>
+      <div id="viewport">
+        <div id="board"></div>
+        <div id="cursors"></div>
+        <div class="minimap" id="minimap" aria-label="Minimap"></div>
+        <div class="zoom"><button aria-label="Zoom out">−</button><b id="zoomv">100%</b><button aria-label="Zoom in">+</button><button>Fit</button></div>
+        <div class="toast" id="toast"></div>
+        <div class="states" id="states" hidden></div>
+        <div class="sheet" id="sheet" hidden></div>
+        <div id="arch" hidden></div>
+        <div id="plan" hidden></div>
+      </div>
+    </div>
+    <aside class="inspector" id="side" aria-label="Inspector"></aside>
+  </div>
+  <div id="modal" class="modal" hidden></div>
+  <div id="note" hidden><button id="noteClose" aria-label="Cerrar nota">×</button><b></b><span></span></div>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);
+const FIXED=params.has('at')?Number(params.get('at')):null;
+const t0=performance.now();const now=()=>FIXED!==null?FIXED:performance.now()-t0;
+/* Fictional people only */
+/* admin: what the Admin account says (lab staff role, or client membership); role: this project's collaboration role */
+const CLIENT='Fennel Hill group';
+const U={
+  me:{id:'me',name:'Ana R.',org:'Lab',ini:'AR',c:'var(--u-me)',role:'Owner',admin:'Lab staff · Owner'},
+  tomas:{id:'tomas',name:'Tomás',org:'Lab',ini:'T',c:'var(--u-tomas)',role:'Editor',admin:'Lab staff · Operator'},
+  lee:{id:'lee',name:'Dr. Lee',org:'Client',ini:'DL',c:'var(--u-lee)',role:'Editor',admin:`Client admin · ${CLIENT}`},
+  okafor:{id:'okafor',name:'M. Okafor',org:'Client',ini:'MO',c:'var(--u-okafor)',role:'Viewer',phone:true,admin:`Viewer · ${CLIENT}`},
+  mia:{id:'mia',name:'Mia S.',org:'Client',ini:'MS',c:'var(--u-mia)',role:'Commenter',admin:`Requester · ${CLIENT}`}
+};
+const CARDS=[
+  {id:'pca',title:'Principal components',x:260,y:90,w:440,h:330,kind:'pca',st:'green'},
+  {id:'violin',title:'Feature distributions',x:740,y:90,w:440,h:330,kind:'violin',st:'green'},
+  {id:'lcms',title:'LC–MS instrument',x:260,y:460,w:300,h:210,kind:'ill',st:'green'},
+  {id:'volcano',title:'Differential lipids',x:740,y:460,w:440,h:280,kind:'volcano',st:'amber'}
+];
+const S={scene:'1',cam:{x:0,y:0,k:1},sel:{},edit:null,follow:null,comments:false,panel:null,activePin:null,conn:'live',engine:null,ghost:null};
+/* ---------- SVG plots (static illustrations of Team's plots) ---------- */
+function plot(kind,v){
+  const blue='#3b6ea5',red='#c0504d';
+  if(kind==='pca')return `<svg viewBox="0 0 420 270"><text x="210" y="22" text-anchor="middle" font-size="16" fill="#141b24">PCA</text>
+  <g stroke="#e3e7ec"><line x1="60" y1="40" x2="60" y2="230"/><line x1="60" y1="230" x2="360" y2="230"/><line x1="210" y1="40" x2="210" y2="230"/><line x1="60" y1="135" x2="360" y2="135"/></g>
+  <g font-size="11" fill="#44505e"><text x="150" y="246" text-anchor="middle">−2</text><text x="210" y="246" text-anchor="middle">0</text><text x="270" y="246" text-anchor="middle">2</text><text x="48" y="234" text-anchor="end">0</text><text x="48" y="138" text-anchor="end">1</text><text x="48" y="44" text-anchor="end">2</text><text x="210" y="262" text-anchor="middle" font-size="12">PC1</text><text x="18" y="140" transform="rotate(-90 18 140)" text-anchor="middle" font-size="12">PC2</text></g>
+  <g><circle cx="150" cy="50" r="3.5" fill="${blue}"/><circle cx="120" cy="150" r="3.5" fill="${blue}"/><circle cx="208" cy="228" r="3.5" fill="${blue}"/><circle cx="165" cy="110" r="3.5" fill="${blue}"/><circle cx="300" cy="55" r="3.5" fill="${red}"/><circle cx="330" cy="150" r="3.5" fill="${red}"/><circle cx="250" cy="226" r="3.5" fill="${red}"/><circle cx="290" cy="120" r="3.5" fill="${red}"/></g>
+  <g font-size="11" fill="#44505e"><circle cx="376" cy="60" r="3" fill="${blue}"/><text x="384" y="64">Control</text><circle cx="376" cy="80" r="3" fill="${red}"/><text x="384" y="84">Case</text></g></svg>`;
+  if(kind==='violin'){const t=v||'PC(16:0/18:1)';return `<svg viewBox="0 0 420 270"><text x="210" y="22" text-anchor="middle" font-size="16" fill="#141b24">${t}</text>
+  <g stroke="#e3e7ec"><line x1="60" y1="60" x2="360" y2="60"/><line x1="60" y1="100" x2="360" y2="100"/><line x1="60" y1="140" x2="360" y2="140"/><line x1="60" y1="180" x2="360" y2="180"/><line x1="60" y1="222" x2="360" y2="222" stroke="#141b24"/></g>
+  <g font-size="11" fill="#44505e"><text x="50" y="64" text-anchor="end">8</text><text x="50" y="104" text-anchor="end">6</text><text x="50" y="144" text-anchor="end">4</text><text x="50" y="184" text-anchor="end">2</text><text x="50" y="226" text-anchor="end">0</text><text x="140" y="248" text-anchor="middle" font-size="12">Control</text><text x="280" y="248" text-anchor="middle" font-size="12">Case</text></g>
+  <path d="M140 88 C120 110 110 150 140 215 C170 150 160 110 140 88Z" fill="${blue}" fill-opacity=".45" stroke="${blue}"/><rect x="133" y="130" width="14" height="40" fill="none" stroke="${blue}" stroke-width="1.5"/><line x1="140" y1="112" x2="140" y2="190" stroke="${blue}"/>
+  <path d="M280 60 C255 90 245 140 280 215 C315 140 305 90 280 60Z" fill="${red}" fill-opacity=".45" stroke="${red}"/><rect x="273" y="110" width="14" height="40" fill="none" stroke="${red}" stroke-width="1.5"/><line x1="280" y1="85" x2="280" y2="175" stroke="${red}"/>
+  <g font-size="11" fill="#44505e"><rect x="372" y="54" width="8" height="8" fill="${blue}"/><text x="384" y="62">Control</text><rect x="372" y="72" width="8" height="8" fill="${red}"/><text x="384" y="80">Case</text></g></svg>`;}
+  if(kind==='ill')return `<svg viewBox="0 0 280 150"><rect x="30" y="20" width="220" height="100" rx="10" fill="#eaf1f7" stroke="#235273"/><text x="140" y="76" text-anchor="middle" font-size="18" fill="#235273">LC-MS</text></svg>`;
+  if(kind==='volcano')return `<svg viewBox="0 0 420 220"><text x="210" y="20" text-anchor="middle" font-size="15" fill="#141b24">Case vs Control</text>
+  <g stroke="#e3e7ec"><line x1="60" y1="40" x2="60" y2="190"/><line x1="60" y1="190" x2="360" y2="190"/><line x1="210" y1="40" x2="210" y2="190" stroke-dasharray="3 3"/><line x1="60" y1="120" x2="360" y2="120" stroke-dasharray="3 3"/></g>
+  <g fill="#9aa8b6">${[[90,170],[120,150],[150,180],[180,160],[200,175],[230,165],[250,185],[280,150],[300,170],[330,160],[190,130],[220,140],[160,135],[260,130]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3"/>`).join('')}</g>
+  <g fill="${red}"><circle cx="300" cy="70" r="3.5"/><circle cx="330" cy="55" r="3.5"/><circle cx="280" cy="95" r="3.5"/></g><g fill="${blue}"><circle cx="110" cy="80" r="3.5"/><circle cx="90" cy="60" r="3.5"/></g>
+  <g font-size="11" fill="#44505e"><text x="210" y="208" text-anchor="middle">log2 fold change</text><text x="20" y="118" transform="rotate(-90 20 118)" text-anchor="middle">−log10 p</text></g></svg>`;
+  return '';
+}
+/* ---------- rendering ---------- */
+const cardEl={};
+function renderBoard(){
+  const b=$('board');b.innerHTML='';
+  for(const c of CARDS){
+    const d=document.createElement('div');d.className='card';d.id='card-'+c.id;d.style.cssText=`left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px`;
+    d.innerHTML=`<div class="head"><span class="st ${c.st==='amber'?'amber':''}"></span><span class="grow">${c.title}</span><button class="hb" aria-label="Edit"><svg class="ic" viewBox="0 0 20 20" style="width:15px;height:15px"><path d="M4 16l1-4 9-9 3 3-9 9z"/></svg></button><button class="hb" aria-label="Duplicate"><svg class="ic" viewBox="0 0 20 20" style="width:15px;height:15px"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V4H4v9h3"/></svg></button><button class="hb" aria-label="More">···</button></div>
+    <div class="body">${plot(c.kind)}</div><span class="tag"></span><span class="editing"></span><div class="veil"><span class="spin"></span><span class="veiltxt">Updating…</span></div><span class="upd"></span>`;
+    b.appendChild(d);cardEl[c.id]=d;
+  }
+}
+function setSel(cid,user){const d=cardEl[cid];if(!d)return;if(!user){d.classList.remove('sel');d.style.removeProperty('--uc');return;}d.classList.add('sel');d.style.setProperty('--uc',user.c);d.querySelector('.tag').textContent=user===U.me?'You':user.name;}
+function setEditing(cid,user,field){const d=cardEl[cid];if(!d)return;if(!user){d.classList.remove('editing-on');return;}d.classList.add('editing-on');d.style.setProperty('--uc',user.c);d.querySelector('.editing').textContent=`${user.name} is editing · ${field}`;}
+function setUpdated(cid,user,txt){const d=cardEl[cid];const u=d.querySelector('.upd');if(!user){u.classList.remove('on');return;}u.innerHTML=`<span class="mini" style="background:${user.c}">${user.ini}</span>${txt}`;u.classList.add('on');}
+function setUpdating(cid,on,txt){const d=cardEl[cid];d.classList.toggle('updating',on);if(txt)d.querySelector('.veiltxt').textContent=txt;}
+function cam(x,y,k){S.cam={x,y,k};$('board').style.transform=`translate(${x}px,${y}px) scale(${k})`;$('zoomv').textContent=Math.round(k*100)+'%';renderMinimap();}
+function fitAll(){const vp=$('viewport').getBoundingClientRect();const minX=Math.min(...CARDS.map(c=>c.x))-40,minY=Math.min(...CARDS.map(c=>c.y))-40,maxX=Math.max(...CARDS.map(c=>c.x+c.w))+40,maxY=Math.max(...CARDS.map(c=>c.y+c.h))+40;const k=Math.min(1,vp.width/(maxX-minX),vp.height/(maxY-minY));cam((vp.width-(maxX-minX)*k)/2-minX*k,(vp.height-(maxY-minY)*k)/2-minY*k,k);}
+/* minimap: board 0..1400 x 0..800 */
+const MM={w:116,h:76,bw:1500,bh:820};
+const others={};/* id -> {cursor:{x,y}, vp:{x,y,w,h}} in board coords */
+function renderMinimap(){
+  const m=$('minimap');const sx=MM.w/MM.bw,sy=MM.h/MM.bh;let h='';
+  for(const c of CARDS)h+=`<span class="mc ${c.st==='green'?'':'fin'}" style="left:${c.x*sx}px;top:${c.y*sy}px;width:${c.w*sx}px;height:${c.h*sy}px"></span>`;
+  for(const id in others){const o=others[id];if(!o.vp||!o.show)continue;const u=U[id];h+=`<span class="vp" style="--uc:${u.c};left:${o.vp.x*sx}px;top:${o.vp.y*sy}px;width:${o.vp.w*sx}px;height:${o.vp.h*sy}px"><i>${u.ini}</i></span>`;}
+  const vp=$('viewport').getBoundingClientRect();const mx=-S.cam.x/S.cam.k,my=-S.cam.y/S.cam.k,mw=vp.width/S.cam.k,mh=vp.height/S.cam.k;
+  h+=`<span class="vp me" style="--uc:var(--u-me);left:${mx*sx}px;top:${my*sy}px;width:${Math.min(mw,MM.bw)*sx}px;height:${Math.min(mh,MM.bh)*sy}px"></span>`;
+  m.innerHTML=h;
+}
+function renderPresence(list,presenter){
+  $('presence').innerHTML=list.map(u=>`<span class="av ${u===U.me?'me':''} ${presenter===u?'presenting':''}" style="--c:${u.c}" title="${u.name} · ${u.admin} (Admin account) · ${u.role} on this project${u.phone?' · on a phone':''}" aria-label="${u.name}, ${u.org}">${u.ini}${u.phone?'<span class="dev"><svg class="ic" viewBox="0 0 20 20"><rect x="6" y="2" width="8" height="16" rx="2"/></svg></span>':''}</span>`).join('');
+}
+const curEl={};
+function cursor(user,x,y,label){/* board coords -> screen */
+  let e=curEl[user.id];if(!e){e=document.createElement('div');e.className='cur';e.style.setProperty('--uc',user.c);e.innerHTML=`<svg viewBox="0 0 20 20"><path d="M3 2l13 7-5.5 1.5L8 16z" fill="${user.c}" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg><span class="name">${user.name}<small>${user.org}</small></span>`;$('cursors').appendChild(e);curEl[user.id]=e;}
+  if(x===null){e.hidden=true;return;}e.hidden=false;const sx=x*S.cam.k+S.cam.x,sy=y*S.cam.k+S.cam.y;e.style.transform=`translate(${sx}px,${sy}px)`;if(label!==undefined)e.querySelector('.name').innerHTML=`${user.name}<small>${label}</small>`;
+}
+function clearCursors(){for(const id in curEl)curEl[id].hidden=true;}
+function toast(html,ms){const t=$('toast');t.innerHTML=html;t.classList.add('on');clearTimeout(toast.t);if(ms)toast.t=setTimeout(()=>t.classList.remove('on'),ms);}
+function conn(state,txt){const p=$('conn');p.className='pill '+state;p.querySelector('span:last-child').textContent=txt;}
+function engine(txt){const e=$('engine');if(!txt){e.hidden=true;return;}e.hidden=false;$('engineTxt').textContent=txt;}
+function openSide(html){$('shell').classList.add('insp-open');document.body.classList.add('insp-open');$('side').innerHTML=html;}
+function closeSide(){$('shell').classList.remove('insp-open');document.body.classList.remove('insp-open');$('side').innerHTML='';}
+/* ---------- panels ---------- */
+const mini=(u,s=20)=>`<span class="mini" style="background:${u.c};width:${s}px;height:${s}px">${u.ini}</span>`;
+function inspectorHTML(opts){
+  const locked=opts.locked;const u=U.tomas;
+  return `<div class="ih"><h2>Feature distributions</h2><button class="x" aria-label="Close">×</button></div>
+  <div class="row"><button class="btn">Duplicate</button><button class="btn">Finish plot</button><button class="btn">···</button></div>
+  <div class="status">${opts.status||'Up to date'}</div>
+  ${locked?`<div class="lockbanner" style="--uc:${u.c}">${mini(u)}<div><b>${u.name} is editing this card · Data</b>You can still change it; changes are applied in one order, the later one wins and both of you see the result.</div></div>`:''}
+  <div class="tabs"><span aria-current="true">Data</span><span>Appearance</span><span>Statistics</span><span>Export</span></div>
+  <div class="sec"><h3>FIGURE DETAILS</h3>
+   <div class="field ${locked?'locked':''}" style="--uc:${u.c}"><label>Lipid</label><div class="ctl"><span>${opts.lipid||'PC(16:0/18:1)'}</span><span>▾</span>${locked?`<span class="who">${u.name}</span>`:''}</div></div>
+   <div class="field"><label>Grouping</label><div class="ctl"><span>Condition</span><span>▾</span></div></div>
+   <div class="field"><label>Show points</label><div class="ctl"><span>Yes</span><span>▾</span></div></div>
+  </div>
+  <div class="sec"><h3>STATISTICS</h3><div style="font-size:12px;color:var(--muted)">${opts.stats||'No statistics applied. Choose the analysis below, then Review and confirm to compute p-values.'}</div></div>`;
+}
+const COMMENTS=[
+  {id:1,card:'violin',px:300,py:120,by:U.lee,at:'10:21',text:'Can we show PC(18:0/18:1) instead? It is the one we discussed on the call.',replies:[{by:U.tomas,at:'10:24',text:'<span class="m">@Dr. Lee</span> yes, changing it now. The p-value will need re-confirming.'},{by:U.me,at:'10:26',text:'Confirmed statistics after the change: p = 0.012 (Mann–Whitney).'}]},
+  {id:2,card:'pca',px:380,py:80,by:U.mia,at:'09:58',text:'Legend overlaps the last point at this size.',replies:[],resolved:true},
+  {id:3,card:null,px:560,py:430,by:U.lee,at:'10:31',text:'Could the volcano plot go to the figure page as panel C?',replies:[],votes:2}
+];
+function commentsHTML(active){
+  const c=COMMENTS.find(x=>x.id===active)||COMMENTS[0];
+  const anchor=c.card?`Pinned to <b>${CARDS.find(k=>k.id===c.card).title}</b>`:'Pinned to the board';
+  return `<div class="panelhead"><h2>Comments</h2><span style="font-size:12px;color:var(--muted)">3 open · 1 resolved</span><button class="x" aria-label="Close">×</button></div>
+  <div class="seg"><span aria-current="true">This board</span><span>Mentions (1)</span><span>Resolved</span></div>
+  <div class="cm" style="--uc:${c.by.c}"><div class="by">${mini(c.by,22)}<b>${c.by.name}</b><small>${c.by.org} · ${c.at}</small></div><p>${c.text}</p><div class="anchor">${anchor}${c.votes?` · <b>${c.votes}</b> votes for panel C`:''}</div></div>
+  ${c.replies.map(r=>`<div class="cm" style="--uc:${r.by.c}"><div class="by">${mini(r.by,22)}<b>${r.by.name}</b><small>${r.by.org} · ${r.at}</small></div><p>${r.text}</p></div>`).join('')}
+  <div class="composer"><span>Looks good to me, <span class="m">@Dr</span>|</span>
+    <div class="mention"><div aria-selected="true" style="--uc:${U.lee.c}">${mini(U.lee,18)} Dr. Lee <small style="color:var(--muted)">Client admin · Editor</small></div><div style="--uc:${U.mia.c}">${mini(U.mia,18)} Mia S. <small style="color:var(--muted)">Requester · Commenter</small></div></div>
+    <div class="foot"><button class="btn">Cancel</button><button class="btn primary">Reply</button></div></div>
+  <div class="row" style="padding-top:4px"><button class="btn" id="resolveBtn">✓ Resolve thread</button><button class="btn">Jump to card</button></div>`;
+}
+function versionsHTML(){
+  const V=[
+    {u:U.me,name:'Safety snapshot · before restore',time:'Today 10:44',auto:true,note:'Undo restores it'},
+    {u:U.tomas,name:'Client review, round 2',time:'Today 10:31',note:'Named by Tomás · restored just now by Ana R.',cur:true},
+    {u:U.lee,name:'Auto · 10:20',time:'3 cards changed',auto:true},
+    {u:U.tomas,name:'Auto · 10:10',time:'Inputs: Feature distributions',auto:true},
+    {u:U.me,name:'Statistics confirmed',time:'Today 09:52',note:'Named by Ana R.'},
+    {u:U.me,name:'Opened from Admin · ORD041 · v1',time:'Yesterday 17:05',note:'Released dataset, prepared with Team defaults'}
+  ];
+  const A=[
+    [U.me,'restored <b>Client review, round 2</b>','now'],[U.lee,'commented on <b>Differential lipids</b>','13 min'],[U.tomas,'changed <b>Lipid</b> on Feature distributions','20 min'],[U.tomas,'named version <b>Client review, round 2</b>','23 min'],[U.okafor,'joined from a phone with the Admin account (view only)','31 min'],[U.me,'confirmed statistics on <b>Feature distributions</b>','52 min'],[U.lee,'finished <b>Principal components</b>','1 h']
+  ];
+  return `<div class="panelhead"><h2>Version history</h2><button class="x" aria-label="Close">×</button></div>
+  <div class="seg"><span aria-current="true">Versions</span><span>Activity</span></div>
+  ${V.map(v=>`<div class="ver ${v.cur?'current':''} ${v.auto?'auto':''}" style="--uc:${v.u.c}">${mini(v.u,22)}<div class="grow"><b>${v.name}</b><span style="color:var(--muted)">${v.time}${v.note?' · '+v.note:''}</span></div>${v.cur?'<span class="curbadge">Current</span>':'<button class="btn" style="height:26px;font-size:12px">Restore</button>'}</div>`).join('')}
+  <div style="padding:12px 16px 4px;font-size:12px;color:var(--muted);font-weight:600">ACTIVITY</div>
+  ${A.map(a=>`<div class="act" style="--uc:${a[0].c}">${mini(a[0],18)}<span><b>${a[0].name}</b> ${a[1]}</span><small>${a[2]}</small></div>`).join('')}
+  <div style="padding:10px 16px;font-size:11px;color:var(--muted)">Every version is a durable project record: a checkpoint in this project’s workspace (the client’s, as Admin scopes it) that Team opens, with who, when and the engine revision. Restore takes a safety snapshot first and reopens the engine from the chosen version; Undo restores that snapshot.</div>`;
+}
+function shareHTML(){
+  const M=[U.me,U.tomas,U.lee,U.mia,U.okafor];
+  const sub=u=>u.phone?`${u.admin} · joined from a phone`:u.admin;
+  return `<div class="dlg" role="dialog" aria-label="Share this project">
+  <h2>Share “ORD041 · v1”</h2><div class="sub">Who can open this project is decided by Admin: lab staff and the members of <b>${CLIENT}</b>, the dataset’s client. Roles here decide what each person can change; the collaboration server enforces them on every change, on every device.</div>
+  <div class="invite"><div class="ctl" style="color:var(--ink)">Add people from Admin…<span style="margin-left:auto;color:#8a95a3">▾</span></div><select class="role" style="height:34px;border:1px solid var(--line-strong);border-radius:6px;padding:0 8px;background:#fff"><option>Editor</option><option selected>Commenter</option><option>Viewer</option></select><button class="btn primary">Add</button></div>
+  <div class="people"><span><b>Lab staff</b> 3 accounts</span><span><b>${CLIENT}</b> 4 members</span><span>Not listed? Add the person as a client member in Admin first.</span></div>
+  <div class="linkrow"><svg class="ic" viewBox="0 0 20 20"><path d="M8 12a4 4 0 0 1 0-5l2-2a4 4 0 0 1 6 6l-1 1M12 8a4 4 0 0 1 0 5l-2 2a4 4 0 0 1-6-6l1-1"/></svg><div class="grow"><b>Project link · opens for Admin accounts in scope</b>No invite tokens: lab staff and ${CLIENT} members sign in to Admin and join; anyone else sees “Not available”.</div><select class="role"><option>new members can view</option><option selected>new members can comment</option><option>new members can edit</option></select><button class="btn">Copy link</button></div>
+  ${M.map(u=>`<div class="member" style="--uc:${u.c}">${mini(u,30)}<div class="n"><b>${u.name}${u===U.me?' (you)':''}</b><small>${sub(u)}</small></div><span class="org ${u.org==='Client'?'client':''}">${u.org}</span><select class="role" ${u===U.me?'disabled':''}><option ${u.role==='Owner'?'selected':''}>Owner</option><option ${u.role==='Editor'?'selected':''}>Editor</option><option ${u.role==='Commenter'?'selected':''}>Commenter</option><option ${u.role==='Viewer'?'selected':''}>Viewer</option></select></div>`).join('')}
+  <div class="member" style="border-top:1px solid var(--line);padding-top:10px;font-size:12px;color:var(--muted)">Lab only: <b style="margin:0 4px">Finish plot</b> and <b style="margin:0 4px">Confirm statistics</b> <span style="margin-left:auto"><input type="checkbox" checked> keep</span></div>
+  <div class="note info">Identity comes from Admin (sign-in, second factor, lab staff and client membership); names come from Admin profiles, never from e-mail addresses. Roles are stored with the project and checked by the collaboration server; versions are saved into this client’s workspace, so Team opens them and other clients never see them.</div>
+  <div class="row" style="justify-content:space-between;padding:14px 0 0;align-items:center"><a href="#" style="font-size:12px;color:var(--accent);font-weight:600">Manage people in Admin ↗</a><button class="btn" id="shareClose">Done</button></div></div>`;
+}
+const STATES=[
+  ['live','Live · saved','Live','Connected to the board. Every change is stored on the server as you make it; “saved” names the last version.'],
+  ['syncing','Syncing · 12 changes','Syncing','Back online: applying the changes made while you were away.'],
+  ['reconnecting','Reconnecting…','Reconnecting','Your edits are kept on this device and sent when the connection returns.'],
+  ['offline','Offline · edits kept locally','Offline','Layout edits still work and will merge. Changes to plots and statistics wait as requests for the engine.'],
+  ['readonly','View only','Read-only','Viewers look and follow; Commenters also comment; nobody edits. A phone has the same role as a desktop.'],
+  ['busy','Live · engine busy','Engine busy','The engine draws on all its workers; your change is 2nd in the project queue. Other renders come from the cache.'],
+  ['signedout','Signed out · Sign in to Admin','Signed out','Admin says you are signed out (an expired token alone reconnects silently). Your edits stay on this device; sign in to Admin and they are sent.']
+];
+function statesHTML(cur){return STATES.map(s=>`<div class="state ${s[0]===cur?'on':''}"><span class="pill ${s[0]}"><span class="dot"></span>${s[1]}</span><b>${s[2]}</b>${s[3]}</div>`).join('');}
+function sheetHTML(){return `<div class="grab"></div><b>Feature distributions</b> · Up to date<div style="font-size:12px;color:var(--muted)">PC(16:0/18:1) · Condition · p = 0.012</div><div class="pl">${mini(U.tomas,18)}<span style="font-size:12px">Updated by Tomás · 2 min ago</span><button class="btn" style="margin-left:auto;height:26px;font-size:12px">Comments (1)</button></div>`;}
+function archHTML(){return `<div class="two"><div><h2>Architecture</h2><p>Browsers share one Yjs document through a self-hosted Hocuspocus sidecar. Identity comes from the Admin back office: everyone joins with their Admin access token, the sidecar checks it through Admin’s own database function (the same one the R API uses) and learns lab staff vs client member; project roles live with the project. Every science change is an intent: the sidecar authorizes it, sends it to the R API in one order per project with its own scoped service identity, and only then writes the settled result into the document. The R API (frontends/nexo-api) stays the only science engine: one main session per project plus render workers, an engine revision on every change, a render cache, checkpoints saved into the project’s workspace; browsers render directly with their Admin token, bound to the workspace. Everything stays behind nginx, Basic auth and the tunnel; nothing leaves the server.</p>
+<svg viewBox="0 0 640 486" font-family="Nunito Sans,system-ui,sans-serif" font-size="12">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#44505e"/></marker><marker id="arp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6d28d9"/></marker></defs>
+<g stroke="#cfd6de" fill="#fff"><rect x="10" y="20" width="140" height="56" rx="8"/><rect x="10" y="96" width="140" height="56" rx="8"/><rect x="10" y="172" width="140" height="56" rx="8"/></g>
+<g fill="#141b24" font-weight="600"><text x="80" y="43" text-anchor="middle">Browser · Ana (Lab staff)</text><text x="80" y="119" text-anchor="middle">Browser · Dr. Lee (Client)</text><text x="80" y="195" text-anchor="middle">Phone · M. Okafor (Client)</text></g>
+<g fill="#44505e"><text x="80" y="61" text-anchor="middle" font-size="11">Nexo + yjs · y-indexeddb</text><text x="80" y="137" text-anchor="middle" font-size="11">Nexo + yjs · Admin token</text><text x="80" y="213" text-anchor="middle" font-size="11">view only · presence</text></g>
+<rect x="210" y="20" width="120" height="208" rx="8" fill="#eaf1f7" stroke="#235273"/><text x="270" y="44" text-anchor="middle" font-weight="700" fill="#141b24">Cloudflare tunnel</text><text x="270" y="62" text-anchor="middle" fill="#44505e">+ nginx</text><text x="270" y="86" text-anchor="middle" fill="#44505e" font-size="11">basic auth stays in front</text><text x="270" y="100" text-anchor="middle" fill="#44505e" font-size="11">for all of Phase 1B</text><text x="270" y="128" text-anchor="middle" fill="#141b24">/nexo/ static</text><text x="270" y="146" text-anchor="middle" fill="#141b24">/api/ → R</text><text x="270" y="164" text-anchor="middle" fill="#141b24">/collab/ → sidecar</text><text x="270" y="180" text-anchor="middle" fill="#44505e" font-size="11">(WebSocket upgrade)</text><text x="270" y="204" text-anchor="middle" fill="#141b24">/admin/ → Admin</text>
+<g stroke="#44505e" marker-end="url(#ar)"><line x1="150" y1="48" x2="208" y2="48"/><line x1="150" y1="124" x2="208" y2="124"/><line x1="150" y1="200" x2="208" y2="200"/></g>
+<rect x="390" y="20" width="230" height="118" rx="8" fill="#fff" stroke="#6d28d9"/><text x="505" y="42" text-anchor="middle" font-weight="700" fill="#141b24">nexo-collab sidecar (Node)</text><g fill="#44505e" font-size="11" text-anchor="middle"><text x="505" y="60">Hocuspocus · one Yjs doc per project</text><text x="505" y="76">Admin token → scope · roles per project</text><text x="505" y="92">commit log: intent → R → doc, one order</text><text x="505" y="108">SQLite: doc · commits · versions · roles</text><text x="505" y="124">exporter → team-canvas-v1 + nexo-canvas-v1</text></g>
+<rect x="390" y="166" width="230" height="110" rx="8" fill="#fff" stroke="#2e8b57"/><text x="505" y="188" text-anchor="middle" font-weight="700" fill="#141b24">R API · frontends/nexo-api (plumber)</text><g fill="#44505e" font-size="11" text-anchor="middle"><text x="505" y="206">one main session per project + workers</text><text x="505" y="222">one lock · engine revision on every change</text><text x="505" y="238">render cache · stale worker results redrawn</text><text x="505" y="254">checkpoints per workspace: staff · client</text><text x="505" y="270">science unchanged · Team opens every checkpoint</text></g>
+<g stroke="#44505e" marker-end="url(#ar)"><line x1="330" y1="75" x2="388" y2="75"/><line x1="330" y1="215" x2="388" y2="215"/><line x1="505" y1="138" x2="505" y2="164"/></g>
+<text x="360" y="68" text-anchor="middle" fill="#6d28d9" font-size="11">ws</text><text x="360" y="208" text-anchor="middle" fill="#2e8b57" font-size="11">http</text><text x="512" y="150" fill="#44505e" font-size="11">service identity</text><text x="512" y="162" fill="#44505e" font-size="11">open · join · mutate · save</text>
+<rect x="390" y="300" width="230" height="64" rx="8" fill="#f3f5f7" stroke="#cfd6de"/><text x="505" y="322" text-anchor="middle" font-weight="700" fill="#141b24">Storage (same server)</text><g fill="#44505e" font-size="11" text-anchor="middle"><text x="505" y="340">checkpoints (per workspace) · renders · collab.sqlite</text><text x="505" y="356">backed up together · restore drill · no third party</text></g>
+<g stroke="#44505e" marker-end="url(#ar)"><line x1="505" y1="276" x2="505" y2="298"/></g>
+<rect x="10" y="300" width="320" height="100" rx="8" fill="#fff" stroke="#6d28d9"/><text x="170" y="322" text-anchor="middle" font-weight="700" fill="#141b24">Admin back office (Next.js · GoTrue · PostgREST)</text><g fill="#44505e" font-size="11" text-anchor="middle"><text x="170" y="340">sign-in + second factor · lab staff · client members</text><text x="170" y="356">GET /admin/api/session-token → access token (staff | client)</text><text x="170" y="372">admin.nexo_caller() · admin.nexo_dataset_for_caller()</text><text x="170" y="388">Open in Nexo → /nexo/?dataset=&lt;released dataset&gt;</text></g>
+<g stroke="#6d28d9" stroke-dasharray="4 3" marker-end="url(#arp)" fill="none"><path d="M330 318 L388 112"/><path d="M330 338 L388 250"/><path d="M80 236 L80 298"/></g>
+<text x="212" y="262" fill="#6d28d9" font-size="11">token check · admin.nexo_caller</text><text x="20" y="276" fill="#6d28d9" font-size="11">sign in · token</text>
+<text x="20" y="422" fill="#141b24" font-weight="600">Rule</text><g fill="#44505e" font-size="11"><text x="20" y="438">board = CRDT (the sidecar orders it) · science = R session, changed only through the sidecar’s commit log</text><text x="20" y="454">identity = Admin (GoTrue token) · the sidecar holds roles, never passwords</text><text x="20" y="470">the CRDT holds settled inputs and the engine revision, never data · nothing leaves the server</text></g>
+</svg></div>
+<div><h2>One input change: one order, one computation per render identity</h2><p>Tomás changes the lipid of “Feature distributions”. The sidecar authorizes the intent, sends it to R in the project’s order and writes the settled values and the engine revision into the document; everybody renders against that revision, R computes each render identity once (on its workers, in parallel) and answers the rest from its cache.</p>
+<svg viewBox="0 0 640 400" font-family="Nunito Sans,system-ui,sans-serif" font-size="12">
+<defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#44505e"/></marker></defs>
+<g font-weight="700" fill="#141b24" text-anchor="middle"><text x="70" y="24">Tomás</text><text x="230" y="24">Sidecar (Yjs)</text><text x="390" y="24">R API</text><text x="550" y="24">Ana · Dr. Lee · phone</text></g>
+<g stroke="#cfd6de" stroke-dasharray="4 4"><line x1="70" y1="32" x2="70" y2="335"/><line x1="230" y1="32" x2="230" y2="335"/><line x1="390" y1="32" x2="390" y2="335"/><line x1="550" y1="32" x2="550" y2="335"/></g>
+<g stroke="#44505e" marker-end="url(#ar2)" fill="none"><line x1="70" y1="60" x2="228" y2="60"/><line x1="230" y1="84" x2="548" y2="84"/><line x1="230" y1="118" x2="388" y2="118"/><line x1="390" y1="148" x2="232" y2="148"/><line x1="230" y1="182" x2="548" y2="182"/><line x1="230" y1="182" x2="72" y2="182"/><line x1="70" y1="216" x2="388" y2="216"/><line x1="550" y1="216" x2="392" y2="216"/><line x1="390" y1="296" x2="72" y2="296"/><line x1="390" y1="296" x2="552" y2="296"/><line x1="230" y1="326" x2="548" y2="326"/></g>
+<g fill="#141b24"><text x="78" y="54">1 · intent: inputs.lipid = PC(18:0/18:1)  (Tomás, Editor)</text><text x="238" y="78">2 · authorized · commit n queued · awareness “Tomás is editing · Data”</text><text x="238" y="112">3 · PATCH /cards/violin  (service identity, in the project’s order)</text><text x="238" y="142">4 · 200 settled inputs · X-Nexo-Engine-Revision: n</text><text x="78" y="176">5 · doc commit: inputs + revision n (origin Tomás, durable) → everyone</text><text x="78" y="210">6 · POST render for revision n  (each browser, its own Admin token)</text></g>
+<rect x="380" y="226" width="20" height="46" rx="3" fill="#2e8b57"/><text x="404" y="244" fill="#44505e" font-size="11">7 · computes once per render identity</text><text x="404" y="258" fill="#44505e" font-size="11">(workers in parallel; identical requests</text><text x="404" y="272" fill="#44505e" font-size="11">share one job; the rest hit the cache)</text>
+<g fill="#141b24"><text x="78" y="290">8 · 200 image · revision n  (≠ current revision: dropped, asked again)</text><text x="238" y="320">9 · doc: renderState.violin = {revision n, by Tomás} → “Updated by Tomás”</text></g>
+<text x="20" y="352" fill="#4c1d95" font-size="11">0 · Admin token checked by the sidecar on join (admin.nexo_caller); renders use it too, bound to the workspace in R.</text>
+<text x="20" y="366" fill="#44505e" font-size="11">Same input, two people: commits apply in order; the later wins; the earlier author gets “Undo mine” for that commit.</text><text x="20" y="380" fill="#44505e" font-size="11">Stale render answers are dropped and asked again; a stale worker result is redrawn on the main process.</text><text x="20" y="394" fill="#44505e" font-size="11">Finish and Confirm are intents too: lab-only is enforced where the write happens, not in the button.</text>
+</svg></div></div>`;}
+/* ---------- plan (scene 9): phases 0-6 as a roadmap ---------- */
+const PHASES=[
+ {n:0,name:'Contracts, spike, real-path proofs',eff:'5–7 d',delivers:['Contracts §2.1–2.4 as test skeletons','Sidecar skeleton, real Admin verifier; nginx /collab/ + unit','101 through tunnel + Basic auth; R race harness; backup drill','Two browsers move one card (mock)'],scenes:[1],deps:[['Admin session token (exists)','admin'],['Decisions D7, D11, D14','d']],tests:'node:test auth/server/backup · R race test (F03/F04 today) · Playwright 2 contexts'},
+ {n:1,name:'Secure project sessions in R',eff:'8–10 d',delivers:['Random session ids; caller bound on every route','Scoped service identity for the sidecar','Project-bound sessions: leases, capacity, join snapshot','Engine revision; stale worker result redrawn; dedup; fixes B1–B3, B6'],scenes:[],deps:[['Phase 0','d'],['R API only: 5 files','r']],tests:'raw HTTP denials, two identities · leases vs LRU/idle/soft guard · stale worker'},
+ {n:2,name:'Bridge, exporter, shared board',eff:'11–13 d',delivers:['Lossless Y.Doc schema, Team/Nexo projections, Node-safe validation, repair','Every store write routed by origin; per-user undo','Presence, cursors, minimap viewports','Design prompt and leave guard kept; IndexedDB; token expiry and revocation'],scenes:[1,7],deps:[['Phase 1','d'],['Admin: displayName (staff)','admin'],['Staging, lab staff, flag','d']],tests:'vitest round trip + undo · raw CRDT refusals · Playwright: A types while B moves; leave guard; flag off'},
+ {n:3,name:'Science commit protocol',eff:'10–12 d',delivers:['Intents → commit log → R → doc, one order per project','Renders against the engine revision; “Updated by”','Statistics: two protocols; Finish/Confirm lab-only at the intent','Sidecar-owned recovery by origin'],scenes:[2,7],deps:[['Phase 2','d'],['Decision D2','d']],tests:'node:test commits · R forced interleaving (delayed PATCH, stale worker, timeout, save, restart) · Playwright, real API'},
+ {n:4,name:'Versions, restore, export, backup',eff:'8–10 d',delivers:['Durable version records: blob refs, retention per project, GC','Save = barrier → export → validate → save (service identity)','Restore: safety snapshot, engine reopen; Undo = restore it','Activity feed · backup/restore drill'],scenes:[6],deps:[['Phase 3','d'],['Decision D4','d']],tests:'R: Team opens it with the same inputs, design, cohort · crash between ZIP and index · Playwright restore while B edits'},
+ {n:5,name:'Roles, sharing, client access',eff:'5–7 d',delivers:['Share dialog with people from Admin; roles enforced by the sidecar','Protected fields per role; owner-only share/restore','Admin 0012: display names (no e-mails), people list','First client-visible release'],scenes:[4],deps:[['Phases 1–4 accepted','d'],['Admin: 0012 (D12)','admin'],['Admin: client access (D9)','admin']],tests:'raw CRDT refusals, revocation on an open socket · PGlite nexo_people · Playwright commenter cannot move'},
+ {n:6,name:'Comments, follow, summon',eff:'5–7 d',delivers:['Pins, threads, @mentions, resolve','Follow across tab and figure mode; Bring everyone here','Phone sheet wired to the role’s permissions'],scenes:[3,5],deps:[['Phase 5 (people, roles)','d'],['Phase 4 (activity)','d']],tests:'vitest mentions + follow math · Playwright A summons; B’s camera, tab and mode match'},
+ {n:7,name:'Offline, merge safety, phones',eff:'3–4 d',delivers:['Queue age → “Before merge” version; account boundary on replay','Offline science changes re-sent as intents','Phones: role decides, device picks the layout (D13)'],scenes:[7],deps:[['Phases 2, 4, 5, 6','d']],tests:'vitest merge-before-version · Playwright offline → edits → reconnect; phone as Viewer and as Editor'}
+];
+function planHTML(){
+ const chip=n=>`<button data-go="${n}" title="Open scene ${n}">Scene ${n}</button>`;
+ return `<h2>Phase 1B roadmap · real-time collaboration in Nexo</h2><p class="lead">Eight phases, in order of delivery: what each delivers, which scenes it lights up (click one), dependencies, tests. Security, session isolation, one order for science and protection of unsent edits come before anything a client can see; the first client-visible release is Phase 5. Single-user Nexo keeps working behind a flag.</p>
+ <div class="legend"><span class="s">prototype scene</span><span class="d">depends on a phase</span><span class="a">Admin piece</span><span class="r">R API change (frontends/nexo-api)</span></div>
+ <div class="road">${PHASES.map(p=>`<div class="ph" data-n="${p.n}"><div class="num"><i>${p.n}</i><span>${p.name}</span></div><div class="eff">${p.eff}</div>
+  <div class="lab">DELIVERS</div><ul>${p.delivers.map(d=>`<li>${d}</li>`).join('')}</ul>
+  <div class="lab">LIGHTS UP</div><div class="chips">${p.scenes.length?p.scenes.map(chip).join(''):'<span style="font-size:10.5px;color:var(--muted)">nothing visible · R API only</span>'}</div>
+  <div class="lab">DEPENDS ON</div><div class="dep">${p.deps.map(([t,k])=>`<span class="${k==='d'?'':k}">${t}</span>`).join('')}</div>
+  <div class="tests"><b>Tests ·</b> ${p.tests}</div></div>`).join('')}</div>
+ <div class="lanes">
+  <div class="lane"><b>Never changes</b><ul><li>Team, Classic, R/modules, server.R, global.R, ui.R, www: untouched</li><li>Checkpoint format: team-canvas-v1 + nexo-canvas-v1 (+ records, cohort) — comments and activity stay out</li><li>Single-user Nexo (no sidecar) behind a flag; phones stay view only</li><li>Store scope per client; the R lock; Team’s validator is the last word on a save</li></ul></div>
+  <div class="lane"><b>Admin pieces used</b><ul><li>GET /admin/api/session-token: the access token Nexo already sends</li><li>admin.nexo_caller(): lab staff vs client memberships (migration 0011)</li><li>admin.nexo_dataset_for_caller(): who may open a dataset (0010)</li><li>Open in Nexo on a released dataset; client access behind a switch</li><li>Migration 0012 (Phase 5): display names without e-mails, people list</li></ul></div>
+  <div class="lane"><b>Decisions for the product owner (plan §10)</b><ul><li>D7 sidecar identity: scoped service identity, not token relay · D11 enforcement: every R route bound to the caller; mutations only through the sidecar</li><li>D2 Finish and Confirm: lab only · D8 default client role: Commenter · D6 capacity: live projects never evicted, two until measured</li><li>D12 Admin 0012: display names without e-mails · D14 Basic auth stays for all of Phase 1B · D1 comments outside the checkpoint · D5 votes: drop</li></ul></div>
+ </div>`;
+}
+function wirePlan(){document.querySelectorAll('#plan .chips button').forEach(b=>{b.onclick=()=>go(b.dataset.go);});document.querySelectorAll('#plan .ph').forEach(p=>{p.onclick=e=>{if(e.target.closest('button'))return;document.querySelectorAll('#plan .ph').forEach(x=>x.classList.toggle('on',x===p&&!p.classList.contains('on')));};});}
+/* ---------- bots (scripted presence) ---------- */
+let bots=[];const lerp=(a,b,t)=>a+(b-a)*t;const ease=t=>t<.5?2*t*t:-1+(4-2*t)*t;
+function path(points,period){return t=>{const n=points.length;const u=((t%period)/period)*n;const i=Math.floor(u),f=ease(u-i);const a=points[i],b=points[(i+1)%n];return {x:lerp(a[0],b[0],f),y:lerp(a[1],b[1],f)};};}
+function tick(){const t=now();for(const b of bots)b(t);if(FIXED===null)requestAnimationFrame(tick);}
+/* ---------- scenes ---------- */
+const NOTES={
+ '1':['Tres personas en el mismo tablero','Avatares en la barra superior (Lab / Client, teléfono), cursores con nombre, selecciones de color y los viewports de los demás en el minimapa. v2: la identidad sale de las cuentas de Admin (personal del laboratorio o miembro del cliente); pasa el ratón por un avatar. Tomás y la Dra. Lee son bots.'],
+ '2':['Dos personas en la misma tarjeta','El inspector avisa de que Tomás está editando (bloqueo suave: se puede seguir; los cambios se aplican en un solo orden y gana el último). El cambio viaja como intención: el sidecar la autoriza, la envía a R en el orden del proyecto y escribe en el documento los valores asentados y la revisión del motor. R calcula cada identidad de render una vez; los demás la reciben desde la caché. La píldora ámbar muestra la cola del proyecto.'],
+ '3':['Modo comentarios','Pins en tarjetas o en el tablero, hilo con @menciones (personas que Admin conoce) y Resolver. Voto opcional en candidatas a la página de figura (decisión D5, propuesta: quitar).'],
+ '4':['Compartir','v2: las personas se eligen entre las cuentas de Admin (personal del laboratorio y miembros del cliente del dataset); no hay invitaciones por e-mail ni enlaces con token, y desaparece la nota “antes de la fase 3”: Admin es la identidad y el servidor aplica los roles en cada cambio y en cada dispositivo; los nombres salen de los perfiles de Admin, nunca del e-mail (D12).'],
+ '5':['Seguir / convocar','Ana sigue a Tomás (presentador): la cámara acompaña la suya; “Stop following” devuelve el control. El presentador puede “Bring everyone here”.'],
+ '6':['Historial de versiones y actividad','Versiones con nombre y automáticas: cada una es un registro duradero del proyecto (quién, cuándo, revisión del motor) y un checkpoint en el workspace del proyecto (el del cliente, según Admin) que Team abre. Restaurar toma antes una instantánea de seguridad y reabre el motor desde la versión elegida; Deshacer restaura esa instantánea. Current marca la versión restaurada, no la instantánea.'],
+ '7':['Estados de conexión y móvil','Live, Syncing, Reconnecting, Offline, Read-only, Engine busy y Signed out (Admin dice que la sesión terminó; un token caducado reconecta en silencio): la barra superior cambia cada 2,5 s. El motor dibuja en paralelo en sus workers. A 390 px: móvil con rol Viewer, presencia y ficha de tarjeta; el rol lo decide el servidor, el móvil solo cambia la disposición.'],
+ '8':['Arquitectura','Admin (GoTrue) emite el token; el sidecar lo valida con admin.nexo_caller (lo mismo que hace la API R); la API vive en frontends/nexo-api y guarda checkpoints por workspace. Secuencia única: intención → autorización y orden en el sidecar → PATCH asentado en R (identidad de servicio) → commit en el documento → difusión → renders en paralelo contra la revisión del motor.'],
+ '9':['Plan','Fases 0–7 como hoja de ruta tras la revisión: seguridad, aislamiento de sesiones, un solo orden para la ciencia y protección de ediciones no enviadas van antes de cualquier entrega a clientes (la primera es la fase 5). Qué entrega cada fase, qué escenas enciende (clic para abrirla), de qué depende y cómo se prueba. Detalle en docs/integration/nexo-collab-plan.md.']
+};
+function reset(){bots=[];clearCursors();for(const c of CARDS){setSel(c.id,null);setEditing(c.id,null);setUpdated(c.id,null);setUpdating(c.id,false);cardEl[c.id].querySelectorAll('.pin,.votes').forEach(e=>e.remove());}
+ document.querySelectorAll('#board .bpin,#board .ghost').forEach(e=>e.remove());closeSide();$('modal').hidden=true;$('followbar').hidden=true;$('states').hidden=true;$('sheet').hidden=true;$('arch').hidden=true;$('plan').hidden=true;$('toast').classList.remove('on');engine(null);conn('live','Live · saved');$('railComments').setAttribute('aria-pressed','false');$('railHistory').setAttribute('aria-pressed','false');for(const k in others)delete others[k];$('hint').textContent='Draft: edit live plots. Finish a plot to place it on the figure page.';cam(0,0,1);}
+function phoneLike(){return innerWidth<=480;}
+function baseCam(){if(phoneLike()){fitAll();}else{cam(0,0,1);}}
+const scenes={
+ '1'(){renderPresence([U.me,U.tomas,U.lee,U.okafor]);baseCam();
+   others.tomas={vp:{x:600,y:40,w:900,h:620},show:true};others.lee={vp:{x:0,y:300,w:800,h:500},show:true};others.okafor={vp:{x:0,y:0,w:1500,h:820},show:false};renderMinimap();
+   setSel('pca',U.me);setSel('violin',U.tomas);setSel('volcano',U.lee);
+   const pT=path([[820,150],[1100,180],[1120,380],[900,300]],9000),pL=path([[1000,560],[780,700],[1150,650],[1180,500]],11000);
+   bots.push(t=>{const a=pT(t),b=pL(t);cursor(U.tomas,a.x,a.y);cursor(U.lee,b.x,b.y);if(t>2000&&t<5000){const g=ghost('volcano',U.lee,Math.sin(t/600)*30,0);}else unghost();});
+ },
+ '2'(){renderPresence([U.me,U.tomas,U.lee]);baseCam();if(!phoneLike()){const vw=$('viewport').clientWidth-320;cam(Math.min(0,vw-40-1180),0,1);}others.tomas={vp:{x:600,y:40,w:900,h:620},show:true};renderMinimap();
+   setSel('violin',U.me);setEditing('violin',U.tomas,'Data');openSide(inspectorHTML({locked:true}));
+   const pT=path([[1000,250],[1010,260]],4000);
+   bots.push(t=>{const a=pT(t);cursor(U.tomas,a.x,a.y,'editing · Data');const ph=t%9000;
+     if(ph<1500){setUpdating('violin',true,'Updating… Tomás changed Lipid');engine('Engine busy · rendering Feature distributions for Tomás · 1 queued');setUpdated('violin',null);}
+     else{setUpdating('violin',false);engine(null);setUpdated('violin',U.tomas,'Updated by Tomás · just now');
+       const body=cardEl.violin.querySelector('.body');if(body.dataset.v!=='2'){body.innerHTML=plot('violin','PC(18:0/18:1)');body.dataset.v='2';$('side').innerHTML=inspectorHTML({locked:true,lipid:'PC(18:0/18:1)',status:'Updated by Tomás · just now',stats:'No current statistics: the displayed lipid changed after they were confirmed (changed by Tomás). Review and confirm to compute them again.'});}
+       if(ph>7500&&body.dataset.v==='2'){body.innerHTML=plot('violin');body.dataset.v='1';$('side').innerHTML=inspectorHTML({locked:true});}}
+   });
+ },
+ '3'(){renderPresence([U.me,U.tomas,U.lee,U.mia]);baseCam();$('railComments').setAttribute('aria-pressed','true');S.comments=true;$('hint').textContent='Comments: click a card or the board to pin a comment. Esc to leave.';
+   for(const c of COMMENTS){const el=document.createElement('span');el.className=(c.card?'pin':'bpin')+(c.resolved?' resolved':'')+(c.id===1?' active':'');el.style.setProperty('--uc',c.by.c);el.textContent=c.id;el.title=c.by.name;
+     if(c.card){el.style.left=c.px+'px';el.style.top=c.py+'px';cardEl[c.card].appendChild(el);}else{el.style.left=c.px+'px';el.style.top=c.py+'px';$('board').appendChild(el);}
+     el.onclick=()=>{document.querySelectorAll('.pin.active,.bpin.active').forEach(p=>p.classList.remove('active'));el.classList.add('active');openSide(commentsHTML(c.id));wireSide();};}
+   const v=document.createElement('span');v.className='votes';v.innerHTML='👍 2 · panel C?';cardEl.volcano.appendChild(v);
+   openSide(commentsHTML(1));
+   const pL=path([[600,420],[650,440],[620,470]],6000);bots.push(t=>{const a=pL(t);cursor(U.lee,a.x,a.y,'commenting');cursor(U.mia,420,300,'reading');});
+ },
+ '4'(){renderPresence([U.me,U.tomas,U.lee,U.okafor]);baseCam();$('modal').hidden=false;$('modal').innerHTML=shareHTML();$('shareClose').onclick=()=>{$('modal').hidden=true;};},
+ '5'(){renderPresence([U.me,U.tomas,U.lee,U.okafor],U.tomas);S.follow=U.tomas;others.tomas={vp:{x:600,y:40,w:900,h:620},show:true};others.lee={vp:{x:600,y:40,w:900,h:620},show:true};
+   const fb=$('followbar');fb.hidden=false;fb.innerHTML=`${mini(U.tomas,18)} Following Tomás (presenting) · 2 others follow <button id="stopFollow">Stop following</button>`;$('stopFollow').onclick=()=>{S.follow=null;fb.hidden=true;toast('You stopped following Tomás',2500);bots=[];cam(0,0,1);};
+   setSel('violin',U.tomas);
+   bots.push(t=>{if(!S.follow)return;const ph=(t%8000)/8000;const k=phoneLike()?.5:1.18;const tx=ph<.5?lerp(-360,-520,ease(ph*2)):lerp(-520,-360,ease((ph-.5)*2));const ty=ph<.5?lerp(-20,-120,ease(ph*2)):lerp(-120,-20,ease((ph-.5)*2));cam(tx*(phoneLike()?.4:1),ty*(phoneLike()?.4:1),k);
+     others.tomas.vp={x:-tx/k,y:-ty/k,w:$('viewport').clientWidth/k,h:$('viewport').clientHeight/k};others.lee.vp=others.tomas.vp;cursor(U.tomas,960+Math.sin(t/900)*40,260+Math.cos(t/700)*20,'presenting');cursor(U.lee,-S.cam.x/S.cam.k+80,-S.cam.y/S.cam.k+120,'following');});
+   setTimeout(()=>{if(S.scene==='5')toast(`${mini(U.tomas,18)} Tomás brought everyone here <button>Stay here</button>`,4000);},900);
+ },
+ '6'(){renderPresence([U.me,U.tomas,U.lee]);baseCam();$('railHistory').setAttribute('aria-pressed','true');openSide(versionsHTML());
+   setTimeout(()=>{if(S.scene==='6')toast(`${mini(U.me,18)} You restored “Client review, round 2” · everyone sees it <button>Undo</button>`,6000);},700);
+   bots.push(t=>{cursor(U.tomas,900+Math.sin(t/1000)*30,200,'');cursor(U.lee,500,600,'');});
+ },
+ '7'(){renderPresence([U.me,U.tomas,U.lee,U.okafor]);baseCam();others.tomas={vp:{x:600,y:40,w:900,h:620},show:true};renderMinimap();
+   $('states').hidden=false;const st=$('states');
+   if(phoneLike()){$('sheet').hidden=false;$('sheet').innerHTML=sheetHTML();setSel('violin',U.tomas);setUpdated('violin',U.tomas,'Updated by Tomás · 2 min');conn('readonly','View only');st.innerHTML=statesHTML('readonly');bots.push(t=>{cursor(U.tomas,980+Math.sin(t/900)*40,260,'');});return;}
+   bots.push(t=>{const i=Math.floor((t/2500))%STATES.length;const s=STATES[i];if(st.dataset.i!==String(i)){st.dataset.i=String(i);st.innerHTML=statesHTML(s[0]);conn(s[0],s[1]);engine(s[0]==='busy'?'Engine busy · rendering Differential lipids for Dr. Lee · you are 2nd':null);
+       if(s[0]==='offline')toast('Offline · your layout edits are kept on this device and will merge when you are back',2400);else if(s[0]==='syncing')toast('Back online · 12 changes from Tomás and Dr. Lee applied',2400);else if(s[0]==='readonly')toast('You are a viewer on this project · ask Ana R. for edit access',2400);else if(s[0]==='signedout')toast('Signed out of Admin · your edits are kept on this device <button>Sign in to Admin</button>',2400);else $('toast').classList.remove('on');}
+     cursor(U.tomas,980+Math.sin(t/900)*40,260,'');cursor(U.lee,500+Math.cos(t/1100)*30,620,'');});
+ },
+ '8'(){renderPresence([U.me]);$('arch').hidden=false;$('arch').innerHTML=archHTML();},
+ '9'(){renderPresence([U.me]);$('plan').hidden=false;$('plan').innerHTML=planHTML();wirePlan();}
+};
+function ghost(cid,user,dx,dy){let g=$('board').querySelector('.ghost');const c=CARDS.find(k=>k.id===cid);if(!g){g=document.createElement('div');g.className='ghost';$('board').appendChild(g);}g.style.cssText=`--uc:${user.c};left:${c.x+dx}px;top:${c.y+dy}px;width:${c.w}px;height:${c.h}px`;return g;}
+function unghost(){const g=$('board').querySelector('.ghost');if(g)g.remove();}
+function wireSide(){const x=$('side').querySelector('.x');if(x)x.onclick=closeSide;const r=$('resolveBtn');if(r)r.onclick=()=>{document.querySelector('.pin.active,.bpin.active')?.classList.add('resolved');toast('Thread resolved · Dr. Lee will be notified',2500);};}
+function go(scene){S.scene=scene;reset();document.body.className=document.body.className.replace(/\bscene-\d\b/g,'').trim()+' scene-'+scene;document.querySelectorAll('#scenes [data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));scenes[scene]();wireSide();
+ const n=$('note');n.hidden=params.get('notes')==='0';n.querySelector('b').textContent=`Escena ${scene} · ${NOTES[scene][0]}`;n.querySelector('span').textContent=NOTES[scene][1];
+ const u=new URL(location);u.searchParams.set('scene',scene);history.replaceState(null,'',u);for(const b of bots)b(now());}
+/* ---------- wiring ---------- */
+renderBoard();
+document.querySelectorAll('#scenes [data-scene]').forEach(b=>b.onclick=()=>go(b.dataset.scene));
+$('hidebar').onclick=()=>document.body.classList.remove('scenes');
+$('noteClose').onclick=()=>{$('note').hidden=true;};
+$('sharebtn').onclick=()=>{$('modal').hidden=false;$('modal').innerHTML=shareHTML();$('shareClose').onclick=()=>{$('modal').hidden=true;};};
+$('railComments').onclick=()=>go('3');$('railHistory').onclick=()=>go('6');
+$('accountbtn').onclick=()=>toast('Signed in through Admin as Ana R. · Lab staff (Owner) · account, password and second factor are managed in Admin',3200);
+document.querySelectorAll('#presence').forEach(p=>p.addEventListener('click',e=>{const a=e.target.closest('.av');if(a&&S.scene!=='5')toast('Click an avatar to jump to that person · double-click to follow',2200);}));
+addEventListener('resize',()=>{renderMinimap();if(S.scene==='7'||S.scene==='1')go(S.scene);});
+if(params.get('bar')==='0')document.body.classList.remove('scenes');
+go(scenes[params.get('scene')]?params.get('scene'):'1');
+tick();
+</script>
+</body>
+</html>

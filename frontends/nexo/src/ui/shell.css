@@ -47,9 +47,9 @@
 .card-menu.below{bottom:auto;top:calc(100% + 6px)}
 .card-menu button{text-align:left;flex:none}
 .card.menu-open,.card:focus-within{z-index:10}
-.card-status{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:500;padding:2px 8px;border-radius:var(--radius-pill);background:var(--canvas);color:var(--muted)}
+.card-status{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:35%;font-size:12px;font-weight:500;padding:2px 8px;border-radius:var(--radius-pill);background:var(--canvas);color:var(--muted)}
 .card-status:empty{display:none}
-.card-status i{width:7px;height:7px;background:currentColor;border-radius:50%;flex:none}
+.card-status i{width:7px;height:7px;background:currentColor;border-radius:50%;flex:none}.card-status-text{text-overflow:ellipsis}
 .card-status[data-state=current]{background:transparent;padding:2px 0;color:var(--green)}
 .card-status[data-state=current] .card-status-text{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .card-status[data-state=finished]{background:transparent;padding:2px 0}
@@ -127,6 +127,8 @@ details[open]>summary::before{transform:rotate(45deg)}
 /* Top bar: quiet navy, the current step is the one accent fill. */
 .topbar{gap:var(--space-2);padding:0 var(--space-3) 0 var(--space-3)}
 .topbar .logo{border-color:#ffffff33;font-size:11px;font-weight:700;letter-spacing:.02em;border-radius:var(--radius-sm)}
+/* Nexo entry: the lab logo (public/entry/) in place of the "LE" box; white lettering, drawn for the navy bar. */
+.topbar img.logo{width:auto;height:30px;border:0;border-radius:0;display:block}
 .topbar .app-name{font-weight:600;margin-right:var(--space-1)}
 .topbar>button{color:#dbe3ea;font-weight:500;height:28px;border-radius:var(--radius-sm)}
 .topbar>button:hover:not(:disabled){background:#ffffff14;color:var(--paper)}
@@ -147,6 +149,8 @@ details[open]>summary::before{transform:rotate(45deg)}
 .rail button{width:36px;height:36px;color:var(--muted)}
 .rail .rail button[aria-pressed=true]{color:var(--accent);background:var(--tint)}
 .rail hr{width:24px;margin:var(--space-1) 0}
+/* UX-B4: the collab Version history panel (fixed, right) takes the inspector's column, so the canvas and its toast stay clear. */
+@media(min-width:901px){.shell:has(.version-history){grid-template-columns:var(--width-rail) var(--width-library) minmax(0,1fr) var(--width-inspector)}.shell.library-closed:has(.version-history){grid-template-columns:var(--width-rail) 0 minmax(0,1fr) var(--width-inspector)}}
 
 /* Library. */
 .library-panel{padding:var(--space-3) var(--space-3) var(--space-4)}
@@ -554,6 +558,8 @@ dialog.analysis-sheet { position:fixed; inset:0 0 0 auto; margin:0; width:380px;
 .card .card-status{margin:0;padding:0;background:transparent;gap:4px;height:20px}
 .card .card-status i{display:block;width:7px;height:7px}
 .card .card-status-text{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* UX review 2, group 4: "Updated by <name>" (cards.ts changedBy) is drawn, not only read to screen readers. */
+.card .card-status[data-note] .card-status-text{position:static;width:auto;height:auto;clip-path:none}
 .card .resize-handle{width:18px!important;height:18px!important;opacity:0;pointer-events:none;background:none}
 .card.selected .resize-handle{opacity:1;pointer-events:auto;background:none}
 .card .resize-handle::after{content:'';position:absolute;right:4px;bottom:4px;width:8px;height:8px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);border-radius:0 0 2px 0}
@@ -594,6 +600,8 @@ dialog.analysis-sheet { position:fixed; inset:0 0 0 auto; margin:0; width:380px;
 .card-skeleton{position:absolute;inset:12px;border-radius:8px;overflow:hidden;background:var(--canvas)}
 .card[data-tier=live] .card-skeleton::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 20%,var(--tint) 50%,transparent 80%);translate:-100% 0;animation:nexo-skeleton var(--motion-skeleton) linear infinite}
 .card-skeleton>span{position:absolute;left:50%;top:50%;translate:-50% -50%;padding:2px 10px;border-radius:var(--radius-pill);background:var(--paper);color:var(--muted);font-size:var(--font-small);font-weight:500;white-space:nowrap}
+/* UX review 2, group 4: while a card draws again after another person's change, the veil names them (cards.ts showLoading). */
+.card-skeleton[data-note]::after{content:attr(data-note);position:absolute;left:50%;top:calc(50% + 16px);translate:-50% 0;white-space:nowrap;color:var(--muted);font-size:var(--font-small)}
 @keyframes nexo-skeleton{to{translate:100% 0}}
 /* A failed card's message (Team's wording, with its actions) sits at the top of the body, under the header, so it is on screen whenever the header is (a tall card centred it out of view). */
 .card .body.message{display:grid;place-items:start;align-content:start;justify-content:start;text-align:left;gap:var(--space-2);color:var(--ink)}
@@ -617,18 +625,6 @@ dialog.analysis-sheet { position:fixed; inset:0 0 0 auto; margin:0; width:380px;
 /* A lost session that could not be reopened: stays until the page is reloaded. */
 .session-lost{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--toast-error);color:var(--paper);font-size:var(--font-chrome)}
 .session-lost button{font-weight:700;color:inherit;background:transparent;border:1px solid currentColor;border-radius:var(--radius-sm)}
-/* Prepare dataset (Admin → Nexo open): the samples and Team's preparation settings before the first canvas. */
-.prepare-dialog{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;white-space:normal}
-.prepare-dialog form{margin:0}
-.prepare-dialog fieldset{border:0;margin:0 0 var(--space-4);padding:0;min-width:0}
-.prepare-dialog legend{font-size:var(--font-label);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0;margin-bottom:var(--space-2)}
-.prepare-dialog .selection-actions{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2)}
-.prepare-dialog .selection-actions button{height:28px;font-size:var(--font-small)}
-.prepare-dialog .selection-count{margin-left:auto;color:var(--muted);font-size:var(--font-small);font-variant-numeric:tabular-nums}
-.prepare-dialog .choice-list{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--space-1) var(--space-3);max-height:40vh;overflow:auto;padding:var(--space-2);border:1px solid var(--line);border-radius:var(--radius-md)}
-.prepare-dialog .choice-list label{font-size:var(--font-chrome)}
-.prepare-dialog footer{display:flex;justify-content:flex-end;gap:var(--space-2);margin-top:var(--space-4)}
-.prepare-dialog footer button{height:var(--control)}
 /* The band leads with what a dataset session prepared (76 lipids · 5 samples). */
 .status-band .dataset-summary{font-weight:600;color:var(--navy);margin-right:var(--space-3);padding-right:var(--space-3);border-right:1px solid var(--line)}
 /* Team's time-course designer (b10 F4) */
@@ -668,3 +664,13 @@ dialog.session-palette{z-index:30;box-shadow:-8px 0 24px rgb(0 0 0 / .08)}
 /* Signed out of Admin (admin-identity.md): Sign in to Admin is a link styled as the primary action, on the start page and in Prepare dataset. */
 a.sign-in{display:inline-flex;align-items:center;height:30px;margin:var(--space-3) 0;padding:0 var(--space-3);border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:var(--paper);font-weight:600;text-decoration:none;white-space:nowrap}
 a.sign-in:hover{background:var(--navy);border-color:var(--navy);color:var(--paper)}
+.presence-avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:white;font-size:12px;flex-shrink:0}
+.presence-layer{position:absolute;inset:0;pointer-events:none;z-index:1000}.presence-cursor{position:absolute;color:white;border-radius:4px;padding:2px 5px;white-space:nowrap;font-size:12px}.card[data-remote-selected=true]{box-shadow:0 0 0 3px var(--presence-colour)}.presence-editing{font-size:12px;background:#7256b5;color:white;border-radius:10px;padding:2px 6px;margin-left:5px}
+
+/* UX review 2, group 4: on a phone the pill is its dot; the state stays its accessible text. */
+@media(max-width:600px){.topbar .presence-avatar{display:grid}.topbar:has(.presence-avatar) .save-pill{display:inline-flex;flex:none;padding:0 9px;font-size:0}.topbar:has(.presence-avatar) .save-pill::before{flex:none;margin:0}}
+/* The Comments panel lives inside the top bar: its buttons keep the light hover, not the bar's accent (UX-A4). */
+.comments-panel button:hover:not(:disabled){background:var(--tint)}
+/* UX review 3, group E: on a phone the band wraps instead of cutting its text ("You can comment", the view-only sentence,
+   the undecided-sample banner); the banner's Review stays a 32 px target. */
+@media(max-width:600px){.status-band{flex-wrap:wrap;height:auto;min-height:30px;padding-block:4px;row-gap:4px}.status-band span{white-space:normal;overflow:visible}.status-band .board-notice .notice-banner>span{white-space:normal}.status-band .notice-link{min-height:32px}}

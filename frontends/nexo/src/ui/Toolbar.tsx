@@ -12,7 +12,8 @@ import { ExportDialog, type ExportScope } from './Dialogs/ExportDialog';
 import { strings as s, phrases as p } from './strings';
 const MIN_STRIP = 200;
 const arrangeLabels = { left: s.alignLeft, right: s.alignRight, top: s.alignTop, bottom: s.alignBottom, distributeX: s.distributeX, distributeY: s.distributeY } as const;
-import { isReadOnly } from '../state/readonly';
+import { canComment, isReadOnly } from '../state/readonly';
+import { collab } from '../collab/mode';
 import { clipboard, onClipboard } from '../clipboard';
 export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:()=>void;onSave:()=>void;onDownload:()=>void;onShortcuts:()=>void}) {
   const ref = useRef<HTMLDivElement>(null), [width, setWidth] = useState(0), handle = useContext(CanvasHandleContext), [helpOpen, setHelpOpen] = useState(false), [removing, setRemoving] = useState(false), [exporting, setExporting] = useState<ExportScope | null>(null);
@@ -45,14 +46,21 @@ export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:(
   };
   // View only keeps viewing, exporting and help; every editing or saving item is left out.
   const add = !readOnly && <button onClick={() => openLibrary('plots')}>{s.add}</button>;
+  // Phase 6: comment mode drops a pin at the next canvas click (canvas/pins.ts); shared projects only. Pressed while on.
+  const [commenting, setCommenting] = useState(false);
+  useEffect(() => { const armed = (e: Event) => setCommenting((e as CustomEvent<boolean>).detail); addEventListener('nexo-comment-armed', armed); return () => removeEventListener('nexo-comment-armed', armed); }, []);
+  const comment = collab() && canComment() && <button aria-pressed={commenting} onClick={() => dispatchEvent(new Event('nexo-comment-mode'))}>Comment</button>;
   const tidy = !readOnly && <button disabled={!handle} onClick={() => handle?.tidy()}>{s.tidy}</button>;
-  const history = !readOnly && <><button disabled={!handle?.canUndo} onClick={() => handle?.undo()}>{s.undoTool}</button><button disabled={!handle?.canRedo} onClick={() => handle?.redo()}>{s.redoTool}</button></>;
+  // "Undo mine" (product owner, 2026-11-10): with nothing on the geometry stack, Undo takes back my last settled science change (collab/intents.ts).
+  const [mine, setMine] = useState(false);
+  useEffect(() => { const told = (e: Event) => setMine((e as CustomEvent<boolean>).detail); addEventListener('nexo-undo-mine', told); return () => removeEventListener('nexo-undo-mine', told); }, []);
+  const history = !readOnly && <><button disabled={!handle?.canUndo && !mine} onClick={() => { if (handle?.canUndo) handle.undo(); else void import('../collab/intents').then(m => m.undoMine()); }}>{s.undoTool}</button><button disabled={!handle?.canRedo} onClick={() => handle?.redo()}>{s.redoTool}</button></>;
   const exports = <><button disabled={!handle} onClick={() => setExporting('publication')}>{s.publicationExport}</button><button disabled={!handle} onClick={() => setExporting('plot')}>{s.exportSelected}</button>{!readOnly && <><button onClick={onSave}>{s.saveCheckpoint}</button><button onClick={onDownload}>{s.downloadZip}</button></>}{(['svg','pdf','print'] as const).map(kind => <button key={kind} disabled={!handle} onClick={() => void pageExport(kind)}>{kind==='svg'?s.pageSvg:kind==='pdf'?s.pagePdf:s.pagePrint}</button>)}</>;
   const analysis = !readOnly && <button data-analysis-trigger disabled={!handle} onClick={onAnalysis}>{s.analysisSettings}</button>;
   const figure = <button disabled={!handle} onClick={() => { if(handle?.figureMode)handle.exitFigureMode();else handle?.enterFigureMode(); }}>{handle?.figureMode ? s.backToDraft : s.figure}</button>;
   return <div ref={ref} className="toolbar" role="toolbar" aria-label={s.tools}>
     {!collapsed.includes('analysis') && analysis}
-    {!collapsed.includes('add') && add}{!collapsed.includes('arrange') && tidy}{!collapsed.includes('history') && history}
+    {!collapsed.includes('add') && add}{comment}{!collapsed.includes('arrange') && tidy}{!collapsed.includes('history') && history}
     {!collapsed.includes('add') && <span className="draft">{handle?.figureMode ? s.figurePage : pending ? p.draftPending(pending) : s.draft}</span>}{!collapsed.includes('figure') && figure}
     {!collapsed.includes('export') && <Menu label={s.export}>{exports}</Menu>}
     <Menu label={s.more} name={s.tools}>{collapsed.includes('figure') && figure}{collapsed.includes('analysis') && analysis}{collapsed.includes('add') && add}{collapsed.includes('arrange') && tidy}{collapsed.includes('history') && history}{collapsed.includes('export') && exports}

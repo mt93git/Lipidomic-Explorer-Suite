@@ -5,11 +5,11 @@ export interface CatalogEntry { id: string; family: string; output: string; rend
 export interface Catalog { version: string | number; outputs: CatalogEntry[] }
 export interface CardResult { instanceId: string; nodeId: string; source: string; family: string; render: RenderKind; allowedInputs: string[]; inputs: Inputs; settled: boolean; error: unknown; /** The module's plot height (heightInput's settled value). */ plotHeight?: number }
 export interface CardUpdate { settled: boolean; inputs: Inputs; plotHeight?: number; /** A dialog the module opened (showModal) on this update; html is unsanitised. */ modal?: { title: string; html: string } }
-export type CardRender = {figure: unknown; provenance?: unknown; render?: RenderKind} | {blob: Blob; revision: string | null};
+export type CardRender = ({figure: unknown; provenance?: unknown; render?: RenderKind} | {blob: Blob; revision: string | null}) & {/** Collab mode: X-Nexo-Engine-Revision. */ engineRevision?: number};
 export interface ApiError { error: string; message: string }
 
 export interface Node { statistics?: import('../state/document').Statistics | null; kind: 'plot' | 'illustration'; id: string; label: string; x: number; y: number; width: number; height: number; visual?: { plotTitle?: string }; finished?: { url: string; createdAt?: string; stale?: boolean; provenance?: unknown } | null; assetId?: string; assetVersion?: string; color?: string; instance?: { id?: string; instanceId?: string; source: string; inputs?: Inputs } }
-export interface Session { /** Render worker processes beside the main one (absent on older servers: none). */ renderWorkers?: number; nexo?: import('../state/nexo').Nexo | null; near_limit?: boolean; design?: Design; deState?: unknown; sessionId: string; checkpointSha256?: string; preparationCheck?: string; samples: unknown; lipids: unknown; preparation: unknown; inputs: Record<string, unknown>; canvas: { nexo?: import('../state/nexo').Nexo; nodes: Node[]; version?: string; libraryHidden?: boolean; tabs?: unknown } }
+export interface Session { workspace?: string; /** Dataset opens: the workspace of a shared project of this open. */ projectWorkspace?: string; /** Render worker processes beside the main one (absent on older servers: none). */ renderWorkers?: number; nexo?: import('../state/nexo').Nexo | null; near_limit?: boolean; design?: Design; deState?: unknown; sessionId: string; checkpointSha256?: string; preparationCheck?: string; samples: unknown; lipids: unknown; preparation: unknown; inputs: Record<string, unknown>; canvas: { nexo?: import('../state/nexo').Nexo; nodes: Node[]; version?: string; libraryHidden?: boolean; tabs?: unknown } }
 export interface Figure { data: unknown[]; layout: Record<string, unknown> }
 export interface PlotResult { figure: Figure; provenance: unknown }
 
@@ -60,7 +60,14 @@ export interface CardDownload { id: string; label: string }
 
 /** One choice Team's preparation still needs (POST /datasets/sessions → 422 preparation_choices_required). */
 export interface PreparationChoice { name: string; label: string; kind: 'samples' | 'number' | 'choice' | 'boolean' | string; choices?: string[]; min?: number; max?: number; step?: number; teamControlDefault: unknown }
-export interface PreparationChoices { error: string; reason: 'preparation_choices_required'; message: string; missing: PreparationChoice[]; availableSamples: string[] }
+export interface PreparationChoices { error: string; reason: 'preparation_choices_required'; message: string; missing: PreparationChoice[]; availableSamples: string[];
+  /** Each sample's condition group from the Metadata sheet (nexo-entry-build.md C3); absent without one. */ sampleGroups?: Record<string, string> }
+/** A decision on a sample the quality check flagged (C3): it travels in the project's settings as outlierDecisions. */
+export interface OutlierDecision { sample: string; choice: 'keep' | 'exclude' | 'undecided'; reason?: string; by?: string }
+/** POST /datasets/preview (C3): the samples and detection settings Team's detection rule needs. */
+export interface DatasetPreviewRequest { adminDatasetId: string; samples: string[]; minDetectionPct: unknown; detectionScope: unknown; dropNonDetected: unknown }
+/** Team's detection counts for those settings, without opening a session. */
+export interface DatasetPreview { kept: number; total: number; leftOut: string[]; histogram: { detectedIn: number; kept: number; leftOut: number }[]; samples: number; missing: { values: number; cells: number } }
 /** The explicit preparation settings sent back: the selected samples plus every required setting, as received. */
 export type DatasetSettings = { samples: string[] } & Record<string, unknown>;
 /** A session prepared from a released Admin dataset: a checkpoint session plus where it came from. */

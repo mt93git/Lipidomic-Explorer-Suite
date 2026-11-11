@@ -88,6 +88,7 @@ api_analysis_schema <- function(s) {
 }
 
 api_analysis_update <- function(s, inputs) {
+  api_mutation(s, NULL, NULL, (function() {
   if (!is.list(inputs) || !length(inputs) || is.null(names(inputs)) || any(!nzchar(names(inputs))))
     api_abort("api_bad_request", "Expected named analysis settings.")
   controls <- api_analysis_controls(s)
@@ -107,4 +108,5 @@ api_analysis_update <- function(s, inputs) {
   do.call(api_inputs, c(list(s), stats::setNames(inputs, paste0(api_analysis_prefix, names(inputs)))))
   api_flush(s)
   api_analysis_schema(s)
+  })())
 }

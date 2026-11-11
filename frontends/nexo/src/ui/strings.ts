@@ -1,5 +1,11 @@
 /** All new shell copy. Checkpoint labels and the untouched canvas supply their own content. */
 export const strings = {
+  viewOnlyRole: 'View only — ask the owner for edit access', commentRole: 'You can comment', share: 'Share',
+  // Share dialog and role changes (UX review 2, scene 4).
+  shareWho: "Lab staff and this client's members can open this project. Roles decide what each person can change.",
+  shareYou: '(you)', shareNotListed: 'Not listed? Add the person as a client member in Admin first.',
+  copyLink: 'Copy link', linkCopied: 'Link copied', linkNotCopied: 'Could not copy the link: copy it from the address bar.', done: 'Done',
+  fromAdmin: 'from Admin',
   // A lost API session (evicted or restarted) is reopened and the plots are put back.
   reconnecting: 'Reconnecting to the analysis…', reconnected: 'Analysis reconnected. Your plots were restored.',
   sessionLost: 'The analysis session was lost and could not be reopened. Reload the page to continue; your last save is kept.', reloadPage: 'Reload', saveFailedLost: 'Save failed · Session lost',
@@ -24,7 +30,7 @@ export const strings = {
   nexoCircle:'Circle',nexoSquare:'Square',nexoDiamond:'Diamond',nexoCross:'Cross',nexoSymbolX:'X',nexoTriangleUp:'Triangle up',nexoTriangleDown:'Triangle down',nexoStar:'Star',nexoCircleOpen:'Open circle',nexoSquareOpen:'Open square',nexoDiamondOpen:'Open diamond',nexoSolid:'Solid',nexoDotted:'Dotted',nexoDashed:'Dashed',nexoLongDash:'Long dash',nexoDashDot:'Dash dot',nexoLongDashDot:'Long dash dot',
   nexoSeries:'Series style', nexoLegendOrder:'Legend order', nexoReversed:'Reversed', nexoGrouped:'Grouped', nexoGroupedReversed:'Grouped, reversed', nexoSymbol:'Marker symbol', nexoDash:'Line dash', nexoReferences:'Reference lines & bands', nexoDataCoordinates:'Positions use data coordinates on the primary axes.', nexoReferenceLine:'Reference line', nexoBand:'Shaded band', nexoReference:'Reference', nexoXStart:'x start', nexoXEnd:'x end', nexoYStart:'y start', nexoYEnd:'y end', nexoColor:'Colour', nexoLineWidth:'Line width', nexoOpacity:'Opacity', nexoRemove:'Remove', nexoAddLine:'Add reference line', nexoAddBand:'Add shaded band', nexoArrows:'Arrow annotations', nexoAnnotation:'Annotation', nexoText:'Text', nexoXCoordinate:'x coordinate', nexoYCoordinate:'y coordinate', nexoArrowX:'Arrow x (px)', nexoArrowY:'Arrow y (px)', nexoFontSize:'Font size', nexoAddArrow:'Add arrow annotation',
   nexoBadge:'Nexo style', nexoTeamView:'Show as Team draws it', nexoAxis:'Axis range & scale', nexoTicks:'Ticks', nexoWeightsMargins:'Weights & margins', nexoAuto:'auto', nexoX:'Horizontal axis', nexoY:'Vertical axis', nexoScale:'Scale', nexoLinear:'Linear', nexoLog:'Log', nexoMin:'Minimum', nexoMax:'Maximum', nexoTickFormat:'Tick format', nexoTickSpacing:'Tick spacing', nexoTickCount:'Tick count', nexoBold:'Bold', nexoNormal:'Normal', nexoMargins:'margins', nexoTitle:'Title weight', nexoAxisTitles:'Axis title weight', nexoLegend:'Legend weight', nexoMargin:'Margin', nexoLeft:'left', nexoRight:'right', nexoTop:'top', nexoBottom:'bottom', nexoPadding:'padding', nexoReset:'Reset Nexo style',
-  app: 'Lipidomic Explorer', logo: 'LE', project: 'Checkpoints', checkpointsTitle: 'Open or save a checkpoint', accountLabel: 'Account', data: 'Data', review: 'Review', canvas: 'Canvas',
+  app: 'Lipidomic Explorer', yourBoard: 'your board', logo: 'Libreros Lab', project: 'Checkpoints', checkpointsTitle: 'Open or save a checkpoint', accountLabel: 'Account', data: 'Data', review: 'Review', canvas: 'Canvas',
   steps: 'Analysis steps', ready: 'Autosave ready', dirty: 'Unsaved changes · Autosave on',
   viewOnly: 'View only', viewOnlyDevice: 'View only on this device. Open Nexo on a computer to edit.',
   viewOnlyLink: 'View only link. Open Nexo without ?mode=view to edit.', dismissViewOnly: 'Dismiss view-only notice',
@@ -85,6 +91,8 @@ export const shortcuts = [['L', 'Show or hide the plot library'], ['Shift + L', 
     ['Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z', 'Undo, redo'], ['Esc', 'Clear search, or close the menu, inspector, library, then selection'], ['I', 'Show or hide the inspector'], ['?', 'Show this list']] as const;
 /** Sentences with a value inside. */
 export const phrases = {
+  shareTitle: (project: string) => `Share ${project}`,
+  roleNow: (role: string) => `Your role on this project is now ${role}.`,
   noPlotMatches: (query: string) => `No plot matches “${query}”.`,
   restoringPlot: (label: string) => `Restoring ${label}…`,
   restorePlotFailed: (label: string) => `Couldn’t bring back ${label}.`,

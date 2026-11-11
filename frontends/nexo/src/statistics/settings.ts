@@ -71,12 +71,13 @@ export function diffSettings(applied: Settings | null | undefined, staged: Setti
     const before = applied ? describe(applied) : [], next = describe(staged);
     return ['Test', 'Correction', 'Correction family', 'Comparisons', 'Effect size'].flatMap((setting, i) => before[i] === next[i] ? [] : [{ setting, applied: before[i] || 'Not applied', next: next[i] }]);
 }
-/** Stateless reply mapping; pass matchesCurrent for fingerprint-aware checks (Team:357–362). */
+/** Stateless reply mapping; pass matchesCurrent for fingerprint-aware checks (Team:357–362). Collab: `changedBy` (meta.lastChange)
+ *  names who changed the board in the invalidation text. */
 export function statusFor(reply: {
     status?: string;
     reason?: string;
     matchesCurrent?: boolean;
-} | null | undefined): string {
+} | null | undefined, changedBy?: string): string {
     if (!reply)
         return STATUS.none;
     const status = reply.status;
@@ -85,6 +86,6 @@ export function statusFor(reply: {
     if (status === 'ok')
         return STATUS.current;
     if (status === 'unchanged' || status === 'invalidated')
-        return reply.matchesCurrent === true ? STATUS.current : STATUS.invalid;
+        return reply.matchesCurrent === true ? STATUS.current : changedBy ? STATUS.invalid.replace('confirmed.', `confirmed (changed by ${changedBy}).`) : STATUS.invalid;
     return STATUS[status as keyof typeof STATUS] || '';
 }

@@ -1,12 +1,17 @@
-import { useContext, useEffect } from 'react';
+import { Suspense, useContext, useEffect } from 'react';
 import { CanvasHandleContext } from '../canvas/handle';
 import { openFigureAdd } from './railActions';
 import { store, ui, useShell, openLibrary } from './model';
 import { strings as s, keys, tip } from './strings';
 import { isReadOnly } from '../state/readonly';
+import { collab } from '../collab/mode';
+import { retryLazy } from './retryLazy';
+// UX-B4: collab only, loaded lazily so flag off loads no yjs.
+const VersionHistory = retryLazy(() => import('./Panels/VersionHistory').then(m => ({ default: m.VersionHistory })));
+const CommentsButton = retryLazy(() => import('./Comments/CommentsPanel').then(m => ({ default: m.CommentsButton })));
 function Icon({ kind }: { kind: string }) {
   return <svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-    {kind === 'plots' ? <><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></> : kind === 'illustrations' ? <><circle cx="9" cy="9" r="6"/><circle cx="9" cy="9" r="2"/></> : kind === 'palettes' ? <><circle cx="6" cy="7" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="9" cy="12" r="2"/></> : kind === 'text' ? <path d="M4 4h10M9 4v10"/> : kind === 'select' ? <path d="M4 2v13l4-4 4 5 2-2-4-5h5z"/> : kind === 'move' ? <path d="M9 1v16M1 9h16M6 4l3-3 3 3M6 14l3 3 3-3M4 6L1 9l3 3M14 6l3 3-3 3"/> : <><rect x="2" y="2" width="14" height="14" rx="2"/><path d="M11 2v14"/></>}
+    {kind === 'plots' ? <><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></> : kind === 'illustrations' ? <><circle cx="9" cy="9" r="6"/><circle cx="9" cy="9" r="2"/></> : kind === 'palettes' ? <><circle cx="6" cy="7" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="9" cy="12" r="2"/></> : kind === 'text' ? <path d="M4 4h10M9 4v10"/> : kind === 'select' ? <path d="M4 2v13l4-4 4 5 2-2-4-5h5z"/> : kind === 'history' ? <><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></> : kind === 'move' ? <path d="M9 1v16M1 9h16M6 4l3-3 3 3M6 14l3 3 3-3M4 6L1 9l3 3M14 6l3 3-3 3"/> : <><rect x="2" y="2" width="14" height="14" rx="2"/><path d="M11 2v14"/></>}
   </svg>;
 }
 export function Rail() {
@@ -29,9 +34,11 @@ export function Rail() {
     };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
   }, []);
-  return <nav className="rail" aria-label={s.tools}>
+  return <><nav className="rail" aria-label={s.tools}>
     {!isReadOnly() && <>{(['plots','illustrations','text','palettes'] as const).map(k => <button key={k} data-tip={touch ? undefined : tip(s[k], k === 'plots' ? keys.plots : k === 'illustrations' ? keys.illustrations : undefined)} aria-keyshortcuts={k === 'plots' ? 'L' : k === 'illustrations' ? 'Shift+L' : undefined} aria-label={s[k]} aria-pressed={k === 'plots' || k === 'illustrations' ? state.libraryOpen && state.library === k : k === 'text' ? state.figureMode : k === 'palettes' ? state.paletteOpen : undefined} onClick={() => open(k)}><Icon kind={k}/></button>)}
     <hr/></>}{(['select','move'] as const).map(k => <button key={k} data-tip={touch ? undefined : tip(k === 'select' ? s.selectTouch : s.moveTouch, keys[k])} aria-keyshortcuts={touch ? undefined : keys[k]} aria-label={k === 'select' ? s.selectTouch : s.moveTouch} aria-pressed={state.mode === k} onClick={() => ui({ mode: k })}><Icon kind={k}/></button>)}
+    {collab() && <Suspense fallback={null}><CommentsButton/></Suspense>}
     <button data-tip={touch ? undefined : tip(s.inspectorTouch, keys.inspector)} aria-keyshortcuts={touch ? undefined : keys.inspector} aria-label={s.inspectorTouch} aria-pressed={state.inspectorOpen} onClick={() => ui({ inspectorOpen: !state.inspectorOpen })}><Icon kind="inspector"/></button>
-  </nav>;
+    {collab() && <button data-tip={touch ? undefined : 'Version history'} aria-label="Version history" aria-pressed={state.versionsOpen} onClick={() => ui({ versionsOpen: !state.versionsOpen })}><Icon kind="history"/></button>}
+  </nav>{collab() && state.versionsOpen && <Suspense fallback={null}><VersionHistory onClose={() => ui({ versionsOpen: false })}/></Suspense>}</>;
 }

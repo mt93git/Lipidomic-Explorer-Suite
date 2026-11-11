@@ -62,3 +62,67 @@ local({
   stopifnot(length(listed) == 1L, identical(listed[[1L]]$id, record$id))
   cat("PASS storage list skips bad records\n")
 })
+
+# Exercise save/prune with deterministic synthetic exports, without starting Shiny.
+local({
+  root <- tempfile(); on.exit(unlink(root, recursive = TRUE))
+  Sys.setenv(LIPIDOMIC_STORAGE_DIR = root, LIPIDOMIC_API_WORKSPACE = "lineage-test")
+  on.exit(Sys.unsetenv(c("LIPIDOMIC_STORAGE_DIR", "LIPIDOMIC_API_WORKSPACE")), add = TRUE)
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+  api_scope_allow <- function(caller, workspace) workspace
+  api_canvas_validate <- function(...) list(ok = TRUE)
+  api_nexo_check <- function(x) x
+  api_read <- function(s, expr) expr
+  api_project_records_append <- api_cohort_append <- api_nexo_append <- function(...) NULL
+  api_checkpoint_save <- api_checkpoint_save
+  environment(api_checkpoint_save) <- environment()
+  serial <- 0L
+  session <- function(lineage = NULL) {
+    s <- new.env(); s$lineage <- lineage
+    s$shared <- list(export_session_path = function(path) {
+      serial <<- serial + 1L; writeBin(charToRaw(paste("synthetic", serial)), path)
+    }); s
+  }
+  store <- api_store(root)
+  old <- store$save("legacy", "tests/dual-ui/fixtures/classic-seed7-synthetic.zip", "autosave")
+  restarted <- api_store_files(root)
+  stopifnot(is.null(restarted$list("legacy")[[1L]]$lineage), file.exists(restarted$load("legacy", old$id)))
+  cat("PASS old record without lineage still loads after restart\n")
+  promoted <- store$save("legacy", "tests/dual-ui/fixtures/classic-seed7-synthetic.zip", "autosave", collab = TRUE)
+  stopifnot(isTRUE(promoted$collab), isTRUE(api_store_files(root)$list("legacy")[[1L]]$collab))
+  cat("PASS collab mark survives saving identical bytes and restart\n")
+  a <- session("opened-a"); b <- session("opened-b")
+  for (i in 1:7) for (s in list(a, b)) api_checkpoint_save(s, "autosave", list())
+  records <- api_store_files(root)$list("lineage-test")
+  stopifnot(sum(vapply(records, function(x) identical(x$lineage, "opened-a"), logical(1))) == 5L,
+    sum(vapply(records, function(x) identical(x$lineage, "opened-b"), logical(1))) == 5L)
+  cat("PASS two lineages in one workspace keep five autosaves each\n")
+  # Exercise the dataset session constructor; keep the existing synthetic export seam.
+  source("frontends/nexo-api/datasets.R", local = TRUE)
+  api_sessions <- new.env(parent = emptyenv())
+  api_dataset_read <- function(...) list(abundance = tempfile())
+  api_dataset_choices <- function(...) list(key = "synthetic-dataset")
+  api_dataset_session_open <- function(...) session()
+  api_session_make_room <- function() NULL
+  api_session_id <- local({ n <- 0L; function() { n <<- n + 1L; paste0("dataset-", n) } })
+  api_session_bind <- function(s, collab) s
+  first <- api_dataset_session("synthetic", list())
+  first$dirty <- TRUE
+  second <- api_dataset_session("synthetic", list())
+  for (i in 1:7) for (s in list(first, second)) api_checkpoint_save(s, "autosave", list())
+  records <- store$list("lineage-test")
+  stopifnot(!is.null(first$lineage), !is.null(second$lineage),
+    !identical(first$lineage, second$lineage),
+    sum(vapply(records, function(x) identical(x$lineage, first$lineage), logical(1))) == 5L,
+    sum(vapply(records, function(x) identical(x$lineage, second$lineage), logical(1))) == 5L)
+  cat("PASS two dataset sessions in one project keep five autosaves each\n")
+  kept <- api_checkpoint_save(a, "autosave", list(), collab = TRUE)
+  for (i in 1:7) api_checkpoint_save(a, "autosave", list())
+  records <- api_store_files(root)$list("lineage-test")
+  stopifnot(any(vapply(records, function(x) identical(x$id, kept$id) && isTRUE(x$collab), logical(1))))
+  cat("PASS collab-marked autosave is never pruned\n")
+  for (i in 1:7) api_checkpoint_save(session(), "autosave", list())
+  records <- store$list("lineage-test")
+  stopifnot(sum(vapply(records, function(x) is.null(x$lineage), logical(1))) == 5L)
+  cat("PASS autosaves without lineage retain per-workspace limit\n")
+})

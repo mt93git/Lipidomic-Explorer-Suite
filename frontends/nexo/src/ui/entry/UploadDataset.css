@@ -1,0 +1,12 @@
+.upload-dataset::backdrop { background:#16223066; }
+.upload-dataset { box-sizing:border-box; width:min(calc(100vw - 32px), 520px); border:0; max-height:calc(100dvh - 32px); overflow:auto; padding:32px; border-radius:12px; background:white; color:#162230; font:14px/1.5 'Nunito Sans',sans-serif; box-shadow:0 12px 40px #16223033; }
+.upload-dataset h2 { margin:0; font-size:var(--h1,24px); line-height:1.25; }
+.upload-dataset label { display:grid; gap:8px; margin:16px 0; font-weight:700; }
+.upload-dataset input,.upload-dataset select,.upload-dataset button { box-sizing:border-box; min-width:0; max-width:100%; min-height:var(--field-h,40px); padding:8px; border:1px solid var(--field,#7d8a99); border-radius:6px; font:inherit; background:white; color:inherit; }
+.upload-dataset footer { display:flex; justify-content:flex-end; gap:12px; margin-top:24px; }
+.upload-dataset button[type=submit] { background:#245b80; color:white; }
+.upload-dataset :focus-visible { outline:2px solid #245b80; outline-offset:2px; }
+.upload-dataset [role=alert] { color:#8c241c; }
+@media (max-width:600px) { .upload-dataset { padding:24px; } .upload-dataset input,.upload-dataset select,.upload-dataset button { min-height:44px; font-size:16px; } }
+
+.upload-dataset button:disabled { opacity:.55; }

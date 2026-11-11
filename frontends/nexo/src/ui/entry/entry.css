@@ -1,0 +1,44 @@
+/* Nexo entry screens (docs/integration/nexo-entry-proposal/prototype.html): one scrolling page under the navy bar, Team's
+ * illustration fixed behind white sheets, the C6 tokens (--field, --field-h, --h1, --h2). The body never scrolls in Nexo
+ * (styles.css), so the page scrolls inside .entry-page. */
+.entry-page{height:100%;display:flex;flex-direction:column}
+.entry-page>.topbar{flex:none}
+.entry{position:relative;flex:1;min-height:0;overflow:auto;font-size:14px;line-height:1.55;color:var(--ink)}
+.entry::before{content:"";position:fixed;left:0;right:0;bottom:0;top:var(--bar-top);z-index:0;pointer-events:none;background:#fafaf8 center/cover no-repeat}
+.entry>*{position:relative;z-index:1}
+.entry-art-spectrum::before{background-image:url(/entry/login-spectrum.svg)}
+.entry-art-matrix::before{background-image:url(/entry/data-matrix.svg)}
+.entry-step::before{background-color:#f7f6fa;background-image:url(/entry/step-backdrop.svg);background-position:center bottom}
+@media(max-aspect-ratio:4/5){.entry-art-spectrum::before{background-position:left bottom}.entry-step::before{background-image:url(/entry/step-backdrop-portrait.svg)}}
+@media(prefers-reduced-motion:reduce){.entry-art-spectrum::before{background-image:url(/entry/login-spectrum-static.svg)}.entry-art-matrix::before{background-image:url(/entry/data-matrix-static.svg)}}
+.entry h1,.entry h2,.entry p{margin:0}
+.entry h1{font-size:clamp(20px,5.6vw,var(--h1,24px));line-height:1.25;font-weight:700}
+.entry .lede{margin-top:4px;color:var(--muted)}
+.entry .sheet{background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 50px rgba(22,34,48,.16),0 2px 6px rgba(22,34,48,.08);padding:32px}
+.entry .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
+.entry .btn{height:var(--field-h,40px);padding:0 16px;border-radius:var(--radius-md);font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;text-decoration:none;line-height:1}
+.entry .btn.primary{background:var(--accent);color:var(--paper)}.entry .btn.primary:hover:not(:disabled){background:#1c4460}
+.entry .btn.secondary{border:1px solid var(--field,#7d8a99);background:var(--paper);color:var(--ink)}.entry .btn.secondary:hover:not(:disabled){background:var(--tint)}
+.entry .btn:disabled{background:var(--line);color:var(--muted);border-color:transparent;opacity:1}
+.entry .link{height:auto;padding:0;background:none;color:var(--accent);text-decoration:underline;text-underline-offset:2px;font-size:var(--font-chrome);font-weight:400;border-radius:2px}
+.entry .link:hover:not(:disabled){background:none;color:var(--navy)}
+.entry .input,.entry select.input,.entry input.input{height:var(--field-h,40px);width:100%;padding:0 12px;border:1px solid var(--field,#7d8a99);border-radius:var(--radius-md);background:var(--paper);font-size:14px}
+.entry .seg{display:inline-flex;border:1px solid var(--field,#7d8a99);border-radius:var(--radius-md);overflow:hidden;background:var(--paper)}
+.entry .seg button{height:32px;padding:0 12px;font-size:var(--font-chrome);border-radius:0;border-left:1px solid var(--line-strong);color:var(--ink);background:var(--paper)}
+.entry .seg button:first-child{border-left:0}
+.entry .seg button[aria-pressed=true]{background:var(--accent);color:var(--paper);font-weight:600}
+.entry .seg :focus-visible{outline-offset:-3px}.entry .seg [aria-pressed=true]:focus-visible{outline-color:var(--paper)}
+.entry .msg{padding:8px 12px;border-radius:var(--radius-md);font-size:var(--font-chrome);line-height:1.45}
+.entry .msg.bad{background:var(--red-bg);color:var(--red-fg)}
+.entry .err{color:var(--red-fg);font-size:var(--font-chrome);line-height:1.4}
+.entry :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* The one action of a step, always in view at the bottom of the screen. */
+.entry .stickybar{position:sticky;bottom:0;z-index:2;padding:8px 24px calc(8px + env(safe-area-inset-bottom));background:var(--paper);border-top:1px solid var(--line-strong);box-shadow:0 -4px 16px #16223014}
+.entry .stickybar .in{max-width:1112px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.entry .stickybar .stat{font-size:var(--font-chrome);font-weight:600;line-height:1.3;white-space:nowrap}.entry .stickybar .stat b{font-size:var(--h2,18px)}
+.entry .stickybar .grow{flex:1;min-width:0;font-size:var(--font-chrome);color:var(--muted)}
+.entry .stickybar .grow.err{color:var(--red-fg)}
+@media(pointer:coarse){.entry .seg button,.entry .link{min-height:40px}.entry .input{font-size:16px}}
+@media(max-width:720px){.entry .stickybar{padding-left:12px;padding-right:12px}.entry .stickybar .stat{flex:1;min-width:0;white-space:normal}.entry .stickybar .grow:not(.err),.entry .stickybar .btn.secondary{display:none}.entry .sheet{padding:20px 16px}}
+/* Today's card (the Start and sign-in stubs, the opening/failed card) on the art: 16 px clear of the screen's edges on a phone. */
+.entry>.picker{width:min(560px,calc(100% - 32px));box-shadow:0 18px 50px rgba(22,34,48,.16),0 2px 6px rgba(22,34,48,.08)}

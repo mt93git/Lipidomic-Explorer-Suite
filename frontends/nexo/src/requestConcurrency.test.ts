@@ -2,6 +2,8 @@
 // the next request. Renders are "shared" (up to `capacity` in flight together); every other request stays
 // exclusive and keeps the strict one-at-a-time order. capacity 1 is exactly the single-process behaviour.
 import {expect,it,vi,afterEach} from 'vitest';
+import { useAdminTokenFetch } from './api/adminToken';
+useAdminTokenFetch(async () => new Response('{}', {status: 401}));
 import {RequestQueue, requestQueue} from './prefetch';
 afterEach(()=>{vi.unstubAllGlobals();requestQueue.capacity=1;});
 const settle=()=>new Promise(r=>setTimeout(r,0));
