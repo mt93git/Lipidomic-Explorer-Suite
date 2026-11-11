@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Help · Lipidomic Explorer</title>
+  <meta name="description" content="How to use the lab's lipidomics platform, one step at a time: the lab's back office (Admin), the client portal, and the analysis tool (Nexo).">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#162230">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="help.css">
+  <!--
+    Static help manual: no framework, no build step, relative URLs only, no external requests.
+    All copy lives in content.json. After editing it, or after adding or removing screenshots, run
+        node tools/build-search-index.mjs
+    which rewrites search-index.json and help-data.js (the copy of content.json the page reads, so that it also
+    works when opened from disk, where browsers refuse to fetch JSON). Layout files are never touched by it.
+  -->
+</head>
+<body id="top">
+  <a class="skip-link" href="#main" data-ui="skip">Skip to content</a>
+
+  <header class="topbar">
+    <a class="brand" href="#top">
+      <span class="brand-name" data-meta="brand">Lipidomic Explorer</span>
+      <span class="badge" data-meta="badge">Help</span>
+    </a>
+    <div class="topbar-actions">
+      <button type="button" class="topbar-button only-wide" id="print-button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true" focusable="false"><path d="M4.5 6V2.5h7V6M4.5 11.5h-2v-5h11v5h-2M4.5 9.5h7v4h-7z"/></svg>
+        <span data-ui="print">Print</span>
+      </button>
+      <button type="button" class="topbar-button icon-only only-narrow" id="search-button" aria-label="Search the manual" data-ui-label="searchLabel">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+      </button>
+      <button type="button" class="topbar-button only-narrow" id="menu-button" aria-expanded="false" aria-controls="sidebar">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+        <span id="menu-label" data-ui="menuOpen">Menu</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <div class="sidebar" id="sidebar">
+      <form class="search" id="search-form" role="search" action="#" autocomplete="off">
+        <label class="sr-only" for="q" data-ui="searchLabel">Search the manual</label>
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+        <input id="q" name="q" type="search" placeholder="Search the manual" data-ui-placeholder="searchPlaceholder" aria-keyshortcuts="/" aria-controls="results" aria-describedby="search-status" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+        <kbd class="search-key" id="search-key" aria-hidden="true">/</kbd>
+        <button type="button" class="search-clear" id="search-clear" aria-label="Clear search" data-ui-label="searchClear" hidden>×</button>
+      </form>
+      <p class="search-status" id="search-status" role="status" aria-live="polite" hidden></p>
+      <div class="results" id="results" hidden></div>
+      <nav id="toc" aria-label="Contents" data-ui-label="contents"></nav>
+    </div>
+
+    <div class="main">
+      <div class="doc">
+        <main id="main" tabindex="-1">
+          <noscript><p class="noscript">This manual needs JavaScript to show its pages.</p></noscript>
+        </main>
+        <footer class="footer" id="footer"></footer>
+      </div>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <script src="help-data.js" defer></script>
+  <script src="help.js" defer></script>
+</body>
+</html>

@@ -4,9 +4,8 @@
 //
 //   Stephania (simulated)  steph.sim@admin-staging.test  lab staff, role owner
 //   Paula (simulated)      paula.sim@admin-staging.test  lab staff, role admin   (the pilot's two personas)
-//   "Pilot Simulation Panel (synthetic)"                 the pilot's panel (no Instruments & panels screen yet)
 //
-// It does NOT create the client lab, Dana, Lee or the order: the spec makes them through the screens (Request access,
+// It does NOT create the client lab, Dana, Lee, the order, or the run's instrument and panel: the spec makes them through the screens (Request access,
 // People, Request an order). It chooses this run's id (<UTC yyyymmdd-hhmm>-<4 hex>), the names derived from it
 // (journey-run.mjs) and a password for Dana and Lee, whose accounts the accept-invitation screen creates.
 // Each run gives Paula and Stephania a new generated password and a fresh verified TOTP factor (lab staff must pass
@@ -18,7 +17,7 @@
 // ADMIN_JOURNEY_CREDENTIALS; optional ADMIN_E2E_AUTH_URL / ADMIN_E2E_REST_URL as for the pilot seed.
 //   ADMIN_JOURNEY_CREDENTIALS=e2e/live/.journey-credentials.local.json node e2e/live/journey-seed.mjs
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { newRunId, PANEL, RUN_ID, runNames } from "./journey-run.mjs";
+import { newRunId, RUN_ID, runNames } from "./journey-run.mjs";
 import { createSeedKit } from "./seed-kit.mjs";
 
 const env = process.env;
@@ -52,15 +51,16 @@ for (const [key, persona] of Object.entries(personas)) {
   const secret = kit.password();
   const userId = await kit.ensureUser(persona, secret);
   await kit.ensureStaff(userId, persona);
-  credentials[key] = { email: persona.email, password: secret, name: persona.name, userId, ...await kit.enrollTotp(userId, persona.email, secret) };
+  credentials[key] = { email: persona.email, password: secret, name: persona.name, userId };
+  // Two-step sign-in is off (Admin 8070cbbe): remove any old TOTP factor, enroll none.
+  for (const factor of (await kit.auth(`/admin/users/${userId}/factors`)) ?? []) await kit.auth(`/admin/users/${userId}/factors/${factor.id}`, { method: "DELETE" });
 }
-await kit.ensurePanel(PANEL);
 
 writeFileSync(file, `${JSON.stringify({
-  runId, ...credentials, panelName: PANEL, clientName: names.clientName, orderTitle: names.orderTitle,
+  runId, ...credentials, clientName: names.clientName, orderTitle: names.orderTitle,
   dana: { ...names.dana, password: kit.password() }, lee: { ...names.lee, password: kit.password() },
 }, null, 2)}\n`, { mode: 0o600 });
 chmodSync(file, 0o600);
 
-console.log(`journey-seed: ${Object.values(personas).map(p => `${p.name} <${p.email}> (${p.role})`).join(", ")} ready, TOTP factors verified; panel "${PANEL}" ready`);
-console.log(`journey-seed: run ${runId}: the client lab, Dana, Lee and the order are made by the spec through the screens; credentials written to ${file} (mode 600)`);
+console.log(`journey-seed: ${Object.values(personas).map(p => `${p.name} <${p.email}> (${p.role})`).join(", ")} ready, no TOTP factors`);
+console.log(`journey-seed: run ${runId}: the client lab, Dana, Lee, the instrument, the panel and the order are made by the spec through the screens; credentials written to ${file} (mode 600)`);
