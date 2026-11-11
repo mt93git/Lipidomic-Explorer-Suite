@@ -61,12 +61,36 @@ structure_ggplot_to_plotly <- function(g, panel = FALSE) {
   if (panel) plotly::layout(pl, annotations = list(list(text = txt, x = 0.5, y = 1.02, xref = "paper", yref = "paper", xanchor = "center", yanchor = "bottom", showarrow = FALSE, font = structure_font)))
   else plotly::layout(pl, title = list(text = txt, x = 0.01, xanchor = "left", font = structure_font), margin = list(t = if (nzchar(sb)) 80 else 50))
 }
+# Legend keys are always round dots: a bar (square key) or a symbol that is not a circle keeps drawing as it is,
+# but its legend entry is carried by an invisible circle trace in the same legend group.
+structure_round_legend <- function(pl) {
+  pl <- tryCatch(plotly::plotly_build(pl), error = function(e) NULL) %||% pl
+  data <- pl$x$data
+  if (is.null(data) || !length(data)) return(pl)
+  extra <- list()
+  for (i in seq_along(data)) {
+    tr <- data[[i]]
+    if (!isTRUE(tr$showlegend) || is.null(tr$name) || !nzchar(as.character(tr$name))) next
+    square <- identical(tr$type, "bar") || identical(tr$type, "histogram")
+    odd <- identical(tr$type, "scatter") && !is.null(tr$marker$symbol) && !all(as.character(tr$marker$symbol) %in% c("circle", "circle-open", "dot"))
+    if (!square && !odd) next
+    col <- tr$marker$color; if (is.null(col) || length(col) < 1) col <- tr$marker$line$color
+    col <- if (is.null(col) || length(col) < 1) "#B0B0B0" else col[[1]]
+    grp <- if (!is.null(tr$legendgroup) && nzchar(as.character(tr$legendgroup))) tr$legendgroup else as.character(tr$name)
+    data[[i]]$legendgroup <- grp; data[[i]]$showlegend <- FALSE
+    extra[[length(extra) + 1]] <- list(type = "scatter", mode = "markers", x = list(NULL), y = list(NULL), name = tr$name, legendgroup = grp, showlegend = TRUE,
+                                      marker = list(symbol = "circle", size = 9, color = col, line = list(width = 0)), hoverinfo = "skip")
+  }
+  if (length(extra)) pl$x$data <- c(data, extra)
+  pl
+}
 structure_team_plotly <- function(res, height = NULL) {
   finish <- function(pl) {
     h <- if (is.function(height)) tryCatch(height(), error = function(e) NULL) else height
     pl <- plotly::layout(pl, paper_bgcolor = "#ffffff", plot_bgcolor = "#ffffff", font = structure_font,
                          hoverlabel = list(bgcolor = "#ffffff", bordercolor = "#d9e1e3", font = list(family = structure_font$family, size = 10, color = "#20323b"), align = "left"))
     if (is.numeric(h) && length(h) == 1 && is.finite(h) && h > 100) pl <- plotly::layout(pl, height = h)
+    pl <- structure_round_legend(pl)
     pl |> plotly::event_register("plotly_click") |>
       plotly::config(displaylogo = FALSE, scrollZoom = FALSE, responsive = TRUE, modeBarButtonsToRemove = c("lasso2d", "select2d"))
   }
