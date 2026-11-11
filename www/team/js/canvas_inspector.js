@@ -174,17 +174,25 @@
       if (movedStats) { statsHome = document.createComment('statistics-controls'); movedStats.before(statsHome); statsBody.appendChild(movedStats); }
       else {
         // A PCA card keeps its PCA score analysis panel in the card's hidden module host: show it under Statistics.
-        var pm = /^(.*)-plot_pca$/.exec(node.dataset.plotId || ''), ph = pm && document.getElementById(pm[1] + '_host'), pp = ph && ph.querySelector('.rd-pca-score');
-        if (pp) { movedPca = pp; pcaHome = document.createComment('pca-score-panel'); pp.before(pcaHome); statsBody.appendChild(pp); }
+        var pm = /^(.*)-plot_(pca|pcascore)$/.exec(node.dataset.plotId || ''), ph = pm && document.getElementById(pm[1] + '_host'), pp = ph && ph.querySelector('.rd-pca-score');
+        if (pp) { pp.classList.toggle('is-score-card', pm[2] === 'pcascore'); pp.dataset.pcaCard = node.dataset.plotId; movedPca = pp; pcaHome = document.createComment('pca-score-panel'); pp.before(pcaHome); statsBody.appendChild(pp); }
         else if (!node.classList.contains('tc-illustration')) explainStatistics(node);
       }
       if (!node.classList.contains('tc-illustration')) fillData(node);
+      // The PCA score panel (moved here by either path above) hides its "Plot on canvas" button on the score figure itself.
+      var scorePanel = statsBody.querySelector('.rd-pca-score'); if (scorePanel) scorePanel.classList.toggle('is-score-card', /-plot_pcascore$/.test(node.dataset.plotId || ''));
       window.dispatchEvent(new CustomEvent('team-canvas-panel-open', {detail:{kind:'appearance'}}));
       inspector.hidden = false; layout.classList.add('tc-inspecting'); trigger.disabled = false; trigger.setAttribute('aria-expanded', 'true'); state(); inspector.scrollTop = 0;
       if (floating()) window.TeamCanvasFloatingPanel.open(inspector, node);
       if (focusControls || focusWasInMovedControl) focusFirstControl();
       resizeIfChanged(sizeBefore);
     }
+    // "Plot on canvas" in the PCA card's Statistics tab adds the PCA score figure as a card of its own.
+    document.addEventListener('click', function (event) {
+      var b = event.target.closest && event.target.closest('[data-pcs-plot]'), id = b && node && node.dataset.plotId;
+      if (!b || !id || !/-plot_pca$/.test(id) || !window.TeamCanvas || !TeamCanvas.addPcaScore) return;
+      event.preventDefault(); TeamCanvas.addPcaScore(id);
+    });
     root.addEventListener('pointerdown', function () { pointerActive = true; }, true);
     document.addEventListener('pointerup', function () { setTimeout(function(){pointerActive=false;},0); }, true);
     document.addEventListener('pointercancel', function () { pointerActive = false; }, true);

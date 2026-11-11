@@ -37,7 +37,7 @@ const {chromium} = require('../browser/ci/node_modules/playwright');
 
     const catalog = await page.evaluate(() => TeamCanvasCatalog.list);
     const expectedIds = `
-      results_dashboard-plot_pca results_dashboard-plot_violin results_dashboard-plot_dist results_dashboard-plot_comp results_dashboard-plot_heat
+      results_dashboard-plot_pca results_dashboard-plot_violin results_dashboard-plot_dist results_dashboard-plot_comp results_dashboard-plot_heat results_dashboard-plot_pcascore
       qc_pca_tab-boxplotAfterNorm qc_pca_tab-outlierPlot qc_pca_tab-pca2dPlot qc_pca_tab-pca2dVectorPlot qc_pca_tab-pca3dPlot qc_pca_tab-load2dPlot qc_pca_tab-load2dVectorPlot qc_pca_tab-load3dPlot qc_pca_tab-sampleCorrPlot qc_pca_tab-bqcPlot qc_pca_tab-bqcDeviationPlot qc_pca_tab-bqcAbundancePlot qc_pca_tab-outlierPcaPlot qc_pca_tab-guided_qc_plot
       barchart-barPlotUnfiltered barchart-barPlotFiltered barchart-donutPlotUnfiltered barchart-donutPlotFiltered
       volcano_tab-volcanoPlot lsea_tab-lseaPlot fla_tab-plotVolcano structural_tab-diffAcylPlot

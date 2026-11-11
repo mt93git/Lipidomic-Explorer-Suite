@@ -259,10 +259,8 @@ rd_pca_score_ui <- function(ns) {
     checkboxGroupInput(ns("pcs_groups"), "Groups to compare", choices = character()),
     selectInput(ns("pcs_test"), "Tests", c("Kruskal-Wallis + Mann-Whitney U (rank-based)" = "rank", "One-way ANOVA + Welch t-test" = "param"), selectize = FALSE),
     selectInput(ns("pcs_corr"), "Multiple-testing correction", c("Benjamini-Hochberg (FDR)" = "BH", "Holm" = "holm", "Bonferroni" = "bonferroni", "None (unadjusted)" = "none"), selectize = FALSE),
-    actionButton(ns("pcs_run"), "Run PCA score analysis", class = "btn-sm btn-primary"),
-    uiOutput(ns("pcs_status")),
-    plotly::plotlyOutput(ns("pcs_plot"), height = "340px"),
-    uiOutput(ns("pcs_table")),
+    tags$button(type = "button", class = "btn btn-sm btn-primary rd-pcs-plot-btn", `data-pcs-plot` = "1", "Plot on canvas"),
+    p(class = "rd-card-note rd-pcs-plot-note", "Adds the box plot and the group table as a figure on the canvas."),
     uiOutput(ns("pcs_report")))
 }
 
@@ -353,7 +351,8 @@ results_dashboard_ui <- function(id = "results_dashboard") {
       rd_card(ns, "pca", "Principal component analysis", "Samples projected on PC1 and PC2 of the selected abundance scale."),
       rd_card(ns, "comp", "Class signal composition", "Share of each sample's summed prepared signal by lipid class."),
       rd_card(ns, "dist", "Abundance distribution", "Per-sample distribution of log10 abundances."),
-      rd_card(ns, "heat", "Lipid heatmap", "Explore individual lipids by class or search the full available catalog.", "560px")),
+      rd_card(ns, "heat", "Lipid heatmap", "Explore individual lipids by class or search the full available catalog.", "560px"),
+      div(class = "rd-pcascore-slot", style = "display:none", plotly::plotlyOutput(ns("plot_pcascore"), height = "460px"))),
     div(class = "rd-methods",
       h3("How to read these views"),
       tags$ul(
@@ -712,7 +711,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     si <- sample_info()
     updateCheckboxGroupInput(session, "pcs_groups", choices = si$levels, selected = { keep <- intersect(si$levels, isolate(input$pcs_groups)); if (length(keep) >= 2L) keep else si$levels }, inline = FALSE)
   })
-  pcs_result <- eventReactive(input$pcs_run, {
+  pcs_result <- reactive({
     d <- pca_data(); si <- sample_info()
     k <- as.integer(sub("^PC", "", input$pcs_pc %||% "PC1"))
     validate(need(is.finite(k) && k >= 1L && k <= ncol(d$pc$x), "This principal component does not exist for the current data."))
@@ -724,16 +723,15 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     list(res = res, k = k, ve = d$ve[k], score = sc[keepg], group = grp[keepg], sample = names(d$pc$x[, k])[keepg],
          levels = chosen, colors = si$colors)
   })
-  output$pcs_status <- renderUI({
-    if (is.null(input$pcs_run) || input$pcs_run < 1) return(tags$p(class = "rd-card-note", "Choose the component, groups and tests, then run the analysis."))
-    NULL
-  })
-  output$pcs_plot <- plotly::renderPlotly({
+  # The canvas figure: one box per group with its samples, significance brackets, and the group table
+  # (colour, median, n) drawn inside the figure on the right.
+  output$plot_pcascore <- plotly::renderPlotly({
     r <- pcs_result(); res <- r$res; lev <- intersect(r$levels, res$tested)
     lab <- stats::setNames(sprintf("%s<br>(n=%d)", lev, res$n[lev]), lev)
+    colof <- function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) "#6b7280" else col }
     p <- plotly::plot_ly()
     for (g in lev) {
-      i <- r$group == g; col <- r$colors[[g]]; if (is.null(col) || is.na(col)) col <- "#6b7280"
+      i <- r$group == g; col <- colof(g)
       p <- plotly::add_trace(p, type = "box", x = rep(unname(lab[g]), sum(i)), y = r$score[i], name = g, text = r$sample[i],
         boxpoints = "all", jitter = 0.45, pointpos = 0, fillcolor = grDevices::adjustcolor(col, 0.30),
         line = list(color = "#6b7280", width = 1), marker = list(color = col, size = 7, line = list(color = "#ffffff", width = 0.6)),
@@ -749,16 +747,26 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     }
     ttl <- if (!is.null(res$omnibus)) sprintf("%s p = %s", res$omnibus$name, rd_pca_score_fmt(res$omnibus$p)) else NULL
     if (!is.null(ttl)) ann[[length(ann) + 1L]] <- list(x = 0, y = 1, xref = "paper", yref = "paper", text = ttl, showarrow = FALSE, xanchor = "left", yanchor = "bottom", font = list(size = 10, color = "#52514e"))
+    # Group table inside the figure (paper coordinates, right of the plot area).
+    cell <- function(x, y, text, xanchor, bold = FALSE) list(x = x, y = y, xref = "paper", yref = "paper", text = if (bold) paste0("<b>", text, "</b>") else text,
+      showarrow = FALSE, xanchor = xanchor, yanchor = "middle", align = xanchor, font = list(size = 10, color = "#20323b"))
+    tx <- c(name = 0.715, med = 0.925, n = 0.995); y_head <- 0.93; step <- 0.075
+    ann[[length(ann) + 1L]] <- cell(tx[["name"]], y_head, "Group", "left", TRUE)
+    ann[[length(ann) + 1L]] <- cell(tx[["med"]], y_head, sprintf("Median PC%d", r$k), "right", TRUE)
+    ann[[length(ann) + 1L]] <- cell(tx[["n"]], y_head, "n", "right", TRUE)
+    for (j in seq_along(lev)) {
+      g <- lev[j]; y <- y_head - step * j; nm <- if (nchar(g) > 20L) paste0(substr(g, 1L, 19L), "…") else g
+      ann[[length(ann) + 1L]] <- cell(tx[["name"]], y, sprintf("<span style='color:%s'>●</span> %s", colof(g), htmltools::htmlEscape(nm)), "left")
+      ann[[length(ann) + 1L]] <- cell(tx[["med"]], y, sprintf("%+.2f", res$median[[g]]), "right")
+      ann[[length(ann) + 1L]] <- cell(tx[["n"]], y, as.character(res$n[[g]]), "right")
+    }
+    bottom <- y_head - step * (length(lev) + 0.6)
+    shapes[[length(shapes) + 1L]] <- list(type = "rect", xref = "paper", yref = "paper", x0 = 0.70, x1 = 1.0, y0 = bottom, y1 = y_head + 0.05, line = list(color = "#d9e1e3", width = 1), fillcolor = "rgba(0,0,0,0)")
+    shapes[[length(shapes) + 1L]] <- list(type = "line", xref = "paper", yref = "paper", x0 = 0.70, x1 = 1.0, y0 = y_head - step / 2, y1 = y_head - step / 2, line = list(color = "#d9e1e3", width = 1))
     p |> rd_layout(meta = team_condition_meta(), shapes = shapes, annotations = ann,
-      xaxis = list(title = "", type = "category", categoryorder = "array", categoryarray = unname(lab[lev])),
+      xaxis = list(title = "", type = "category", domain = c(0, 0.66), categoryorder = "array", categoryarray = unname(lab[lev])),
       yaxis = list(title = sprintf("PC%d score (%.1f%% of variance)", r$k, r$ve), zeroline = TRUE, zerolinecolor = "#b9b8b2", gridcolor = "#ebeae6", range = c(yr[1] - span * 0.05, top + span * 0.12)),
-      showlegend = FALSE, margin = list(l = 60, r = 15, t = 30, b = 60))
-  })
-  output$pcs_table <- renderUI({
-    r <- pcs_result(); res <- r$res; lev <- intersect(r$levels, names(res$n))
-    rows <- lapply(lev, function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) col <- "#52514e"
-      tags$tr(tags$td(tags$span(class = "rd-pca-swatch", style = paste0("background:", col)), g), tags$td(style = "text-align:right", sprintf("%+.2f", res$median[[g]])), tags$td(style = "text-align:right", res$n[[g]])) })
-    tags$table(class = "rd-pca-score-table", tags$thead(tags$tr(tags$th("Group"), tags$th(style = "text-align:right", sprintf("Median PC%d", r$k)), tags$th(style = "text-align:right", "n"))), tags$tbody(rows))
+      showlegend = FALSE, margin = list(l = 60, r = 10, t = 30, b = 60))
   })
   output$pcs_report <- renderUI({
     r <- pcs_result(); res <- r$res; pr <- res$pairs

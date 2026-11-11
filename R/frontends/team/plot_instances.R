@@ -1,7 +1,7 @@
 # Team canvas copies are real scientific modules with a private input namespace.
 # The shared prepared matrix remains authoritative; only view controls are local.
 team_plot_instance_families <- list(
-  results_dashboard = list(ui = 'results_dashboard_ui', server = 'results_dashboard_module_server', outputs = c('plot_pca','plot_violin','plot_dist','plot_comp','plot_heat')),
+  results_dashboard = list(ui = 'results_dashboard_ui', server = 'results_dashboard_module_server', outputs = c('plot_pca','plot_violin','plot_dist','plot_comp','plot_heat','plot_pcascore')),
   qc_pca_tab = list(ui='qc_boxplot_ui',server='qc_boxplot_server',colors=TRUE,outputs=c('boxplotAfterNorm','outlierPlot','pca2dPlot','pca2dVectorPlot','pca3dPlot','load2dPlot','load2dVectorPlot','load3dPlot','sampleCorrPlot','bqcPlot','bqcDeviationPlot','bqcAbundancePlot','outlierPcaPlot','guided_qc_plot')),
   barchart = list(ui='barchart_ui',server='barchart_server',colors=TRUE,outputs=c('barPlotUnfiltered','barPlotFiltered','donutPlotUnfiltered','donutPlotFiltered')),
   heatmap_barchart_tab = list(ui='heatmap_ui',server='heatmap_server',outputs=c('heatmapPlot','heatmapSDPlot','filteredHeatmapPlot','filteredHeatmapSDPlot','violin_plot_render')),
