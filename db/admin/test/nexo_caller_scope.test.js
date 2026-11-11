@@ -9,8 +9,9 @@ let db;
 afterEach(async () => { await db?.close(); });
 
 const callerRows = () => db.query('SELECT * FROM admin.nexo_caller() ORDER BY client_id').then((r) => r.rows);
-const staff = (u) => [{ caller: u, caller_view: 'staff', client_id: null }];
-const member = (u, ...clients) => clients.sort().map((c) => ({ caller: u, caller_view: 'client', client_id: c }));
+// 0024 adds members_prepare: NULL on the staff row (no client), the client's switch (off here) on a client row.
+const staff = (u) => [{ caller: u, caller_view: 'staff', client_id: null, members_prepare: null }];
+const member = (u, ...clients) => clients.sort().map((c) => ({ caller: u, caller_view: 'client', client_id: c, members_prepare: false }));
 const archive = (table, where, params) =>
   db.query(`UPDATE admin.${table} SET archived_at = now(), archived_reason = 'synthetic: left' WHERE ${where}`, params);
 
@@ -28,7 +29,7 @@ describe('0011: admin.nexo_caller (definition)', () => {
     expect({ app: f.app, anon: f.anon, nexo: f.nexo }).toEqual({ app: true, anon: false, nexo: false });
     expect(f.provolatile).toBe('s');
     expect(f.pronargs).toBe(0);
-    expect(f.result).toBe('TABLE(caller uuid, caller_view text, client_id uuid)');
+    expect(f.result).toBe('TABLE(caller uuid, caller_view text, client_id uuid, members_prepare boolean)');
   });
 
   test('changes nothing else: nexo_reader still executes only its two functions', async () => {

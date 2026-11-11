@@ -87,8 +87,8 @@ async function archiveRun() {
     if (!withdrawn) console.log(`teardown: dataset ${id} is still released (no run signer could withdraw it); its order and client stay live`);
   }
   // A released dataset keeps its order and client live; everything else of the two run clients is archived. Their Nexo
-  // switch (0021/0022) is off again whatever stopped the run.
-  sql(`update admin.client set nexo_access = false where id in ('${clientA}', '${clientB}') and nexo_access;
+  // switches (0021/0022, members_prepare 0024) are off again whatever stopped the run.
+  sql(`update admin.client set nexo_access = false, members_prepare = false where id in ('${clientA}', '${clientB}') and (nexo_access or members_prepare);
        update admin.dataset set archived_at = now(), archived_reason = '${reason}'
          where client_id in ('${clientA}', '${clientB}') and archived_at is null and status <> 'released';
        update admin."order" o set archived_at = now(), archived_reason = '${reason}'
@@ -554,7 +554,7 @@ const nexoSwitch = (client, on) => rpc(adminToken, 'set_client_nexo_access', { p
 const switchOn = [await nexoSwitch(clientA, true), await nexoSwitch(clientB, true)];
 check('0022: the run\'s Admin turns Nexo on for both run clients', switchOn.every(r => r.ok), switchOn.map(show).join(' | '));
 const expectedCaller = (caller, view) => JSON.stringify([{ dataset_id: nxV1.body, order_code: nxOrder?.code, version: 1, storage_path: nxPath(1), sha256: digest(workbook(1)),
-  client_id: clientA, caller, caller_view: view }]);
+  client_id: clientA, caller, caller_view: view, members_prepare: false }]); // 0024's last column; the run never turns it on
 const empty = (r) => r.ok && Array.isArray(r.body) && r.body.length === 0;
 const asStaff = await callerRow(operatorToken, nxV1.body);
 check('caller: lab staff get the released, current dataset with client_id, caller and caller_view staff',
@@ -630,10 +630,10 @@ const nexoCaller = (token) => rpc(token, 'nexo_caller', {});
 const byClient = (rows) => JSON.stringify([...rows].sort((a, b) => String(a.client_id).localeCompare(String(b.client_id))));
 const scopeStaff = await nexoCaller(operatorToken);
 check('scope: lab staff get one row, caller_view staff and a null client_id',
-  scopeStaff.ok && JSON.stringify(scopeStaff.body) === JSON.stringify([{ caller: operator.id, caller_view: 'staff', client_id: null }]), show(scopeStaff));
+  scopeStaff.ok && JSON.stringify(scopeStaff.body) === JSON.stringify([{ caller: operator.id, caller_view: 'staff', client_id: null, members_prepare: null }]), show(scopeStaff));
 const scopeTwo = await nexoCaller(await signIn(twoClients));
 check('scope: a member of two clients gets two rows, one per client, caller_view client',
-  scopeTwo.ok && Array.isArray(scopeTwo.body) && byClient(scopeTwo.body) === byClient([clientA, clientB].map(c => ({ caller: twoClients.id, caller_view: 'client', client_id: c }))),
+  scopeTwo.ok && Array.isArray(scopeTwo.body) && byClient(scopeTwo.body) === byClient([clientA, clientB].map(c => ({ caller: twoClients.id, caller_view: 'client', client_id: c, members_prepare: false }))),
   show(scopeTwo));
 const scopeLeft = await nexoCaller(await signIn(leftClient));
 check('scope: a member whose only membership is archived gets an empty answer', empty(scopeLeft), show(scopeLeft));
@@ -1214,6 +1214,45 @@ try {
   const restored = await rpc(adminToken, 'set_client_contact', { p_body: cnPrior });
   check('0023 teardown: the contact for clients is back to what it was before the run',
     restored.ok && sql(`select coalesce((select body from admin.client_contact where archived_at is null), '')`) === cnPrior, show(restored));
+}
+
+// ---------------------------------------------------------------- Members prepare in Nexo (0024_nexo_members_prepare.sql)
+// The run's Admin turns Nexo on for client A, then lets its members prepare (the Operator cannot, 42501). The run's
+// requester (client A) then reads members_prepare true in nexo_caller and in every nexo_datasets_for_caller row (the
+// list is empty when the run left no released dataset of client A live, and then nexo_caller is the check). Nexo
+// access off empties nexo_caller for the member, and members_prepare cannot be turned on while Nexo is off (55000).
+// In `finally` both switches of client A are off again (through the rpc, then directly as a fallback).
+try {
+  const mpSwitch = (token, on) => rpc(token, 'set_client_members_prepare', { p_client_id: clientA, p_enabled: on });
+  const mpNexo = (on) => rpc(adminToken, 'set_client_nexo_access', { p_client_id: clientA, p_enabled: on });
+  const mpNexoOn = await mpNexo(true);
+  const mpByOperator = await mpSwitch(operatorToken, true);
+  const mpOn = await mpSwitch(adminToken, true);
+  check('0024: the run\'s Admin turns Nexo on for client A and lets its members prepare; the Operator is refused (42501)',
+    mpNexoOn.ok && pgRefused(mpByOperator) && mpOn.ok && sql(`select members_prepare from admin.client where id = '${clientA}'`) === 't',
+    [mpNexoOn, mpByOperator, mpOn].map(show).join(' | '));
+
+  const mpCaller = await rpc(requesterToken, 'nexo_caller', {});
+  const mpReleased = Number(sql(`select count(*) from admin.dataset d join admin."order" o on o.id = d.order_id
+    where d.client_id = '${clientA}' and d.status = 'released' and d.archived_at is null and o.archived_at is null`));
+  const mpDatasets = await rpc(requesterToken, 'nexo_datasets_for_caller', {});
+  check(`0024: a client A member reads members_prepare true in nexo_caller and in nexo_datasets_for_caller (${mpReleased} released dataset(s) of client A)`,
+    mpCaller.ok && JSON.stringify(mpCaller.body) === JSON.stringify([{ caller: requester.id, caller_view: 'client', client_id: clientA, members_prepare: true }])
+      && mpDatasets.ok && Array.isArray(mpDatasets.body) && mpDatasets.body.length === mpReleased
+      && mpDatasets.body.every(r => r.client_id === clientA && r.members_prepare === true),
+    `${show(mpCaller)} | ${show(mpDatasets)}`);
+
+  const mpNexoOff = await mpNexo(false);
+  const mpCallerOff = await rpc(requesterToken, 'nexo_caller', {});
+  const mpWhileOff = await mpSwitch(adminToken, true);
+  check('0024: with Nexo access off the member\'s nexo_caller is empty, and members_prepare cannot be turned on (55000)',
+    mpNexoOff.ok && empty(mpCallerOff) && !mpWhileOff.ok && mpWhileOff.body?.code === '55000',
+    [mpNexoOff, mpCallerOff, mpWhileOff].map(show).join(' | '));
+} finally {
+  const mpRestored = await rpc(adminToken, 'set_client_members_prepare', { p_client_id: clientA, p_enabled: false });
+  sql(`update admin.client set nexo_access = false, members_prepare = false where id = '${clientA}' and (nexo_access or members_prepare);`);
+  check('0024 teardown: client A\'s Nexo access and members_prepare are both off again',
+    sql(`select nexo_access::text || ' ' || members_prepare::text from admin.client where id = '${clientA}'`) === 'false false', show(mpRestored));
 }
 
 } catch (error) {

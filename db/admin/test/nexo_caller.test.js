@@ -19,7 +19,7 @@ let code;
 const forCaller = (ds) => db.query('SELECT * FROM admin.nexo_dataset_for_caller($1)', [ds]).then((r) => r.rows);
 const row = (view, caller) => ({
   dataset_id: D.current, order_code: code, version: 2, storage_path: pathOf(code, sha('2')), sha256: sha('2'),
-  client_id: C.A, caller, caller_view: view,
+  client_id: C.A, caller, caller_view: view, members_prepare: false, // 0024: the client's effective switch, off here
 });
 
 async function asAnon() {
@@ -59,7 +59,7 @@ describe('0010: admin.nexo_dataset_for_caller (definition)', () => {
     expect(f.acl).not.toMatch(/(^|[{,])=X/); // not PUBLIC
     expect({ app: f.app, anon: f.anon, nexo: f.nexo }).toEqual({ app: true, anon: false, nexo: false });
     expect(f.provolatile).toBe('s');
-    expect(f.result).toBe('TABLE(dataset_id uuid, order_code text, version integer, storage_path text, sha256 text, client_id uuid, caller uuid, caller_view text)');
+    expect(f.result).toBe('TABLE(dataset_id uuid, order_code text, version integer, storage_path text, sha256 text, client_id uuid, caller uuid, caller_view text, members_prepare boolean)'); // 0024 adds the last column
   });
 
   test('changes nothing else: nexo_reader still executes only its two functions', async () => {
@@ -204,13 +204,13 @@ describe('0022: the per-client Nexo switch', () => {
     const staff = { dataset: await forCaller(D.current), scope: await scope(), people: await people(C.A), peopleB: await people(C.B) };
     return { member, both, staff };
   }
-  const staffAnswers = () => ({ dataset: [row('staff', U.owner)], scope: [{ caller: U.owner, caller_view: 'staff', client_id: null }] });
+  const staffAnswers = () => ({ dataset: [row('staff', U.owner)], scope: [{ caller: U.owner, caller_view: 'staff', client_id: null, members_prepare: null }] });
 
   test('off (the default for every client): no row for the client member from any of the three; staff keep theirs', async () => {
     await setNexoAccess(db, C.B, true);
     const a = await answers();
     expect(a.member).toEqual({ dataset: [], scope: [], people: staffPeople }); // the member is not listed; staff entries stay
-    expect(a.both).toEqual([{ caller: U.both, caller_view: 'client', client_id: C.B }]); // client B's switch is its own
+    expect(a.both).toEqual([{ caller: U.both, caller_view: 'client', client_id: C.B, members_prepare: false }]); // client B's switch is its own
     expect(a.staff).toEqual({ ...staffAnswers(), people: staffPeople, peopleB: [...staffPeople, ...members(U.bReq, U.both)] });
     await as(db, U.both);
     expect(await forCaller(B_DATASET)).toHaveLength(1);
@@ -220,9 +220,9 @@ describe('0022: the per-client Nexo switch', () => {
     await setNexoAccess(db, C.B, true);
     await setNexoAccess(db, C.A, true);
     const on = await answers();
-    expect(on.member).toEqual({ dataset: [row('client', U.aReq)], scope: [{ caller: U.aReq, caller_view: 'client', client_id: C.A }],
+    expect(on.member).toEqual({ dataset: [row('client', U.aReq)], scope: [{ caller: U.aReq, caller_view: 'client', client_id: C.A, members_prepare: false }],
       people: [...staffPeople, ...members(U.aAdmin, U.aReq, U.aView, U.both)] });
-    expect(on.both).toEqual([C.A, C.B].sort().map((client_id) => ({ caller: U.both, caller_view: 'client', client_id })));
+    expect(on.both).toEqual([C.A, C.B].sort().map((client_id) => ({ caller: U.both, caller_view: 'client', client_id, members_prepare: false })));
     expect(on.staff).toEqual({ ...staffAnswers(), people: [...staffPeople, ...members(U.aAdmin, U.aReq, U.aView, U.both)],
       peopleB: [...staffPeople, ...members(U.bReq, U.both)] });
 
@@ -237,6 +237,6 @@ describe('0022: the per-client Nexo switch', () => {
     await db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.operator]);
     await as(db, U.operator);
     expect(await forCaller(D.current)).toEqual([row('staff', U.operator)]);
-    expect(await scope()).toEqual([{ caller: U.operator, caller_view: 'staff', client_id: null }]);
+    expect(await scope()).toEqual([{ caller: U.operator, caller_view: 'staff', client_id: null, members_prepare: null }]);
   });
 });
