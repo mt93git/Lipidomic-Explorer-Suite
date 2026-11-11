@@ -22,7 +22,7 @@ const dataset = (over: Partial<DatasetRecord> = {}): DatasetRecord => ({
   version: 1, status: "built", builtAt: "2026-11-09T16:57:00Z", builtBy: "Example Operator", releasedAt: null, projectId: null, projectName: null,
   full: file("Dataset v1 workbook", "a"), analysis: file("Analysis file", "b"), companion: file("Companion file", "c"),
   provenance: { sourceSha256: "d".repeat(64), sciexOsVersion: null, processingMethod: null, acceptedAt: null, headers: null },
-  signatures: [], archivedAt: null, archivedReason: null, ...over,
+  signatures: [], exclusions: [], archivedAt: null, archivedReason: null, ...over,
 });
 const show = async (me: LabPerson, over: Partial<DatasetRecord> = {}) => {
   const view: ReleaseView = { dataset: dataset(over), policy: { ...defaultPolicy, requiredSignatures: 2 }, people: [ana, ben, op], me, versions: [], demoActors: null };
@@ -76,5 +76,15 @@ describe("dataset version page: the action first", () => {
     const manifest = screen.getByRole("region", { name: "Files of this version" });
     expect(within(manifest).getAllByRole("button", { name: /^Copy SHA-256 of / })).toHaveLength(4);
     expect(within(manifest).getByRole("button", { name: "Copy SHA-256 of Source TXT" })).toBeVisible();
+  });
+  it("lists the QC review's exclusions in force at the build as recorded decisions (code, reason, who, when)", async () => {
+    await show(ana, { exclusions: [{ sampleCode: "ORD900-S002", reason: "haemolysed tube", decidedBy: "Example Operator", decidedAt: "2026-11-09T15:00:00Z" }] });
+    const manifest = screen.getByRole("region", { name: "Files of this version" });
+    const list = within(manifest).getByRole("list", { name: "Sample exclusions" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(list).toHaveTextContent(/ORD900-S002 · haemolysed tube\s*Example Operator · /);
+    expect(manifest).toHaveTextContent("They are not applied to the files: every sample's data is in this version.");
+    await show(ana);
+    expect(within(screen.getByRole("region", { name: "Files of this version" })).getByText("None recorded when this version was built.")).toBeInTheDocument();
   });
 });

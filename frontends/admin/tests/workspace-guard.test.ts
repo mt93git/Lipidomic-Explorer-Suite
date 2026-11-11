@@ -42,6 +42,8 @@ describe("every lab page is guarded on the server", () => {
     "client/home/page.tsx": /requireWorkspace\("client"\)/,
     "client/request-order/page.tsx": /requireWorkspace\("client"\)/,
     "orders/[code]/page.tsx": /requireWorkspace\("all"\)/,
+    // 0028: everyone's own email switches; the send log only for lab Owner and Admin (mayReadNotificationLog).
+    "notifications/page.tsx": /await requireWorkspace\("all"\)[\s\S]*const showLog = mayReadNotificationLog\(session\)/,
     "choose-client/page.tsx": /requireSession\(\)/,
     "[...path]/page.tsx": /requireWorkspace\(route\.audience\)/,
     // F4: a deliverable's download serves lab staff and its client; deliverableDownload applies downloadDecision.

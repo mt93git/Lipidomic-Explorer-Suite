@@ -12,12 +12,13 @@ export const navigation: NavGroup[] = [
     { label: "New order", href: "/new-order", phase: "Phase 1 · Wave 2", description: "Create an order and define its requested panel.", ready: true },
     { label: "Receive shipment", href: "/receive-shipment", phase: "Phase 1 · Wave 2", description: "Record arrival, condition, and shipment contents.", ready: true },
     { label: "Sample registry", href: "/sample-registry", phase: "Phase 1 · Wave 2", description: "Register samples and review their identifiers.", ready: true },
-    { label: "Storage", href: "/storage", phase: "Phase 1 · Wave 2", description: "Track sample locations and storage movements." },
     { label: "Batch builder", href: "/batch-builder", phase: "Phase 1 · Wave 3", description: "Assemble a batch with samples, blanks, and pooled QC.", ready: true },
+    // After Batch builder: a sample's aliquot exists once its batch is saved.
+    { label: "Storage", href: "/storage", phase: "Phase 1 · Wave 2", description: "Find each aliquot's box and position; place, move or remove aliquots.", ready: true },
     { label: "Batch run", href: "/batch-run", phase: "Phase 1 · Wave 3", description: "Export a frozen sequence and record acquisition.", ready: true },
     { label: "Ingest results", href: "/ingest-results", phase: "Phase 1 · Wave 3", description: "Accept a results file and reconcile injection names.", ready: true },
     { label: "Name dictionary", href: "/name-dictionary", phase: "Phase 1 · Wave 3", description: "Review explicit analyte name mappings.", ready: true },
-    { label: "QC review", href: "/qc-review", phase: "Phase 1 · Wave 4", description: "Review QC, exclusions, and the processing record." },
+    { label: "QC review", href: "/qc-review", phase: "Phase 1 · Wave 4", description: "Record sample exclusions and mark processed orders QC reviewed.", ready: true },
     { label: "Release", href: "/release", phase: "Phase 1 · Wave 4", description: "Collect signatures from two different people before release.", ready: true },
     { label: "Datasets", href: "/datasets", phase: "Phase 1 · Wave 4", description: "Find frozen dataset versions and their provenance.", ready: true },
   ] },
@@ -30,12 +31,13 @@ export const navigation: NavGroup[] = [
     { label: "Audit log", href: "/audit-log", phase: "Phase 1 · Wave 2", description: "Inspect the append-only record of changes.", ready: true },
     { label: "Release policy", href: "/release-policy", phase: "Phase 1 · Wave 4", description: "Who may sign a release and how many signatures it needs.", ready: true },
     { label: "Shipping instructions", href: "/shipping-instructions", phase: "Phase 1 · Client portal", description: "What clients read on an accepted request before they ship.", ready: true },
-    { label: "Instruments & panels", href: "/instruments-panels", phase: "Phase 2", description: "Configure instrument and assay panel records." },
-    { label: "Notifications", href: "/notifications", phase: "Phase 2", description: "Manage workflow notifications and preferences." },
+    { label: "Instruments & panels", href: "/instruments-panels", phase: "Phase 1 · Lab setup", description: "The lab's instruments and the panels New order and Batch builder offer.", ready: true },
+    { label: "Notifications", href: "/notifications", phase: "Phase 1 · Client portal", description: "Your email notifications, and the lab's recent sends.", ready: true },
   ] },
   { title: "CLIENT PORTAL", audience: "client", items: [
     { label: "Home", href: "/client/home", phase: "Phase 1 · Client portal", description: "Your selected client's orders, each at its step, and the datasets released to it.", ready: true },
     { label: "Request an order", href: "/client/request-order", phase: "Phase 1 · Client portal", description: "Ask the lab for an order; it accepts or tells you why not.", ready: true, roles: ["Client admin", "Requester"] },
+    { label: "Notifications", href: "/notifications", phase: "Phase 1 · Client portal", description: "The emails you get when the lab answers your request or releases a dataset.", ready: true },
   ] },
 ];
 

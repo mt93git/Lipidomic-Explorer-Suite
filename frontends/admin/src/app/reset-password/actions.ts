@@ -12,7 +12,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 export type ResetState = { error?: string; expired?: boolean; spent?: boolean; attempt?: number };
 const expired: ResetState = { expired: true };
 
-// The Reset password form's POST: the only place the link's token is checked and spent. The password rules come
+// The Reset password form's POST (and the Activate page's, purpose=activate: the same link and steps, only the words and
+// the sign-in banner differ): the only place the link's token is checked and spent. The password rules come
 // first so a typo does not use up the link. The password goes to GoTrue only and is never stored or logged.
 export async function resetPasswordAction(previous: ResetState, form: FormData): Promise<ResetState> {
   const attempt = (previous.attempt ?? 0) + 1;
@@ -34,5 +35,5 @@ export async function resetPasswordAction(previous: ResetState, form: FormData):
   store.set(signedOutCookie, "1", preferenceCookieOptions);
   store.set(clientCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
   store.set(viewCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
-  return redirectAfterAction("/sign-in?reset=done");
+  return redirectAfterAction(form.get("purpose") === "activate" ? "/sign-in?activated=done" : "/sign-in?reset=done");
 }

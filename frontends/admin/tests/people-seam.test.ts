@@ -133,13 +133,32 @@ test("live: one list of lab staff and client members, emails from accepted invit
     ],
     client: [{ id: "c1", name: "Synthetic Client", archived_at: null }],
   });
-  vi.mocked(createAdminClient).mockResolvedValue({ schema: vi.fn(() => db) } as never);
+  // admin.account_state (0029), read by a lab Owner or Admin: the Owner has a factor; the Operator signed in (to Team) only.
+  const rpc = vi.fn().mockResolvedValue({ data: [
+    { user_id: "u-owner", email: "owner@example.test", signed_in_at: "2026-10-01T08:00:00Z", two_step: true, has_password: true, activation_sent_at: null },
+    { user_id: "u-op", email: "op@example.test", signed_in_at: "2026-10-01T08:00:00Z", two_step: false, has_password: true, activation_sent_at: null },
+    { user_id: "u-member", email: "member@example.test", signed_in_at: "2026-10-02T08:00:00Z", two_step: false, has_password: true, activation_sent_at: null },
+    { user_id: "u-named", email: "robin@example.test", signed_in_at: null, two_step: false, has_password: false, activation_sent_at: "2026-11-11T09:00:00Z" },
+  ], error: null });
+  vi.mocked(createAdminClient).mockResolvedValue({ schema: vi.fn(() => Object.assign(db, { rpc })) } as never);
   const view = await listPeople();
-  expect(view.people.map(person => [person.kind, person.name, person.role])).toEqual([
-    ["lab_staff", "Synthetic Owner", "owner"], ["lab_staff", "User u-op", "operator"], ["client_member", "member@example.test", "viewer"], ["client_member", "Robin Example", "requester"],
+  expect(rpc).toHaveBeenCalledWith("account_state");
+  expect(view.people.map(person => [person.kind, person.name, person.role, person.email, person.twoStep, person.activation?.active])).toEqual([
+    ["lab_staff", "Synthetic Owner", "owner", "owner@example.test", true, true], ["lab_staff", "op@example.test", "operator", "op@example.test", false, false],
+    ["client_member", "member@example.test", "viewer", "member@example.test", false, true], ["client_member", "Robin Example", "requester", "robin@example.test", false, false],
   ]);
+  expect(view.people[3].activation).toEqual({ active: false, hasPassword: false, lastSentAt: "2026-11-11T09:00:00Z" });
   expect(view.invitations.map(item => [item.email, item.target])).toEqual([["pending@example.test", "Lab Operator"]]);
   expect(view).toMatchObject({ canInviteLab: false, canInviteClient: true, demoActors: null });
+
+  // An Operator reads no account state: People says "Not readable" (null), and account_state is not called.
+  rpc.mockClear();
+  session = { userId: "u-op", role: "Operator", view: "staff" };
+  const operatorView = await listPeople();
+  expect(rpc).not.toHaveBeenCalled();
+  expect(operatorView.people.map(person => [person.name, person.twoStep, person.activation])).toEqual([
+    ["Synthetic Owner", null, null], ["User u-op", null, null], ["member@example.test", null, null], ["Robin Example", null, null],
+  ]);
 });
 
 // Security review findings 4 and 5: an existing account accepts while signed in; a failed cleanup is surfaced.

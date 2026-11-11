@@ -2,22 +2,25 @@
 // over an immutable state slice (kept in DemoState per browser; the server side is data/people.ts). Refusals use the
 // wording of the 0015 database functions they stand in for; who may do what comes from roles.ts.
 import { createHash } from "node:crypto";
+import type { AccountFacts, Activation } from "./activation";
 import { demoClients } from "./demo";
 import { demoLabStaff } from "./release-demo";
 import { allows, clientRoleNames, clientRoles, labRoleNames, labRoles, type ClientRoleKey, type LabRoleKey } from "./roles";
 import { DataError } from "./samples";
 
 export type PersonKind = "lab_staff" | "client_member";
-// twoStep: whether the person has an app authenticator; null when the app cannot read it (live mode, other people).
+// twoStep: whether the person has an app authenticator; activation: whether they have signed in to Admin (0029,
+// activation.ts). Both null when the app cannot read them (live, for anyone but a lab Owner or Admin).
 export type Person = {
   kind: PersonKind; id: string; userId: string; name: string; email: string | null; role: string;
-  clientId: string | null; clientName: string | null; twoStep: boolean | null;
+  clientId: string | null; clientName: string | null; twoStep: boolean | null; activation: Activation | null;
 };
 export type Invitation = {
   id: string; email: string; labRole: LabRoleKey | null; clientId: string | null; clientRole: ClientRoleKey | null;
   target: string; createdAt: string; expiresAt: string;
 };
-export type DemoPerson = Person & { archivedAt: string | null; archivedReason: string | null };
+// signedInAt and hasPassword: the demo's stand-ins for admin.account_state (no value: never signed in, no password).
+export type DemoPerson = Omit<Person, "activation"> & { archivedAt: string | null; archivedReason: string | null; signedInAt?: string | null; hasPassword?: boolean };
 // clientName: kept when the client is not one of the fixed demo clients (one created while approving an access request).
 export type DemoInvitation = Omit<Invitation, "target"> & {
   clientName?: string | null; tokenSha256: string; createdBy: string; acceptedAt: string | null; acceptedBy: string | null; revokedAt: string | null; revokedBy: string | null;
@@ -43,11 +46,12 @@ export function targetLabel(target: { labRole: string | null; clientRole: string
 export function demoPeopleSeed(): PeopleState {
   const lab: DemoPerson[] = demoLabStaff.map(person => ({
     kind: "lab_staff", id: `lab-${person.userId}`, userId: person.userId, name: person.name, email: `${person.userId.replace("example-", "")}@example.test`, role: person.role,
-    clientId: null, clientName: null, twoStep: true, archivedAt: null, archivedReason: null,
+    clientId: null, clientName: null, twoStep: true, archivedAt: null, archivedReason: null, signedInAt: "2026-10-01T08:00:00.000Z", hasPassword: true,
   }));
+  // The Requester has never signed in and has no password yet: People offers them an activation email.
   const members: DemoPerson[] = [
-    { userId: "example-client-member", name: "Demo Client Admin", role: "client_admin", clientId: "example-atlas" },
-    { userId: "example-requester", name: "Demo Requester", role: "requester", clientId: "example-cedar" },
+    { userId: "example-client-member", name: "Demo Client Admin", role: "client_admin", clientId: "example-atlas", signedInAt: "2026-10-01T08:00:00.000Z", hasPassword: true },
+    { userId: "example-requester", name: "Demo Requester", role: "requester", clientId: "example-cedar", signedInAt: null, hasPassword: false },
   ].map(member => ({ ...member, kind: "client_member", id: `member-${member.userId}`, email: `${member.userId.replace("example-", "")}@example.test`, clientName: clientName(member.clientId), twoStep: false, archivedAt: null, archivedReason: null }));
   return { people: [...lab, ...members], invitations: [] };
 }
@@ -103,6 +107,11 @@ export function createDemoInvitation(state: PeopleState, input: InvitationTarget
   return { ...state, invitations: [...state.invitations, invitation] };
 }
 
+// admin.account_state for a demo person; lastSent: when an activation email was last sent to them (the demo sends none).
+export const demoAccountFacts = (person: DemoPerson, lastSent: string | null = null): AccountFacts => ({
+  email: person.email, signedInAt: person.signedInAt ?? null, twoStep: !!person.twoStep, hasPassword: person.hasPassword ?? false, activationSentAt: lastSent,
+});
+
 export function pendingInvitations(state: PeopleState, now: Date): Invitation[] {
   return state.invitations.filter(item => pending(item, now)).map(item => ({
     id: item.id, email: item.email, labRole: item.labRole, clientId: item.clientId, clientRole: item.clientRole,
@@ -131,7 +140,7 @@ export function acceptDemoInvitation(state: PeopleState, input: { token: string;
   const person: DemoPerson = {
     kind: item.labRole ? "lab_staff" : "client_member", id: `${item.labRole ? "lab" : "member"}-${input.userId}`, userId: input.userId,
     name: (!item.labRole && input.nameFor?.(item.id)) || item.email, email: item.email, role: (item.labRole ?? item.clientRole) as string, clientId: item.clientId, clientName: invitationClient(item),
-    twoStep: false, archivedAt: null, archivedReason: null,
+    twoStep: false, archivedAt: null, archivedReason: null, signedInAt: null, hasPassword: true,
   };
   const at = input.now.toISOString();
   return {

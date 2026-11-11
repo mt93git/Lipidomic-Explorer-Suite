@@ -33,6 +33,8 @@
 .state[data-status="built"] { background: var(--warning-tint); color: var(--warning); }
 .state[data-status="withdrawn"] { background: var(--danger-tint); color: var(--danger); }
 .scroll { overflow-x: auto; }
+.subhead { font-size: var(--text-sm); margin: 18px 0 6px; }
+.exclusions { list-style: none; margin: 4px 0 0; padding: 0; }
 /* Dataset page: where the version is (three steps) and the one action of the person looking at it. */
 .steps { list-style: none; margin: 0 0 20px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .steps li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: white; font-size: var(--text-sm); color: var(--muted); }

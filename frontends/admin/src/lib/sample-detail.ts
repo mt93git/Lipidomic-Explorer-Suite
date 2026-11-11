@@ -50,7 +50,9 @@ function summary(event: AuditEvent, ctx: AuditContext, subject: HistorySubject):
       return auditSummary(event, ctx);
     }
     case "exclusion":
-      return insert ? `Sample excluded${text(row.reason) ? `: ${row.reason}` : ""}` : auditSummary(event, ctx);
+      if (insert) return `Sample excluded${text(row.reason) ? `: ${row.reason}` : ""}`;
+      if (touched(event, "archived_at") && text(row.archived_at)) return `Exclusion withdrawn${text(row.archived_reason) ? `: ${row.archived_reason}` : ""}`;
+      return auditSummary(event, ctx);
     case "injection": {
       const name = text(row.sample_name) ?? "";
       if (insert) return `Planned as injection ${name}`.trim();

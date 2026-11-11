@@ -4,7 +4,7 @@
 .link label { grid-column: 1 / -1; }
 .link input { font-family: var(--font-mono), monospace; font-size: var(--text-xs); }
 .link :global(.button) { margin-left: 0; }
-.scroll { max-width: 100%; overflow-x: auto; }
+.scroll { position: relative; max-width: 100%; overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm); }
 .table th { color: var(--muted); font-weight: 700; }
 .table th, .table td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
@@ -30,3 +30,10 @@
 /* Copy message after a decline; on a phone the link takes its own row above its two buttons. */
 .copy { margin-top: 10px; }
 @media (max-width: 760px) { .link { grid-template-columns: 1fr 1fr; } .link input { grid-column: 1 / -1; } }
+/* Account column: the state, when the last activation email went, and the send button with its result. */
+.account { display: grid; gap: 6px; justify-items: start; min-width: 190px; }
+.account small { font-size: var(--text-xs); }
+.activate { display: grid; gap: 8px; width: 100%; }
+.activate select { width: 100%; border: 1px solid #bfcbd5; padding: 8px 10px; border-radius: 5px; background: white; font: inherit; }
+.activate :global(.notice) { margin: 0; font-size: var(--text-xs); }
+.activateButton { position: relative; margin-left: 0; white-space: nowrap; }

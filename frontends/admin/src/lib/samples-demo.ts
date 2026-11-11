@@ -4,8 +4,9 @@ import { LAB_TIME_ZONE } from "./lab-time";
 import { stages, type Gate, type HistoryEvent, type Order } from "./models";
 import { conditionLabels, DataError, plural, registryClosedProblem, type SampleInput, type ShipmentInput } from "./samples";
 import { applyReleaseState, demoPolicy, type DemoDataset } from "./release-demo";
-import type { ReleasePolicy } from "./release";
+import type { RegistryEntry, ReleasePolicy } from "./release";
 import { applyBatchState, type DemoBatch } from "./batch-demo";
+import { applyQcState, type DemoQcState } from "./qc-review";
 
 export type DemoShipment = {
   id: string; orderCode: string; carrier: string; trackingNumber: string | null; condition: ShipmentInput["condition"];
@@ -20,7 +21,8 @@ export type DemoResult = { id: string; orderCode: string; sha256: string; accept
 // shipping: the lab's shipping instructions (set_shipping_instructions), shown to clients on an accepted request.
 // contact: the lab's contact for clients (set_client_contact, 0023), stored the same way.
 export type DemoShipping = { text: string; setAt: string; setBy: string };
-export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null; contact?: DemoShipping | null };
+// exclusions, qcReviews: the QC review's decisions (add_exclusion, withdraw_exclusion, mark_qc_checked; qc-review.ts).
+export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null; contact?: DemoShipping | null } & DemoQcState;
 
 export const emptyDemoState = (): DemoState => ({ shipments: [], samples: [], results: [], datasets: [] });
 
@@ -94,7 +96,19 @@ function shipmentTitle(shipment: DemoShipment): string {
 // The example orders with the demo's shipments and samples applied: stage, received date, gates, history and
 // progress follow what was recorded. Orders without records are returned untouched.
 export function applyDemoState(examples: Order[], state: DemoState): Order[] {
-  return applyBatchState(applyRecordedState(examples, state), state);
+  return applyQcState(applyBatchState(applyRecordedState(examples, state), state), state);
+}
+
+// An order's registry in the demo: the samples registered in this browser, or, for an example order nobody registered
+// here, its example registry (ORD048-S001 · Sample_001, ...). Release builds from it; QC review lists it.
+export function demoOrderSamples(order: Pick<Order, "code" | "sampleCount">, state: DemoState): (RegistryEntry & { id: string })[] {
+  const recorded = state.samples.filter(sample => sample.orderCode === order.code)
+    .map(sample => ({ id: sample.id, code: sample.code, full_name: sample.full_name, group1_term: sample.group1_term, group2_term: sample.group2_term, replicate_term: sample.replicate_term, patient_term: sample.patient_term, time_point_term: sample.time_point_term }));
+  if (recorded.length) return recorded;
+  return Array.from({ length: order.sampleCount }, (_, i) => {
+    const code = sampleCode(order.code, i + 1);
+    return { id: code, code, full_name: `Sample_${String(i + 1).padStart(3, "0")}`, group1_term: null, group2_term: null, replicate_term: null, patient_term: null, time_point_term: null };
+  });
 }
 
 function applyRecordedState(examples: Order[], state: DemoState): Order[] {

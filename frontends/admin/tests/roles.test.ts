@@ -19,7 +19,7 @@ function rolesOf(helper: string): string[] {
 
 test("every matrix row tied to a role helper lists exactly the roles that helper admits", () => {
   const tied = permissions.filter(row => bodies.has(row.rule));
-  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
+  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
   for (const row of tied) expect([...row.roles].sort(), row.key).toEqual(rolesOf(row.rule));
 });
 
@@ -45,11 +45,12 @@ const guards: Record<string, RegExp> = {
   is_lab_manager: /admin\.is_lab_manager\(\)/,
   lab_owner: /admin\.lab_role\(auth\.uid\(\)\) IS DISTINCT FROM 'owner'/,
   client_requester: /FROM admin\.client_member\s+WHERE user_id = auth\.uid\(\) AND client_id = p_client_id AND archived_at IS NULL\s+AND role IN \('client_admin', 'requester'\)/,
+  signed_in: /IF auth\.uid\(\) IS NULL THEN/,
 };
 
 test("each action row names the functions the app calls for it, and the row's rule is what guards them", () => {
   const withRpcs = permissions.filter(row => row.rpcs?.length);
-  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "release_policy", "request_order", "run_lab", "shipping_instructions", "submit"]);
+  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "instruments_panels", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "notification_prefs", "qc_review", "release_policy", "request_order", "run_lab", "shipping_instructions", "storage", "submit"]);
   for (const row of withRpcs) {
     for (const fn of row.rpcs ?? []) expect(guardedBody(fn), `${row.key}: ${fn}`).toMatch(guards[row.rule]);
   }
@@ -98,4 +99,56 @@ test("0024 row: only a lab Owner or Admin lets a client's members prepare in Nex
   expect(row.note).toMatch(/Needs Nexo access on; off by default/);
   for (const role of ["operator", "member", "client_admin", "requester", "viewer"]) expect(allows("members_prepare", role), role).toBe(false);
   expect(latestBody("set_client_members_prepare")).toMatch(/IF p_enabled AND NOT c\.nexo_access THEN/);
+});
+
+test("0026 row: only a lab Owner or Admin adds, edits and archives instruments and panels; the archive and dataset type rules", () => {
+  const row = permissions.find(item => item.key === "instruments_panels")!;
+  expect(row).toMatchObject({ area: "Lab administration", rule: "is_lab_manager" });
+  expect(row.rpcs).toEqual(["create_instrument", "update_instrument", "archive_instrument", "create_panel", "update_panel", "archive_panel"]);
+  expect([...row.roles].sort()).toEqual(rolesOf("is_lab_manager"));
+  for (const role of ["operator", "member", "client_admin", "requester", "viewer"]) expect(allows("instruments_panels", role), role).toBe(false);
+  expect(latestBody("archive_instrument")).toMatch(/FROM admin\.panel WHERE instrument_id = p_id AND archived_at IS NULL/);
+  expect(latestBody("update_panel")).toMatch(/p_dataset_type <> p\.dataset_type\s+AND \(EXISTS \(SELECT 1 FROM admin\."order" WHERE panel_id = p_id\) OR EXISTS \(SELECT 1 FROM admin\.batch WHERE panel_id = p_id\)\)/);
+  // The rows change only through those functions (no direct write grant is left for the app role).
+  expect(allSql).toMatch(/REVOKE INSERT, UPDATE ON admin\.instrument, admin\.panel FROM authenticated;/);
+});
+
+test("0025 row: any lab writer places, moves and removes aliquots; client roles and lab members do not", () => {
+  const row = permissions.find(item => item.key === "storage")!;
+  expect(row).toMatchObject({ area: "Lab work", rule: "is_lab_writer", rpcs: ["place_aliquot", "move_aliquot", "remove_aliquot"] });
+  expect([...row.roles].sort()).toEqual(rolesOf("is_lab_writer"));
+  for (const role of ["member", "client_admin", "requester", "viewer"]) expect(allows("storage", role), role).toBe(false);
+  // A move archives the old placement as 'moved' before the new one; removing needs a reason; nobody writes box_position directly.
+  expect(latestBody("move_aliquot")).toMatch(/archived_reason = 'moved'[\s\S]*INSERT INTO admin\.box_position/);
+  expect(latestBody("remove_aliquot")).toMatch(/IF v_reason IS NULL/);
+  expect(allSql).toMatch(/REVOKE INSERT, UPDATE ON admin\.box_position FROM authenticated;/);
+  // The two reads the screen uses are for lab staff only.
+  for (const fn of ["storage_boxes", "storage_aliquots"]) expect(latestBody(fn), fn).toMatch(/IF NOT admin\.is_lab_staff\(auth\.uid\(\)\) THEN/);
+});
+
+test("0027 row: any lab writer records QC decisions; client roles and a lab member read them at most", () => {
+  const row = permissions.find(item => item.key === "qc_review")!;
+  expect(row).toMatchObject({ area: "Lab work", rule: "is_lab_writer", rpcs: ["add_exclusion", "withdraw_exclusion", "mark_qc_checked"] });
+  expect([...row.roles].sort()).toEqual(rolesOf("is_lab_writer"));
+  for (const role of ["member", "client_admin", "requester", "viewer"]) expect(allows("qc_review", role), role).toBe(false);
+  // The stage rules the row's note relies on: exclusions only at processed or qc_checked, the mark only from processed,
+  // and the build does not read exclusions (hooks never change science).
+  expect(guardedBody("add_exclusion")).toMatch(/o\.stage NOT IN \('processed', 'qc_checked'\)/);
+  expect(guardedBody("withdraw_exclusion")).toMatch(/o\.stage NOT IN \('processed', 'qc_checked'\)/);
+  expect(latestBody("mark_qc_checked")).toMatch(/IF o\.stage <> 'processed' THEN/);
+  expect(guardedBody("build_dataset")).not.toMatch(/exclusion/);
+  expect(row.note).toMatch(/keeps every sample's data/);
+});
+
+test("0028 rows: everyone signed in sets only their own email switches; only a lab Owner or Admin reads the send log", () => {
+  const prefs = permissions.find(item => item.key === "notification_prefs")!;
+  expect(prefs).toMatchObject({ rule: "signed_in", rpcs: ["set_my_notification_pref"] });
+  expect(latestBody("set_my_notification_pref")).toMatch(/INSERT INTO admin\.notification_pref AS f \(user_id, kind, enabled\) VALUES \(auth\.uid\(\), p_kind, p_enabled\)/);
+  for (const role of ["owner", "admin", "operator", "client_admin", "requester", "viewer"]) expect(allows("notification_prefs", role), role).toBe(true);
+  const log = permissions.find(item => item.key === "notification_log")!;
+  expect([...log.roles].sort()).toEqual(rolesOf("is_lab_manager"));
+  expect(allSql).toMatch(/CREATE POLICY notification_log_read ON admin\.notification_log FOR SELECT TO authenticated USING \(admin\.is_lab_manager\(\)\);/);
+  expect(allSql).toMatch(/GRANT INSERT ON admin\.notification_log TO service_role;/);
+  expect(allSql).not.toMatch(/GRANT [^;]*INSERT[^;]*ON admin\.notification_log TO [^;]*(anon|authenticated)/);
+  for (const role of ["operator", "member", "client_admin", "requester", "viewer"]) expect(allows("notification_log", role), role).toBe(false);
 });

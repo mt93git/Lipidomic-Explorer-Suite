@@ -11,6 +11,7 @@ const HOUR = 3_600_000;
 
 export const RESET_SENT = "If that email has an account, a reset link is on its way. It works once, for one hour.";
 export const RESET_DONE = "Password changed. Sign in with your new password.";
+export const ACTIVATE_DONE = "Password chosen. Sign in with your email and the new password. Lab staff then set up a two-step code with an authenticator app.";
 
 export function validateResetEmail(input: string): { email: string } | { error: string } {
   const email = input.trim().toLowerCase();
@@ -56,3 +57,5 @@ export function spendDemoResetLink(token: string, now = Date.now()): boolean {
   return issued !== undefined && now - issued < HOUR;
 }
 export const resetPath = (token: string) => `/reset-password?token_hash=${encodeURIComponent(token)}&type=recovery`;
+// The activation email's link (activation.ts): the same recovery token on the welcome version of the page.
+export const activatePath = (token: string) => `/activate?token_hash=${encodeURIComponent(token)}&type=recovery`;

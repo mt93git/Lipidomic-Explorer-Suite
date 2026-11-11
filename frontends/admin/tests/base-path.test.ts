@@ -106,9 +106,9 @@ describe("a non-default base path (/admin-staging)", () => {
     invite.set("email", "New.Member@example.test");
     invite.set("target", "client:viewer");
     invite.set("clientId", "example-atlas");
-    expect(await people.inviteAction({}, invite)).toEqual({ link: "/admin-staging/invite/example-token", email: "new.member@example.test" });
+    expect(await people.inviteAction({}, invite)).toMatchObject({ link: "/admin-staging/invite/example-token", email: "new.member@example.test" });
     const approve = new FormData();
     for (const [key, value] of Object.entries({ intent: "approve", requestId: "r-1", target: "existing", clientId: "example-atlas", role: "viewer" })) approve.set(key, value);
-    expect(await people.answerAccessAction({}, approve)).toEqual({ requestId: "r-1", link: "/admin-staging/invite/example-token" });
+    expect(await people.answerAccessAction({}, approve)).toMatchObject({ requestId: "r-1", link: "/admin-staging/invite/example-token" });
   });
 });

@@ -1,10 +1,11 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { activationOf, type AccountFacts } from "../activation";
 import { demoClients } from "../demo";
 import { getEnvironment } from "../environment";
 import {
-  acceptDemoInvitation, archiveDemoMember, createDemoInvitation, demoPeopleSeed, MIN_PASSWORD, normaliseEmail, pendingInvitations,
+  acceptDemoInvitation, archiveDemoMember, createDemoInvitation, demoAccountFacts, demoPeopleSeed, MIN_PASSWORD, normaliseEmail, pendingInvitations,
   previewDemoInvitation, requireInviter, revokeDemoInvitation, setDemoRole, targetLabel, TOKEN, validateTarget,
   type Invitation, type PeopleState, type Person, type PersonKind,
 } from "../people";
@@ -15,7 +16,7 @@ import { DataError } from "../samples";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { createServiceClient } from "../supabase/service";
-import { readDemoAccess, readDemoPeople, writeDemoPeople } from "./demo-store";
+import { readDemoAccess, readDemoNotifications, readDemoPeople, writeDemoPeople } from "./demo-store";
 
 export { DataError };
 
@@ -38,7 +39,7 @@ async function demoState(): Promise<PeopleState> {
   return (await readDemoPeople()) ?? demoPeopleSeed();
 }
 // The demo lab person a form acts as; by default the session's own demo identity (the Operator).
-function demoActorOf(session: { userId: string }, actorId?: string) {
+export function demoActorOf(session: { userId: string }, actorId?: string) {
   const person = demoLabStaff.find(item => item.userId === (actorId || session.userId));
   if (!person) throw new DataError("Choose a demo lab person.");
   return person;
@@ -70,31 +71,44 @@ const byPerson = (a: Person, b: Person) => a.kind !== b.kind ? (a.kind === "lab_
   : a.kind === "lab_staff" ? labOrder.indexOf(a.role) - labOrder.indexOf(b.role) || a.name.localeCompare(b.name)
     : (a.clientName ?? "").localeCompare(b.clientName ?? "") || a.name.localeCompare(b.name);
 
-async function livePeople(): Promise<Omit<PeopleView, "canInviteLab" | "canInviteClient" | "demoActors">> {
+type AccountRow = { user_id: string; email: string | null; signed_in_at: string | null; two_step: boolean; has_password: boolean; activation_sent_at: string | null };
+
+// manager: a lab Owner or Admin, who also reads every account's state (admin.account_state, 0029).
+async function livePeople(manager: boolean): Promise<Omit<PeopleView, "canInviteLab" | "canInviteClient" | "demoActors">> {
   const admin = await db();
-  const [staff, members, invitations, clients] = await Promise.all([
+  const [staff, members, invitations, clients, accounts] = await Promise.all([
     admin.from("lab_staff").select("id, user_id, role, display_name").is("archived_at", null),
     admin.from("client_member").select("id, user_id, role, display_name, client:client(id, name)").is("archived_at", null),
     // Lab Owners and Admins only (RLS); an Operator reads none.
     admin.from("invitation").select(invitationColumns).order("created_at"),
     admin.from("client").select("id, name").is("archived_at", null).order("name"),
+    manager ? admin.rpc("account_state") : Promise.resolve({ data: [], error: null }),
   ]);
   for (const [label, result] of [["Lab staff", staff], ["Client members", members], ["Invitations", invitations], ["Clients", clients]] as const) {
     if (result.error) throw new DataError(`${label} could not be read: ${result.error.message}`);
   }
+  // Without 0029 (or on a refusal) People still lists everyone, with "Not readable" for the account state.
+  if (accounts.error) console.error("[people] account_state failed", { code: accounts.error.code });
   const rows = (invitations.data ?? []) as unknown as InvitationRow[];
   // Emails are not readable from the membership rows; an accepted invitation names its person's email.
   const emails = new Map(rows.filter(row => row.accepted_by).map(row => [row.accepted_by as string, row.email]));
-  const fallback = (userId: string) => emails.get(userId) ?? `User ${userId.slice(0, 8)}`;
+  const facts = new Map(((accounts.data ?? []) as AccountRow[]).map((row): [string, AccountFacts] => [row.user_id,
+    { email: row.email, signedInAt: row.signed_in_at, twoStep: row.two_step, hasPassword: row.has_password, activationSentAt: row.activation_sent_at }]));
+  const emailOf = (userId: string) => emails.get(userId) ?? facts.get(userId)?.email ?? null;
+  const fallback = (userId: string) => emailOf(userId) ?? `User ${userId.slice(0, 8)}`;
+  const account = (kind: PersonKind, userId: string) => {
+    const known = facts.get(userId);
+    return { twoStep: known ? known.twoStep : null, activation: known ? activationOf(kind, known) : null };
+  };
   const now = Date.now();
   const people: Person[] = [
     ...((staff.data ?? []) as StaffRow[]).map((row): Person => ({ kind: "lab_staff", id: row.id, userId: row.user_id, name: row.display_name || fallback(row.user_id),
-      email: emails.get(row.user_id) ?? null, role: row.role, clientId: null, clientName: null, twoStep: null })),
+      email: emailOf(row.user_id), role: row.role, clientId: null, clientName: null, ...account("lab_staff", row.user_id) })),
     ...((members.data ?? []) as unknown as MemberRow[]).map((row): Person => {
       const client = one(row.client);
       // Named when they accepted their invitation (0023); older rows fall back to the invitation's email.
-      return { kind: "client_member", id: row.id, userId: row.user_id, name: row.display_name || fallback(row.user_id), email: emails.get(row.user_id) ?? null, role: row.role,
-        clientId: client?.id ?? null, clientName: client?.name ?? null, twoStep: null };
+      return { kind: "client_member", id: row.id, userId: row.user_id, name: row.display_name || fallback(row.user_id), email: emailOf(row.user_id), role: row.role,
+        clientId: client?.id ?? null, clientName: client?.name ?? null, ...account("client_member", row.user_id) };
     }),
   ].sort(byPerson);
   const pending = rows.filter(row => !row.accepted_by && !row.revoked_at && !row.archived_at && Date.parse(row.expires_at) > now).map((row): Invitation => ({
@@ -109,15 +123,19 @@ async function livePeople(): Promise<Omit<PeopleView, "canInviteLab" | "canInvit
 export async function listPeople(): Promise<PeopleView> {
   const session = await requireWorkspace("staff");
   if (!live()) {
-    const state = await demoState();
+    const [state, { log }] = await Promise.all([demoState(), readDemoNotifications()]);
+    const lastSent = (userId: string) => log.find(row => row.kind === "activation" && row.userId === userId && row.status === "sent")?.at ?? null;
     return {
-      people: state.people.filter(person => !person.archivedAt).map(({ kind, id, userId, name, email, role, clientId, clientName, twoStep }): Person => ({ kind, id, userId, name, email, role, clientId, clientName, twoStep })).sort(byPerson),
+      people: state.people.filter(person => !person.archivedAt).map((person): Person => {
+        const { kind, id, userId, name, email, role, clientId, clientName, twoStep } = person;
+        return { kind, id, userId, name, email, role, clientId, clientName, twoStep, activation: activationOf(kind, demoAccountFacts(person, lastSent(userId))) };
+      }).sort(byPerson),
       invitations: pendingInvitations(state, new Date()), clients: demoClients.map(({ id, name }) => ({ id, name })),
       canInviteLab: true, canInviteClient: true, demoActors: demoLabStaff,
     };
   }
   const role = labRoleKey(session.role);
-  return { ...await livePeople(), canInviteLab: allows("invite_lab", role), canInviteClient: allows("invite_client", role), demoActors: null };
+  return { ...await livePeople(allows("invite_client", role)), canInviteLab: allows("invite_lab", role), canInviteClient: allows("invite_client", role), demoActors: null };
 }
 
 // Returns the raw token once (only its digest is stored); the screen shows the link to copy.

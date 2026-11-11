@@ -24,7 +24,7 @@ export function OrderDetail({ order, client, audience = "staff", example = true,
   const pending = staff && order.request?.status === "pending";
   const status = gateStatus(order.gates);
   const nextStage = stages[order.stage + 1] ?? "Released";
-  const reviewHref = order.stage >= 9 ? "/release" : order.stage >= 7 ? "/qc-review" : order.stage >= 4 ? "/batch-run" : "/sample-registry";
+  const reviewHref = order.stage >= 9 ? "/release" : order.stage >= 7 ? `/qc-review?order=${order.code}` : order.stage >= 4 ? "/batch-run" : "/sample-registry";
   // Released once, but the released version was withdrawn: not a current release (a stage never moves back).
   const retired = order.released ? order.retired : undefined;
   const nexo = order.currentDatasetId && !retired ? nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, { id: order.currentDatasetId, status: "released" }, mayOpenInNexo(audience)) : null;

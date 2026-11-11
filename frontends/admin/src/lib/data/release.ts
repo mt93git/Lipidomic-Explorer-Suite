@@ -12,11 +12,13 @@ import { ANALYSIS_SHEETS, COMPANION_SHEETS, DATASET_SHEETS, buildDatasetFiles, d
 import {
   demoLabStaff, demoPolicy, demoSourceText, recordBuild, recordRelease, recordSignature, recordSupersede, recordWithdrawal, setDemoPolicy, type DemoDataset,
 } from "../release-demo";
+import { exclusionsAt, type Exclusion, type RecordedExclusion } from "../qc-review";
 import { DataError, stageFromDb } from "../samples";
-import { applyDemoState, type DemoState } from "../samples-demo";
+import { applyDemoState, demoOrderSamples, type DemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { notify } from "./notifications";
 
 export { DataError };
 
@@ -43,6 +45,8 @@ export type DatasetRecord = {
   full: DatasetFile; analysis: DatasetFile; companion: DatasetFile;
   provenance: { sourceSha256: string | null; sciexOsVersion: string | null; processingMethod: string | null; acceptedAt: string | null; headers: string | null };
   signatures: SignatureRecord[];
+  // The QC review's exclusions in force when this version was built: recorded decisions, not removed from the data.
+  exclusions: RecordedExclusion[];
   archivedAt: string | null; archivedReason: string | null;
 };
 // demoActors: the demo lab people a form may act as (null in live mode, where the signed-in user acts).
@@ -88,6 +92,7 @@ function fromDemo(dataset: DemoDataset, state: DemoState): DatasetRecord {
       headers: describeHeaders(dataset.headerMode, dataset.matched, dataset.samples),
     },
     signatures: dataset.signatures.map(signature => ({ ...signature })),
+    exclusions: exclusionsAt((state.exclusions ?? []).filter(item => item.orderCode === dataset.orderCode), dataset.builtAt),
     archivedAt: dataset.archivedAt, archivedReason: dataset.archivedReason,
   };
 }
@@ -118,6 +123,8 @@ type DatasetRow = {
   project_id: string | null; companion_path: string | null; released_at: string | null; archived_at: string | null; archived_reason: string | null; created_at: string;
 };
 type SignatureRow = { id: string; dataset_id: string; user_id: string; role: SignerRole; note: string | null; signed_at: string };
+type ExclusionRow = { id: string; sample_id: string; reason: string; decided_by: string | null; created_at: string; archived_at: string | null; archived_reason: string | null;
+  sample: { order_id: string; sample_code: string } | { order_id: string; sample_code: string }[] | null };
 type StaffRow = { user_id: string; display_name: string | null; role: LabRole };
 type PolicyRow = { eligible_signers: string[] | null; required_signatures: number; set_by: string | null; created_at: string };
 const orderSelect = "id, code, title, stage, client_id";
@@ -163,13 +170,15 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const unique = (values: (string | null)[]) => Array.from(new Set(values.filter((value): value is string => !!value)));
-  const [orders, clients, files, signatures] = await Promise.all([
+  const [orders, clients, files, signatures, exclusions] = await Promise.all([
     db.from("order").select(orderSelect).in("id", unique(rows.map(row => row.order_id))),
     db.from("client").select("id, name").in("id", unique(rows.map(row => row.client_id))),
     db.from("result_file").select("id, order_id, status, sha256, storage_path, sciex_os_version, processing_method, accepted_at").in("id", unique(rows.map(row => row.result_file_id))),
     db.from("signature").select("id, dataset_id, user_id, role, note, signed_at").in("dataset_id", ids).is("archived_at", null).order("signed_at"),
+    // The QC review's decisions on these clients' samples (withdrawn ones too: what was in force at each build counts).
+    db.from("exclusion").select("id, sample_id, reason, decided_by, created_at, archived_at, archived_reason, sample:sample(order_id, sample_code)").in("client_id", unique(rows.map(row => row.client_id))),
   ]);
-  for (const result of [orders, clients, files, signatures]) if (result.error) throw refusal(result.error);
+  for (const result of [orders, clients, files, signatures, exclusions]) if (result.error) throw refusal(result.error);
   const builders = new Map<string, string>();
   try {
     const audit = await db.from("audit_event").select("entity_id, actor").eq("entity", "dataset").eq("action", "INSERT").in("entity_id", ids);
@@ -182,6 +191,16 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
   const clientById = new Map(((clients.data ?? []) as unknown as ClientRow[]).map(row => [row.id, row]));
   const fileById = new Map(((files.data ?? []) as unknown as ResultFileRow[]).map(row => [row.id, row]));
   const signed = (signatures.data ?? []) as unknown as SignatureRow[];
+  const decisions = ((exclusions.data ?? []) as unknown as ExclusionRow[]).flatMap(item => {
+    const sample = Array.isArray(item.sample) ? item.sample[0] : item.sample;
+    if (!sample) return [];
+    const decided: Exclusion & { orderId: string } = {
+      id: item.id, orderId: sample.order_id, sampleId: item.sample_id, sampleCode: sample.sample_code, reason: item.reason, decidedAt: item.created_at,
+      decidedBy: item.decided_by ? people.find(person => person.userId === item.decided_by)?.name ?? shortId(item.decided_by) : null,
+      withdrawnAt: item.archived_at, withdrawnReason: item.archived_reason,
+    };
+    return [decided];
+  });
   return rows.map(row => {
     const order = orderById.get(row.order_id);
     const file = row.result_file_id ? fileById.get(row.result_file_id) : undefined;
@@ -199,6 +218,7 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
       signatures: signed.filter(signature => signature.dataset_id === row.id).map(signature => ({
         id: signature.id, userId: signature.user_id, name: people.find(item => item.userId === signature.user_id)?.name ?? shortId(signature.user_id), role: signature.role, note: signature.note, signedAt: signature.signed_at,
       })),
+      exclusions: exclusionsAt(decisions.filter(item => item.orderId === row.order_id), row.created_at),
       archivedAt: row.archived_at, archivedReason: row.archived_reason,
     };
   });
@@ -306,10 +326,8 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
     const order = applyDemoState(demoOrders, state).find(item => item.code === input.orderId);
     if (!order) throw new DataError(`Order ${input.orderId} was not found.`);
     if (order.stage < PROCESSED) throw new DataError(`${order.code} is ${stages[order.stage]}; accept its results file before building a dataset.`);
-    const recorded: RegistryEntry[] = (state.samples ?? []).filter(sample => sample.orderCode === order.code)
-      .map(sample => ({ code: sample.code, full_name: sample.full_name, group1_term: sample.group1_term, group2_term: sample.group2_term, replicate_term: sample.replicate_term, patient_term: sample.patient_term, time_point_term: sample.time_point_term }));
     // An example order nobody registered in this browser stands for its example registry (Sample_001, ...).
-    const registry = recorded.length ? recorded : Array.from({ length: order.sampleCount }, (_, i) => ({ code: `${order.code}-S${pad3(i + 1)}`, full_name: `Sample_${pad3(i + 1)}`, group1_term: null, group2_term: null, replicate_term: null, patient_term: null, time_point_term: null }));
+    const registry: RegistryEntry[] = demoOrderSamples(order, state);
     const batch = order.batch ?? `B2026-0${order.code.slice(-2)}`;
     const names = registry.map((sample, i) => `${batch}_${pad3(i + 1)}_${sample.code}`);
     const sourceText = demoSourceText(order.code, names);
@@ -432,13 +450,18 @@ export async function signDataset(input: { datasetId: string; role: SignerRole; 
 // while it is still pending, so never once the project exists); a retry stages a new copy under a new id.
 export async function releaseDataset(input: { datasetId: string; actorId?: string }): Promise<{ projectId: string }> {
   if (!live()) {
-    return demoWrite((state, actor) => {
+    const result = await demoWrite((state, actor) => {
       const dataset = (state.datasets ?? []).find(item => item.id === input.datasetId);
       const order = dataset ? applyDemoState(demoOrders, state).find(item => item.code === dataset.orderCode) : undefined;
       const projectId = randomUUID();
       const next = recordRelease(state, { datasetId: input.datasetId, actor, now: new Date(), projectId, projectName: projectName(dataset?.orderCode ?? "", order?.description ?? null) });
-      return { state: next, result: { projectId } };
+      return { state: next, result: { projectId, dataset } };
     }, input.actorId);
+    if (result.dataset) {
+      const { id, orderCode, version, clientId } = result.dataset;
+      await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client" });
+    }
+    return { projectId: result.projectId };
   }
   await staffSession();
   const db = (await client()).schema("admin");
@@ -463,6 +486,12 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
     p_dataset_id: dataset.id, p_analysis_object_path: object, p_analysis_sha256: dataset.analysis_sha256,
     p_analysis_size_bytes: num(dataset.analysis_size_bytes), p_analysis_name: `${code} dataset v${dataset.version} analysis.xlsx`, p_companion_path: paths.companion,
   }));
+  // Every active member of the client is told (0028), after the response.
+  const owner = await db.from("client").select("name").eq("id", dataset.client_id).maybeSingle();
+  await notify({
+    kind: "dataset_released", datasetId: dataset.id, orderId: dataset.order_id, code, version: dataset.version, clientId: dataset.client_id,
+    clientName: (owner.data as { name: string } | null)?.name ?? "your client",
+  });
   return { projectId: String(returned ?? projectId) };
 }
 

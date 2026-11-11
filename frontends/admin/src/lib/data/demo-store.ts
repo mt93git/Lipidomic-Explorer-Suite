@@ -74,3 +74,38 @@ export async function writeDemoDeliverables(deliverables: DemoDeliverable[]) {
   const state: DeliverableDemoState = { ...await readDemoState(), deliverables };
   await writeDemoState(state);
 }
+
+// ---------------------------------------------------------------- Instruments & panels (0026)
+// Same pattern; undefined until the first write, when the example catalog (seedDemoCatalog) is used.
+type CatalogDemoState = DemoState & { catalog?: import("./instruments-panels").DemoCatalog };
+export async function readDemoCatalog() {
+  return (await readDemoState() as CatalogDemoState).catalog;
+}
+export async function writeDemoCatalog(catalog: import("./instruments-panels").DemoCatalog) {
+  const state: CatalogDemoState = { ...await readDemoState(), catalog };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Storage (0025)
+// Same pattern: this browser's box placements (live and archived), undefined until the first place, move or remove.
+type StorageDemoState = DemoState & { placements?: import("../storage").DemoPlacement[] };
+export async function readDemoPlacements() {
+  return (await readDemoState() as StorageDemoState).placements;
+}
+export async function writeDemoPlacements(placements: import("../storage").DemoPlacement[]) {
+  const state: StorageDemoState = { ...await readDemoState(), placements };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Notifications (0028)
+// Same pattern: each demo person's turned-off kinds and the demo send log (the demo never sends: every row is skipped).
+export type DemoNotificationLog = import("../notifications").LogEntry & { id: string; at: string };
+export type DemoNotifications = { off: Record<string, string[]>; log: DemoNotificationLog[] };
+type NotificationDemoState = DemoState & { notifications?: DemoNotifications };
+export async function readDemoNotifications(): Promise<DemoNotifications> {
+  return (await readDemoState() as NotificationDemoState).notifications ?? { off: {}, log: [] };
+}
+export async function writeDemoNotifications(notifications: DemoNotifications) {
+  const state: NotificationDemoState = { ...await readDemoState(), notifications };
+  await writeDemoState(state);
+}

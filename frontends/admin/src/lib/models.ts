@@ -56,7 +56,7 @@ export type OrderRequest = {
 export type Retirement = { version: number; status: "withdrawn" | "superseded"; reason: string; at: string };
 
 // Ten working states; Released is the terminal outcome of the tenth gate.
-export const stages = ["Request", "Received", "Registered", "Extracted", "In batch", "Sequence exported", "Acquired", "Processed", "QC checked", "Excel built"] as const;
+export const stages = ["Request", "Received", "Registered", "Extracted", "In batch", "Sequence exported", "Acquired", "Processed", "QC reviewed", "Excel built"] as const;
 
 export function gateStatus(gates: Gate[]): GateStatus {
   if (gates.some(gate => gate.status === "fail")) return "fail";

@@ -15,8 +15,9 @@ const answerHint = "Answering needs the demo Owner or an Admin.";
 
 // People asked for access on the public form. The lab approves into an existing or a new client with the role it
 // picks (approving creates the 7-day invitation link, shown here once) or declines with an internal reason. One
-// action state for the section: the link stays on screen after the request leaves the list. The app sends nothing:
-// Copy message gives the lab a ready text to send (the link, 7 days, single use; or the answer to a declined request).
+// action state for the section: the link stays on screen after the request leaves the list. An approval's invitation
+// emails itself (activation.ts); Copy message gives the lab a ready text to send if it did not (the link, 7 days, single
+// use), or the answer to a declined request, which the app does not send.
 export function AccessRequests({ requests, clients, actors }: { requests: AccessRequest[]; clients: Client[]; actors: LabPerson[] | null }) {
   const [state, action, pending] = useActionState<AccessAnswerState, FormData>(answerAccessAction, {});
   const [open, setOpen] = useState<string | null>(null);
@@ -30,9 +31,11 @@ export function AccessRequests({ requests, clients, actors }: { requests: Access
   }
   return <section className="panel" aria-labelledby="access-title">
     <div className="panel-heading"><h2 id="access-title">Access requests</h2>{waiting.length > 0 && <span className="pill pending">{waiting.length} waiting</span>}</div>
-    <p className="muted">People who asked for access from the public form. Approving creates an invitation link; nothing is sent until you send it.</p>
+    <p className="muted">People who asked for access from the public form. Approving creates an invitation link and emails it to them.</p>
     {link && <div className="notice success" role="status">
-      <strong>Invitation link for {answered?.email ?? "the person"}{answered ? ` (${answered.reference})` : ""}.</strong> Copy it now and send it yourself; it works once, for 7 days, and is not shown again. It is listed under Pending invitations.
+      <strong>Invitation link for {answered?.email ?? "the person"}{answered ? ` (${answered.reference})` : ""}.</strong> {state.emailNote} {state.emailed
+        ? "The link below is a copy in case the email does not arrive"
+        : "Copy it now and send it yourself"}; it works once, for 7 days, and is not shown again. It is listed under Pending invitations.
       <div className={styles.link}>
         <label className="field-label" htmlFor="access-link">Invitation link</label>
         <input id="access-link" readOnly value={link} onFocus={event => event.currentTarget.select()} />

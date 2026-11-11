@@ -28,7 +28,7 @@ test("the example client follows its orders and cannot open lab screens", async 
   // Client home: the client's own orders at their client steps; no lab navigation.
   await expect(page.getByRole("heading", { level: 1, name: "Your orders" })).toBeVisible(slow);
   const nav = page.getByRole("navigation", { name: "Admin navigation" });
-  await expect(nav.getByRole("link")).toHaveText([/Home$/, /Request an order$/]);
+  await expect(nav.getByRole("link")).toHaveText([/Home$/, /Request an order$/, /Notifications$/]);
   const orders = page.getByRole("region", { name: "Orders" });
   await expect(orders.getByRole("listitem").filter({ hasText: "ORD042" })).toContainText("Accepted · send your samples");
   await expect(orders.getByRole("listitem").filter({ hasText: "ORD044" })).toContainText("In analysis · step 4 of 6");

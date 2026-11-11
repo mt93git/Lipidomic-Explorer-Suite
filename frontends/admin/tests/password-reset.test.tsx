@@ -21,8 +21,9 @@ vi.mock("@/lib/action-redirect", () => ({ redirectAfterAction: async (url: strin
 const { forgotPasswordAction } = await import("@/app/forgot-password/actions");
 const { resetPasswordAction } = await import("@/app/reset-password/actions");
 const { createAdminClient, createAnonAuthClient } = await import("@/lib/supabase/server");
-const { issueDemoResetLink, resetLimits, RESET_DONE, RESET_SENT, spendDemoResetLink, validateNewPassword } = await import("@/lib/password-reset");
+const { ACTIVATE_DONE, issueDemoResetLink, resetLimits, RESET_DONE, RESET_SENT, spendDemoResetLink, validateNewPassword } = await import("@/lib/password-reset");
 const { default: ResetPasswordPage } = await import("@/app/reset-password/page");
+const { default: ActivatePage } = await import("@/app/activate/page");
 const { default: SignInPage } = await import("@/app/sign-in/page");
 const { ForgotForm } = await import("@/app/forgot-password/forgot-form");
 
@@ -178,6 +179,35 @@ describe("Reset password", () => {
     expect(createAdminClient).not.toHaveBeenCalled();
     const old = new URLSearchParams(issueDemoResetLink(Date.now() - 3_600_000).split("?")[1]).get("token_hash") as string;
     expect(spendDemoResetLink(old)).toBe(false);
+  });
+});
+
+// The activation email's link (0029, activation.ts): the same token, action and GoTrue steps, with welcome words.
+describe("Activate", () => {
+  it("opening the link checks nothing; the welcome form has no two-step field", async () => {
+    fakeAuth();
+    render(await ActivatePage({ searchParams: Promise.resolve({ token_hash: TOKEN, type: "recovery" }) }));
+    expect(screen.getByRole("heading", { name: /^Welcome to Lipidomics\s· Choose your password$/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toHaveAttribute("minlength", "12");
+    expect(screen.queryByLabelText("Two-step code")).not.toBeInTheDocument();
+    expect(document.querySelector("input[name=purpose]")).toHaveValue("activate");
+    expect(screen.getByRole("button", { name: "Choose password" })).toBeInTheDocument();
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+  it("a malformed link says to ask the lab for a new email", async () => {
+    render(await ActivatePage({ searchParams: Promise.resolve({ token_hash: "x", type: "recovery" }) }));
+    expect(screen.getByRole("heading", { name: "This activation link no longer works." })).toBeInTheDocument();
+    expect(screen.getByText(/Ask the lab to send you a new activation email/)).toBeInTheDocument();
+  });
+  it("on POST: the reset steps (verify, update, sign out everywhere), then sign-in says what comes next", async () => {
+    const auth = fakeAuth();
+    await expect(resetPasswordAction({}, resetForm({ purpose: "activate" }))).rejects.toThrow("redirect:/sign-in?activated=done");
+    expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: TOKEN, type: "recovery" });
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: "correct horse battery" });
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "global" });
+    render(await SignInPage({ searchParams: Promise.resolve({ activated: "done" }) }));
+    expect(screen.getByRole("status")).toHaveTextContent(ACTIVATE_DONE);
+    expect(ACTIVATE_DONE).toMatch(/Lab staff then set up a two-step code/);
   });
 });
 

@@ -47,7 +47,7 @@ describe("ingest results form", () => {
     expect(within(region).getByText(/Blank injection\(s\).*sample-like detection/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
   });
-  it("after Accept, hides the form and the Accept control and points to building the dataset", async () => {
+  it("after Accept, hides the form and the Accept control and points to QC review, then building the dataset", async () => {
     render(<ResultsForm orders={orders} />);
     await parse();
     fireEvent.change(screen.getByLabelText("Override reason"), { target: { value: "Reviewed synthetic blank; approved for demonstration." } });
@@ -56,6 +56,8 @@ describe("ingest results form", () => {
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent("Results accepted for ORD041");
     expect(notice).toHaveTextContent("Processed");
+    // The next step is QC review (exclusions close once the dataset is built); Release stays one link away.
+    expect(within(notice).getByRole("link", { name: "QC review →" })).toHaveAttribute("href", "/qc-review?order=ORD041");
     expect(within(notice).getByRole("link", { name: /Build dataset v1/ })).toHaveAttribute("href", "/release");
     expect(within(notice).getByRole("link", { name: "Order detail" })).toHaveAttribute("href", "/orders/ORD041");
     await waitFor(() => expect(acceptUpload).toHaveBeenCalledWith("review-1", "Reviewed synthetic blank; approved for demonstration."));

@@ -7,6 +7,7 @@ import { DataError } from "../samples";
 import { applyDemoState } from "../samples-demo";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { demoRequesterId, notify } from "./notifications";
 import { listPanels } from "./orders";
 
 // Client order requests (0019), the lab's shipping instructions and its contact for clients (0023). Live mode calls
@@ -27,6 +28,8 @@ function refusal(error: { code?: string; message: string }): DataError {
   if (error.code === "42501") return new DataError(error.message.includes("permission denied") ? "You do not have permission to do this." : sentence(error.message));
   return new DataError(sentence(error.message));
 }
+type One<T> = T | T[] | null;
+const one = <T>(value: One<T>) => Array.isArray(value) ? value[0] ?? null : value;
 const sentence = (text: string) => `${text.trim().charAt(0).toUpperCase()}${text.trim().slice(1)}${/[.!?]$/.test(text.trim()) ? "" : "."}`;
 
 // admin.request_order for the selected client; the code (ORD059) is read back for Client home's notice.
@@ -37,6 +40,7 @@ export async function requestOrder(clientId: string, input: RequestInput, actor:
       clientId, input, orders: applyDemoState(demoOrders, state), clients: demoClients, panels: await listPanels(), actor, now: new Date(),
     });
     await writeDemoState(next);
+    await notify({ kind: "order_requested", orderId: order.code, code: order.code, title: order.description, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "A client" });
     return { code: order.code };
   }
   const db = await admin();
@@ -45,27 +49,44 @@ export async function requestOrder(clientId: string, input: RequestInput, actor:
     p_expected_samples: input.expectedSamples, p_billing_ref: input.billingRef, p_notes: input.notes,
   });
   if (error) throw refusal(error);
-  const created = await db.from("order").select("code").eq("id", String(data)).maybeSingle();
+  const created = await db.from("order").select("code, title, client:client(name)").eq("id", String(data)).maybeSingle();
   if (created.error || !created.data) throw new DataError("Your request was sent, but its code could not be read. It is in your orders.");
-  return { code: (created.data as { code: string }).code };
+  const row = created.data as unknown as { code: string; title: string | null; client: One<{ name: string }> };
+  // The lab's Owner, Admin and Operator are told (0028), after the response.
+  await notify({ kind: "order_requested", orderId: String(data), code: row.code, title: row.title, clientId, clientName: one(row.client)?.name ?? "A client" });
+  return { code: row.code };
 }
 
 // admin.accept_order(p_order_id, p_panel_id) or admin.decline_order(p_order_id, p_reason), by order code.
 export async function answerOrderRequest(code: string, answer: Answer): Promise<void> {
   if (!live()) {
     const state = await readDemoState();
-    await writeDemoState(answerRequest(state, { code, answer, panels: await listPanels(), actor: demoSession.displayName, now: new Date() }));
+    const next = answerRequest(state, { code, answer, panels: await listPanels(), actor: demoSession.displayName, now: new Date() });
+    await writeDemoState(next);
+    const order = (next.orders ?? []).find(item => item.code === code);
+    if (order) {
+      await notify({
+        kind: "request_answered", orderId: code, code, title: order.description, clientId: order.clientId,
+        clientName: demoClients.find(client => client.id === order.clientId)?.name ?? "your client",
+        requestedBy: await demoRequesterId(order.request?.requestedBy), accepted: answer.accept, reason: answer.accept ? null : answer.reason,
+      });
+    }
     return;
   }
   const db = await admin();
-  const found = await db.from("order").select("id").eq("code", code).is("archived_at", null).maybeSingle();
+  const found = await db.from("order").select("id, title, client_id, requested_by, client:client(name)").eq("code", code).is("archived_at", null).maybeSingle();
   if (found.error) throw refusal(found.error);
   if (!found.data) throw new DataError(`Order ${code} was not found or is archived.`);
-  const id = (found.data as { id: string }).id;
+  const order = found.data as unknown as { id: string; title: string | null; client_id: string; requested_by: string | null; client: One<{ name: string }> };
   const { error } = answer.accept
-    ? await db.rpc("accept_order", { p_order_id: id, p_panel_id: answer.panelId })
-    : await db.rpc("decline_order", { p_order_id: id, p_reason: answer.reason });
+    ? await db.rpc("accept_order", { p_order_id: order.id, p_panel_id: answer.panelId })
+    : await db.rpc("decline_order", { p_order_id: order.id, p_reason: answer.reason });
   if (error) throw refusal(error);
+  // The person who asked is told (0028), after the response.
+  await notify({
+    kind: "request_answered", orderId: order.id, code, title: order.title, clientId: order.client_id, clientName: one(order.client)?.name ?? "your client",
+    requestedBy: order.requested_by, accepted: answer.accept, reason: answer.accept ? null : answer.reason.trim(),
+  });
 }
 
 // ---------------------------------------------------------------- shipping instructions

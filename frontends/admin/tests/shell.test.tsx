@@ -19,9 +19,9 @@ describe("app shell", () => {
     expect(screen.getByText("Example data")).toBeVisible();
     expect(screen.getByText("Operator")).toBeVisible();
     expect(screen.getByRole("searchbox", { name: "Search orders" })).toBeVisible();
-    expect(groupLinks("LAB WORK")).toEqual(["/pipeline", "/new-order", "/receive-shipment", "/sample-registry", "/batch-builder", "/batch-run", "/ingest-results", "/name-dictionary", "/release", "/datasets"]);
+    expect(groupLinks("LAB WORK")).toEqual(["/pipeline", "/new-order", "/receive-shipment", "/sample-registry", "/batch-builder", "/storage", "/batch-run", "/ingest-results", "/name-dictionary", "/qc-review", "/release", "/datasets"]);
     expect(groupLinks("CLIENTS")).toEqual(["/clients"]);
-    expect(groupLinks("ORGANIZATION")).toEqual(["/people", "/roles-permissions", "/audit-log", "/release-policy", "/shipping-instructions"]);
+    expect(groupLinks("ORGANIZATION")).toEqual(["/people", "/roles-permissions", "/audit-log", "/release-policy", "/shipping-instructions", "/instruments-panels", "/notifications"]);
     for (const name of ["Pipeline", "Receive shipment", "Sample registry", "Ingest results", "Name dictionary", "Release", "Datasets", "Audit log"]) expect(within(nav()).getByRole("link", { name })).toBeVisible();
     expect(within(nav()).getByRole("link", { name: "Release policy" })).toHaveAttribute("href", "/release-policy");
     expect(within(nav()).getByRole("link", { name: "Pipeline" })).toHaveAttribute("aria-current", "page");
@@ -30,24 +30,9 @@ describe("app shell", () => {
     expect(screen.getByRole("button", { name: "Lab staff" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("main")).toHaveTextContent("Pipeline content");
   });
-  it("folds the placeholder screens into a collapsed Coming next group, tagged with their wave when the plan names one", () => {
+  it("shows no Coming next group once every screen is ready", () => {
     render(<AppShell session={demoSession}>Board</AppShell>);
-    const coming = within(nav()).getByText("Coming next · 4 screens").closest("details") as HTMLDetailsElement;
-    expect(coming).not.toHaveAttribute("open");
-    const links = within(coming).getAllByRole("link", { hidden: true });
-    expect(links.map(link => link.getAttribute("href"))).toEqual(["/storage", "/qc-review", "/instruments-panels", "/notifications"]);
-    expect(within(coming).getByRole("link", { name: "Storage Wave 2", hidden: true })).toBeInTheDocument();
-    expect(within(coming).getByRole("link", { name: "QC review Wave 4", hidden: true })).toBeInTheDocument();
-    expect(within(coming).getByRole("link", { name: "Notifications", hidden: true }).querySelector(".nav-tag")).toBeNull();
-  });
-  it("opens Coming next when the page is one of its screens, so the current entry is visible", () => {
-    pathname.current = "/storage";
-    try {
-      render(<AppShell session={demoSession}>Soon</AppShell>);
-      const coming = within(nav()).getByText("Coming next · 4 screens").closest("details") as HTMLDetailsElement;
-      expect(coming).toHaveAttribute("open");
-      expect(within(coming).getByRole("link", { name: "Storage Wave 2" })).toHaveAttribute("aria-current", "page");
-    } finally { pathname.current = "/pipeline"; }
+    expect(within(nav()).queryByText(/Coming next/)).not.toBeInTheDocument();
   });
   it("reflects the overview's client filter in the top-bar scope and links every client into it", () => {
     render(<AppShell session={demoSession}>Board</AppShell>);
@@ -62,7 +47,7 @@ describe("app shell", () => {
     render(<AppShell session={{ ...demoSession, view: "client", role: "Client admin", selectedClient: demoSession.clients[0] }}>Portal</AppShell>);
     expect(screen.getByRole("link", { name: /Example Atlas/ })).toHaveAttribute("href", "/choose-client");
     expect(screen.queryByRole("group", { name: "Client scope" })).not.toBeInTheDocument();
-    expect(within(nav()).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/client/home", "/client/request-order"]);
+    expect(within(nav()).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/client/home", "/client/request-order", "/notifications"]);
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeVisible();
     expect(within(nav()).queryByText(/Coming next/)).not.toBeInTheDocument();
     expect(screen.queryByText("ORGANIZATION")).not.toBeInTheDocument();

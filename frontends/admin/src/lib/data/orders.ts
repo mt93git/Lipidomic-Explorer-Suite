@@ -1,5 +1,5 @@
 import "server-only";
-import { demoClients, demoOrders, demoPanels, demoSession } from "../demo";
+import { demoClients, demoOrders, demoSession } from "../demo";
 import { getEnvironment } from "../environment";
 import { LAB_TIME_ZONE } from "../lab-time";
 import type { Client, Gate, HistoryEvent, Order, Retirement } from "../models";
@@ -9,6 +9,7 @@ import { conditionLabels, DataError, plural, stageFromDb, type Condition } from 
 import { applyDemoState } from "../samples-demo";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { demoActivePanels } from "./instruments-panels";
 
 // The orders the overview and the order detail show. Live mode reads admin.order with its children through
 // the signed-in user's own Supabase client, so RLS decides what each person sees (lab staff: every client;
@@ -232,7 +233,8 @@ export async function getOrder(code: string): Promise<{ order: Order; client: Cl
 
 // The panels an order may request: active ones (panels are reference data every signed-in user reads).
 export async function listPanels(): Promise<Panel[]> {
-  if (!live()) return demoPanels.map(name => ({ id: name, name }));
+  // The demo's catalog (Instruments & panels): the example panels until this browser archives or adds one.
+  if (!live()) return demoActivePanels();
   const { data, error } = await (await admin()).from("panel").select("id, name").is("archived_at", null).order("name");
   if (error) throw readFailure("Panels", error);
   return ((data ?? []) as Panel[]).map(row => ({ id: row.id, name: row.name }));

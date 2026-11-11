@@ -60,7 +60,7 @@ export function ResultsForm({ orders }: { orders: ResultOrder[] }) {
     {error && <FormAlert>{error}</FormAlert>}
     {accepted && <p className="notice success" role="status">
       <strong>Results accepted for {accepted}.</strong> The order is now Processed{review ? ` · ${review.summary.analytes.length} analytes · ${review.summary.injections.Unknown ?? 0} Unknown injections` : ""}.{" "}
-      <Link className="button" href="/release">Build dataset v1 →</Link> <Link href={`/orders/${accepted}`}>Order detail</Link>
+      <Link className="button" href={`/qc-review?order=${accepted}`}>QC review →</Link> <Link href="/release">Build dataset v1</Link> · <Link href={`/orders/${accepted}`}>Order detail</Link>
     </p>}
     {review && <section className="panel" aria-label="Parse summary">
       <div className="panel-heading">

@@ -15,6 +15,7 @@ import { createAdminClient } from "../supabase/server";
 import { createServiceClient } from "../supabase/service";
 import { createClient as createClientRecord, listClientRecords } from "./clients";
 import { readDemoAccess, readDemoPeople, writeDemoAccess, writeDemoPeople } from "./demo-store";
+import { notify } from "./notifications";
 
 export { AccessRefusal, DataError };
 
@@ -58,6 +59,7 @@ export async function submitAccessRequest(input: CleanAccessForm): Promise<strin
   if (!live()) {
     const { state, reference } = submitDemoAccess(await demoState(), input, new Date());
     await writeDemoAccess(state);
+    await notify({ kind: "access_requested", reference, fullName: input.fullName, organisation: input.organisation });
     return reference;
   }
   const service = createServiceClient();
@@ -71,6 +73,8 @@ export async function submitAccessRequest(input: CleanAccessForm): Promise<strin
     console.error("[access-request] submit failed", { code: error.code }); // never the person's data
     throw new DataError("Your request could not be sent.");
   }
+  // The lab's Owner, Admin and Operator are told (0028), after the response.
+  await notify({ kind: "access_requested", reference: data as string, fullName: input.fullName, organisation: input.organisation });
   return data as string;
 }
 

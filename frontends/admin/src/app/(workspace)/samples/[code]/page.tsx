@@ -80,6 +80,7 @@ export default async function SamplePage({ params }: Props) {
           </tr>)}</tbody>
         </table>
         : <p className="empty-state">No aliquots yet.</p>}
+      {aliquots.length > 0 && <p><Link href={`/storage?q=${sample.code}`}>Where they are stored →</Link></p>}
     </section>
 
     <section className="panel" aria-labelledby="injections-title">

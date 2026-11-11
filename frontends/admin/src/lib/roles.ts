@@ -23,9 +23,10 @@ export const roleDescriptions: Record<RoleKey, string> = {
 
 // rule: the database check the row mirrors. A 0002 helper name (checked by the test), 'lab_owner' (the 0015 functions'
 // Owner check, and set_release_policy's), 'release_policy' (the signers the Owner chooses) or 'client_requester' (a
-// client admin or requester of that client, active: request_order in 0019).
+// client admin or requester of that client, active: request_order in 0019) or 'signed_in' (anyone signed in, for
+// themselves: set_my_notification_pref in 0028).
 // rpcs: the admin functions the app calls for the action (the test checks each is guarded by the rule).
-export type PermissionRule = "is_lab_staff" | "is_lab_writer" | "is_lab_manager" | "can_read_client" | "lab_owner" | "release_policy" | "client_requester";
+export type PermissionRule = "is_lab_staff" | "is_lab_writer" | "is_lab_manager" | "can_read_client" | "lab_owner" | "release_policy" | "client_requester" | "signed_in";
 export type Permission = {
   key: string; area: "Lab work" | "Clients and people" | "Lab administration"; action: string; roles: readonly RoleKey[]; rule: PermissionRule;
   rpcs?: readonly string[]; note?: string;
@@ -37,7 +38,9 @@ export const permissions: readonly Permission[] = [
   { key: "request_order", area: "Lab work", action: "Request an order for their client", roles: ["client_admin", "requester"], rule: "client_requester", rpcs: ["request_order"], note: "Only for their own, active client. The request waits for the lab's answer." },
   { key: "answer_request", area: "Lab work", action: "Accept or decline a client's order request", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["accept_order", "decline_order"], note: "Declining needs a reason the client reads; the order is archived." },
   { key: "deliverables", area: "Lab work", action: "Add, show, hide or retire the files a client downloads for an order", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["add_deliverable", "set_deliverable_visibility", "retire_deliverable"], note: "PDF, PNG, JPEG, SVG, XLSX or CSV, 50 MB at most. A new file stays hidden until shown; a file is retired, never deleted." },
+  { key: "storage", area: "Lab work", action: "Place, move and remove aliquots in storage boxes", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["place_aliquot", "move_aliquot", "remove_aliquot"], note: "One aliquot per position. A move keeps the old position in the history; removing needs a reason." },
   { key: "run_lab", area: "Lab work", action: "Run the lab: batches, results files, name dictionary, dataset builds", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["accept_result_file", "build_dataset"] },
+  { key: "qc_review", area: "Lab work", action: "Exclude samples, withdraw exclusions and mark processed orders QC reviewed", roles: ["owner", "admin", "operator"], rule: "is_lab_writer", rpcs: ["add_exclusion", "withdraw_exclusion", "mark_qc_checked"], note: "Recorded decisions only: building the dataset keeps every sample's data, and the version's processing record lists the exclusions. QC reviewed is optional; Release also builds from Processed." },
   { key: "sign_release", area: "Lab work", action: "Sign and release a dataset", roles: ["owner", "admin"], rule: "release_policy", note: "Any Owner or Admin by default; the Owner may name other lab staff. Always two different people." },
   { key: "read_audit", area: "Lab administration", action: "Read the audit log", roles: ["owner", "admin", "operator"], rule: "is_lab_staff" },
   { key: "manage_clients", area: "Clients and people", action: "Create, edit and archive clients", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["create_client", "update_client", "archive_client"] },
@@ -47,6 +50,9 @@ export const permissions: readonly Permission[] = [
   { key: "answer_access", area: "Clients and people", action: "Approve or decline an access request from the public form", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["list_access_requests", "approve_access_request", "decline_access_request"], note: "Anyone may ask, without an account; approving creates the 7-day invitation link with the role you pick. A declined request's personal data is erased after 90 days." },
   { key: "invite_lab", area: "Clients and people", action: "Invite lab staff, change lab roles, archive lab staff", roles: ["owner"], rule: "lab_owner", rpcs: ["create_invitation", "set_lab_role", "archive_member"], note: "The lab always keeps at least one active Owner." },
   { key: "release_policy", area: "Lab administration", action: "Set the release policy (who signs, how many signatures)", roles: ["owner"], rule: "lab_owner", rpcs: ["set_release_policy"] },
+  { key: "instruments_panels", area: "Lab administration", action: "Add, edit and archive instruments and panels", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["create_instrument", "update_instrument", "archive_instrument", "create_panel", "update_panel", "archive_panel"], note: "Lab staff read them. An instrument is archived only once no active panel uses it; a panel's dataset type is fixed once an order or a batch uses it." },
+  { key: "notification_prefs", area: "Lab administration", action: "Turn their own email notifications on or off", roles: ["owner", "admin", "operator", "client_admin", "requester", "viewer"], rule: "signed_in", rpcs: ["set_my_notification_pref"], note: "Everyone changes only their own; each is on until turned off. Lab staff: new order and access requests. Client people: their answered requests and released datasets." },
+  { key: "notification_log", area: "Lab administration", action: "Read the email send log", roles: ["owner", "admin"], rule: "is_lab_manager", note: "Who was emailed, when, and whether it was sent, failed or skipped. Only the Admin server writes it." },
   { key: "shipping_instructions", area: "Lab administration", action: "Set the shipping instructions and the contact for clients", roles: ["owner", "admin"], rule: "is_lab_manager", rpcs: ["set_shipping_instructions", "set_client_contact"], note: "Everyone signed in reads them; the contact also shows on the public Request access page." },
 ];
 

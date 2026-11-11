@@ -14,3 +14,6 @@ e2e/live/.pilot-credentials*.json
 # Identity E2E (e2e/live/identity.spec.ts): screenshots and the seed's local credentials file. Never commit.
 e2e/live/identity-evidence/
 e2e/live/.identity-credentials*.json
+# Golden journey (e2e/live/journey.spec.ts): screenshots, videos, steps.json and the seed's local credentials file. Never commit.
+e2e/live/journey-evidence/
+e2e/live/.journey-credentials*.json

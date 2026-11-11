@@ -41,7 +41,10 @@ export default async function DatasetsPage({ searchParams }: { searchParams: Pro
             <td>{dataset.signatures.length ? dataset.signatures.map(signature => <span key={signature.id}>{signature.name} · {signerRoleLabels[signature.role]}<br /></span>) : <span className="muted">Nobody yet</span>}</td>
             <td><small className={styles.digest}>TXT {dataset.provenance.sourceSha256 ? `${dataset.provenance.sourceSha256.slice(0, 12)}…` : "not recorded"}</small><br />
               <small className="muted">{dataset.provenance.sciexOsVersion ? `SCIEX OS ${dataset.provenance.sciexOsVersion}` : "SCIEX OS version not provided"}{dataset.provenance.processingMethod ? ` · ${dataset.provenance.processingMethod}` : ""}</small><br />
-              <small className={styles.digest}>analysis {dataset.analysis.sha256 ? `${dataset.analysis.sha256.slice(0, 12)}…` : "not recorded"}</small></td>
+              <small className={styles.digest}>analysis {dataset.analysis.sha256 ? `${dataset.analysis.sha256.slice(0, 12)}…` : "not recorded"}</small>
+              {dataset.exclusions.length > 0 && <ul className={styles.exclusions} aria-label={`Sample exclusions recorded for ${dataset.orderCode} v${dataset.version}`}>
+                {dataset.exclusions.map(item => <li key={item.sampleCode}><small><span className="mono">{item.sampleCode}</span> excluded · {item.reason} · {item.decidedBy ?? "Lab staff"} · {formatLabInstant(item.decidedAt)}</small></li>)}
+              </ul>}</td>
             <td>{dataset.projectId ? <><span className={`mono ${styles.id}`}>{dataset.projectId}</span>{dataset.releasedAt && <><br /><small className="muted">released {formatLabInstant(dataset.releasedAt)}</small></>}</> : <span className="muted">Not released</span>}
               <NexoLink href={nexo(dataset)} /></td>
           </tr>)}</tbody>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "@/components/app-link";
 import { stripBasePath } from "@/lib/base-path";
 import { usePathname } from "next/navigation";
@@ -29,6 +29,14 @@ export function AppShell({ session, children, counts = {} }: { session: AppSessi
     setMenuOpen(false);
     menuButton.current?.focus();
   };
+  // Phone: the sidebar is one strip that scrolls sideways. It opens on the current screen's link, with the end of
+  // the link before it in view (a hint that the strip goes on to the left).
+  const sidebar = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const strip = sidebar.current;
+    const link = strip?.querySelector('[aria-current="page"]');
+    if (strip && link && strip.scrollWidth > strip.clientWidth) strip.scrollLeft += link.getBoundingClientRect().left - strip.getBoundingClientRect().left - 40;
+  }, [pathname]);
   const { groups, comingNext } = sidebarNavigation(session.view, session.role);
   // Order pages are reached from cards and tables; the sidebar marks their home.
   const current = (href: string) => pathname === href || (href === (staff ? "/pipeline" : "/client/home") && pathname.startsWith("/orders/")) ? "page" as const : undefined;
@@ -59,7 +67,7 @@ export function AppShell({ session, children, counts = {} }: { session: AppSessi
       </div>
     </header>
     <div className="workspace">
-      <aside className="sidebar">
+      <aside className="sidebar" ref={sidebar}>
         <nav aria-label="Admin navigation">
           {groups.map(group => <div className="nav-group" key={group.title}>
             <h2 className="nav-heading">{group.title}</h2>

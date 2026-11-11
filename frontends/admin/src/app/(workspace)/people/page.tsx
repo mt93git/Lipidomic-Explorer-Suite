@@ -10,6 +10,7 @@ import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../release/action-form";
 import { AccessRequests } from "./access-requests";
 import { archiveMemberAction, revokeAction, setRoleAction } from "./actions";
+import { ActivationForm } from "./activation-form";
 import { DemoActor } from "./demo-actor";
 import { InviteForm } from "./invite-form";
 import styles from "./people.module.css";
@@ -18,6 +19,18 @@ export const metadata: Metadata = { title: "People" };
 const banners: Record<string, string> = { role: "Role changed.", archived: "Membership archived. The record is kept.", revoked: "Invitation revoked. Its link no longer works." };
 const roleName = (person: Person) => person.kind === "lab_staff" ? `Lab ${labRoleNames[person.role as LabRoleKey] ?? person.role}` : clientRoleNames[person.role as ClientRoleKey] ?? person.role;
 const twoStep = (value: boolean | null) => value === null ? "Not readable" : value ? "On" : "Off";
+
+// Whether the person has signed in to Admin (activation.ts); a lab Owner or Admin may email one who has not.
+function Account({ person, canSend, actors }: { person: Person; canSend: boolean; actors: LabPerson[] | null }) {
+  const state = person.activation;
+  if (!state) return <>Not readable</>;
+  if (state.active) return <span className="pill ok">Active</span>;
+  return <div className={styles.account}>
+    <span className="pill pending">Not activated yet</span>
+    {state.lastSentAt && <small className="muted">Activation email sent {formatLabInstant(state.lastSentAt)}</small>}
+    {canSend && <ActivationForm kind={person.kind} id={person.id} name={person.name} resend={!!state.lastSentAt} actors={actors} />}
+  </div>;
+}
 
 function Change({ person, actors }: { person: Person; actors: LabPerson[] | null }) {
   const lab = person.kind === "lab_staff";
@@ -42,7 +55,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
   const canChange = (person: Person) => person.kind === "lab_staff" ? view.canInviteLab : view.canInviteClient;
   return <>
     <div className="page-heading"><div><div className="eyebrow">Organization</div><h1>People</h1>
-      <p>Lab staff and client members, their roles, access requests and pending invitations. The app sends no email: you copy the link and send it yourself.</p></div>
+      <p>Lab staff and client members, their roles, access requests and pending invitations. Invitations and activation emails are sent from {"“"}Lipidomics · Libreros Lab{"”"}; an invitation{"’"}s link is also shown once to copy.</p></div>
       <div className="heading-actions"><Link className="button secondary" href="/roles-permissions">Roles &amp; permissions</Link></div>
     </div>
     {query.done && banners[query.done] && <p className="notice success" role="status">{banners[query.done]}</p>}
@@ -51,10 +64,11 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
         {access.canAnswer && <div className={styles.sectionFirst}><AccessRequests requests={access.requests} clients={access.clients} actors={access.demoActors} /></div>}
         <section className="panel" aria-labelledby="people-title"><h2 id="people-title">People</h2>
           {view.people.length ? <div className={styles.scroll}><table className={styles.table} aria-label="People">
-            <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Client</th><th scope="col">Two-step</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Client</th><th scope="col">Two-step</th><th scope="col">Account</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>{view.people.map(person => <tr key={`${person.kind}-${person.id}`}>
               <td>{person.name}{person.email && person.email !== person.name && <span className={styles.email}>{person.email}</span>}</td>
               <td>{roleName(person)}</td><td>{person.clientName ?? "Lab"}</td><td>{twoStep(person.twoStep)}</td>
+              <td><Account person={person} canSend={view.canInviteClient} actors={view.demoActors} /></td>
               <td>{canChange(person) && <Change person={person} actors={view.demoActors} />}</td>
             </tr>)}</tbody>
           </table></div> : <p className="empty-state">No people yet.</p>}

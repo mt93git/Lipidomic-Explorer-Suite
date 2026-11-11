@@ -80,6 +80,20 @@ describe("auditSummary: one human line per event", () => {
     expect(auditSummary(event({ entity: "client", action: "UPDATE", before: { ...cedar, members_prepare: true }, after: cedar }), ctx)).toBe("Members may prepare in Nexo turned off for Example Cedar");
   });
 
+  it("names box placements (0025): placed, moved out, removed", () => {
+    const slot = { box: "F1-R1-B02", position: "A1", archived_at: null, archived_reason: null };
+    const gone = (reason: string) => ({ ...slot, archived_at: "2026-11-10T10:00:00Z", archived_reason: reason });
+    expect(auditSummary(event({ entity: "box_position", after: slot }), ctx)).toBe("Aliquot placed in box F1-R1-B02 position A1");
+    expect(auditSummary(event({ entity: "box_position", action: "UPDATE", before: slot, after: gone("moved") }), ctx)).toBe("Aliquot moved out of box F1-R1-B02 position A1");
+    expect(auditSummary(event({ entity: "box_position", action: "UPDATE", before: slot, after: gone("used up") }), ctx)).toBe("Aliquot removed from box F1-R1-B02 position A1");
+  });
+
+  it("names an activation email (0029) by the person it went to; listed in the entity menu", () => {
+    expect(auditSummary(event({ entity: "activation_email", entityId: PAULA, after: { user_id: PAULA, name: "Kai Sample" } }), ctx)).toBe("Activation email sent to Kai Sample");
+    expect(auditSummary(event({ entity: "activation_email", entityId: PAULA, after: { user_id: PAULA } }), ctx)).toBe("Activation email sent to Paula (simulated)");
+    expect(auditEntities).toContainEqual({ value: "activation_email", label: "Activation email" });
+  });
+
   it("reads the client's Nexo switches as on/off in the changed fields", () => {
     const cedar = { name: "Example Cedar", nexo_access: false, members_prepare: false };
     expect(auditChanges(event({ entity: "client", action: "UPDATE", before: cedar, after: { ...cedar, nexo_access: true } }), ctx)).toEqual([{ field: "Nexo access", before: "off", after: "on" }]);

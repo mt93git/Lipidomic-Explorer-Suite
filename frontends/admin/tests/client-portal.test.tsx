@@ -101,7 +101,7 @@ describe("client order detail", () => {
     expect(screen.getByRole("heading", { level: 2, name: "In analysis" })).toBeVisible();
     expect(screen.getByRole("list", { name: "Order progress" }).querySelectorAll("li")).toHaveLength(6);
     expect(screen.getByText("32 registered · 32 expected")).toBeVisible();
-    for (const word of [/batch/i, /gate/i, /sequence/i, /QC checked/i, /excel/i, /operator/i, /stage/i]) expect(container.textContent, String(word)).not.toMatch(word);
+    for (const word of [/batch/i, /gate/i, /sequence/i, /QC review/i, /excel/i, /operator/i, /stage/i]) expect(container.textContent, String(word)).not.toMatch(word);
   });
   it("Released: version and date; Open in Nexo only with the environment gate and the client's own switch (F4)", () => {
     vi.stubEnv("NEXT_PUBLIC_NEXO_URL", "https://lab.example/nexo/");

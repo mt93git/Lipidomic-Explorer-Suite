@@ -3,15 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { redirectAfterAction } from "@/lib/action-redirect";
 import { validateApprove } from "@/lib/access-requests";
+import { emailNote, type EmailOutcome } from "@/lib/activation";
 import { withBasePath } from "@/lib/base-path";
 import { approveAccessRequest, declineAccessRequest } from "@/lib/data/access-requests";
+import { emailInvitation, sendActivation } from "@/lib/data/activation";
 import { archiveMember, createInvitation, DataError, revokeInvitation, setRole } from "@/lib/data/people";
 import { invitePath, type PersonKind } from "@/lib/people";
 import { getAppSession } from "@/lib/session";
 
 export type PeopleActionState = { error?: string };
-// On success the invite form shows the link once; the raw token is not kept anywhere else.
-export type InviteState = { error?: string; link?: string; email?: string };
+// On success the invite form shows the link once; the raw token is not kept anywhere else. emailNote / emailed: whether
+// the invitation email went (activation.ts), or why not; the link is the fallback either way.
+export type InviteState = { error?: string; link?: string; email?: string; emailNote?: string; emailed?: boolean };
+const noted = (outcome: (EmailOutcome & { email: string }) | null) => outcome
+  ? { emailNote: emailNote(outcome, outcome.email), emailed: outcome.status === "sent" }
+  : { emailNote: "Not emailed: the invitation could not be read back.", emailed: false };
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim().slice(0, 500);
 const kindOf = (form: FormData): PersonKind => value(form, "kind") === "lab_staff" ? "lab_staff" : "client_member";
 const actor = (form: FormData) => value(form, "actor") || undefined;
@@ -38,7 +44,7 @@ export async function inviteAction(_previous: InviteState, form: FormData): Prom
       clientRole: scope === "client" ? role : null, actorId: actor(form),
     });
     revalidatePath("/people");
-    return { link: withBasePath(invitePath(token)), email: email.toLowerCase() };
+    return { link: withBasePath(invitePath(token)), email: email.toLowerCase(), ...noted(await emailInvitation(token, scope === "lab", actor(form))) };
   } catch (error) {
     if (error instanceof DataError) return { error: error.message };
     throw error;
@@ -56,7 +62,7 @@ export async function archiveMemberAction(_previous: PeopleActionState, form: Fo
 
 // Access requests (F3). One state per section, so the link survives the request leaving the list. requestId names
 // the request the result (or the error) is about.
-export type AccessAnswerState = { error?: string; requestId?: string; link?: string; declined?: boolean };
+export type AccessAnswerState = { error?: string; requestId?: string; link?: string; declined?: boolean; emailNote?: string; emailed?: boolean };
 // intent = "approve" (target existing|new, clientId or newClientName + newClientKind, role) or "decline" (reason).
 export async function answerAccessAction(_previous: AccessAnswerState, form: FormData): Promise<AccessAnswerState> {
   return value(form, "intent") === "decline" ? decline(form) : approve(form);
@@ -68,7 +74,7 @@ async function approve(form: FormData): Promise<AccessAnswerState> {
     const { target, role } = validateApprove({ target: value(form, "target"), clientId: value(form, "clientId"), newClientName: value(form, "newClientName"), newClientKind: value(form, "newClientKind"), role: value(form, "role") });
     const token = await approveAccessRequest({ requestId, target, role, actorId: actor(form) });
     revalidatePath("/people");
-    return { requestId, link: withBasePath(invitePath(token)) };
+    return { requestId, link: withBasePath(invitePath(token)), ...noted(await emailInvitation(token, false, actor(form))) };
   } catch (error) {
     if (error instanceof DataError) return { requestId, error: error.message };
     throw error;
@@ -83,6 +89,20 @@ async function decline(form: FormData): Promise<AccessAnswerState> {
     return { requestId, declined: true };
   } catch (error) {
     if (error instanceof DataError) return { requestId, error: error.message };
+    throw error;
+  }
+}
+
+// "Send activation email" / "Resend" on a People row (activation.ts): the result stays next to the button.
+export type ActivationState = { error?: string; note?: string; sent?: boolean };
+export async function sendActivationAction(_previous: ActivationState, form: FormData): Promise<ActivationState> {
+  await authorize();
+  try {
+    const outcome = await sendActivation({ kind: kindOf(form), id: value(form, "id"), actorId: actor(form) });
+    revalidatePath("/people");
+    return { note: emailNote(outcome, outcome.email), sent: outcome.status === "sent" };
+  } catch (error) {
+    if (error instanceof DataError) return { error: error.message };
     throw error;
   }
 }

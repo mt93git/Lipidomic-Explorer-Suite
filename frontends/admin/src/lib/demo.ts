@@ -85,7 +85,7 @@ function example(code: string, client: number, stage: number, description: strin
   };
 }
 
-// 0 Request · 1 Received · 2 Registered · 3 Extracted · 4 In batch · 5 Sequence exported · 6 Acquired · 7 Processed · 8 QC checked · 9 Excel built
+// 0 Request · 1 Received · 2 Registered · 3 Extracted · 4 In batch · 5 Sequence exported · 6 Acquired · 7 Processed · 8 QC reviewed · 9 Excel built
 export const demoOrders: Order[] = [
   example("ORD041", 0, 2, "Synthetic plasma pilot · cohort A", 24, blockedIds),
   example("ORD042", 1, 0, "Example lipid panel · feasibility", 12, waiting, { panel: 1 }),

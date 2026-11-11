@@ -42,8 +42,8 @@ describe("who may request, and the form", () => {
   });
   it("shows Request an order in the client menu only to roles that may request", () => {
     const labels = (role: string) => sidebarNavigation("client", role).groups.flatMap(group => group.items.map(item => item.label));
-    expect(labels("Requester")).toEqual(["Home", "Request an order"]);
-    expect(labels("Viewer")).toEqual(["Home"]);
+    expect(labels("Requester")).toEqual(["Home", "Request an order", "Notifications"]);
+    expect(labels("Viewer")).toEqual(["Home", "Notifications"]);
     expect(sidebarNavigation("staff", "Operator").groups.flatMap(group => group.items).some(item => item.href === "/shipping-instructions")).toBe(true);
   });
 });

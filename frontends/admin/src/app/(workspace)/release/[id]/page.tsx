@@ -59,6 +59,18 @@ function StatusStrip({ dataset, progress }: { dataset: DatasetRecord; progress: 
     </li>)}</ol>;
 }
 
+// The QC review's decisions in force when this version was built. Recorded only: every sample's data is in the files.
+function ExclusionList({ exclusions }: { exclusions: DatasetRecord["exclusions"] }) {
+  if (!exclusions.length) return <p className="muted">None recorded when this version was built.</p>;
+  return <>
+    <p className="muted">Decisions recorded in QC review. They are not applied to the files: every sample&apos;s data is in this version.</p>
+    <ul className={styles.signatures} aria-labelledby="exclusions-title">{exclusions.map(item => <li key={item.sampleCode}>
+      <span className="check-status fail" aria-hidden="true">✕</span>
+      <span><strong className="mono">{item.sampleCode}</strong> · {item.reason}<small>{item.decidedBy ?? "Lab staff"} · {formatLabInstant(item.decidedAt)}</small></span>
+    </li>)}</ul>
+  </>;
+}
+
 function FileRow({ file }: { file: DatasetFile }) {
   return <tr><td>{file.label}</td><td className={styles.sheets}>{file.sheets.join(", ")}</td><td><Digest sha={file.sha256} label={file.label} /></td><td>{file.sizeBytes ? formatBytes(file.sizeBytes) : "—"}</td></tr>;
 }
@@ -139,6 +151,8 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
             <tbody><FileRow file={dataset.full} /><FileRow file={dataset.analysis} /><FileRow file={dataset.companion} /></tbody>
           </table></div>
           <dl className="facts">{facts.map(([label, value]) => <div className="fact-row" key={label}><dt>{label}</dt><dd>{label === "Source TXT" && dataset.provenance.sourceSha256 ? <Digest sha={value} label="Source TXT" /> : value}</dd></div>)}</dl>
+          <h3 className={styles.subhead} id="exclusions-title">Sample exclusions</h3>
+          <ExclusionList exclusions={dataset.exclusions} />
         </section>
 
         <section className="panel" aria-labelledby="signatures-title">

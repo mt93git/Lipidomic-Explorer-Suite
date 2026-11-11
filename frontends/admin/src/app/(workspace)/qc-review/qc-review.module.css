@@ -1,0 +1,25 @@
+/* QC review: the release screen's tables and forms (release.module.css), plus the decision cells. */
+/* position: relative keeps the visually hidden header inside the scroll box, so a phone page does not widen. */
+.scroll { overflow-x: auto; position: relative; }
+.excluded { display: inline-flex; padding: 2px 6px; border-radius: 4px; font-size: var(--text-xs); font-weight: 700; background: var(--danger-tint); color: var(--danger); }
+.decide summary { cursor: pointer; font-size: var(--text-sm); font-weight: 700; color: var(--blue); white-space: nowrap; }
+.decide summary:global(.button) { display: inline-flex; color: white; list-style: none; }
+.decide summary:global(.button)::-webkit-details-marker { display: none; }
+.decide[open] summary:global(.button) { opacity: .75; }
+.decide :global(.button) { white-space: nowrap; }
+.code { white-space: nowrap; }
+.confirm { margin: 12px 0 0; font-size: var(--text-sm); }
+.row[data-excluded] td { background: var(--danger-tint); }
+/* Exclude and Withdraw are 35 px tall to tap: the action cell's padding moves into the summary. */
+.row .decide summary { padding: 8px 0; }
+.scroll .row .act { padding-top: 2px; padding-bottom: 2px; }
+@media (max-width: 760px) {
+  /* Phone: one block per sample (code and FullName, then the decision and its action), so an open reason form gets
+     the row's width instead of pushing the table sideways. */
+  .samples, .samples tbody { display: block; }
+  .samples thead { display: none; }
+  .samples .row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; padding: 8px 0 2px; border-bottom: 1px solid var(--line); }
+  .scroll .samples .row td { display: block; padding: 0; border: 0; }
+  .scroll .samples .row .act { flex: 1 1 200px; min-width: 0; }
+  .samples .row[data-excluded] { background: var(--danger-tint); padding-left: 8px; padding-right: 8px; }
+}

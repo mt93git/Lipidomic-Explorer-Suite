@@ -8,8 +8,8 @@ import { inviteAction } from "./actions";
 import { DemoActor } from "./demo-actor";
 import styles from "./people.module.css";
 
-// The Owner (lab roles) or an Admin (client roles) creates a 7-day link and copies it; the app sends no email.
-// The link is shown here once: only its digest is stored, so it cannot be shown again later.
+// The Owner (lab roles) or an Admin (client roles) creates a 7-day link; the app server emails it to the person
+// (activation.ts) and the link is shown here once as a fallback: only its digest is stored, so it cannot be shown again.
 export function InviteForm({ clients, canInviteLab, actors }: { clients: { id: string; name: string }[]; canInviteLab: boolean; actors: LabPerson[] | null }) {
   const [state, action, pending] = useActionState(inviteAction, {});
   const [target, setTarget] = useState("client:requester");
@@ -21,7 +21,9 @@ export function InviteForm({ clients, canInviteLab, actors }: { clients: { id: s
   }
   return <>
     {link && <div className="notice success" role="status">
-      <strong>Invitation link for {state.email}.</strong> Copy it now and send it yourself; it works once, for 7 days, and is not shown again.
+      <strong>Invitation link for {state.email}.</strong> {state.emailNote} {state.emailed
+        ? "The link below is a copy in case the email does not arrive; it works once, for 7 days, and is not shown again."
+        : "Copy it now and send it yourself; it works once, for 7 days, and is not shown again."}
       <div className={styles.link}>
         <label className="field-label" htmlFor="invite-link">Invitation link</label>
         <input id="invite-link" readOnly value={link} onFocus={event => event.currentTarget.select()} />
