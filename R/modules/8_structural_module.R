@@ -1971,7 +1971,18 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     
   # --- 2. Structural Audit Loop ---
     
-    auditResults_event <- eventReactive(input$runAnalysis, {
+    # The comparison the structural views are built on: the contrast and what it enriched. When it changes
+    # (new reference/comparison cohorts, regrouped samples, new prepared data) a view that was already run
+    # is recomputed instead of keeping the previous comparison's shifts.
+    structural_signature <- reactive({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      df <- tryCatch(structuralData(), error = function(e) NULL)
+      dirs <- if (!is.null(df) && "Direction" %in% names(df)) paste(table(df$Direction), collapse = "/") else ""
+      paste(paste(ci$ref, collapse = "+"), "vs", paste(ci$comp, collapse = "+"), if (is.null(df)) 0L else nrow(df), dirs)
+    })
+    
+    auditResults_event <- eventReactive(list(input$runAnalysis, structural_signature()), {
+      req((input$runAnalysis %||% 0) > 0)
       req(guided_local_inference_allowed(session, shared_data))
       df <- structuralData()
       req(nrow(df) > 0)
@@ -2353,9 +2364,26 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        selectInput(session$ns("selectedDetails"), "Select Shifts to Visualize:", choices = choices, multiple = TRUE, selected = saved_selected)
     })
     
-    speciesPlot_event <- eventReactive(input$updateSpecies, {
+    # Shifts that exist for the current comparison, in the same order the selector lists them.
+    species_valid_choices <- reactive({
+      res <- auditResults()
+      req(res)
+      de_sett <- shared_data$de_settings()
+      p_thresh <- de_sett$p_threshold %||% 0.05
+      p_type <- de_sett$p_value_type %||% "p_raw"
+      res_sig <- if (isTRUE(input$noSigThreshold)) res else if (p_type == "p_adj_bh" || p_type == "adjusted") res %>% dplyr::filter(P_Adj <= p_thresh) else res %>% dplyr::filter(P_Value <= p_thresh)
+      if (is.null(res_sig) || nrow(res_sig) == 0) return(character(0))
+      paste(res_sig$Class, res_sig$Feature, sep = " | ")
+    })
+    
+    speciesPlot_event <- eventReactive(list(input$updateSpecies, structural_signature()), {
+      req((input$updateSpecies %||% 0) > 0)
       req(guided_local_inference_allowed(session, shared_data))
       details <- isolate(input$selectedDetails)
+      # After the comparison changes, a previous selection may name shifts that no longer exist:
+      # draw the first four, which is what the selector resets to.
+      valid <- species_valid_choices()
+      if (length(valid) && (is.null(details) || !all(details %in% valid))) details <- head(valid, 4)
       req(details)
       pct_top <- isolate(input$labelTop) / 100
       border_col <- if (isTRUE(input$circledDots) && !is.null(input$borderColor) && nzchar(input$borderColor)) input$borderColor else "black"
