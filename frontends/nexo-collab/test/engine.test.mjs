@@ -103,6 +103,20 @@ test('capacity publishes waiting and retries after Retry-After', async t => {
   assert.equal(doc.getMap('meta').get('engineStatus'), 'ready');
 });
 
+// FIX-PROD-B 3: the journal's "Unexpected end of JSON input" was R's answer without a body read as JSON.
+test('an empty answer from R is not a JSON error', async t => {
+  const { r, doc, engine } = await setup(t);
+  await engine.connect(doc, 'person');
+  r.replies.push({ raw: '' });
+  await engine.renew('project');
+  assert.equal(r.calls.at(-1).path, '/api/v1/sessions/generation.1/lease');
+});
+test('an empty refusal from R fails with its status, not a JSON parse error', async t => {
+  const { r, doc, engine } = await setup(t);
+  await engine.connect(doc, 'person');
+  r.replies.push({ status: 502, raw: '' });
+  await assert.rejects(engine.renew('project'), { status: 502, message: 'R answered 502' });
+});
 test('a changed engine generation reopens by origin', async t => {
   const { r, doc, engine } = await setup(t);
   await engine.connect(doc, 'a');

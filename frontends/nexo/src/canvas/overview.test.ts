@@ -6,16 +6,26 @@ const centre = (cam: { x: number; y: number; scale: number }, b: { x: number; y:
 describe('overviewCamera (opening zoom and Fit)', () => {
   it('a board that fits opens at 100 %, centred', () => {
     const b = { x: 40, y: 40, width: 900, height: 500 }, cam = overviewCamera(view, b);
-    expect(cam.scale).toBe(1); expect(cam.limited).toBe(false); expect(centre(cam, b)).toEqual([600, 400]);
+    expect(cam.scale).toBe(1); expect(centre(cam, b)).toEqual([600, 400]);
   });
   it('a large board opens lower so every card is in view', () => {
     const b = { x: 0, y: 0, width: 5000, height: 3000 }, cam = overviewCamera(view, b);
-    expect(cam.scale).toBeCloseTo((1200 - 60) / 5000, 6); expect(cam.limited).toBe(false);
+    expect(cam.scale).toBeCloseTo((1200 - 60) / 5000, 6);
     expect(cam.x).toBeCloseTo(30, 6); expect(cam.y).toBeGreaterThanOrEqual(30);
   });
-  it('a board too large for the minimum zoom stops at the minimum and says so', () => {
-    const b = { x: 0, y: 0, width: 60000, height: 900 }, cam = overviewCamera(view, b);
-    expect(cam.scale).toBe(ZOOM_MIN); expect(cam.limited).toBe(true); expect(centre(cam, b)).toEqual([600, 400]);
+  // FIX-PROD-A: a row of 20 cards far above a few others opened (and fitted) at 10 % on the empty middle, 4 cards in view.
+  it('a board spread far apart frames every card, below the minimum zoom if it must', () => {
+    const row = Array.from({ length: 20 }, (_, i) => ({ x: i * 900, y: -40000, width: 480, height: 360 }));
+    const rest = [{ x: 0, y: 0, width: 480, height: 360 }, { x: 600, y: 0, width: 480, height: 360 }, { x: 0, y: 500, width: 480, height: 360 }];
+    const cards = [...row, ...rest], x = Math.min(...cards.map(c => c.x)), y = Math.min(...cards.map(c => c.y));
+    const b = { x, y, width: Math.max(...cards.map(c => c.x + c.width)) - x, height: Math.max(...cards.map(c => c.y + c.height)) - y };
+    const cam = overviewCamera(view, b);
+    expect(cam.scale).toBeLessThan(ZOOM_MIN);
+    for (const c of cards) {
+      const left = cam.x + c.x * cam.scale, top = cam.y + c.y * cam.scale;
+      expect(left).toBeGreaterThanOrEqual(0); expect(top).toBeGreaterThanOrEqual(0);
+      expect(left + c.width * cam.scale).toBeLessThanOrEqual(view.width); expect(top + c.height * cam.scale).toBeLessThanOrEqual(view.height);
+    }
   });
   it('centres a board that does not start at the origin', () => {
     const b = { x: -3000, y: 9000, width: 800, height: 400 }, cam = overviewCamera(view, b);

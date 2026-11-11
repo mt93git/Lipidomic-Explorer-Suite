@@ -24,7 +24,10 @@ const callers = { 'mock-admin-token': [{ caller: '00000000-0000-4000-8000-000000
   'eyJhbGciOiJub25lIn0.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMGEwMDQiLCJkaXNwbGF5TmFtZSI6IkJsYWlyIFN5bnRoZXRpYyJ9.mock-staff':
     [{ caller: '00000000-0000-4000-8000-00000000a004', caller_view: 'staff', client_id: null }],
   'eyJhbGciOiJub25lIn0.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMGEwMDIiLCJkaXNwbGF5TmFtZSI6IkRyLiBMZWUifQ.mock-client':
-    [{ caller: '00000000-0000-4000-8000-00000000a002', caller_view: 'client', client_id: client }] };
+    [{ caller: '00000000-0000-4000-8000-00000000a002', caller_view: 'client', client_id: client }],
+  // FIX-PROD-E: 'named' (Robin Synthetic), whose opaque token carries no name; Admin's nexo_people names Robin.
+  'mock-named-token': [{ caller: '00000000-0000-4000-8000-00000000a005', caller_view: 'staff', client_id: null }] };
+const directory = { null: [{ user_id: '00000000-0000-4000-8000-00000000a005', display_name: 'Robin Synthetic', kind: 'staff' }] };
 // A yjs bundle carries this literal (its double-import warning): a loaded script with it is a loaded yjs chunk.
 const yjsMarker = 'Yjs was already imported';
 let preview;
@@ -159,6 +162,62 @@ async function journey(pw, name, base) {
     assert.ok(width <= 390 && +bar.split('/')[0] <= +bar.split('/')[1], `the phone page is ${width} px wide, its top bar ${bar}`);
     await phone.context.close();
     console.log(`PASS ${name} one avatar per person; my other tab is not offered; a 390 px top bar shows the person to follow (page ${width} px, top bar ${bar})`);
+    // FIX-PROD-A: Admin's session-token answer names the person (displayName) and the token has no such claim: my avatar's
+    // initials and label come from that name, not "LS" / "Lab staff". Screenshot in <tmp>/nexo-fix-prod-a.
+    const named = await open(browser, base, '', { who: 'named', viewport: { width: 1440, height: 900 }, ...(name === 'chromium' && { permissions: ['clipboard-write'] }) });
+    await named.page.waitForFunction(() => window.__nexo.collab);
+    const mine = named.page.locator('.presence-avatar.me');
+    await mine.and(named.page.getByRole('button', { name: /^You, Robin Synthetic, Lab\b/ })).waitFor({ timeout: 5000 });
+    assert.match(await mine.textContent(), /^RS/, 'my initials come from Admin\'s displayName');
+    await mine.hover(); await named.page.getByRole('tooltip').filter({ hasText: /^Robin Synthetic · You/ }).waitFor({ timeout: 5000 });
+    fs.mkdirSync(path.join(os.tmpdir(), 'nexo-fix-prod-a'), { recursive: true });
+    await named.page.screenshot({ path: path.join(os.tmpdir(), 'nexo-fix-prod-a', `${name}-1440-avatar-display-name.png`) });
+    console.log(`PASS ${name} my avatar takes Admin's displayName (RS, Robin Synthetic)`);
+    // FIX-PROD-E: the others see that name too (the sidecar asks Admin's nexo_people; the token has no name), not "Lab
+    // staff": on B's board the card Robin selects is tagged "Robin Synthetic" and Robin's comment is by Robin Synthetic.
+    // Screenshots in <tmp>/nexo-fix-prod-e.
+    const shots = path.join(os.tmpdir(), 'nexo-fix-prod-e'); fs.mkdirSync(shots, { recursive: true });
+    await b.page.setViewportSize({ width: 1440, height: 900 });
+    // A card A has not selected (A's tag on it says "Lab staff": A's token has no name and Admin names nobody for it).
+    const mark = original.find(n => n.id !== first.id && n.id !== violin.id);
+    await card(named.page, mark.id).locator('header').click({ position: { x: 10, y: 10 } });
+    await card(b.page, mark.id).locator('.presence-name').filter({ hasText: /^Robin Synthetic$/ }).waitFor({ timeout: 5000 })
+      .catch(async () => { throw new Error(`B's tag on the card Robin selected says ${JSON.stringify(await card(b.page, mark.id).locator('.presence-name').allTextContents())}`); });
+    const box = await card(named.page, mark.id).boundingBox();
+    await named.page.getByRole('button', { name: 'Comment', exact: true }).click();
+    await named.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await named.page.getByRole('textbox', { name: 'New comment' }).fill(`Synthetic note by Robin ${name}`);
+    await named.page.getByRole('button', { name: 'Post' }).click();
+    const robinPin = b.page.getByRole('button', { name: new RegExp(`^Comment by Robin Synthetic: Synthetic note by Robin ${name}`) });
+    await robinPin.waitFor({ state: 'attached', timeout: 5000 })
+      .catch(async () => { throw new Error(`B's pins say ${JSON.stringify(await b.page.locator('.comment-pin').evaluateAll(pins => pins.map(p => p.getAttribute('aria-label'))))}`); });
+    // B opens the thread from the pin: its author reads Robin Synthetic.
+    await robinPin.focus(); await b.page.keyboard.press('Enter');
+    await b.page.getByRole('complementary', { name: 'Comments' }).getByText('Robin Synthetic', { exact: true }).waitFor({ timeout: 5000 });
+    await b.page.screenshot({ path: path.join(shots, `${name}-1440-others-see-admin-name.png`) });
+    console.log(`PASS ${name} B sees Robin's Admin name on the card Robin selected and on Robin's comment`);
+    // FIX-PROD-E: Share on this lab-only board says only lab staff can open it, and Copy link says it copied.
+    // This build reaches the sidecar on its own port (one origin behind nginx in production): its members answer is
+    // passed through with CORS headers.
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+    await named.context.route(url => url.pathname.includes('/collab/projects/'), async route => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      const response = await route.fetch();
+      await route.fulfill({ response, headers: { ...response.headers(), ...cors } });
+    });
+    await named.page.keyboard.press('Escape');
+    await named.page.locator('.topbar').getByRole('button', { name: 'Share', exact: true }).click();
+    const dialog = named.page.getByRole('dialog', { name: /^Share / });
+    await dialog.getByText('Lab staff can open this project. Roles decide what each person can change.', { exact: true }).waitFor({ timeout: 5000 })
+      .catch(async () => { throw new Error(`Share on the lab-only board says ${JSON.stringify(await dialog.textContent())}`); });
+    assert.equal(await dialog.getByText(/this client's members/).count(), 0, 'a lab-only board names a client');
+    await dialog.getByRole('button', { name: 'Copy link', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Link copied', exact: true }).waitFor({ timeout: 2000 })
+      .catch(async () => { throw new Error(`after Copy link the dialog says ${JSON.stringify(await dialog.textContent())}`); });
+    await named.page.screenshot({ path: path.join(shots, `${name}-1440-share-lab-only-link-copied.png`) });
+    await dialog.getByRole('button', { name: 'Copy link', exact: true }).waitFor({ timeout: 5000 });
+    await named.context.close();
+    console.log(`PASS ${name} Share on a lab-only board says "Lab staff can open this project." and Copy link says "Link copied"`);
   } finally { await browser.close(); }
 }
 // UX review 2, groups 4 and 5, on the board in the client's workspace (A lab staff, C the client Editor Dr. Lee, V lab
@@ -272,7 +331,7 @@ async function chrome(pw, name, base, collab) {
   db.prepare('INSERT INTO projects (id, workspace) VALUES (?, ?)').run(shared, `nexo-client-${client}`);
   db.prepare('INSERT INTO members (project, user_id, role) VALUES (?, ?, ?)').run(shared, '00000000-0000-4000-8000-00000000a002', 'editor');
   db.close();
-  const admin = await fakePostgrest(callers), r = await fakeR();
+  const admin = await fakePostgrest(callers, { people: directory }), r = await fakeR();
   let collab;
   try {
     collab = await start({ port: p, dbPath, restUrl: admin.url, anonKey: 'anon-test', apiUrl: r.url, serviceSecret: 'synthetic-service-secret' });

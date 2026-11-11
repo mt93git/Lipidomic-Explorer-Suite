@@ -117,6 +117,9 @@ admin_open <- function(settings = NULL) json("/api/v1/datasets/sessions", list(a
 a <- admin_open()
 stopifnot(a$status == 422L, a$body$reason == "preparation_choices_required", length(a$body$availableSamples) == 6L)
 cat("PASS Admin route asks for explicit preparation choices\n")
+# Prepare's title ("Prepare ORD041 · v1") comes with the choices, from the row the open just read.
+stopifnot(identical(a$body$orderCode, "ORD041"), identical(a$body$version, 1L))
+cat("PASS Admin route's 422 names the dataset\n")
 a <- admin_open(settings)
 stopifnot(a$status == 200L)
 admin_session <- api_sessions[[a$body$sessionId]]

@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import { getCheckpoints, type AdminView, type Checkpoint } from '../../api';
 import { knownMembersPrepare, listDatasets, type ReleasedDataset } from '../../api/datasetsList';
 import { listProjects, type ProjectRow } from '../../api/projectsList';
-import { adminUserId } from '../../api/adminToken';
+import { adminUserId, knownClientNames } from '../../api/adminToken';
 import { checkpointRows, groupTitles, type CheckpointGroup } from '../checkpointList';
+import { checkpointLabel } from '../topBarLabel';
 import { datasetUploadAllowed, uploadAllowed } from '../uploadAccess';
 import { UploadDataset } from './UploadDataset';
 import { isReadOnly } from '../../state/readonly';
@@ -36,7 +37,7 @@ export interface ProjectItem { projectId: string; name: string; client?: string;
 export interface ReleasedItem { adminDatasetId: string; name: string; client: string; releasedAt: string; canPrepare: boolean }
 const clientOf = (workspace: string) => /^nexo-client-(.+)$/.exec(workspace)?.[1];
 const order = (d: ReleasedDataset) => `${d.orderCode} · v${d.version}`;
-/** The rows Start shows: projects named by their dataset, released datasets without a project, the clients to filter by. */
+/** The rows Start shows: projects named by their dataset or checkpoint (as the board's top bar), released datasets without a project, the clients to filter by. */
 export function startLists(view: AdminView | null, data: StartData, filter: string, me: string | null = null) {
   const datasets = data.datasets ?? [], byId = new Map(datasets.map(d => [d.adminDatasetId, d]));
   const prepared = new Set((data.projects ?? []).filter(p => p.origin.kind === 'dataset').map(p => p.origin.id));
@@ -44,7 +45,7 @@ export function startLists(view: AdminView | null, data: StartData, filter: stri
   const keep = (clientId?: string) => filter === 'all' || clientId === filter;
   const projects: ProjectItem[] = (data.projects ?? []).map(p => {
     const d = p.origin.kind === 'dataset' ? byId.get(p.origin.id) : undefined, clientId = d?.clientId ?? clientOf(p.workspace);
-    return { projectId: p.projectId, name: d ? order(d) : p.origin.kind === 'checkpoint' ? s.checkpoint : s.dataset, client: d?.clientName ?? clients.find(c => c.id === clientId)?.name, clientId,
+    return { projectId: p.projectId, name: d ? order(d) : p.origin.kind === 'checkpoint' ? checkpointLabel(data.checkpoints ?? [], p.origin.id, s.checkpoint) : s.dataset, client: d?.clientName ?? clients.find(c => c.id === clientId)?.name, clientId,
       by: me && p.createdBy.userId === me ? s.you : p.createdBy.displayName ?? s.theLab, createdAt: p.createdAt, updatedAt: p.updatedAt, online: p.online.map(o => o.displayName ?? '').filter(Boolean) };
   }).filter(p => keep(p.clientId));
   const released: ReleasedItem[] = datasets.filter(d => !prepared.has(d.adminDatasetId) && keep(d.clientId))
@@ -62,10 +63,11 @@ function Online({ names }: { names: string[] }) {
   return names.length ? <span className="start-online"><span className="start-avs" aria-hidden="true">{names.map(n => <span key={n} className="start-av" title={n}>{initials(n)}</span>)}</span><span>{s.onBoard(names)}</span></span> : null;
 }
 const Arrow = () => <svg className="start-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>;
-export interface StartViewProps { view: AdminView | null; data: StartData | undefined; filter: string; now: Date; canImport: boolean; canUpload: boolean; readOnly: boolean; me: string | null; onFilter(id: string): void; onOpenProject(projectId: string): void; onPrepareDataset(adminDatasetId: string): void; onImportCheckpoint(): void; onUploadDataset(): void }
-export function StartView({ view, data, filter, now, canImport, canUpload, readOnly, me, onFilter, onOpenProject, onPrepareDataset, onImportCheckpoint, onUploadDataset }: StartViewProps) {
+export interface StartViewProps { view: AdminView | null; data: StartData | undefined; filter: string; now: Date; canImport: boolean; canUpload: boolean; readOnly: boolean; me: string | null; clientNames?: string[]; onFilter(id: string): void; onOpenProject(projectId: string): void; onPrepareDataset(adminDatasetId: string): void; onImportCheckpoint(): void; onUploadDataset(): void }
+export function StartView({ view, data, filter, now, canImport, canUpload, readOnly, me, clientNames = [], onFilter, onOpenProject, onPrepareDataset, onImportCheckpoint, onUploadDataset }: StartViewProps) {
   const client = view === 'client', lists = data && startLists(view, data, filter, me);
-  const groups = [...new Set((data?.datasets ?? []).map(d => d.clientName))];
+  // The released list's clients, else (nothing released yet) the ones Admin named for the person.
+  const listed = [...new Set((data?.datasets ?? []).map(d => d.clientName))], groups = listed.length ? listed : clientNames;
   const lede = client ? groups.join(' · ') || s.yourGroup : view === 'staff' ? s.staff : s.yours;
   const empty = !!data && data.datasets?.length === 0 && (data.projects ?? []).length === 0 && (data.checkpoints ?? []).length === 0;
   const feature = lists?.projects[0];
@@ -115,7 +117,7 @@ export function StartScreen({ view, onOpenProject, onPrepareDataset, onImportChe
     return () => controller.abort();
   }, []);
   // The Excel upload (ENTRY-6) once the lists said whether this person prepares; its new upload-<uuid> goes to Prepare.
-  return <><StartView view={view} data={data} filter={filter} now={new Date()} canImport={uploadAllowed(view, isReadOnly())} canUpload={!!data && datasetUploadAllowed(view, knownMembersPrepare(), isReadOnly())} readOnly={isReadOnly()} me={adminUserId()}
+  return <><StartView view={view} data={data} filter={filter} now={new Date()} canImport={uploadAllowed(view, isReadOnly())} canUpload={!!data && datasetUploadAllowed(view, knownMembersPrepare(), isReadOnly())} readOnly={isReadOnly()} me={adminUserId()} clientNames={knownClientNames()}
     onFilter={setFilter} onOpenProject={onOpenProject} onPrepareDataset={onPrepareDataset} onImportCheckpoint={onImportCheckpoint} onUploadDataset={() => setUploading(true)}/>
     {uploading && <UploadDataset onCancel={() => setUploading(false)} onUploaded={id => { setUploading(false); onPrepareDataset(id); }}/>}</>;
 }

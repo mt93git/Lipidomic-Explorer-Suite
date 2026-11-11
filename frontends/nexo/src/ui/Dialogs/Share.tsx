@@ -1,17 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { adminHeaders, adminUserId } from '../../api/adminToken';
-import { notify } from '../model';
 import type { Collab } from '../../collab/mode';
 import type { Role } from '../../collab/roles';
 import { phrases, strings as s } from '../strings';
 type Person = { userId: string; displayName: string; kind: string | null };
-type Members = { members: (Person & { role: Role })[]; people: Person[] };
+type Members = { workspace?: string; members: (Person & { role: Role })[]; people: Person[] };
 const roles = ['editor', 'commenter', 'viewer'] as const;
 const label = (role: string) => role[0].toUpperCase() + role.slice(1);
 // No badge for a kind Admin did not give (never "Client" by default).
 const badge = (kind: string | null) => kind === 'staff' ? <small>Lab</small> : kind === 'client' ? <small>Client</small> : null;
 export function Share({ board, projectName, onClose }: { board: Collab; projectName: string; onClose(): void }) {
-  const [data, setData] = useState<Members | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const [data, setData] = useState<Members | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDialogElement>(null), id = useId();
   const endpoint = new URL(board.url, location.href);
   endpoint.protocol = endpoint.protocol === 'wss:' ? 'https:' : endpoint.protocol === 'ws:' ? 'http:' : endpoint.protocol;
@@ -37,12 +36,12 @@ export function Share({ board, projectName, onClose }: { board: Collab; projectN
     finally { setBusy(false); }
   }
   const options = roles.map(role => <option key={role} value={role}>{label(role)}</option>), me = adminUserId();
-  // Copy link comes first: the dialog opens with focus on it.
-  const copy = () => navigator.clipboard.writeText(location.href).then(() => notify(s.linkCopied), () => notify(s.linkNotCopied, true));
+  // Copy link comes first: the dialog opens with focus on it. Its feedback stays in the dialog: a toast renders under the modal.
+  const copy = () => navigator.clipboard.writeText(location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }, () => setError(s.linkNotCopied));
   return <dialog ref={ref} aria-labelledby={id} onCancel={e => { e.preventDefault(); onClose(); }}>
     <h2 id={id}>{phrases.shareTitle(projectName)}</h2>
-    <p>{s.shareWho}</p>
-    <p><button onClick={copy}>{s.copyLink}</button></p>
+    {data && <p>{data.workspace && !data.workspace.startsWith('nexo-client-') ? s.shareWhoLab : s.shareWho}</p>}
+    <p><button onClick={copy}>{copied ? s.linkCopied : s.copyLink}</button></p>
     {error && <p role="alert">{error}</p>}
     {!data && !error && <p>Loading people…</p>}
     {data && <><h3>Members</h3><ul>{data.members.map(person => <li key={person.userId}>

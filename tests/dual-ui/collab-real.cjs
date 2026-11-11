@@ -6,8 +6,8 @@
 //       PostgREST (start({ requireUser: true }) adds LIPIDOMIC_ADMIN_REQUIRE_USER=1, so the store is scoped per client;
 //       by default it is off, as every journey expects), behind a recorder that keeps every call R receives (`calls`).
 //       The synthetic fixture checkpoint is put in that directory through R's own upload (POST /checkpoints, as staff
-//       A): R lets a project's service identity open stored checkpoints only, never the legacy folder (storage.R
-//       api_checkpoint_resolve). Its canvas is empty and,
+//       A): a project's service identity opens the legacy folder only for the staff workspace (FIX-PROD-D, storage.R
+//       api_checkpoint_resolve), so a client's project needs the store. Its canvas is empty and,
 //       collaborating, a person may not add a card before Phase 3 (an R mutation), so eachBrowser() first has A open it
 //       single-user (?collab=0), add two cards and save a named checkpoint: the one every journey opens (`cards()`).
 //   (c) the sidecar (src/server.mjs start()) with the R API and the same random service secret,

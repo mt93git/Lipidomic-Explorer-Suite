@@ -193,7 +193,8 @@ async function browserTests(pw, name, base) {
     const openExport = async id => { await page.evaluate(i => window.__nexo.handle.focusNode(i), id); await card(page, id).locator('header').click();
       await inspector.getByRole('tab', { name: 'Export', exact: true }).click(); };
     const devId = await addSource('qc_pca_tab-bqcDeviationPlot');
-    await card(page, devId).getByText('Please configure at least 2 BQC replicate samples to view plot.').waitFor();
+    await card(page, devId).getByText('Please configure at least 2 BQC replicate samples.', { exact: true }).waitFor();
+    await card(page, devId).screenshot({ path: path.join(out, `${name}-bqc-card-message.png`) });
     await openExport(devId);
     const devMore = inspector.getByRole('group', { name: 'More downloads from this analysis', exact: true });
     await devMore.waitFor();
@@ -203,14 +204,15 @@ async function browserTests(pw, name, base) {
     assert.equal(await devButton.evaluate(b => document.getElementById(b.getAttribute('aria-describedby'))?.textContent ?? ''), await devMore.locator('.export-reason').textContent());
     console.log('PASS F-honest ' + name + ' placeholder-download-disabled-with-reason');
     // A module download the API refuses (422 {error,message}): one toast with the message, no console error.
-    const bqcId = await addSource('qc_pca_tab-bqcPlot');
-    await card(page, bqcId).locator('.body img').waitFor();
-    await openExport(bqcId);
-    const bqcButton = inspector.getByRole('group', { name: 'More downloads from this analysis', exact: true }).getByRole('button', { name: 'BQC PDF', exact: true });
-    await bqcButton.waitFor(); assert.equal(await bqcButton.isEnabled(), true);
+    const outlierId = await addSource('qc_pca_tab-outlierPlot');
+    await card(page, outlierId).locator('.body img').waitFor();
+    await openExport(outlierId);
+    const pdfButton = inspector.getByRole('group', { name: 'More downloads from this analysis', exact: true }).getByRole('button', { name: 'PDF', exact: true });
+    await pdfButton.waitFor(); assert.equal(await pdfButton.isEnabled(), true);
     const errorsBefore = errors.length;
-    await bqcButton.click();
-    const failed = page.locator('.toast', { hasText: 'Team could not build this PDF: select at least 2 BQC replicate samples first.' });
+    await page.evaluate(() => { window.__nexoExportMock.downloadFault = { error: 'download_failed', message: 'Team could not build this PDF (synthetic module failure).' }; });
+    await pdfButton.click();
+    const failed = page.locator('.toast', { hasText: 'Team could not build this PDF (synthetic module failure).' });
     await failed.waitFor({ timeout: 3000 }); assert.equal(await failed.count(), 1);
     assert.equal(errors.length, errorsBefore);
     console.log('PASS F-honest ' + name + ' failed-download-one-toast-no-console-error');

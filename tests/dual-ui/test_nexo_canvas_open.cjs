@@ -23,6 +23,15 @@ function port() {
 const nodes = page => page.evaluate(() => window.__nexo.store.get().nodes);
 const percent = page => page.$eval('#hud', el => parseInt(el.textContent.split('|')[1]));
 const button = (scope, name) => scope.getByRole('button', { name, exact: true });
+// FIX-PROD-A screenshots (<tmp>/nexo-fix-prod-a).
+const shots = path.join(require('node:os').tmpdir(), 'nexo-fix-prod-a');
+// Every card of the board (not only the drawn ones: culled cards are hidden) lies inside the viewport, by the camera.
+async function everyCardFramed(page) {
+  return page.evaluate(() => { const v = document.querySelector('#viewport'), t = document.querySelector('#world').style.transform;
+    const [x, y, scale] = (t.match(/-?[\d.e+-]+(?=px|\))/g) ?? []).map(Number);
+    return window.__nexo.store.get().nodes.every(n => x + n.x * scale >= -1 && y + n.y * scale >= -1
+      && x + (n.x + n.width) * scale <= v.clientWidth + 1 && y + (n.y + n.height) * scale <= v.clientHeight + 1); });
+}
 // Every card's box lies inside the viewport.
 async function allInView(page) {
   return page.evaluate(() => { const v = document.querySelector('#viewport').getBoundingClientRect();
@@ -88,13 +97,29 @@ async function browserTests(pw, name, base) {
     assert.equal(await allInView(page), true, 'large board: every card in view');
     { const p = await percent(page); assert(p < 50 && p >= 10, `large board opens at ${p}%`); }
     console.log(`PASS H9 ${name} large-board-opens-fitted`);
-    // A board wider than the minimum zoom can show stops at it and says how to reach the rest.
-    await page.evaluate(id => window.__nexo.handle.setCardPosition(id, { x: 90000, y: 3400 }), ids[ids.length - 1]);
-    await saveAndReload(page, 'huge board');
-    assert.equal(await percent(page), 10);
-    await page.locator('.toast', { hasText: 'Overview limited to 10 %' }).waitFor();
-    console.log(`PASS H9 ${name} huge-board-minimum-zoom-notice`);
+    // FIX-PROD-A: a row of cards far above the others opened at 10 % on the empty middle; Fit stayed there. The board
+    // opens framed on every card, and Fit frames every card again, below 10 % when it must.
+    for (let i = 0; i < 5; i++) await page.evaluate(id => window.__nexo.handle.duplicate(id), ids[0]);
+    const copies = (await nodes(page)).map(n => n.id).filter(id => !ids.includes(id)); assert.equal(copies.length, 5, 'five copies');
+    // Positions stay at x, y >= 0: the row along the top, the other cards 20 000 px below it.
+    await page.evaluate(([row, rest]) => { row.forEach((id, i) => window.__nexo.handle.setCardPosition(id, { x: i * 3000, y: 0 }));
+      rest.forEach((id, i) => window.__nexo.handle.setCardPosition(id, { x: i * 600, y: 20000 })); }, [[...copies, ids[ids.length - 1]], ids.slice(0, -1)]);
+    await saveAndReload(page, 'spread board');
+    assert.equal(await everyCardFramed(page), true, 'spread board: every card framed on open');
+    { const p = await percent(page); assert(p < 10, `spread board opens at ${p}%`); }
+    await page.evaluate(() => window.__nexo.handle.zoomTo(1)); await page.waitForTimeout(200);
+    assert.equal(await everyCardFramed(page), false, 'at 100 % the spread board is not all in view');
+    await page.locator('.zoom-pill').getByRole('button', { name: 'Fit', exact: true }).click(); await page.waitForTimeout(600);
+    assert.equal(await everyCardFramed(page), true, 'spread board: Fit frames every card');
+    { const p = await percent(page); assert(p < 10, `spread board fits at ${p}%`); }
+    await page.screenshot({ path: path.join(shots, `${name}-1440-spread-board-fit.png`) });
+    // Zoom out after such a Fit stays put rather than jumping in to 10 %.
+    const fitted = await page.$eval('#world', el => el.style.transform);
+    await page.locator('.zoom-pill').getByRole('button', { name: 'Zoom out', exact: true }).click(); await page.waitForTimeout(200);
+    assert.equal(await page.$eval('#world', el => el.style.transform), fitted, 'zoom out below the fit');
+    console.log(`PASS H9 ${name} spread-board-opens-and-fits-every-card`);
     // At 1024 the toast never covers the zoom controls.
+    await page.evaluate(id => window.__nexo.handle.remove(id), copies[0]); await page.locator('.toast', { hasText: 'Card removed' }).waitFor();
     await page.setViewportSize({ width: 1024, height: 768 }); await page.waitForTimeout(300);
     const [toast, pill] = await Promise.all([page.locator('.toast').boundingBox(), page.locator('.zoom-pill').boundingBox()]);
     assert(toast && pill, 'toast and zoom pill visible');
@@ -145,6 +170,7 @@ async function browserTests(pw, name, base) {
     if (Date.now() > deadline) throw new Error('preview server did not start');
     await new Promise(r => setTimeout(r, 100));
   }
+  require('node:fs').mkdirSync(shots, { recursive: true });
   for (const name of (process.env.NEXO_BROWSERS || 'chromium,webkit').split(',')) await browserTests(pw, name, base);
   console.log('H9-open OK');
 })().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => server?.kill());

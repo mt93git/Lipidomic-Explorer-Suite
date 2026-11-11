@@ -101,6 +101,20 @@ it('undo of an exclusion takes the treatment away again', () => {
   const excluded = decideSettings(flagged, { sample: 'Treated_3', choice: 'exclude' }, by, 7);
   expect(decideSettings(excluded, { sample: 'Treated_3', choice: 'keep' }, by, 8).outlierTreatments).toBeUndefined();
 });
+// FIX-PROD-C 3: a project from before outlierTreatments (C3 until 2026-11-10) excluded a sample by leaving it out of
+// `samples`. Including it again must put it back, through the one rule (CheckScreen excluding).
+const older = { ...base, samples: ['Control_1', 'Treated_1', 'Treated_3'], outlierDecisions: [{ sample: 'Control_2', choice: 'exclude', by: 'u-0' }] };
+it('an old project\'s excluded sample is included again: back in the samples, no treatment', () => {
+  const next = decideSettings(older, { sample: 'Control_2', choice: 'keep' }, by, 7);
+  expect(next.samples).toEqual(['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
+  expect(next.outlierTreatments).toBeUndefined();
+});
+it('another decision on an old project keeps its excluded sample out as Team\'s treatment', () => {
+  const next = decideSettings(older, { sample: 'Treated_3', choice: 'keep' }, by, 7);
+  expect(next.samples).toEqual(['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
+  expect(next.outlierTreatments).toEqual({ Control_2: 'remove' });
+  expect(settingsFacts(next)[0]).toEqual(['Samples', '3']);
+});
 
 // UX3-B: the sentence for someone who may not decide says why. A phone or a ?mode=view link is the reason, not the person.
 afterEach(() => { initReadOnly({ search: '', width: 1440, coarse: false }); setRoleReadOnly(false); });

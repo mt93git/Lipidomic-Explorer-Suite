@@ -50,6 +50,9 @@ redirects with `withBasePath` and never hardcodes `/admin`. Below, `<base>` is t
 - Nexo API `GET /api/v1/datasets` (user's Admin token, as dataset opens) → `{"datasets": [{"adminDatasetId",
   "orderCode", "version", "clientId", "clientName", "releasedAt", "membersPrepare"}]}`; 401 `admin_auth_required`
   without a valid token.
+- Admin `GET /admin/api/session-token` (no migration) adds `"clientNames": ["<client name>", …]` for a client member:
+  the names of the clients they are an active member of, the clients `nexo_caller` scopes them to; omitted or `[]` for
+  lab staff. Start names the group with it when nothing is released yet ("When the lab releases a dataset to <name>").
 
 ## C3 · Preparation answers (Nexo API, `frontends/nexo-api/datasets.R`)
 

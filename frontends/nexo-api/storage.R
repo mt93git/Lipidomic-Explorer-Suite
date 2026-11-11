@@ -73,7 +73,9 @@ api_checkpoint_resolve <- function(id, caller = NULL, workspace = NULL) {
     if (length(matches)) return(list(path = api_store()$load(workspace, id),
       record = api_checkpoint_scoped_record(matches[[1L]], workspace), workspace = workspace))
   }
-  paths <- if (api_caller_member(caller) || !api_workspace() %in% workspaces) character() else api_checkpoint_folder()
+  # The folder belongs to the staff workspace: staff and a collab service for that workspace see it, members never.
+  folder <- !api_caller_member(caller) || isTRUE(caller$service)
+  paths <- if (!folder || !api_workspace() %in% workspaces) character() else api_checkpoint_folder()
   found <- paths[sub("[.]zip$", "", basename(paths)) == id]
   if (length(found)) return(list(path = found[[1L]], record = list(id = id, name = id, source = "folder"),
     workspace = api_workspace()))

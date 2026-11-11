@@ -10,7 +10,7 @@ vi.mock('../../api/adminToken', () => ({ adminHeaders: async () => ({ 'X-Nexo-Ad
 vi.mock('../model', () => ({ notify: (message: string) => { me.toasts.push(message); } }));
 import { Share } from './Share';
 const project = { url: 'wss://synthetic.test/collab/', project: 'synthetic-project' };
-const data = { members: [{ userId: 'owner', displayName: 'Lab Owner', kind: 'staff', role: 'owner' }, { userId: 'member', displayName: 'Client One', kind: 'client', role: 'editor' }], people: [{ userId: 'member', displayName: 'Client One', kind: 'client' }, { userId: 'new', displayName: 'Client Two', kind: 'client' }] };
+const data = { workspace: 'nexo-client-synthetic', members: [{ userId: 'owner', displayName: 'Lab Owner', kind: 'staff', role: 'owner' }, { userId: 'member', displayName: 'Client One', kind: 'client', role: 'editor' }], people: [{ userId: 'member', displayName: 'Client One', kind: 'client' }, { userId: 'new', displayName: 'Client Two', kind: 'client' }] };
 let fetcher: ReturnType<typeof vi.fn>;
 beforeEach(() => { me.userId = 'owner'; me.toasts = []; hooks.values = []; hooks.cursor = 0; hooks.effects = []; fetcher = vi.fn(async () => new Response(JSON.stringify(data))); vi.stubGlobal('fetch', fetcher); vi.stubGlobal('location', { href: 'https://synthetic.test/nexo/' }); vi.stubGlobal('document', { activeElement: { focus() {} } }); });
 afterEach(() => vi.unstubAllGlobals());
@@ -33,6 +33,11 @@ it('the title names the project and says who can open it', async () => {
   expect(text(tree.find(e => e.type === 'h2'))).toBe('Share Synthetic board');
   expect(tree.some(e => e.type === 'p' && text(e) === "Lab staff and this client's members can open this project. Roles decide what each person can change.")).toBe(true);
 });
+it('a lab-only project says only lab staff can open it', async () => {
+  fetcher.mockImplementation(async () => new Response(JSON.stringify({ ...data, workspace: 'nexo-lab', people: [] })));
+  const tree = await mount();
+  expect(tree.filter(e => e.type === 'p' && text(e).includes('can open this project')).map(text)).toEqual(['Lab staff can open this project. Roles decide what each person can change.']);
+});
 it('my own row says (you) and has no controls', async () => {
   me.userId = 'member';
   const tree = await mount();
@@ -50,7 +55,13 @@ it('Copy link is the first control and copies the page address', async () => {
   expect(text(first)).toBe('Copy link');
   await first.props.onClick();
   expect(writeText).toHaveBeenCalledWith('https://synthetic.test/nexo/');
-  expect(me.toasts).toEqual(['Link copied']);
+  expect(elements(render()).some(e => e.type === 'button' && text(e) === 'Link copied')).toBe(true);
+});
+it('a refused copy says so inside the dialog', async () => {
+  vi.stubGlobal('navigator', { clipboard: { writeText: async () => { throw new Error('denied'); } } });
+  const tree = await mount();
+  await tree.find(e => e.type === 'button' && text(e) === 'Copy link')!.props.onClick();
+  expect(elements(render()).filter(e => e.props?.role === 'alert').map(text)).toEqual(['Could not copy the link: copy it from the address bar.']);
 });
 it('Done closes the dialog', async () => {
   const tree = await mount();

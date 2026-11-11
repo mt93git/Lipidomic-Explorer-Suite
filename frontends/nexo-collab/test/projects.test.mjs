@@ -14,7 +14,8 @@ async function setup(t) {
     enabled: [{ caller: 'enabled-id', caller_view: 'client', client_id: client, members_prepare: true }],
     disabled: [{ caller: 'disabled-id', caller_view: 'client', client_id: client, members_prepare: false }],
     member: [{ caller: 'member-id', caller_view: 'client', client_id: client }],
-    stranger: [{ caller: 'stranger-id', caller_view: 'client', client_id: 'cccccccc-0000-4000-8000-00000000000c' }] }, { people: { [client]: [{ user_id: 'staff-id', display_name: 'Staff Example', kind: 'staff' }] } });
+    stranger: [{ caller: 'stranger-id', caller_view: 'client', client_id: 'cccccccc-0000-4000-8000-00000000000c' }] }, { people: { [client]: [{ user_id: 'staff-id', display_name: 'Staff Example', kind: 'staff' }],
+    null: [{ user_id: 'staff-id', display_name: 'Staff Example', kind: 'staff' }] } });
   const server = await start({ port: 0, dbPath: ':memory:', restUrl: admin.url, anonKey: 'test' });
   t.after(async () => { await server.close(); await admin.close(); });
   return (method, suffix = '', body, token = 'staff') => fetch(`${server.httpUrl}/collab/projects${suffix}`, {
@@ -173,4 +174,11 @@ test('a project read by its id names who created it with the stored name', async
   const request = await setup(t);
   const { projectId } = await (await request('POST', '', { workspace: 'nexo-lab', origin }, namedStaff)).json();
   assert.deepEqual((await (await request('GET', `/${projectId}`)).json()).createdBy, { userId: 'creator-id', displayName: 'Creator Example' });
+});
+// FIX-PROD-E: production tokens carry no name; the Share dialog's members list says Admin's name for the caller.
+test('the members of a lab board name the caller with the name Admin gives', async t => {
+  const request = await setup(t);
+  const { projectId } = await (await request('POST', '', { workspace: 'nexo-lab', origin: { kind: 'checkpoint', id: 'lab' } })).json();
+  const { members } = await (await request('GET', `/${projectId}/members`)).json();
+  assert.deepEqual(members, [{ userId: 'staff-id', displayName: 'Staff Example', kind: 'staff', role: 'owner' }]);
 });

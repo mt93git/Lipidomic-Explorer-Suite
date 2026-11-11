@@ -456,6 +456,17 @@ test('Prepare names the dataset from its released row', async () => {
   await newDataset();
   await vi.waitFor(() => expect(shown(screens.PrepareScreen)!.props.dataset).toEqual({ adminDatasetId: 'synthetic-dataset', orderCode: 'ORD041', version: 1 }));
 });
+// FIX-PROD-B: on the real path the list can miss the dataset (Admin's list filters differently from the open, R busy, Admin
+// down); R's 422 names it from the row it just read, so Prepare's title never depends on the list.
+test('Prepare names the dataset from the 422 when the released list cannot', async () => {
+  edge.listDatasets.mockRejectedValue(new Error('Request failed (503)'));
+  page('?dataset=synthetic-dataset');
+  edge.fetch.mockImplementation(async () => new Response(JSON.stringify({ error: 'unknown_project' }), { status: 404 }));
+  edge.openDatasetSession.mockResolvedValue({ status: 'choices', choices: { ...choices, orderCode: 'ORD900', version: 1 } });
+  // @ts-expect-error Vitest resolves the explicit TSX entry.
+  await import('./main.tsx');
+  await vi.waitFor(() => expect(shown(screens.PrepareScreen)!.props.dataset).toEqual({ adminDatasetId: 'synthetic-dataset', orderCode: 'ORD900', version: 1 }));
+});
 test('Check names the dataset its session prepared', async () => {
   await newDataset();
   shown(screens.PrepareScreen)!.props.onPrepared(prepared, 'synthetic-prepared', preparedSession);

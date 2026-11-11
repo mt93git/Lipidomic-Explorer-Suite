@@ -507,12 +507,13 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       title.textContent = `${r.name}'s view · click to follow`; el.append(title);
     }
   }
-  // Wheel zoom is a camera event (one draw per frame); buttons, the zoom menu and keys draw at once.
+  // Wheel zoom is a camera event (one draw per frame); buttons, the zoom menu and keys draw at once. A Fit below ZOOM_MIN
+  // is as far out as zoom goes then (zoom out never jumps in).
   function zoom(scale: number, x = vp.clientWidth / 2, y = vp.clientHeight / 2, perFrame = false) {
-    scale = Math.min(4, Math.max(ZOOM_MIN, scale));
+    scale = Math.min(4, Math.max(Math.min(ZOOM_MIN, camera.scale), scale));
     camera.x = x - (x - camera.x) / camera.scale * scale; camera.y = y - (y - camera.y) / camera.scale * scale; camera.scale = scale; if (perFrame) requestDraw(); else draw();
   }
-  function fit(say = true) {
+  function fit() {
     setOverview(undefined);
     if(figureMode){const sheets=Array.from(figureLayer.children) as HTMLElement[];if(!sheets.length)return;const x=figureLayer.offsetLeft,y=0,w=Math.max(...sheets.map(e=>e.offsetLeft+e.offsetWidth)),h=Math.max(...sheets.map(e=>e.offsetHeight));camera.scale=Math.max(.1,Math.min(1,(vp.clientWidth-60)/w,(vp.clientHeight-60)/h));camera.x=(vp.clientWidth-w*camera.scale)/2-x*camera.scale;camera.y=(vp.clientHeight-h*camera.scale)/2-y*camera.scale;draw();return;}
     const visible = shownCards();
@@ -521,7 +522,6 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     const w = Math.max(...visible.map(c => c.node.x + c.node.width)) - x, h = Math.max(...visible.map(c => c.node.y + c.node.height)) - y;
     const next = overviewCamera({ width: vp.clientWidth, height: vp.clientHeight }, { x, y, width: w, height: h });
     camera.scale = next.scale; camera.x = next.x; camera.y = next.y; draw();
-    if (next.limited && say) notify(s.overviewLimited);
   }
   // Wave 2 library/canvas: fit only the selection into the unobscured viewport.
   function fitSelection() {
@@ -934,7 +934,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     const shortcut = zoomShortcut(e); if (shortcut) { e.preventDefault(); if (shortcut === 'fit') fit(); else if (shortcut === 'selection') fitSelection(); else zoom(1); } });
   window.addEventListener('keyup', e => { if (e.code === 'Space') space = false; });
   window.addEventListener('blur', () => { space = false; pointers.clear(); gesture = undefined; editing = undefined; showGuides([]); reconcile(); });
-  window.addEventListener('resize', () => { if (!figureMode && refitOnResize(fitted, camera, size())) { fit(false); fitted = { camera: { ...camera }, view: size() }; } });
+  window.addEventListener('resize', () => { if (!figureMode && refitOnResize(fitted, camera, size())) { fit(); fitted = { camera: { ...camera }, view: size() }; } });
   new ResizeObserver(requestDraw).observe(vp); draw();
   const handle: CanvasHandle = {
     get figureMode(){return figureMode;},figureLayer:()=>figureLayer,

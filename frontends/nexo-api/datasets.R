@@ -98,6 +98,9 @@ api_dataset_choices <- function(dataset, settings) {
   if (!is.character(samples) || !length(samples) || anyNA(samples) || anyDuplicated(samples) ||
       !all(samples %in% dataset$samples))
     api_abort("api_unprocessable", "samples must be unique Abundance sample columns (at least one).")
+  # In the Abundance sheet's order, as Team's own sample checkbox group gives them: Team prepares (imputes) in this
+  # order, so a sample chosen again after the others (an old project's exclusion undone) prepares as it always did.
+  samples <- dataset$samples[dataset$samples %in% samples]
   use_average <- settings$useAveragedSubstitution %||% FALSE
   if (!is.logical(use_average) || length(use_average) != 1L || is.na(use_average))
     api_abort("api_unprocessable", "useAveragedSubstitution must be true or false.")
@@ -473,7 +476,11 @@ api_dataset_route <- function(req, res) tryCatch({
 }, api_dataset_admin_error = function(e) {
   res$status <- e$status
   list(error = e$error, message = e$error)
-}, api_dataset_choices = function(e) { res$status <- 422L; e$payload })
+}, api_dataset_choices = function(e) {
+  res$status <- 422L
+  # A released dataset's 422 names it (Prepare's title), from the row just read; an upload has no order code.
+  if (is.list(admin) && !api_upload_id(admin$adminDatasetId)) c(e$payload, admin[c("orderCode", "version")]) else e$payload
+})
 
 # Basic auth remains in Authorization on the public deployment.
 api_admin_authorization <- function(req) {

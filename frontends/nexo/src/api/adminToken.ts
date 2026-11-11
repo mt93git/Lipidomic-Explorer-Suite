@@ -23,8 +23,8 @@ let noToken: { until: number; signedOut: boolean } | null = null;
 let cached: { token: string; expiresAt: number } | null = null;
 // Admin's view with the last token it gave (null signed out or never asked): read by the start page and the checkpoint
 // dialog after their calls, so knowing it costs no extra request.
-let lastView: AdminView | null = null, lastUserId: string | null = null, lastName: string | null = null;
-export const forgetAdminToken = () => { cached = null; noToken = null; lastView = null; lastUserId = null; lastName = null; };
+let lastView: AdminView | null = null, lastUserId: string | null = null, lastName: string | null = null, lastClients: string[] = [];
+export const forgetAdminToken = () => { cached = null; noToken = null; lastView = null; lastUserId = null; lastName = null; lastClients = []; };
 /** The token to send, or null when Admin gave none for a reason other than "signed out" (403, not there, network):
  *  the request then goes without one and the API decides. Throws AdminSignInRequired on 401; a cancel stays a cancel. */
 export async function adminToken(signal?: AbortSignal): Promise<string | null> {
@@ -41,7 +41,7 @@ export async function adminToken(signal?: AbortSignal): Promise<string | null> {
   if (!response.ok) noToken = { until: Date.now() + 60_000, signedOut: response.status === 401 };
   if (response.status === 401) { lastView = null; lastUserId = null; throw new AdminSignInRequired(); }
   if (!response.ok) return null;
-  const value = await response.json().catch(e => { if (signal?.aborted || (e as Error)?.name === 'AbortError') throw e; return null; }) as { accessToken?: unknown; expiresAt?: unknown; userId?: unknown; view?: unknown } | null;
+  const value = await response.json().catch(e => { if (signal?.aborted || (e as Error)?.name === 'AbortError') throw e; return null; }) as { accessToken?: unknown; expiresAt?: unknown; userId?: unknown; view?: unknown; displayName?: unknown; clientNames?: unknown } | null;
   if (typeof value?.accessToken !== 'string' || !value.accessToken || typeof value.expiresAt !== 'number') {
     noToken = { until: Date.now() + 60_000, signedOut: false };
     return null;
@@ -49,7 +49,8 @@ export async function adminToken(signal?: AbortSignal): Promise<string | null> {
   cached = { token: value.accessToken, expiresAt: value.expiresAt };
   lastView = value.view === 'staff' || value.view === 'client' ? value.view : null;
   lastUserId = typeof value.userId === 'string' ? value.userId : null;
-  lastName = claimedName(value.accessToken);
+  lastName = typeof value.displayName === 'string' && value.displayName.trim() ? value.displayName : claimedName(value.accessToken);
+  lastClients = Array.isArray(value.clientNames) ? value.clientNames.filter((n): n is string => typeof n === 'string' && !!n.trim()) : [];
   return cached.token;
 }
 // Checkpoint calls (nexo-store-scope.md) go as today when Admin says signed out: the API decides (401 once the store is
@@ -67,8 +68,10 @@ function claimedName(token: string): string | null {
   try { const name = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).displayName; return typeof name === 'string' && name.trim() ? name : null; }
   catch { return null; }
 }
-/** The signed-in person's name as the sidecar gives it on the board: the token's displayName, else "Lab staff" or
+/** The signed-in person's name: Admin's displayName with the token, else the token's claim, else "Lab staff" or
  *  "Member"; null signed out or not asked yet. */
 export const adminDisplayName = (): string | null => lastName ?? (lastView === 'staff' ? 'Lab staff' : lastView === 'client' ? 'Member' : null);
+/** The names of a client member's clients (Admin's clientNames), so Start names the group before anything is released. */
+export const knownClientNames = (): string[] => lastClients;
 /** The signed-in person's Admin userId with the last token (collab comments: Mentions and own 👍); null when not known. */
 export const adminUserId = (): string | null => lastUserId;

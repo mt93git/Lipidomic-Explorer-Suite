@@ -120,7 +120,8 @@ function Boot() {
     try {
       const result = opened ? { status: 'ready' as const, session: opened } : await openDatasetSession(id, settings, attempt.controller.signal); if (!attempt.current()) return;
       if (result.status === 'choices') {
-        setScreen({ name: 'prepare', id, choices: result.choices });
+        const { orderCode, version } = result.choices;
+        setScreen({ name: 'prepare', id, choices: result.choices, ...(orderCode && version !== undefined && { row: { orderCode, version } }) });
         void releasedRow(id).then(row => { if (row && attempt.current()) setScreen(now => now.name === 'prepare' && now.id === id ? { ...now, row } : now); });
         return;
       }

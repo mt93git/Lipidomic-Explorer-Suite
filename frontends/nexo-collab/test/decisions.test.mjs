@@ -26,7 +26,7 @@ const samples = ['Control_1', 'Control_2', 'Treated_1', 'Treated_3'];
 const settings = { samples, normalizationMethod: 'median', outlierDecisions: [{ sample: 'Treated_3', choice: 'undecided' }] };
 const opens = r => r.calls.filter(c => c.path === '/api/v1/datasets/sessions');
 
-async function setup(t) {
+async function setup(t, origin = settings) {
   const admin = await fakePostgrest(tokens);
   const r = await fakeR();
   const { db } = openDatabase(':memory:');
@@ -37,7 +37,7 @@ async function setup(t) {
     .run('project', workspace, 'dataset', 'synthetic-dataset', 'ana-id');
   const doc = new Y.Doc();
   doc.transact(() => {
-    for (const [key, value] of Object.entries({ project: 'project', workspace, origin: { adminDatasetId: 'synthetic-dataset', settings } })) doc.getMap('meta').set(key, value);
+    for (const [key, value] of Object.entries({ project: 'project', workspace, origin: { adminDatasetId: 'synthetic-dataset', settings: origin } })) doc.getMap('meta').set(key, value);
     doc.getMap('nodes').set('n1', new Y.Map([['statistics', { version: '1', applied: { test: 't' }, result: { p: 0.1 } }]]));
   }, 'server');
   const origins = [];
@@ -178,4 +178,30 @@ test('a board decision reaches every connected person', { timeout: 10_000 }, asy
   await new Promise(resolve => { const seen = () => meta.get('origin').settings.outlierTreatments && resolve(); seen(); meta.observe(seen); });
   assert.deepEqual(meta.get('origin').settings.outlierTreatments, { Treated_3: 'remove' });
   assert.equal(meta.get('origin').settings.outlierDecisions[0].displayName, 'Ana R.');
+});
+
+// FIX-PROD-C 3: a project from before outlierTreatments (C3 until 2026-11-10) excluded Control_2 by leaving it out of
+// `samples`. Including it again is accepted and prepares again with it back in the samples (CheckScreen excluding's rule).
+const older = { samples: ['Control_1', 'Treated_1', 'Treated_3'], normalizationMethod: 'median',
+  outlierDecisions: [{ sample: 'Control_2', choice: 'exclude', by: 'ana-id' }] };
+test('an old project\'s excluded sample is included again: R re-opens with it back in the samples', async t => {
+  const { r, decide, current } = await setup(t, older);
+  const before = opens(r).length;
+  const answer = await decide({ sample: 'Control_2', choice: 'keep' });
+  assert.equal(answer.status, 200, JSON.stringify(answer.value));
+  assert.equal(opens(r).length, before + 1);
+  assert.deepEqual(opens(r).at(-1).body.settings.samples, ['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
+  assert.equal(opens(r).at(-1).body.settings.outlierTreatments, undefined);
+  assert.deepEqual(current().samples, ['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
+});
+test('including an old project\'s excluded sample again says so in the activity', async t => {
+  const { doc, decide } = await setup(t, older);
+  await decide({ sample: 'Control_2', choice: 'keep' });
+  assert.deepEqual(doc.getArray('activity').toArray().map(e => e.label), ['undid the exclusion of Control_2']);
+});
+test('another decision on an old project keeps its excluded sample out as Team\'s treatment', async t => {
+  const { decide, current } = await setup(t, older);
+  assert.equal((await decide({ sample: 'Treated_3', choice: 'keep' })).status, 200);
+  assert.deepEqual(current().samples, ['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
+  assert.deepEqual(current().outlierTreatments, { Control_2: 'remove' });
 });

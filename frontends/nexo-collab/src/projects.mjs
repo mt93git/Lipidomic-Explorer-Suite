@@ -15,11 +15,19 @@ const removed = (settings, sample) => settings.outlierTreatments?.[sample] === '
 function decided({ outlierTreatments, ...settings }, { sample, choice, reason }, by) {
   const { [sample]: _, ...treatments } = outlierTreatments ?? {};
   if (choice === 'exclude') treatments[sample] = 'remove';
-  return { ...settings, ...(Object.keys(treatments).length && { outlierTreatments: treatments }),
-    outlierDecisions: [...(settings.outlierDecisions ?? []).filter(d => d.sample !== sample), { sample, choice, ...(reason && { reason }), ...by, at: Date.now() }] };
+  const rows = [...(settings.outlierDecisions ?? []).filter(d => d.sample !== sample), { sample, choice, ...(reason && { reason }), ...by, at: Date.now() }];
+  // A project from before outlierTreatments (C3 until 2026-11-10) left an excluded sample out of `samples`: every decided
+  // sample is chosen again, one still excluded by Team's treatment (the client's rule, CheckScreen excluding).
+  const back = rows.filter(d => !settings.samples.includes(d.sample));
+  for (const d of back) if (d.choice === 'exclude') treatments[d.sample] = 'remove';
+  return { ...settings, ...(back.length && { samples: [...settings.samples, ...back.map(d => d.sample)] }),
+    ...(Object.keys(treatments).length && { outlierTreatments: treatments }), outlierDecisions: rows };
 }
+// The samples Team prepares: a decision that changes them prepares the board again.
+const prepared = settings => settings.samples.filter(x => !removed(settings, x)).sort().join();
+const known = (settings, sample) => settings.samples.includes(sample) || (settings.outlierDecisions ?? []).some(d => d.sample === sample);
 const said = (settings, { sample, choice }) => choice === 'exclude' ? `excluded ${sample}`
-  : removed(settings, sample) ? `undid the exclusion of ${sample}` : choice === 'keep' ? `kept ${sample}` : `undid the decision on ${sample}`;
+  : removed(settings, sample) || !settings.samples.includes(sample) ? `undid the exclusion of ${sample}` : choice === 'keep' ? `kept ${sample}` : `undid the decision on ${sample}`;
 
 async function json(request, invalid) {
   let text = '';
@@ -145,13 +153,13 @@ export function createProjects({ db, auth, roles, restUrl, anonKey, changed = ()
       } else if (request.method === 'GET' && id && members === 'versions' && userId === undefined) {
         value = versions.all(project().id);
       } else if (request.method === 'GET' && id && members === 'members' && userId === undefined) {
-        // A lab-only workspace has no client, so nobody to list beyond the members.
-        const client = /^nexo-client-(.+)$/.exec(project().workspace)?.[1];
+        // A lab-only workspace has no client, so nobody to list beyond the members (the Share dialog reads `workspace`).
+        const { workspace } = project(), client = /^nexo-client-(.+)$/.exec(workspace)?.[1];
         const list = client ? await people(token, client) : [];
         // The caller is named even where Admin lists nobody (a lab-only workspace): from its own token, as on the board.
         const me = identity(who, token);
         const named = new Map([[who.userId, me], ...list.map(person => [person.userId, person])]);
-        value = { members: roles.members(id).map(({ userId: user, role }) =>
+        value = { workspace, members: roles.members(id).map(({ userId: user, role }) =>
           ({ userId: user, displayName: named.get(user)?.displayName ?? null, kind: named.get(user)?.kind ?? null, role })), people: list };
       } else if (['PUT', 'DELETE'].includes(request.method) && id && members === 'members' && userId && extra === undefined) {
         project();
@@ -171,7 +179,7 @@ export function createProjects({ db, auth, roles, restUrl, anonKey, changed = ()
         value = await edit(id, async doc => {
           const meta = doc.getMap('meta'), settings = () => meta.get('origin')?.settings;
           if (!meta.get('origin')?.adminDatasetId || !settings()) fail(409, 'not_prepared_here');
-          if (!Array.isArray(settings().samples) || !settings().samples.includes(sample)) fail(400, 'invalid_decision');
+          if (!Array.isArray(settings().samples) || !known(settings(), sample)) fail(400, 'invalid_decision');
           // Read again inside the transaction: another person's decision may have landed while R re-prepared.
           const write = () => doc.transact(() => {
             const before = settings(), next = decided(before, change, by);
@@ -179,7 +187,7 @@ export function createProjects({ db, auth, roles, restUrl, anonKey, changed = ()
             if (removed(before, sample) !== removed(next, sample)) unapplyAll(doc)();
             logActivity(doc, { actor: who.userId, displayName: me.displayName, kind: 'decision', label: said(before, change) });
           }, 'server');
-          if (!engine || removed(settings(), sample) === (choice === 'exclude')) write();
+          if (!engine || prepared(settings()) === prepared(decided(settings(), change, by))) write();
           else await engine.run(id, async ({ reopen }) => { await reopen(decided(settings(), change, by)); write(); })
             .catch(e => fail(503, e.code === 'engine_not_ready' ? e.code : 'engine_unavailable'));
           return { settings: settings() };

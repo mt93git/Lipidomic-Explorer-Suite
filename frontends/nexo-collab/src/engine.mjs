@@ -29,8 +29,9 @@ export function createEngine({ apiUrl = process.env.NEXO_API_URL, secret = proce
           workspace: meta.get('workspace'), project: meta.get('project'), actor, secret,
         }), ...(intent ? { 'X-Nexo-Intent': intent } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
-      const value = await response.json();
-      const failure = () => Object.assign(new Error(value.message ?? value.error), { status: response.status, code: value.error });
+      // An answer without a body (R or a proxy in between) is no answer, not a JSON error; a refusal then says its status.
+      const text = await response.text(), value = text ? JSON.parse(text) : {};
+      const failure = () => Object.assign(new Error(value.message ?? value.error ?? `R answered ${response.status}`), { status: response.status, code: value.error });
       // capacity: no worker for the project yet; busy: R's api_exclusive held by another request, retried with the
       // same intent id until BUSY_DEADLINE after the first ask.
       if (response.status === 503 && (value.error === 'capacity' || value.error === 'busy')) {

@@ -35,7 +35,9 @@ const Sync = 0, AwarenessMessage = 1, Auth = 2, Stateless = 5, SyncStatus = 8;
 let admin;
 let dir;
 before(async () => {
-  admin = await fakePostgrest(callers);
+  // nexo_people: Admin names staff C (asked with no client, as for any lab staff) and client member C; the others have no name.
+  admin = await fakePostgrest(callers, { people: { null: [{ user_id: staffC, display_name: 'Cleo Lab', kind: 'staff' }],
+    [clientA]: [{ user_id: callers['token-client-c'][0].caller, display_name: 'Milo Client', kind: 'member' }] } });
   dir = mkdtempSync(joinPath(tmpdir(), 'nexo-admission-'));
 });
 after(async () => {
@@ -312,6 +314,11 @@ test('awareness displayName comes from the token claim', async t => {
   assert.equal(state.displayName, 'Ada Example');
 });
 
+test('awareness displayName is the name Admin gives the caller', async t => {
+  const state = await stamped(t, 'token-staff-c', { displayName: 'Mallory' });
+  assert.equal(state.displayName, 'Cleo Lab');
+});
+
 // Phase 6 as cut: a comment is a Y.Map in 'comments' with its replies in a Y.Array.
 function addComment(doc, id, fields = {}) {
   const comment = new Y.Map();
@@ -336,6 +343,13 @@ test('comment author is stamped', async t => {
   assert.deepEqual(await editor.edit(doc => addComment(doc, 'c1')), { saved: true, refused: undefined });
   const stored = comment(await serverState(t, server));
   assert.deepEqual([stored.author, stored.displayName, stored.text], [staffId, 'Ada Example', 'Check the PC scale']);
+});
+
+test('comment author is the name Admin gives a client member', async t => {
+  const server = await serve(t);
+  const member = await join(t, server, 'token-client-c');
+  assert.deepEqual(await member.edit(doc => addComment(doc, 'c1')), { saved: true, refused: undefined });
+  assert.equal(comment(await serverState(t, server)).displayName, 'Milo Client');
 });
 
 test('comment and reply say whether lab staff or a client member wrote them', async t => {

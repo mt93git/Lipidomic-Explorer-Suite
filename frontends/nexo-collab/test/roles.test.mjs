@@ -180,6 +180,7 @@ test('GET members lists the members and the client people from nexo_people witho
   const text = await response.text();
   assert.doesNotMatch(text, /mail/);
   assert.deepEqual(JSON.parse(text), {
+    workspace: `nexo-client-${client}`,
     members: [{ userId: ids.owner, displayName: 'Olive', kind: 'client', role: 'owner' },
       { userId: ids.member, displayName: 'Milo', kind: 'client', role: 'editor' }],
     people: [{ userId: ids.staff, displayName: 'Ada', kind: 'staff' }, { userId: ids.owner, displayName: 'Olive', kind: 'client' },
@@ -195,7 +196,9 @@ test('GET members of a lab-only workspace has no people', { timeout: 10_000 }, a
   const project = await create('token-staff', 'nexo-lab-synthetic');
   const answer = await (await http('GET', `/${project}/members`, 'token-staff')).json();
   assert.deepEqual(answer.people, []);
-  assert.equal(admin.calls.some(c => c.url === '/rpc/nexo_people'), false);
+  assert.equal(answer.workspace, 'nexo-lab-synthetic'); // the Share dialog says who can open it (FIX-PROD-E)
+  // No client directory is asked (the caller's own name is, with no client: auth.mjs, FIX-PROD-E).
+  assert.equal(admin.calls.some(c => c.url === '/rpc/nexo_people' && JSON.parse(c.body).p_client_id !== null), false);
 });
 
 test("GET members names the caller's own row when Admin does not list it", { timeout: 10_000 }, async t => {

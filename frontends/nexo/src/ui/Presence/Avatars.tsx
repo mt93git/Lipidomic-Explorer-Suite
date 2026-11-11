@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { boardReadOnly, getAwareness, summon } from '../../collab/provider';
 import { inkOn, org, type Person } from '../../collab/awareness';
 import { currentRole, subscribeRole } from '../../collab/roles';
-import { adminToken, adminUserId, knownAdminView } from '../../api/adminToken';
+import { adminDisplayName, adminToken, adminUserId, knownAdminView } from '../../api/adminToken';
 import { isReadOnly } from '../../state/readonly';
 import './avatars.css';
 
@@ -22,11 +22,9 @@ export function byPerson(states: [number, Person][], mine: number | undefined, m
 }
 
 /** Me as the others see me. The sidecar stamps identity on what it relays but never sends my own state back, so the
- *  name is my Admin token's displayName claim (the one it stamps, same fallback), kind Admin's view, role its push. */
-export function me(local: Person, token: string | null, view: string | null, role: string | null): Person {
-  let name: unknown = '';
-  try { name = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(token!.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)))).displayName; } catch { /* not a JWT */ }
-  return { ...local, displayName: typeof name === 'string' && name.trim() ? name : view === 'staff' ? 'Lab staff' : 'Member', kind: view ?? undefined, role: role ?? undefined };
+ *  name is the one Admin gave with my token (adminDisplayName), kind Admin's view, role its push. */
+export function me(local: Person, name: string | null, view: string | null, role: string | null): Person {
+  return { ...local, displayName: name?.trim() ? name : view === 'staff' ? 'Lab staff' : 'Member', kind: view ?? undefined, role: role ?? undefined };
 }
 
 /** Prototype scene 1: everyone on the board, me first; initials in their colour, Lab/Client and phone marks, a card. */
@@ -58,9 +56,9 @@ const isNarrow = () => narrowQuery().matches;
 const onNarrow = (change: () => void) => { const query = narrowQuery(); query.addEventListener('change', change); return () => query.removeEventListener('change', change); };
 // Phase 6: clicking a person follows them (canvas/following.ts); an Editor brings everyone to their own view.
 export function Avatars() {
-  const [states, setStates] = useState<[number, Person][]>([]), [token, setToken] = useState<string | null>(null);
+  const [states, setStates] = useState<[number, Person][]>([]), [name, setName] = useState<string | null>(null);
   const role = useSyncExternalStore(subscribeRole, currentRole, currentRole)?.role ?? null;
-  useEffect(() => { adminToken().then(setToken, () => {}); }, []);
+  useEffect(() => { adminToken().then(() => setName(adminDisplayName()), () => {}); }, []);
   useEffect(() => {
     let cleanup = () => {};
     const connect = () => { cleanup(); const awareness = getAwareness(); if (!awareness) return; const update = () => setStates([...awareness.getStates()] as [number, Person][]); awareness.on('change', update); update(); cleanup = () => awareness.off('change', update); };
@@ -69,7 +67,7 @@ export function Avatars() {
   }, []);
   const narrow = useSyncExternalStore(onNarrow, isNarrow, isNarrow);
   const mine = getAwareness()?.clientID, local = states.find(([id]) => id === mine)?.[1];
-  const people = byPerson(states, mine, adminUserId()).map(entry => entry.me ? { ...entry, person: me(entry.person, token, knownAdminView(), role) } : entry);
+  const people = byPerson(states, mine, adminUserId()).map(entry => entry.me ? { ...entry, person: me(entry.person, name, knownAdminView(), role) } : entry);
   return <><Stack people={narrow ? people.filter(entry => !entry.me) : people} following={local?.following} max={narrow ? 1 : 4}/>
     {people.some(entry => !entry.me) && !isReadOnly() && !boardReadOnly() && <button type="button" className="summon" onClick={() => summon()}>Bring everyone here</button>}</>;
 }

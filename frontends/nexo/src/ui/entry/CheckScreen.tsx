@@ -62,7 +62,12 @@ export function outlierDecisions(decisions: Decisions, undecided: Point[], by: s
  *  outlierTreatments {sample: "remove"} and Team leaves it out of the prepared data; `samples` stays as chosen. The one
  *  client rule for Check's re-run, Check → board and a decision on a board alone (the sidecar's PUT decisions writes
  *  the same, nexo-collab projects.mjs decided). */
-export function excluding({ outlierTreatments: _, ...settings }: DatasetSettings, excluded: string[]): DatasetSettings {
+export function excluding({ outlierTreatments: _, ...given }: DatasetSettings, excluded: string[]): DatasetSettings {
+  // A project from before outlierTreatments (C3 until 2026-11-10) left an excluded sample out of `samples`: every sample
+  // with a decision row is chosen again (the API puts `samples` in the workbook's order), so it can be included again.
+  const rows = Array.isArray(given.outlierDecisions) ? given.outlierDecisions as { sample: string }[] : [];
+  const back = [...new Set(rows.map(d => d.sample))].filter(x => !given.samples?.includes(x));
+  const settings = back.length ? { ...given, samples: [...given.samples ?? [], ...back] } : given;
   return excluded.length ? { ...settings, outlierTreatments: Object.fromEntries(excluded.map(x => [x, 'remove'])) } : settings;
 }
 /** The project's settings for "Open the Canvas" (C3): those Team prepared the re-run session with when there is one, else

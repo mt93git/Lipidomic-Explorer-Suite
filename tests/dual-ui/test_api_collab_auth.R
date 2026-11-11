@@ -96,7 +96,7 @@ base_b <- paste0("/api/v1/sessions/", session_b$sessionId)
 failures <- character()
 check <- function(name, response, status, error = NULL) {
   ok <- identical(response$status, as.integer(status)) && (is.null(error) || identical(response$body$error, error))
-  cat(if (ok) "PASS" else "FAIL", name, "\n")
+  cat(if (ok) "PASS" else "FAIL", name, if (!ok) paste("(got", response$status, response$body$error %||% "", response$body$message %||% "", ")"), "\n")
   if (!ok) failures <<- c(failures, name)
 }
 check("A cannot render B session", post_json(paste0(base_b, "/cards/missing/render"), list(), "token-a"), 403, "forbidden_scope")
@@ -133,5 +133,16 @@ check("person can verify violin statistics on collab session",
       settings = list(test = "welch", correction = "BH", scope = "displayed",
         comparisons = list(list("Control", "Treated")), effect = "hedges_g")), "token-b"), 200)
 api_session_close(session_b)
+open_folder <- function(workspace = NULL, token = NULL) {
+  collab <- if (!is.null(workspace)) list(project = "synthetic-project", workspace = workspace)
+  payload <- charToRaw(jsonlite::toJSON(list(checkpointId = "legacy-synthetic", collab = collab), auto_unbox = TRUE, null = "null"))
+  opened <- route("POST", "/api/v1/sessions", "application/json", payload, token,
+    service_token = if (!is.null(workspace)) service_token(workspace))
+  if (identical(opened$status, 200L)) api_session_close(api_sessions[[opened$body$sessionId]])
+  opened
+}
+check("service for the staff workspace opens a folder checkpoint", open_folder(api_workspace()), 200)
+check("service for a client workspace cannot open a folder checkpoint", open_folder(api_client_workspace(client_a)), 404)
+check("member cannot open a folder checkpoint", open_folder(token = "token-a"), 404)
 unlink(c(store_root, legacy_dir), recursive = TRUE)
 if (length(failures)) quit(status = 1)

@@ -13,8 +13,8 @@ const pr = (id: string, dataset: string, client: string, updatedAt = '2026-11-09
 const datasets = [ds('d-1', 'ORD901', 'a'), ds('d-2', 'ORD902', 'a'), ds('d-3', 'ORD903', 'b')];
 const projects = [pr('p-1', 'd-1', 'a', '2026-11-10T09:00:00Z', [{ userId: 'u-2', displayName: 'Bo Example' }]), pr('p-3', 'd-3', 'b')];
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-const html = (data: StartData | undefined, view: 'staff' | 'client' | null = 'staff', filter = 'all', canUpload = false, { readOnly = false, me = null as string | null } = {}) => renderToStaticMarkup(
-  <StartView view={view} data={data} filter={filter} now={now} canImport={view !== 'client'} canUpload={canUpload} readOnly={readOnly} me={me} onFilter={() => {}} onOpenProject={() => {}} onPrepareDataset={() => {}} onImportCheckpoint={() => {}} onUploadDataset={() => {}}/>);
+const html = (data: StartData | undefined, view: 'staff' | 'client' | null = 'staff', filter = 'all', canUpload = false, { readOnly = false, me = null as string | null, clientNames = [] as string[] } = {}) => renderToStaticMarkup(
+  <StartView view={view} data={data} filter={filter} now={now} canImport={view !== 'client'} canUpload={canUpload} readOnly={readOnly} me={me} clientNames={clientNames} onFilter={() => {}} onOpenProject={() => {}} onPrepareDataset={() => {}} onImportCheckpoint={() => {}} onUploadDataset={() => {}}/>);
 
 it('released datasets leave out those that already have a project', () => {
   const lists = startLists('staff', { projects, datasets, checkpoints: null }, 'all');
@@ -59,6 +59,16 @@ it('nothing released and no projects shows the empty state with the macrophage',
   const out = html({ projects: [], datasets: [], checkpoints: null }, 'client');
   expect(text(out)).toContain('Nothing here yet');
   expect(out).toContain('help-macrophage.svg');
+});
+// FIX-PROD-B 2: with nothing released the list names no client; Admin's token answer does (clientNames).
+it("a client member with nothing yet: the empty state names their group from Admin's answer", () => {
+  const out = text(html({ projects: [], datasets: [], checkpoints: null }, 'client', 'all', false, { clientNames: ['Synthetic client group'] }));
+  expect(out).toContain('When the lab releases a dataset to Synthetic client group, it shows up on this page');
+  expect(out).toMatch(/^Welcome Synthetic client group /);
+});
+it('a client member with nothing yet and no group name from Admin: the empty state says "your group"', () => {
+  const out = text(html({ projects: [], datasets: [], checkpoints: null }, 'client'));
+  expect(out).toContain('When the lab releases a dataset to your group, it shows up on this page');
 });
 it('without the projects route Start falls back to the checkpoint list and keeps the released datasets', async () => {
   const checkpoints = [{ id: 'c'.repeat(64), name: 'Synthetic save', sizeBytes: 1, sha256: 'c'.repeat(64), createdAt: '2026-11-08T10:00:00Z', source: 'store' as const }];
@@ -126,4 +136,12 @@ it('the avatars and their sentence share one unbroken group', () => {
 it('one checkpoint group has no sub-heading under Your checkpoints', () => {
   const checkpoints = [{ id: 'c'.repeat(64), name: 'Synthetic Team', sizeBytes: 1, sha256: 'c'.repeat(64), createdAt: '2026-11-08T10:00:00Z', source: 'folder' as const }];
   expect(html({ projects: [], datasets: [], checkpoints })).not.toContain('<h2>Prepared in Team</h2>');
+});
+it('checkpoint projects are named after their checkpoint, an unknown one keeps the fallback', () => {
+  const cp = (id: string, name: string) => ({ id, name, sizeBytes: 1, sha256: id, createdAt: '2026-11-08T10:00:00Z', source: 'folder' as const });
+  const fromCheckpoint = (id: string, checkpoint: string): ProjectRow => ({ ...pr(id, '', 'a'), origin: { kind: 'checkpoint', id: checkpoint } });
+  const data: StartData = { projects: [fromCheckpoint('p-a', 'c-a'), fromCheckpoint('p-b', 'c-b'), fromCheckpoint('p-x', 'c-gone')], datasets: [],
+    checkpoints: [cp('c-a', 'Synthetic study alpha'), cp('c-b', 'Synthetic study beta')] };
+  expect(startLists('staff', data, 'all').projects.map(p => p.name)).toEqual(['Synthetic study alpha', 'Synthetic study beta', 'Team checkpoint']);
+  expect(text(html(data))).toMatch(/Continue where you left off Synthetic study alpha /);
 });

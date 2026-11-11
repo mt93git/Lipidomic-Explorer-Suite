@@ -61,7 +61,8 @@ export interface CardDownload { id: string; label: string }
 /** One choice Team's preparation still needs (POST /datasets/sessions → 422 preparation_choices_required). */
 export interface PreparationChoice { name: string; label: string; kind: 'samples' | 'number' | 'choice' | 'boolean' | string; choices?: string[]; min?: number; max?: number; step?: number; teamControlDefault: unknown }
 export interface PreparationChoices { error: string; reason: 'preparation_choices_required'; message: string; missing: PreparationChoice[]; availableSamples: string[];
-  /** Each sample's condition group from the Metadata sheet (nexo-entry-build.md C3); absent without one. */ sampleGroups?: Record<string, string> }
+  /** Each sample's condition group from the Metadata sheet (nexo-entry-build.md C3); absent without one. */ sampleGroups?: Record<string, string>;
+  /** A released dataset's order code and version (Prepare's title); absent for an upload. */ orderCode?: string; version?: number }
 /** A decision on a sample the quality check flagged (C3): it travels in the project's settings as outlierDecisions. */
 export interface OutlierDecision { sample: string; choice: 'keep' | 'exclude' | 'undecided'; reason?: string; by?: string }
 /** POST /datasets/preview (C3): the samples and detection settings Team's detection rule needs. */

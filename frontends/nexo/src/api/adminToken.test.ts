@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdminSignInRequired, adminDisplayName, adminSignInUrl, adminToken, adminHeaders, adminTokenUrl, adminUserId, forgetAdminToken } from './adminToken';
+import { AdminSignInRequired, adminDisplayName, adminSignInUrl, adminToken, adminHeaders, adminTokenUrl, adminUserId, forgetAdminToken, knownClientNames } from './adminToken';
 import { datasetStrings as d } from '../ui/strings';
 afterEach(() => { forgetAdminToken(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -17,6 +17,26 @@ describe('adminToken', () => {
     expect(adminUserId()).toBe('00000000-0000-4000-8000-0000000000aa');
     forgetAdminToken();
     expect(adminUserId()).toBeNull();
+  });
+  // FIX-PROD-B 2: Start's empty state names a client member's group before anything is released to it.
+  it("keeps the client names Admin gives a client member, forgotten with the token", async () => {
+    at(now);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(200, { accessToken: 't1', expiresAt: now + 3600, view: 'client', clientNames: ['Synthetic client group'] })));
+    expect(knownClientNames()).toEqual([]);
+    await adminToken();
+    expect(knownClientNames()).toEqual(['Synthetic client group']);
+    forgetAdminToken();
+    expect(knownClientNames()).toEqual([]);
+  });
+  it('knows no client names when Admin gives none or not a list of names', async () => {
+    at(now);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(issued('t1')));
+    await adminToken();
+    expect(knownClientNames()).toEqual([]);
+    forgetAdminToken();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(200, { accessToken: 't2', expiresAt: now + 3600, view: 'client', clientNames: 'Synthetic client group' })));
+    await adminToken();
+    expect(knownClientNames()).toEqual([]);
   });
   it('asks Admin same-origin with credentials and keeps the token until 60 s before it expires', async () => {
     at(now);
@@ -113,4 +133,14 @@ it('names the signed-in person by the token\'s displayName claim, else as Lab st
   expect(adminDisplayName()).toBeNull();
   await adminToken(); expect(adminDisplayName()).toBe('Ana Synthetic');
   forgetAdminToken(); await adminToken(); expect(adminDisplayName()).toBe('Member');
+});
+
+// FIX-PROD-A: Admin's answer carries displayName next to the token; the name comes from it, the fallback only without one.
+it("names the signed-in person by Admin's displayName, else as today", async () => {
+  at(now);
+  const answer = (displayName?: string) => json(200, { accessToken: 'opaque', expiresAt: now + 3600, userId: 'u-synthetic', view: 'staff', displayName });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(answer('Robin Synthetic')).mockResolvedValueOnce(answer('')).mockResolvedValueOnce(answer()));
+  await adminToken(); expect(adminDisplayName()).toBe('Robin Synthetic');
+  forgetAdminToken(); await adminToken(); expect(adminDisplayName()).toBe('Lab staff');
+  forgetAdminToken(); await adminToken(); expect(adminDisplayName()).toBe('Lab staff');
 });

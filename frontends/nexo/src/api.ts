@@ -197,6 +197,8 @@ export const openSession = (checkpointId: string, signal?: AbortSignal): Promise
   if (!checkpointRecords().some(c => c.id === checkpointId)) throw new Error('Unknown checkpoint');
   const value = structuredClone(session) as Session;
   value.canvas = checkpointCanvas(checkpointId) ?? value.canvas; value.nexo=checkpointNexo(checkpointId)??null;
+  // Mock only: localStorage nexo.mock.nearLimit=1 opens a checkpoint whose project records are near Team's limit.
+  if (globalThis.localStorage?.getItem('nexo.mock.nearLimit') === '1') value.near_limit = true;
   value.sessionId = crypto.randomUUID(); value.design = {allowed:false, unit:null, type:null, confirmed:false}; value.deState = null;
   sessions.set(value.sessionId, value); mockCohortOpened(checkpointId, value.sessionId); mockPaletteOpened(checkpointId, value.sessionId);
   value.canvas.nodes.forEach(node=>{if(!node.instance)return;const instanceId=node.instance.id ?? node.instance.instanceId;if(!instanceId)return;
@@ -343,8 +345,8 @@ const renderCardRoute = sessionRoute('renderCard', (id: string, instance: string
   const card = mockCard(id,instance), entry = catalog.outputs.find(e => e.id === card.source)!;
   // As the server (frontends/nexo-api/cards.R): a card renders natively; "json" means its native JSON.
   if (format !== 'auto' && format !== 'json' && format !== card.render) throw new Error(`This card supports native ${card.render} rendering; requested ${format}`);
-  // Team's own gate for the editable vector views (validate() in the QC module), as the real API answers it (422).
-  if (card.source === 'qc_pca_tab-bqcDeviationPlot' && mockBqcPlaceholder(card.inputs)) throw new Error(MOCK_BQC_PLACEHOLDER);
+  // Team's BQC views with fewer than 2 BQC samples: the API answers Team's sentence (422, cards.R api_bqc_placeholder).
+  const bqc = MOCK_BQC_PLACEHOLDERS[card.source]; if (bqc && mockBqcPlaceholder(card.inputs)) throw new Error(bqc);
   // Team's heatmap with Significant only while the inference guard says no answers 422 with Team's message.
   if (card.source === 'results_dashboard-plot_heat' && card.inputs.heat_significance === 'significant' && !mockHeatAllowed(id)) throw new Error(MOCK_HEAT_RENDER_UNAVAILABLE);
   if (isLongitudinal(card.source) && !mockTimecourseGenerated(instance)) { mockCounters.refusals = (mockCounters.refusals ?? 0) + 1; throw new Error(UNAVAILABLE_INPUTS); }
@@ -448,7 +450,8 @@ async function sendFile(path:string, fallback:string, body?:unknown):Promise<imp
  }
 }
 // The mock mirrors the server's field checks; tests inject a rejected field through __nexoExportMock.fault.
-const exportMock: {last:unknown; csv:string|null; download:{instance:string;id:string}|null; fault:Record<string,unknown>|null} = {last:null, csv:null, download:null, fault:null};
+// downloadFault: the next module download answers 422 with this body, as the API does when Team's module fails to build it.
+const exportMock: {last:unknown; csv:string|null; download:{instance:string;id:string}|null; fault:Record<string,unknown>|null; downloadFault:{error:string;message:string}|null} = {last:null, csv:null, download:null, fault:null, downloadFault:null};
 if (mock) Object.assign(window, {__nexoExportMock: exportMock});
 function mockExportCheck(body:Record<string,unknown>) {
  const presets = mockExportPresets as import('./api/types').ExportPresets, bad = (message:string) => { throw new Error(message); };
@@ -496,6 +499,7 @@ export const cardDownload = sessionRoute('cardDownload', (id:string, instance:st
  const item = mockDownloads(id,instance).find(d => d.id === download);
  if (!item) throw new Error('This plot has no such download.');
  if (download === 'downloadBqcPdf' && mockBqcPlaceholder(cards.get(`${id}/${instance}`)?.inputs ?? {})) return mockFailedDownload(422, {error:'download_failed', message:'Team could not build this PDF: select at least 2 BQC replicate samples first.'});
+ if (exportMock.downloadFault) { const fault = exportMock.downloadFault; exportMock.downloadFault = null; return mockFailedDownload(422, fault); }
  exportMock.download = {instance, id:download};
  if (download === 'download_config') return {blob:new Blob([mockLayoutDownload(cards.get(`${id}/${instance}`)?.inputs ?? {})],{type:'application/json'}), filename:'pathway_layout_config.json'};
  return /PDF/.test(item.label) ? {blob:new Blob(['%PDF-1.4 mock'],{type:'application/pdf'}), filename:`${download}.pdf`}
@@ -551,7 +555,8 @@ export async function setCohort(id:string, lipids:string[]):Promise<CohortState>
 }
 
 // --- Honest downloads (mock): Team's BQC placeholder and a module download that the API refuses (422 {error,message}).
-export const MOCK_BQC_PLACEHOLDER = 'Please configure at least 2 BQC replicate samples to view plot.';
+const MOCK_BQC_PLACEHOLDERS: Record<string, string> = {'qc_pca_tab-bqcPlot':'Please configure at least 2 BQC replicate samples to view plot.',
+  'qc_pca_tab-bqcDeviationPlot':'Please configure at least 2 BQC replicate samples.', 'qc_pca_tab-bqcAbundancePlot':'Please configure at least 2 BQC replicate samples.'};
 const mockBqcPlaceholder = (inputs:Record<string,unknown>) => !(Array.isArray(inputs.bqcSamples) && inputs.bqcSamples.length >= 2);
 async function mockFailedDownload(status:number, body:{error:string;message:string}):Promise<never> {
  const response = new Response(JSON.stringify(body), {status, headers:{'Content-Type':'application/json'}});

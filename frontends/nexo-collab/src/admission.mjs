@@ -150,15 +150,15 @@ export function refusal(document, update, role, userId, stamps = [], serverSeeds
   }
 }
 
-/** The awareness identity of an authenticated caller with its project `role`; displayName from the token's claim when
- *  Admin put one there. */
+/** The awareness identity of an authenticated caller with its project `role`; displayName the one Admin's nexo_people
+ *  gives the caller (auth.mjs), else the token's claim when Admin put one there. */
 export function identity(caller, token, role) {
   let claimed = null;
   try { claimed = JSON.parse(Buffer.from(token.split('.')[1], 'base64url')).displayName; } catch { /* not a JWT */ }
   const hue = parseInt(createHash('sha256').update(String(caller.userId)).digest('hex').slice(0, 8), 16) % 360;
   return {
     userId: caller.userId,
-    displayName: typeof claimed === 'string' && claimed.trim() ? claimed : caller.staff ? 'Lab staff' : 'Member',
+    displayName: caller.displayName ?? (typeof claimed === 'string' && claimed.trim() ? claimed : caller.staff ? 'Lab staff' : 'Member'),
     kind: caller.staff ? 'staff' : 'client',
     role,
     colour: `hsl(${hue} 65% 45%)`,

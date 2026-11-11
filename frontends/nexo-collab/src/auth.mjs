@@ -16,7 +16,22 @@ export function createAuth({ restUrl, anonKey, db, log = console.warn }) {
   let admin = 'unknown';
   const project = db.prepare('SELECT workspace FROM projects WHERE id = ?');
 
-  // { userId, staff, clients } for the token, or throws: 'admin_auth_required' (Admin says 401) or 'admin_unavailable'.
+  // The caller's own display name from admin.nexo_people (lab staff are listed whatever the client, a member under its
+  // client), or null: production tokens carry no name (FIX-PROD-E). Never an e-mail; a failure only loses the name.
+  async function named(token, who) {
+    try {
+      const response = await fetch(`${restUrl.replace(/\/+$/, '')}/rpc/nexo_people`, {
+        method: 'POST', body: JSON.stringify({ p_client_id: who.staff ? null : who.clients[0] ?? null }), signal: AbortSignal.timeout(10_000),
+        headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Profile': 'admin',
+          'Accept-Profile': 'admin', 'Content-Type': 'application/json' },
+      });
+      const rows = response.ok ? await response.json() : [];
+      const name = Array.isArray(rows) ? rows.find(r => r?.user_id === who.userId)?.display_name : null;
+      return typeof name === 'string' && name.trim() ? name : null;
+    } catch { return null; }
+  }
+
+  // { userId, staff, clients, displayName } for the token, or throws: 'admin_auth_required' (Admin says 401) or 'admin_unavailable'.
   async function caller(token) {
     if (typeof token !== 'string' || !/^\S+$/.test(token)) throw refused('admin_auth_required');
     const now = Date.now();
@@ -45,6 +60,7 @@ export function createAuth({ restUrl, anonKey, db, log = console.warn }) {
     admin = 'reachable';
     const answer = { userId: rows[0]?.caller ?? null, staff: rows.some(r => r.caller_view === 'staff'),
       rows, clients: [...new Set(rows.filter(r => r.caller_view === 'client').map(r => r.client_id.toLowerCase()))] };
+    answer.displayName = await named(token, answer);
     cache.set(key, { until: Math.min(now + 60_000, exp), caller: answer });
     return answer;
   }
@@ -63,7 +79,7 @@ export function createAuth({ restUrl, anonKey, db, log = console.warn }) {
         const row = project.get(documentName);
         if (!row) throw refused('unknown_project');
         if (!allows(who, row.workspace)) throw refused('forbidden_scope');
-        return { userId: who.userId, staff: who.staff, workspace: row.workspace };
+        return { userId: who.userId, staff: who.staff, displayName: who.displayName, workspace: row.workspace };
       } catch (e) {
         log(JSON.stringify({ refused: e.reason ?? 'error', project: documentName, user: who?.userId ?? null }));
         throw e;

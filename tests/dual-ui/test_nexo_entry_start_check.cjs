@@ -1,14 +1,17 @@
 // NEXO-ENTRY task ENTRY-4: Start → Prepare → Check → Canvas with ENTRY-4's screens (mock path), Chromium and WebKit, on
 // the real page (main.tsx's screen switch) under the Vite dev server with VITE_API_MOCK=1 (the entry harness is gone,
-// ENTRY-INT). node tests/dual-ui/test_nexo_entry_start_check.cjs
+// ENTRY-INT). Start with checkpoint projects is screenshot to <tmp>/FIX-PROD-F/. node tests/dual-ui/test_nexo_entry_start_check.cjs
 'use strict';
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const net = require('node:net');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../..');
 const nexo = path.join(root, 'frontends/nexo');
 const ci = path.join(root, 'tests/browser/ci');
+const shots = process.env.NEXO_SHOTS || path.join(os.tmpdir(), 'FIX-PROD-F');
 let server;
 function port() {
   return new Promise((resolve, reject) => {
@@ -123,6 +126,18 @@ async function browserTests(pw, name, base) {
       assert.deepEqual(errors, []);
       await context.close();
     }
+    { // FIX-PROD-F: projects opened from a checkpoint carry its name (as the board's top bar); a checkpoint no longer listed keeps "Team checkpoint".
+      const saved = [{ record: { id: 'synthetic-cp-seed7', name: 'classic-seed7-synthetic', sizeBytes: 1, sha256: 'synthetic-cp-seed7', createdAt: '2026-11-02T10:00:00Z', source: 'store' }, state: {} }];
+      const { context, page, errors } = await open(browser, base, { 'nexo-mock-entry': 'checkpoints', 'nexo-mock-checkpoints-v1': JSON.stringify(saved) });
+      const projects = page.getByRole('region', { name: /^Projects/ });
+      await projects.locator('.start-name').first().waitFor();
+      assert.deepEqual(await projects.locator('.start-name').allTextContents(), ['Synthetic demo', 'classic-seed7-synthetic', 'Team checkpoint']);
+      assert.equal(await page.getByRole('region', { name: 'Continue where you left off' }).getByRole('heading').textContent(), 'Synthetic demo');
+      await page.screenshot({ path: path.join(shots, `${name}-start-checkpoint-projects.png`), fullPage: true });
+      console.log(`PASS FIX-PROD-F ${name} start-names-checkpoint-projects`);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
   } finally { await browser.close(); }
 }
 (async () => {
@@ -139,6 +154,7 @@ async function browserTests(pw, name, base) {
     if (Date.now() > deadline) throw new Error('dev server did not start');
     await new Promise(r => setTimeout(r, 100));
   }
+  fs.mkdirSync(shots, { recursive: true });
   for (const name of ['chromium', 'webkit']) await browserTests(pw, name, base);
   console.log('ENTRY-4 OK');
 })().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => server?.kill());

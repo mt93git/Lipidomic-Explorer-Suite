@@ -47,10 +47,16 @@ it('the hover card says name, Lab or Client, role, device and Follow', () => {
   elements(cards[1]).find(e => e.type === 'button')!.props.onClick();
   expect(dispatch.mock.calls[0][0]).toMatchObject({ type: 'nexo-follow', detail: 3 });
 });
-it('my name is the displayName claim of my Admin token, my role the one the sidecar pushed', () => {
-  const token = `x.${btoa(JSON.stringify({ displayName: 'Ana R.' })).replace(/=+$/, '')}.y`;
-  expect(me({ device: 'phone' }, token, 'staff', 'owner')).toEqual({ device: 'phone', displayName: 'Ana R.', kind: 'staff', role: 'owner' });
-  expect(me({}, 'not-a-jwt', 'client', null).displayName).toBe('Member');
+it('my name is the one Admin gave with my token, my role the one the sidecar pushed', () => {
+  expect(me({ device: 'phone' }, 'Ana R.', 'staff', 'owner')).toEqual({ device: 'phone', displayName: 'Ana R.', kind: 'staff', role: 'owner' });
+  expect(me({}, null, 'client', null).displayName).toBe('Member');
+});
+it("my initials and label come from Admin's displayName, else Lab staff", () => {
+  const mine = (name: string | null) => elements(Stack({ people: [{ id: 1, person: me({}, name, 'staff', null), me: true }] }));
+  expect(text(avatars(mine('Robin Synthetic'))[0])).toBe('RSL');
+  expect(avatars(mine('Robin Synthetic'))[0].props['aria-label']).toBe('You, Robin Synthetic, Lab');
+  expect(text(avatars(mine(null))[0])).toBe('LSL');
+  expect(avatars(mine(null))[0].props['aria-label']).toBe('You, Lab staff, Lab');
 });
 it('initials are readable on every avatar colour (at least 4.5:1), dark ink on a light colour', () => {
   const lum = (hex: string) => { const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
