@@ -831,6 +831,7 @@ structural_ui <- function(id) {
                   ),
                   uiOutput(ns("de_not_run_banner_species")),
                   uiOutput(ns("classSelectorUI")),
+                  uiOutput(ns("speciesOneUI")),
                   fluidRow(
                     column(6, sliderInput(ns("labelTop"), "Label Top % Extremes:", min=0, max=100, value=0, step=1)),
                     column(6, actionButton(ns("updateSpecies"), "Load Species Plot", class = "btn-secondary", style="margin-top: 25px; width: 100%;"))
