@@ -18,7 +18,6 @@ import styles from "./people.module.css";
 export const metadata: Metadata = { title: "People" };
 const banners: Record<string, string> = { role: "Role changed.", archived: "Membership archived. The record is kept.", revoked: "Invitation revoked. Its link no longer works." };
 const roleName = (person: Person) => person.kind === "lab_staff" ? `Lab ${labRoleNames[person.role as LabRoleKey] ?? person.role}` : clientRoleNames[person.role as ClientRoleKey] ?? person.role;
-const twoStep = (value: boolean | null) => value === null ? "Not readable" : value ? "On" : "Off";
 
 // Whether the person has signed in to Admin (activation.ts); a lab Owner or Admin may email one who has not.
 function Account({ person, canSend, actors }: { person: Person; canSend: boolean; actors: LabPerson[] | null }) {
@@ -64,10 +63,10 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
         {access.canAnswer && <div className={styles.sectionFirst}><AccessRequests requests={access.requests} clients={access.clients} actors={access.demoActors} /></div>}
         <section className="panel" aria-labelledby="people-title"><h2 id="people-title">People</h2>
           {view.people.length ? <div className={styles.scroll}><table className={styles.table} aria-label="People">
-            <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Client</th><th scope="col">Two-step</th><th scope="col">Account</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Client</th><th scope="col">Account</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>{view.people.map(person => <tr key={`${person.kind}-${person.id}`}>
               <td>{person.name}{person.email && person.email !== person.name && <span className={styles.email}>{person.email}</span>}</td>
-              <td>{roleName(person)}</td><td>{person.clientName ?? "Lab"}</td><td>{twoStep(person.twoStep)}</td>
+              <td>{roleName(person)}</td><td>{person.clientName ?? "Lab"}</td>
               <td><Account person={person} canSend={view.canInviteClient} actors={view.demoActors} /></td>
               <td>{canChange(person) && <Change person={person} actors={view.demoActors} />}</td>
             </tr>)}</tbody>

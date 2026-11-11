@@ -144,7 +144,7 @@ test("live: one list of lab staff and client members, emails from accepted invit
   const view = await listPeople();
   expect(rpc).toHaveBeenCalledWith("account_state");
   expect(view.people.map(person => [person.kind, person.name, person.role, person.email, person.twoStep, person.activation?.active])).toEqual([
-    ["lab_staff", "Synthetic Owner", "owner", "owner@example.test", true, true], ["lab_staff", "op@example.test", "operator", "op@example.test", false, false],
+    ["lab_staff", "Synthetic Owner", "owner", "owner@example.test", true, true], ["lab_staff", "op@example.test", "operator", "op@example.test", false, true],
     ["client_member", "member@example.test", "viewer", "member@example.test", false, true], ["client_member", "Robin Example", "requester", "robin@example.test", false, false],
   ]);
   expect(view.people[3].activation).toEqual({ active: false, hasPassword: false, lastSentAt: "2026-11-11T09:00:00Z" });

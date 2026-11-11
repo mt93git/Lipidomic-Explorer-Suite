@@ -71,7 +71,7 @@ describe("live", () => {
       client_member: [], invitation: [], client: [],
     });
     const rpc = vi.fn(async (fn: string) => fn === "account_state"
-      ? { data: [{ user_id: "u-op", email: "sam@lab.example.test", signed_in_at: "2026-10-01T08:00:00Z", two_step: false, has_password: true, activation_sent_at: null, ...account }], error: null }
+      ? { data: [{ user_id: "u-op", email: "sam@lab.example.test", signed_in_at: null, two_step: false, has_password: true, activation_sent_at: null, ...account }], error: null }
       : { data: null, error: null });
     vi.mocked(createAdminClient).mockResolvedValue({ schema: vi.fn(() => Object.assign(db, { rpc })) } as never);
     const logged: unknown[] = [];
@@ -85,7 +85,7 @@ describe("live", () => {
     return { rpc, logged, generateLink, resetPasswordForEmail };
   }
 
-  it("a lab person copied from Team (password, no factor): generate_link recovery, the Team-password email, the log and the audit", async () => {
+  it("a lab person with a password who has not signed in: generate_link recovery, the Team-password email, the log and the audit", async () => {
     const { rpc, logged, generateLink, resetPasswordForEmail } = setUp({});
     expect(await sendActivation({ kind: "lab_staff", id: "s1" })).toEqual({ status: "sent", error: null, email: "sam@lab.example.test" });
     expect(generateLink).toHaveBeenCalledWith({ type: "recovery", email: "sam@lab.example.test" });

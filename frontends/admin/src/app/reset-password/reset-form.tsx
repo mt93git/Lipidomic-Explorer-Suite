@@ -26,8 +26,7 @@ export function ExpiredLink({ purpose = "reset" }: { purpose?: Purpose }) {
   </>;
 }
 
-// New password and repeat (the invitation page's rules), and the two-step code for an account that has one. Activating,
-// the account has no two-step code yet (it is set up after the first sign-in), so the field is left out.
+// New password and repeat (the invitation page's rules).
 export function ResetForm({ tokenHash, minPassword, purpose = "reset" }: { tokenHash: string; minPassword: number; purpose?: Purpose }) {
   const [state, action, pending] = useActionState<ResetState, FormData>(resetPasswordAction, {});
   const activate = purpose === "activate";
@@ -41,7 +40,7 @@ export function ResetForm({ tokenHash, minPassword, purpose = "reset" }: { token
   return <>
     {activate ? <>
       <h1 id="reset-title">Welcome to Lipidomics{"\u00a0"}· Choose your password</h1>
-      <p className="muted">This link works once. Then you sign in with your email and this password; lab staff then set up a two-step code with an authenticator app.</p>
+      <p className="muted">This link works once. Then you sign in with your email and this password.</p>
     </> : <>
       <h1 id="reset-title">Choose a new password.</h1>
       <p className="muted">This link works once. After the change you sign in again with the new password.</p>
@@ -55,11 +54,6 @@ export function ResetForm({ tokenHash, minPassword, purpose = "reset" }: { token
       <label className="field"><span className="field-label">{activate ? "Repeat password" : "Repeat new password"}</span>
         <input name="confirm" type="password" autoComplete="new-password" minLength={minPassword} required /></label>
       <p id="reset-password-help" className="muted"><small>At least {minPassword} characters.</small></p>
-      {!activate && <>
-        <label className="field"><span className="field-label">Two-step code</span>
-          <input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} aria-describedby="reset-code-help" /></label>
-        <p id="reset-code-help" className="muted"><small>Required if two-step verification is enabled on your account (lab staff). Clients without it leave this empty.</small></p>
-      </>}
       <button className="button" disabled={pending}>{pending ? (activate ? "Saving…" : "Changing…") : activate ? "Choose password" : "Change password"}</button>
     </form>
   </>;

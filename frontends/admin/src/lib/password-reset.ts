@@ -11,7 +11,7 @@ const HOUR = 3_600_000;
 
 export const RESET_SENT = "If that email has an account, a reset link is on its way. It works once, for one hour.";
 export const RESET_DONE = "Password changed. Sign in with your new password.";
-export const ACTIVATE_DONE = "Password chosen. Sign in with your email and the new password. Lab staff then set up a two-step code with an authenticator app.";
+export const ACTIVATE_DONE = "Password chosen. Sign in with your email and the new password.";
 
 export function validateResetEmail(input: string): { email: string } | { error: string } {
   const email = input.trim().toLowerCase();

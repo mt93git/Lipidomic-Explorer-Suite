@@ -19,8 +19,6 @@ export function SignInForm({ mock, next }: { mock: boolean; next?: string }) {
       {next && <input type="hidden" name="next" value={next} />}
       <label className="field"><span className="field-label">Email</span><input name="email" type="email" autoComplete="username" placeholder="you@example.invalid" required disabled={mock || pending} /></label>
       <label className="field"><span className="field-label">Password</span><input name="password" type="password" autoComplete="current-password" required disabled={mock || pending} /></label>
-      <label className="field"><span className="field-label">Two-step code</span><input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} aria-describedby="two-step-help" disabled={mock || pending} /></label>
-      <p id="two-step-help" className="muted"><small>Required if two-step verification is enabled on your account.</small></p>
       <button className="button" disabled={mock || pending}>{pending ? "Signing in…" : "Sign in"}</button>
       <p className="auth-forgot"><Link href={forgot ? `/forgot-password?next=${encodeURIComponent(forgot)}` : "/forgot-password"}>Forgot your password?</Link></p>
     </form>

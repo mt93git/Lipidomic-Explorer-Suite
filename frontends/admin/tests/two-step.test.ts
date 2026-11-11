@@ -44,13 +44,12 @@ async function sessionModule() {
   return import("@/lib/session");
 }
 
-describe("the two-step rule", () => {
-  it("lets an aal2 session through, sends an unverified factor back to sign-in, and a lab role with no factor to enroll", () => {
+describe("the two-step rule (off since 2026-11-11)", () => {
+  it("lets every session through, and asks only an account that still has a verified factor for its code", () => {
     for (const lab of [true, false]) expect(twoStepState({ currentLevel: "aal2", nextLevel: "aal2" }, lab)).toBe("ok");
     for (const lab of [true, false]) expect(twoStepState({ currentLevel: "aal1", nextLevel: "aal2" }, lab)).toBe("verify");
-    expect(twoStepState({ currentLevel: "aal1", nextLevel: "aal1" }, true)).toBe("enroll");
-    expect(twoStepState({ currentLevel: "aal1", nextLevel: "aal1" }, false)).toBe("ok");
-    expect(twoStepState({ currentLevel: null, nextLevel: null }, true)).toBe("enroll");
+    for (const lab of [true, false]) expect(twoStepState({ currentLevel: "aal1", nextLevel: "aal1" }, lab)).toBe("ok");
+    expect(twoStepState({ currentLevel: null, nextLevel: null }, true)).toBe("ok");
   });
 });
 
@@ -58,13 +57,11 @@ describe("the session gate", () => {
   beforeEach(() => createAdminClient.mockReset());
 
   for (const role of ["owner", "admin", "operator", "member"]) {
-    it(`gives a ${role} at aal1 without a factor no app session and sends every workspace page to enroll`, async () => {
+    it(`lets a ${role} with no factor in at aal1, with nothing to enroll`, async () => {
       createAdminClient.mockResolvedValue(liveClient({ current: "aal1", next: "aal1" }, role, role === "member"));
-      const { getAppSession, needsTwoStepEnrollment, requireSession, requireWorkspace } = await sessionModule();
-      expect(await getAppSession()).toBeNull();
-      expect(await needsTwoStepEnrollment()).toBe(true);
-      await expect(requireSession()).rejects.toThrow("redirect:/two-step-setup");
-      await expect(requireWorkspace("staff")).rejects.toThrow("redirect:/two-step-setup");
+      const { getAppSession, needsTwoStepEnrollment } = await sessionModule();
+      expect(await getAppSession()).toMatchObject({ userId: "user-1" });
+      expect(await needsTwoStepEnrollment()).toBe(false);
     });
   }
 
@@ -125,38 +122,5 @@ describe("TOTP enrollment (auth-service)", () => {
     expect(auth.mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: "factor-new", code: "123456" });
     auth.mfa.challengeAndVerify.mockResolvedValue({ data: null, error: new Error("invalid") });
     expect(await verifyTotpEnrollment(client(auth), "factor-new", "654321")).toMatchObject({ ok: false });
-  });
-});
-
-describe("the enrollment page's action", () => {
-  beforeEach(() => createAdminClient.mockReset());
-  const form = (values: Record<string, string>) => { const data = new FormData(); for (const [k, v] of Object.entries(values)) data.set(k, v); return data; };
-  async function action() {
-    vi.resetModules();
-    return (await import("@/app/two-step-setup/actions")).twoStepSetupAction;
-  }
-
-  it("shows the QR code, then verifies the code and continues to the workspace", async () => {
-    const client = liveClient({ current: "aal1", next: "aal1" }, "operator");
-    createAdminClient.mockResolvedValue(client);
-    const run = await action();
-    expect(await run({}, form({}))).toEqual({ factorId: "factor-new", qrCode: "data:image/svg+xml;utf-8,<svg/>", secret: "SYNTHETICSECRET" });
-    await expect(run({}, form({ factorId: "factor-new", code: "123456" }))).rejects.toThrow("redirect:/choose-client");
-    expect(client.auth.mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: "factor-new", code: "123456" });
-  });
-
-  it("keeps the QR code on a wrong code, and does nothing for a session that does not need to enroll", async () => {
-    const client = liveClient({ current: "aal1", next: "aal1" }, "operator");
-    client.auth.mfa.challengeAndVerify.mockResolvedValue({ data: null, error: new Error("invalid") });
-    createAdminClient.mockResolvedValue(client);
-    const run = await action();
-    const shown = { factorId: "factor-new", qrCode: "data:image/svg+xml;utf-8,<svg/>", secret: "SYNTHETICSECRET" };
-    expect(await run(shown, form({ factorId: "factor-new", code: "000000" }))).toMatchObject({ ...shown, error: expect.stringMatching(/not accepted/) });
-
-    const enrolled = liveClient({ current: "aal2", next: "aal2" }, "operator");
-    createAdminClient.mockResolvedValue(enrolled);
-    const again = await action();
-    await expect(again({}, form({}))).rejects.toThrow("redirect:/");
-    expect(enrolled.auth.mfa.enroll).not.toHaveBeenCalled();
   });
 });

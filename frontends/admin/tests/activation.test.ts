@@ -54,9 +54,9 @@ describe("who may send an activation email", () => {
 });
 
 describe("whether an account is active", () => {
-  it("lab staff: a verified two-step factor (people copied from Team who signed in there only are not active)", () => {
-    expect(activationOf("lab_staff", facts({ twoStep: true })).active).toBe(true);
-    expect(activationOf("lab_staff", facts({ twoStep: false, signedInAt: "2026-10-01T08:00:00Z", hasPassword: true }))).toEqual({ active: false, hasPassword: true, lastSentAt: null });
+  it("lab staff: signed in once, to Admin or Team (two-step sign-in is off)", () => {
+    expect(activationOf("lab_staff", facts({ twoStep: false, signedInAt: "2026-10-01T08:00:00Z", hasPassword: true }))).toEqual({ active: true, hasPassword: true, lastSentAt: null });
+    expect(activationOf("lab_staff", facts({ twoStep: true })).active).toBe(false);
   });
 
   it("client members: they have signed in once", () => {
@@ -106,11 +106,11 @@ describe("the wording", () => {
     expect(message.html).toContain(`<a href="https://lipidomics.example.test/admin/invite/${TOKEN}">`);
     const lab = invitationMessage({ inviter: "Robin Owner", target: "Lab Operator", labStaff: true, token: TOKEN }, "https://lipidomics.example.test", "/admin-staging");
     expect(lab.text).toContain("as Lab Operator.");
-    expect(lab.text).toContain("set up a two-step code with an authenticator app");
+    expect(lab.text).not.toContain("two-step");
     expect(lab.text).toContain("/admin-staging/invite/");
   });
 
-  it("no password yet: choose one at the /activate link (one hour); lab staff then set up two-step", () => {
+  it("no password yet: choose one at the /activate link (one hour); no two-step for anyone", () => {
     const base = { name: "Kai Sample", email: "kai@cedar.example.test", target: "Requester at Example Cedar", labStaff: false, hasPassword: false, sender: "Robin Admin", tokenHash: HASH };
     const message = activationMessage(base, "https://lipidomics.example.test", "/admin");
     expect(message.subject).toBe("Welcome to Lipidomics · Choose your password");
@@ -118,14 +118,14 @@ describe("the wording", () => {
     expect(message.text).toContain(`Choose your password at this link. It works once, for one hour:\n\nhttps://lipidomics.example.test/admin${activatePath(HASH)}`);
     expect(message.text).not.toContain("Team password");
     expect(message.text).not.toContain("two-step");
-    expect(activationMessage({ ...base, labStaff: true }, "https://lipidomics.example.test", "/admin").text).toContain("After that you sign in and set up a two-step code");
+    expect(activationMessage({ ...base, labStaff: true }, "https://lipidomics.example.test", "/admin").text).not.toContain("two-step");
   });
 
-  it("a password already (copied from Team): it works, sign in and set up two-step; a new one is still offered through the same link", () => {
+  it("a password already (copied from Team): it works, sign in; a new one is still offered through the same link", () => {
     const message = activationMessage({ name: "Sam Operator", email: "sam@lab.example.test", target: "Lab Operator", labStaff: true, hasPassword: true, sender: "Robin Owner", tokenHash: HASH }, "https://lipidomics.example.test", "/admin");
     expect(message.subject).toBe("Welcome to Lipidomics · Sign in to Admin");
     expect(message.text).toContain("Your Lipidomics Team password already works here. Sign in with it:\n\nhttps://lipidomics.example.test/admin/sign-in");
-    expect(message.text).toContain("set up a two-step code with an authenticator app");
+    expect(message.text).not.toContain("two-step");
     expect(message.text).toContain(`Would you rather choose a new password? Use this link; it works once, for one hour:\n\nhttps://lipidomics.example.test/admin${activatePath(HASH)}`);
     expect(message.text.indexOf("/sign-in")).toBeLessThan(message.text.indexOf("/activate"));
   });

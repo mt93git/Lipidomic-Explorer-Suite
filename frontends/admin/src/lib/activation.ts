@@ -24,11 +24,9 @@ export type AccountFacts = { email: string | null; signedInAt: string | null; tw
 // active: has signed in to Admin. lastSentAt: the last activation email that was sent (skipped or failed ones do not count).
 export type Activation = { active: boolean; hasPassword: boolean; lastSentAt: string | null };
 
-// The signal for "has signed in to Admin". Lab staff: a verified two-step factor. Admin gives a lab role no session
-// before it enrolls one, and Team (the same accounts, so the same last_sign_in_at) never does, so a person copied from
-// Team who signed in there only is still "not activated". Client members have no two-step: they signed in once.
-export function activationOf(kind: PersonKind, facts: AccountFacts): Activation {
-  return { active: kind === "lab_staff" ? facts.twoStep : !!facts.signedInAt, hasPassword: facts.hasPassword, lastSentAt: facts.activationSentAt };
+// Active: the account has signed in (Admin or Team: the same accounts), so someone copied from Team keeps theirs.
+export function activationOf(_kind: PersonKind, facts: AccountFacts): Activation {
+  return { active: !!facts.signedInAt, hasPassword: facts.hasPassword, lastSentAt: facts.activationSentAt };
 }
 
 // One activation email per person per 10 minutes: each one replaces the previous link, so a quick second send would
@@ -42,7 +40,6 @@ export function activationWait(lastSentAt: string | null, now = Date.now()): num
 // ---------------------------------------------------------------- the emails
 
 const SERVICE = "Lipidomics Admin, the Libreros Lab's lipidomics service";
-const TWO_STEP = "As lab staff you then set up a two-step code with an authenticator app (Google Authenticator, 1Password or similar) the first time you sign in.";
 const IGNORE = "If you did not expect this email, you can ignore it.";
 const url = (origin: string, basePath: string, path: string): Part => ({ href: `${origin}${basePath}${path}` });
 
@@ -55,7 +52,6 @@ export function invitationMessage(input: InvitationMail, origin: string, basePat
     [`${input.inviter} invited you to ${SERVICE}, as ${input.target}.`],
     [`Activate your account: choose your password at this link. It works once, for ${INVITATION_DAYS} days.`],
     [url(origin, basePath, invitePath(input.token))],
-    input.labStaff ? [TWO_STEP] : [],
     [IGNORE],
     [SENDER_NAME],
   ]);
@@ -72,11 +68,9 @@ export function activationMessage(input: ActivationMail, origin: string, basePat
   const body: Part[][] = input.hasPassword
     ? [intro,
       ["Your Lipidomics Team password already works here. Sign in with it:"], [url(origin, basePath, "/sign-in")],
-      input.labStaff ? [TWO_STEP] : [],
       ["Would you rather choose a new password? Use this link; it works once, for one hour:"], [link]]
     : [intro,
       ["Choose your password at this link. It works once, for one hour:"], [link],
-      input.labStaff ? ["After that you sign in and set up a two-step code with an authenticator app (Google Authenticator, 1Password or similar)."] : [],
       ["If the link has expired, ask the lab to send a new one, or use Forgot password on the sign-in page."]];
   return renderMessage(activationSubject(input.hasPassword), [...body, [IGNORE], [SENDER_NAME]], `Hello ${input.name},`);
 }

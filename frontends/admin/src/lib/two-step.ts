@@ -8,5 +8,8 @@ export type Assurance = { currentLevel: string | null; nextLevel: string | null 
 export function twoStepState(assurance: Assurance, hasLabRole: boolean): TwoStepState {
   if (assurance.currentLevel === "aal2") return "ok";
   if (assurance.nextLevel === "aal2") return "verify";
-  return hasLabRole ? "enroll" : "ok";
+  // Two-step sign-in is off for everyone (decision of 2026-11-11): no account is made to enroll. An account that still
+  // has a verified factor is asked for its code; the factors were removed when this was switched off.
+  void hasLabRole;
+  return "ok";
 }

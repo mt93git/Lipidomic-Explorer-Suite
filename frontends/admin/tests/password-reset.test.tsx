@@ -207,7 +207,7 @@ describe("Activate", () => {
     expect(auth.signOut).toHaveBeenCalledWith({ scope: "global" });
     render(await SignInPage({ searchParams: Promise.resolve({ activated: "done" }) }));
     expect(screen.getByRole("status")).toHaveTextContent(ACTIVATE_DONE);
-    expect(ACTIVATE_DONE).toMatch(/Lab staff then set up a two-step code/);
+    expect(ACTIVATE_DONE).not.toMatch(/two-step/);
   });
 });
 
