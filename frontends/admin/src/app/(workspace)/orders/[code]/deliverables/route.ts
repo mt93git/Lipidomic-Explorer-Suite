@@ -3,6 +3,7 @@ import { checkUpload, DELIVERABLE_MAX_BYTES } from "@/lib/deliverables";
 import { addDeliverable } from "@/lib/data/deliverables";
 import { getAppSession } from "@/lib/session";
 import { uploadTarget } from "@/lib/deliverable-upload";
+import { BASE_PATH } from "@/lib/base-path";
 
 // POST /admin/orders/ORD041/deliverables (multipart: title, kind, visible, file): the lab adds a file for the client.
 // A route, not a server action: deliverables are up to 50 MB and the app's server actions stop at 6 MB. The proxy is
@@ -12,7 +13,7 @@ import { uploadTarget } from "@/lib/deliverable-upload";
 export const dynamic = "force-dynamic";
 const CODE = /^ORD\d{3,}$/;
 // The Next.js basePath (next.config.ts); a route's Location header is used verbatim (request.nextUrl.basePath is empty here).
-const BASE = "/admin";
+const BASE = BASE_PATH;
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;

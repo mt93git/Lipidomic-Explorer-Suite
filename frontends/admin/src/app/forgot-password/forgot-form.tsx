@@ -3,11 +3,13 @@
 import { useActionState, useEffect, useRef } from "react";
 import Link from "@/components/app-link";
 import { FormAlert } from "@/components/error-summary";
+import { signInHref } from "@/lib/return-path";
 import { forgotPasswordAction, type ForgotState } from "./actions";
 
 // One email field; noValidate so the server's message is the one shown. After a send the card shows the same
 // neutral message whether or not the email has an account.
-export function ForgotForm({ sentMessage }: { sentMessage: string }) {
+// next: a Nexo path (already checked) the links back to sign in carry.
+export function ForgotForm({ sentMessage, next }: { sentMessage: string; next?: string }) {
   const [state, action, pending] = useActionState<ForgotState, FormData>(forgotPasswordAction, {});
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (state.error) input.current?.focus(); }, [state.error, state.attempt]);
@@ -16,7 +18,7 @@ export function ForgotForm({ sentMessage }: { sentMessage: string }) {
     <p className="notice success" role="status">{sentMessage}</p>
     <p className="muted">Nothing arrived after a few minutes? Check your spam folder, then ask again. If you never asked, nothing changes.</p>
     {state.demoLink && <p className="notice">Example only: no email is sent. <Link href={state.demoLink}>Open the reset link →</Link></p>}
-    <Link className="button secondary" href="/sign-in">Back to sign in</Link>
+    <Link className="button secondary" href={signInHref(next)}>Back to sign in</Link>
   </>;
   const refusal = state.outcome === "limited" ? "Too many reset requests were sent from here. Please wait an hour and try again."
     : state.outcome === "unavailable" ? "Password reset is unavailable right now. Please try again later, or contact the lab." : null;
@@ -33,6 +35,6 @@ export function ForgotForm({ sentMessage }: { sentMessage: string }) {
       </div>
       <button className="button" disabled={pending}>{pending ? "Sending…" : "Send reset link"}</button>
     </form>
-    <p className="sso-note auth-switch">Remembered it? <Link href="/sign-in">Sign in →</Link></p>
+    <p className="sso-note auth-switch">Remembered it? <Link href={signInHref(next)}>Sign in →</Link></p>
   </>;
 }

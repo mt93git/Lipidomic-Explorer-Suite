@@ -1,15 +1,17 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { clientIp } from "@/lib/access-requests";
 import { redirectAfterAction } from "@/lib/action-redirect";
 import { getEnvironment } from "@/lib/environment";
-import { createAdminClient } from "@/lib/supabase/server";
-import { authenticate, endAppSession } from "@/lib/auth-service";
+import { endSignedInSession, startAppSession } from "@/lib/app-sign-in";
+import { nexoReturnPath, signInNext } from "@/lib/return-path";
 import { getAppSession } from "@/lib/session";
 import { selectClient } from "@/lib/session-model";
 import { clientCookie, preferenceCookieOptions, signedOutCookie, viewCookie } from "@/lib/auth-cookies";
 
-export type SignInState = { error?: string };
+// next: a Nexo path to leave the app for after signing in (the form navigates the browser there).
+export type SignInState = { error?: string; next?: string };
 
 export async function signIn(_previous: SignInState, form: FormData): Promise<SignInState> {
   if (getEnvironment().mock) return { error: "Use Enter example workspace to review the demo. No credentials are needed." };
@@ -17,19 +19,13 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
   const password = String(form.get("password") ?? "");
   const code = String(form.get("code") ?? "").trim();
   if (!email || !password) return { error: "Enter your email and password." };
-  const client = await createAdminClient();
-  if (!client) return { error: "Sign-in is unavailable. Please try again." };
-  try {
-    const result = await authenticate(client, email, password, code);
-    if (!result.ok) return { error: result.error };
-  } catch {
-    return { error: "The sign-in service is unavailable. Please try again." };
-  }
-  // Discard a previous account's preference before resolving this account's memberships.
-  (await cookies()).set(clientCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
-  // An existing account signing in to accept an invitation returns to that link; nothing else is followed.
-  const next = String(form.get("next") ?? "");
-  return redirectAfterAction(/^\/invite\/[0-9a-f]{64}$/.test(next) ? next : "/choose-client");
+  // Also discards a previous account's client preference before this account's memberships are resolved.
+  const result = await startAppSession(email, password, code, clientIp(await headers()));
+  if (!result.ok) return { error: result.error };
+  // An invitation link (an existing account signing in to accept it) or a Nexo path; nothing else is followed.
+  const next = signInNext(String(form.get("next") ?? ""));
+  if (next && nexoReturnPath(next)) return { next };
+  return redirectAfterAction(next ?? "/choose-client");
 }
 
 // The example workspace as lab staff (default) or as the example client user (view=client).
@@ -44,18 +40,7 @@ export async function enterDemo(form?: FormData) {
 }
 
 export async function signOut() {
-  const env = getEnvironment();
-  if (!env.mock) {
-    const client = await createAdminClient();
-    if (client) {
-      const { error } = await endAppSession(client);
-      if (error) return redirectAfterAction("/sign-in?error=sign-out");
-    }
-  }
-  const store = await cookies();
-  store.set(signedOutCookie, "1", preferenceCookieOptions);
-  store.set(clientCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
-  store.set(viewCookie, "", { ...preferenceCookieOptions, maxAge: 0 });
+  if (!await endSignedInSession(getEnvironment().mock)) return redirectAfterAction("/sign-in?error=sign-out");
   return redirectAfterAction("/sign-in");
 }
 

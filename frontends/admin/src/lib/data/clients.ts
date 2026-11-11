@@ -21,6 +21,9 @@ export type ClientRecord = {
   members: ClientMember[]; orders: ClientOrder[];
   // 0021: whether the client's people get Open in Nexo (off by default; lab Owner or Admin).
   nexoAccess?: boolean;
+  // 0024: whether its members may prepare datasets and upload their own Excel in Nexo (off by default; lab Owner or
+  // Admin, only while nexoAccess is on).
+  membersPrepare?: boolean;
 };
 export type ClientInput = { name: string; kind: string; billingMethod: string | null; notes: string | null; actorId?: string };
 const live = () => !getEnvironment().mock;
@@ -55,17 +58,17 @@ async function admin() {
 
 type ClientRow = {
   id: string; name: string; kind: string; billing_method: string | null; notes: string | null;
-  archived_at: string | null; archived_reason: string | null; nexo_access?: boolean;
+  archived_at: string | null; archived_reason: string | null; nexo_access?: boolean; members_prepare?: boolean;
   client_member: { user_id: string; role: string; archived_at: string | null }[] | null;
   order: { code: string; title: string | null; stage: string; archived_at: string | null }[] | null;
 };
-const select = "id, name, kind, billing_method, notes, archived_at, archived_reason, nexo_access, client_member(user_id, role, archived_at), order(code, title, stage, archived_at)";
+const select = "id, name, kind, billing_method, notes, archived_at, archived_reason, nexo_access, members_prepare, client_member(user_id, role, archived_at), order(code, title, stage, archived_at)";
 const stageLabel = (stage: string) => stage === "released" ? "Released" : stages[stageFromDb(stage)];
 function fromRow(row: ClientRow): ClientRecord {
   const members = (row.client_member ?? []).filter(member => !member.archived_at).map(member => ({ userId: member.user_id, role: member.role }));
   const orders = (row.order ?? []).map(order => ({ code: order.code, title: order.title ?? "", stage: stageLabel(order.stage), archivedAt: order.archived_at })).sort((a, b) => a.code.localeCompare(b.code));
   return { id: row.id, name: row.name, kind: row.kind, billingMethod: row.billing_method, notes: row.notes,
-    archivedAt: row.archived_at, archivedReason: row.archived_reason, nexoAccess: row.nexo_access === true, memberCount: members.length,
+    archivedAt: row.archived_at, archivedReason: row.archived_reason, nexoAccess: row.nexo_access === true, membersPrepare: row.members_prepare === true, memberCount: members.length,
     openOrders: orders.filter(order => !order.archivedAt && order.stage !== "Released").length, members, orders };
 }
 async function demoRecords(): Promise<ClientRecord[]> {
@@ -73,7 +76,7 @@ async function demoRecords(): Promise<ClientRecord[]> {
   const orders = await listOrders();
   const records = demoClients.map((client, index): ClientRecord => ({
     id: client.id, name: client.name, kind: index === 2 ? "company" : "pi_lab", billingMethod: "charge_code", notes: null,
-    archivedAt: null, archivedReason: null, nexoAccess: false, memberCount: 1, openOrders: 0,
+    archivedAt: null, archivedReason: null, nexoAccess: false, membersPrepare: false, memberCount: 1, openOrders: 0,
     members: [{ userId: "example-client-member", role: "client_admin" }], orders: [],
   }));
   for (const client of stored ?? []) {
@@ -166,6 +169,21 @@ export async function setClientNexoAccess(input: { clientId: string; enabled: bo
   const records = await demoRecords();
   available(records, input.clientId);
   await writeDemoClients(records.map(client => client.id === input.clientId ? { ...client, nexoAccess: input.enabled } : client));
+}
+
+// The per-client "members prepare in Nexo" switch (0024's set_client_members_prepare): lab Owner or Admin; turned on
+// only while Nexo access is on (the database refuses it too); audited in the database.
+export async function setClientMembersPrepare(input: { clientId: string; enabled: boolean; actorId?: string }): Promise<void> {
+  await manager(input.actorId);
+  if (live()) {
+    const { error } = await (await admin()).rpc("set_client_members_prepare", { p_client_id: input.clientId, p_enabled: input.enabled });
+    if (error) throw new DataError(error.message);
+    return;
+  }
+  const records = await demoRecords();
+  const client = available(records, input.clientId);
+  if (input.enabled && !client.nexoAccess) throw new DataError("Turn Nexo access on for this client first.");
+  await writeDemoClients(records.map(record => record.id === input.clientId ? { ...record, membersPrepare: input.enabled } : record));
 }
 
 // Read by the client portal for the client being viewed (a client member reads its own client row; RLS decides).

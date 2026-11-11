@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirectAfterAction } from "@/lib/action-redirect";
 import { validateApprove } from "@/lib/access-requests";
+import { withBasePath } from "@/lib/base-path";
 import { approveAccessRequest, declineAccessRequest } from "@/lib/data/access-requests";
 import { archiveMember, createInvitation, DataError, revokeInvitation, setRole } from "@/lib/data/people";
 import { invitePath, type PersonKind } from "@/lib/people";
@@ -37,7 +38,7 @@ export async function inviteAction(_previous: InviteState, form: FormData): Prom
       clientRole: scope === "client" ? role : null, actorId: actor(form),
     });
     revalidatePath("/people");
-    return { link: `/admin${invitePath(token)}`, email: email.toLowerCase() };
+    return { link: withBasePath(invitePath(token)), email: email.toLowerCase() };
   } catch (error) {
     if (error instanceof DataError) return { error: error.message };
     throw error;
@@ -67,7 +68,7 @@ async function approve(form: FormData): Promise<AccessAnswerState> {
     const { target, role } = validateApprove({ target: value(form, "target"), clientId: value(form, "clientId"), newClientName: value(form, "newClientName"), newClientKind: value(form, "newClientKind"), role: value(form, "role") });
     const token = await approveAccessRequest({ requestId, target, role, actorId: actor(form) });
     revalidatePath("/people");
-    return { requestId, link: `/admin${invitePath(token)}` };
+    return { requestId, link: withBasePath(invitePath(token)) };
   } catch (error) {
     if (error instanceof DataError) return { requestId, error: error.message };
     throw error;

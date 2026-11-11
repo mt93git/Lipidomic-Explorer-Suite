@@ -19,7 +19,7 @@ function rolesOf(helper: string): string[] {
 
 test("every matrix row tied to a role helper lists exactly the roles that helper admits", () => {
   const tied = permissions.filter(row => bodies.has(row.rule));
-  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
+  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
   for (const row of tied) expect([...row.roles].sort(), row.key).toEqual(rolesOf(row.rule));
 });
 
@@ -49,7 +49,7 @@ const guards: Record<string, RegExp> = {
 
 test("each action row names the functions the app calls for it, and the row's rule is what guards them", () => {
   const withRpcs = permissions.filter(row => row.rpcs?.length);
-  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "invite_client", "invite_lab", "manage_clients", "nexo_access", "release_policy", "request_order", "run_lab", "shipping_instructions", "submit"]);
+  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "release_policy", "request_order", "run_lab", "shipping_instructions", "submit"]);
   for (const row of withRpcs) {
     for (const fn of row.rpcs ?? []) expect(guardedBody(fn), `${row.key}: ${fn}`).toMatch(guards[row.rule]);
   }
@@ -89,4 +89,13 @@ test("Owner-only rows and the people rules the demo uses", () => {
   expect(() => allows("fly", "owner")).toThrow(/Unknown permission/);
   expect(labRoleKey("Owner")).toBe("owner");
   expect(labRoleKey("Requester")).toBeNull();
+});
+
+test("0024 row: only a lab Owner or Admin lets a client's members prepare in Nexo, and only while Nexo access is on", () => {
+  const row = permissions.find(item => item.key === "members_prepare")!;
+  expect(row).toMatchObject({ area: "Clients and people", rule: "is_lab_manager", rpcs: ["set_client_members_prepare"] });
+  expect([...row.roles].sort()).toEqual(rolesOf("is_lab_manager"));
+  expect(row.note).toMatch(/Needs Nexo access on; off by default/);
+  for (const role of ["operator", "member", "client_admin", "requester", "viewer"]) expect(allows("members_prepare", role), role).toBe(false);
+  expect(latestBody("set_client_members_prepare")).toMatch(/IF p_enabled AND NOT c\.nexo_access THEN/);
 });

@@ -2,6 +2,7 @@
 
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "@/components/app-link";
+import { stripBasePath } from "@/lib/base-path";
 import { usePathname } from "next/navigation";
 import { signOut, switchView } from "@/app/actions";
 import type { AppSession } from "@/lib/models";
@@ -14,7 +15,7 @@ const countLabels: Record<string, string> = { "/people": "access requests waitin
 
 // counts: waiting items per sidebar href (only numbers above zero are shown).
 export function AppShell({ session, children, counts = {} }: { session: AppSession; children: ReactNode; counts?: Record<string, number> }) {
-  const pathname = (usePathname() || "/").replace(/^\/admin(?=\/|$)/, "") || "/";
+  const pathname = stripBasePath(usePathname() || "/");
   const staff = session.view === "staff";
   // Phone only (CSS decides): the view switch, scope, user chip and sign-out sit behind a Menu button.
   // Desktop always shows them; the state only drives aria-expanded and the data-open hook.

@@ -12,12 +12,13 @@ import { plural } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../../release/action-form";
 import { markAcquiredAction, markExportedAction } from "../actions";
+import { BASE_PATH } from "@/lib/base-path";
 
 export const metadata: Metadata = { title: "Batch run" };
 type Params = { saved?: string; exported?: string; acquired?: string };
 
 // The Next.js basePath: a plain download link is not rewritten by the router.
-const BASE = "/admin";
+const BASE = BASE_PATH;
 
 // One batch: download the sequence and bench sheet, mark the sequence exported (freezes the version, orders move to
 // Sequence exported), then mark it acquired (orders move to Acquired; results are ingested as before).

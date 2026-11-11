@@ -1,5 +1,6 @@
 import { ActionForm } from "@/app/(workspace)/release/action-form";
 import { retireDeliverableAction, setDeliverableVisibilityAction } from "@/app/(workspace)/orders/[code]/actions";
+import { BASE_PATH } from "@/lib/base-path";
 import { clientDay } from "@/lib/client-portal";
 import {
   clientMaySee, deliverableAccept, deliverableKinds, formatSize, typeLabel, uploadNotices, type ClientDeliverable, type Deliverable,
@@ -8,7 +9,7 @@ import { formatLabInstant } from "@/lib/lab-time";
 import styles from "./deliverables.module.css";
 
 // The Next.js basePath: a plain form action or download link is not rewritten by the router.
-const BASE = "/admin";
+const BASE = BASE_PATH;
 export const downloadHref = (id: string) => `${BASE}/deliverables/${encodeURIComponent(id)}`;
 
 function Notice({ notice }: { notice?: string }) {

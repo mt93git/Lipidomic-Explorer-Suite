@@ -75,6 +75,19 @@ describe("auditSummary: one human line per event", () => {
     expect(auditSummary(event({ entity: "deliverable", action: "UPDATE", before: { ...file, visible_to_client: true }, after: file }), fctx)).toBe('File "Study report" for ORD040 hidden from the client');
     expect(auditSummary(event({ entity: "deliverable", action: "UPDATE", before: file, after: { ...file, archived_at: "2026-11-10T10:00:00Z" } }), fctx)).toBe('File "Study report" for ORD040 retired');
     expect(auditSummary(event({ entity: "client", action: "UPDATE", before: { name: "Example Cedar", nexo_access: false }, after: { name: "Example Cedar", nexo_access: true } }), ctx)).toBe("Nexo access turned on for Example Cedar");
+    const cedar = { name: "Example Cedar", nexo_access: true, members_prepare: false };
+    expect(auditSummary(event({ entity: "client", action: "UPDATE", before: cedar, after: { ...cedar, members_prepare: true } }), ctx)).toBe("Members may prepare in Nexo turned on for Example Cedar");
+    expect(auditSummary(event({ entity: "client", action: "UPDATE", before: { ...cedar, members_prepare: true }, after: cedar }), ctx)).toBe("Members may prepare in Nexo turned off for Example Cedar");
+  });
+
+  it("reads the client's Nexo switches as on/off in the changed fields", () => {
+    const cedar = { name: "Example Cedar", nexo_access: false, members_prepare: false };
+    expect(auditChanges(event({ entity: "client", action: "UPDATE", before: cedar, after: { ...cedar, nexo_access: true } }), ctx)).toEqual([{ field: "Nexo access", before: "off", after: "on" }]);
+    expect(auditChanges(event({ entity: "client", action: "UPDATE", before: { ...cedar, nexo_access: true }, after: { ...cedar, nexo_access: true, members_prepare: true } }), ctx))
+      .toEqual([{ field: "Members may prepare in Nexo", before: "off", after: "on" }]);
+    expect(auditChanges(event({ entity: "client", action: "UPDATE", before: { ...cedar, nexo_access: true, members_prepare: true }, after: cedar }), ctx)).toEqual([
+      { field: "Nexo access", before: "on", after: "off" }, { field: "Members may prepare in Nexo", before: "on", after: "off" },
+    ]);
   });
 
   it("still reads when the order or dataset is not in the context", () => {

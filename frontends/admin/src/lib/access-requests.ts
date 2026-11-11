@@ -87,10 +87,13 @@ export function takeAccessLimit(ip: string, email: string, now = Date.now(), lim
   return byIp && byEmail;
 }
 
-// The sender's address as the gateway passed it on (the first X-Forwarded-For entry), for the per-IP limit.
+// The sender's address, for the per-IP limits. The public site sits behind Cloudflare (nginx listens only on localhost
+// for its tunnel), which always overwrites CF-Connecting-IP with the real client address; a client can prepend its own
+// X-Forwarded-For entries, so that header is only a fallback for hosts without Cloudflare.
 export function clientIp(headers: { get(name: string): string | null }): string {
+  const cloudflare = headers.get("cf-connecting-ip")?.trim();
   const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return (forwarded || headers.get("x-real-ip")?.trim() || "unknown").slice(0, 64);
+  return (cloudflare || forwarded || headers.get("x-real-ip")?.trim() || "unknown").slice(0, 64);
 }
 
 // What the public page shows after a send. "sent" and "pending" never say whether the email has an account.

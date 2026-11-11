@@ -2,32 +2,40 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
+// Why authenticate refused, for callers that answer in codes (POST /api/sign-in): the email and password, a missing or
+// refused two-step code, or GoTrue not usable. The sign-in form shows only the message.
+export type SignInRefusal = "invalid_credentials" | "code_required" | "invalid_code" | "unavailable";
+export type SignInResult = { ok: true } | { ok: false; error: string; reason: SignInRefusal };
 type AuthClient = Pick<SupabaseClient, "auth">;
 
 export async function endAppSession(client: AuthClient) {
   return client.auth.signOut({ scope: "local" });
 }
 
-export async function authenticate(client: AuthClient, email: string, password: string, code: string): Promise<AuthResult> {
+export async function authenticate(client: AuthClient, email: string, password: string, code: string): Promise<SignInResult> {
   const login = await client.auth.signInWithPassword({ email, password });
-  if (login.error) return { ok: false, error: "Sign-in failed. Check your email and password." };
+  // GoTrue answers a wrong email or password with 400; down, overloaded or rate-limited is not the person's mistake.
+  if (login.error) {
+    const down = unreachable(login.error) || login.error.status === 429 || (login.error.status ?? 0) >= 500;
+    return { ok: false, error: "Sign-in failed. Check your email and password.", reason: down ? "unavailable" : "invalid_credentials" };
+  }
 
-  async function fail(error: string): Promise<AuthResult> {
+  async function fail(error: string, reason: SignInRefusal = "unavailable"): Promise<SignInResult> {
     await endAppSession(client);
-    return { ok: false, error };
+    return { ok: false, error, reason };
   }
 
   try {
     const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assurance.error || !assurance.data) return fail("We could not verify your two-step settings. Please try again.");
     if (assurance.data.nextLevel === "aal2" && assurance.data.currentLevel !== "aal2") {
-      if (!/^\d{6}$/.test(code)) return fail("Enter the six-digit two-step code from your authenticator app.");
+      if (!/^\d{6}$/.test(code)) return fail("Enter the six-digit two-step code from your authenticator app.", code ? "invalid_code" : "code_required");
       const factors = await client.auth.mfa.listFactors();
       if (factors.error) return fail("We could not load your authenticator. Please try again.");
       const factor = factors.data.totp.find(f => f.status === "verified");
       if (!factor) return fail("An app authenticator is required. Contact your administrator.");
       const verification = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
-      if (verification.error) return fail("That two-step code was not accepted. Please sign in again.");
+      if (verification.error) return fail("That two-step code was not accepted. Please sign in again.", "invalid_code");
     }
     return { ok: true };
   } catch {

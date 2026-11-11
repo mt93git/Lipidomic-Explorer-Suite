@@ -41,7 +41,7 @@ async function addFile(page: Page, title: string, kind: string, file: { name: st
 async function setNexo(page: Page, button: string, notice: string) {
   await page.goto("/admin/clients/example-cedar");
   const section = page.getByRole("region", { name: "Nexo access" });
-  await section.getByLabel("Act as (demo)").selectOption("example-owner");
+  await section.locator("#nexo-actor").selectOption("example-owner");
   await section.getByRole("button", { name: button }).click();
   await expect(page.getByRole("status").filter({ hasText: notice })).toBeVisible(slow);
 }

@@ -51,6 +51,7 @@ describe("the public form", () => {
     const get = (values: Record<string, string>) => ({ get: (name: string) => values[name] ?? null });
     expect(clientIp(get({ "x-forwarded-for": " 203.0.113.7 , 10.0.0.1" }))).toBe("203.0.113.7");
     expect(clientIp(get({ "x-real-ip": "198.51.100.2" }))).toBe("198.51.100.2");
+    expect(clientIp(get({ "cf-connecting-ip": "192.0.2.9", "x-forwarded-for": "203.0.113.7, 10.0.0.1" }))).toBe("192.0.2.9");
     expect(clientIp(get({}))).toBe("unknown");
   });
 });

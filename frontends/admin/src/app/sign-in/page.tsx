@@ -3,6 +3,7 @@ import Link from "@/components/app-link";
 import { getEnvironment } from "@/lib/environment";
 import { SignInForm } from "@/components/sign-in-form";
 import { RESET_DONE } from "@/lib/password-reset";
+import { nexoReturnPath, signInNext } from "@/lib/return-path";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sign in" };
@@ -10,7 +11,8 @@ export const metadata: Metadata = { title: "Sign in" };
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; reset?: string }> }) {
   const { mock } = getEnvironment();
   const { error, next, reset } = await searchParams;
-  const invitation = typeof next === "string" && /^\/invite\/[0-9a-f]{64}$/.test(next) ? next : undefined;
+  const returnTo = signInNext(next);
+  const nexo = nexoReturnPath(returnTo);
   return <>
     <header className="topbar"><Link className="brand" href="/"><span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span></Link></header>
     <main className="auth-page"><section className="auth-card" aria-labelledby="sign-in-title">
@@ -18,8 +20,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       <h1 id="sign-in-title">Welcome back.</h1><p className="muted">Sign in to follow your orders or to work in the lab.</p>
       {error === "sign-out" && <p className="error" role="alert">Sign-out could not be completed. Your session may still be active; return to the workspace and try again.</p>}
       {reset === "done" && <p className="notice success" role="status">{RESET_DONE}</p>}
-      {invitation && <p className="notice">Sign in with the invited email address; you will return to the invitation to accept it.</p>}
-      <SignInForm mock={mock} next={invitation} />
+      {returnTo && !nexo && <p className="notice">Sign in with the invited email address; you will return to the invitation to accept it.</p>}
+      {nexo && <p className="notice">Sign in with your lab account; you will return to Nexo.</p>}
+      <SignInForm mock={mock} next={returnTo} />
       <hr className="auth-divider" />
       <p className="sso-note auth-switch">New to the lipidomics service? <Link href="/request-access">Request access →</Link></p>
     </section></main>

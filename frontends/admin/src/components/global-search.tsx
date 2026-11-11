@@ -1,5 +1,6 @@
 "use client";
 
+import { stripBasePath, withBasePath } from "@/lib/base-path";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { Client } from "@/lib/models";
 import { emptyFilters, parseFilters, serializeFilters } from "@/lib/pipeline-filters";
@@ -7,7 +8,7 @@ import { emptyFilters, parseFilters, serializeFilters } from "@/lib/pipeline-fil
 // Top-bar search. On the overview it keeps every other active filter: the hidden fields make the plain GET
 // submission filter-aware, and with JavaScript the submit becomes a history entry with no server round trip.
 export function GlobalSearch({ staff, clients }: { staff: boolean; clients: Client[] }) {
-  const pathname = (usePathname() || "/").replace(/^\/admin(?=\/|$)/, "") || "/";
+  const pathname = stripBasePath(usePathname() || "/");
   const params = useSearchParams();
   const onOverview = staff && pathname === "/pipeline";
   const current = onOverview ? parseFilters(params ?? new URLSearchParams(), clients) : emptyFilters;
@@ -19,7 +20,7 @@ export function GlobalSearch({ staff, clients }: { staff: boolean; clients: Clie
     const search = serializeFilters({ ...current, query });
     window.history.pushState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
   };
-  return <form className="search" action={staff ? "/admin/pipeline" : "/admin/client/home"} method="get" role="search" onSubmit={submit}>
+  return <form className="search" action={withBasePath(staff ? "/pipeline" : "/client/home")} method="get" role="search" onSubmit={submit}>
     <label className="sr-only" htmlFor="global-search">Search orders</label>
     <input id="global-search" name="q" type="search" key={current.query} defaultValue={current.query} placeholder={staff ? "Search orders, descriptions…" : "Client search · Phase 2"} disabled={!staff} />
     {carried.map(([name, value], index) => <input key={`${name}-${index}`} type="hidden" name={name} value={value} />)}

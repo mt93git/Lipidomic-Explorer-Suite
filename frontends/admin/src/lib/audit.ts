@@ -97,6 +97,7 @@ function specific(event: AuditEvent, ctx: AuditContext): string | null {
     }
     case "client":
       if (changed(event, "nexo_access")) return `Nexo access turned ${row.nexo_access ? "on" : "off"}${text(row.name) ? ` for ${row.name}` : ""}`;
+      if (changed(event, "members_prepare")) return `Members may prepare in Nexo turned ${row.members_prepare ? "on" : "off"}${text(row.name) ? ` for ${row.name}` : ""}`;
       return null;
     case "shipment": return insert ? `Shipment received${forOrder(row, ctx)}` : null;
     case "sample": return insert ? `Sample${text(row.sample_code) ? ` ${row.sample_code}` : ""} registered` : null;
@@ -114,13 +115,19 @@ export function auditSummary(event: AuditEvent, ctx: AuditContext): string {
 
 // ---------------------------------------------------------------- changed fields
 
-const fieldLabels: Record<string, string> = { volume_ul: "Volume (µL)", order_id: "Order", dataset_id: "Dataset", user_id: "User", sha256: "SHA-256" };
+const fieldLabels: Record<string, string> = {
+  volume_ul: "Volume (µL)", order_id: "Order", dataset_id: "Dataset", user_id: "User", sha256: "SHA-256",
+  nexo_access: "Nexo access", members_prepare: "Members may prepare in Nexo",
+};
+// The client's Nexo switches (0021, 0024) read on/off, not true/false.
+const switches = new Set(["nexo_access", "members_prepare"]);
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const MAX_TEXT = 120;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function shown(key: string, value: unknown, ctx: AuditContext): string {
   if (value === null || value === undefined) return "—";
+  if (switches.has(key) && typeof value === "boolean") return value ? "on" : "off";
   if (key === "order_id") return orderCode(value, ctx) ?? String(value);
   if (key === "dataset_id") return datasetName(value, ctx) ?? String(value);
   if (Array.isArray(value)) {

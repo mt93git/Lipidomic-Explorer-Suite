@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirectAfterAction } from "@/lib/action-redirect";
-import { archiveClient, createClient, DataError, setClientNexoAccess, updateClient } from "@/lib/data/clients";
+import { archiveClient, createClient, DataError, setClientMembersPrepare, setClientNexoAccess, updateClient } from "@/lib/data/clients";
 import { getAppSession } from "@/lib/session";
 
 export type ClientActionState = { error?: string };
@@ -50,4 +50,13 @@ export async function setNexoAccessAction(_previous: ClientActionState, form: Fo
   catch (error) { if (error instanceof DataError) return { error: error.message }; throw error; }
   revalidatePath(`/clients/${encodeURIComponent(clientId)}`);
   return redirectAfterAction(`/clients/${encodeURIComponent(clientId)}?nexo=${enabled ? "on" : "off"}`);
+}
+export async function setMembersPrepareAction(_previous: ClientActionState, form: FormData): Promise<ClientActionState> {
+  await authorize();
+  const clientId = value(form, "clientId");
+  const enabled = value(form, "enabled") === "true";
+  try { await setClientMembersPrepare({ clientId, enabled, actorId: value(form, "actor") || undefined }); }
+  catch (error) { if (error instanceof DataError) return { error: error.message }; throw error; }
+  revalidatePath(`/clients/${encodeURIComponent(clientId)}`);
+  return redirectAfterAction(`/clients/${encodeURIComponent(clientId)}?prepare=${enabled ? "on" : "off"}`);
 }

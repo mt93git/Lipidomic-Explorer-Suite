@@ -5,12 +5,12 @@ import { billingLabels, clientPermissions, getClient, kindLabels, memberRoleLabe
 import { formatLabInstant } from "@/lib/lab-time";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../../release/action-form";
-import { archiveClientAction, setNexoAccessAction, updateClientAction } from "../actions";
+import { archiveClientAction, setMembersPrepareAction, setNexoAccessAction, updateClientAction } from "../actions";
 import { ClientFields, DemoActor } from "../client-fields";
 import styles from "../clients.module.css";
 
 export const metadata: Metadata = { title: "Client details" };
-export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; created?: string; nexo?: string }> }) {
+export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; created?: string; nexo?: string; prepare?: string }> }) {
   await requireWorkspace("staff");
   const { id } = await params;
   const [client, permissions, query] = await Promise.all([getClient(id), clientPermissions(), searchParams]);
@@ -20,6 +20,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
     {query.created === "1" && <p className="notice success" role="status">Client created.</p>}
     {query.saved === "1" && <p className="notice success" role="status">Client details saved.</p>}
     {(query.nexo === "on" || query.nexo === "off") && <p className="notice success" role="status">Nexo access turned {query.nexo} for {client.name}.</p>}
+    {(query.prepare === "on" || query.prepare === "off") && <p className="notice success" role="status">{client.name}&apos;s members {query.prepare === "on" ? "may now" : "may no longer"} prepare datasets in Nexo.</p>}
     {client.archivedAt && <p className="notice">Archived {formatLabInstant(client.archivedAt)} · {client.archivedReason}</p>}
     <div className={styles.layout}>
       <section className="panel" aria-labelledby="edit-client"><h2 id="edit-client">{permissions.canEdit && !client.archivedAt ? "Edit client" : "Client details"}</h2>
@@ -41,6 +42,15 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
           <input type="hidden" name="clientId" value={client.id} /><input type="hidden" name="enabled" value={String(!client.nexoAccess)} /><DemoActor actors={permissions.demoActors} id="nexo-actor" />
         </ActionForm>
         : !client.archivedAt && <p className="notice">Only a lab Owner or Admin can change Nexo access.</p>}
+      {client.nexoAccess && <>
+        <div className={styles.switch}>
+          <p className="muted">Members of this client may prepare datasets and upload their own Excel in Nexo.</p>
+          <span className={`pill ${client.membersPrepare ? "ok" : "pending"}`} data-testid="prepare-state">{client.membersPrepare ? "On" : "Off"}</span>
+        </div>
+        {permissions.canEdit && !client.archivedAt && <ActionForm action={setMembersPrepareAction} submit={client.membersPrepare ? "Stop members preparing in Nexo" : "Let members prepare in Nexo"} pendingLabel="Saving…" secondary={client.membersPrepare} className={styles.form}>
+          <input type="hidden" name="clientId" value={client.id} /><input type="hidden" name="enabled" value={String(!client.membersPrepare)} /><DemoActor actors={permissions.demoActors} id="prepare-actor" />
+        </ActionForm>}
+      </>}
     </section>
     <section className={`panel ${styles.section}`} aria-labelledby="orders"><h2 id="orders">Orders</h2>
       {client.orders.length ? <div className={styles.scroll}><table className={styles.table} aria-label="Client orders"><thead><tr><th scope="col">Order</th><th scope="col">Title</th><th scope="col">Stage</th></tr></thead><tbody>{client.orders.map(order => <tr key={order.code}><td>{order.archivedAt ? order.code : <Link href={`/orders/${encodeURIComponent(order.code)}`}>{order.code}</Link>}</td><td>{order.title || "Untitled"}</td><td>{order.stage}{order.archivedAt ? " · Archived" : ""}</td></tr>)}</tbody></table></div> : <p className="empty-state">No orders for this client.</p>}
