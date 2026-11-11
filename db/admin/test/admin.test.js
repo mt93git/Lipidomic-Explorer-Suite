@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { freshDb, as, count, id, U, C, CLIENT_TABLES, ALL_TABLES } from './helpers.js';
+import { freshDb, as, count, id, U, C, CLIENT_TABLES, ALL_TABLES, APPEND_ONLY } from './helpers.js';
 
 let db;
 beforeEach(async () => { db = await freshDb(); });
@@ -11,7 +11,7 @@ describe('installation', () => {
     const tables = (await db.query("SELECT relname, relrowsecurity FROM pg_class WHERE relnamespace = 'admin'::regnamespace AND relkind = 'r' ORDER BY relname")).rows;
     expect(tables.map((t) => t.relname).sort()).toEqual([...ALL_TABLES].sort());
     expect(tables.filter((t) => !t.relrowsecurity)).toEqual([]);
-    for (const t of ALL_TABLES.filter((t) => t !== 'audit_event')) {
+    for (const t of ALL_TABLES.filter((t) => !APPEND_ONLY.includes(t))) {
       const trg = (await db.query("SELECT tgname FROM pg_trigger WHERE tgrelid = $1::regclass AND NOT tgisinternal", [`admin."${t}"`])).rows.map((r) => r.tgname);
       expect(trg, t).toEqual(expect.arrayContaining(['refuse_delete', 'refuse_truncate', 'zz_audit']));
     }
@@ -119,7 +119,7 @@ describe('audit', () => {
   test('inserts and updates in every audited table write audit rows with the actor', async () => {
     await as(db, null);
     const entities = (await db.query('SELECT DISTINCT entity FROM admin.audit_event')).rows.map((r) => r.entity);
-    expect(entities.sort()).toEqual(ALL_TABLES.filter((t) => t !== 'audit_event').sort());
+    expect(entities.sort()).toEqual(ALL_TABLES.filter((t) => !APPEND_ONLY.includes(t)).sort());
 
     await as(db, U.operator);
     const o = (await db.query("INSERT INTO admin.\"order\"(client_id, title) VALUES ($1, 'New synthetic order') RETURNING id", [C.A])).rows[0].id;

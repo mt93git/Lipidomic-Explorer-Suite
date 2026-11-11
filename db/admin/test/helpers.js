@@ -30,8 +30,10 @@ export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
   'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
-  'client_contact',
+  'client_contact', 'notification_pref', 'notification_log',
 ];
+// Append-only records with their own refusal triggers and no zz_audit (audit_event since 0003, notification_log 0028).
+export const APPEND_ONLY = ['audit_event', 'notification_log'];
 
 export async function freshDb({ seed = true } = {}) {
   const db = new PGlite();
@@ -98,6 +100,10 @@ async function seedAll(db) {
 
   // One pending access request from the public form (0020), from someone without an account.
   await q("INSERT INTO admin.access_request(id, full_name, email, organisation, kind, message) VALUES ($1, 'Robin Example', 'robin@larch.example.test', 'Example Larch', 'company', 'About 40 synthetic plasma samples')", [id(700)]);
+
+  // Email notifications (0028): client A's viewer turned off released-dataset emails; one skipped send to the Operator.
+  await q("INSERT INTO admin.notification_pref(user_id, kind, enabled) VALUES ($1, 'dataset_released', false)", [U.aView]);
+  await q("INSERT INTO admin.notification_log(id, kind, user_id, email, subject, status, error, reference) VALUES ($1, 'access_requested', $2, 'operator@example.test', 'New access request AR-0001', 'skipped', 'Sending is off', 'AR-0001')", [id(800), U.operator]);
 
   // Mixed batch: one injection of A, one of B, one QC (no client). A second batch holds only B.
   await q("INSERT INTO admin.batch(id, name, instrument_id, panel_id) VALUES ($1, 'B2026-001', $3, $4), ($2, 'B2026-002', $3, $4)", [id(400), id(410), id(500), id(501)]);

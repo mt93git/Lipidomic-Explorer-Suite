@@ -1,5 +1,7 @@
 CREATE SCHEMA auth;
-CREATE TABLE auth.users(id uuid PRIMARY KEY, email text);
+-- last_sign_in_at, encrypted_password and mfa_factors as Supabase has them (0029 reads them; factor status is an enum there).
+CREATE TABLE auth.users(id uuid PRIMARY KEY, email text, last_sign_in_at timestamptz, encrypted_password varchar(255));
+CREATE TABLE auth.mfa_factors(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users, status text NOT NULL);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
 CREATE ROLE authenticated NOLOGIN;
 GRANT USAGE ON SCHEMA auth TO authenticated;
