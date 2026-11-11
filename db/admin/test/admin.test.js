@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { freshDb, as, count, id, U, C, CLIENT_TABLES, ALL_TABLES } from './helpers.js';
+import { freshDb, as, count, id, U, C, CLIENT_TABLES, ALL_TABLES, APPEND_ONLY } from './helpers.js';
 
 let db;
 beforeEach(async () => { db = await freshDb(); });
@@ -11,7 +11,7 @@ describe('installation', () => {
     const tables = (await db.query("SELECT relname, relrowsecurity FROM pg_class WHERE relnamespace = 'admin'::regnamespace AND relkind = 'r' ORDER BY relname")).rows;
     expect(tables.map((t) => t.relname).sort()).toEqual([...ALL_TABLES].sort());
     expect(tables.filter((t) => !t.relrowsecurity)).toEqual([]);
-    for (const t of ALL_TABLES.filter((t) => t !== 'audit_event')) {
+    for (const t of ALL_TABLES.filter((t) => !APPEND_ONLY.includes(t))) {
       const trg = (await db.query("SELECT tgname FROM pg_trigger WHERE tgrelid = $1::regclass AND NOT tgisinternal", [`admin."${t}"`])).rows.map((r) => r.tgname);
       expect(trg, t).toEqual(expect.arrayContaining(['refuse_delete', 'refuse_truncate', 'zz_audit']));
     }
@@ -119,16 +119,15 @@ describe('audit', () => {
   test('inserts and updates in every audited table write audit rows with the actor', async () => {
     await as(db, null);
     const entities = (await db.query('SELECT DISTINCT entity FROM admin.audit_event')).rows.map((r) => r.entity);
-    expect(entities.sort()).toEqual(ALL_TABLES.filter((t) => t !== 'audit_event').sort());
+    expect(entities.sort()).toEqual(ALL_TABLES.filter((t) => !APPEND_ONLY.includes(t)).sort());
 
-    await as(db, U.aReq);
+    await as(db, U.operator);
     const o = (await db.query("INSERT INTO admin.\"order\"(client_id, title) VALUES ($1, 'New synthetic order') RETURNING id", [C.A])).rows[0].id;
     await db.query("UPDATE admin.\"order\" SET title = 'Renamed' WHERE id = $1", [o]);
-    await as(db, U.operator);
     const ev = (await db.query("SELECT actor, client_id, action, before->>'title' AS before, after->>'title' AS after FROM admin.audit_event WHERE entity = 'order' AND entity_id = $1 ORDER BY id", [o])).rows;
     expect(ev).toEqual([
-      { actor: U.aReq, client_id: C.A, action: 'INSERT', before: null, after: 'New synthetic order' },
-      { actor: U.aReq, client_id: C.A, action: 'UPDATE', before: 'New synthetic order', after: 'Renamed' },
+      { actor: U.operator, client_id: C.A, action: 'INSERT', before: null, after: 'New synthetic order' },
+      { actor: U.operator, client_id: C.A, action: 'UPDATE', before: 'New synthetic order', after: 'Renamed' },
     ]);
   });
 
@@ -294,11 +293,9 @@ describe('release paths under a three-signature policy', () => {
 
 describe('uniqueness and generated codes', () => {
   test('full_name is unique per order, not across orders', async () => {
-    await as(db, U.aReq);
-    await expect(db.query("INSERT INTO admin.sample(client_id, order_id, full_name) VALUES ($1, $2, 'Ctrl_1')", [C.A, id(101)])).rejects.toThrow(/duplicate key.*sample_order_id_full_name_key/);
-    await as(db, U.bReq);
-    await db.query("INSERT INTO admin.sample(client_id, order_id, full_name) VALUES ($1, $2, 'Ctrl_2')", [C.B, id(201)]);
     await as(db, U.operator);
+    await expect(db.query("INSERT INTO admin.sample(client_id, order_id, full_name) VALUES ($1, $2, 'Ctrl_1')", [C.A, id(101)])).rejects.toThrow(/duplicate key.*sample_order_id_full_name_key/);
+    await db.query("INSERT INTO admin.sample(client_id, order_id, full_name) VALUES ($1, $2, 'Ctrl_2')", [C.B, id(201)]);
     expect(await count(db, "SELECT 1 FROM admin.sample WHERE full_name = 'Ctrl_1'")).toBe(2);
   });
 
@@ -319,7 +316,7 @@ describe('uniqueness and generated codes', () => {
       expect(r.sample_code).toMatch(/^ORD\d{3,}-S\d{3,}$/);
       for (const word of r.name.split(' ')) expect(r.sample_code).not.toContain(word);
     }
-    await as(db, U.aReq); // a caller cannot choose or change the code
+    // a caller cannot choose or change the code
     const s = (await db.query("INSERT INTO admin.sample(client_id, order_id, full_name, sample_code, sample_number) VALUES ($1, $2, 'Trt_2', 'ALPHA-1', 99) RETURNING sample_code", [C.A, id(101)])).rows[0];
     expect(s.sample_code).toBe('ORD001-S003');
     await expect(db.query("UPDATE admin.sample SET sample_code = 'ALPHA-1' WHERE id = $1", [id(103)])).rejects.toThrow(/cannot change/);
@@ -337,31 +334,73 @@ describe('role-based writes', () => {
     }
   });
 
-  test('requesters submit orders and samples for their own client only; viewers cannot write', async () => {
-    await as(db, U.aReq);
-    await db.query("INSERT INTO admin.\"order\"(client_id, title) VALUES ($1, 'ok')", [C.A]);
-    await expect(db.query("INSERT INTO admin.\"order\"(client_id, title) VALUES ($1, 'cross')", [C.B])).rejects.toThrow(/row-level security/);
-    const upd = await db.query("UPDATE admin.sample SET group1_term = 'hijack' WHERE client_id = $1", [C.B]);
-    expect(upd.affectedRows).toBe(0);
-    await expect(db.query("UPDATE admin.sample SET client_id = $2 WHERE id = $1", [id(103), C.B])).rejects.toThrow();
-    await expect(db.query("INSERT INTO admin.aliquot(client_id, sample_id) VALUES ($1, $2)", [C.A, id(103)])).rejects.toThrow(/row-level security/);
-    await as(db, U.aView);
-    await expect(db.query("INSERT INTO admin.\"order\"(client_id, title) VALUES ($1, 'viewer')", [C.A])).rejects.toThrow(/row-level security/);
-    expect((await db.query("UPDATE admin.\"order\" SET title = 'viewer' WHERE client_id = $1", [C.A])).affectedRows).toBe(0);
+  // 0018: order, shipment and sample are written by lab writers only; client users go through nothing but reads.
+  test('client admins, requesters and viewers cannot insert or update order, shipment or sample directly, stage included', async () => {
+    await as(db, null);
+    const before = (await db.query('SELECT o.stage, o.title, sh.notes, s.group1_term FROM admin."order" o JOIN admin.shipment sh ON sh.order_id = o.id JOIN admin.sample s ON s.order_id = o.id WHERE s.id = $1', [id(103)])).rows[0];
+    for (const u of [U.aAdmin, U.aReq, U.aView]) {
+      await as(db, u);
+      for (const c of [C.A, C.B]) {
+        const o = c === C.A ? id(101) : id(201);
+        await expect(db.query('INSERT INTO admin."order"(client_id, title) VALUES ($1, \'direct\')', [c]), u).rejects.toThrow(/row-level security/);
+        await expect(db.query('INSERT INTO admin.shipment(client_id, order_id) VALUES ($1, $2)', [c, o]), u).rejects.toThrow(/row-level security/);
+        await expect(db.query('INSERT INTO admin.sample(client_id, order_id, full_name) VALUES ($1, $2, \'Direct_1\')', [c, o]), u).rejects.toThrow(/row-level security/);
+      }
+      for (const sql of [
+        'UPDATE admin."order" SET stage = \'released\' WHERE client_id = $1',
+        'UPDATE admin."order" SET title = \'hijack\' WHERE client_id = $1',
+        'UPDATE admin.shipment SET notes = \'hijack\' WHERE client_id = $1',
+        'UPDATE admin.sample SET group1_term = \'hijack\' WHERE client_id = $1',
+        'UPDATE admin.sample SET client_id = $1 WHERE client_id = $1',
+      ]) expect((await db.query(sql, [C.A])).affectedRows, `${u}: ${sql}`).toBe(0);
+      await expect(db.query('INSERT INTO admin.aliquot(client_id, sample_id) VALUES ($1, $2)', [C.A, id(103)]), u).rejects.toThrow(/row-level security/);
+    }
+    await as(db, null);
+    expect((await db.query('SELECT o.stage, o.title, sh.notes, s.group1_term FROM admin."order" o JOIN admin.shipment sh ON sh.order_id = o.id JOIN admin.sample s ON s.order_id = o.id WHERE s.id = $1', [id(103)])).rows[0]).toEqual(before);
   });
 
-  test('membership and lab staff are managed by owner/admin; client admins manage their own members only', async () => {
+  test('a lab operator still inserts and updates order, shipment and sample directly, stage included', async () => {
+    await as(db, U.operator);
+    const o = (await db.query('INSERT INTO admin."order"(client_id, title) VALUES ($1, \'Synthetic direct\') RETURNING id', [C.A])).rows[0].id;
+    const sh = (await db.query('INSERT INTO admin.shipment(client_id, order_id) VALUES ($1, $2) RETURNING id', [C.A, o])).rows[0].id;
+    const s = (await db.query('INSERT INTO admin.sample(client_id, order_id, shipment_id, full_name) VALUES ($1, $2, $3, \'Direct_1\') RETURNING id', [C.A, o, sh])).rows[0].id;
+    expect((await db.query('UPDATE admin."order" SET stage = \'received\' WHERE id = $1', [o])).affectedRows).toBe(1);
+    expect((await db.query('UPDATE admin.shipment SET notes = \'checked\' WHERE id = $1', [sh])).affectedRows).toBe(1);
+    expect((await db.query('UPDATE admin.sample SET group1_term = \'Ctrl\' WHERE id = $1', [s])).affectedRows).toBe(1);
+    expect((await db.query('SELECT stage FROM admin."order" WHERE id = $1', [o])).rows[0].stage).toBe('received');
+  });
+
+  test('create_order, receive_shipment and register_samples still write for a lab operator, and refuse client users', async () => {
+    const calls = {
+      create: () => db.query("SELECT admin.create_order($1, $2, 'Synthetic F0', 'plasma', 1, NULL, NULL) AS id", [C.A, id(501)]).then((r) => r.rows[0].id),
+      receive: (o) => db.query("SELECT admin.receive_shipment($1, 'courier', 'TRK-F0', 'ok', 1, NULL) AS id", [o]).then((r) => r.rows[0].id),
+      register: (o, sh) => db.query('SELECT * FROM admin.register_samples($1, $2, $3::jsonb)', [o, sh, JSON.stringify([{ full_name: 'F0_1', group1_term: 'Ctrl' }])]).then((r) => r.rows),
+    };
+    await as(db, U.operator);
+    const o = await calls.create();
+    const sh = await calls.receive(o);
+    expect((await calls.register(o, sh)).map((r) => r.full_name)).toEqual(['F0_1']);
+    expect((await db.query('SELECT stage FROM admin."order" WHERE id = $1', [o])).rows[0].stage).toBe('registered');
+    for (const u of [U.aAdmin, U.aReq]) {
+      await as(db, u);
+      await expect(calls.create(), u).rejects.toThrow(/only lab staff/);
+      await expect(calls.receive(id(101)), u).rejects.toThrow(/only lab staff/);
+      await expect(calls.register(id(101), id(102)), u).rejects.toThrow(/only lab staff/);
+    }
+  });
+
+  // Since 0015 nobody signed in writes memberships directly: invitations and the People functions do (people.test.js).
+  test('clients are managed by owner/admin; lab staff and client members are never written directly', async () => {
     await as(db, U.operator);
     await expect(db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')")).rejects.toThrow(/row-level security/);
-    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'operator')", [U.aView])).rejects.toThrow(/row-level security/);
+    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'operator')", [U.aView])).rejects.toThrow(/permission denied/);
     await as(db, U.admin);
     await db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')");
-    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'owner')", [U.aView])).rejects.toThrow(/row-level security/);
-    await as(db, U.aAdmin);
-    await db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.bReq]);
-    await expect(db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.B, U.aView])).rejects.toThrow(/row-level security/);
-    await as(db, U.aReq);
-    await expect(db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.aView])).rejects.toThrow(/row-level security/);
+    await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'owner')", [U.aView])).rejects.toThrow(/permission denied/);
+    for (const user of [U.owner, U.admin, U.aAdmin, U.aReq]) {
+      await as(db, user);
+      await expect(db.query("INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, 'viewer')", [C.A, U.bReq])).rejects.toThrow(/permission denied/);
+    }
   });
 });
 
@@ -398,7 +437,7 @@ describe('wave 2 contract functions', () => {
 
   test('the six functions are SECURITY DEFINER, pin search_path, run for authenticated but not PUBLIC', async () => {
     const rows = (await db.query("SELECT proname, prosecdef, proconfig, has_function_privilege('authenticated', oid, 'EXECUTE') AS app, proacl::text AS acl FROM pg_proc WHERE pronamespace = 'admin'::regnamespace AND proname = ANY($1) AND pronargs > 1", [CONTRACT])).rows;
-    expect(rows.map((r) => r.proname).sort()).toEqual([...CONTRACT].sort());
+    expect([...new Set(rows.map((r) => r.proname))].sort()).toEqual([...CONTRACT].sort()); // release_dataset has two forms (0030)
     for (const r of rows) {
       expect(r.prosecdef, r.proname).toBe(true);
       expect(r.proconfig.join(','), r.proname).toMatch(/^search_path=pg_catalog, ?admin$/);
@@ -532,7 +571,7 @@ describe('wave 2 contract functions', () => {
     await sign(ds, 'prepared'); // eligible when signing
     await as(db, U.owner);
     await setPolicy([U.owner, U.admin], 2); // then removed from the policy ...
-    await db.query("UPDATE admin.lab_staff SET archived_at = now(), archived_reason = 'left the lab' WHERE user_id = $1", [U.operator]); // ... and from the lab
+    await db.query("SELECT admin.archive_member('lab_staff', (SELECT id FROM admin.lab_staff WHERE user_id = $1), 'left the lab')", [U.operator]); // ... and from the lab (0015)
     await sign(ds, 'reviewed');
     await expect(release(ds, `${id(900)}/${sha('9')}`)).rejects.toThrow(/needs 2 signatures.*has 1/);
     await as(db, U.admin);

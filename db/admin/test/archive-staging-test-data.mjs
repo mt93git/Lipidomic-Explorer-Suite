@@ -12,11 +12,15 @@
 //
 // It refuses to run unless NEXT_PUBLIC_SUPABASE_URL (the target, as for the seeds) is exactly the staging gateway
 // named in ADMIN_STAGING_GATEWAY_URL; GoTrue and PostgREST are reached only under that gateway (/auth/v1, /rest/v1).
-// No service key: it signs in as a lab owner or admin (ADMIN_CLEANUP_EMAIL, ADMIN_CLEANUP_PASSWORD) and RLS decides;
-// withdrawing needs that person to be an eligible signer under the current release policy. Never prints secrets.
+// Admin rows use a lab owner or admin token (ADMIN_CLEANUP_EMAIL, ADMIN_CLEANUP_PASSWORD) and RLS decides;
+// Withdrawing needs that person to be an eligible signer under the current release policy. Never prints secrets.
+// Optional --retire-users also archives memberships (through admin.archive_member: lab staff rows need the lab Owner's
+// token) and bans only <it run>-<label>@example.test users.
+// It requires SUPABASE_SERVICE_ROLE_KEY from env for the GoTrue admin API only (listing and banning), never admin rows.
 //
 //   ADMIN_STAGING_GATEWAY_URL=https://… NEXT_PUBLIC_SUPABASE_URL=https://… NEXT_PUBLIC_SUPABASE_ANON_KEY=… \
-//     ADMIN_CLEANUP_EMAIL=… ADMIN_CLEANUP_PASSWORD=… node db/admin/test/archive-staging-test-data.mjs [--apply]
+//     ADMIN_CLEANUP_EMAIL=… ADMIN_CLEANUP_PASSWORD=… node db/admin/test/archive-staging-test-data.mjs [--apply] [--retire-users]
+import { BAN_DURATION, retireThrowawayUsers, throwawayUsers } from './retire-users.mjs';
 import { pathToFileURL } from 'node:url';
 
 export const RUN_CLIENT = /^it[0-9a-z]{7,9} Client [AB]$/;
@@ -45,12 +49,13 @@ export function plan({ clients, orders, datasets }) {
   return { withdraw: mine.filter(d => d.status === 'released'), archiveDatasets: mine.filter(d => d.status !== 'released'), archiveOrders, archiveClients };
 }
 
-async function main() {
-  const env = process.env;
-  const apply = process.argv.includes('--apply');
-  try { assertStagingTarget(env.NEXT_PUBLIC_SUPABASE_URL, env.ADMIN_STAGING_GATEWAY_URL); } catch (error) { console.error(`archive-staging: ${error.message}`); process.exit(2); }
+export async function main(env = process.env, args = process.argv.slice(2)) {
+  const apply = args.includes('--apply');
+  const retireUsers = args.includes('--retire-users');
+  assertStagingTarget(env.NEXT_PUBLIC_SUPABASE_URL, env.ADMIN_STAGING_GATEWAY_URL);
   const missing = ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'ADMIN_CLEANUP_EMAIL', 'ADMIN_CLEANUP_PASSWORD'].filter(name => !env[name]?.trim());
-  if (missing.length) { console.error(`archive-staging: missing environment: ${missing.join(', ')}`); process.exit(2); }
+  if (retireUsers && !env.SUPABASE_SERVICE_ROLE_KEY?.trim()) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missing.length) throw new Error(`missing environment: ${missing.join(', ')}`);
 
   const base = normalized(env.ADMIN_STAGING_GATEWAY_URL);
   const anon = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -58,6 +63,7 @@ async function main() {
     const res = await fetch(`${base}${path}`, init);
     const text = await res.text();
     let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!res.ok && path.startsWith('/auth/v1/admin/')) throw new Error(`GoTrue admin API: ${res.status}`);
     if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path.split('?')[0]}: ${res.status} ${typeof data === 'object' && data ? data.message ?? data.msg ?? data.error ?? '' : String(data)}`);
     return data;
   }
@@ -72,6 +78,18 @@ async function main() {
     return out;
   };
 
+  // Only these GoTrue admin endpoints use the service key; admin schema reads/writes keep the signed-in token.
+  const authAdmin = (path, init = {}) => call(`/auth/v1/admin/users${path}`, { ...init,
+    headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' } });
+  const users = [];
+  if (retireUsers) {
+    for (let page = 1; ; page++) {
+      const { users: batch = [] } = await authAdmin(`?page=${page}&per_page=200`);
+      users.push(...throwawayUsers(batch));
+      if (batch.length < 200) break;
+    }
+  }
+
   const clients = (await rest('client?select=id,name&archived_at=is.null'))
     .filter(c => RUN_CLIENT.test(c.name) || LIVE_CLIENTS.includes(c.name));
   const orders = await inChunks(clients.map(c => c.id), ids => rest(`order?select=id,code,title,client_id&archived_at=is.null&client_id=in.(${ids})`));
@@ -82,6 +100,7 @@ async function main() {
   console.log(`  withdraw ${todo.withdraw.length} released dataset(s): ${todo.withdraw.map(d => `${code.get(d.order_id)} v${d.version}`).join(', ') || '-'}`);
   console.log(`  archive ${todo.archiveDatasets.length} other dataset(s), ${todo.archiveOrders.length} order(s): ${todo.archiveOrders.map(o => o.code).join(', ') || '-'}`);
   console.log(`  archive ${todo.archiveClients.length} client(s): ${todo.archiveClients.map(c => c.name).join(', ') || '-'}`);
+  if (retireUsers) console.log(`  retire ${users.length} throwaway user(s) (archive memberships and ban; no auth deletion)`);
   if (!apply) return;
 
   const blocked = new Set(); // orders that still hold a released dataset
@@ -101,6 +120,17 @@ async function main() {
     clients: await patch('client', todo.archiveClients.filter(c => !blockedClients.has(c.id)).map(c => c.id)),
   };
   console.log(`archive-staging: withdrew ${todo.withdraw.length - blocked.size}, archived ${results.datasets.length} dataset(s), ${results.orders.length} order(s), ${results.clients.length} client(s)`);
+  // 0015: memberships are archived through admin.archive_member only (lab staff need an Owner token), then re-read.
+  if (retireUsers) await retireThrowawayUsers(users, {
+    archive: async (table, ids) => {
+      const query = `${table}?user_id=in.(${ids.join(',')})&archived_at=is.null&select=id`;
+      for (const row of await rest(query)) {
+        await rest('rpc/archive_member', { method: 'POST', body: JSON.stringify({ p_kind: table, p_id: row.id, p_reason: REASON }) });
+      }
+      if ((await rest(query)).length) throw new Error('membership archive not confirmed');
+    },
+    ban: id => authAdmin(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ ban_duration: BAN_DURATION }) }),
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

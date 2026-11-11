@@ -112,6 +112,24 @@ describe('0007: build, withdraw, supersede', () => {
     expect(await stage(order.id)).toBe('processed');
   });
 
+  test('0030: the two-argument release needs the policy count, makes no Team project and moves the order to Released', async () => {
+    const { order, rf } = await processedOrder();
+    const ds = await build(order.id, rf);
+    const release2 = () => db.query("SELECT admin.release_dataset($1, 'companion.xlsx')", [ds]);
+    await as(db, U.operator);
+    await expect(release2()).rejects.toThrow(/not an eligible release signer/);
+    await as(db, U.owner); await sign(ds, 'prepared');
+    await expect(release2()).rejects.toThrow(/needs 2 signatures/);
+    await as(db, U.admin); await sign(ds, 'approved');
+    await release2();
+    expect(await row(ds)).toMatchObject({ status: 'released', project_id: null });
+    expect(await stage(order.id)).toBe('released');
+    await as(db, null);
+    expect(await count(db, 'SELECT 1 FROM public.pilot_projects')).toBe(0);
+    expect(await count(db, 'SELECT 1 FROM public.pilot_files')).toBe(0);
+    await as(db, U.admin);
+    await expect(release2()).rejects.toThrow(/already released/);
+  });
   test('build, sign twice, release: the manifest build_dataset recorded is what release publishes', async () => {
     const { order, ds, project } = await releasedOrder();
     expect(await row(ds)).toMatchObject({ status: 'released', version: 1, project_id: project, archived: false });

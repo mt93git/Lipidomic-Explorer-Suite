@@ -1,6 +1,6 @@
 // The one-off staging cleanup (archive-staging-test-data.mjs): its target guard and what it would archive.
 // Pure functions only; the script itself is never run against a stack from here. Synthetic data only.
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { assertStagingTarget, plan } from './archive-staging-test-data.mjs';
 
 describe('target guard', () => {
@@ -55,5 +55,108 @@ describe('plan', () => {
   test('nothing to do without matching names', () => {
     expect(plan({ clients: [{ id: 'c', name: 'Cedar Lab' }], orders: [{ id: 'o', code: 'ORD1', title: 'x', client_id: 'c' }], datasets: [] }))
       .toEqual({ withdraw: [], archiveDatasets: [], archiveOrders: [], archiveClients: [] });
+  });
+});
+
+describe('optional leftover user retirement', () => {
+  const env = { ADMIN_STAGING_GATEWAY_URL: 'https://staging.example.test', NEXT_PUBLIC_SUPABASE_URL: 'https://staging.example.test',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon', ADMIN_CLEANUP_EMAIL: 'owner@example.test', ADMIN_CLEANUP_PASSWORD: 'synthetic', SUPABASE_SERVICE_ROLE_KEY: 'fake-service' };
+  const json = body => new Response(JSON.stringify(body), { status: 200 });
+  async function setup() {
+    const { main } = await import('./archive-staging-test-data.mjs');
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith('/token')) return json({ access_token: 'owner-token' });
+      if (path.endsWith('/admin/users')) return json({ users: [{ id: 'u1', email: 'itabc123-operator@example.test' }, { id: 'real', email: 'steph.sim@admin-staging.test' }] });
+      if (init?.method === 'PUT') return json({});
+      return json([]);
+    });
+    return { main, fetch };
+  }
+  afterEach(() => vi.restoreAllMocks());
+  test('dry run lists only the matching users and makes no retirement writes', async () => {
+    const { main, fetch } = await setup();
+    await main(env, ['--retire-users']);
+    expect(fetch.mock.calls.filter(([, init]) => ['PATCH', 'PUT', 'DELETE'].includes(init?.method))).toEqual([]);
+    expect(fetch.mock.calls.some(([url]) => String(url).includes('/admin/users?page=1&per_page=200'))).toBe(true);
+  });
+  // 0015: signed-in users no longer write memberships directly; each live row goes through admin.archive_member.
+  function withMemberships(fetch, refuse = () => false) {
+    const original = fetch.getMockImplementation();
+    const active = { client_member: ['m1'], lab_staff: ['s1'] };
+    fetch.mockImplementation(async (url, init) => {
+      const { pathname } = new URL(url);
+      const table = pathname.split('/').pop();
+      if (table in active && (init?.method ?? 'GET') === 'GET') return json(active[table].map(id => ({ id })));
+      if (pathname.endsWith('/rpc/archive_member')) {
+        const body = JSON.parse(init.body);
+        if (refuse(body)) return new Response(JSON.stringify({ message: 'Only the lab Owner can invite or manage lab staff' }), { status: 403 });
+        active[body.p_kind] = active[body.p_kind].filter(id => id !== body.p_id);
+        return new Response(null, { status: 204 });
+      }
+      return original(url, init);
+    });
+  }
+  test('apply archives memberships through archive_member with the owner token and bans only matching users with the service key', async () => {
+    const { main, fetch } = await setup();
+    withMemberships(fetch);
+    await main(env, ['--apply', '--retire-users']);
+    const writes = fetch.mock.calls.filter(([u, init]) => ['POST', 'PATCH', 'PUT'].includes(init?.method) && !new URL(u).pathname.endsWith('/token'));
+    expect(writes.map(([u]) => new URL(u).pathname)).toEqual(['/rest/v1/rpc/archive_member', '/rest/v1/rpc/archive_member', '/auth/v1/admin/users/u1']);
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+    expect(JSON.parse(writes[0][1].body)).toEqual({ p_kind: 'client_member', p_id: 'm1', p_reason: expect.any(String) });
+    expect(JSON.parse(writes[1][1].body)).toEqual({ p_kind: 'lab_staff', p_id: 's1', p_reason: expect.any(String) });
+    for (const [, init] of writes.slice(0, 2)) {
+      expect(init.headers.Authorization).toBe('Bearer owner-token');
+      expect(init.headers.apikey).toBe('anon');
+    }
+    expect(fetch.mock.calls.some(([u]) => String(u).includes('client_member?user_id=in.(u1)&archived_at=is.null'))).toBe(true);
+    expect(writes[2][1].headers.Authorization).toBe('Bearer fake-service');
+    expect(JSON.parse(writes[2][1].body)).toEqual({ ban_duration: '876000h' });
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+  });
+  test('keeps a user unbanned when archive_member refuses a membership (e.g. an Admin token on lab staff)', async () => {
+    const { main, fetch } = await setup();
+    withMemberships(fetch, body => body.p_kind === 'lab_staff');
+    await expect(main(env, ['--apply', '--retire-users'])).rejects.toThrow(/retirement failed/);
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+  });
+  test('keeps a user unbanned when a membership is still active after archiving', async () => {
+    const { main, fetch } = await setup();
+    withMemberships(fetch);
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (url, init) => {
+      if (String(url).includes('/lab_staff?') && (init?.method ?? 'GET') === 'GET') return json([{ id: 'owner-membership' }]);
+      if (String(url).endsWith('/rpc/archive_member')) return new Response(null, { status: 204 });
+      return original(url, init);
+    });
+    await expect(main(env, ['--apply', '--retire-users'])).rejects.toThrow(/retirement failed/);
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+  });
+  test('without the option does not read GoTrue admin users or require the service key', async () => {
+    const { main, fetch } = await setup();
+    await main({ ...env, SUPABASE_SERVICE_ROLE_KEY: undefined }, []);
+    expect(fetch.mock.calls.some(([url]) => String(url).includes('/admin/users'))).toBe(false);
+  });
+  test('requires the service key only for opt-in retirement, before any request', async () => {
+    const { main, fetch } = await setup();
+    await expect(main({ ...env, SUPABASE_SERVICE_ROLE_KEY: undefined }, ['--retire-users'])).rejects.toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  test('paginates GoTrue users and never selects near-matching users for retirement', async () => {
+    const { main, fetch } = await setup();
+    const original = fetch.getMockImplementation();
+    fetch.mockImplementation(async (url, init) => {
+      if (String(url).includes('/admin/users?page=1')) return json({ users: Array.from({ length: 200 }, (_, i) => ({ id: `real-${i}`, email: `owner${i}@example.test` })) });
+      return original(url, init);
+    });
+    await main(env, ['--retire-users', '--apply']);
+    expect(fetch.mock.calls.some(([url]) => String(url).includes('/admin/users?page=2&per_page=200'))).toBe(true);
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === 'PUT').map(([url]) => new URL(url).pathname)).toEqual(['/auth/v1/admin/users/u1']);
+  });
+  test('refuses a different target before any request, even with retirement enabled', async () => {
+    const { main, fetch } = await setup();
+    await expect(main({ ...env, NEXT_PUBLIC_SUPABASE_URL: 'https://other.example.test' }, ['--apply', '--retire-users'])).rejects.toThrow(/not the staging gateway/);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
