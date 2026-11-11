@@ -255,6 +255,7 @@ progress::-webkit-progress-value { background: var(--blue); }
 .auth-card .access-form { margin-top: 24px; }
 .auth-switch { font-size: var(--text-sm); }
 .auth-switch a { font-weight: 700; }
+.auth-forgot { text-align: center; font-size: var(--text-sm); margin: 12px 0 0; }
 .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .sso-note { text-align: center; font-size: var(--text-xs); color: var(--muted); margin: 10px 0 0; }
 .client-choices { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 16px; max-width: 1000px; }

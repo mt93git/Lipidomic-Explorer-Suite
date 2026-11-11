@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { enterDemo, signIn } from "@/app/actions";
+import Link from "@/components/app-link";
 
 // next: an invitation link to return to after signing in (the server accepts nothing else).
 export function SignInForm({ mock, next }: { mock: boolean; next?: string }) {
@@ -15,6 +16,7 @@ export function SignInForm({ mock, next }: { mock: boolean; next?: string }) {
       <label className="field"><span className="field-label">Two-step code</span><input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} aria-describedby="two-step-help" disabled={mock || pending} /></label>
       <p id="two-step-help" className="muted"><small>Required if two-step verification is enabled on your account.</small></p>
       <button className="button" disabled={mock || pending}>{pending ? "Signing in…" : "Sign in"}</button>
+      <p className="auth-forgot"><Link href="/forgot-password">Forgot your password?</Link></p>
     </form>
     {mock && <form action={enterDemo} style={{ marginTop: 12 }}>
       <button className="button">Enter example workspace</button>
