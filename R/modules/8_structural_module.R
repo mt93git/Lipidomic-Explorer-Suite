@@ -130,7 +130,11 @@ structure_team_plotly <- function(res, height = NULL) {
     pl <- plotly::subplot(pls, nrows = ceiling(length(pls) / ncol), shareX = FALSE, shareY = FALSE, titleX = TRUE, titleY = TRUE, margin = c(0.06, 0.06, 0.1, 0.1))
     return(finish(pl))
   }
-  if (inherits(res, "ggplot")) return(finish(structure_ggplot_to_plotly(structure_team_style(res))))
+  if (inherits(res, "ggplot")) {
+    pl <- finish(structure_ggplot_to_plotly(structure_team_style(res)))
+    if (isTRUE(attr(res, "team_hide_series"))) pl <- plotly::layout(pl, meta = list(teamHideSeries = TRUE))
+    return(pl)
+  }
   finish(plotly::plot_ly() |> plotly::layout(xaxis = list(visible = FALSE), yaxis = list(visible = FALSE),
          annotations = list(list(text = "Nothing to draw for the current settings.", x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE, font = structure_font))))
 }

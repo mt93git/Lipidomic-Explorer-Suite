@@ -833,6 +833,7 @@ structural_grid_server <- function(id, shared_data) {
         p <- p +
           guides(color = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 19, size = 4, alpha = 1, stroke = 0)), fill = "none") +
           theme(legend.position = "right", legend.key.size = grid::unit(1.1, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
+        attr(p, "team_hide_series") <- TRUE
       }
       p
     })
