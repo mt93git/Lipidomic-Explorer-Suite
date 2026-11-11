@@ -42,7 +42,7 @@ const {chromium} = require('../browser/ci/node_modules/playwright');
       barchart-barPlotUnfiltered barchart-barPlotFiltered barchart-donutPlotUnfiltered barchart-donutPlotFiltered
       volcano_tab-volcanoPlot lsea_tab-lseaPlot fla_tab-plotVolcano structural_tab-diffAcylPlot
       heatmap_barchart_tab-heatmapPlot heatmap_barchart_tab-heatmapSDPlot heatmap_barchart_tab-filteredHeatmapPlot heatmap_barchart_tab-filteredHeatmapSDPlot heatmap_barchart_tab-violin_plot_render
-      structural_tab-summaryPlot structural_tab-speciesPlotPlot structural_tab-networkPlot structural_tab-propPlotPlot structural_grid_tab-heatmapPlot structural_grid_tab-dotplotPlot structural_grid_tab-mergedPlot structural_grid_tab-diffAllPlot
+      structural_tab-summaryPlot structural_tab-speciesPlotPlot structural_tab-networkPlot structural_tab-moduleTraitPlot structural_tab-propPlotPlot structural_grid_tab-heatmapPlot structural_grid_tab-dotplotPlot structural_grid_tab-mergedPlot structural_grid_tab-diffAllPlot
       group_comparison_tab-comparisonPlot logratio_tab-logratioPlot fla_tab-logratioPlot fla_tab-plotCircos
       longitudinal_tab-macroclass_plot longitudinal_tab-subclass_plot longitudinal_tab-index_plot longitudinal_tab-struct_plot longitudinal_tab-allmetrics_plot
       pathway_tab-pathwayPlot pathway_tab-pathwayVisNetwork cellular_org_tab-stressPlot cellular_org_tab-cpiPlot cellular_org_tab-polarPlot
