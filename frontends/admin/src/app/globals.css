@@ -241,7 +241,7 @@ progress::-webkit-progress-value { background: var(--blue); }
 .history small { display: block; color: var(--muted); font-size: var(--text-xs); }
 .placeholder { max-width: 740px; padding: 32px; background: white; border: 1px solid var(--line); border-radius: var(--radius); }
 .placeholder .phase { display: inline-block; color: var(--blue); background: var(--tint); padding: 4px 9px; border-radius: 4px; margin: 10px 0; font-size: var(--text-sm); }
-.auth-page { padding: 55px 20px; }
+.auth-page { padding: 55px 20px; min-height: calc(100dvh - 60px); background: #F3F5F7 var(--auth-art) center bottom / cover no-repeat; }
 .auth-card { width: 100%; max-width: 460px; margin: 0 auto; padding: 34px; border: 1px solid var(--line); border-radius: 10px; background: white; box-shadow: var(--shadow); }
 .auth-card h1 { margin-top: 18px; }
 .field { display: block; margin: 18px 0; }
