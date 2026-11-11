@@ -37,7 +37,7 @@ beforeEach(() => {
 
 describe("demo seam: the whole release flow in memory, per browser", () => {
   beforeEach(() => vi.mocked(getEnvironment).mockReturnValue({ mock: true, url: "", anonKey: "" }));
-  it("builds for an order at Processed, takes two demo signers, releases into a Team project the pipeline shows, then withdraws", async () => {
+  it("builds for an order at Processed, takes two demo signers, releases a version the pipeline shows, then withdraws", async () => {
     const orders = await listReleaseOrders();
     expect(orders.find(order => order.code === "ORD048")).toMatchObject({ id: "ORD048", clientName: "Example Atlas", stage: 7, versions: [] });
     expect(orders.map(order => order.code)).not.toContain("ORD041"); // Registered: no results file yet
@@ -67,15 +67,14 @@ describe("demo seam: the whole release flow in memory, per browser", () => {
     await expect(signDataset({ datasetId: built.datasetId, role: "approved", note: null, actorId: "example-reviewer-a" })).rejects.toThrow(/already signed/);
     await expect(releaseDataset({ datasetId: built.datasetId, actorId: "example-reviewer-a" })).rejects.toThrow(/needs 2 signatures/);
     await signDataset({ datasetId: built.datasetId, role: "approved", note: null, actorId: "example-reviewer-b" });
-    const { projectId } = await releaseDataset({ datasetId: built.datasetId, actorId: "example-reviewer-b" });
-    expect(projectId).toMatch(UUID);
+    await releaseDataset({ datasetId: built.datasetId, actorId: "example-reviewer-b" });
 
     const released = (await getDataset(built.datasetId))!;
-    expect(released.dataset).toMatchObject({ status: "released", projectId, projectName: "ORD048 Example processing review", releasedAt: expect.any(String) });
+    expect(released.dataset).toMatchObject({ status: "released", releasedAt: expect.any(String) });
     expect(released.dataset.signatures.map(s => [s.name, s.role, s.note])).toEqual([["Demo Reviewer A", "reviewed", "Reviewed the synthetic export"], ["Demo Reviewer B", "approved", null]]);
     expect((await listOrders()).find(order => order.code === "ORD048")).toMatchObject({ released: true, stage: 9 });
-    expect((await listDatasets()).map(d => [d.orderCode, d.version, d.status, d.projectId])).toEqual([["ORD048", 1, "released", projectId]]);
-    expect((await listReleaseOrders()).find(order => order.code === "ORD048")?.versions).toEqual([{ id: built.datasetId, version: 1, status: "released", signatures: 2, releasedAt: expect.any(String), projectId }]);
+    expect((await listDatasets()).map(d => [d.orderCode, d.version, d.status, d.projectId])).toEqual([["ORD048", 1, "released", null]]);
+    expect((await listReleaseOrders()).find(order => order.code === "ORD048")?.versions).toEqual([{ id: built.datasetId, version: 1, status: "released", signatures: 2, releasedAt: expect.any(String), projectId: null }]);
 
     await expect(withdrawDataset({ datasetId: built.datasetId, reason: "wrong metadata" })).rejects.toThrow(/not an eligible/);
     await withdrawDataset({ datasetId: built.datasetId, reason: "wrong metadata", actorId: "example-reviewer-a" });
@@ -263,21 +262,13 @@ describe("live seam: the release contract through rpc and storage", () => {
     expect(view.me).toEqual({ userId: "u-admin", name: "Lab Admin", role: "admin" });
     expect(view.demoActors).toBeNull();
 
-    rpc.mockImplementationOnce(async (_name: string, args: { p_analysis_object_path: string }) => ({ data: args.p_analysis_object_path.split("/")[0], error: null }));
-    const { projectId } = await releaseDataset({ datasetId: "ds-uuid" });
-    expect(projectId).toMatch(UUID);
-    const staged = uploads[3];
-    expect(staged).toMatchObject({ bucket: "case-files", path: `${projectId}/${sha(analysis.bytes)}` });
-    expect(sha(staged.bytes)).toBe(sha(analysis.bytes));
-    expect(removes).toEqual([]);
+    rpc.mockImplementationOnce(async () => ({ data: null, error: null }));
+    await releaseDataset({ datasetId: "ds-uuid" });
+    // Team is retired (0030): nothing is copied anywhere; the release only records the companion path.
+    expect(uploads).toHaveLength(3);
     expect(rpc).toHaveBeenLastCalledWith("release_dataset", {
-      p_dataset_id: "ds-uuid", p_analysis_object_path: `${projectId}/${sha(analysis.bytes)}`, p_analysis_sha256: sha(analysis.bytes), p_analysis_size_bytes: analysis.bytes.byteLength,
-      p_analysis_name: "ORD048 dataset v1 analysis.xlsx", p_companion_path: `client-uuid/ORD048/datasets/${sha(uploads[2].bytes)}/companion.xlsx`,
+      p_dataset_id: "ds-uuid", p_companion_path: `client-uuid/ORD048/datasets/${sha(uploads[2].bytes)}/companion.xlsx`,
     });
-    // A stored analysis file that is not the recorded one never reaches Team's bucket.
-    buckets["admin-files"].set(analysis.path, Buffer.from("other bytes"));
-    await expect(releaseDataset({ datasetId: "ds-uuid" })).rejects.toThrow(/not the analysis file recorded/);
-    expect(uploads).toHaveLength(4);
   });
   // Finding 4: a shared batch of two clients. Only this order's registered samples may reach its files.
   const shared = (columns: [string, string, string][]) => Buffer.from([
@@ -397,30 +388,6 @@ describe("live seam: the release contract through rpc and storage", () => {
     const recorded = tables.dataset.flatMap(row => [row.storage_path, `client-uuid/ORD048/datasets/${row.analysis_sha256}/analysis.xlsx`, `client-uuid/ORD048/datasets/${row.companion_sha256}/companion.xlsx`]);
     for (const path of removes.flatMap(r => r.paths)) expect(recorded).not.toContain(path);
     for (const path of recorded) expect(buckets["admin-files"].has(path as string), String(path)).toBe(true);
-  });
-  it("removes the staged case-files object when release_dataset fails, then throws the function's error", async () => {
-    rpc.mockResolvedValueOnce({ data: "ds-uuid", error: null });
-    await buildDataset({ orderId: "order-uuid" });
-    const [full, analysis, companion] = uploads;
-    tables.dataset.push({
-      id: "ds-uuid", order_id: "order-uuid", client_id: "client-uuid", result_file_id: "rf-uuid", version: 1, status: "built", storage_path: full.path, sha256: sha(full.bytes),
-      analysis_sha256: sha(analysis.bytes), analysis_size_bytes: analysis.bytes.byteLength, companion_sha256: sha(companion.bytes), companion_size_bytes: companion.bytes.byteLength,
-      project_id: null, companion_path: null, released_at: null, archived_at: null, archived_reason: null, created_at: "2026-11-07T16:00:00Z",
-    });
-    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "dataset ds-uuid needs 2 signatures by eligible signers; it has 1" } });
-    await expect(releaseDataset({ datasetId: "ds-uuid" })).rejects.toThrow(/needs 2 signatures/);
-    const staged = uploads[3];
-    expect(staged.bucket).toBe("case-files");
-    expect(removes).toEqual([{ bucket: "case-files", paths: [staged.path] }]);
-    expect(buckets["case-files"].size).toBe(0);
-    // ... and a remove that fails still leaves the function's error in charge.
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    removeFails = "throw";
-    rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "dataset ds-uuid needs 2 signatures by eligible signers; it has 1" } });
-    await expect(releaseDataset({ datasetId: "ds-uuid" })).rejects.toThrow(/needs 2 signatures/);
-    expect(removes).toHaveLength(2);
-    expect(warn).toHaveBeenCalledOnce();
-    warn.mockRestore();
   });
   it("fails closed without an authenticated client", async () => {
     vi.mocked(createAdminClient).mockResolvedValue(null);

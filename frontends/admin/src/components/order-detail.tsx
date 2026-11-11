@@ -32,7 +32,7 @@ export function OrderDetail({ order, client, audience = "staff", example = true,
   const pill = retired ? { className: "fail", label: retired.status === "withdrawn" ? "Withdrawn" : "Superseded" }
     : { className: status, label: status === "fail" ? "Gate blocked" : status === "pending" ? "Checks pending" : "Checks complete" };
   const summary = retired
-    ? `Dataset v${retired.version} was ${retired.status} on ${date(retired.at)}${retired.reason ? `: ${retired.reason}` : ""}. No version of this order is available now. The Team project made at release still exists; do not use its files.`
+    ? `Dataset v${retired.version} was ${retired.status} on ${date(retired.at)}${retired.reason ? `: ${retired.reason}` : ""}. No version of this order is available now.`
     : order.released ? `This ${example ? "example " : ""}version has two distinct reviewer signatures.` : "Every check must pass before this order moves forward.";
   const request = order.request;
   const facts = pending && request ? [

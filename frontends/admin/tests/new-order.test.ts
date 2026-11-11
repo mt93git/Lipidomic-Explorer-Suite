@@ -124,7 +124,7 @@ describe("an order created in the demo, on the other demo screens", () => {
     expect(page.rows.map(row => [row.who, row.summary])).toEqual([["Demo Operator", `Order ${code} created`]]);
   });
 
-  it("a dataset of the order carries its title, and so does the released project's name", async () => {
+  it("a dataset of the order carries its title, before and after release", async () => {
     const { code } = await createOrder(input);
     const file = { sha256: "a".repeat(64), sizeBytes: 2000, sheets: ["Abundance"] };
     const dataset: DemoDataset = {
@@ -142,6 +142,6 @@ describe("an order created in the demo, on the other demo screens", () => {
     await writeDemoState({ ...state, datasets: [...(state.datasets ?? []), dataset] });
     expect((await getDataset(dataset.id))?.dataset.orderTitle).toBe("Synthetic plasma lipidome");
     await releaseDataset({ datasetId: dataset.id, actorId: "example-reviewer-b" });
-    expect((await getDataset(dataset.id))?.dataset.projectName).toBe(`${code} Synthetic plasma lipidome`);
+    expect((await getDataset(dataset.id))?.dataset).toMatchObject({ status: "released", orderTitle: "Synthetic plasma lipidome" });
   });
 });

@@ -32,7 +32,7 @@ export default async function ReleasePage() {
       <div>
         <div className="eyebrow"><Link href="/pipeline">Lab work / Pipeline</Link> / Release</div>
         <h1>Release</h1>
-        <p>Build a frozen dataset version from an accepted results file, collect the signatures the release policy requires, and release it into Team&apos;s library.</p>
+        <p>Build a frozen dataset version from an accepted results file, collect the signatures the release policy requires, and release it to the client in Nexo.</p>
       </div>
       <div className="heading-actions">
         <Link className="button secondary" href="/datasets">Datasets</Link>

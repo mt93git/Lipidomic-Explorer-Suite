@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { getDataset, type DatasetFile, type DatasetRecord, type ReleaseView } from "@/lib/data/release";
 import { formatLabInstant } from "@/lib/lab-time";
 import {
-  datasetStatusLabels, formatBytes, isEligibleSigner, labRoleLabels, mayOpenInNexo, nexoDatasetLink, personTurn, releaseProgress, signerRoleLabels, signerRoles, teamLink, type LabPerson,
+  datasetStatusLabels, formatBytes, isEligibleSigner, labRoleLabels, mayOpenInNexo, nexoDatasetLink, personTurn, releaseProgress, signerRoleLabels, signerRoles, type LabPerson,
   type ReleaseProgress,
 } from "@/lib/release";
 import { requireWorkspace } from "@/lib/session";
@@ -23,8 +23,8 @@ function Banner({ query, view, met, missing }: { query: Query; view: ReleaseView
   const next = (href: string, label: string) => <Link className="button" href={href}>{label}</Link>;
   if (query.built) return <p className="notice success" role="status"><strong>Dataset v{dataset.version} built for {dataset.orderCode}.</strong> Three files recorded with their digests. It can now be signed.{next("#turn-title", "Sign this version →")}</p>;
   if (query.signed) return <p className="notice success" role="status"><strong>Signature recorded on dataset v{dataset.version}.</strong> {met ? "The policy count is met; it can be released." : `${missing} more signature${missing === 1 ? "" : "s"} by a different eligible person before release.`}{met && next("#turn-title", "Release it →")}</p>;
-  if (query.released) return <p className="notice success" role="status"><strong>Dataset v{dataset.version} released.</strong> {dataset.orderCode} is now Released and its Team project exists.{next(`/datasets?order=${dataset.orderCode}`, "Datasets →")}</p>;
-  if (query.withdrawn) return <p className="notice error" role="status"><strong>Dataset v{dataset.version} withdrawn.</strong> The Team project it created stays in the library.</p>;
+  if (query.released) return <p className="notice success" role="status"><strong>Dataset v{dataset.version} released.</strong> {dataset.orderCode} is now Released; the client can open it in Nexo.{next(`/datasets?order=${dataset.orderCode}`, "Datasets →")}</p>;
+  if (query.withdrawn) return <p className="notice error" role="status"><strong>Dataset v{dataset.version} withdrawn.</strong></p>;
   if (query.superseded) return <p className="notice" role="status">Dataset v{dataset.version} is now superseded.</p>;
   return null;
 }
@@ -39,18 +39,17 @@ function ActorField({ label, actors, defaultActor }: { label: string; actors: La
 
 type Step = { name: string; detail: string; state: "done" | "current" | "todo" };
 
-// Where the version is, under the title: Built → Signatures n of m → Release; once released, Released → Team project → Withdraw.
+// Where the version is, under the title: Built → Signatures n of m → Release; once released, Released → Withdraw.
 function StatusStrip({ dataset, progress }: { dataset: DatasetRecord; progress: ReleaseProgress }) {
   const signers = dataset.signatures.map(signature => signature.name);
   const steps: Step[] = dataset.status === "released" ? [
     { name: "Released", detail: dataset.releasedAt ? formatLabInstant(dataset.releasedAt) : "Released", state: "done" },
-    { name: "Team project", detail: dataset.projectName ?? dataset.orderCode, state: "done" },
     { name: "Withdraw", detail: "Only if this version must be pulled", state: "todo" },
   ] : [
     { name: "Built", detail: `${formatLabInstant(dataset.builtAt)}${dataset.builtBy ? ` · ${dataset.builtBy}` : ""}`, state: "done" },
     { name: `Signatures ${progress.counted} of ${progress.required}`, state: progress.met ? "done" : "current",
       detail: `${signers.length ? `${signers.join(", ")} signed` : "No signature yet"}${progress.met ? "" : ` · ${progress.missing === 1 ? "one more person" : `${progress.missing} more people`}`}` },
-    { name: "Release", detail: "Creates the Team project", state: progress.met ? "current" : "todo" },
+    { name: "Release", detail: "Opens it to the client in Nexo", state: progress.met ? "current" : "todo" },
   ];
   return <ol className={styles.steps} aria-label="Release progress">{steps.map((step, index) =>
     <li key={step.name} data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>
@@ -97,7 +96,6 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
     ? policy.eligibleSigners.map(userId => people.find(person => person.userId === userId)?.name ?? `${userId.slice(0, 8)}…`).join(", ")
     : "any lab Owner or Admin";
   const nexo = nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, dataset, mayOpenInNexo(session.view));
-  const team = teamLink(process.env.NEXT_PUBLIC_TEAM_URL);
   const facts: [string, string][] = [
     ["Client", dataset.clientName], ["Order", `${dataset.orderCode}${dataset.orderTitle ? ` · ${dataset.orderTitle}` : ""}`], ["Version", `v${dataset.version} of ${versions.length}`],
     ["Built", `${formatLabInstant(dataset.builtAt)}${dataset.builtBy ? ` · ${dataset.builtBy}` : ""}`],
@@ -129,7 +127,7 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
         {active && <section className={styles.turn} aria-labelledby="turn-eyebrow turn-title">
           <div className="eyebrow" id="turn-eyebrow">Your turn</div>
           <h2 id="turn-title">{turnTitle}</h2>
-          <p className="muted">{turn.reason}{turn.action === "release" && " Releasing stages the analysis file in Team's library, creates the project with the client's people as viewers and the signers as owners, and freezes this version."}</p>
+          <p className="muted">{turn.reason}{turn.action === "release" && " Releasing freezes this version and lets the client's people open it in Nexo."}</p>
           {turn.action === "sign" && <ActionForm action={signDatasetAction} submit="Sign" pendingLabel="Signing…" className={styles.form}>
             <input type="hidden" name="datasetId" value={dataset.id} />
             <ActorField label="Sign as" actors={demoActors} defaultActor={demoSigner?.userId ?? ""} />
@@ -145,7 +143,7 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
         <section className="panel" aria-labelledby="manifest-title">
           <div className="eyebrow">Manifest</div>
           <h2 id="manifest-title">Files of this version</h2>
-          <p className="muted">The analysis file is what Team and Nexo open; the companion stays in Admin. Signatures freeze all three digests; the release publishes exactly the recorded analysis file.</p>
+          <p className="muted">The analysis file is what Nexo opens; the companion stays in Admin. Signatures freeze all three digests; the release publishes exactly the recorded analysis file.</p>
           <div className={styles.scroll}><table className={styles.files} aria-label="Files of this version">
             <thead><tr><th scope="col">File</th><th scope="col">Sheets</th><th scope="col">SHA-256</th><th scope="col">Size</th></tr></thead>
             <tbody><FileRow file={dataset.full} /><FileRow file={dataset.analysis} /><FileRow file={dataset.companion} /></tbody>
@@ -171,17 +169,14 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
       <div>
         <section className="panel" aria-labelledby="release-title">
           <div className="eyebrow">{dataset.status === "built" ? "Then" : "Released"}</div>
-          <h2 id="release-title">{dataset.status === "built" ? "Release" : "Team project"}</h2>
+          <h2 id="release-title">{dataset.status === "built" ? "Release" : "In Nexo"}</h2>
           {dataset.status === "built" && <>
-            <p className="muted">{progress.met ? "The policy count is met. Releasing stages the analysis file in Team's library, creates the project with the client's people as viewers and the signers as owners, and freezes this version." : `${progress.missing} more signature${progress.missing === 1 ? "" : "s"} by a different eligible person before this version can be released.`}</p>
+            <p className="muted">{progress.met ? "The policy count is met. Releasing freezes this version and lets the client's people open it in Nexo." : `${progress.missing} more signature${progress.missing === 1 ? "" : "s"} by a different eligible person before this version can be released.`}</p>
           </>}
-          {dataset.projectId && <div className={styles.project}>
-            <strong>{dataset.projectName ?? dataset.orderCode}</strong>
-            <span>Project id <span className={`mono ${styles.id}`}>{dataset.projectId}</span></span>
+          {dataset.status !== "built" && <div className={styles.project}>
+            <strong>{dataset.orderCode} · v{dataset.version}</strong>
             {dataset.releasedAt && <span className="muted">Released {formatLabInstant(dataset.releasedAt)}</span>}
-            <span className="muted">The analysis file is in Team&apos;s library; the client&apos;s people see it as viewers, the signers as owners.</span>
             <div className={styles.links}>
-              {team ? <a className="button secondary" href={team} target="_blank" rel="noreferrer">Open Team</a> : <span className="muted">Team link: set NEXT_PUBLIC_TEAM_URL</span>}
               {nexo ? <a className="button" href={nexo} target="_blank" rel="noreferrer">Open in Nexo</a>
                 : dataset.status === "released" && !process.env.NEXT_PUBLIC_NEXO_URL?.trim() ? <span className="muted">Nexo link: set NEXT_PUBLIC_NEXO_URL</span> : null}
             </div>
@@ -192,7 +187,7 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
         {dataset.status === "released" && <section className="panel" aria-labelledby="withdraw-title">
           <div className="eyebrow">If this version must be pulled</div>
           <h2 id="withdraw-title">Withdraw</h2>
-          <p className="muted">Withdrawing freezes this version as withdrawn, with your reason, for everyone who can see it. The Team project is not removed; Admin never changes Team&apos;s records.</p>
+          <p className="muted">Withdrawing freezes this version as withdrawn, with your reason, for everyone who can see it.</p>
           <ActionForm action={withdrawDatasetAction} submit="Withdraw" pendingLabel="Withdrawing…" disabled={!canRetire} secondary className={styles.form}>
             <input type="hidden" name="datasetId" value={dataset.id} />
             <ActorField label="Withdraw as" actors={demoActors} defaultActor={demoReleaser?.userId ?? ""} />

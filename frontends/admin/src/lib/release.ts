@@ -79,8 +79,6 @@ export function datasetPaths(clientId: string, orderCode: string, digests: Datas
   return { full: `${root}/${digests.full}/dataset-v1.xlsx`, analysis: `${root}/${digests.analysis}/analysis.xlsx`, companion: `${root}/${digests.companion}/companion.xlsx` };
 }
 
-// Team's bucket case-files: <project_id>/<sha256>, Team's own rule, checked again by admin.release_dataset.
-export const analysisObjectPath = (projectId: string, analysisSha256: string) => `${projectId}/${analysisSha256}`;
 
 // Who sees Open in Nexo (docs/integration/admin-identity.md): lab staff always; client members only when
 // NEXT_PUBLIC_NEXO_CLIENT_ACCESS=1. It stays unset in production until Nexo's own store (checkpoints, project library)
@@ -98,10 +96,6 @@ export function nexoDatasetLink(base: string | undefined, dataset: NexoTarget | 
   const root = (base ?? "").trim().replace(/\/+$/, "");
   if (!root || !allowed || !dataset || dataset.status !== "released" || dataset.archivedAt) return null;
   return `${root}/?dataset=${encodeURIComponent(dataset.id)}`;
-}
-export function teamLink(base: string | undefined): string | null {
-  const root = (base ?? "").trim().replace(/\/+$/, "");
-  return root ? `${root}/` : null;
 }
 
 // ---------------------------------------------------------------- SCIEX sample names → the registry

@@ -65,9 +65,9 @@ describe("dataset version page: the action first", () => {
     expect(within(turn()).getByRole("button", { name: "Release dataset" })).toBeEnabled();
     expect(screen.getAllByRole("button", { name: "Release dataset" })).toHaveLength(1);
   });
-  it("released: the strip reads Released, Team project, Withdraw; Withdraw stays in its own panel", async () => {
+  it("released: the strip reads Released, Withdraw; Withdraw stays in its own panel", async () => {
     await show(ana, { status: "released", releasedAt: "2026-11-09T18:00:00Z", projectId: "p-1", projectName: "ORD900 Synthetic pilot", signatures: [signature(ana), signature(ben)] });
-    expect(steps().map(step => step.querySelector("strong")?.textContent)).toEqual(["Released", "Team project", "Withdraw"]);
+    expect(steps().map(step => step.querySelector("strong")?.textContent)).toEqual(["Released", "Withdraw"]);
     expect(turn()).toHaveTextContent("Nothing left to sign");
     expect(within(screen.getByRole("region", { name: "Withdraw" })).getByRole("button", { name: "Withdraw" })).toBeVisible();
   });

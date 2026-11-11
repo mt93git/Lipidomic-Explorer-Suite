@@ -21,7 +21,7 @@ const signedTwice = () => {
   const a = recordSignature(state, { datasetId: "ds-1", actor: reviewerA, role: "reviewed", note: "Synthetic review", now: later(1), id: "sig-a" });
   return recordSignature(a, { datasetId: "ds-1", actor: reviewerB, role: "approved", note: null, now: later(2), id: "sig-b" });
 };
-const released = () => recordRelease(signedTwice(), { datasetId: "ds-1", actor: reviewerB, now: later(3), projectId: "11111111-1111-4111-8111-111111111111", projectName: "ORD048 Example processing review" });
+const released = () => recordRelease(signedTwice(), { datasetId: "ds-1", actor: reviewerB, now: later(3) });
 
 describe("demo release records", () => {
   it("builds a dataset for an order at Processed or later, numbering versions per order, and the order reads Excel built", () => {
@@ -49,20 +49,20 @@ describe("demo release records", () => {
     expect(after.gates.map(gate => gate.label)).toEqual(["Frozen dataset v1 built", "Signature · Demo Reviewer A (Reviewed)", "1 more signature by a different eligible person"]);
     expect(after.history[0]).toMatchObject({ title: "Dataset v1 signed · Reviewed · Synthetic review".replace("Synthetic review", "ok"), actor: "Demo Reviewer A" });
   });
-  it("releases only when the policy count is met by distinct eligible people; the order then reads Released with the Team project", () => {
+  it("releases only when the policy count is met by distinct eligible people; the order then reads Released", () => {
     const { state } = built();
     const one = recordSignature(state, { datasetId: "ds-1", actor: reviewerA, role: "reviewed", note: null, now, id: "sig-a" });
-    expect(() => recordRelease(one, { datasetId: "ds-1", actor: reviewerA, now, projectId: "p", projectName: "p" })).toThrow(/needs 2 signatures by different eligible people \(has 1\)/);
-    expect(() => recordRelease(signedTwice(), { datasetId: "ds-1", actor: operator, now, projectId: "p", projectName: "p" })).toThrow(/not an eligible/);
+    expect(() => recordRelease(one, { datasetId: "ds-1", actor: reviewerA, now })).toThrow(/needs 2 signatures by different eligible people \(has 1\)/);
+    expect(() => recordRelease(signedTwice(), { datasetId: "ds-1", actor: operator, now })).toThrow(/not an eligible/);
     const done = released();
     const dataset = done.datasets[0];
-    expect(dataset).toMatchObject({ status: "released", releasedBy: "Demo Reviewer B", projectId: "11111111-1111-4111-8111-111111111111", projectName: "ORD048 Example processing review", releasedAt: later(3).toISOString() });
+    expect(dataset).toMatchObject({ status: "released", releasedBy: "Demo Reviewer B", releasedAt: later(3).toISOString() });
     const after = order("ORD048", done);
     expect(after).toMatchObject({ stage: 9, released: true, releasedAt: later(3).toISOString(), completedSamples: after.sampleCount, currentDatasetId: "ds-1" });
     expect(gateStatus(after.gates)).toBe("ok");
-    expect(after.history[0]).toMatchObject({ title: "Dataset v1 released · Team project 11111111-1111-4111-8111-111111111111", actor: "Demo Reviewer B" });
+    expect(after.history[0]).toMatchObject({ title: "Dataset v1 released", actor: "Demo Reviewer B" });
     expect(() => recordSignature(done, { datasetId: "ds-1", actor: reviewerA, role: "approved", note: null, now, id: "z" })).toThrow(/released; it can no longer be signed/);
-    expect(() => recordRelease(done, { datasetId: "ds-1", actor: reviewerB, now, projectId: "q", projectName: "q" })).toThrow(/already released/);
+    expect(() => recordRelease(done, { datasetId: "ds-1", actor: reviewerB, now })).toThrow(/already released/);
   });
   it("withdraws a released dataset with a reason, by an eligible person only, and keeps the order released", () => {
     const done = released();
@@ -70,7 +70,7 @@ describe("demo release records", () => {
     expect(() => recordWithdrawal(done, { datasetId: "ds-1", actor: reviewerA, reason: "  ", now })).toThrow(/needs a reason/);
     expect(() => recordWithdrawal(signedTwice(), { datasetId: "ds-1", actor: reviewerA, reason: "x", now })).toThrow(/is built; only a released dataset/);
     const withdrawn = recordWithdrawal(done, { datasetId: "ds-1", actor: reviewerA, reason: " wrong sample metadata ", now: later(10) });
-    expect(withdrawn.datasets[0]).toMatchObject({ status: "withdrawn", archivedReason: "wrong sample metadata", archivedAt: later(10).toISOString(), projectId: "11111111-1111-4111-8111-111111111111" });
+    expect(withdrawn.datasets[0]).toMatchObject({ status: "withdrawn", archivedReason: "wrong sample metadata", archivedAt: later(10).toISOString() });
     const after = order("ORD048", withdrawn);
     expect(after.released).toBe(true);
     // Released, then withdrawn: not a current release (finding 2).
@@ -85,7 +85,7 @@ describe("demo release records", () => {
     const second = recordBuild(first, { ...build, id: "ds-2", now: later(20), order: order("ORD048", first), files: { ...files, full: { ...files.full, sha256: sha("c") }, analysis: { ...files.analysis, sha256: sha("8") } } });
     expect(() => recordSupersede(second.state, { datasetId: "ds-1", newDatasetId: "ds-2", actor: reviewerA, now })).toThrow(/version 2\) is built; a dataset is superseded only by a released version/);
     const signed = recordSignature(recordSignature(second.state, { datasetId: "ds-2", actor: reviewerA, role: "reviewed", note: null, now: later(21), id: "s3" }), { datasetId: "ds-2", actor: reviewerB, role: "approved", note: null, now: later(22), id: "s4" });
-    const both = recordRelease(signed, { datasetId: "ds-2", actor: reviewerA, now: later(23), projectId: "22222222-2222-4222-8222-222222222222", projectName: "ORD048 v2" });
+    const both = recordRelease(signed, { datasetId: "ds-2", actor: reviewerA, now: later(23) });
     expect(() => recordSupersede(both, { datasetId: "ds-2", newDatasetId: "ds-1", actor: reviewerA, now })).toThrow(/not newer/);
     expect(() => recordSupersede(both, { datasetId: "ds-1", newDatasetId: "ds-1", actor: reviewerA, now })).toThrow(/itself/);
     expect(() => recordSupersede(both, { datasetId: "ds-1", newDatasetId: "ds-2", actor: operator, now })).toThrow(/not an eligible/);
@@ -107,7 +107,7 @@ describe("demo release records", () => {
     // Under the new policy the operator may sign; the release then needs three people.
     const { state: withDataset } = built(next);
     const signed = recordSignature(withDataset, { datasetId: "ds-1", actor: operator, role: "prepared", note: null, now, id: "s1" });
-    expect(() => recordRelease(recordSignature(signed, { datasetId: "ds-1", actor: owner, role: "approved", note: null, now, id: "s2" }), { datasetId: "ds-1", actor: owner, now, projectId: "p", projectName: "p" })).toThrow(/needs 3 signatures.*\(has 2\)/);
+    expect(() => recordRelease(recordSignature(signed, { datasetId: "ds-1", actor: owner, role: "approved", note: null, now, id: "s2" }), { datasetId: "ds-1", actor: owner, now })).toThrow(/needs 3 signatures.*\(has 2\)/);
   });
   it("writes a synthetic SCIEX export shaped like the real one, which the parser accepts", () => {
     const text = demoSourceText("ORD048", ["B2026-029_001_ORD048-S001", "B2026-029_002_ORD048-S002", "B2026-029_003_ORD048-S003"]);

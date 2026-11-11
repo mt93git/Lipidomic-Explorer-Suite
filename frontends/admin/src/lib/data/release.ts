@@ -5,7 +5,7 @@ import { demoClients, demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
 import { stages } from "../models";
 import {
-  analysisObjectPath, datasetPaths, defaultPolicy, describeHeaders, isLabStaff, matchSamples, ownSamplesProblem,
+  datasetPaths, defaultPolicy, describeHeaders, isLabStaff, matchSamples, ownSamplesProblem,
   type DatasetStatus, type LabPerson, type LabRole, type ReleasePolicy, type RegistryEntry, type SignerRole,
 } from "../release";
 import { ANALYSIS_SHEETS, COMPANION_SHEETS, DATASET_SHEETS, buildDatasetFiles, digest, sourceTextOf, unknownSampleNames, type BuiltFile } from "../release-build";
@@ -444,24 +444,19 @@ export async function signDataset(input: { datasetId: string; role: SignerRole; 
   await staffSession();
   await rpc("sign_dataset", { p_dataset_id: input.datasetId, p_role: input.role, p_note: note });
 }
-// admin.release_dataset(...): the analysis file goes to Team's bucket first, with the signer's own token
-// (0007 lets an eligible signer stage <project_id>/<analysis_sha256> while the dataset is built), then the
-// function creates the project. If the call fails the staged object is removed again with that token (0012: only
-// while it is still pending, so never once the project exists); a retry stages a new copy under a new id.
-export async function releaseDataset(input: { datasetId: string; actorId?: string }): Promise<{ projectId: string }> {
+// admin.release_dataset(p_dataset_id, p_companion_path) (0030): the signed version becomes released. Nexo opens
+// it from Admin's own record and admin-files; Team is retired, so nothing is copied anywhere.
+export async function releaseDataset(input: { datasetId: string; actorId?: string }): Promise<void> {
   if (!live()) {
-    const result = await demoWrite((state, actor) => {
-      const dataset = (state.datasets ?? []).find(item => item.id === input.datasetId);
-      const order = dataset ? applyDemoState(demoOrders, state).find(item => item.code === dataset.orderCode) : undefined;
-      const projectId = randomUUID();
-      const next = recordRelease(state, { datasetId: input.datasetId, actor, now: new Date(), projectId, projectName: projectName(dataset?.orderCode ?? "", order?.description ?? null) });
-      return { state: next, result: { projectId, dataset } };
-    }, input.actorId);
-    if (result.dataset) {
-      const { id, orderCode, version, clientId } = result.dataset;
+    const dataset = await demoWrite((state, actor) => ({
+      state: recordRelease(state, { datasetId: input.datasetId, actor, now: new Date() }),
+      result: (state.datasets ?? []).find(item => item.id === input.datasetId),
+    }), input.actorId);
+    if (dataset) {
+      const { id, orderCode, version, clientId } = dataset;
       await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client" });
     }
-    return { projectId: result.projectId };
+    return;
   }
   await staffSession();
   const db = (await client()).schema("admin");
@@ -470,29 +465,17 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
   const dataset = row.data as unknown as DatasetRow | null;
   if (!dataset) throw new DataError("That dataset was not found.");
   if (dataset.status !== "built") throw new DataError(`Dataset v${dataset.version} is already ${dataset.status}.`);
-  if (!dataset.analysis_sha256 || !num(dataset.analysis_size_bytes)) throw new DataError("This dataset has no recorded analysis file; build a new version.");
   const order = await db.from("order").select(orderSelect).eq("id", dataset.order_id).maybeSingle();
   if (order.error) throw refusal(order.error);
   const code = (order.data as unknown as OrderRow | null)?.code;
   if (!code) throw new DataError("The order of this dataset was not found.");
-  const paths = filePaths(dataset, code);
-  const bytes = await download("admin-files", paths.analysis);
-  if (digest(bytes) !== dataset.analysis_sha256 || bytes.byteLength !== num(dataset.analysis_size_bytes)) {
-    throw new DataError("The staged file is not the analysis file recorded and signed for this dataset; build a new version.");
-  }
-  const projectId = randomUUID();
-  const object = analysisObjectPath(projectId, dataset.analysis_sha256);
-  const returned = await uploadThenRecord("case-files", [{ path: object, bytes }], () => rpc("release_dataset", {
-    p_dataset_id: dataset.id, p_analysis_object_path: object, p_analysis_sha256: dataset.analysis_sha256,
-    p_analysis_size_bytes: num(dataset.analysis_size_bytes), p_analysis_name: `${code} dataset v${dataset.version} analysis.xlsx`, p_companion_path: paths.companion,
-  }));
+  await rpc("release_dataset", { p_dataset_id: dataset.id, p_companion_path: filePaths(dataset, code).companion });
   // Every active member of the client is told (0028), after the response.
   const owner = await db.from("client").select("name").eq("id", dataset.client_id).maybeSingle();
   await notify({
     kind: "dataset_released", datasetId: dataset.id, orderId: dataset.order_id, code, version: dataset.version, clientId: dataset.client_id,
     clientName: (owner.data as { name: string } | null)?.name ?? "your client",
   });
-  return { projectId: String(returned ?? projectId) };
 }
 
 // admin.withdraw_dataset(p_dataset_id, p_reason)
