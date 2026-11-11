@@ -31,6 +31,18 @@ test('other-client members, lab non-staff and missing subjects see nothing; anon
   await expect(people()).rejects.toThrow(/permission denied/);
 });
 
+test('with no client (Nexo collab asks staff for their own name): staff get the lab staff, nobody else gets anything', async () => {
+  const noClient = () => db.query('SELECT * FROM admin.nexo_people(NULL) ORDER BY user_id').then(r => r.rows);
+  for (const user of [U.owner, U.admin, U.operator]) {
+    await as(db, user);
+    expect((await noClient()).map(r => [r.user_id, r.kind])).toEqual([[U.owner, 'staff'], [U.admin, 'staff'], [U.operator, 'staff']].sort());
+  }
+  for (const user of [U.aAdmin, U.aReq, U.bReq]) {
+    await as(db, user);
+    expect(await noClient()).toEqual([]);
+  }
+});
+
 test('archived staff, memberships and clients are excluded', async () => {
   await db.query("UPDATE admin.lab_staff SET archived_at = now(), archived_reason = 'synthetic' WHERE user_id = $1", [U.operator]);
   await db.query("UPDATE admin.client_member SET archived_at = now(), archived_reason = 'synthetic' WHERE user_id = $1", [U.aView]);
