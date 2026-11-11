@@ -27,7 +27,9 @@ async function signedInToken(): Promise<SessionToken | null> {
     if (profileError) throw new Error("Profile could not be read");
     displayName = person?.display_name ?? null;
   }
-  return { accessToken: stored.access_token, expiresAt: stored.expires_at, userId: session.userId, view: session.view, displayName };
+  // A client user's clients are their active memberships (memberships.ts), the same ones nexo_caller scopes them to.
+  const clientNames = session.view === "client" ? session.clients.map(item => item.name) : [];
+  return { accessToken: stored.access_token, expiresAt: stored.expires_at, userId: session.userId, view: session.view, displayName, clientNames };
 }
 
 export function GET(request: NextRequest) {

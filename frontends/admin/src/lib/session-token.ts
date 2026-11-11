@@ -11,7 +11,9 @@ export const isSessionTokenPath = (pathname: string) => pathname === "/api/sessi
 const noStorePaths = ["/api/session-token", "/api/sign-in", "/api/sign-out"];
 export const isNoStoreApiPath = (pathname: string) => noStorePaths.some(path => pathname === path || pathname === withBasePath(path));
 
-export type SessionToken = { accessToken: string; expiresAt: number; userId: string; view: View; displayName: string | null };
+// clientNames: for a client member, the names of the clients they are an active member of (Nexo's Start copy);
+// [] for lab staff.
+export type SessionToken = { accessToken: string; expiresAt: number; userId: string; view: View; displayName: string | null; clientNames: string[] };
 
 // Same origin only. A browser's Sec-Fetch-Site is authoritative when present: only "same-origin" passes ("same-site",
 // "cross-site" and "none", a typed or bookmarked URL, do not). Without it (an older browser or a non-browser client),
@@ -60,5 +62,5 @@ export async function sessionTokenResponse(headers: Headers, load: () => Promise
     return answer(503, { error: "unavailable" });
   }
   if (!token) return answer(401, { error: "signed_out" });
-  return answer(200, { accessToken: token.accessToken, expiresAt: token.expiresAt, userId: token.userId, view: token.view, displayName: token.displayName });
+  return answer(200, { accessToken: token.accessToken, expiresAt: token.expiresAt, userId: token.userId, view: token.view, displayName: token.displayName, clientNames: token.clientNames });
 }
