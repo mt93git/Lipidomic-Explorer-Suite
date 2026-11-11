@@ -260,24 +260,18 @@ const outsider = await rpc(operatorToken, 'sign_dataset', signArgs('reviewed'));
 check('a signer signs once; a second signature by the same person and a signer outside the policy are refused',
   first.ok && !twice.ok && !outsider.ok, `statuses ${first.status}/${twice.status}/${outsider.status}`);
 
-const projectId = randomUUID();
-const releaseArgs = { p_dataset_id: dataset?.id, p_analysis_object_path: `${projectId}/${hex('9')}`, p_analysis_sha256: hex('9'), p_analysis_size_bytes: 1234, p_analysis_name: `${run} analysis.xlsx`, p_companion_path: `${clientA}/${w2Order?.code}/companion.xlsx` };
+// 0030: Team is retired; the app releases through the two-argument form, which makes no Team project.
+const releaseArgs = { p_dataset_id: dataset?.id, p_companion_path: `${clientA}/${w2Order?.code}/companion.xlsx` };
+const pilotBefore = sql('select count(*) from public.pilot_projects');
 const early = await rpc(ownerToken, 'release_dataset', releaseArgs);
-check('release is refused below the policy count', !early.ok && sql(`select count(*) from public.pilot_projects where id = '${projectId}'`) === '0', `status ${early.status}`);
+check('release is refused below the policy count', !early.ok, `status ${early.status}`);
 const second = await rpc(adminToken, 'sign_dataset', signArgs('approved'));
 const released = await rpc(adminToken, 'release_dataset', releaseArgs);
-check('release_dataset returns the Team project id', second.ok && released.ok && released.body === projectId, `statuses ${second.status}/${released.status}`);
-
-const teamRows = sql(`select (select count(*) from public.pilot_projects where id = '${projectId}') || ',' ||
-  (select count(*) from public.pilot_members where project_id = '${projectId}') || ',' ||
-  (select string_agg(object_path, ';') from public.pilot_files where project_id = '${projectId}')`);
-check('release creates one project, its members (2 signers + 1 client member) and one pilot_files row at <project_id>/<sha256>',
-  teamRows === `1,3,${projectId}/${hex('9')}`, teamRows);
-const frozen = sql(`select status || ',' || stage from admin.dataset d join admin."order" o on o.id = d.order_id where d.id = '${dataset?.id}'`);
-check('the dataset is frozen as released and the order reached released', frozen === 'released,released', frozen);
-const teamView = await fetch(`${rest}/pilot_projects?select=id,name&id=eq.${projectId}`, { headers: { apikey: env.ANON_KEY, Authorization: `Bearer ${requesterToken}` } });
-const teamProjects = teamView.ok ? await teamView.json() : [];
-check("the client member opens the project through Team's own RLS", teamProjects.length === 1 && teamProjects[0].name.startsWith(w2Order?.code ?? '?'), `status ${teamView.status}`);
+check('release_dataset (two arguments) releases', second.ok && released.ok, `statuses ${second.status}/${released.status}`);
+const pilotAfter = sql('select count(*) from public.pilot_projects');
+check('release makes no Team project', pilotAfter === pilotBefore, `${pilotBefore} -> ${pilotAfter}`);
+const frozen = sql(`select status || ',' || stage || ',' || coalesce(project_id::text, '-') from admin.dataset d join admin."order" o on o.id = d.order_id where d.id = '${dataset?.id}'`);
+check('the dataset is frozen as released, the order reached released, no project id', frozen === 'released,released,-', frozen);
 const w2Audit = sql(`select count(*) from admin.audit_event where
   (entity = 'shipment' and entity_id = '${shipment.body}' and actor = '${operator.id}') or
   (entity = 'release_policy' and action = 'INSERT' and actor = '${owner.id}') or

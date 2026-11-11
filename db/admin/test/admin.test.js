@@ -437,7 +437,7 @@ describe('wave 2 contract functions', () => {
 
   test('the six functions are SECURITY DEFINER, pin search_path, run for authenticated but not PUBLIC', async () => {
     const rows = (await db.query("SELECT proname, prosecdef, proconfig, has_function_privilege('authenticated', oid, 'EXECUTE') AS app, proacl::text AS acl FROM pg_proc WHERE pronamespace = 'admin'::regnamespace AND proname = ANY($1) AND pronargs > 1", [CONTRACT])).rows;
-    expect(rows.map((r) => r.proname).sort()).toEqual([...CONTRACT].sort());
+    expect([...new Set(rows.map((r) => r.proname))].sort()).toEqual([...CONTRACT].sort()); // release_dataset has two forms (0030)
     for (const r of rows) {
       expect(r.prosecdef, r.proname).toBe(true);
       expect(r.proconfig.join(','), r.proname).toMatch(/^search_path=pg_catalog, ?admin$/);
