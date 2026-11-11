@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Zona de clientes · revisión de UX (F1–F4) · 2026-11-10</title>
+<!-- Same three families as the app and the proposal. System fallbacks apply offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet">
+<style>
+/* App tokens, as in docs/admin/client-zone-proposal/proposal.html */
+:root {
+  --navy: #162230; --blue: #2d5f8a; --paper: #fafaf8; --tint: #eaf1f7; --muted: #526477;
+  --ink: #202e3b; --surface: #ffffff; --line: #dce3e8; --subtle: #f0f3f5; --ok: #276b50; --ok-tint: #e9f3ed;
+  --danger: #ac353b; --danger-tint: #fbeef0; --warning: #865b18; --warning-tint: #fbf1d9;
+  --radius: 8px; --shadow: 0 2px 5px rgb(22 34 48 / 4%);
+  --font-title: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--font-mono); font-size: .86em; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+
+.d-top { background: var(--navy); color: white; padding: 16px 32px; display: flex; align-items: center; gap: 12px; }
+.d-top .brand-name { font-family: var(--font-title); font-size: 25px; font-weight: 500; letter-spacing: -.4px; }
+.d-top .badge { font-family: var(--font-mono); font-size: 9px; letter-spacing: .09em; padding: 3px 6px; border: 1px solid #6f8ca9; border-radius: 3px; color: #cbdfee; }
+.d-top .right { margin-left: auto; font-size: 12px; color: #b9c9d7; font-family: var(--font-mono); }
+.d-page { max-width: 1320px; margin: 0 auto; padding: 40px 32px 96px; }
+.d-eyebrow { font-family: var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .13em; font-size: 10px; margin-bottom: 8px; }
+.d-h1 { font-family: var(--font-title); font-weight: 600; font-size: 50px; line-height: 1.08; letter-spacing: -.025em; margin: 0 0 12px; }
+.d-h2 { font-family: var(--font-title); font-weight: 600; font-size: 34px; line-height: 1.15; letter-spacing: -.02em; margin: 64px 0 10px; }
+.d-h3 { font-family: var(--font-title); font-weight: 600; font-size: 25px; line-height: 1.2; margin: 46px 0 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+.d-lead { max-width: 860px; font-size: 16px; }
+.d-text { max-width: 860px; margin: 0 0 12px; }
+.d-meta { display: flex; gap: 8px 26px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 14px 0 30px; font-family: var(--font-mono); }
+.d-meta b { color: var(--ink); font-weight: 500; }
+.d-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 22px 0 8px; }
+.d-key > div { background: white; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; font-size: 14px; }
+.d-key .n { font-family: var(--font-title); font-size: 30px; font-weight: 600; color: var(--blue); line-height: 1; display: block; margin-bottom: 6px; }
+.d-key b { display: block; margin-bottom: 3px; }
+.d-key span { color: var(--muted); }
+.d-list { max-width: 860px; margin: 0 0 12px; padding-left: 20px; }
+.d-list li { margin-bottom: 6px; }
+.d-callout { max-width: 860px; border-left: 3px solid var(--blue); background: var(--tint); padding: 12px 16px; font-size: 14px; margin: 14px 0; }
+.d-table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: white; border: 1px solid var(--line); margin: 14px 0 8px; }
+.d-table th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--subtle); font-weight: 700; }
+.d-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.d-table tr:last-child td { border-bottom: 0; }
+.d-table td.n { font-family: var(--font-title); font-size: 24px; font-weight: 600; color: var(--blue); line-height: 1; width: 40px; }
+.d-table td.w { white-space: nowrap; }
+
+/* Review (prefix r-) */
+.r-tag { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; border: 1px solid var(--line); background: var(--subtle); color: var(--muted); }
+.r-tag.p1 { background: var(--danger-tint); color: var(--danger); border-color: #e6bcc0; }
+.r-tag.p2 { background: var(--warning-tint); color: var(--warning); border-color: #ddc895; }
+.r-tag.p3 { background: var(--tint); color: var(--blue); border-color: #a8c2d7; }
+.r-tag.top { background: var(--navy); color: white; border-color: var(--navy); }
+.r-good { max-width: 980px; border-left: 3px solid var(--ok); background: var(--ok-tint); padding: 10px 16px 10px 14px; margin: 14px 0; font-size: 14px; }
+.r-good b.t, .r-issues caption { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ok); margin-bottom: 4px; font-weight: 500; }
+.r-good ul { margin: 0; padding-left: 18px; }
+.r-good li { margin-bottom: 3px; }
+.r-issues { width: 100%; max-width: 1180px; border-collapse: collapse; font-size: 13.5px; background: white; border: 1px solid var(--line); margin: 14px 0 8px; }
+.r-issues caption { display: table-caption; color: var(--danger); text-align: left; caption-side: top; }
+.r-issues th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--subtle); }
+.r-issues td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.r-issues tr:last-child td { border-bottom: 0; }
+.r-issues td:first-child { width: 86px; white-space: nowrap; }
+.r-issues td:nth-child(2) { width: 46%; }
+.r-issues td:last-child { width: 44px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; text-align: center; }
+
+.r-pairs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 30px; margin: 18px 0 10px; }
+.r-pairs.one { grid-template-columns: minmax(0, 1fr); }
+.r-pairs.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.r-pair { margin: 0; display: grid; grid-template-columns: minmax(0, 1440fr) minmax(0, 390fr); gap: 12px; align-items: start; }
+.r-pair.single { grid-template-columns: minmax(0, 1fr); }
+.r-pair.ponly { grid-template-columns: minmax(0, 390fr) minmax(0, 1440fr); }
+.r-pair figcaption { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.r-pair.ponly figcaption { grid-column: 2; align-self: center; }
+.r-pair figcaption b { color: var(--ink); }
+.r-shot { display: block; box-sizing: content-box; position: relative; container-type: inline-size; overflow: hidden; background: white; border: 1px solid #c3cfd8; border-radius: 6px; box-shadow: 0 6px 18px rgb(22 34 48 / 8%); aspect-ratio: 1440 / var(--h, 900); }
+.r-shot.p { aspect-ratio: 390 / var(--h, 844); border-radius: 12px; }
+.r-shot.w { aspect-ratio: 1327 / 844; }
+.r-shot img { display: block; width: 100%; height: auto; margin-top: calc(var(--y, 0) * -100cqw / 1440); }
+.r-shot.p img { margin-top: calc(var(--y, 0) * -100cqw / 390); }
+.r-shot.w img { margin-top: 0; }
+.r-shot.more::after { content: "sigue ↓"; position: absolute; right: 6px; bottom: 6px; font-family: var(--font-mono); font-size: 9px; background: rgb(22 34 48 / 78%); color: white; padding: 1px 5px; border-radius: 3px; }
+.r-zoom { padding: 0; border: 0; border-radius: 8px; max-width: min(96vw, 1460px); max-height: 94vh; overflow: auto; box-shadow: 0 20px 60px rgb(0 0 0 / 40%); }
+.r-zoom::backdrop { background: rgb(22 34 48 / 70%); }
+.r-zoom img { display: block; max-width: 100%; height: auto; cursor: zoom-out; }
+.r-toc { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; margin: 10px 0 0; padding: 0; list-style: none; }
+pre.r-code { max-width: 980px; background: var(--navy); color: #dbe7f1; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+
+@media (max-width: 900px) {
+  .d-page { padding: 24px 16px 64px; } .d-top { padding: 14px 16px; } .d-top .right { display: none; }
+  .d-h1 { font-size: 38px; } .d-h2 { font-size: 28px; }
+  .d-key, .r-pairs, .r-pairs.three { grid-template-columns: minmax(0, 1fr); }
+  .d-table { display: block; overflow-x: auto; }
+  /* The fix tables read as stacked cards on a phone, not as a table to drag sideways. */
+  .r-issues, .r-issues tbody, .r-issues tr, .r-issues td, .r-top, .r-top tbody, .r-top tr, .r-top td { display: block; overflow-x: visible; }
+  .r-issues thead, .r-top thead { display: none; }
+  .r-issues tr, .r-top tr { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .r-issues tr:last-child, .r-top tr:last-child { border-bottom: 0; }
+  .r-issues td, .r-issues td:first-child, .r-issues td:nth-child(2), .r-issues td:last-child, .r-top td, .r-top td.n { width: auto; padding: 2px 0; border: 0; text-align: left; white-space: normal; }
+  .r-top td.n, .r-top td:nth-child(2), .r-top td:nth-child(3) { display: inline-block; margin-right: 8px; vertical-align: baseline; }
+  .r-issues td:nth-child(3)::before, .r-top td:nth-child(5)::before { content: "Arreglo · "; font-weight: 700; }
+  .r-issues td:last-child::before, .r-top td:last-child::before { content: "Esfuerzo "; color: var(--muted); }
+  .r-shot.p.more::after { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="d-top"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span><span class="right">revisión de UX · zona de clientes · 2026-11-10</span></div>
+
+<div class="d-page">
+
+<div class="d-eyebrow">Admin · fase 1 · revisión de lo construido, sin cambios en la app</div>
+<h1 class="d-h1">Zona de clientes: revisión de UX</h1>
+<p class="d-lead">Gerardo: recorrí en modo demo lo que se construyó en F1–F4, escena por escena, a 1440 y a 390 px, y lo comparé con la <a href="../client-zone-proposal/proposal.html">propuesta</a> y con tus decisiones. Lo miré como lo usaría un cliente del laboratorio (un biólogo, no alguien de software) y como lo usaría el personal del lab. Cada hallazgo lleva su captura; lo que solo pude comprobar leyendo el código lo digo.</p>
+<div class="d-meta">
+  <span>base <b>admin/phase1 · 6f4e8d7f</b></span>
+  <span>modo <b>demo, datos sintéticos (example.test)</b></span>
+  <span>anchos <b>1440 × 900 y 390 × 844</b></span>
+  <span>capturas <b>109, de una sola pasada de capture.mjs</b></span>
+  <span>cambios en la app <b>ninguno</b></span>
+</div>
+
+<div class="d-key">
+  <div><span class="n">1</span><b>El recorrido completo funciona</b><span>Pedir acceso, aprobar, pedir un pedido, aceptar, enviar, publicar y descargar: todo llega al final sin atascos, y casi cada pantalla del cliente dice de quién es el turno y qué pasa después.</span></div>
+  <div><span class="n">2</span><b>Cuatro cosas sí frenan a alguien</b><span>Las páginas del lab se desbordan en el móvil; «Released» puede no entregar nada; al aceptar se pierden de vista las notas del cliente; y en real el lab no ve quién pidió.</span></div>
+  <div><span class="n">3</span><b>Arreglos pequeños</b><span>De los diez primeros, ocho son S (texto, CSS o mover un bloque) y dos son M. Ninguno cambia el diseño ni las decisiones.</span></div>
+</div>
+
+<ul class="r-toc">
+  <li><a href="#top10">Los 10 primeros</a></li>
+  <li><a href="#notado">Lo que ya habías notado</a></li>
+  <li><a href="#cliente">Lado del cliente</a></li>
+  <li><a href="#lab">Lado del laboratorio</a></li>
+  <li><a href="#pulido">Pulido</a></li>
+  <li><a href="#limites">Lo que no se pudo capturar</a></li>
+  <li><a href="#metodo">Cómo se hizo</a></li>
+</ul>
+
+<!-- ============================================================ TOP 10 -->
+<h2 class="d-h2" id="top10">Los 10 primeros</h2>
+<p class="d-text"><span class="r-tag p1">P1</span> frena o engaña a alguien en el camino principal. <span class="r-tag p2">P2</span> confunde o hace perder tiempo, pero hay salida. <span class="r-tag p3">P3</span> pulido. Esfuerzo: <b>S</b> menos de medio día (texto, CSS o mover un bloque), <b>M</b> uno o dos días (migración o bloque nuevo), <b>L</b> más.</p>
+<table class="d-table r-top">
+  <thead><tr><th>#</th><th>Prio.</th><th>Dónde</th><th>Problema</th><th>Arreglo concreto</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td><span class="r-tag p1">P1</span></td><td class="w"><a href="#l1">Lab · móvil</a></td><td>Mientras hay solicitudes de acceso esperando, <b>todas</b> las páginas del lab miden 1327 px de ancho en un móvil de 390: se arrastran de lado hacia 937 px en blanco. Lo causa el texto oculto del contador de People (F3).</td><td><code>.nav-link { position: relative; }</code> en <code>globals.css</code>. Comprobado en la página: vuelve a 390.</td><td class="w">S</td></tr>
+    <tr><td class="n">2</td><td><span class="r-tag p1">P1</span></td><td class="w"><a href="#c6">Cliente · pedido</a></td><td>«Released» con Nexo apagado (lo normal, decisión 1) y sin archivos no entrega nada ni dice qué viene: solo «Signed by two different lab reviewers.» Y Client home lo cuenta como «Datasets you can open».</td><td>En el paso 6 sin Nexo: con archivos, «Your results are in the files below.»; sin archivos, «The lab is preparing your files; they will appear here.» Nota de la ficha: «Results released by the lab».</td><td class="w">S</td></tr>
+    <tr><td class="n">3</td><td><span class="r-tag p1">P1</span></td><td class="w"><a href="#l2">Lab · pedido</a></td><td>Al aceptar una solicitud desaparecen de la página del pedido las notas del cliente, «Requested by», el panel que eligió y la referencia de facturación. Justo cuando el lab las necesita: antes de que lleguen las muestras.</td><td>Mientras el pedido tenga <code>request</code>, mantener esas filas en «Order facts» y el bloque «Notes from the client» (<code>order-detail.tsx</code>).</td><td class="w">S</td></tr>
+    <tr><td class="n">4</td><td><span class="r-tag p1">P1</span></td><td class="w"><a href="#n3">Lab · pedido (real)</a></td><td>En real, «Requested by» dice «A client member»: el lab no sabe a quién contestar. Nada escribe <code>client_member.display_name</code> y el mapa de nombres solo lee <code>lab_staff</code>.</td><td>Migración: al aceptar la invitación, guardar el nombre (el de la solicitud de acceso, o el correo invitado) y rellenar los existentes; leerlo en <code>orders.ts</code> y en People.</td><td class="w">M</td></tr>
+    <tr><td class="n">5</td><td><span class="r-tag p2">P2</span></td><td class="w"><a href="#n1">Lab · pedido</a></td><td>«Deliverables» empieza 1,3 pantallas más abajo en escritorio y 2,2 en móvil, debajo de History, y nada en la primera pantalla avisa de que existe.</td><td>Pintarlo en la columna izquierda, justo después del panel de la puerta y antes de History; la lista de archivos antes del formulario; en un pedido publicado sin archivos visibles, decirlo.</td><td class="w">S</td></tr>
+    <tr><td class="n">6</td><td><span class="r-tag p2">P2</span></td><td class="w"><a href="#n2">Cliente · cabecera</a></td><td>La caja muerta «Client search · Phase 2» ocupa el 24 % de la barra en escritorio y una fila entera en móvil (la barra pasa a 112 px).</td><td>No pintar <code>GlobalSearch</code> en la vista de cliente (<code>app-shell.tsx</code>).</td><td class="w">S</td></tr>
+    <tr><td class="n">7</td><td><span class="r-tag p2">P2</span></td><td class="w"><a href="#c1">Cliente · varias</a></td><td>Palabras del lab en pantallas del cliente: «Lab administration», «Sign in to your lab workspace», «Admin · Phase 1», «Scientific values are never edited in Admin.», «Open workspace», «Back to workspace».</td><td>Una pasada de texto (lista en cada escena). No toca lógica.</td><td class="w">S</td></tr>
+    <tr><td class="n">8</td><td><span class="r-tag p2">P2</span></td><td class="w"><a href="#c2">Cliente · varias</a></td><td>El diseño es sin correo y descansa en que el cliente escriba al lab («reply to it», retirar una solicitud, un nombre mal), pero ninguna pantalla dice a qué dirección.</td><td>Un texto «Contact for clients» junto a Shipping instructions (mismo patrón) y mostrarlo en Request access, en el pedido en espera o rechazado y en «Your access».</td><td class="w">M</td></tr>
+    <tr><td class="n">9</td><td><span class="r-tag p2">P2</span></td><td class="w"><a href="#c6">Cliente · pedido</a></td><td>El cliente no ve lo que él mismo pidió: ni sus notas ni quién lo solicitó (la propuesta dibujaba «Requested by»).</td><td>Añadir «Requested by» y «Your notes» a «Order facts» del cliente. La tabla de muestras de la propuesta puede esperar (M).</td><td class="w">S</td></tr>
+    <tr><td class="n">10</td><td><span class="r-tag p2">P2</span></td><td class="w"><a href="#l3">Lab · People</a></td><td>Al rechazar una solicitud de acceso la fila desaparece con su correo, y la app «does not tell the requester», aunque al solicitante se le prometió «the lab will write to…». Al aprobar solo se copia el enlace pelado.</td><td>Dejar el correo en el aviso y un botón «Copy message» con el texto hecho (enlace, 7 días, qué hacer), y otro para el rechazo.</td><td class="w">S</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ YA NOTADO -->
+<h2 class="d-h2" id="notado">Lo que ya habías notado</h2>
+<p class="d-text">Los cuatro puntos se confirman. Tres con captura y medida; el tercero solo en el código, porque el demo no lo reproduce.</p>
+
+<h3 class="d-h3" id="n1">1 · Deliverables queda al final de la página del pedido <span class="r-tag p2">P2</span> <span class="r-tag">S</span> <span class="r-tag top">top 5</span></h3>
+<p class="d-text"><b>Confirmado.</b> <code>orders/[code]/page.tsx</code> pinta <code>LabDeliverables</code> después de todo <code>OrderDetail</code>, así que cae debajo de History, a todo el ancho. Medido en esta pasada:</p>
+<table class="d-table" style="max-width:860px">
+  <thead><tr><th>Pedido</th><th>1440: empieza en</th><th>390: empieza en</th></tr></thead>
+  <tbody>
+    <tr><td>ORD040 · publicado</td><td>1201 de 1860 px · 1,3 pantallas más abajo</td><td>1870 de 2691 px · 2,2 pantallas</td></tr>
+    <tr><td>ORD044 · en análisis</td><td>1215 de 1874 px · 1,3 pantallas</td><td>1961 de 2760 px · 2,3 pantallas</td></tr>
+    <tr><td>ORD059 · recién aceptado</td><td>1043 de 1702 px · 1,2 pantallas</td><td>1789 de 2588 px · 2,1 pantallas</td></tr>
+  </tbody>
+</table>
+<p class="d-text">En la primera pantalla no hay nada que avise de que la sección existe, y en real bajará más con cada línea de History. Lo que sí está bien: después de «Add file» la página vuelve a <code>#deliverables</code> con el aviso a la vista.</p>
+<p class="d-text"><b>Arreglo (S).</b> Pintar la sección dentro de la columna izquierda, justo después del panel de la puerta y antes de History (pasándola a <code>OrderDetail</code> como hijo). Dentro, la lista de archivos antes del formulario de alta. En un pedido publicado sin ningún archivo visible, una línea que lo diga: «The client sees no files for this order yet.»</p>
+<div class="r-pairs">
+  <figure class="r-pair single"><a class="r-shot" href="screenshots/x-lab-order-first-screen-1440.png"><img loading="lazy" src="screenshots/x-lab-order-first-screen-1440.png" alt="Primera pantalla del pedido ORD040 en el lab, 1440"></a><figcaption><b>Primera pantalla de ORD040 (publicado), 1440.</b> Puerta, datos e History; de Deliverables, ni rastro.</figcaption></figure>
+  <figure class="r-pair single"><a class="r-shot" href="screenshots/l06-order-deliverables-empty-1440.png" style="--y:960"><img loading="lazy" src="screenshots/l06-order-deliverables-empty-1440.png" alt="Final de la página del pedido ORD040, con Deliverables"></a><figcaption><b>La misma página, 960 px más abajo.</b> Ahí está la sección. Las dos anchuras completas, en <a href="#l6">Deliverables</a>.</figcaption></figure>
+</div>
+
+<h3 class="d-h3" id="n2">2 · La caja muerta «Client search · Phase 2» <span class="r-tag p2">P2</span> <span class="r-tag">S</span> <span class="r-tag top">top 6</span></h3>
+<p class="d-text"><b>Confirmado.</b> Es un campo <code>disabled</code> con ese texto de relleno. A 1440 mide 350 × 40 px, el 24 % de la barra superior, en el sitio más visible de la pantalla. A 390 ocupa una fila propia de 358 × 40 px y la barra pasa a medir 112 px en todas las pantallas del cliente. Un cliente lee «Phase 2» y no sabe de qué fase le hablan. (La propuesta lo dibujaba como «Search your orders…», también desactivado.)</p>
+<p class="d-text"><b>Arreglo (S).</b> No pintar <code>GlobalSearch</code> cuando la vista es de cliente (<code>app-shell.tsx</code>, línea 40). Un cliente tiene pocos pedidos y todos están en Client home; el buscador puede volver cuando exista.</p>
+<div class="r-pairs">
+  <figure class="r-pair single"><a class="r-shot" href="screenshots/x-client-search-1440.png" style="--h:72"><img loading="lazy" src="screenshots/x-client-search-1440.png" alt="Barra superior del cliente a 1440 con la caja de búsqueda desactivada"></a><figcaption><b>Barra del cliente, 1440.</b></figcaption></figure>
+  <figure class="r-pair ponly"><a class="r-shot p" href="screenshots/x-client-search-390.png" style="--h:113"><img loading="lazy" src="screenshots/x-client-search-390.png" alt="Barra superior del cliente a 390 con la caja de búsqueda en su propia fila"></a><figcaption><b>Barra del cliente, 390.</b> La segunda fila entera es la caja muerta.</figcaption></figure>
+</div>
+
+<h3 class="d-h3" id="n3">3 · El lab ve «A client member» en vez de quién pidió <span class="r-tag p1">P1</span> <span class="r-tag">M</span> <span class="r-tag top">top 4</span></h3>
+<p class="d-text"><b>Confirmado en el código; no se puede capturar en demo</b>, donde aparece el correo del solicitante. En real, <code>lib/data/orders.ts</code> (línea 134) busca a quien pidió en un mapa de nombres que solo se llena con <code>lab_staff</code> (líneas 176–178), así que para cualquier cliente cae en el texto fijo «A client member».</p>
+<p class="d-text">Es más que cambiar una consulta: la columna <code>client_member.display_name</code> existe desde 0017, pero ninguna función la escribe. People resuelve a los miembros de cliente por el correo de su invitación aceptada, que solo leen Owner y Admin; un Operator, que también acepta pedidos (decisión 2), no tiene de dónde sacarlo.</p>
+<p class="d-text"><b>Arreglo (M).</b> Una migración: al aceptar la invitación, guardar en <code>client_member.display_name</code> el nombre completo de la solicitud de acceso si vino de una, o el correo invitado si no; rellenar las filas existentes desde las invitaciones aceptadas. Después, leer <code>client_member (user_id, display_name)</code> en el mapa de nombres de <code>orders.ts</code> y en People. Sin correo en la app, saber quién pidió es la única forma de contestarle: por eso va como P1.</p>
+
+<h3 class="d-h3" id="n4">4 · «Skip to content» aparece sobre la barra lateral en las capturas <span class="r-tag p3">P3</span> <span class="r-tag">S</span></h3>
+<p class="d-text"><b>Confirmado, y es solo de las capturas de página entera.</b> El enlace es <code>position: fixed; top: -80px</code>. Al componer una página larga, Chromium lo pinta respecto al tramo desplazado: con la página bajada 1046 px quedó dibujado en y ≈ 966, sobre la barra lateral. Una persona nunca lo ve ahí: está fuera de la pantalla hasta que recibe el foco, y entonces baja a su sitio, como debe.</p>
+<p class="d-text"><b>Arreglo (S).</b> <code>.skip-link { position: absolute; top: 8px; transform: translateY(-200%); }</code> y <code>.skip-link:focus { transform: none; }</code>. Lo comprobé inyectando la regla en la página, sin tocar el código: desaparece de la captura. <code>capture.mjs</code> lo evita por su cuenta subiendo al principio antes de cada captura.</p>
+<div class="r-pairs">
+  <figure class="r-pair single"><a class="r-shot" href="screenshots/x-skip-link-as-built-1440.png" style="--y:840;--h:300"><img loading="lazy" src="screenshots/x-skip-link-as-built-1440.png" alt="Captura de página entera con Skip to content sobre la barra lateral"></a><figcaption><b>Como está.</b> «Skip to content» bajo «Admin · Phase 1», a la izquierda.</figcaption></figure>
+  <figure class="r-pair single"><a class="r-shot" href="screenshots/x-skip-link-proposed-1440.png" style="--y:840;--h:300"><img loading="lazy" src="screenshots/x-skip-link-proposed-1440.png" alt="La misma captura con la regla propuesta"></a><figcaption><b>Con la regla propuesta.</b> Mismo tramo de la misma página.</figcaption></figure>
+</div>
+
+<!-- ============================================================ CLIENTE -->
+<h2 class="d-h2" id="cliente">Lado del cliente</h2>
+<p class="d-text">Recorrido con el usuario de ejemplo <code>rowan@cedar.example.test</code>, Requester en Example Cedar y Viewer en Example Harbor. En cada figura, escritorio a la izquierda y móvil a la derecha, a la misma escala; un clic abre la captura entera. Los botones «Lab staff / Client», «Act as (demo)» y la franja «Example data» son del demo y no cuentan.</p>
+
+<h3 class="d-h3" id="c1">C1 · Sign in</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c01-sign-in-1440.png" style="--h:1050"><img loading="lazy" src="screenshots/c01-sign-in-1440.png" alt="Sign in, 1440"></a><a class="r-shot p" href="screenshots/c01-sign-in-390.png" style="--h:975"><img loading="lazy" src="screenshots/c01-sign-in-390.png" alt="Sign in, 390"></a><figcaption><b>Sign in.</b> Los dos botones «Enter…» solo existen en demo.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Una sola tarjeta, y al pie la puerta para quien no tiene cuenta: «New to the lipidomics service? Request access →».</li>
+  <li>En móvil cabe sin desplazarse de lado.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 7</span></td><td>La pantalla se presenta como del laboratorio: «Lab administration», «Sign in to your lab workspace.» y la insignia «ADMIN». Un cliente con su enlace recién usado duda de si está en el sitio correcto.</td><td>Rótulo «Lipidomics service» y «Sign in to follow your orders or to work in the lab.»</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>«Two-step code» siempre a la vista y el botón apagado «Use Yale SSO · not configured yet» son ruido para un cliente, que no tiene ni lo uno ni lo otro (los dos quedaron fuera en la propuesta).</td><td>Ocultar el bloque de SSO hasta que exista; rotular el código «Two-step code (lab staff)».</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>No hay nada para quien olvidó la contraseña. La decisión 4 (enlace por correo) espera al SMTP.</td><td>Mientras tanto, una línea: «Forgot your password? Write to the lab», con el contacto del <a href="#top10">top 8</a>.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="c2">C2 · Request access: formulario, errores, enviada, ya pendiente</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-request-access-form-1440.png"><img loading="lazy" src="screenshots/c02-request-access-form-1440.png" alt="Request access, formulario vacío, 1440"></a><a class="r-shot p" href="screenshots/c02-request-access-form-390.png" style="--h:1059"><img loading="lazy" src="screenshots/c02-request-access-form-390.png" alt="Request access, formulario vacío, 390"></a><figcaption><b>Formulario.</b> «A lab administrator reviews every request by hand… No account is created now.»</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-request-access-errors-1440.png" style="--h:1010"><img loading="lazy" src="screenshots/c02-request-access-errors-1440.png" alt="Request access con errores, 1440"></a><a class="r-shot p" href="screenshots/c02-request-access-errors-390.png" style="--h:1224"><img loading="lazy" src="screenshots/c02-request-access-errors-390.png" alt="Request access con errores, 390"></a><figcaption><b>Errores, enviado vacío.</b> Resumen arriba con enlaces a cada campo y el motivo bajo cada uno.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-request-access-error-email-1440.png" style="--h:987"><img loading="lazy" src="screenshots/c02-request-access-error-email-1440.png" alt="Request access con correo mal escrito, 1440"></a><a class="r-shot p" href="screenshots/c02-request-access-error-email-390.png" style="--h:1158"><img loading="lazy" src="screenshots/c02-request-access-error-email-390.png" alt="Request access con correo mal escrito, 390"></a><figcaption><b>Error, correo mal escrito.</b> Lo demás que se tecleó se conserva.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-request-access-filled-1440.png"><img loading="lazy" src="screenshots/c02-request-access-filled-1440.png" alt="Request access relleno, 1440"></a><a class="r-shot p" href="screenshots/c02-request-access-filled-390.png" style="--h:1059"><img loading="lazy" src="screenshots/c02-request-access-filled-390.png" alt="Request access relleno, 390"></a><figcaption><b>Relleno.</b></figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-request-access-sent-1440.png"><img loading="lazy" src="screenshots/c02-request-access-sent-1440.png" alt="Request access enviada, 1440"></a><a class="r-shot p" href="screenshots/c02-request-access-sent-390.png"><img loading="lazy" src="screenshots/c02-request-access-sent-390.png" alt="Request access enviada, 390"></a><figcaption><b>Enviada.</b> «Request received.» con la referencia AR-0013 y lo que pasará: un enlace válido 7 días.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-request-access-pending-1440.png"><img loading="lazy" src="screenshots/c02-request-access-pending-1440.png" alt="Request access ya pendiente, 1440"></a><a class="r-shot p" href="screenshots/c02-request-access-pending-390.png"><img loading="lazy" src="screenshots/c02-request-access-pending-390.png" alt="Request access ya pendiente, 390"></a><figcaption><b>Ya pendiente.</b> El mismo correo otra vez: «Request already received.», sin crear otra.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c02-invitation-page-1440.png"><img loading="lazy" src="screenshots/c02-invitation-page-1440.png" alt="Página de la invitación, 1440"></a><a class="r-shot p" href="screenshots/c02-invitation-page-390.png"><img loading="lazy" src="screenshots/c02-invitation-page-390.png" alt="Página de la invitación, 390"></a><figcaption><b>El final del camino.</b> El enlace que el lab envía tras aprobar: «Join as Client admin at Example Birch.»</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>El texto de entrada quita el miedo: lo revisa una persona, no se crea ninguna cuenta ahora. Cada campo tiene su pista («Your PI's lab, your group or your company»).</li>
+  <li>Los errores se entienden y no borran lo escrito; el resumen lleva al campo.</li>
+  <li>«Enviada» da una referencia y dice que no hay que hacer nada más. «Ya pendiente» evita duplicados sin regañar.</li>
+  <li>La invitación dice el papel, el cliente, el correo y cuándo caduca, con un solo botón.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 8</span></td><td>«If something has changed, wait for the lab's answer and reply to it.» Quien escribió mal su correo no recibirá nada a lo que responder, y la pantalla no da ninguna dirección del lab.</td><td>Mostrar aquí el contacto del lab: «…or write to lab@… quoting AR-0013».</td><td>M</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>«Reviewed by hand» no dice cuánto tarda. Sin correo automático, el solicitante no sabe si esperar un día o dos semanas.</td><td>Añadir el plazo que el lab quiera prometer: «usually within N working days».</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="c3">C3 · Elegir cliente</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c03-choose-client-1440.png" style="--h:480"><img loading="lazy" src="screenshots/c03-choose-client-1440.png" alt="Choose client, 1440"></a><a class="r-shot p" href="screenshots/c03-choose-client-390.png" style="--h:640"><img loading="lazy" src="screenshots/c03-choose-client-390.png" alt="Choose client, 390"></a><figcaption><b>Choose client.</b> Solo la ve quien pertenece a más de un cliente.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Dos tarjetas grandes, cada una con el papel que la persona tiene allí. En móvil se apilan y se pulsan bien.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p3">P3</span> <span class="r-tag top">top 7</span></td><td>Aquí se llama «workspace» a lo que el resto del portal llama «client»: «Access / Workspace», «Choose a workspace to continue», «Open workspace →».</td><td>«Your clients», «Choose which client's orders to see», «Open →».</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Antes de elegir, la ficha de usuario ya dice «Viewer», aunque en Example Cedar es Requester.</td><td>No mostrar papel hasta que haya un cliente elegido.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="c4">C4 · Client home</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c04-client-home-after-answers-1440.png" style="--h:1283"><img loading="lazy" src="screenshots/c04-client-home-after-answers-1440.png" alt="Client home de Example Cedar tras las respuestas del lab, 1440"></a><a class="r-shot p" href="screenshots/c04-client-home-after-answers-390.png" style="--h:1283"><img loading="lazy" src="screenshots/c04-client-home-after-answers-390.png" alt="Client home de Example Cedar tras las respuestas del lab, 390"></a><figcaption><b>Client home de Example Cedar, con Nexo apagado</b>, después de que el lab aceptara ORD059 y rechazara ORD060.</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c04-client-home-1440.png" style="--h:1134"><img loading="lazy" src="screenshots/c04-client-home-1440.png" alt="Client home al entrar, 1440"></a><a class="r-shot p" href="screenshots/c04-client-home-390.png" style="--h:1134"><img loading="lazy" src="screenshots/c04-client-home-390.png" alt="Client home al entrar, 390"></a><figcaption><b>Al entrar</b>, con los pedidos de ejemplo.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c04-client-home-viewer-1440.png" style="--h:1059"><img loading="lazy" src="screenshots/c04-client-home-viewer-1440.png" alt="Client home como Viewer en Example Harbor, 1440"></a><a class="r-shot p" href="screenshots/c04-client-home-viewer-390.png" style="--h:1059"><img loading="lazy" src="screenshots/c04-client-home-viewer-390.png" alt="Client home como Viewer en Example Harbor, 390"></a><figcaption><b>Como Viewer (Example Harbor).</b> Sin botón de pedir y con «You can follow every order of this client».</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c04-client-home-nexo-on-1440.png" style="--y:683;--h:600"><img loading="lazy" src="screenshots/c04-client-home-nexo-on-1440.png" alt="Client home con Nexo encendido, 1440"></a><a class="r-shot p" href="screenshots/c04-client-home-nexo-on-390.png" style="--y:1500;--h:881"><img loading="lazy" src="screenshots/c04-client-home-nexo-on-390.png" alt="Client home con Nexo encendido, 390"></a><figcaption><b>Con Nexo encendido por el lab</b> (tramo final): la fila de Datasets gana «Open in Nexo».</figcaption></figure>
+  <figure class="r-pair ponly"><a class="r-shot p" href="screenshots/c04-client-home-menu-open-390.png"><img loading="lazy" src="screenshots/c04-client-home-menu-open-390.png" alt="Client home con el menú abierto, 390"></a><figcaption><b>Menú abierto, 390.</b> Cliente elegido, usuario y «Sign out» viven aquí.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Las cuatro fichas hablan como el cliente: «Waiting for the lab», «Waiting for your samples», «With the lab», «Released».</li>
+  <li>Cada fila dice el paso y lo que toca: «Accepted · send your samples», «In analysis · step 4 of 6», «Declined by the lab · open it for the reason».</li>
+  <li>«Your access» explica el papel con una frase, y la regla de envío está siempre a la vista: «Ship only after a request shows Accepted».</li>
+  <li>En móvil, fichas de dos en dos, filas apiladas y «Request an order» arriba.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p1">P1</span> <span class="r-tag top">top 2</span></td><td>La ficha «Released · Datasets you can open» lo dice aunque Nexo esté apagado; la fila de Datasets solo ofrece «Order →» y no dice si hay archivos.</td><td>Nota neutra, «Results released by the lab», y en la fila «2 files» cuando los haya.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 6</span></td><td>La caja «Client search · Phase 2» (<a href="#n2">medida arriba</a>).</td><td>Quitarla de la vista de cliente.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>La solicitud rechazada (ORD060) se queda en la lista «In progress».</td><td>Pasarla a una línea aparte, «Closed», debajo de la lista.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span> <span class="r-tag top">top 7</span></td><td>El pie de la barra lateral dice «Admin · Phase 1» y la insignia «ADMIN» también al cliente (ya venía así en la propuesta).</td><td>Para clientes, «Client portal» en ambos sitios.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="c5">C5 · Request an order: formulario, errores, enviada</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c05-request-order-form-1440.png" style="--h:1044"><img loading="lazy" src="screenshots/c05-request-order-form-1440.png" alt="Request an order, formulario, 1440"></a><a class="r-shot p" href="screenshots/c05-request-order-form-390.png" style="--h:1044"><img loading="lazy" src="screenshots/c05-request-order-form-390.png" alt="Request an order, formulario, 390"></a><figcaption><b>Formulario.</b> A la derecha, «What happens next» en cuatro pasos.</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c05-request-order-errors-1440.png" style="--h:1148"><img loading="lazy" src="screenshots/c05-request-order-errors-1440.png" alt="Request an order con errores, 1440"></a><a class="r-shot p" href="screenshots/c05-request-order-errors-390.png" style="--y:380;--h:1148"><img loading="lazy" src="screenshots/c05-request-order-errors-390.png" alt="Request an order con errores, 390"></a><figcaption><b>Errores.</b> «2 fields need attention», «Enter a title», «Enter a whole number, 0 or more».</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c05-request-order-filled-1440.png" style="--h:1044"><img loading="lazy" src="screenshots/c05-request-order-filled-1440.png" alt="Request an order relleno, 1440"></a><a class="r-shot p" href="screenshots/c05-request-order-filled-390.png" style="--y:380;--h:1044"><img loading="lazy" src="screenshots/c05-request-order-filled-390.png" alt="Request an order relleno, 390"></a><figcaption><b>Relleno.</b></figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c05-request-order-sent-1440.png"><img loading="lazy" src="screenshots/c05-request-order-sent-1440.png" alt="Client home tras enviar la solicitud, 1440"></a><a class="r-shot p" href="screenshots/c05-request-order-sent-390.png"><img loading="lazy" src="screenshots/c05-request-order-sent-390.png" alt="Client home tras enviar la solicitud, 390"></a><figcaption><b>Enviada.</b> Vuelve a Client home con «Request ORD059 sent… Do not ship samples until it shows Accepted.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c05-request-order-viewer-1440.png"><img loading="lazy" src="screenshots/c05-request-order-viewer-1440.png" alt="Request an order como Viewer, 1440"></a><a class="r-shot p" href="screenshots/c05-request-order-viewer-390.png" style="--h:1266"><img loading="lazy" src="screenshots/c05-request-order-viewer-390.png" alt="Request an order como Viewer, 390"></a><figcaption><b>Como Viewer.</b> En vez del formulario, por qué no puede y quién sí.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Pocos campos y el permiso de no saber: «Not sure? Choose “Let the lab advise”».</li>
+  <li>«No patient names» junto al título, y junto al botón «Nothing is shipped yet: wait for the lab to accept».</li>
+  <li>Al enviar, el pedido aparece al momento en la lista con su código, y la regla de no enviar todavía se repite.</li>
+  <li>Los errores marcan el campo, lo explican y conservan lo escrito.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p3">P3</span></td><td>«The lab registers them from your manifest» da por hecho que el cliente sabe qué es el manifiesto y cómo hacerlo llegar.</td><td>Decirlo: «Put a list of sample names and groups in the box». Necesita que confirmes cómo lo quiere el lab.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Solo «Title» es obligatorio, pero nada lo marca; «Optional» aparece como relleno en dos campos y en «Matrix» y «Notes» no.</td><td>«(optional)» en la etiqueta de los cuatro campos opcionales.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>«Matrix» es jerga para parte de los clientes, y el lab llama «Material» al mismo dato una vez aceptado el pedido.</td><td>«Sample type» en el formulario y en los datos del pedido, a ambos lados.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Como Viewer sigue a la vista «After you send it · What happens next», aunque no puede enviar nada.</td><td>Ocultar esa columna cuando no hay formulario.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="c6">C6 · El pedido del cliente, estado por estado</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-accepted-shipping-text-1440.png"><img loading="lazy" src="screenshots/c06-order-accepted-shipping-text-1440.png" alt="Pedido aceptado con instrucciones de envío, 1440"></a><a class="r-shot p" href="screenshots/c06-order-accepted-shipping-text-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-accepted-shipping-text-390.png" alt="Pedido aceptado con instrucciones de envío, 390"></a><figcaption><b>Aceptado, con el texto de envío del lab (ORD059).</b> «Send your samples»: el código en cada caja y las instrucciones debajo.</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-waiting-1440.png"><img loading="lazy" src="screenshots/c06-order-waiting-1440.png" alt="Pedido esperando al lab, 1440"></a><a class="r-shot p" href="screenshots/c06-order-waiting-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-waiting-390.png" alt="Pedido esperando al lab, 390"></a><figcaption><b>1 · Esperando al lab (ORD059).</b> «Do not ship samples yet.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-accepted-no-shipping-text-1440.png"><img loading="lazy" src="screenshots/c06-order-accepted-no-shipping-text-1440.png" alt="Pedido aceptado sin texto de envío, 1440"></a><a class="r-shot p" href="screenshots/c06-order-accepted-no-shipping-text-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-accepted-no-shipping-text-390.png" alt="Pedido aceptado sin texto de envío, 390"></a><figcaption><b>2 · Aceptado, sin texto de envío (ORD042).</b> Cae en «ship as agreed with the lab».</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-declined-1440.png"><img loading="lazy" src="screenshots/c06-order-declined-1440.png" alt="Solicitud rechazada, 1440"></a><a class="r-shot p" href="screenshots/c06-order-declined-390.png" style="--h:1246"><img loading="lazy" src="screenshots/c06-order-declined-390.png" alt="Solicitud rechazada, 390"></a><figcaption><b>Rechazado (ORD060).</b> El motivo del lab, «Nothing was shipped or measured» y «Request another order →».</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-received-1440.png"><img loading="lazy" src="screenshots/c06-order-received-1440.png" alt="Muestras recibidas, 1440"></a><a class="r-shot p" href="screenshots/c06-order-received-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-received-390.png" alt="Muestras recibidas, 390"></a><figcaption><b>3 · Muestras recibidas (ORD042).</b> «Nothing is needed from you.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-in-analysis-1440.png"><img loading="lazy" src="screenshots/c06-order-in-analysis-1440.png" alt="En análisis, 1440"></a><a class="r-shot p" href="screenshots/c06-order-in-analysis-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-in-analysis-390.png" alt="En análisis, 390"></a><figcaption><b>4 · En análisis (ORD044).</b> Qué hace el lab y cuál es el paso siguiente.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-released-no-files-nexo-off-1440.png"><img loading="lazy" src="screenshots/c06-order-released-no-files-nexo-off-1440.png" alt="Publicado sin archivos y con Nexo apagado, 1440"></a><a class="r-shot p" href="screenshots/c06-order-released-no-files-nexo-off-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-released-no-files-nexo-off-390.png" alt="Publicado sin archivos y con Nexo apagado, 390"></a><figcaption><b>6 · Publicado, Nexo apagado, sin archivos (ORD040).</b> El punto muerto del top 2.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-released-files-nexo-off-1440.png"><img loading="lazy" src="screenshots/c06-order-released-files-nexo-off-1440.png" alt="Publicado con archivos y Nexo apagado, 1440"></a><a class="r-shot p" href="screenshots/c06-order-released-files-nexo-off-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-released-files-nexo-off-390.png" alt="Publicado con archivos y Nexo apagado, 390"></a><figcaption><b>6 · Publicado, Nexo apagado, con un archivo.</b></figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c06-order-released-files-nexo-on-1440.png"><img loading="lazy" src="screenshots/c06-order-released-files-nexo-on-1440.png" alt="Publicado con archivos y Nexo encendido, 1440"></a><a class="r-shot p" href="screenshots/c06-order-released-files-nexo-on-390.png" style="--h:1250"><img loading="lazy" src="screenshots/c06-order-released-files-nexo-on-390.png" alt="Publicado con archivos y Nexo encendido, 390"></a><figcaption><b>6 · Publicado, Nexo encendido, con un archivo.</b> Aparece «Open in Nexo».</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Los seis pasos con sus fechas, como en la propuesta; en móvil pasan a una lista vertical que se lee bien.</li>
+  <li>El panel principal siempre dice de quién es el turno: «Do not ship samples yet», «Write ORD059 on every box», «Nothing is needed from you. The next step you will see here is…».</li>
+  <li>El texto de envío aparece solo cuando hace falta (paso 2) y destacado.</li>
+  <li>El rechazo no deja al cliente colgado: motivo, qué no pasó y un enlace para pedir otra vez.</li>
+  <li>No se ve nada interno del lab: ni puertas, ni lotes, ni nombres del personal.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p1">P1</span> <span class="r-tag top">top 2</span></td><td>Paso 6 de 6 con Nexo apagado y sin archivos: «Signed by two different lab reviewers.» y «The lab has not shared any files for this order yet.» El cliente llega al final sin nada en la mano y sin saber si viene algo. Como Nexo nace apagado para cada cliente, es lo que verá todo cliente desde que se publica hasta que el lab sube un archivo.</td><td>Sin Nexo, el panel dice cómo llegan los resultados: con archivos, «Your results are in the files below.»; sin ellos, «The lab is preparing your files; they will appear here.»</td><td>S</td></tr>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 9</span></td><td>El pedido no enseña lo que el cliente pidió: faltan sus notas y quién lo solicitó. La propuesta dibujaba «Requested by», una tabla «Registered by the lab» con las muestras y un «Timeline»; no se construyeron.</td><td>Ahora: «Requested by» y «Your notes» en «Order facts». Después (M): la tabla de muestras, para que el cliente detecte un nombre o un grupo mal antes del análisis. El Timeline no hace falta: las fechas de los pasos lo cubren.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 8</span></td><td>En espera o rechazado no hay a quién escribir. La propuesta resolvía retirar o cambiar una solicitud con «el cliente avisa al lab», pero la pantalla no dice cómo.</td><td>La línea de contacto del lab en esos dos paneles.</td><td>M</td></tr>
+    <tr><td><span class="r-tag p3">P3</span> <span class="r-tag top">top 7</span></td><td>«Scientific values are never edited in Admin.» bajo los datos del pedido: es un aviso para el personal y al cliente no le dice nada (también venía en la propuesta).</td><td>No mostrarlo en la vista de cliente.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Datos que suenan a fallo: «Panel · Not set» cuando el cliente eligió «Let the lab advise» (el lab sí lo ve así), y «Samples · 0 registered · 24 expected» antes de enviar nada.</td><td>«Panel · The lab will advise»; «24 expected» mientras no haya ninguna registrada.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="c7">C7 · Descargar un archivo</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c07-file-download-1440.png"><img loading="lazy" src="screenshots/c07-file-download-1440.png" alt="Pedido publicado tras descargar un archivo, 1440"></a><a class="r-shot p" href="screenshots/c07-file-download-390.png" style="--y:650;--h:1013"><img loading="lazy" src="screenshots/c07-file-download-390.png" alt="Pedido publicado tras descargar un archivo, 390"></a><figcaption><b>Después de pulsar «Download».</b> La página no cambia; el navegador guarda <code>Study-report.pdf</code>.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>«Your files» lista título, tipo, tamaño y fecha, con un botón por archivo.</li>
+  <li>La descarga llega con su nombre original y los mismos bytes que subió el lab (comprobado en la pasada), sin salir de la página.</li>
+  <li>Un archivo oculto o retirado por el lab no aparece.</li>
+</ul></div>
+<p class="d-text">Sin problemas propios. Lo único que le falta está en el <a href="#c6">top 2</a>: que el panel de arriba diga que los resultados son estos archivos.</p>
+
+<h3 class="d-h3" id="c8">C8 · Comprobación: el pedido de otro cliente</h3>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/c08-order-of-another-client-1440.png" style="--h:560"><img loading="lazy" src="screenshots/c08-order-of-another-client-1440.png" alt="Página no encontrada al abrir un pedido de otro cliente, 1440"></a><a class="r-shot p" href="screenshots/c08-order-of-another-client-390.png" style="--h:700"><img loading="lazy" src="screenshots/c08-order-of-another-client-390.png" alt="Página no encontrada al abrir un pedido de otro cliente, 390"></a><figcaption><b>ORD041 (de Example Atlas) abierto desde Example Cedar.</b> No se enseña nada, como debe.</figcaption></figure>
+</div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p3">P3</span> <span class="r-tag top">top 7</span></td><td>El texto es del lab y del demo: «Lipidomic Explorer Admin», «This route or example order is not available.», «Back to workspace».</td><td>Para clientes: «This order is not available to you.» y «Back to your orders».</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ LAB -->
+<h2 class="d-h2" id="lab">Lado del laboratorio</h2>
+<p class="d-text">Recorrido como «Demo Operator» en la misma sesión de navegador, de modo que el lab ve las solicitudes que el cliente acaba de enviar. Donde hace falta Owner o Admin, el demo deja elegirlo en «Act as (demo)».</p>
+
+<h3 class="d-h3" id="l1">L1 · Pipeline: aviso de solicitudes de clientes</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l01-pipeline-notice-fold-1440.png"><img loading="lazy" src="screenshots/l01-pipeline-notice-fold-1440.png" alt="Pipeline con el aviso de solicitudes, primera pantalla, 1440"></a><a class="r-shot p" href="screenshots/l01-pipeline-notice-fold-390.png"><img loading="lazy" src="screenshots/l01-pipeline-notice-fold-390.png" alt="Pipeline con el aviso de solicitudes, primera pantalla, 390"></a><figcaption><b>Primera pantalla de Pipeline con dos solicitudes esperando.</b> El aviso ámbar queda justo bajo el título en los dos anchos.</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l01-pipeline-notice-1440.png" style="--y:1120;--h:640"><img loading="lazy" src="screenshots/l01-pipeline-notice-1440.png" alt="Columna Request con las tarjetas de solicitud, 1440"></a><a class="r-shot p" href="screenshots/l01-pipeline-notice-390.png" style="--y:1750;--h:640"><img loading="lazy" src="screenshots/l01-pipeline-notice-390.png" alt="Columna Request con las tarjetas de solicitud, 390"></a><figcaption><b>Más abajo, las tarjetas.</b> ORD059 y ORD060, con «Client request · needs an answer», al final de la columna Request.</figcaption></figure>
+  <figure class="r-pair single"><a class="r-shot w" href="screenshots/x-lab-phone-sideways-as-built-390.png"><img loading="lazy" src="screenshots/x-lab-phone-sideways-as-built-390.png" alt="Pipeline en un móvil de 390 px: la página mide 1327 px de ancho"></a><figcaption><b>El top 1, tal como está.</b> La página entera de un móvil de 390 px: 1327 px de ancho, 937 de ellos en blanco.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>El aviso se ve sin desplazarse, dice cuántas esperan y nombra hasta tres con su cliente; desaparece al contestarlas.</li>
+  <li>Las tarjetas pendientes llevan su etiqueta y quién pidió, y el contador de People avisa de las solicitudes de acceso desde cualquier página.</li>
+  <li>Cumple la propuesta: sin correo, el lab se entera aquí.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p1">P1</span> <span class="r-tag top">top 1</span></td><td>En móvil, cada página del lab mide 1327 px de ancho mientras el contador de People esté a la vista: 15 de las capturas del lab a 390 se desbordan (unos 935 px) y ninguna cuando ya no quedan solicitudes. El texto para lectores de pantalla del contador (<code>.sr-only</code>, posición absoluta) no tiene un ancestro posicionado y cae fuera de la tira de navegación, que en móvil se desplaza de lado.</td><td><code>.nav-link { position: relative; }</code>. Inyectada en la página, el ancho vuelve a 390. Las capturas a 390 de esta revisión están recortadas a ese ancho; esta es la única sin recortar.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Hay un solo botón, «Review ORD059 →», aunque esperen dos; los demás códigos del aviso son texto. Y las tarjetas pendientes están al final de su columna, bajo pedidos más antiguos.</td><td>Hacer enlace cada código del aviso y ordenar primero las pendientes en la columna Request.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="l2">L2 · Pedido: panel de aceptar o rechazar</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l02-order-request-panel-1440.png" style="--h:1289"><img loading="lazy" src="screenshots/l02-order-request-panel-1440.png" alt="Pedido solicitado con el panel de respuesta, 1440"></a><a class="r-shot p" href="screenshots/l02-order-request-panel-390.png" style="--y:480;--h:1100"><img loading="lazy" src="screenshots/l02-order-request-panel-390.png" alt="Pedido solicitado con el panel de respuesta, 390"></a><figcaption><b>ORD059 pendiente.</b> «Accept this request?» ocupa el sitio de la puerta; arriba, las notas del cliente.</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l02-order-request-accepted-1440.png" style="--h:1100"><img loading="lazy" src="screenshots/l02-order-request-accepted-1440.png" alt="Pedido recién aceptado, 1440"></a><a class="r-shot p" href="screenshots/l02-order-request-accepted-390.png" style="--h:1100"><img loading="lazy" src="screenshots/l02-order-request-accepted-390.png" alt="Pedido recién aceptado, 390"></a><figcaption><b>Recién aceptado.</b> Aviso verde con «Receive shipment →». Las notas y «Requested by» ya no están (top 3).</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l02-order-decline-no-reason-1440.png" style="--y:250;--h:1000"><img loading="lazy" src="screenshots/l02-order-decline-no-reason-1440.png" alt="Rechazar sin motivo, 1440"></a><a class="r-shot p" href="screenshots/l02-order-decline-no-reason-390.png" style="--y:950;--h:1000"><img loading="lazy" src="screenshots/l02-order-decline-no-reason-390.png" alt="Rechazar sin motivo, 390"></a><figcaption><b>Rechazar sin motivo (ORD060).</b> «Write the reason. The client reads it on the order.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l02-pipeline-request-declined-1440.png"><img loading="lazy" src="screenshots/l02-pipeline-request-declined-1440.png" alt="Pipeline tras rechazar una solicitud, 1440"></a><a class="r-shot p" href="screenshots/l02-pipeline-request-declined-390.png"><img loading="lazy" src="screenshots/l02-pipeline-request-declined-390.png" alt="Pipeline tras rechazar una solicitud, 390"></a><figcaption><b>Rechazado.</b> De vuelta en Pipeline: «Request ORD060 declined. The order is archived; the client reads your reason on it.»</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Una sola pregunta, «Accept this request?», con la consecuencia dicha: hasta aceptar no se puede recibir envío y el cliente ve «Waiting for the lab».</li>
+  <li>Las notas del cliente van arriba y el panel llega preseleccionado como lo pidió («Keep the client's choice»).</li>
+  <li>Rechazar exige motivo y avisa de quién lo leerá; el pedido se archiva, no se borra.</li>
+  <li>Tras aceptar, el aviso dice qué ve ahora el cliente y ofrece el paso siguiente.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p1">P1</span> <span class="r-tag top">top 3</span></td><td>Al aceptar, «Order facts» cambia de «Client, Order, Requested by, Requested, Panel, Matrix, Billing ref.» a «Client, Order, Samples, Material, Received, Target date, Assigned to», y el bloque «Notes from the client» se va con el panel de respuesta. De lo que escribió el cliente («ship the week of…», ayuno, anticoagulante) solo queda una línea en History con su correo.</td><td>Mientras el pedido tenga <code>request</code>, añadir a las filas normales «Requested by», «Panel» y «Billing ref.», y dejar «Notes from the client» en la columna izquierda.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p1">P1</span> <span class="r-tag top">top 4</span></td><td>En real, «Requested by» mostrará «A client member» (<a href="#n3">punto 3 de lo ya notado</a>).</td><td>La migración del nombre.</td><td>M</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Se puede aceptar sin haber escrito las instrucciones de envío; el cliente leerá «ship as agreed with the lab» y nadie se lo avisa al lab.</td><td>Si no hay texto, una línea en este panel con enlace a Shipping instructions.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Tras aceptar, el título de la puerta es «Ready for received?». Y History da la hora en UTC («21:38 UTC») mientras el resto de la página usa la del lab («16:38 EST»). Lo segundo es anterior a F1–F4.</td><td>«Ready to receive?»; History con la misma hora que lo demás.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="l3">L3 · People: solicitudes de acceso</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-approve-new-client-1440.png" style="--y:130;--h:1000"><img loading="lazy" src="screenshots/l03-people-approve-new-client-1440.png" alt="People: aprobar una solicitud creando un cliente nuevo, 1440"></a><a class="r-shot p" href="screenshots/l03-people-approve-new-client-390.png" style="--y:700;--h:1300"><img loading="lazy" src="screenshots/l03-people-approve-new-client-390.png" alt="People: aprobar una solicitud creando un cliente nuevo, 390"></a><figcaption><b>Aprobar creando un cliente nuevo.</b> La revisión se abre dentro de la fila. A la derecha, el mismo momento en móvil: columnas de una palabra por línea y el formulario cortado.</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-access-requests-1440.png"><img loading="lazy" src="screenshots/l03-people-access-requests-1440.png" alt="People con tres solicitudes de acceso, 1440"></a><a class="r-shot p" href="screenshots/l03-people-access-requests-390.png" style="--y:450;--h:1000"><img loading="lazy" src="screenshots/l03-people-access-requests-390.png" alt="People con tres solicitudes de acceso, 390"></a><figcaption><b>Tres solicitudes esperando.</b> Persona, organización, qué quiere medir, cuándo y la referencia AR.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-approve-existing-client-1440.png" style="--y:130;--h:1000"><img loading="lazy" src="screenshots/l03-people-approve-existing-client-1440.png" alt="People: aprobar hacia un cliente existente, 1440"></a><a class="r-shot p" href="screenshots/l03-people-approve-existing-client-390.png" style="--y:1050;--h:1000"><img loading="lazy" src="screenshots/l03-people-approve-existing-client-390.png" alt="People: aprobar hacia un cliente existente, 390"></a><figcaption><b>Aprobar hacia un cliente que ya existe.</b> «pi lab · matches a client» y Example Cedar ya elegido.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-invitation-link-1440.png"><img loading="lazy" src="screenshots/l03-people-invitation-link-1440.png" alt="People: enlace de invitación tras aprobar, 1440"></a><a class="r-shot p" href="screenshots/l03-people-invitation-link-390.png" style="--y:450;--h:1000"><img loading="lazy" src="screenshots/l03-people-invitation-link-390.png" alt="People: enlace de invitación tras aprobar, 390"></a><figcaption><b>Enlace mostrado.</b> «Copy it now and send it yourself; it works once, for 7 days, and is not shown again.» (Dirección local y token del demo.)</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-decline-1440.png" style="--y:300;--h:1100"><img loading="lazy" src="screenshots/l03-people-decline-1440.png" alt="People: rechazar una solicitud con motivo, 1440"></a><a class="r-shot p" href="screenshots/l03-people-decline-390.png" style="--y:1200;--h:1000"><img loading="lazy" src="screenshots/l03-people-decline-390.png" alt="People: rechazar una solicitud con motivo, 390"></a><figcaption><b>Rechazar.</b> «Decline…» abre el motivo: «Only the lab reads it. The app tells the requester nothing; write to them yourself if you want to.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-declined-1440.png"><img loading="lazy" src="screenshots/l03-people-declined-1440.png" alt="People tras rechazar una solicitud, 1440"></a><a class="r-shot p" href="screenshots/l03-people-declined-390.png" style="--y:450;--h:900"><img loading="lazy" src="screenshots/l03-people-declined-390.png" alt="People tras rechazar una solicitud, 390"></a><figcaption><b>Rechazada.</b> La fila de AR-0011 ya no está, y con ella el correo del solicitante.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l03-people-no-requests-1440.png"><img loading="lazy" src="screenshots/l03-people-no-requests-1440.png" alt="People sin solicitudes de acceso, 1440"></a><a class="r-shot p" href="screenshots/l03-people-no-requests-390.png" style="--y:450;--h:700"><img loading="lazy" src="screenshots/l03-people-no-requests-390.png" alt="People sin solicitudes de acceso, 390"></a><figcaption><b>Sin solicitudes.</b> «No access requests are waiting.»; el contador del menú desaparece.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Todo se decide en la fila, sin cambiar de página, y la tabla enseña lo que el solicitante escribió.</li>
+  <li>Reconoce la organización que ya es cliente y la deja elegida; para una nueva pide nombre, tipo y papel (decisión 3).</li>
+  <li>El botón dice lo que hace, «Approve and create invitation link», y debajo para quién y cuánto dura.</li>
+  <li>El aviso del enlace repite que es de un solo uso, que no vuelve a mostrarse y dónde queda listado. El rechazo recuerda los 90 días (decisión 6).</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 10</span></td><td>Al solicitante se le dijo «the lab will write to…», pero al rechazar la fila desaparece con su correo y el aviso solo dice «The app does not tell the requester». Quien no lo copió antes no tiene a quién escribir. Al aprobar, lo único que se copia es el enlace; el mensaje hay que redactarlo cada vez.</td><td>Incluir el correo en el aviso de rechazo. Un botón «Copy message» junto al enlace con el texto hecho (enlace, caduca en 7 días, un solo uso) y otro en el rechazo. Sigue sin enviarse nada desde la app.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p2">P2</span></td><td>En móvil la tabla de solicitudes no se puede usar: columnas de una palabra por línea y el formulario de revisión mide 355 px dentro de una tabla que se desplaza, con 33 px fuera de pantalla («Decline…» y «Kind» cortados).</td><td>Por debajo de 700 px, cada solicitud como bloque apilado (filas y celdas en <code>display: block</code>) y el formulario al ancho de la tarjeta.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>En escritorio los correos se parten por cualquier sitio: «ada@birch.exa / mple.test».</td><td>Más ancho para «Person» y <code>overflow-wrap: anywhere</code> solo como último recurso (cortar tras la @).</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="l4">L4 · Shipping instructions</h3>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l04-shipping-not-set-1440.png"><img loading="lazy" src="screenshots/l04-shipping-not-set-1440.png" alt="Shipping instructions sin texto, 1440"></a><a class="r-shot p" href="screenshots/l04-shipping-not-set-390.png" style="--h:1103"><img loading="lazy" src="screenshots/l04-shipping-not-set-390.png" alt="Shipping instructions sin texto, 390"></a><figcaption><b>Sin texto: «Not set».</b></figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l04-shipping-saved-1440.png"><img loading="lazy" src="screenshots/l04-shipping-saved-1440.png" alt="Shipping instructions guardadas, 1440"></a><a class="r-shot p" href="screenshots/l04-shipping-saved-390.png" style="--h:1212"><img loading="lazy" src="screenshots/l04-shipping-saved-390.png" alt="Shipping instructions guardadas, 390"></a><figcaption><b>Guardado.</b> «Clients see them on every accepted request from now on», con quién y cuándo.</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Un solo texto para todos los clientes (decisión 5), y la página dice dónde lo verán: «Step 2 · Accepted».</li>
+  <li>Explica qué pasa si se deja vacío, y el resultado se comprueba al momento en el <a href="#c6">pedido del cliente</a>.</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Mientras está «Not set», nada lo recuerda fuera de esta página (ver L2).</td><td>El aviso en el panel de aceptar.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 8</span></td><td>Es el sitio natural del contacto del lab, que hoy no existe: en la captura el lab lo mete dentro del texto de envío, y así el cliente solo lo ve en el paso 2.</td><td>Un segundo campo aquí, «Contact for clients», mostrado donde indica el top 8.</td><td>M</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="l5">L5 · Clients: interruptor de acceso a Nexo</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l05-client-nexo-off-1440.png" style="--y:880;--h:520"><img loading="lazy" src="screenshots/l05-client-nexo-off-1440.png" alt="Ficha del cliente con el acceso a Nexo apagado, 1440"></a><a class="r-shot p" href="screenshots/l05-client-nexo-off-390.png" style="--y:1250;--h:520"><img loading="lazy" src="screenshots/l05-client-nexo-off-390.png" alt="Ficha del cliente con el acceso a Nexo apagado, 390"></a><figcaption><b>Apagado (por defecto).</b> Sección propia «Nexo access» en la ficha del cliente, con un solo botón.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l05-client-nexo-on-1440.png" style="--y:880;--h:560"><img loading="lazy" src="screenshots/l05-client-nexo-on-1440.png" alt="Ficha del cliente con el acceso a Nexo encendido, 1440"></a><a class="r-shot p" href="screenshots/l05-client-nexo-on-390.png" style="--y:1250;--h:560"><img loading="lazy" src="screenshots/l05-client-nexo-on-390.png" alt="Ficha del cliente con el acceso a Nexo encendido, 390"></a><figcaption><b>Encendido.</b> La etiqueta pasa a «On» y el botón a «Turn Nexo access off»; arriba de la página queda el aviso «Nexo access turned on for Example Cedar.»</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Una decisión, un botón, y el botón dice lo que va a pasar. Apagado por defecto, como se decidió.</li>
+  <li>El efecto se comprueba en el lado del cliente: «Open in Nexo» aparece en su inicio y en el pedido liberado solo con el interruptor encendido (<a href="#c4">C4</a>, <a href="#c6">C6</a>).</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p3">P3</span></td><td>El texto mezcla la decisión con una salvedad técnica: «…(where this environment lets clients open Nexo)». Quien lo lee no sabe si aquí funciona o no.</td><td>Decir el estado real: «Clients can open Nexo in this workspace» o «Nexo for clients is not enabled here yet; the switch is saved for when it is».</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>La ficha lista a los miembros como «Member (user ID)» con identificadores, y dice «1 members».</td><td>Nombre y correo como en People (sale solo con el arreglo de <a href="#n3">N3</a>); singular correcto.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>La sección queda bajo todo el formulario «Edit client» (a unos 1000 px en escritorio), y la etiqueta On/Off flota en el extremo derecho, lejos del título. En la lista de clientes no se ve quién lo tiene encendido.</td><td>Etiqueta junto al título y «Nexo on/off» en la línea de resumen de la ficha («PI lab · 1 member · 5 open orders · Nexo off»).</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h3 class="d-h3" id="l6">L6 · Pedido: sección Deliverables</h3>
+<div class="r-pairs one">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l06-order-deliverables-shown-1440.png" style="--y:1150;--h:796"><img loading="lazy" src="screenshots/l06-order-deliverables-shown-1440.png" alt="Deliverables con un fichero visible para el cliente, 1440"></a><a class="r-shot p" href="screenshots/l06-order-deliverables-shown-390.png" style="--y:1850;--h:1232"><img loading="lazy" src="screenshots/l06-order-deliverables-shown-390.png" alt="Deliverables con un fichero visible para el cliente, 390"></a><figcaption><b>Fichero mostrado.</b> «The client now sees this file.» y la etiqueta «Client sees it». El recorte empieza a 1150 px del inicio de la página: ahí vive la sección (<a href="#n1">N1</a>).</figcaption></figure>
+</div>
+<div class="r-pairs">
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l06-order-deliverables-empty-1440.png" style="--y:1100;--h:760"><img loading="lazy" src="screenshots/l06-order-deliverables-empty-1440.png" alt="Deliverables vacío, 1440"></a><a class="r-shot p" href="screenshots/l06-order-deliverables-empty-390.png" style="--y:1850;--h:841"><img loading="lazy" src="screenshots/l06-order-deliverables-empty-390.png" alt="Deliverables vacío, 390"></a><figcaption><b>Vacío.</b> «No files for this order yet.» y el formulario para añadir.</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l06-order-deliverables-added-hidden-1440.png" style="--y:1150;--h:724"><img loading="lazy" src="screenshots/l06-order-deliverables-added-hidden-1440.png" alt="Deliverables con un fichero recién añadido y oculto, 1440"></a><a class="r-shot p" href="screenshots/l06-order-deliverables-added-hidden-390.png" style="--y:1900;--h:976"><img loading="lazy" src="screenshots/l06-order-deliverables-added-hidden-390.png" alt="Deliverables con un fichero recién añadido y oculto, 390"></a><figcaption><b>Añadido, oculto.</b> «File added. It stays hidden from the client until you show it.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l06-order-deliverables-retired-1440.png" style="--y:1180;--h:786"><img loading="lazy" src="screenshots/l06-order-deliverables-retired-1440.png" alt="Deliverables con un fichero retirado, 1440"></a><a class="r-shot p" href="screenshots/l06-order-deliverables-retired-390.png" style="--y:1850;--h:1199"><img loading="lazy" src="screenshots/l06-order-deliverables-retired-390.png" alt="Deliverables con un fichero retirado, 390"></a><figcaption><b>Retirado.</b> «File retired. The client no longer sees it; the lab keeps the record and the file.»</figcaption></figure>
+  <figure class="r-pair"><a class="r-shot" href="screenshots/l06-order-deliverables-refused-file-1440.png" style="--y:1180;--h:788"><img loading="lazy" src="screenshots/l06-order-deliverables-refused-file-1440.png" alt="Deliverables rechaza un tipo de fichero no admitido, 1440"></a><a class="r-shot p" href="screenshots/l06-order-deliverables-refused-file-390.png" style="--y:1850;--h:1201"><img loading="lazy" src="screenshots/l06-order-deliverables-refused-file-390.png" alt="Deliverables rechaza un tipo de fichero no admitido, 390"></a><figcaption><b>Fichero no admitido.</b> «Deliverables are PDF, PNG, JPEG, SVG, XLSX or CSV files. Nothing was added.»</figcaption></figure>
+</div>
+<div class="r-good"><b class="t">Qué funciona</b><ul>
+  <li>Oculto por defecto: nada llega al cliente sin un gesto explícito, y la etiqueta de cada fichero («Hidden», «Client sees it», «Retired») dice en qué está.</li>
+  <li>Cada acción responde con una frase que cuenta la consecuencia para el cliente, y la página vuelve a la sección en vez de al principio.</li>
+  <li>Retirar no borra: pide motivo y el registro queda. El rechazo de un tipo no admitido enumera los que sí.</li>
+  <li>Lo que el cliente recibe coincide: mismo título y tipo en «Your files», y la descarga devuelve el fichero idéntico (<a href="#c7">C7</a>).</li>
+</ul></div>
+<table class="r-issues"><caption>Problemas</caption>
+  <thead><tr><th>Prio.</th><th>Problema</th><th>Arreglo</th><th>Esf.</th></tr></thead>
+  <tbody>
+    <tr><td><span class="r-tag p2">P2</span> <span class="r-tag top">top 5</span></td><td>La sección empieza entre 1043 y 1215 px en escritorio y entre 1789 y 1961 px en móvil: nadie la ve sin saber que existe. Dentro, el formulario de añadir va antes que la lista.</td><td>Ver <a href="#n1">N1</a>: subirla a la columna izquierda, antes de History; la lista antes que el formulario; y avisar cuando un pedido publicado no tiene ningún fichero visible.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>Tras un fichero rechazado, el formulario vuelve vacío (en la captura se había escrito «Raw notes» y elegido «Other»): hay que reescribir título y tipo.</td><td>Conservar título, tipo y la casilla al devolver el error.</td><td>S</td></tr>
+    <tr><td><span class="r-tag p3">P3</span></td><td>«Reason for retiring» está siempre abierto en cada fichero, junto a «Show to the client»: la acción rara pesa tanto como la habitual.</td><td>«Retire…» despliega el motivo, como «Decline…» en People.</td><td>S</td></tr>
+  </tbody>
+</table>
+
+<h2 class="d-h2" id="pulido">Pulido: los P3 que merecen la pena</h2>
+<p class="d-text">Las tablas de arriba suman una veintena de P3. Después del top 10, estos seis son los que más devuelven por lo que cuestan; todos son S. El resto puede esperar a que haya clientes reales usándolo.</p>
+<ol class="d-list">
+  <li><b>Avisar al aceptar sin instrucciones de envío</b> (<a href="#l2">L2</a>, <a href="#l4">L4</a>). Una línea en el panel de aceptar: «Shipping instructions are not set; the client will read “ship as agreed with the lab”.», con enlace a la página.</li>
+  <li><b>Un botón por solicitud en el aviso del Pipeline</b> (<a href="#l1">L1</a>). Hoy solo la más antigua tiene botón; los demás códigos son texto.</li>
+  <li><b>La solicitud rechazada fuera de «In progress»</b> (<a href="#c4">C4</a>). Pasarla a un bloque «Declined» o al final de la lista, para que el inicio del cliente no la cuente como trabajo en curso.</li>
+  <li><b>Marcar qué es obligatorio en «Request an order»</b> (<a href="#c5">C5</a>). Solo lo es «Title»; decirlo una vez arriba y quitar los «Optional» de relleno.</li>
+  <li><b>Un mismo nombre para el mismo dato</b> (<a href="#c5">C5</a>, <a href="#c6">C6</a>). «Matrix» para el cliente y «Material» para el lab; y «Panel · Not set» cuando el cliente eligió «Let the lab advise». Elegir una palabra y mostrar lo que el cliente eligió.</li>
+  <li><b>Conservar lo escrito cuando se rechaza un fichero</b> (<a href="#l6">L6</a>) y plegar «Reason for retiring» tras «Retire…».</li>
+</ol>
+
+<h2 class="d-h2" id="limites">Lo que esta revisión no pudo ver</h2>
+<ul class="d-list">
+  <li><b>«A client member» en real.</b> El demo siempre tiene nombre para quien pidió («Demo Requester»). El problema está confirmado leyendo el código (<a href="#n3">N3</a>), no en pantalla.</li>
+  <li><b>El paso 5 del cliente, «Quality review».</b> Ningún pedido de Example Cedar está en ese estado en el demo. Los otros cinco pasos y el rechazo sí se capturaron.</li>
+  <li><b>Un cliente sin ningún pedido.</b> Los textos de vacío existen en el código («No orders in progress. Request an order, or the lab opens one for you; they appear here.» y «No dataset has been released yet.») y están bien escritos, pero no hay captura.</li>
+  <li><b>Un conjunto de datos publicado y después retirado o sustituido</b>, visto por el cliente («Released, then withdrawn»): el estado existe en el código, pero el demo no lo tiene.</li>
+  <li><b>Los rechazos de «Request access» por límite</b> (demasiadas solicitudes, cola llena, servicio no disponible): el demo no los provoca. Sí están los errores de formulario y el «ya pendiente».</li>
+  <li><b>El correo.</b> No hay SMTP: ni la invitación ni el aviso de cambio de estado salen de la app. Varias notas de arriba (plazo de respuesta, contacto del lab, «Copy message») existen precisamente porque hoy todo eso se hace a mano.</li>
+  <li><b>No es una auditoría de accesibilidad.</b> Se midieron tamaños de texto y de controles, el desbordamiento lateral y el enlace «Skip to content»; no se probó con lector de pantalla.</li>
+</ul>
+
+<h2 class="d-h2" id="metodo">Cómo se hicieron las capturas</h2>
+<p class="d-text">Todo sale de <code>capture.mjs</code>, en esta misma carpeta: un solo navegador (Playwright, Chromium), un solo recorrido contra el espacio de demostración, y cada escena fotografiada a página completa en 1440 × 900 y 390 × 844. Solo datos sintéticos; no se tocó código de la app.</p>
+<pre class="r-code">cd frontends/admin
+NEXT_PUBLIC_NEXO_URL=http://127.0.0.1:3120/nexo NEXT_PUBLIC_NEXO_CLIENT_ACCESS=1 npm run dev -- --port 3110
+# en otra terminal, también desde frontends/admin
+node ../../docs/admin/client-zone-ux-review/capture.mjs      # BASE=&lt;origen&gt;/admin para otro puerto</pre>
+<ul class="d-list">
+  <li>El guion escribe las 109 imágenes en <code>screenshots/</code> y las medidas citadas aquí (posición de Deliverables, ancho de página, caja de búsqueda) en la salida estándar.</li>
+  <li>El estado del demo vive en la cookie del navegador: cada pasada empieza limpia y el orden de las escenas importa (las solicitudes se aceptan y rechazan por el camino).</li>
+  <li>En el lado del lab, las capturas de 390 se recortan a 390 px de ancho cuando la página desborda; el desborde tal cual está en <a href="#l1">L1</a> (<code>x-lab-phone-sideways-as-built-390.png</code>).</li>
+  <li>Las imágenes <code>x-skip-link-proposed</code> y la medida «390 px con el arreglo» se obtienen inyectando una regla CSS en el navegador durante la captura; el código de la app no cambia.</li>
+  <li>El enlace de invitación que aparece es el del demo: dirección local y token de ejemplo.</li>
+  <li>En este documento, cada imagen muestra un tramo de la captura; al pulsarla se abre entera.</li>
+</ul>
+
+</div>
+<script>
+// Each picture shows a slice of the capture; a click opens the whole capture, a second click closes it.
+const zoom = document.createElement("dialog");
+zoom.className = "r-zoom";
+zoom.innerHTML = '<img alt="">';
+document.body.append(zoom);
+document.addEventListener("click", (event) => {
+  const shot = event.target.closest("a.r-shot");
+  if (shot) {
+    event.preventDefault();
+    const image = zoom.firstChild;
+    image.src = shot.href;
+    image.alt = shot.querySelector("img").alt;
+    zoom.showModal();
+    zoom.scrollTop = 0;
+  } else if (zoom.open) zoom.close();
+});
+// Mark the frames whose capture goes on below the slice shown.
+for (const image of document.querySelectorAll(".r-shot img")) {
+  const mark = () => {
+    const frame = image.parentElement;
+    if (image.offsetHeight + parseFloat(getComputedStyle(image).marginTop) > frame.clientHeight + 2) frame.classList.add("more");
+  };
+  if (image.complete) mark(); else image.addEventListener("load", mark);
+}
+</script>
+</body>
+</html>

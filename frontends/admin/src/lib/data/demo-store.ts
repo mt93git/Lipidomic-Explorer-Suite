@@ -28,3 +28,84 @@ export async function writeDemoState(state: DemoState): Promise<void> {
   if (!stores.has(id) && stores.size >= MAX_BROWSERS) stores.delete(stores.keys().next().value as string);
   stores.set(id, state);
 }
+
+// ---------------------------------------------------------------- Clients, wave 3 (round 1)
+// An optional block preserves the existing sample/release state and the same browser cookie.
+type ClientState = DemoState & { clients?: import("./clients").ClientRecord[] };
+export async function readDemoClients() {
+  return (await readDemoState() as ClientState).clients;
+}
+export async function writeDemoClients(clients: import("./clients").ClientRecord[]) {
+  const state: ClientState = { ...await readDemoState(), clients };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- People, wave 3 (round 2)
+// Same pattern: an optional block on the browser's demo state; undefined until the first people write.
+type PeopleDemoState = DemoState & { people?: import("../people").PeopleState };
+export async function readDemoPeople() {
+  return (await readDemoState() as PeopleDemoState).people;
+}
+export async function writeDemoPeople(people: import("../people").PeopleState) {
+  const state: PeopleDemoState = { ...await readDemoState(), people };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Access requests, F3
+// Same pattern. The public Request access page writes here too (a server action can set the cookie without a
+// session), so a request sent on this browser shows up in this browser's demo People screen.
+type AccessDemoState = DemoState & { accessRequests?: import("../access-requests").AccessRequestState };
+export async function readDemoAccess() {
+  return (await readDemoState() as AccessDemoState).accessRequests;
+}
+export async function writeDemoAccess(accessRequests: import("../access-requests").AccessRequestState) {
+  const state: AccessDemoState = { ...await readDemoState(), accessRequests };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Deliverables, F4
+// Same pattern. The files' bytes are kept here (base64, 5 MB each at most) so the demo client can download them.
+export type DemoDeliverable = import("../deliverables").Deliverable & { data: string };
+type DeliverableDemoState = DemoState & { deliverables?: DemoDeliverable[] };
+export async function readDemoDeliverables() {
+  return (await readDemoState() as DeliverableDemoState).deliverables;
+}
+export async function writeDemoDeliverables(deliverables: DemoDeliverable[]) {
+  const state: DeliverableDemoState = { ...await readDemoState(), deliverables };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Instruments & panels (0026)
+// Same pattern; undefined until the first write, when the example catalog (seedDemoCatalog) is used.
+type CatalogDemoState = DemoState & { catalog?: import("./instruments-panels").DemoCatalog };
+export async function readDemoCatalog() {
+  return (await readDemoState() as CatalogDemoState).catalog;
+}
+export async function writeDemoCatalog(catalog: import("./instruments-panels").DemoCatalog) {
+  const state: CatalogDemoState = { ...await readDemoState(), catalog };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Storage (0025)
+// Same pattern: this browser's box placements (live and archived), undefined until the first place, move or remove.
+type StorageDemoState = DemoState & { placements?: import("../storage").DemoPlacement[] };
+export async function readDemoPlacements() {
+  return (await readDemoState() as StorageDemoState).placements;
+}
+export async function writeDemoPlacements(placements: import("../storage").DemoPlacement[]) {
+  const state: StorageDemoState = { ...await readDemoState(), placements };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Notifications (0028)
+// Same pattern: each demo person's turned-off kinds and the demo send log (the demo never sends: every row is skipped).
+export type DemoNotificationLog = import("../notifications").LogEntry & { id: string; at: string };
+export type DemoNotifications = { off: Record<string, string[]>; log: DemoNotificationLog[] };
+type NotificationDemoState = DemoState & { notifications?: DemoNotifications };
+export async function readDemoNotifications(): Promise<DemoNotifications> {
+  return (await readDemoState() as NotificationDemoState).notifications ?? { off: {}, log: [] };
+}
+export async function writeDemoNotifications(notifications: DemoNotifications) {
+  const state: NotificationDemoState = { ...await readDemoState(), notifications };
+  await writeDemoState(state);
+}

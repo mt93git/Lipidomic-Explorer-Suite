@@ -12,12 +12,12 @@ export default async function ChooseClientPage({ searchParams }: { searchParams:
   if (session.clients.length === 1) redirect("/client/home");
   const { error } = await searchParams;
   return <>
-    <div className="page-heading"><div><div className="eyebrow">Access / Workspace</div><h1>Choose client</h1><p>{session.clients.length > 1 ? "You belong to more than one client. Choose a workspace to continue." : "Choose your client workspace to continue."}</p></div></div>
+    <div className="page-heading"><div><div className="eyebrow">Your clients</div><h1>Choose client</h1><p>Choose which client&apos;s orders to see.</p></div></div>
     {error === "membership" && <p className="error" role="alert">Choose one of your available client memberships.</p>}
     {session.clients.length === 0 ? <p className="empty-state">No client memberships are assigned. Ask an administrator to add your client access.</p> : <div className="client-choices">
       {session.clients.map(client => <form key={client.id} action={chooseClient}>
         <input type="hidden" name="clientId" value={client.id} />
-        <button className="client-choice"><span className="color-square" data-color={client.color} aria-hidden="true" /><strong>{client.name}</strong><small>{client.role ?? "Viewer"} · {session.selectedClient?.id === client.id ? "Selected workspace" : "Open workspace →"}</small></button>
+        <button className="client-choice"><span className="color-square" data-color={client.color} aria-hidden="true" /><strong>{client.name}</strong><small>{client.role ?? "Viewer"} · {session.selectedClient?.id === client.id ? "Selected" : "Open →"}</small></button>
       </form>)}
     </div>}
   </>;

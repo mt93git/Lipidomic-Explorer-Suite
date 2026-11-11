@@ -1,0 +1,19 @@
+.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
+.layout + .layout { margin-top: 22px; }
+.layout > :global(.panel) { margin-top: 0; }
+.reading { grid-template-columns: minmax(0, 1fr); }
+.form select { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
+.form select:disabled { background: var(--surface, #f3f6f8); color: var(--muted); }
+.scroll { max-width: 100%; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm); }
+.table th { color: var(--muted); font-weight: 700; }
+.table th, .table td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
+.table td { overflow-wrap: break-word; }
+.table td:first-child { min-width: 9em; }
+/* The name is the way into Edit: 24 px tall to tap, in the row's own padding. */
+.table td:first-child a { display: inline-block; padding: 4px 0; margin: -4px 0; }
+.archived td { color: var(--muted); }
+.reason { display: block; font-size: var(--text-xs); margin-top: 4px; }
+.archive { margin-top: 22px; padding-top: 4px; border-top: 1px solid var(--line); }
+.cancel { display: inline-block; margin-top: 6px; padding: 6px 0; }
+@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }

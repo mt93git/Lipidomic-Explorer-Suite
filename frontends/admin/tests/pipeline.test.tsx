@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Pipeline } from "@/components/pipeline";
 import { OrderCard } from "@/components/order-card";
 import { demoClients, demoOrders } from "@/lib/demo";
-import { gateStatus, type View } from "@/lib/models";
+import { gateStatus, stages, type View } from "@/lib/models";
 import { emptyFilters, scopeToAudience, type PipelineFilters } from "@/lib/pipeline-filters";
 
 const now = new Date("2026-11-07T12:00:00Z");
@@ -17,6 +17,97 @@ const board = () => screen.getByRole("region", { name: "Order pipeline" });
 const cards = () => within(board()).queryAllByRole("article");
 const chipList = () => screen.getByRole("list", { name: "Active filters" });
 const search = () => screen.getByRole("searchbox", { name: "Search orders in the overview" });
+
+describe("stage minimap", () => {
+  it("shows a warning before blocked counts without adding it to the accessible name", () => {
+    render(<Harness />);
+    const minimap = screen.getByRole("group", { name: "Pipeline stages" });
+    stages.forEach((label, index) => {
+      const orders = demoOrders.filter(order => !order.released && order.stage === index);
+      const blocked = orders.some(order => gateStatus(order.gates) === "fail");
+      const name = `Stage ${String(index + 1).padStart(2, "0")} ${label}, ${orders.length} ${orders.length === 1 ? "order" : "orders"}`;
+      const button = within(minimap).getByRole("button", { name });
+      const warning = within(button).queryByText("⚠");
+      expect(button.querySelector(".column-count")?.textContent).toBe(`${blocked ? "⚠ " : ""}${orders.length}`);
+      if (blocked) {
+        expect(warning).toBeVisible();
+        expect(warning).toHaveAttribute("aria-hidden", "true");
+        expect(button).toHaveAccessibleDescription("Contains blocked orders");
+      } else {
+        expect(warning).not.toBeInTheDocument();
+      }
+    });
+    fireEvent.change(search(), { target: { value: "nonexistent order" } });
+    expect(within(minimap).queryAllByText("⚠")).toHaveLength(0);
+  });
+
+  it("exposes all ten scoped counts and blocked states with accessible jump buttons", () => {
+    render(<Harness />);
+    const minimap = screen.getByRole("group", { name: "Pipeline stages" });
+    expect(within(minimap).getAllByRole("button")).toHaveLength(10);
+    stages.forEach((label, index) => {
+      const orders = demoOrders.filter(order => !order.released && order.stage === index);
+      const name = `Stage ${String(index + 1).padStart(2, "0")} ${label}, ${orders.length} ${orders.length === 1 ? "order" : "orders"}`;
+      const button = within(minimap).getByRole("button", { name });
+      expect(button.querySelector(".column-count")).toHaveAttribute("data-blocked", String(orders.some(order => gateStatus(order.gates) === "fail")));
+      expect(button.querySelector(".column-count")).toHaveAttribute("data-empty", String(orders.length === 0));
+      expect(document.getElementById(button.getAttribute("aria-controls")!)).toBe(within(board()).getByRole("region", { name: label }));
+    });
+  });
+
+  it("collapses empty columns and expands them when the filtered scope gets cards", () => {
+    render(<Harness initial={{ ...emptyFilters, query: "ORD047" }} />);
+    const request = within(board()).getByRole("region", { name: "Request" });
+    const sequence = within(board()).getByRole("region", { name: "Sequence exported" });
+    expect(request).toHaveAttribute("data-collapsed", "true");
+    expect(sequence).toHaveAttribute("data-collapsed", "false");
+    fireEvent.change(search(), { target: { value: "ORD042" } });
+    expect(request).toHaveAttribute("data-collapsed", "false");
+    expect(sequence).toHaveAttribute("data-collapsed", "true");
+    expect(within(request).getByRole("article", { name: "ORD042" })).toBeVisible();
+  });
+
+  it("scrolls the chosen stage into view without changing filters", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const column = within(board()).getByRole("region", { name: "Excel built" });
+    column.scrollIntoView = vi.fn();
+    const jump = screen.getByRole("button", { name: /^Stage 10 Excel built,/ });
+    jump.focus();
+    await user.keyboard("{Enter}");
+    expect(column.scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
+    expect(jump).toHaveFocus();
+    expect(screen.queryByRole("list", { name: "Active filters" })).not.toBeInTheDocument();
+  });
+
+  it("highlights the observed visible range and disconnects on unmount", () => {
+    let notify!: IntersectionObserverCallback;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback: IntersectionObserverCallback) { notify = callback; }
+      observe = observe;
+      disconnect = disconnect;
+    });
+    try {
+      const { unmount } = render(<Harness />);
+      const columns = within(board()).getAllByRole("region");
+      expect(observe).toHaveBeenCalledTimes(10);
+      const update = (entries: { target: Element; isIntersecting: boolean }[]) => act(() => notify(entries as IntersectionObserverEntry[], {} as IntersectionObserver));
+      update([{ target: columns[0], isIntersecting: true }, { target: columns[1], isIntersecting: true }]);
+      expect(screen.getByRole("button", { name: /^Stage 01 / })).toHaveAttribute("data-visible", "true");
+      expect(screen.getByRole("button", { name: /^Stage 02 / })).toHaveAttribute("data-visible", "true");
+      expect(screen.getByRole("button", { name: /^Stage 10 / })).toHaveAttribute("data-visible", "false");
+      update([{ target: columns[0], isIntersecting: false }, { target: columns[9], isIntersecting: true }]);
+      expect(screen.getByRole("button", { name: /^Stage 01 / })).toHaveAttribute("data-visible", "false");
+      expect(screen.getByRole("button", { name: /^Stage 10 / })).toHaveAttribute("data-visible", "true");
+      unmount();
+      expect(disconnect).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
 
 describe("pipeline cards", () => {
   it("identifies a failed gate in text and a red-edge styling hook", () => {

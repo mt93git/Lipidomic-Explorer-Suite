@@ -82,16 +82,16 @@ export function recordSignature<S extends DemoReleaseState>(state: S, { datasetI
 
 // release_dataset: the policy's count of distinct eligible signers, then the Team project (named like the
 // database names it: order code + title).
-export function recordRelease<S extends DemoReleaseState>(state: S, { datasetId, actor, now, projectId, projectName }: { datasetId: string; actor: LabPerson; now: Date; projectId: string; projectName: string }): S {
+export function recordRelease<S extends DemoReleaseState>(state: S, { datasetId, actor, now }: { datasetId: string; actor: LabPerson; now: Date }): S {
   requireSigner(state, actor);
   const dataset = find(state, datasetId);
   if (dataset.status !== "built") throw new DataError(`Dataset v${dataset.version} is already ${dataset.status}.`);
   const progress = releaseProgress(demoPolicy(state), dataset.signatures, demoLabStaff);
   if (!progress.met) throw new DataError(`Release of dataset v${dataset.version} needs ${progress.required} signatures by different eligible people (has ${progress.counted}).`);
-  return replace(state, { ...dataset, status: "released", releasedAt: now.toISOString(), releasedBy: actor.name, projectId, projectName });
+  return replace(state, { ...dataset, status: "released", releasedAt: now.toISOString(), releasedBy: actor.name });
 }
 
-// withdraw_dataset: a released dataset is retired with a reason; the Team project stays.
+// withdraw_dataset: a released dataset is retired with a reason.
 export function recordWithdrawal<S extends DemoReleaseState>(state: S, { datasetId, actor, reason, now }: { datasetId: string; actor: LabPerson; reason: string; now: Date }): S {
   requireSigner(state, actor);
   if (!reason.trim()) throw new DataError("Withdrawing a dataset needs a reason.");
@@ -131,7 +131,7 @@ function events(dataset: DemoDataset): HistoryEvent[] {
   for (const signature of dataset.signatures) {
     out.push({ date: signature.signedAt, title: `Dataset v${dataset.version} signed · ${signerRoleLabels[signature.role]}${signature.note ? ` · ${signature.note}` : ""}`, actor: signature.name });
   }
-  if (dataset.releasedAt) out.push({ date: dataset.releasedAt, title: `Dataset v${dataset.version} released · Team project ${dataset.projectId}`, actor: dataset.releasedBy ?? "" });
+  if (dataset.releasedAt) out.push({ date: dataset.releasedAt, title: `Dataset v${dataset.version} released`, actor: dataset.releasedBy ?? "" });
   if (dataset.status === "withdrawn" && dataset.archivedAt) out.push({ date: dataset.archivedAt, title: `Dataset v${dataset.version} withdrawn · ${dataset.archivedReason}`, actor: extra.withdrawnBy ?? "" });
   if (dataset.status === "superseded" && dataset.archivedAt) out.push({ date: dataset.archivedAt, title: `Dataset v${dataset.version} superseded by version ${/version (\d+)/.exec(dataset.archivedReason ?? "")?.[1] ?? "?"}`, actor: extra.supersededBy ?? "" });
   return out;

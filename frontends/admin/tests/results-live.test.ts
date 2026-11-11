@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakePostgrest } from "./helpers/fake-postgrest";
 const request = vi.hoisted(() => ({ cookies: new Map<string, string>() }));
@@ -10,7 +11,7 @@ vi.mock("@/lib/session", () => ({ requireWorkspace: async () => ({ userId: "test
 vi.mock("@/lib/environment", () => ({ getEnvironment: () => ({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" }) }));
 vi.mock("@/lib/supabase/server", () => ({ createAdminClient: vi.fn() }));
 import { createAdminClient } from "@/lib/supabase/server";
-import { getNameDictionary, saveNameEntry } from "@/lib/data/results";
+import { acceptResultFile, parseResultFile, getNameDictionary, saveNameEntry } from "@/lib/data/results";
 
 type Row = Record<string, unknown>;
 // admin.name_map_lab_wide_export_name (0006): one live lab-wide entry per export name.
@@ -38,5 +39,44 @@ describe("live lab-wide name dictionary", () => {
     await saveNameEntry(form({ id: "entry-ce", export_name: "CE 24:4 +NH4", clean_name: "CE 24:4 [M+NH4]" }));
     await expect(saveNameEntry(form({ id: "entry-ce", export_name: "PC 32:0", clean_name: "x" }))).rejects.toThrow("PC 32:0 is already in the dictionary. Edit its entry instead of adding it again.");
     expect((await getNameDictionary()).entries.map(entry => [entry.export_name, entry.clean_name])).toEqual([["CE 24:4 +NH4", "CE 24:4 [M+NH4]"], ["PC 32:0", "PC 32:0"]]);
+  });
+});
+
+describe("live results upload cleanup", () => {
+  beforeEach(() => request.cookies.clear());
+  async function setup(removeThrows = false) {
+    const upload = vi.fn<(...args: unknown[]) => Promise<{ error: null }>>().mockResolvedValue({ error: null });
+    const remove = vi.fn(async () => { if (removeThrows) throw new Error("cleanup failed"); return { data: [{}], error: null }; });
+    const rpc = vi.fn();
+    const db = fakePostgrest({ order: [{ id: "order-uuid", code: "ORD101", client_id: "client-uuid", stage: "acquired", archived_at: null }] });
+    vi.mocked(createAdminClient).mockResolvedValue({ schema: () => ({ from: db.from, rpc }), storage: { from: () => ({ upload, remove }) } } as never);
+    const data = form({ orderId: "order-uuid" });
+    data.set("file", new File([readFileSync(new URL("../e2e/fixtures/sciex-synthetic.txt", import.meta.url))], "results.txt"));
+    const review = await parseResultFile(data);
+    return { upload, remove, rpc, review };
+  }
+  it.each([false, true])("removes exactly its upload on RPC failure, preserving the original error (remove throws: %s)", async removeThrows => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { upload, remove, rpc, review } = await setup(removeThrows);
+    const error = new Error("accept refused");
+    rpc.mockRejectedValueOnce(error);
+    await expect(acceptResultFile(review.id, "Synthetic override")).rejects.toBe(error);
+    expect(remove).toHaveBeenCalledExactlyOnceWith([upload.mock.calls[0][0]]);
+  });
+  it("cleans up a returned RPC error and leaves a refused upload untouched", async () => {
+    const { upload, remove, rpc, review } = await setup();
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "accept refused" } });
+    await expect(acceptResultFile(review.id, "Synthetic override")).rejects.toThrow("accept refused");
+    expect(remove).toHaveBeenCalledExactlyOnceWith([upload.mock.calls[0][0]]);
+    remove.mockClear();
+    upload.mockResolvedValueOnce({ error: { message: "already exists" } } as never);
+    await expect(acceptResultFile(review.id, "Synthetic override")).rejects.toThrow("already exists");
+    expect(remove).not.toHaveBeenCalled();
+  });
+  it("keeps the upload when the RPC succeeds", async () => {
+    const { remove, rpc, review } = await setup();
+    rpc.mockResolvedValueOnce({ data: "result-uuid", error: null });
+    expect(await acceptResultFile(review.id, "Synthetic override")).toMatchObject({ id: "result-uuid" });
+    expect(remove).not.toHaveBeenCalled();
   });
 });

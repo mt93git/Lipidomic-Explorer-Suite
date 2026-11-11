@@ -28,7 +28,11 @@ test("build a dataset for an order at Processed, sign as two demo people, releas
   await expect(files.getByText("Internal_Standards, QC_Injections, Provenance", { exact: true })).toBeVisible();
   await expect(files.getByText(/^[0-9a-f]{64}$/)).toHaveCount(3);
   await expect(page.getByText("0 of 2 required signatures")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Release dataset" })).toBeDisabled();
+  // The action comes first: the strip says where the version is, the "Your turn" card holds the one action.
+  await expect(page.getByRole("list", { name: "Release progress" }).getByRole("listitem").nth(1)).toHaveAttribute("aria-current", "step");
+  const turn = page.getByRole("region", { name: /^Your turn/ });
+  await expect(turn.getByRole("heading", { name: "Sign this version" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Release dataset" })).toHaveCount(0);
 
   // Form controls by role and accessible name: a <label> wrapping a <select> also carries the options' text.
   await page.getByRole("combobox", { name: /^Sign as/ }).selectOption({ label: "Demo Reviewer A · Admin" });
@@ -38,14 +42,15 @@ test("build a dataset for an order at Processed, sign as two demo people, releas
   await expect(page).toHaveURL(/\?signed=1$/, slow);
   await expect(page.getByText("1 of 2 required signatures")).toBeVisible(slow);
   await expect(page.getByRole("list", { name: "Signatures" })).toContainText("Demo Reviewer A · Reviewed · Reviewed the synthetic export.");
-  await expect(page.getByRole("button", { name: "Release dataset" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Release dataset" })).toHaveCount(0);
 
   await page.getByRole("combobox", { name: /^Sign as/ }).selectOption({ label: "Demo Reviewer B · Admin" });
   await page.getByRole("combobox", { name: "Role", exact: true }).selectOption("approved");
   await page.getByRole("button", { name: "Sign", exact: true }).click();
   await expect(page.getByText("2 of 2 required signatures")).toBeVisible(slow);
   await expect(page.getByRole("list", { name: "Signatures" })).toContainText("Demo Reviewer B · Approved");
-  await expect(page.getByRole("button", { name: "Release dataset" })).toBeEnabled();
+  await expect(turn.getByRole("heading", { name: "Release this version" })).toBeVisible();
+  await expect(turn.getByRole("button", { name: "Release dataset" })).toBeEnabled();
 
   await page.getByRole("combobox", { name: /^Release as/ }).selectOption({ label: "Demo Reviewer B · Admin" });
   await page.getByRole("button", { name: "Release dataset" }).click();

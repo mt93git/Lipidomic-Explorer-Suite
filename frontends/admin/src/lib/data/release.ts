@@ -1,21 +1,24 @@
 import "server-only";
+import { uploadThenRecord as recordUploads } from "./upload-then-record";
 import { randomUUID } from "node:crypto";
 import { demoClients, demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
 import { stages } from "../models";
 import {
-  analysisObjectPath, datasetPaths, defaultPolicy, describeHeaders, isLabStaff, matchSamples, ownSamplesProblem,
+  datasetPaths, defaultPolicy, describeHeaders, isLabStaff, matchSamples, ownSamplesProblem,
   type DatasetStatus, type LabPerson, type LabRole, type ReleasePolicy, type RegistryEntry, type SignerRole,
 } from "../release";
 import { ANALYSIS_SHEETS, COMPANION_SHEETS, DATASET_SHEETS, buildDatasetFiles, digest, sourceTextOf, unknownSampleNames, type BuiltFile } from "../release-build";
 import {
   demoLabStaff, demoPolicy, demoSourceText, recordBuild, recordRelease, recordSignature, recordSupersede, recordWithdrawal, setDemoPolicy, type DemoDataset,
 } from "../release-demo";
+import { exclusionsAt, type Exclusion, type RecordedExclusion } from "../qc-review";
 import { DataError, stageFromDb } from "../samples";
-import { applyDemoState, type DemoState } from "../samples-demo";
+import { applyDemoState, demoOrderSamples, type DemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { notify } from "./notifications";
 
 export { DataError };
 
@@ -30,7 +33,9 @@ const PROCESSED = 7;
 // ---------------------------------------------------------------- what the screens read
 
 export type VersionSummary = { id: string; version: number; status: DatasetStatus; signatures: number; releasedAt: string | null; projectId: string | null };
-export type ReleaseOrder = { id: string; code: string; clientId: string; clientName: string; title: string; stage: number; resultFileId: string | null; acceptedAt: string | null; versions: VersionSummary[] };
+// releasedAt: when the order was released (a demo order may be released without a recorded version; live orders
+// through their latest released version), so the list can tell a released order from a build candidate.
+export type ReleaseOrder = { id: string; code: string; clientId: string; clientName: string; title: string; stage: number; resultFileId: string | null; acceptedAt: string | null; releasedAt: string | null; versions: VersionSummary[] };
 export type DatasetFile = { label: string; sheets: string[]; sha256: string; sizeBytes: number; path: string | null };
 export type SignatureRecord = { id: string; userId: string; name: string; role: SignerRole; note: string | null; signedAt: string };
 export type DatasetRecord = {
@@ -40,6 +45,8 @@ export type DatasetRecord = {
   full: DatasetFile; analysis: DatasetFile; companion: DatasetFile;
   provenance: { sourceSha256: string | null; sciexOsVersion: string | null; processingMethod: string | null; acceptedAt: string | null; headers: string | null };
   signatures: SignatureRecord[];
+  // The QC review's exclusions in force when this version was built: recorded decisions, not removed from the data.
+  exclusions: RecordedExclusion[];
   archivedAt: string | null; archivedReason: string | null;
 };
 // demoActors: the demo lab people a form may act as (null in live mode, where the signed-in user acts).
@@ -72,7 +79,7 @@ function demoActor(session: { userId: string; displayName: string }, actorId?: s
 }
 const demoVersion = (dataset: DemoDataset): VersionSummary => ({ id: dataset.id, version: dataset.version, status: dataset.status, signatures: dataset.signatures.length, releasedAt: dataset.releasedAt, projectId: dataset.projectId });
 function fromDemo(dataset: DemoDataset, state: DemoState): DatasetRecord {
-  const order = demoOrders.find(item => item.code === dataset.orderCode);
+  const order = applyDemoState(demoOrders, state).find(item => item.code === dataset.orderCode);
   const file = (key: "full" | "analysis" | "companion", path: string): DatasetFile => ({ label: labels[key], sheets: dataset[key].sheets, sha256: dataset[key].sha256, sizeBytes: dataset[key].sizeBytes, path });
   const paths = datasetPaths(dataset.clientId, dataset.orderCode, { full: dataset.full.sha256, analysis: dataset.analysis.sha256, companion: dataset.companion.sha256 });
   return {
@@ -85,6 +92,7 @@ function fromDemo(dataset: DemoDataset, state: DemoState): DatasetRecord {
       headers: describeHeaders(dataset.headerMode, dataset.matched, dataset.samples),
     },
     signatures: dataset.signatures.map(signature => ({ ...signature })),
+    exclusions: exclusionsAt((state.exclusions ?? []).filter(item => item.orderCode === dataset.orderCode), dataset.builtAt),
     archivedAt: dataset.archivedAt, archivedReason: dataset.archivedReason,
   };
 }
@@ -115,6 +123,8 @@ type DatasetRow = {
   project_id: string | null; companion_path: string | null; released_at: string | null; archived_at: string | null; archived_reason: string | null; created_at: string;
 };
 type SignatureRow = { id: string; dataset_id: string; user_id: string; role: SignerRole; note: string | null; signed_at: string };
+type ExclusionRow = { id: string; sample_id: string; reason: string; decided_by: string | null; created_at: string; archived_at: string | null; archived_reason: string | null;
+  sample: { order_id: string; sample_code: string } | { order_id: string; sample_code: string }[] | null };
 type StaffRow = { user_id: string; display_name: string | null; role: LabRole };
 type PolicyRow = { eligible_signers: string[] | null; required_signatures: number; set_by: string | null; created_at: string };
 const orderSelect = "id, code, title, stage, client_id";
@@ -160,13 +170,15 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const unique = (values: (string | null)[]) => Array.from(new Set(values.filter((value): value is string => !!value)));
-  const [orders, clients, files, signatures] = await Promise.all([
+  const [orders, clients, files, signatures, exclusions] = await Promise.all([
     db.from("order").select(orderSelect).in("id", unique(rows.map(row => row.order_id))),
     db.from("client").select("id, name").in("id", unique(rows.map(row => row.client_id))),
     db.from("result_file").select("id, order_id, status, sha256, storage_path, sciex_os_version, processing_method, accepted_at").in("id", unique(rows.map(row => row.result_file_id))),
     db.from("signature").select("id, dataset_id, user_id, role, note, signed_at").in("dataset_id", ids).is("archived_at", null).order("signed_at"),
+    // The QC review's decisions on these clients' samples (withdrawn ones too: what was in force at each build counts).
+    db.from("exclusion").select("id, sample_id, reason, decided_by, created_at, archived_at, archived_reason, sample:sample(order_id, sample_code)").in("client_id", unique(rows.map(row => row.client_id))),
   ]);
-  for (const result of [orders, clients, files, signatures]) if (result.error) throw refusal(result.error);
+  for (const result of [orders, clients, files, signatures, exclusions]) if (result.error) throw refusal(result.error);
   const builders = new Map<string, string>();
   try {
     const audit = await db.from("audit_event").select("entity_id, actor").eq("entity", "dataset").eq("action", "INSERT").in("entity_id", ids);
@@ -179,6 +191,16 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
   const clientById = new Map(((clients.data ?? []) as unknown as ClientRow[]).map(row => [row.id, row]));
   const fileById = new Map(((files.data ?? []) as unknown as ResultFileRow[]).map(row => [row.id, row]));
   const signed = (signatures.data ?? []) as unknown as SignatureRow[];
+  const decisions = ((exclusions.data ?? []) as unknown as ExclusionRow[]).flatMap(item => {
+    const sample = Array.isArray(item.sample) ? item.sample[0] : item.sample;
+    if (!sample) return [];
+    const decided: Exclusion & { orderId: string } = {
+      id: item.id, orderId: sample.order_id, sampleId: item.sample_id, sampleCode: sample.sample_code, reason: item.reason, decidedAt: item.created_at,
+      decidedBy: item.decided_by ? people.find(person => person.userId === item.decided_by)?.name ?? shortId(item.decided_by) : null,
+      withdrawnAt: item.archived_at, withdrawnReason: item.archived_reason,
+    };
+    return [decided];
+  });
   return rows.map(row => {
     const order = orderById.get(row.order_id);
     const file = row.result_file_id ? fileById.get(row.result_file_id) : undefined;
@@ -196,6 +218,7 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
       signatures: signed.filter(signature => signature.dataset_id === row.id).map(signature => ({
         id: signature.id, userId: signature.user_id, name: people.find(item => item.userId === signature.user_id)?.name ?? shortId(signature.user_id), role: signature.role, note: signature.note, signedAt: signature.signed_at,
       })),
+      exclusions: exclusionsAt(decisions.filter(item => item.orderId === row.order_id), row.created_at),
       archivedAt: row.archived_at, archivedReason: row.archived_reason,
     };
   });
@@ -235,14 +258,7 @@ async function upload(bucket: string, path: string, bytes: Buffer): Promise<bool
 // error is thrown. 0012 lets that token remove only what no admin row records (admin-files) or a still pending
 // analysis file (case-files), so a call that did commit despite the error keeps its files.
 async function uploadThenRecord<T>(bucket: string, files: { path: string; bytes: Buffer }[], record: () => Promise<T>): Promise<T> {
-  const written: string[] = [];
-  try {
-    for (const file of files) if (await upload(bucket, file.path, file.bytes)) written.push(file.path);
-    return await record();
-  } catch (error) {
-    await removeQuietly(bucket, written);
-    throw error;
-  }
+  return recordUploads(files, file => upload(bucket, file.path, file.bytes), paths => removeQuietly(bucket, paths), record);
 }
 async function removeQuietly(bucket: string, paths: string[]): Promise<void> {
   if (!paths.length) return;
@@ -268,6 +284,7 @@ export async function listReleaseOrders(): Promise<ReleaseOrder[]> {
     return applyDemoState(demoOrders, state).filter(order => order.stage >= PROCESSED).map(order => ({
       id: order.code, code: order.code, clientId: order.clientId, clientName: clientName(order.clientId), title: order.description, stage: order.stage,
       resultFileId: order.code, acceptedAt: (state.results ?? []).filter(result => result.orderCode === order.code).at(-1)?.acceptedAt ?? null,
+      releasedAt: order.releasedAt ?? null,
       versions: datasets.filter(dataset => dataset.orderCode === order.code).map(demoVersion),
     }));
   }
@@ -292,6 +309,7 @@ export async function listReleaseOrders(): Promise<ReleaseOrder[]> {
     return {
       id: row.id, code: row.code, clientId: row.client_id, clientName: clientById.get(row.client_id) ?? "Client", title: row.title ?? "", stage: stageFromDb(row.stage),
       resultFileId: file?.id ?? null, acceptedAt: file?.accepted_at ?? null,
+      releasedAt: records.filter(record => record.orderId === row.id && record.status === "released").at(-1)?.releasedAt ?? null,
       versions: records.filter(record => record.orderId === row.id).map(liveVersion),
     };
   }).filter(order => order.resultFileId || order.versions.length);
@@ -308,10 +326,8 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
     const order = applyDemoState(demoOrders, state).find(item => item.code === input.orderId);
     if (!order) throw new DataError(`Order ${input.orderId} was not found.`);
     if (order.stage < PROCESSED) throw new DataError(`${order.code} is ${stages[order.stage]}; accept its results file before building a dataset.`);
-    const recorded: RegistryEntry[] = (state.samples ?? []).filter(sample => sample.orderCode === order.code)
-      .map(sample => ({ code: sample.code, full_name: sample.full_name, group1_term: sample.group1_term, group2_term: sample.group2_term, replicate_term: sample.replicate_term, patient_term: sample.patient_term, time_point_term: sample.time_point_term }));
     // An example order nobody registered in this browser stands for its example registry (Sample_001, ...).
-    const registry = recorded.length ? recorded : Array.from({ length: order.sampleCount }, (_, i) => ({ code: `${order.code}-S${pad3(i + 1)}`, full_name: `Sample_${pad3(i + 1)}`, group1_term: null, group2_term: null, replicate_term: null, patient_term: null, time_point_term: null }));
+    const registry: RegistryEntry[] = demoOrderSamples(order, state);
     const batch = order.batch ?? `B2026-0${order.code.slice(-2)}`;
     const names = registry.map((sample, i) => `${batch}_${pad3(i + 1)}_${sample.code}`);
     const sourceText = demoSourceText(order.code, names);
@@ -428,19 +444,19 @@ export async function signDataset(input: { datasetId: string; role: SignerRole; 
   await staffSession();
   await rpc("sign_dataset", { p_dataset_id: input.datasetId, p_role: input.role, p_note: note });
 }
-// admin.release_dataset(...): the analysis file goes to Team's bucket first, with the signer's own token
-// (0007 lets an eligible signer stage <project_id>/<analysis_sha256> while the dataset is built), then the
-// function creates the project. If the call fails the staged object is removed again with that token (0012: only
-// while it is still pending, so never once the project exists); a retry stages a new copy under a new id.
-export async function releaseDataset(input: { datasetId: string; actorId?: string }): Promise<{ projectId: string }> {
+// admin.release_dataset(p_dataset_id, p_companion_path) (0030): the signed version becomes released. Nexo opens
+// it from Admin's own record and admin-files; Team is retired, so nothing is copied anywhere.
+export async function releaseDataset(input: { datasetId: string; actorId?: string }): Promise<void> {
   if (!live()) {
-    return demoWrite((state, actor) => {
-      const dataset = (state.datasets ?? []).find(item => item.id === input.datasetId);
-      const order = dataset ? demoOrders.find(item => item.code === dataset.orderCode) : undefined;
-      const projectId = randomUUID();
-      const next = recordRelease(state, { datasetId: input.datasetId, actor, now: new Date(), projectId, projectName: projectName(dataset?.orderCode ?? "", order?.description ?? null) });
-      return { state: next, result: { projectId } };
-    }, input.actorId);
+    const dataset = await demoWrite((state, actor) => ({
+      state: recordRelease(state, { datasetId: input.datasetId, actor, now: new Date() }),
+      result: (state.datasets ?? []).find(item => item.id === input.datasetId),
+    }), input.actorId);
+    if (dataset) {
+      const { id, orderCode, version, clientId } = dataset;
+      await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client" });
+    }
+    return;
   }
   await staffSession();
   const db = (await client()).schema("admin");
@@ -449,23 +465,17 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
   const dataset = row.data as unknown as DatasetRow | null;
   if (!dataset) throw new DataError("That dataset was not found.");
   if (dataset.status !== "built") throw new DataError(`Dataset v${dataset.version} is already ${dataset.status}.`);
-  if (!dataset.analysis_sha256 || !num(dataset.analysis_size_bytes)) throw new DataError("This dataset has no recorded analysis file; build a new version.");
   const order = await db.from("order").select(orderSelect).eq("id", dataset.order_id).maybeSingle();
   if (order.error) throw refusal(order.error);
   const code = (order.data as unknown as OrderRow | null)?.code;
   if (!code) throw new DataError("The order of this dataset was not found.");
-  const paths = filePaths(dataset, code);
-  const bytes = await download("admin-files", paths.analysis);
-  if (digest(bytes) !== dataset.analysis_sha256 || bytes.byteLength !== num(dataset.analysis_size_bytes)) {
-    throw new DataError("The staged file is not the analysis file recorded and signed for this dataset; build a new version.");
-  }
-  const projectId = randomUUID();
-  const object = analysisObjectPath(projectId, dataset.analysis_sha256);
-  const returned = await uploadThenRecord("case-files", [{ path: object, bytes }], () => rpc("release_dataset", {
-    p_dataset_id: dataset.id, p_analysis_object_path: object, p_analysis_sha256: dataset.analysis_sha256,
-    p_analysis_size_bytes: num(dataset.analysis_size_bytes), p_analysis_name: `${code} dataset v${dataset.version} analysis.xlsx`, p_companion_path: paths.companion,
-  }));
-  return { projectId: String(returned ?? projectId) };
+  await rpc("release_dataset", { p_dataset_id: dataset.id, p_companion_path: filePaths(dataset, code).companion });
+  // Every active member of the client is told (0028), after the response.
+  const owner = await db.from("client").select("name").eq("id", dataset.client_id).maybeSingle();
+  await notify({
+    kind: "dataset_released", datasetId: dataset.id, orderId: dataset.order_id, code, version: dataset.version, clientId: dataset.client_id,
+    clientName: (owner.data as { name: string } | null)?.name ?? "your client",
+  });
 }
 
 // admin.withdraw_dataset(p_dataset_id, p_reason)

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import type { NavItem } from "@/lib/navigation";
 
 export function Placeholder({ title, phase, description, homeHref = "/pipeline" }: { title: string; phase: string; description: NavItem["description"]; homeHref?: string }) {

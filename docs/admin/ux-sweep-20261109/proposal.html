@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin UX sweep · 2026-11-09 · visual proposals</title>
+<style>
+/* ---- App tokens (copied from frontends/admin/src/app/tokens.css; system font fallbacks) ---- */
+:root {
+  --navy: #162230; --blue: #2d5f8a; --focus-dark: #78afe0; --paper: #fafaf8; --tint: #eaf1f7; --muted: #526477;
+  --ink: #202e3b; --surface: #ffffff; --line: #dce3e8; --subtle: #f0f3f5; --ok: #276b50; --ok-tint: #e9f3ed;
+  --danger: #ac353b; --danger-tint: #fbeef0; --warning: #865b18; --warning-tint: #fbf1d9;
+  --client-atlas: #476b95; --client-cedar: #73805a; --client-meridian: #a66a4b; --client-harbor: #3f7d86; --client-juniper: #7d6a9e;
+  --radius: 8px; --shadow: 0 2px 5px rgb(22 34 48 / 4%);
+  --font-title: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.55; }
+a { color: var(--blue); text-decoration: none; } a:hover { text-decoration: underline; }
+h1, h2, h3 { font-family: var(--font-title); font-weight: 600; margin-top: 0; letter-spacing: -.02em; }
+h1 { font-size: 44px; line-height: 1.1; margin-bottom: 8px; }
+h2 { font-size: 30px; margin: 0 0 14px; }
+h3 { font-size: 24px; margin: 0 0 6px; }
+.eyebrow, .mono { font-family: var(--font-mono); }
+.eyebrow { color: var(--muted); text-transform: uppercase; letter-spacing: .13em; font-size: 10px; margin-bottom: 8px; }
+.muted { color: var(--muted); }
+.page { max-width: 1240px; margin: 0 auto; padding: 32px 28px 80px; }
+.topbar { background: var(--navy); color: white; padding: 16px 28px; display: flex; align-items: center; gap: 12px; }
+.brand-name { font-family: var(--font-title); font-size: 25px; font-weight: 500; }
+.badge { font-family: var(--font-mono); font-size: 9px; letter-spacing: .09em; padding: 3px 6px; border: 1px solid #6f8ca9; border-radius: 3px; color: #cbdfee; }
+.topbar .right { margin-left: auto; font-size: 12px; color: #b9c9d7; }
+.meta { display: flex; gap: 10px 24px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 10px 0 28px; }
+.meta b { color: var(--ink); font-weight: 700; }
+.lead { max-width: 820px; font-size: 15px; }
+
+/* Top 10 table */
+table.top { width: 100%; border-collapse: collapse; font-size: 13px; background: white; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin: 10px 0 40px; }
+table.top th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--subtle); }
+table.top td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.top td.rank { font-family: var(--font-title); font-size: 22px; color: var(--blue); width: 44px; }
+.sev, .eff { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.sev.high { background: var(--danger-tint); color: var(--danger); }
+.sev.medium { background: var(--warning-tint); color: var(--warning); }
+.sev.low { background: var(--subtle); color: var(--muted); }
+.eff { background: var(--tint); color: var(--blue); font-family: var(--font-mono); }
+
+/* Finding cards */
+.card { background: white; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 26px 28px; margin: 0 0 28px; }
+.card-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.card-head .n { font-family: var(--font-title); font-size: 30px; color: var(--blue); }
+.tags { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+.tags .page-name { font-weight: 700; color: var(--ink); }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; margin: 14px 0; }
+.compare > div { min-width: 0; }
+.cap { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
+.cap.after { color: var(--ok); }
+figure { margin: 0; }
+.shot { border: 1px solid var(--line); border-radius: 6px; overflow: auto; max-height: 460px; background: var(--subtle); }
+.shot img { display: block; width: 100%; height: auto; }
+.shot.phone { max-width: 300px; }
+.shot.crop img { width: auto; max-width: none; }
+figcaption { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.rationale { margin: 12px 0 0; padding: 12px 14px; background: var(--subtle); border-radius: 6px; font-size: 13px; }
+.rationale b { font-weight: 700; }
+.mock { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 14px; font-size: 12px; overflow: hidden; }
+.mock * { box-sizing: border-box; }
+.mock .panel { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.mock .button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--blue); border-radius: 5px; padding: 7px 12px; background: var(--blue); color: white; font-size: 12px; font-weight: 700; }
+.mock .button.secondary { background: white; color: var(--blue); border-color: var(--line); }
+.mock .button.disabled { opacity: .55; }
+.mock .pill { display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 4px; font-weight: 700; }
+.mock .pill.ok { background: var(--ok-tint); color: var(--ok); } .mock .pill.fail { background: var(--danger-tint); color: var(--danger); } .mock .pill.pending { background: var(--warning-tint); color: var(--warning); }
+.mock .pill.neutral { background: var(--subtle); color: var(--muted); }
+.mock .notice { border-left: 3px solid var(--blue); padding: 9px 12px; background: var(--tint); color: var(--muted); font-size: 12px; border-radius: 0 4px 4px 0; }
+.mock .notice.success { border-color: var(--ok); background: var(--ok-tint); color: var(--ink); }
+.mock .notice.success b, .mock .notice.error b { font-weight: 800; }
+.mock .notice.error { border-color: var(--danger); background: var(--danger-tint); color: var(--ink); }
+.mock .sq { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--blue); vertical-align: middle; margin-right: 5px; }
+.mock .sq.cedar { background: var(--client-cedar); } .mock .sq.meridian { background: var(--client-meridian); } .mock .sq.atlas { background: var(--client-atlas); } .mock .sq.harbor { background: var(--client-harbor); } .mock .sq.juniper { background: var(--client-juniper); }
+.mock .field { margin: 0 0 12px; }
+.mock .field-label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+.mock .input { border: 1px solid #bfcbd5; padding: 8px 10px; border-radius: 5px; background: white; color: var(--muted); font-size: 12px; }
+.mock .input.invalid { border-color: var(--danger); }
+.mock .hint { display: block; font-size: 11px; margin-top: 4px; color: var(--muted); }
+.mock .hint.err { color: var(--danger); font-weight: 700; }
+.mock .eyebrow { margin-bottom: 6px; }
+.mock h4 { font-family: var(--font-title); font-weight: 600; font-size: 20px; margin: 0 0 8px; }
+.mock .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mock .muted { color: var(--muted); }
+.mock small { font-size: 11px; }
+
+/* Sidebar mock */
+.mk-side { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 14px 10px; width: 214px; font-size: 12px; }
+.mk-side .h { font-family: var(--font-mono); font-size: 9px; letter-spacing: .14em; color: var(--muted); margin: 0 10px 6px; }
+.mk-side .g + .h { margin-top: 16px; }
+.mk-side a { display: flex; gap: 8px; align-items: center; color: #415365; padding: 5px 10px; border-radius: 4px; }
+.mk-side a .m { width: 14px; text-align: center; opacity: .65; }
+.mk-side a.cur { background: var(--tint); color: var(--blue); font-weight: 700; }
+.mk-side a.soon { color: #8a99a8; }
+.mk-side a.soon .tag { margin-left: auto; font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; color: #8a99a8; border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; }
+.mk-side details { margin-top: 10px; }
+.mk-side summary { cursor: pointer; font-size: 11px; color: var(--muted); padding: 5px 10px; list-style: none; display: flex; gap: 6px; align-items: center; }
+.mk-side summary::before { content: "▸"; font-size: 10px; }
+.mk-side details[open] summary::before { content: "▾"; }
+.mk-side .count { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--danger); font-weight: 700; }
+
+/* Board mock */
+.mk-minimap { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 0 0 10px; }
+.mk-minimap button { border: 1px solid var(--line); background: white; border-radius: 4px; padding: 4px 2px; font-size: 9px; font-family: var(--font-mono); color: var(--muted); text-align: center; line-height: 1.3; }
+.mk-minimap button b { display: block; font-size: 12px; color: var(--ink); font-family: var(--font-title); }
+.mk-minimap button.vis { background: var(--tint); border-color: #a8c2d7; color: var(--blue); }
+.mk-minimap button.blocked b { color: var(--danger); }
+.mk-minimap button.zero b { color: #b8c3cd; }
+.mk-board { display: flex; gap: 8px; overflow: hidden; }
+.mk-col { flex: 0 0 150px; background: var(--subtle); border: 1px solid #e1e7eb; border-radius: 6px; padding: 7px; min-height: 150px; }
+.mk-col .ch { display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; margin-bottom: 6px; }
+.mk-col .ch span.i { font-family: var(--font-mono); font-weight: 400; color: var(--muted); font-size: 9px; margin-right: 4px; }
+.mk-col .ch .c { background: #dfe7ed; border-radius: 10px; padding: 0 6px; font-family: var(--font-mono); font-weight: 400; font-size: 9px; }
+.mk-col.rail { flex-basis: 34px; padding: 6px 4px; writing-mode: vertical-rl; text-orientation: mixed; font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.mk-col.rail b { font-family: var(--font-mono); font-weight: 400; }
+.mk-ocard { background: white; border: 1px solid var(--line); border-left: 3px solid transparent; border-radius: 5px; padding: 8px 8px 7px; margin-bottom: 6px; font-size: 10px; }
+.mk-ocard.fail { border-left-color: var(--danger); }
+.mk-ocard .cl { color: var(--muted); font-size: 9px; margin-bottom: 4px; }
+.mk-ocard .code { font-family: var(--font-mono); color: var(--blue); font-size: 11px; }
+.mk-ocard .t { font-weight: 700; margin: 3px 0 5px; line-height: 1.35; }
+.mk-ocard .bar { height: 4px; background: var(--subtle); border-radius: 4px; overflow: hidden; margin: 4px 0 6px; }
+.mk-ocard .bar i { display: block; height: 100%; background: var(--blue); }
+.mk-ocard .pill { font-size: 9px; padding: 2px 6px; }
+.mk-ocard.big { font-size: 12px; padding: 12px; } .mk-ocard.big .cl { font-size: 11px; } .mk-ocard.big .code { font-size: 12px; } .mk-ocard.big .pill { font-size: 11px; padding: 3px 7px; }
+.mk-ocard.small9 .cl { font-size: 9px; } .mk-ocard.small9 .pill { font-size: 9px; } .mk-ocard.small9 .meta { font-size: 10px; } .mk-ocard.small9 .batch { font-size: 9px; }
+.mk-ocard .meta { display: flex; justify-content: space-between; color: var(--muted); }
+.mk-ocard .batch { display: block; font-family: var(--font-mono); color: var(--muted); margin-top: 6px; }
+
+/* Facts strip mock */
+.mk-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mk-strip .kv { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+.mk-strip .kv span { color: var(--muted); } .mk-strip .kv b { font-weight: 700; }
+.mk-steps { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: white; }
+.mk-steps div { flex: 1; padding: 8px 12px; font-size: 11px; color: var(--muted); border-right: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+.mk-steps div:last-child { border-right: 0; }
+.mk-steps .dot { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-family: var(--font-mono); border: 1px solid #c2cfd9; background: var(--paper); flex: 0 0 18px; }
+.mk-steps .done .dot { background: var(--ok); border-color: var(--ok); color: white; }
+.mk-steps .cur { background: var(--tint); color: var(--blue); font-weight: 700; }
+.mk-steps .cur .dot { border: 2px solid var(--blue); color: var(--blue); }
+.mk-steps b { display: block; color: var(--ink); font-size: 12px; } .mk-steps .cur b { color: var(--blue); }
+.mk-turn { border: 1px solid var(--blue); background: var(--tint); border-radius: 8px; padding: 14px 16px; }
+.mk-turn .eyebrow { color: var(--blue); }
+.mk-hash { font-family: var(--font-mono); font-size: 11px; }
+.mk-hash .copy { font-family: var(--font-body); font-size: 10px; color: var(--blue); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; margin-left: 6px; background: white; }
+.mk-table { width: 100%; border-collapse: collapse; font-size: 12px; background: white; }
+.mk-table th { text-align: left; color: var(--muted); font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--line); font-size: 11px; }
+.mk-table td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.mk-table .code { font-family: var(--font-mono); color: var(--blue); }
+.mk-table .button { padding: 5px 9px; font-size: 11px; }
+.mk-check { list-style: none; padding: 0; margin: 8px 0; }
+.mk-check li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.mk-check .st { width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; flex: 0 0 19px; }
+.mk-check .st.ok { background: var(--ok-tint); color: var(--ok); } .mk-check .st.fail { background: var(--danger-tint); color: var(--danger); } .mk-check .st.pending { background: var(--warning-tint); color: var(--warning); }
+.mk-check .w { margin-left: auto; color: var(--muted); font-size: 11px; }
+.mk-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 10px; }
+.mk-tiles div { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.mk-tiles small { display: block; color: var(--muted); font-size: 10px; font-weight: 700; }
+.mk-tiles b { font-family: var(--font-title); font-size: 24px; font-weight: 600; display: block; line-height: 1.1; }
+.mk-phone { width: 250px; border: 1px solid var(--line); border-radius: 12px; background: white; padding: 10px; font-size: 10px; overflow: hidden; }
+.mk-phone .grid { overflow: hidden; border: 1px solid var(--line); border-radius: 5px; position: relative; }
+.mk-phone table { border-collapse: collapse; width: 420px; font-size: 9px; }
+.mk-phone th, .mk-phone td { padding: 4px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.mk-phone th { font-family: var(--font-mono); font-weight: 500; color: var(--muted); background: var(--subtle); }
+.mk-phone .sticky { position: sticky; left: 0; background: white; box-shadow: 2px 0 0 var(--line); z-index: 1; }
+.mk-phone th.sticky { background: var(--subtle); }
+.mk-phone .inp { border: 1px solid #bfcbd5; border-radius: 3px; padding: 2px 4px; width: 60px; display: inline-block; background: white; }
+.mk-phone .inp.bad { border-color: var(--danger); background: var(--danger-tint); }
+.mk-phone .fade { position: absolute; right: 0; top: 0; bottom: 0; width: 28px; background: linear-gradient(to right, rgb(255 255 255 / 0), white); }
+.mk-phone .scrollhint { font-size: 9px; color: var(--muted); margin-top: 4px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.notes { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.notes li { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; font-size: 13px; }
+.notes li .t { font-weight: 700; display: block; margin-bottom: 3px; }
+.notes li .tags { margin: 4px 0 0; }
+.placeholders { background: var(--warning-tint); border: 1px solid #ddc895; border-radius: 6px; padding: 10px 14px; font-size: 13px; margin: 0 0 28px; }
+.method { font-size: 13px; color: var(--muted); max-width: 900px; }
+.kbd { font-family: var(--font-mono); font-size: 11px; background: var(--subtle); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+@media (max-width: 900px) { .compare, .two, .notes { grid-template-columns: 1fr; } h1 { font-size: 34px; } .page { padding: 20px 14px 60px; } }
+</style>
+</head>
+<body>
+<header class="topbar"><span class="brand-name">Lipidomic Explorer</span><span class="badge">ADMIN</span><span class="right">UX sweep · 2026-11-09 · proposal only, nothing in the app was changed</span></header>
+<main class="page">
+<div class="eyebrow">Admin back office / UX sweep / Visual proposals</div>
+<h1>Admin UX sweep</h1>
+<p class="lead">A review of every implemented screen of the Admin back office (Next 16, demo mode, synthetic data), in the Lab staff and the Client view, at 1440×900 and 390×844. Proposals stay inside the existing brand: same tokens, fonts, ADMIN badge and components; most are small CSS or ordering changes.</p>
+<div class="meta">
+  <span><b>Branch under review</b> admin/phase1 at 38b3b5c5</span>
+  <span><b>Captured</b> 52 screenshots, 17 screens, both views</span>
+  <span><b>Personas</b> Paula (lab manager), Stephania (PI / signer), client researchers</span>
+  <span><b>Reading order</b> top 10 first, then one card per finding, then smaller notes</span>
+</div>
+
+<h2 id="top10">Pareto top 10</h2>
+<p class="muted" style="margin-top:-6px">Ranked by impact over effort. Severity: how much it costs the persona today. Effort: S = a few CSS lines or a reorder, M = a component change, L = a new component.</p>
+<table class="top">
+<thead><tr><th>#</th><th>Finding</th><th>Page</th><th>Severity</th><th>Effort</th></tr></thead>
+<tbody>
+<tr><td class="rank">1</td><td><a href="#f1">Sidebar lists 23 destinations with no signal of what works; Sign in and detail pages are entries</a></td><td>Every page</td><td><span class="sev high">high</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">2</td><td><a href="#f2">Form errors render grey, no summary, focus stays on the body</a></td><td>Receive shipment, registry, policy</td><td><span class="sev high">high</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">3</td><td><a href="#f3">Sample registry: the paste box starts below the fold behind two fact panels</a></td><td>Sample registry</td><td><span class="sev high">high</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">4</td><td><a href="#f4">Ingest results and Name dictionary do not follow the shell pattern; after Accept there is no next step</a></td><td>Ingest results, Name dictionary</td><td><span class="sev high">high</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">5</td><td><a href="#f5">Dataset version page: the signer's action is at the bottom, status and next step are not at the top</a></td><td>Release / dataset version</td><td><span class="sev high">high</span></td><td><span class="eff">M</span></td></tr>
+<tr><td class="rank">6</td><td><a href="#f6">Pipeline board shows 4.8 of 10 stages at 1440; the rest is behind a scroll</a></td><td>Pipeline</td><td><span class="sev high">high</span></td><td><span class="eff">M</span></td></tr>
+<tr><td class="rank">7</td><td><a href="#f7">Success feedback looks like information; one blue notice for every outcome</a></td><td>Registry, release, policy, ingest</td><td><span class="sev medium">medium</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">8</td><td><a href="#f8">Release list: nine identical primary buttons, also on released orders</a></td><td>Release</td><td><span class="sev medium">medium</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">9</td><td><a href="#f9">Text at 9–10 px on cards, pills, steps and eyebrows</a></td><td>Pipeline, order detail, tables</td><td><span class="sev medium">medium</span></td><td><span class="eff">S</span></td></tr>
+<tr><td class="rank">10</td><td><a href="#f10">Phone: the registry page scrolls sideways once rows exist, and the dataset page wraps hashes into 4-character lines</a></td><td>Sample registry, dataset version (390)</td><td><span class="sev medium">medium</span></td><td><span class="eff">S</span></td></tr>
+</tbody>
+</table>
+
+<!-- ============================ F1 ============================ -->
+<section class="card" id="f1">
+<div class="card-head"><span class="n">1</span><h3>Sidebar: 23 destinations, no signal of what works</h3></div>
+<div class="tags"><span class="page-name">Every page (app shell)</span> · <span class="sev high">high</span> <span class="eff">effort S</span> · Navigation, information hierarchy</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-new-order-placeholder-1440.png" alt="New order placeholder with the full sidebar" loading="lazy"></div><figcaption>"+ New order" on the Pipeline leads to a placeholder; 13 of the 23 sidebar entries do the same. "Sign in" is listed while signed in; "Order detail" is a fixed link to ORD041.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock"><div class="two">
+      <div><p class="cap">Before</p><div class="mk-side">
+        <div class="h">ACCESS</div><div class="g"><a><span class="m">◇</span>Sign in</a></div>
+        <div class="h">LAB WORK</div><div class="g"><a class="cur"><span class="m">▥</span>Pipeline</a><a><span class="m">◇</span>Order detail</a><a><span class="m">◇</span>New order</a><a><span class="m">◇</span>Receive shipment</a><a><span class="m">◇</span>Sample registry</a><a><span class="m">◇</span>Sample detail</a><a><span class="m">◇</span>Storage</a><a><span class="m">◇</span>Batch builder</a><a><span class="m">◇</span>Batch run</a><a><span class="m">◇</span>Ingest results</a><a><span class="m">◇</span>Name dictionary</a><a><span class="m">◇</span>QC review</a><a><span class="m">◇</span>Release</a><a><span class="m">◇</span>Datasets</a></div>
+        <div class="h">CLIENTS</div><div class="g"><a><span class="m">◇</span>Clients</a><a><span class="m">◇</span>Client detail</a></div>
+        <div class="h">ORGANIZATION</div><div class="g"><a><span class="m">◇</span>People</a><a><span class="m">◇</span>Roles &amp; permissions</a><a><span class="m">◇</span>Audit log</a><a><span class="m">◇</span>Instruments &amp; panels</a><a><span class="m">◇</span>Notifications</a></div>
+      </div></div>
+      <div><p class="cap after">After</p><div class="mk-side">
+        <div class="h">LAB WORK</div><div class="g"><a class="cur"><span class="m">▥</span>Pipeline<span class="count">4</span></a><a><span class="m">◇</span>Receive shipment</a><a><span class="m">◇</span>Sample registry</a><a><span class="m">◇</span>Ingest results</a><a><span class="m">◇</span>Name dictionary</a><a><span class="m">◇</span>Release</a><a><span class="m">◇</span>Datasets</a></div>
+        <div class="h">ORGANIZATION</div><div class="g"><a><span class="m">◇</span>Audit log</a><a><span class="m">◇</span>Release policy</a></div>
+        <details><summary>Coming next · 12 screens</summary>
+          <a class="soon"><span class="m">◇</span>New order<span class="tag">WAVE 2</span></a><a class="soon"><span class="m">◇</span>Storage<span class="tag">WAVE 2</span></a><a class="soon"><span class="m">◇</span>Batch builder<span class="tag">WAVE 3</span></a><a class="soon"><span class="m">◇</span>QC review<span class="tag">WAVE 4</span></a><a class="soon"><span class="m">◇</span>Clients<span class="tag">WAVE 2</span></a><a class="soon"><span class="m">◇</span>People<span class="tag">WAVE 2</span></a><span class="muted" style="display:block;padding:4px 10px">…</span>
+        </details>
+      </div></div>
+    </div></div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Paula's daily loop is seven screens; today they are mixed with thirteen placeholders that look identical, so every third click lands on "This workspace is taking shape". <b>How.</b> Keep only working screens in the groups (ordered by the flow), drop "Sign in" when signed in, drop the detail entries (detail pages are reached from cards and tables, and the current "Order detail" entry is hard-wired to ORD041), add Release policy which has no entry today, and fold placeholders into a collapsed "Coming next" group with their wave tag. The blocked count next to Pipeline reuses the tile count. Same tokens, same nav classes; only the navigation list and one <span class="kbd">details</span> change.</p>
+</section>
+
+<!-- ============================ F2 ============================ -->
+<section class="card" id="f2">
+<div class="card-head"><span class="n">2</span><h3>Form errors render grey, no summary, focus stays on the body</h3></div>
+<div class="tags"><span class="page-name">Receive shipment</span> (also the registry grid, release forms, policy form) · <span class="sev high">high</span> <span class="eff">effort S</span> · Forms, feedback, accessibility</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-receive-shipment-errors-1440.png" alt="Receive shipment with three server-side validation errors" loading="lazy"></div><figcaption>Server validation with three errors. The messages ("Enter the carrier", "Choose the condition on arrival") are 11 px and computed grey (#526477): the generic <span class="kbd">.field small</span> rule outranks <span class="kbd">.field-error</span>. Nothing announces the count, and after the response the focus is on the page body.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <div class="notice error" style="margin-bottom:12px"><b>3 fields need attention.</b> <a href="#">Carrier</a> · <a href="#">Condition on arrival</a> · <a href="#">Boxes</a></div>
+      <div class="two">
+        <div><p class="cap">Before</p>
+          <div class="field"><span class="field-label">Carrier</span><div class="input invalid">FedEx, UPS, hand delivered…</div><span class="hint">Enter the carrier</span></div>
+          <div class="field"><span class="field-label">Boxes</span><div class="input invalid">-2</div><span class="hint">Enter the number of boxes, 0 or more</span></div>
+        </div>
+        <div><p class="cap after">After</p>
+          <div class="field"><span class="field-label">Carrier</span><div class="input invalid" style="outline:3px solid var(--blue);outline-offset:3px">FedEx, UPS, hand delivered…</div><span class="hint err">⚠ Enter the carrier</span></div>
+          <div class="field"><span class="field-label">Boxes</span><div class="input invalid">-2</div><span class="hint err">⚠ Enter the number of boxes, 0 or more</span></div>
+        </div>
+      </div>
+      <p class="muted" style="margin:6px 0 0"><small>Error summary at the top of the form (role="alert"), links jump to the field; the first invalid field receives focus (shown with the existing 3 px blue focus ring). Field messages in <span class="kbd">--danger</span>, 12 px, bold, with a glyph so colour is not the only cue.</small></p>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Validation feedback is the one moment a form must be unambiguous; today it fails the contrast of intent (grey reads as a hint) and the keyboard user is dropped at the top of the document. <b>How.</b> Raise the specificity of <span class="kbd">.field-error</span> (or move the colour onto <span class="kbd">.field .field-error</span>), set 12 px bold, prefix a glyph, add an error summary with links, and call <span class="kbd">focus()</span> on the first <span class="kbd">aria-invalid</span> control when the action state returns errors. The same summary pattern already exists in the registry grid ("3 rows need attention"), so this is a consistency fix as much as an accessibility one.</p>
+</section>
+
+<!-- ============================ F3 ============================ -->
+<section class="card" id="f3">
+<div class="card-head"><span class="n">3</span><h3>Sample registry: the task starts below the fold</h3></div>
+<div class="tags"><span class="page-name">Sample registry</span> · <span class="sev high">high</span> <span class="eff">effort S</span> · Task flow, information hierarchy</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-sample-registry-received-1440.png" alt="Sample registry right after a shipment was recorded" loading="lazy"></div><figcaption>Arriving from "Record arrival" at 1440×900: the paste box begins at ~950 px, under two full fact panels that repeat what the banner just said. The two panels also sit at different heights (the second inherits the <span class="kbd">.panel + .panel</span> top margin). "Change order" and "Back to pipeline" stack vertically.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <div class="eyebrow">Lab work / Pipeline / Sample registry</div>
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><h4 style="margin:0">Sample registry · <span class="mono" style="font-size:16px;color:var(--blue)">ORD042</span></h4><div class="row"><span class="button secondary">Change order ▾</span><span class="button secondary">← Pipeline</span></div></div>
+      <div class="notice success" style="margin-bottom:10px"><b>Shipment recorded.</b> FedEx 7489 0000 0001 · 1 box · intact and cold · Nov 9, 17:03 · Demo Operator. <span class="muted">Now paste the Metadata sheet.</span></div>
+      <div class="panel" style="padding:10px 14px;margin-bottom:10px"><div class="mk-strip"><div class="kv"><b><span class="sq cedar"></span>Example Cedar</b><span>Example lipid panel · feasibility</span><span>Synthetic plasma</span></div><div class="kv"><span>Stage</span><b>Received</b><span>Expected</span><b>12 samples</b><span>Registered</span><b>0</b><a href="#" style="font-size:11px">Shipment details ▸</a></div></div></div>
+      <div class="panel">
+        <div class="eyebrow">Register</div><h4>Samples to register</h4>
+        <div class="field"><span class="field-label">Paste from Excel</span><div class="input mono" style="height:64px;white-space:pre;color:#8a99a8">FullName	Group1Term	Group2Term	ReplicateTerm	PatientTerm	TimePointTerm
+Ctrl_1	Control	WildType	1	P01	0h</div><span class="hint">Tab-separated, one sample per row; a header row is recognised. <a href="#">Which columns?</a></span></div>
+        <div class="row"><span class="button secondary disabled">Add rows</span><span class="button secondary">Add empty row</span><span class="muted" style="margin-left:auto">0 of 12 expected</span><span class="button disabled">Register samples</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Registering is the longest task of the receive flow; Paula arrives with the sheet in the clipboard and should see the paste box at once. The facts are context, not the job. <b>How.</b> One compact facts strip (two lines) replaces the two panels; shipment details move behind a disclosure; the order code joins the title; the success banner carries the shipment summary it already has. No new component: <span class="kbd">.panel</span>, <span class="kbd">.notice</span> and <span class="kbd">.facts</span> styled inline. Fix the stray margin with <span class="kbd">.facts-strip .panel { margin: 0 }</span> (it is declared but loses to <span class="kbd">.panel + .panel</span>), and give <span class="kbd">.heading-actions</span> <span class="kbd">flex-wrap: nowrap</span> at ≥1200 px.</p>
+</section>
+
+<!-- ============================ F4 ============================ -->
+<section class="card" id="f4">
+<div class="card-head"><span class="n">4</span><h3>Ingest results and Name dictionary do not follow the shell pattern; after Accept there is no next step</h3></div>
+<div class="tags"><span class="page-name">Ingest results</span>, <span class="page-name">Name dictionary</span> · <span class="sev high">high</span> <span class="eff">effort S</span> · Consistency, next action, feedback</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-ingest-results-accepted-1440.png" alt="Ingest results after Accept" loading="lazy"></div><figcaption>No breadcrumb eyebrow, no panel eyebrows, inputs on grey instead of white, the native file control, a bare "Name dictionary" link floating right. After Accept, the status "ORD041 · Processed" appears as an unstyled box between the form and the summary; the Accept button stays grey; nothing points to Release.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <div class="eyebrow">Lab work / Pipeline / Ingest results</div>
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><h4 style="margin:0">Ingest results</h4><div class="row"><span class="button secondary">Name dictionary</span><span class="button secondary">← Pipeline</span></div></div>
+      <div class="notice success" style="margin-bottom:10px"><b>Results accepted for ORD041.</b> The order is now Processed · 33 analytes · 3 Unknown injections. <a href="#"><b>Build dataset v1 →</b></a> · <a href="#">Order detail</a></div>
+      <div class="panel">
+        <div class="eyebrow">Parse summary · synthetic-blank.txt · SHA-256 81d7…33ba5</div>
+        <div class="mk-tiles"><div><small>Unknown injections</small><b>3</b></div><div><small>Blank · QC</small><b>1 · 1</b></div><div><small>Analytes · IS rows</small><b>33 · 6</b></div><div><small>N/A share</small><b>31.3%</b></div></div>
+        <div class="eyebrow">Checks</div>
+        <ul class="mk-check">
+          <li><span class="st ok">✓</span>Sample Name and Sample Type rows parsed; matrix structure is valid<span class="w">OK</span></li>
+          <li><span class="st ok">✓</span>Sample names are unique<span class="w">OK</span></li>
+          <li><span class="st fail">!</span><span>Blank BLANK1 has sample-like detection (33 lipids ≥ 80 % of the Unknown median)<br><small class="muted">Override recorded: "Reviewed synthetic blank; approved for demonstration." · Demo Operator</small></span><span class="w">Stop · overridden</span></li>
+        </ul>
+      </div>
+      <p class="muted" style="margin:8px 0 0"><small>Same for the dictionary: eyebrow + Back, "Unmapped analytes" as a table with an inline clean-name input per row (map in place, 33 at a time), the count in the panel heading.</small></p>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> These two screens were built in a different wave and look like another product next to Receive shipment or Release: Paula loses the orientation cues (where am I, how do I go back, what happens next). The accepted state is the hand-off to Stephania's side and currently ends in a dead stop. <b>How.</b> Reuse <span class="kbd">.page-heading</span> with eyebrow and <span class="kbd">.heading-actions</span>, <span class="kbd">.field</span> inputs, <span class="kbd">.summary-tile</span> for the metrics, <span class="kbd">.check-row</span> for checks (icon + word, not "ok ·" text), and a success <span class="kbd">.notice</span> with the "Build dataset v1" link. Hide the form after acceptance instead of leaving a disabled Accept.</p>
+</section>
+
+<!-- ============================ F5 ============================ -->
+<section class="card" id="f5">
+<div class="card-head"><span class="n">5</span><h3>Dataset version page: the signer's action is at the bottom</h3></div>
+<div class="tags"><span class="page-name">Release / dataset version</span> · <span class="sev high">high</span> <span class="eff">effort M</span> · Information hierarchy, next action (Stephania)</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-release-dataset-signed-1of2-1440.png" alt="Dataset v1 with one of two signatures" loading="lazy"></div><figcaption>Built, 1 of 2 signatures. The manifest with three 64-character digests and ten facts fills the first screen; "Sign" is ~1,700 px down. The only element above the fold that looks actionable is the disabled "Release dataset". The status pill "Built" is 9 px.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <div class="eyebrow">Lab work / Pipeline / Release / ORD048</div>
+      <h4 style="margin-bottom:8px">ORD048 · Dataset v1 <span class="pill pending" style="font-size:11px;vertical-align:middle">Built · awaiting signatures</span></h4>
+      <div class="mk-steps"><div class="done"><span class="dot">✓</span><span><b>Built</b>Nov 9, 16:57 · Demo Operator</span></div><div class="cur"><span class="dot">2</span><span><b>Signatures 1 of 2</b>Demo Reviewer A signed · one more person</span></div><div><span class="dot">3</span><span><b>Release</b>Creates the Team project</span></div></div>
+      <div class="two">
+        <div class="mk-turn"><div class="eyebrow">Your turn</div><h4 style="margin-bottom:4px">Sign this version</h4><p class="muted" style="margin:0 0 8px">You are eligible under the current policy. Signing freezes the three digests below.</p>
+          <div class="field"><span class="field-label">Role</span><div class="input">Approved ▾</div></div>
+          <div class="field"><span class="field-label">Note (optional)</span><div class="input">What you checked</div></div>
+          <span class="button">Sign as Demo Reviewer B</span></div>
+        <div class="panel"><div class="eyebrow">Manifest</div><h4 style="font-size:16px">Files of this version</h4>
+          <table class="mk-table"><tr><td><b>Analysis</b><br><small class="muted">Abundance, Metadata</small></td><td class="mk-hash">5b85572ed378…ddaf0d<span class="copy">copy</span></td><td>15.0 KB</td></tr><tr><td><b>Companion</b><br><small class="muted">IS, QC, Provenance</small></td><td class="mk-hash">9e275f35fb0b…6e91b<span class="copy">copy</span></td><td>11.8 KB</td></tr><tr><td><b>Workbook</b></td><td class="mk-hash">277b4e2f8c8c…45ef11<span class="copy">copy</span></td><td>20.9 KB</td></tr></table>
+          <a href="#" style="font-size:11px">Full digests and provenance ▸</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Stephania opens this page to do one thing: sign, or release. The page is organised for an auditor (manifest first) rather than for the person whose turn it is. <b>How.</b> A three-step status strip under the title (Built → Signatures n of m → Release) states where the version is; a "Your turn" card (tint background, <span class="kbd">--blue</span> border) holds the one available action, computed from the policy and the signed-by set that the page already knows; the manifest keeps its table with digests truncated to 12 characters plus copy, with the full digests behind a disclosure. The signatures list, versions and withdraw stay where they are. The same strip serves the released state (Released → Team project → Withdraw).</p>
+</section>
+
+<!-- ============================ F6 ============================ -->
+<section class="card" id="f6">
+<div class="card-head"><span class="n">6</span><h3>Pipeline board shows 4.8 of 10 stages at 1440</h3></div>
+<div class="tags"><span class="page-name">Pipeline</span> · <span class="sev high">high</span> <span class="eff">effort M</span> · Tables and boards, scannability</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-pipeline-fold-1440.png" alt="Pipeline at 1440×900, first screen" loading="lazy"></div><figcaption>First screen at 1440×900. The board region is 1,162 px wide for 2,532 px of columns (242 px each). Stages 06–10, where the instrument and release work lives, are only reachable by horizontal scroll; the hint "Ten stages · scroll to follow the work →" is 11 px grey. The board itself starts at ~620 px, so only one row of cards is visible.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px"><span class="eyebrow" style="margin:0">Stages · click to jump</span><span class="muted"><small>Empty stages collapse · ↔ scroll</small></span></div>
+      <div class="mk-minimap">
+        <button class="vis">01<b>2</b></button><button class="vis blocked">02<b>2</b></button><button class="vis blocked">03<b>2</b></button><button class="vis">04<b>2</b></button><button class="vis">05<b>2</b></button><button class="vis">06<b>2</b></button><button>07<b>1</b></button><button class="blocked">08<b>2</b></button><button class="blocked">09<b>2</b></button><button class="zero">10<b>0</b></button>
+      </div>
+      <div class="mk-board">
+        <div class="mk-col"><div class="ch"><span><span class="i">01</span>Request</span><span class="c">2</span></div><div class="mk-ocard"><div class="cl"><span class="sq cedar"></span>Example Cedar</div><span class="code">ORD042</span><div class="t">Example lipid panel · feasibility</div><div class="bar"><i style="width:8%"></i></div><span class="pill pending">Awaiting checks</span></div><div class="mk-ocard"><div class="cl"><span class="sq harbor"></span>Example Harbor</div><span class="code">ORD052</span><div class="t">Synthetic sterol screen</div><div class="bar"><i style="width:13%"></i></div><span class="pill pending">Awaiting checks</span></div></div>
+        <div class="mk-col"><div class="ch"><span><span class="i">02</span>Received</span><span class="c">2</span></div><div class="mk-ocard"><div class="cl"><span class="sq meridian"></span>Example Meridian</div><span class="code">ORD043</span><div class="t">Synthetic serum · arrival review</div><div class="bar"><i style="width:22%"></i></div><span class="pill ok">Ready</span></div><div class="mk-ocard fail"><div class="cl"><span class="sq harbor"></span>Example Harbor</div><span class="code">ORD051</span><div class="t">Example shipment · thawed tubes</div><div class="bar"><i style="width:19%"></i></div><span class="pill fail">Gate blocked</span></div></div>
+        <div class="mk-col"><div class="ch"><span><span class="i">03</span>Registered</span><span class="c">2</span></div><div class="mk-ocard fail"><div class="cl"><span class="sq atlas"></span>Example Atlas</div><span class="code">ORD041</span><div class="t">Synthetic plasma pilot · cohort A</div><div class="bar"><i style="width:29%"></i></div><span class="pill fail">Gate blocked</span></div><div class="mk-ocard"><div class="cl"><span class="sq juniper"></span>Example Juniper</div><span class="code">ORD054</span><div class="t">Custom MRM pilot · registry</div><div class="bar"><i style="width:30%"></i></div><span class="pill ok">Ready</span></div></div>
+        <div class="mk-col"><div class="ch"><span><span class="i">04</span>Extracted</span><span class="c">2</span></div><div class="mk-ocard"><div class="cl"><span class="sq cedar"></span>Example Cedar</div><span class="code">ORD044</span><div class="t">Example extraction series</div><div class="bar"><i style="width:41%"></i></div><span class="pill ok">Ready</span></div></div>
+        <div class="mk-col rail"><b>10</b> Excel built · 0</div>
+      </div>
+      <p class="muted" style="margin:8px 0 0"><small>Mock at reduced scale. Columns 200 px (cards keep every element, paddings 12 px), empty stages collapse to a 36 px rail with the name turned vertical, and a stage minimap above the board shows all ten counts (red when the stage holds a blocked order), highlights the visible range and scrolls a column into view on click.</small></p>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> The board is the lab's home and the question it answers is "where is everything"; at 1440 with the sidebar it answers it for half the stages. Shrinking ten columns to fit 1,162 px is not viable (116 px columns), so the fix is to make the hidden half one glance and one click away. <b>How.</b> Minimap = ten small buttons reusing <span class="kbd">.column-count</span> styling and <span class="kbd">scrollIntoView</span>; collapsed rails reuse <span class="kbd">.kanban-column</span> with <span class="kbd">writing-mode: vertical-rl</span>; column width 242 → 200 px and card padding 14 → 12 px. With two stages empty, ~6.5 columns fit. This also replaces the 11 px scroll hint, which can go.</p>
+</section>
+
+<!-- ============================ F7 ============================ -->
+<section class="card" id="f7">
+<div class="card-head"><span class="n">7</span><h3>Success feedback looks like information</h3></div>
+<div class="tags"><span class="page-name">Sample registry, Release, Release policy, Ingest results, Audit log</span> · <span class="sev medium">medium</span> <span class="eff">effort S</span> · Feedback on actions</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-sample-registry-saved-1440.png" alt="Registry after saving four samples" loading="lazy"></div><figcaption>"4 samples registered. ORD042 is now Registered · see it in the pipeline · order detail." uses the same blue <span class="kbd">.notice</span> as "Showing ORD048 only" or "No order ORD052 is waiting". On Ingest results the equivalent is a bare "ORD041 · Processed". Nothing marks an outcome as done, and the next action is a 12 px inline link.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <p class="cap">Before</p>
+      <div class="notice" style="margin-bottom:14px">4 samples registered. ORD042 is now Registered · see it in the pipeline · order detail.</div>
+      <p class="cap after">After · one pattern, three tones</p>
+      <div class="notice success" style="margin-bottom:8px"><b>✓ 4 samples registered.</b> ORD042 is now <b>Registered</b> · codes ORD042-S001 to S004. &nbsp;<span class="button" style="padding:4px 9px;font-size:11px">Next: Batch builder →</span> <a href="#" style="margin-left:8px">Order detail</a></div>
+      <div class="notice" style="margin-bottom:8px"><b>Showing ORD048 only.</b> <a href="#">All orders</a></div>
+      <div class="notice error"><b>⚠ Dataset v1 withdrawn</b> by Demo Reviewer A · Nov 9, 16:57 · "Synthetic: wrong metadata." The Team project stays in the library.</div>
+      <p class="muted" style="margin:8px 0 0"><small>Tones map to existing tokens: success = <span class="kbd">--ok</span>/<span class="kbd">--ok-tint</span>, info = <span class="kbd">--blue</span>/<span class="kbd">--tint</span>, problem = <span class="kbd">--danger</span>/<span class="kbd">--danger-tint</span>. Lead sentence bold, then the state, then one primary next action as a small button.</small></p>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Every mutating action in the app already produces a banner, which is good; what is missing is the signal that it worked, and the hand-off to the next screen in the flow (registry → batch builder, accept → build, sign → release). <b>How.</b> Add <span class="kbd">.notice.success</span> and <span class="kbd">.notice.error</span> modifiers (six CSS lines), bold the lead, and render the next step as a <span class="kbd">.button</span> inside the banner. Keep <span class="kbd">role="status"</span>. Apply the same markup on Ingest results (replacing the bare status box) and on the dataset page banners.</p>
+</section>
+
+<!-- ============================ F8 ============================ -->
+<section class="card" id="f8">
+<div class="card-head"><span class="n">8</span><h3>Release list: nine identical primary buttons, also on released orders</h3></div>
+<div class="tags"><span class="page-name">Release</span> · <span class="sev medium">medium</span> <span class="eff">effort S</span> · Tables, clarity of next action</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-release-1440.png" alt="Release list" loading="lazy"></div><figcaption>Every row ends in a filled "Build dataset v1", including three orders at Excel built that the pipeline shows as Released. The Stage column is plain text; "Results accepted" mixes a timestamp and the word "Accepted". The empty "Built versions" panel takes the first 230 px.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock">
+      <table class="mk-table">
+        <tr><th>Order</th><th>Client</th><th>Stage</th><th>Results</th><th>Versions</th><th></th></tr>
+        <tr><td><span class="code">ORD041</span><br><small class="muted">Synthetic plasma pilot · cohort A</small></td><td><span class="sq atlas"></span>Example Atlas</td><td><span class="pill neutral">08 · Processed</span></td><td>Nov 9, 16:57</td><td><span class="muted">none yet</span></td><td><span class="button">Build dataset v1</span></td></tr>
+        <tr><td><span class="code">ORD048</span><br><small class="muted">Example processing review</small></td><td><span class="sq atlas"></span>Example Atlas</td><td><span class="pill neutral">08 · Processed</span></td><td>Nov 9, 16:57</td><td><span class="pill pending">v1 built · 1 of 2</span></td><td><span class="button secondary">Open v1 →</span></td></tr>
+        <tr><td><span class="code">ORD049</span><br><small class="muted">Synthetic QC comparison</small></td><td><span class="sq meridian"></span>Example Meridian</td><td><span class="pill neutral">09 · QC checked</span></td><td>Nov 2</td><td><span class="muted">none yet</span></td><td><span class="button secondary">Build dataset v1</span></td></tr>
+        <tr><td><span class="code">ORD040</span><br><small class="muted">Released example dataset</small></td><td><span class="sq cedar"></span>Example Cedar</td><td><span class="pill ok">Released</span></td><td>Oct 30</td><td><span class="pill ok">v1 released · Nov 5</span></td><td><span class="button secondary">Build v2</span></td></tr>
+      </table>
+      <p class="muted" style="margin:8px 0 0"><small>Primary only for the row whose next step is to build; a version in progress links to its page; released rows read "Released" with the date and offer a secondary "Build v2". Sort: in-progress versions first, then build candidates, then released. The empty "Built versions" panel is omitted when there is nothing waiting (its count goes in the heading).</small></p>
+    </div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Nine equally loud buttons mean no signal: Paula has to read every row to find the one that needs her. A filled button on a released order also suggests the wrong next step. <b>How.</b> <span class="kbd">secondary</span> is already a prop of the action form; add the stage pill (<span class="kbd">.state</span> exists in the release module), the client colour square, and reorder rows. Hide the empty panel.</p>
+</section>
+
+<!-- ============================ F9 ============================ -->
+<section class="card" id="f9">
+<div class="card-head"><span class="n">9</span><h3>Text at 9–10 px on cards, pills, steps and eyebrows</h3></div>
+<div class="tags"><span class="page-name">Pipeline, Order detail, release and dataset tables</span> · <span class="sev medium">medium</span> <span class="eff">effort S</span> · Accessibility, scannability</div>
+<div class="compare">
+  <div><p class="cap">Current</p><figure><div class="shot"><img src="screenshots/current-pipeline-focus-blocked-1440.png" alt="Pipeline filtered to blocked orders" loading="lazy"></div><figcaption>Measured on the pipeline: 9 px for <span class="kbd">.column-index</span>, <span class="kbd">.pill</span>, <span class="kbd">.card-client</span>, <span class="kbd">.card-batch</span>; 10 px for tile notes, eyebrows, menu counts, stepper status, <span class="kbd">.check-word</span>; the status pill "Built / Released" is 10 px, the version chips 11 px. The gate problem line on a blocked card is 10 px red on white.</figcaption></figure></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock"><div class="two">
+      <div><p class="cap">Before · 9/10 px</p><div class="mk-ocard small9" style="font-size:12px"><div class="cl"><span class="sq atlas"></span>Example Atlas <span style="float:right">05 · In batch</span></div><span class="code" style="font-size:12px">ORD041</span><div class="t" style="font-size:12px">Synthetic plasma pilot · cohort A</div><div class="meta"><span>7 / 24 samples</span><span>29%</span></div><div class="bar"><i style="width:29%"></i></div><span class="pill fail">Gate blocked</span><span style="display:block;color:var(--danger);font-size:10px;margin-top:5px">Two example sample identifiers need review</span><span class="batch">Batch B2026-031 · shared with Example Cedar</span></div></div>
+      <div><p class="cap after">After · floor 11 px</p><div class="mk-ocard big" style="margin:0"><div class="cl"><span class="sq atlas"></span>Example Atlas <span style="float:right" class="mono">05 · In batch</span></div><span class="code">ORD041</span><div class="t">Synthetic plasma pilot · cohort A</div><div class="meta" style="font-size:11px"><span>7 of 24 samples registered</span></div><div class="bar"><i style="width:29%"></i></div><span class="pill fail">Gate blocked</span><span style="display:block;color:var(--danger);font-size:11px;font-weight:700;margin-top:5px">Two sample identifiers need review</span><span class="batch" style="font-size:11px">Batch B2026-031 · shared with <span class="sq cedar"></span>Example Cedar</span></div></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0"><small>Token proposal in <span class="kbd">tokens.css</span>: <span class="kbd">--text-xs: 11px</span> (labels, pills, eyebrows at 10 px stay the single exception for the mono eyebrow because of its letter-spacing), <span class="kbd">--text-sm: 12px</span>. Card: 242 → 200 px still fits with these sizes (see finding 6). The percentage goes; "7 of 24 samples registered" says what the bar measures.</small></p></div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Lab screens are read at arm's length, often with gloves on a bench; 9 px mono is below what the muted colour can carry (10 px <span class="kbd">--muted</span> on white passes contrast at 5.9:1, but at that size the glyphs do not resolve). The problem text on a blocked card is the most important line of the board and the smallest. <b>How.</b> Raise the floor to 11 px in one pass over <span class="kbd">globals.css</span> and <span class="kbd">release.module.css</span>; keep the mono eyebrow at 10 px with its tracking. The 28 % progress number duplicates the bar and the "x / y" text; drop it.</p>
+</section>
+
+<!-- ============================ F10 ============================ -->
+<section class="card" id="f10">
+<div class="card-head"><span class="n">10</span><h3>Phone: the registry scrolls sideways and the dataset page wraps hashes into 4-character lines</h3></div>
+<div class="tags"><span class="page-name">Sample registry (390)</span>, <span class="page-name">Dataset version (390)</span> · <span class="sev medium">medium</span> <span class="eff">effort S</span> · Responsive</div>
+<div class="compare">
+  <div><p class="cap">Current</p><div class="two">
+    <figure><div class="shot phone"><img src="screenshots/current-sample-registry-errors-390.png" alt="Registry grid at 390 px, page 1080 px wide" loading="lazy"></div><figcaption>Measured: once rows exist the document is 1,080 px wide at a 390 px viewport (390 before the paste; 390 again with the grid region hidden), so the whole page pans sideways and the panels no longer fill the screen. The README promises the page never scrolls sideways at 390.</figcaption></figure>
+    <figure><div class="shot phone"><img src="screenshots/current-release-dataset-built-390.png" alt="Dataset version at 390 px" loading="lazy"></div><figcaption>The SHA-256 column wraps every 4 characters: three rows become ~1,700 px of table before the first fact. The Sign form is at ~3,000 px.</figcaption></figure>
+  </div></div>
+  <div><p class="cap after">Proposal</p>
+    <div class="mock"><div class="two">
+      <div class="mk-phone"><div style="font-weight:700;margin-bottom:6px">Samples to register</div><div class="grid"><table><tr><th class="sticky">FullName *</th><th>Group1Term</th><th>Group2Term</th><th>Replicate</th><th>Patient</th></tr><tr><td class="sticky"><span class="inp bad">Ctrl_1</span></td><td><span class="inp">Control</span></td><td><span class="inp">WildType</span></td><td><span class="inp" style="width:30px">1</span></td><td><span class="inp" style="width:34px">P01</span></td></tr><tr><td class="sticky"><span class="inp bad">Ctrl_1</span></td><td><span class="inp">Control</span></td><td><span class="inp">WildType</span></td><td><span class="inp" style="width:30px">2</span></td><td><span class="inp" style="width:34px">P02</span></td></tr><tr><td class="sticky"><span class="inp bad"></span></td><td><span class="inp">Treated</span></td><td><span class="inp">WildType</span></td><td><span class="inp" style="width:30px">1</span></td><td><span class="inp" style="width:34px">P03</span></td></tr></table><div class="fade"></div></div><div class="scrollhint">↔ 6 more columns · FullName stays pinned</div><div style="margin-top:8px;color:var(--danger);font-weight:700">⚠ 3 rows need attention · <a href="#">first problem</a></div></div>
+      <div class="mk-phone"><div style="font-weight:700;margin-bottom:6px">Files of this version</div>
+        <div style="border:1px solid var(--line);border-radius:5px;padding:6px 8px;margin-bottom:6px"><b>Analysis file</b> · 15.0 KB<br><span class="muted">Abundance, Metadata</span><br><span class="mk-hash" style="font-size:10px">5b85572ed378…ddaf0d</span> <span class="mk-hash copy" style="font-size:9px">copy</span></div>
+        <div style="border:1px solid var(--line);border-radius:5px;padding:6px 8px;margin-bottom:6px"><b>Companion file</b> · 11.8 KB<br><span class="muted">IS, QC, Provenance</span><br><span class="mk-hash" style="font-size:10px">9e275f35fb0b…6e91b</span> <span class="mk-hash copy" style="font-size:9px">copy</span></div>
+        <a href="#" style="font-size:10px">Full digests ▸</a></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0"><small>Registry: contain the grid (<span class="kbd">.grid-scroll { width: 0; min-width: 100% }</span> or <span class="kbd">contain: inline-size</span> on the panel), pin the FullName column with <span class="kbd">position: sticky</span>, show a fade and a column count. Dataset: at ≤760 px render each file as a stacked block with a 12-character digest and copy; the full digest in a disclosure.</small></p></div>
+  </div>
+</div>
+<p class="rationale"><b>Why.</b> Phones are secondary, but these two are the screens a lab manager or a PI would open from a phone (a quick fix to a row; a signature from a meeting). One pans the whole page; the other buries the action under a wall of hex. <b>How.</b> Two CSS containment lines for the grid; a <span class="kbd">@media (max-width: 760px)</span> block for the file table using the existing <span class="kbd">.digest</span> class plus a copy button, which desktop benefits from as well (finding 5).</p>
+</section>
+
+<h2 id="notes" style="margin-top:44px">Smaller notes</h2>
+<p class="muted" style="margin-top:-6px">Each would fit in the same change set as the finding it relates to; none needs a new component.</p>
+<ul class="notes">
+  <li><span class="t">Top bar at 390 wraps into three rows (≈190 px)</span>Brand, view switch, scope, user chip, sign-out and search stack before the nav strip. Proposal: brand + search + a "menu" button holding view switch, scope and sign-out. <div class="tags">Every page · <span class="sev medium">medium</span> <span class="eff">M</span> · <a href="screenshots/current-pipeline-390.png">pipeline-390</a></div></li>
+  <li><span class="t">Order detail stepper at 390 shows 4 of 10 steps</span>The current step (e.g. 08 Processed) is off-screen in the scroll region. Proposal: at ≤760 px a single line "Step 8 of 10 · Processed" over a 10-segment bar; the full stepper stays on desktop. <div class="tags">Order detail · <span class="sev medium">medium</span> <span class="eff">S</span> · <a href="screenshots/current-order-detail-blocked-390.png">order-detail-390</a></div></li>
+  <li><span class="t">Gate heading reads "Ready for extracted?" / "Ready for qc checked?"</span>Stage names lower-cased into a question. Proposal: "Next gate · Extracted" with the stage name capitalised, and for the client view a statement, not a question: "At Processed · next: QC check". <div class="tags">Order detail (both views) · <span class="sev low">low</span> <span class="eff">S</span></div></li>
+  <li><span class="t">Client view shows staff vocabulary</span>"Assigned to Demo Operator", "Review gate items" style gate names, "Every check must pass before this order moves forward". Proposal: hide the owner fact and reword the gate panel for clients ("What the lab is checking"). <div class="tags">Client order detail · <span class="sev medium">medium</span> <span class="eff">S</span> · <a href="screenshots/current-client-order-detail-1440.png">client-order-detail</a></div></li>
+  <li><span class="t">Sign-in: in demo mode the disabled "Sign in" still looks primary</span>Two stacked blue buttons; the one that works is second. Proposal: in demo mode render "Enter example workspace" first and the live form behind a secondary "Sign in with email" disclosure; keep the Yale SSO note. <div class="tags">Sign-in · <span class="sev low">low</span> <span class="eff">S</span> · <a href="screenshots/current-sign-in-1440.png">sign-in</a></div></li>
+  <li><span class="t">Order card progress "1 / 12 samples · 8 %" is unexplained</span>The bar measures completed samples but the card never says so, and the percentage duplicates it. Proposal: "1 of 12 samples registered" (verb per stage) and no percentage (see finding 9). <div class="tags">Pipeline · <span class="sev low">low</span> <span class="eff">S</span></div></li>
+  <li><span class="t">Focus ring does not cover select, textarea and menu summaries</span>The 3 px <span class="kbd">--blue</span> outline is declared for button, a, input and tabindex; selects, textareas and the Stage/Panel/Owner/scope summaries fall back to the browser ring. Proposal: add them to the selector. <div class="tags">Every page · <span class="sev low">low</span> <span class="eff">S</span> · <a href="screenshots/current-focus-ring-1440.png">focus-ring</a></div></li>
+  <li><span class="t">Audit log: filter needs a click, rows have no hover, entity is text</span>Proposal: submit on change of Entity, row hover with <span class="kbd">--subtle</span>, the entity as a small <span class="kbd">.state</span> pill in "What", and group rows by lab day with a date heading. <div class="tags">Audit log · <span class="sev low">low</span> <span class="eff">S</span> · <a href="screenshots/current-audit-log-filtered-expanded-1440.png">audit-log</a></div></li>
+  <li><span class="t">Datasets table: seven columns with digests and a UUID</span>Readable at 1440, cramped at 390. Proposal: Team project as "ffac34b7… · copy", digests as one "Provenance ▸" disclosure, status pill with the date. <div class="tags">Datasets · <span class="sev low">low</span> <span class="eff">S</span> · <a href="screenshots/current-datasets-1440.png">datasets</a></div></li>
+  <li><span class="t">Release policy: the demo "Set as" actor box reads like a warning</span>The dashed <span class="kbd">--warning-tint</span> box is used for the demo actor choice on four screens; it draws the eye before the real fields. Proposal: a neutral <span class="kbd">--subtle</span> box with the "Example workspace" label, 11 px. The number input "Required signatures" can be 80 px wide instead of full width. <div class="tags">Release policy, dataset page · <span class="sev low">low</span> <span class="eff">S</span></div></li>
+  <li><span class="t">Empty states end in a text link</span>"No order has an accepted results file yet. Accept one in Ingest results first." Proposal: the action as a secondary button under the sentence, as the pipeline empty state already does with "Clear all filters". <div class="tags">Release, Datasets, Registry, Name dictionary · <span class="sev low">low</span> <span class="eff">S</span></div></li>
+  <li><span class="t">Choose client cards: role and action share one muted line</span>"Client admin · Open workspace →" mixes a fact and the call to action. Proposal: role as a <span class="kbd">.pill.neutral</span>, the arrow on its own line, the whole card already being the button. <div class="tags">Choose client · <span class="sev low">low</span> <span class="eff">S</span> · <a href="screenshots/current-choose-client-1440.png">choose-client</a></div></li>
+  <li><span class="t">Registry grid: "Remove" as an underlined word per row; required mark only on FullName</span>Proposal: an icon button with an accessible label (keeps the row quiet), and a "Clear all rows" link in the toolbar; "12 expected" turns red when the grid has more rows than expected. <div class="tags">Sample registry · <span class="sev low">low</span> <span class="eff">S</span></div></li>
+  <li><span class="t">Name dictionary: a 33-item bullet list of unmapped analytes</span>Proposal: a table with an inline clean-name field per analyte and a save per row (or one "Save 33" at the bottom), plus a filter box; the "Add a name" form becomes the empty-row of that table. <div class="tags">Name dictionary · <span class="sev medium">medium</span> <span class="eff">M</span> · <a href="screenshots/current-name-dictionary-1440.png">name-dictionary</a></div></li>
+  <li><span class="t">Pipeline menus at 390 are good</span>Stage/Panel/Owner open as a full-width sheet with counts; chips truncate; the empty state names what to change. Keep as the reference pattern for other screens. <div class="tags">Pipeline · <span class="sev low">no change</span> · <a href="screenshots/current-pipeline-stage-menu-390.png">stage-menu-390</a></div></li>
+  <li><span class="t">Receive shipment is the reference form</span>Order select mirrored into the URL, facts on the right, condition as radio cards with consequences, explicit "Moves the order to Received…" note, pending label. The ingest and dictionary forms should look like it (finding 4). <div class="tags">Receive shipment · <span class="sev low">no change</span> · <a href="screenshots/current-receive-shipment-filled-1440.png">receive-shipment-filled</a></div></li>
+</ul>
+
+<h2 style="margin-top:44px">Placeholders (not designed)</h2>
+<p class="placeholders">Still "This workspace is taking shape": New order, Sample detail, Storage, Batch builder, Batch run, QC review, Clients, Client detail, People, Roles &amp; permissions, Instruments &amp; panels, Notifications, Client home, Client order. The client can only reach a working order page through its URL (<span class="mono">/orders/ORD041</span>), which is captured here as the client order detail.</p>
+
+<h2>Method</h2>
+<p class="method">Demo mode on the dev server (Turbopack, port 3110, no Supabase), Playwright Chromium, one browser context so the in-memory demo records persist across the flow: enter the example workspace → pipeline and its filters → order detail → receive ORD042 → register four samples (two duplicates, one empty FullName, one 90-character name) → ingest <span class="mono">e2e/fixtures/sciex-synthetic.txt</span> with a flagged blank and override → build, sign twice, release and withdraw ORD048 v1 → policy, datasets, audit log → switch to the Client view, choose Example Atlas, client home and order. Full-page captures at 1440×900 and 390×844; viewport-only captures where the fold matters. Numbers quoted in the findings (board width 1,162 vs 2,532 px; document width 1,080 px at 390; error colour rgb(82,100,119); font sizes 9–10 px) were measured in the page, not estimated from the images. The Next.js dev badge was hidden for the captures. Screenshots are palette PNGs.</p>
+</main>
+</body>
+</html>

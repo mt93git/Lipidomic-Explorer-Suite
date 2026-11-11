@@ -1,7 +1,9 @@
 // The audit log's reading of admin.audit_event (db/admin/migrations/0001, 0003): a one-line human summary and the
 // changed fields of each event. Pure: no React, no server imports; both sides of the data seam (data/audit.ts) use it.
+import { accessReference } from "./access-requests";
 import { formatLabInstant } from "./lab-time";
 import { stages } from "./models";
+import { isNotificationKind, kindInfo } from "./notifications";
 import { datasetStatusLabels, signerRoleLabels, type DatasetStatus, type SignerRole } from "./release";
 import { dbStages } from "./samples";
 
@@ -19,12 +21,16 @@ export type AuditFilters = { entity: string | null; order: string | null; before
 
 export const AUDIT_PAGE_SIZE = 50;
 
-// Every table the audit trigger is attached to (0003, and release_policy in 0005), in the order the menu lists them.
+// Every table the audit trigger is attached to (0003, release_policy in 0005, shipping_instructions in 0019, access_request
+// in 0020, recorded without its personal data, deliverable in 0021, client_contact in 0023, notification_pref in 0028), in the
+// order the menu lists them. (admin.notification_log, 0028, is its own append-only record and is not audited.) Plus
+// activation_email (0029): no table, a row written by admin.record_activation_email when an activation email was sent.
 const entityLabels: Record<string, string> = {
   order: "Order", shipment: "Shipment", sample: "Sample", aliquot: "Aliquot", box_position: "Box position", exclusion: "Exclusion",
   batch: "Batch", batch_version: "Batch version", injection: "Injection", result_file: "Results file", name_map: "Name dictionary entry",
-  dataset: "Dataset", signature: "Signature", release_policy: "Release policy", job: "Job",
+  dataset: "Dataset", signature: "Signature", release_policy: "Release policy", shipping_instructions: "Shipping instructions", client_contact: "Contact for clients", job: "Job",
   client: "Client", client_member: "Client member", lab_staff: "Lab staff", instrument: "Instrument", panel: "Panel",
+  access_request: "Access request", deliverable: "Deliverable", notification_pref: "Email notification", activation_email: "Activation email",
 };
 export const auditEntities = Object.entries(entityLabels).map(([value, label]) => ({ value, label }));
 
@@ -66,7 +72,8 @@ function specific(event: AuditEvent, ctx: AuditContext): string | null {
     case "order": {
       const code = text(row.code) ?? orderCode(event.entityId, ctx);
       const name = code ? `Order ${code}` : "Order";
-      if (insert) return `${name} created`;
+      if (insert) return row.review === "pending" ? `${name} requested by the client` : `${name} created`;
+      if (changed(event, "review") && (row.review === "accepted" || row.review === "declined")) return `${name}: request ${row.review}`;
       if (changed(event, "stage") && text(row.stage)) return `${name} moved to ${stageLabel(row.stage as string)}`;
       return null;
     }
@@ -74,6 +81,37 @@ function specific(event: AuditEvent, ctx: AuditContext): string | null {
       if (!insert) return null;
       const signers = Array.isArray(row.eligible_signers) ? row.eligible_signers.map(id => personName(id, ctx) ?? shortUser(String(id))) : [];
       return `Release policy changed: ${row.required_signatures} of ${signers.length ? signers.join(", ") : "any lab owner or admin"}`;
+    }
+    case "shipping_instructions": return insert ? "Shipping instructions changed" : null;
+    case "client_contact": return insert ? "Contact for clients changed" : null;
+    case "notification_pref": {
+      const kind = text(row.kind);
+      return `Email "${kind && isNotificationKind(kind) ? kindInfo[kind].label : kind ?? "notification"}" turned ${row.enabled ? "on" : "off"}`;
+    }
+    case "activation_email": return `Activation email sent to ${text(row.name) ?? personName(row.user_id, ctx) ?? "a person"}`;
+    case "access_request": {
+      const name = typeof row.number === "number" ? `Access request ${accessReference(row.number)}` : "Access request";
+      if (insert) return `${name} received`;
+      if (changed(event, "erased_at") && row.erased_at) return `${name}: personal data erased (90 days after it was declined)`;
+      if (changed(event, "status") && (row.status === "approved" || row.status === "declined")) return `${name} ${row.status}`;
+      return null;
+    }
+    case "deliverable": {
+      const name = `File${text(row.title) ? ` "${row.title}"` : ""}${forOrder(row, ctx)}`;
+      if (insert) return `${name} added${row.visible_to_client ? " and shown to the client" : ""}`;
+      if (changed(event, "archived_at") && row.archived_at) return `${name} retired`;
+      if (changed(event, "visible_to_client")) return `${name} ${row.visible_to_client ? "shown to" : "hidden from"} the client`;
+      return null;
+    }
+    case "client":
+      if (changed(event, "nexo_access")) return `Nexo access turned ${row.nexo_access ? "on" : "off"}${text(row.name) ? ` for ${row.name}` : ""}`;
+      if (changed(event, "members_prepare")) return `Members may prepare in Nexo turned ${row.members_prepare ? "on" : "off"}${text(row.name) ? ` for ${row.name}` : ""}`;
+      return null;
+    case "box_position": {
+      const slot = text(row.box) && text(row.position) ? ` box ${row.box} position ${row.position}` : " a box";
+      if (insert) return `Aliquot placed in${slot}`;
+      if (changed(event, "archived_at") && row.archived_at) return row.archived_reason === "moved" ? `Aliquot moved out of${slot}` : `Aliquot removed from${slot}`;
+      return null;
     }
     case "shipment": return insert ? `Shipment received${forOrder(row, ctx)}` : null;
     case "sample": return insert ? `Sample${text(row.sample_code) ? ` ${row.sample_code}` : ""} registered` : null;
@@ -91,13 +129,19 @@ export function auditSummary(event: AuditEvent, ctx: AuditContext): string {
 
 // ---------------------------------------------------------------- changed fields
 
-const fieldLabels: Record<string, string> = { order_id: "Order", dataset_id: "Dataset", user_id: "User", sha256: "SHA-256" };
+const fieldLabels: Record<string, string> = {
+  volume_ul: "Volume (µL)", order_id: "Order", dataset_id: "Dataset", user_id: "User", sha256: "SHA-256",
+  nexo_access: "Nexo access", members_prepare: "Members may prepare in Nexo",
+};
+// The client's Nexo switches (0021, 0024) read on/off, not true/false.
+const switches = new Set(["nexo_access", "members_prepare"]);
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const MAX_TEXT = 120;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function shown(key: string, value: unknown, ctx: AuditContext): string {
   if (value === null || value === undefined) return "—";
+  if (switches.has(key) && typeof value === "boolean") return value ? "on" : "off";
   if (key === "order_id") return orderCode(value, ctx) ?? String(value);
   if (key === "dataset_id") return datasetName(value, ctx) ?? String(value);
   if (Array.isArray(value)) {

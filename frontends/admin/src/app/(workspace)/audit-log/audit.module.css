@@ -1,7 +1,7 @@
 .filters { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin: 0 0 18px; }
-.filters label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; }
+.filters label { display: grid; gap: 5px; font-size: var(--text-sm); font-weight: 700; }
 .filters input, .filters select { font: inherit; font-weight: 400; padding: 8px 10px; border: 1px solid #bfcbd5; border-radius: 5px; background: white; color: var(--ink); min-width: 180px; }
-.events { width: 100%; border-collapse: collapse; font-size: 12px; }
+.events { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .events th { text-align: left; color: var(--muted); font-weight: 700; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
 .events td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .events td:first-child { white-space: nowrap; color: var(--muted); }

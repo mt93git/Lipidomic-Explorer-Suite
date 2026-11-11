@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { getReleasePolicy } from "@/lib/data/release";
 import { formatLabInstant } from "@/lib/lab-time";
 import { labRoleLabels } from "@/lib/release";
@@ -24,7 +24,7 @@ export default async function ReleasePolicyPage({ searchParams }: { searchParams
       </div>
       <div className="heading-actions"><Link className="button secondary" href="/release">← Release</Link></div>
     </div>
-    {saved && <p className="notice" role="status">Release policy saved. It applies to every release from now on; earlier policies are kept in the history.</p>}
+    {saved && <p className="notice success" role="status"><strong>Release policy saved.</strong> It applies to every release from now on; earlier policies are kept in the history.<Link className="button" href="/release">Release →</Link></p>}
     <div className="detail-grid">
       <section className="panel" aria-labelledby="policy-title">
         <div className="eyebrow">Current policy</div>

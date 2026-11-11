@@ -4,7 +4,9 @@ import { LAB_TIME_ZONE } from "./lab-time";
 import { stages, type Gate, type HistoryEvent, type Order } from "./models";
 import { conditionLabels, DataError, plural, registryClosedProblem, type SampleInput, type ShipmentInput } from "./samples";
 import { applyReleaseState, demoPolicy, type DemoDataset } from "./release-demo";
-import type { ReleasePolicy } from "./release";
+import type { RegistryEntry, ReleasePolicy } from "./release";
+import { applyBatchState, type DemoBatch } from "./batch-demo";
+import { applyQcState, type DemoQcState } from "./qc-review";
 
 export type DemoShipment = {
   id: string; orderCode: string; carrier: string; trackingNumber: string | null; condition: ShipmentInput["condition"];
@@ -15,7 +17,12 @@ export type DemoSample = SampleInput & { id: string; orderCode: string; shipment
 export type DemoResult = { id: string; orderCode: string; sha256: string; acceptedAt: string; acceptedBy: string };
 // One record set per browser, shared by every demo screen (receive, registry, results, release, pipeline, detail).
 // Datasets, their signatures and releases, and the release policy are the release side's records (release-demo.ts).
-export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy };
+// Orders created with New order (create_order) join the example orders in applyDemoState, so every screen sees them.
+// shipping: the lab's shipping instructions (set_shipping_instructions), shown to clients on an accepted request.
+// contact: the lab's contact for clients (set_client_contact, 0023), stored the same way.
+export type DemoShipping = { text: string; setAt: string; setBy: string };
+// exclusions, qcReviews: the QC review's decisions (add_exclusion, withdraw_exclusion, mark_qc_checked; qc-review.ts).
+export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null; contact?: DemoShipping | null } & DemoQcState;
 
 export const emptyDemoState = (): DemoState => ({ shipments: [], samples: [], results: [], datasets: [] });
 
@@ -33,11 +40,13 @@ export function sampleCode(orderCode: string, sampleNumber: number): string {
   return `${orderCode}-S${sampleNumber < 1000 ? String(sampleNumber).padStart(3, "0") : String(sampleNumber)}`;
 }
 
-type ShipmentArgs = { order: Pick<Order, "code" | "stage">; shipment: Omit<ShipmentInput, "orderId">; actor: string; now: Date; id: string };
+type ShipmentArgs = { order: Pick<Order, "code" | "stage" | "request">; shipment: Omit<ShipmentInput, "orderId">; actor: string; now: Date; id: string };
 
-// receive_shipment: only an order at Request can arrive; the order then reads Received.
+// receive_shipment: only an order at Request can arrive, and not a client request still waiting for an answer; the
+// order then reads Received.
 export function recordShipment(state: DemoState, { order, shipment, actor, now, id }: ShipmentArgs): { state: DemoState; shipment: DemoShipment } {
   if (order.stage !== REQUEST) throw new DataError(`${order.code} is already ${stages[order.stage]}; a shipment can only be received for an order at Request.`);
+  if (order.request?.status === "pending") throw new DataError(`${order.code} is a client request waiting for an answer. Accept the request first.`);
   const saved: DemoShipment = {
     id, orderCode: order.code, carrier: shipment.carrier, trackingNumber: shipment.trackingNumber, condition: shipment.condition,
     boxCount: shipment.boxCount, notes: shipment.notes, receivedAt: now.toISOString(), receivedBy: actor,
@@ -86,7 +95,24 @@ function shipmentTitle(shipment: DemoShipment): string {
 
 // The example orders with the demo's shipments and samples applied: stage, received date, gates, history and
 // progress follow what was recorded. Orders without records are returned untouched.
-export function applyDemoState(orders: Order[], state: DemoState): Order[] {
+export function applyDemoState(examples: Order[], state: DemoState): Order[] {
+  return applyQcState(applyBatchState(applyRecordedState(examples, state), state), state);
+}
+
+// An order's registry in the demo: the samples registered in this browser, or, for an example order nobody registered
+// here, its example registry (ORD048-S001 · Sample_001, ...). Release builds from it; QC review lists it.
+export function demoOrderSamples(order: Pick<Order, "code" | "sampleCount">, state: DemoState): (RegistryEntry & { id: string })[] {
+  const recorded = state.samples.filter(sample => sample.orderCode === order.code)
+    .map(sample => ({ id: sample.id, code: sample.code, full_name: sample.full_name, group1_term: sample.group1_term, group2_term: sample.group2_term, replicate_term: sample.replicate_term, patient_term: sample.patient_term, time_point_term: sample.time_point_term }));
+  if (recorded.length) return recorded;
+  return Array.from({ length: order.sampleCount }, (_, i) => {
+    const code = sampleCode(order.code, i + 1);
+    return { id: code, code, full_name: `Sample_${String(i + 1).padStart(3, "0")}`, group1_term: null, group2_term: null, replicate_term: null, patient_term: null, time_point_term: null };
+  });
+}
+
+function applyRecordedState(examples: Order[], state: DemoState): Order[] {
+  const orders = state.orders?.length ? [...examples, ...state.orders] : examples;
   const results = state.results ?? [];
   const datasets = state.datasets ?? [];
   if (!state.shipments.length && !state.samples.length && !results.length && !datasets.length) return orders;
@@ -120,10 +146,12 @@ export function applyDemoState(orders: Order[], state: DemoState): Order[] {
       events.push({ date, title: `${plural(batch.length, "sample")} registered · ${range}`, actor: batch[0].registeredBy });
     }
     if (result) events.push(resultEvent(result));
+    // As live: the expected count, or more when more samples were registered (an order created without one).
+    const sampleCount = Math.max(order.sampleCount, samples.length);
     return {
-      ...order, stage, gates,
+      ...order, stage, gates, sampleCount,
       received: shipment ? labDay.format(new Date(shipment.receivedAt)) : order.received,
-      completedSamples: samples.length ? Math.min(order.sampleCount, samples.length) : Math.min(order.sampleCount, Math.round(order.sampleCount * (stage + 1) / 10)),
+      completedSamples: samples.length ? Math.min(sampleCount, samples.length) : Math.min(sampleCount, Math.round(sampleCount * (stage + 1) / 10)),
       history: [...events.reverse(), ...order.history],
     };
   }

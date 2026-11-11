@@ -20,9 +20,9 @@
     "@supabase/ssr": "0.12.0",
     "@supabase/supabase-js": "2.108.2",
     "exceljs": "4.4.0",
-    "next": "15.5.28",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "next": "16.4.5",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
     "server-only": "0.0.1"
   },
   "devDependencies": {
@@ -34,7 +34,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
-    "eslint-config-next": "15.5.28",
+    "eslint-config-next": "16.4.5",
     "jsdom": "26.1.0",
     "typescript": "5.9.3",
     "vitest": "3.2.7"

@@ -1,12 +1,15 @@
 import "server-only";
-import { demoClients, demoOrders } from "../demo";
+import { demoClients, demoOrders, demoSession } from "../demo";
 import { getEnvironment } from "../environment";
 import { LAB_TIME_ZONE } from "../lab-time";
 import type { Client, Gate, HistoryEvent, Order, Retirement } from "../models";
+import { recordOrder, type OrderInput, type Panel } from "../new-order";
+import { pendingGates } from "../order-request";
 import { conditionLabels, DataError, plural, stageFromDb, type Condition } from "../samples";
 import { applyDemoState } from "../samples-demo";
 import { createAdminClient } from "../supabase/server";
-import { readDemoState } from "./demo-store";
+import { readDemoState, writeDemoState } from "./demo-store";
+import { demoActivePanels } from "./instruments-panels";
 
 // The orders the overview and the order detail show. Live mode reads admin.order with its children through
 // the signed-in user's own Supabase client, so RLS decides what each person sees (lab staff: every client;
@@ -24,14 +27,15 @@ type SignatureRow = { user_id: string; signed_at: string; archived_at: string | 
 type DatasetRow = { id: string; version: number; status: string; created_at: string; released_at: string | null; archived_at: string | null; archived_reason?: string | null; signature: SignatureRow[] | null };
 type OrderRow = {
   id: string; code: string; title: string | null; stage: string; matrix: string | null; expected_samples: number | null; client_id: string; created_at: string;
-  requested_by: string | null; panel: One<{ name: string }>; sample: SampleRow[] | null; shipment: ShipmentRow[] | null; result_file: ResultRow[] | null; dataset: DatasetRow[] | null;
+  requested_by: string | null; review?: string; reviewed_at?: string | null; notes?: string | null; billing_ref?: string | null; panel_id?: string | null;
+  panel: One<{ name: string }>; sample: SampleRow[] | null; shipment: ShipmentRow[] | null; result_file: ResultRow[] | null; dataset: DatasetRow[] | null;
 };
 type Names = Map<string, string>;
 
 // One request per screen: the order rows with their children embedded (PostgREST follows the foreign keys).
 // Archived children are filtered here so the select stays a plain column list.
 const orderSelect = [
-  "id, code, title, stage, matrix, expected_samples, client_id, created_at, requested_by",
+  "id, code, title, stage, matrix, expected_samples, client_id, created_at, requested_by, review, reviewed_at, notes, billing_ref, panel_id",
   "panel:panel(name)",
   "sample(created_at, archived_at)",
   "shipment(received_at, received_by, carrier, tracking_number, box_count, condition, archived_at)",
@@ -103,7 +107,9 @@ function gatesFor(stage: number, current: boolean, facts: { arrival?: ShipmentRo
 
 function historyFor(row: OrderRow, arrivals: ShipmentRow[], samples: SampleRow[], results: ResultRow[], datasets: DatasetRow[], names: Names): HistoryEvent[] {
   const who = (id: string | null, fallback: string) => (id && names.get(id)) || fallback;
-  const events: HistoryEvent[] = [{ date: row.created_at, title: "Order created", actor: who(row.requested_by, "Client") }];
+  const requested = row.review === "pending" || Boolean(row.reviewed_at);
+  const events: HistoryEvent[] = [{ date: row.created_at, title: requested ? "Requested by the client" : "Order created", actor: who(row.requested_by, "Client") }];
+  if (row.reviewed_at && row.review === "accepted") events.push({ date: row.reviewed_at, title: "Request accepted", actor: "Lab staff" });
   for (const shipment of arrivals) events.push({ date: shipment.received_at!, title: arrivalTitle(shipment), actor: who(shipment.received_by, "Lab staff") });
   const batches = new Map<string, number>();
   for (const sample of samples) batches.set(sample.created_at, (batches.get(sample.created_at) ?? 0) + 1);
@@ -119,6 +125,16 @@ function historyFor(row: OrderRow, arrivals: ShipmentRow[], samples: SampleRow[]
   return events.map((event, index) => ({ event, index }))
     .sort((a, b) => Date.parse(b.event.date) - Date.parse(a.event.date) || b.index - a.index)
     .map(({ event }) => event);
+}
+
+// A client request (0019): pending, or answered (reviewed_at). An order the lab opened is accepted with no answer.
+function requestOf(row: OrderRow, names: Names): Order["request"] {
+  const status = row.review === "pending" || row.review === "declined" ? row.review : "accepted";
+  if (status === "accepted" && !row.reviewed_at) return undefined;
+  return {
+    status, requestedAt: row.created_at, requestedBy: (row.requested_by && names.get(row.requested_by)) || "A client member",
+    notes: row.notes ?? null, billingRef: row.billing_ref ?? null, panelId: row.panel_id ?? null, reviewedAt: row.reviewed_at ?? null, reason: null,
+  };
 }
 
 export function toOrder(row: OrderRow, names: Names): Order {
@@ -138,6 +154,7 @@ export function toOrder(row: OrderRow, names: Names): Order {
     : undefined;
   const dataset = releasedDataset ?? [...datasets].filter(item => item.status === "built").sort((a, b) => b.version - a.version)[0] ?? lastRetired;
   const sampleCount = Math.max(row.expected_samples ?? 0, samples.length);
+  const request = requestOf(row, names);
   return {
     code: row.code, clientId: row.client_id, description: row.title ?? "", stage, released,
     sampleCount, completedSamples: released ? sampleCount : Math.min(sampleCount, samples.length),
@@ -146,19 +163,28 @@ export function toOrder(row: OrderRow, names: Names): Order {
     due: "", owner: "Unassigned",
     received: arrival?.received_at ? labDay.format(new Date(arrival.received_at)) : "",
     batch: result ? one(result.batch)?.name : undefined,
-    gates: gatesFor(stage, Boolean(released && releasedDataset), { arrival, samples: samples.length, result, dataset }, names),
+    gates: row.review === "pending" ? pendingGates : gatesFor(stage, Boolean(released && releasedDataset), { arrival, samples: samples.length, result, dataset }, names),
     history: historyFor(row, arrivals, samples, results, datasets, names),
     releasedAt: releasedDataset?.released_at ?? undefined,
     ...(released && releasedDataset ? { currentDatasetId: releasedDataset.id } : {}),
     ...(retired ? { retired } : {}),
+    ...(request ? { request } : {}),
   };
 }
 
-// Display names of lab staff (staff read every row; anyone else only their own).
-async function staffNames(db: Awaited<ReturnType<typeof admin>>): Promise<Names> {
-  const { data, error } = await db.from("lab_staff").select("user_id, display_name").is("archived_at", null);
-  if (error) throw readFailure("Lab staff", error);
-  return new Map(((data ?? []) as { user_id: string; display_name: string | null }[]).filter(row => row.display_name).map(row => [row.user_id, row.display_name!]));
+// Display names of lab staff (staff read every row; anyone else only their own) and of client members, who are named
+// when they accept their invitation (0023; lab staff, Operators included, read every client's members). A member who
+// has since left keeps their name on what they asked for. A lab name wins over a client one.
+type NameRow = { user_id: string; display_name: string | null };
+async function personNames(db: Awaited<ReturnType<typeof admin>>): Promise<Names> {
+  const [staff, members] = await Promise.all([
+    db.from("lab_staff").select("user_id, display_name").is("archived_at", null),
+    db.from("client_member").select("user_id, display_name").not("display_name", "is", null),
+  ]);
+  if (staff.error) throw readFailure("Lab staff", staff.error);
+  if (members.error) throw readFailure("Client members", members.error);
+  const named = (rows: unknown) => ((rows ?? []) as NameRow[]).filter(row => row.display_name).map(row => [row.user_id, row.display_name!] as const);
+  return new Map([...named(members.data), ...named(staff.data)]);
 }
 
 async function liveClients(db: Awaited<ReturnType<typeof admin>>): Promise<Client[]> {
@@ -170,11 +196,12 @@ async function liveClients(db: Awaited<ReturnType<typeof admin>>): Promise<Clien
 // ---------------------------------------------------------------- the seam
 
 export async function listOrders(): Promise<Order[]> {
-  if (!live()) return applyDemoState(demoOrders, await readDemoState());
+  // A declined request is archived: it leaves every lab list, as live (archived_at IS NULL).
+  if (!live()) return applyDemoState(demoOrders, await readDemoState()).filter(order => order.request?.status !== "declined");
   const db = await admin();
   const [orders, names] = await Promise.all([
     db.from("order").select(orderSelect).is("archived_at", null).order("order_number"),
-    staffNames(db),
+    personNames(db),
   ]);
   if (orders.error) throw readFailure("Orders", orders.error);
   return ((orders.data ?? []) as unknown as OrderRow[]).map(row => toOrder(row, names));
@@ -197,7 +224,47 @@ export async function getOrder(code: string): Promise<{ order: Order; client: Cl
   if (found.error) throw readFailure("The order", found.error);
   if (!found.data) return null;
   const row = found.data as unknown as OrderRow;
-  const [names, clients] = await Promise.all([staffNames(db), liveClients(db)]);
+  const [names, clients] = await Promise.all([personNames(db), liveClients(db)]);
   const client = clients.find(item => item.id === row.client_id) ?? { id: row.client_id, name: "Client", color: "shared" };
   return { order: toOrder(row, names), client };
+}
+
+// ---------------------------------------------------------------- New order
+
+// The panels an order may request: active ones (panels are reference data every signed-in user reads).
+export async function listPanels(): Promise<Panel[]> {
+  // The demo's catalog (Instruments & panels): the example panels until this browser archives or adds one.
+  if (!live()) return demoActivePanels();
+  const { data, error } = await (await admin()).from("panel").select("id, name").is("archived_at", null).order("name");
+  if (error) throw readFailure("Panels", error);
+  return ((data ?? []) as Panel[]).map(row => ({ id: row.id, name: row.name }));
+}
+
+// The database's refusal as a sentence ("client X is archived; ..." → "Client X is archived; ....").
+function orderRefusal(error: { message: string }): DataError {
+  const text = error.message.trim();
+  return new DataError(`${text.charAt(0).toUpperCase()}${text.slice(1)}${/[.!?]$/.test(text) ? "" : "."}`);
+}
+
+// admin.create_order(p_client_id, p_panel_id, p_title, p_matrix, p_expected_samples, p_billing_ref, p_notes) returns uuid;
+// the code (ORD055) is generated by the database and read back for the success notice.
+export async function createOrder(input: OrderInput): Promise<{ id: string; code: string }> {
+  if (!live()) {
+    const state = await readDemoState();
+    const { state: next, order } = recordOrder(state, {
+      input, orders: applyDemoState(demoOrders, state), clients: demoClients, panels: await listPanels(), actor: demoSession.displayName, now: new Date(),
+    });
+    await writeDemoState(next);
+    return { id: order.code, code: order.code };
+  }
+  const db = await admin();
+  const { data, error } = await db.rpc("create_order", {
+    p_client_id: input.clientId, p_panel_id: input.panelId, p_title: input.title, p_matrix: input.matrix,
+    p_expected_samples: input.expectedSamples, p_billing_ref: input.billingRef, p_notes: input.notes,
+  });
+  if (error) throw orderRefusal(error);
+  const id = String(data);
+  const created = await db.from("order").select("code").eq("id", id).maybeSingle();
+  if (created.error || !created.data) throw new DataError("The order was created, but its code could not be read. Find it on the pipeline at Request.");
+  return { id, code: (created.data as { code: string }).code };
 }

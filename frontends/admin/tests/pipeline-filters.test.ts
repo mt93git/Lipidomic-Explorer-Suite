@@ -42,7 +42,8 @@ describe("stage slugs", () => {
   it("round-trips every stage through a URL-safe slug", () => {
     for (let index = 0; index < 10; index++) expect(stageFromSlug(stageSlug(index))).toBe(index);
     expect(stageSlug(4)).toBe("in-batch");
-    expect(stageSlug(8)).toBe("qc-checked");
+    expect(stageSlug(8)).toBe("qc-reviewed");
+    expect(stageFromSlug("qc-checked")).toBe(8); // the slug before QC review named the stage "QC reviewed"
     expect(stageFromSlug("nonsense")).toBeNull();
   });
 });

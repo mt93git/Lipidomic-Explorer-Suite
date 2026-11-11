@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  analysisObjectPath, datasetPaths, defaultPolicy, isEligibleSigner, matchSamples, nexoDatasetLink, ownSamplesProblem,
+  datasetPaths, defaultPolicy, isEligibleSigner, matchSamples, nexoDatasetLink, ownSamplesProblem,
   policyProblem, releaseProgress, type LabPerson,
 } from "@/lib/release";
 
@@ -62,9 +62,6 @@ describe("where the files live", () => {
       analysis: `client-uuid/ORD048/datasets/${a}/analysis.xlsx`,
       companion: `client-uuid/ORD048/datasets/${c}/companion.xlsx`,
     });
-  });
-  it("names the analysis object in Team's bucket <project_id>/<sha256>", () => {
-    expect(analysisObjectPath("11111111-1111-4111-8111-111111111111", sha)).toBe(`11111111-1111-4111-8111-111111111111/${sha}`);
   });
   it("links Open in Nexo to <NEXT_PUBLIC_NEXO_URL>/?dataset=<id> only for lab staff, on a released, current dataset", () => {
     const id = "33333333-3333-4333-8333-333333333333";

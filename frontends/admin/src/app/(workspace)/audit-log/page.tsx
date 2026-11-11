@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { requireWorkspace } from "@/lib/session";
+import Link from "@/components/app-link";
 import { redirect } from "next/navigation";
 import { auditEntities, auditHref, parseAuditFilters } from "@/lib/audit";
 import { listAuditEvents } from "@/lib/data/audit";
@@ -13,6 +14,7 @@ type Params = Record<string, string | string[] | undefined>;
 // admin.audit_event, newest first, 50 per page: who changed what, in words, with the changed fields on demand.
 // Lab staff only (listAuditEvents asks for the staff workspace, like every staff screen). Filters live in the URL.
 export default async function AuditLogPage({ searchParams }: { searchParams: Promise<Params> }) {
+  await requireWorkspace("staff");
   const params = await searchParams;
   const filters = parseAuditFilters(params);
   // One spelling per view: ORD080 not ord080, no empty or invalid parameters.

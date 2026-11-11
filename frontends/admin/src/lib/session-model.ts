@@ -26,3 +26,14 @@ export function sessionFromUser(user: AuthUser): AppSession {
     role, view: staffRoles.includes(role) ? "staff" : "client", mock: false, clients, selectedClient: null,
   };
 }
+
+// Where a page for this audience sends a session that may not see it, or null when it may. Client users never reach
+// a lab screen (sent to Client home); lab staff have no client portal (sent to the pipeline); a client user with
+// several memberships chooses one first.
+export type Audience = "staff" | "client" | "all";
+export function workspaceRedirect(session: Pick<AppSession, "view" | "clients" | "selectedClient">, audience: Audience): string | null {
+  if (audience === "staff" && session.view !== "staff") return "/client/home";
+  if (audience === "client" && session.view === "staff") return "/pipeline";
+  if (session.view === "client" && session.clients.length > 1 && !session.selectedClient) return "/choose-client";
+  return null;
+}

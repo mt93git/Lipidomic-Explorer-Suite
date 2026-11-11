@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { SampleRegistryGrid } from "@/components/sample-registry-grid";
 import { getRegistryOrder, listRegistryOrders } from "@/lib/data/samples";
 import { formatLabInstant } from "@/lib/lab-time";
 import { stages } from "@/lib/models";
-import { columns, conditionLabels, plural, type OrderSummary, type ShipmentRecord } from "@/lib/samples";
+import { columns, conditionLabels, plural, type OrderSummary, type RegistryDetail, type ShipmentRecord } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Sample registry" };
@@ -15,6 +15,13 @@ function shipmentLine(shipment: ShipmentRecord): string {
   if (shipment.boxCount !== null) parts.push(plural(shipment.boxCount, "box", "boxes"));
   if (shipment.condition) parts.push(conditionLabels[shipment.condition].toLowerCase());
   return parts.join(" · ");
+}
+
+// " · codes ORD042-S001 to ORD042-S004" for the samples just saved (the last `count` of the list, in order).
+function codeRange(samples: RegistryDetail["samples"], count: number): string {
+  const saved = samples.slice(-count);
+  if (!saved.length) return "";
+  return saved.length === 1 ? ` · code ${saved[0].code}` : ` · codes ${saved[0].code} to ${saved[saved.length - 1].code}`;
 }
 
 function OrderList({ orders, label }: { orders: OrderSummary[]; label: string }) {
@@ -38,7 +45,7 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
     <div className="page-heading">
       <div>
         <div className="eyebrow"><Link href="/pipeline">Lab work / Pipeline</Link> / Sample registry</div>
-        <h1>Sample registry</h1>
+        <h1>Sample registry{detail ? ` · ${detail.order.code}` : ""}</h1>
         <p>Register an order&apos;s samples with their Metadata columns. The lab assigns each sample a code; the order moves from Received to Registered.</p>
       </div>
       <div className="heading-actions">
@@ -53,9 +60,12 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
     </div>
 
     {code && !detail && <p className="notice" role="status">No order {code} was found. Choose one below.</p>}
-    {detail && received && detail.shipment && <p className="notice" role="status">Shipment recorded for {detail.order.code} · {shipmentLine(detail.shipment)}. Now register its samples.</p>}
-    {detail && Number.isInteger(savedCount) && savedCount > 0 && <p className="notice" role="status">
-      {plural(savedCount, "sample")} registered. {detail.order.code} is now {stages[detail.order.stage]} · <Link href={`/pipeline?q=${detail.order.code}`}>see it in the pipeline</Link> · <Link href={`/orders/${detail.order.code}`}>order detail</Link>.
+    {detail && received && detail.shipment && <p className="notice success" role="status">
+      <strong>Shipment recorded for {detail.order.code}</strong> · {shipmentLine(detail.shipment)}{detail.shipment.receivedAt ? ` · ${formatLabInstant(detail.shipment.receivedAt)}` : ""}{detail.shipment.receivedBy ? ` · ${detail.shipment.receivedBy}` : ""}. Now paste the Metadata sheet.
+    </p>}
+    {detail && Number.isInteger(savedCount) && savedCount > 0 && <p className="notice success" role="status">
+      <strong>{plural(savedCount, "sample")} registered.</strong> {detail.order.code} is now {stages[detail.order.stage]}{codeRange(detail.samples, savedCount)} · <Link href={`/pipeline?q=${detail.order.code}`}>see it in the pipeline</Link>.
+      <Link className="button" href={`/orders/${detail.order.code}`}>Order detail →</Link>
     </p>}
 
     {!detail && <section className="panel" aria-labelledby="choose-title">
@@ -70,18 +80,14 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
     {detail && detail.order.stage === 0 && <p className="notice">{detail.order.code} has not arrived yet. <Link href={`/receive-shipment?order=${detail.order.code}`}>Receive its shipment</Link> first; the registry opens after that.</p>}
 
     {detail && detail.order.stage !== 0 && <>
-      <div className="facts-strip">
-        <section className="panel" aria-labelledby="facts-title">
-          <div className="eyebrow">At a glance</div>
-          <h2 id="facts-title">{detail.order.code}</h2>
-          <dl className="facts">
-            {[["Client", detail.order.clientName], ["Description", detail.order.description], ["Stage", stages[detail.order.stage]], ["Expected", detail.order.expectedSamples === null ? "Not stated" : plural(detail.order.expectedSamples, "sample")], ["Registered", plural(detail.samples.length, "sample")], ["Material", detail.order.sampleType ?? "Not stated"]]
-              .map(([label, value]) => <div className="fact-row" key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-          </dl>
-        </section>
-        <section className="panel" aria-labelledby="shipment-title">
-          <div className="eyebrow">Arrival</div>
-          <h2 id="shipment-title">Shipment</h2>
+      <section className="panel facts-strip" aria-label="Order facts">
+        <p className="facts-line"><strong>{detail.order.clientName}</strong> · {detail.order.description} · {detail.order.sampleType ?? "Material not stated"}</p>
+        <dl className="facts-inline">
+          {[["Stage", stages[detail.order.stage]], ["Expected", detail.order.expectedSamples === null ? "Not stated" : plural(detail.order.expectedSamples, "sample")], ["Registered", String(detail.samples.length)]]
+            .map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>
+        <details className="facts-more">
+          <summary>Shipment details</summary>
           {detail.shipment
             ? <dl className="facts">
               {[["Carrier", detail.shipment.carrier ?? "Not recorded"], ["Tracking", detail.shipment.trackingNumber ?? "None"], ["Condition", detail.shipment.condition ? conditionLabels[detail.shipment.condition] : "Not recorded"],
@@ -90,19 +96,19 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
                 .map(([label, value]) => <div className="fact-row" key={label}><dt>{label}</dt><dd className={label === "Tracking" ? "mono" : undefined}>{value}</dd></div>)}
             </dl>
             : <p className="muted">No shipment record for this order.</p>}
-        </section>
-      </div>
+        </details>
+      </section>
       {detail.samples.length > 0 && <section className="panel" aria-labelledby="registered-title">
         <div className="panel-heading"><div><div className="eyebrow">Registered</div><h2 id="registered-title">{plural(detail.samples.length, "sample")}</h2></div><span className="pill ok">Codes assigned</span></div>
-        <div className="grid-scroll" role="region" aria-label="Registered sample list" tabIndex={0}>
+        <div className="grid-frame"><div className="grid-scroll" role="region" aria-label="Registered sample list" tabIndex={0}>
           <table className="registry-table registered" aria-label="Registered samples">
-            <thead><tr><th scope="col">Code</th>{columns.map(column => <th key={column.field} scope="col">{column.label}</th>)}</tr></thead>
+            <thead><tr><th scope="col" className="pinned">Code</th>{columns.map(column => <th key={column.field} scope="col">{column.label}</th>)}</tr></thead>
             <tbody>{detail.samples.map(sample => <tr key={sample.id}>
-              <td className="mono code-cell">{sample.code}</td>
+              <td className="mono code-cell pinned"><Link href={`/samples/${sample.code}`}>{sample.code}</Link></td>
               {columns.map(column => <td key={column.field} className={column.field === "full_name" || column.field === "client_sample_id" ? "mono" : undefined}>{sample[column.field] ?? ""}</td>)}
             </tr>)}</tbody>
           </table>
-        </div>
+        </div><p className="grid-hint">↔ {columns.length} more columns · Code stays pinned</p></div>
       </section>}
       <section className="panel" aria-labelledby="register-title">
         <div className="eyebrow">{detail.samples.length ? "Add more" : "Register"}</div>

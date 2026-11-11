@@ -41,6 +41,24 @@ export function releaseProgress(policy: ReleasePolicy, signatures: SignatureLike
   return { counted, required, missing: Math.max(0, required - counted), met: counted >= required };
 }
 
+// The one thing a person can do on a dataset version, for the page's "Your turn" card: sign, release, or nothing
+// with the reason. Built from the same rules the server actions enforce; the actions stay the authority.
+export type PersonTurn = { action: "sign" | "release"; reason: string } | { action: "none"; reason: string };
+export function personTurn({ status, policy, signatures, people, person }:
+  { status: DatasetStatus; policy: ReleasePolicy; signatures: SignatureLike[]; people: LabPerson[]; person: LabPerson | null | undefined }): PersonTurn {
+  if (status === "released") return { action: "none", reason: "Released. Nothing left to sign; use Withdraw only if this version must be pulled." };
+  if (status === "superseded") return { action: "none", reason: "Superseded by a newer version. Nothing left to sign or release." };
+  if (status === "withdrawn") return { action: "none", reason: "Withdrawn. Nothing left to sign or release." };
+  const progress = releaseProgress(policy, signatures, people);
+  if (!isEligibleSigner(policy, person)) return { action: "none", reason: progress.met ? "Only an eligible signer may release." : "You are not an eligible signer under the current policy." };
+  if (progress.met) return { action: "release", reason: `The policy count is met (${progress.counted} of ${progress.required}).` };
+  if (signatures.some(signature => signature.userId === person?.userId)) {
+    const waiting = progress.missing === 1 ? (progress.required === 2 ? "a second signer" : "one more signer") : `${progress.missing} more signers`;
+    return { action: "none", reason: `You already signed. Waiting for ${waiting}.` };
+  }
+  return { action: "sign", reason: "You are eligible under the current policy. Signing freezes the three digests of the manifest." };
+}
+
 // admin.set_release_policy's checks, worded for the Owner; null when the policy can be saved.
 export function policyProblem(eligible: string[], required: number, staff: LabPerson[]): string | null {
   if (!Number.isInteger(required) || required < 2) return "A release needs at least 2 signatures.";
@@ -61,8 +79,6 @@ export function datasetPaths(clientId: string, orderCode: string, digests: Datas
   return { full: `${root}/${digests.full}/dataset-v1.xlsx`, analysis: `${root}/${digests.analysis}/analysis.xlsx`, companion: `${root}/${digests.companion}/companion.xlsx` };
 }
 
-// Team's bucket case-files: <project_id>/<sha256>, Team's own rule, checked again by admin.release_dataset.
-export const analysisObjectPath = (projectId: string, analysisSha256: string) => `${projectId}/${analysisSha256}`;
 
 // Who sees Open in Nexo (docs/integration/admin-identity.md): lab staff always; client members only when
 // NEXT_PUBLIC_NEXO_CLIENT_ACCESS=1. It stays unset in production until Nexo's own store (checkpoints, project library)
@@ -80,10 +96,6 @@ export function nexoDatasetLink(base: string | undefined, dataset: NexoTarget | 
   const root = (base ?? "").trim().replace(/\/+$/, "");
   if (!root || !allowed || !dataset || dataset.status !== "released" || dataset.archivedAt) return null;
   return `${root}/?dataset=${encodeURIComponent(dataset.id)}`;
-}
-export function teamLink(base: string | undefined): string | null {
-  const root = (base ?? "").trim().replace(/\/+$/, "");
-  return root ? `${root}/` : null;
 }
 
 // ---------------------------------------------------------------- SCIEX sample names → the registry

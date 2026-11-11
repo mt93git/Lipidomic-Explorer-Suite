@@ -7,7 +7,7 @@ import { demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
 import { demoLabStaff, demoPolicy, type DemoDataset } from "../release-demo";
 import { DataError } from "../samples";
-import type { DemoState } from "../samples-demo";
+import { applyDemoState, type DemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState } from "./demo-store";
@@ -88,7 +88,7 @@ async function livePage(filters: AuditFilters, session: { userId: string; displa
 
 // The names the shown events need: every lab person (archived too: a signer who left still signed), and the
 // datasets and orders they mention.
-async function liveContext(admin: Db, events: AuditEvent[], session: { userId: string; displayName: string }): Promise<AuditContext> {
+export async function liveContext(admin: Db, events: AuditEvent[], session: { userId: string; displayName: string }): Promise<AuditContext> {
   const datasetIds = unique(events.flatMap(event => [event.entity === "dataset" ? event.entityId : null, event.entity === "signature" ? text(event.after?.dataset_id) : null]));
   const [staff, datasets] = await Promise.all([
     read<{ user_id: string; display_name: string | null }[] | null>(admin.from("lab_staff").select("user_id, display_name")),
@@ -111,7 +111,7 @@ async function liveContext(admin: Db, events: AuditEvent[], session: { userId: s
 
 // Demo records keep people by name and orders by code; the context maps codes to themselves.
 type Draft = Omit<AuditEvent, "id">;
-function demoEvents(state: DemoState): { events: AuditEvent[]; ctx: AuditContext } {
+export function demoEvents(state: DemoState): { events: AuditEvent[]; ctx: AuditContext } {
   const people: Record<string, string> = Object.fromEntries(demoLabStaff.map(person => [person.userId, person.name]));
   const actor = (name: string | null | undefined) => {
     if (!name) return null;
@@ -128,6 +128,7 @@ function demoEvents(state: DemoState): { events: AuditEvent[]; ctx: AuditContext
   const policyRow = (p: typeof policy) => ({ eligible_signers: p.eligibleSigners, required_signatures: p.requiredSignatures, set_by: p.setBy });
   add(policy.setAt ?? "2026-11-01T00:00:00Z", policy.setBy, "release_policy", "demo-policy-1", policyRow(policy));
   if (state.releasePolicy) add(state.releasePolicy.setAt ?? new Date().toISOString(), state.releasePolicy.setBy, "release_policy", "demo-policy-2", policyRow(state.releasePolicy));
+  for (const o of state.orders ?? []) add(o.history[0]?.date ?? new Date().toISOString(), actor(o.history[0]?.actor), "order", o.code, { code: o.code, title: o.description, stage: "request", client_id: o.clientId });
   for (const s of state.shipments) add(s.receivedAt, actor(s.receivedBy), "shipment", s.id, { order_id: s.orderCode, carrier: s.carrier, tracking_number: s.trackingNumber, condition: s.condition, box_count: s.boxCount, notes: s.notes });
   for (const s of state.samples) add(s.createdAt, actor(s.registeredBy), "sample", s.id, { order_id: s.orderCode, sample_code: s.code, full_name: s.full_name });
   for (const r of state.results ?? []) add(r.acceptedAt, actor(r.acceptedBy), "result_file", r.id, { order_id: r.orderCode, status: "accepted", sha256: r.sha256 });
@@ -147,7 +148,7 @@ function demoEvents(state: DemoState): { events: AuditEvent[]; ctx: AuditContext
     .map((draft, index) => ({ draft, index }))
     .sort((a, b) => a.draft.createdAt.localeCompare(b.draft.createdAt) || a.index - b.index)
     .map(({ draft }, index) => ({ ...draft, id: index + 1 }));
-  const codes = demoOrders.map(order => order.code);
+  const codes = applyDemoState(demoOrders, state).map(order => order.code);
   return {
     events,
     ctx: { people, orders: Object.fromEntries(codes.map(code => [code, code])), datasets: Object.fromEntries((state.datasets ?? []).map(d => [d.id, { orderId: d.orderCode, version: d.version }])) },
@@ -160,7 +161,7 @@ async function demoPage(filters: AuditFilters): Promise<AuditPage> {
   const ofOrder = (event: AuditEvent) => event.entity === "order" ? event.entityId === code
     : event.entity === "signature" ? ctx.datasets[text(event.after?.dataset_id) ?? ""]?.orderId === code
       : ORDER_CHILDREN.includes(event.entity) && event.after?.order_id === code;
-  const order = code ? { code, found: demoOrders.some(item => item.code === code) } : null;
+  const order = code ? { code, found: Object.hasOwn(ctx.orders, code) } : null;
   const matching = events
     .filter(event => (!filters.entity || event.entity === filters.entity) && (!filters.before || event.id < filters.before) && (!code || ofOrder(event)))
     .reverse();

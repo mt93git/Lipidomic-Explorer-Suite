@@ -20,6 +20,8 @@
   --client-meridian: #a66a4b;
   --client-harbor: #3f7d86;
   --client-juniper: #7d6a9e;
+  --text-xs: 11px;
+  --text-sm: 12px;
   --radius: 8px;
   --shadow: 0 2px 5px rgb(22 34 48 / 4%);
 }

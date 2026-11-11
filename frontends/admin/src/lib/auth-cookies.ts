@@ -1,5 +1,8 @@
+import { BASE_PATH } from "./base-path";
+
+// Scoped to the base path, so /admin and /admin-staging sessions on one host never mix.
 export const appCookieScope = {
-  path: "/admin",
+  path: BASE_PATH,
   httpOnly: true,
   sameSite: "lax" as const,
   secure: process.env.NODE_ENV === "production",

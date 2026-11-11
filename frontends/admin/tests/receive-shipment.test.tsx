@@ -45,4 +45,22 @@ describe("receive shipment form", () => {
     expect(screen.getByLabelText("Tracking number")).toHaveValue("7489 0000 0001");
     expect(receiveShipmentAction).toHaveBeenCalledTimes(1);
   });
+  it("sums the field errors up in an alert that links to each field, and moves the focus to the first invalid control", async () => {
+    vi.mocked(receiveShipmentAction).mockResolvedValue({
+      errors: { carrier: "Enter the carrier", condition: "Choose the condition on arrival", boxCount: "Enter the number of boxes, 0 or more" },
+      values: { orderId: "ORD042", carrier: "", trackingNumber: "", condition: "", boxCount: "-2", notes: "" },
+    });
+    render(<ReceiveShipmentForm orders={orders} selected="ORD042" />);
+    // The browser's own checks pass (jsdom validates on submit); the server still refuses, as it does with a stale page.
+    fireEvent.change(screen.getByLabelText("Carrier"), { target: { value: "FedEx" } });
+    fireEvent.click(screen.getByRole("radio", { name: /Intact/ }));
+    fireEvent.change(screen.getByLabelText("Boxes"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record arrival" }));
+    const summary = await screen.findByRole("alert");
+    expect(summary).toHaveTextContent("3 fields need attention");
+    expect(within(summary).getAllByRole("link").map(link => [link.textContent, link.getAttribute("href")])).toEqual([["Carrier", "#ship-carrier"], ["Condition on arrival", "#ship-condition"], ["Boxes", "#ship-boxCount"]]);
+    expect(screen.getByRole("group", { name: "Condition on arrival" })).toHaveAttribute("id", "ship-condition");
+    expect(screen.getByLabelText("Carrier")).toHaveFocus();
+    expect(screen.getByText("Enter the number of boxes, 0 or more")).toHaveClass("field-error");
+  });
 });

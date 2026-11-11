@@ -49,6 +49,40 @@ Admin shows **Open in Nexo** to client members only when `NEXT_PUBLIC_NEXO_CLIEN
   nginx password stays in front of `/nexo`. Scoping the store by `openedBy.clientId` is the next identity step.
 - Collaboration (presence, comments, versions): the collab session's work; it consumes this token.
 
+## Nexo's own entry (2026-11-10, ENTRY-3)
+
+Nexo is a separate app with its own sign-in page on Admin's accounts: one password for both, and signed in to Admin
+means signed in to Nexo (the same session cookie, scoped to Admin's base path: `/admin`, staging `/admin-staging`).
+All on the same origin; every answer `Cache-Control: no-store`; 403 `{"error":"cross_origin"}` unless same-origin (the
+session-token rule above), decided before anything else.
+
+- `POST <base path>/api/sign-in`, JSON `{email, password, code?}`: the sign-in form's own `authenticate` and cookie
+  (the client preference cookie is cleared, as the form does). `200 {"ok":true}`; `401 {"error":"invalid_credentials"}`;
+  `401 {"error":"code_required"}` (two-step on, no code); `401 {"error":"invalid_code"}` (refused or not six digits);
+  `400 {"error":"missing_fields"}` (no email or password, a non-string field, not a JSON object);
+  `503 {"error":"unavailable"}` (GoTrue down or rate-limited, and always in the demo). The password and code go to
+  GoTrue only: never logged, never echoed.
+- `POST <base path>/api/sign-out`: `204`, ending the session exactly as Admin's Sign out (GoTrue local scope, client
+  and view preferences cleared); `503 {"error":"unavailable"}` when GoTrue could not end it.
+- `next=` on `<base path>/sign-in`, `/forgot-password` and `/invite/<token>`: a same-origin Nexo path,
+  `/nexo/<path>` or `/nexo-staging/<path>` (with its query and fragment), exactly as the URL parser keeps it; nothing
+  else new is accepted. Sign-in returns there with a full navigation; Forgot password carries it back to sign in (the
+  emailed reset link cannot carry it, so after a reset the person signs in from Admin's page); the invitation carries it
+  through Sign in to accept (`/invite/<token>?next=<encoded Nexo path>`) and continues there once accepted.
+
+Database (`0024_nexo_members_prepare.sql`, not applied anywhere yet):
+
+- `admin.client.members_prepare boolean NOT NULL DEFAULT false`: the client's members may prepare datasets and upload
+  their own Excel in Nexo. Lab Owner or Admin, through `admin.set_client_members_prepare(uuid, boolean)`, in the
+  client's settings next to the Nexo switch; turned on only while `nexo_access` is on; client members never change it.
+- `admin.nexo_datasets_for_caller() → TABLE (dataset_id uuid, order_code text, version int, client_id uuid,
+  client_name text, released_at timestamptz, members_prepare boolean)`: lab staff get every released dataset of an
+  unarchived order; a client member those of their clients with `nexo_access` on; no e-mail. Grants as
+  `nexo_dataset_for_caller` (`authenticated` only).
+- `nexo_dataset_for_caller` and `nexo_caller` gain a last column `members_prepare boolean`, same rows and grants.
+- `members_prepare` in every row is the row's client's `nexo_access AND members_prepare`. `nexo_caller`'s staff row has
+  no client, so `NULL` there: lab staff are not gated by it.
+
 ## Staging run (2026-11-08)
 
 0010 applied to Admin staging; `staging.integration.mjs` 57/57 (7 caller checks with real GoTrue tokens). Nexo staging

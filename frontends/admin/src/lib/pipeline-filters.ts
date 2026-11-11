@@ -41,8 +41,11 @@ export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 export function stageSlug(index: number): string {
   return stages[index].toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
+// Stage 8 read "QC checked" until QC review (0027) named it "QC reviewed"; links saved with the old slug still work.
+const legacySlugs: Record<string, string> = { "qc-checked": "qc-reviewed" };
 export function stageFromSlug(slug: string): number | null {
-  const index = stages.findIndex((_, i) => stageSlug(i) === slug);
+  const current = legacySlugs[slug] ?? slug;
+  const index = stages.findIndex((_, i) => stageSlug(i) === current);
   return index === -1 ? null : index;
 }
 

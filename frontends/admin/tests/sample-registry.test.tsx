@@ -50,6 +50,11 @@ describe("sample registry grid", () => {
     expect(screen.getByLabelText("Row 2 FullName")).not.toHaveAttribute("aria-invalid", "true");
     expect(screen.getByRole("button", { name: "Register 3 samples" })).toBeEnabled();
   });
+  it("tells a narrow screen how many columns follow the pinned FullName", () => {
+    render(<SampleRegistryGrid order={order} shipmentId="ship-1" existingNames={[]} />);
+    pasteRows();
+    expect(screen.getByText(/8 more columns · FullName stays pinned/)).toBeInTheDocument();
+  });
   it("adds an empty row by hand, removes a row, and renumbers", () => {
     render(<SampleRegistryGrid order={order} shipmentId="ship-1" existingNames={[]} />);
     pasteRows();

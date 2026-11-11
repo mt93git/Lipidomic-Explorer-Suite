@@ -1,0 +1,39 @@
+.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
+.form select, .form textarea, .link input { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
+.link { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-top: 10px; }
+.link label { grid-column: 1 / -1; }
+.link input { font-family: var(--font-mono), monospace; font-size: var(--text-xs); }
+.link :global(.button) { margin-left: 0; }
+.scroll { position: relative; max-width: 100%; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm); }
+.table th { color: var(--muted); font-weight: 700; }
+.table th, .table td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
+.table td:first-child { overflow-wrap: anywhere; }
+.email { display: block; color: var(--muted); font-family: var(--font-mono), monospace; font-size: var(--text-xs); overflow-wrap: anywhere; }
+.change summary { cursor: pointer; color: var(--blue); font-weight: 700; }
+.change form { margin-top: 10px; display: grid; gap: 8px; min-width: 220px; }
+.change select, .change input { width: 100%; border: 1px solid #bfcbd5; padding: 8px 10px; border-radius: 5px; background: white; font: inherit; }
+.section { margin-top: 22px; }
+@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+/* F3: access requests. The row under review and its panel share a tint, like the proposal's drawing. */
+.reviewing > td { background: var(--tint); }
+/* position: relative keeps the button's .sr-only name inside the table's sideways scroll on a phone (as .nav-link). */
+.toggle { position: relative; border: 0; background: none; padding: 0; color: var(--blue); font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.review { padding: 18px; border: 1px solid #a8c2d7; border-radius: 6px; background: white; }
+.review :global(.radio-group) { margin-bottom: 4px; }
+.review :global(.radio) small { display: block; margin-top: 2px; }
+.reviewFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 14px; }
+.reviewFields :global(.field) { margin: 12px 0; }
+.review select, .review input:not([type="radio"]), .review textarea { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
+.decline { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sectionFirst { margin-bottom: 22px; }
+/* Copy message after a decline; on a phone the link takes its own row above its two buttons. */
+.copy { margin-top: 10px; }
+@media (max-width: 760px) { .link { grid-template-columns: 1fr 1fr; } .link input { grid-column: 1 / -1; } }
+/* Account column: the state, when the last activation email went, and the send button with its result. */
+.account { display: grid; gap: 6px; justify-items: start; min-width: 190px; }
+.account small { font-size: var(--text-xs); }
+.activate { display: grid; gap: 8px; width: 100%; }
+.activate select { width: 100%; border: 1px solid #bfcbd5; padding: 8px 10px; border-radius: 5px; background: white; font: inherit; }
+.activate :global(.notice) { margin: 0; font-size: var(--text-xs); }
+.activateButton { position: relative; margin-left: 0; white-space: nowrap; }
