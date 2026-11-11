@@ -99,24 +99,25 @@ Checked today by the person running the release; facts only.
 | Item | Status |
 |---|---|
 | `test_api_dataset_http.R` fails under CPU load ("written > 0 is not TRUE") and passes alone | Known test flake, base tree too; not a product fault |
-| Saved versions also appear as checkpoints on Start | Known, not changed in Phase 1B: Start's checkpoint list includes the checkpoints that versions point at |
+| Saved versions also appeared as checkpoints on Start | Fixed (FIX-PROD-G): a record created by a collab save is marked `version` and Start leaves it out (`test_api_storage.R`, `ui/entry/StartScreen.test.tsx`, `test_nexo_entry_start_check.cjs`). Versions saved before the fix carry no mark and still show |
 | Sharing with a second person was not exercised in production | Covered on staging by the golden journey with synthetic people; do it on production with the first real share |
-| Backup is not taken with saves paused | Plan section 6 asks for a loopback pause route so version rows and checkpoint files always agree; the sidecar has none. `backup.mjs` copies SQLite safely (WAL) and then the store; a save during that copy can leave a row whose checkpoint file is missing from the copy. Take backups at a quiet hour until this exists |
-| No scheduled backup in the repository | The repo has `backup.mjs` (backup, restore, prune 14) but no timer unit. Production's schedule, if any, lives on the server |
+| Backup is not taken with saves paused | Plan section 6 asks for a loopback pause route so version rows and checkpoint files always agree; the sidecar has none. `backup.mjs` copies SQLite safely (WAL) and then the store; a save during that copy can leave a row whose checkpoint file is missing from the copy. Backups run at a quiet hour (03:40, see the next row) until this exists |
+| Scheduled backup | Fixed: backups now run daily. `OS/Linux/nexo-collab-backup.timer` (03:40) starts `nexo-collab-backup.service` (`backup.mjs backup`, then `prune <backup-dir> 14`); `deploy-nexo.sh` installs and enables both with `NEXO_COLLAB=1`. A restore drill was run on 2026-11-11: 7 projects, 7 documents and 7 versions restored |
 | No restore-drill write-up | The plan put the drill in `frontends/nexo-collab/README.md`; that file does not exist. Section 6 below is the short version |
-| Deploy kit still assumes Team and a site password | `OS/Linux/deploy-nexo.sh` ends by requiring production Team to answer 200, and requires 401 without credentials on `/nexo/` and the API health route; the nginx snippet says no site password is needed. Each check stops the deploy if production has no Team process or no site password; update the script before the next deploy |
-| The deploy script's `/collab` check does not match the snippet | The script looks for `location /collab/ {`; the snippet (on purpose, see its comment) has `location /collab {`. As written, `NEXO_COLLAB=1` stops with "missing the /collab/ WebSocket upgrade block". Align the check with the snippet |
-| The deploy script does not restart the sidecar | With `NEXO_COLLAB=1` it copies the unit file only; restart the sidecar by hand after a deploy |
+| Deploy kit assumed Team and a site password | Fixed: `OS/Linux/deploy-nexo.sh` no longer checks Team. Through nginx, without an Admin session, it requires `/nexo/` 200, `/api/v1/health` 404 (blocked publicly) and `POST /api/v1/sessions` 401 (`OS/Linux/test-deploy-auth-check.sh`) |
+| The deploy script's `/collab` check did not match the snippet | Fixed: the script now looks for `location /collab {`, as the snippet ships it; `location /collab/ {` fails the check (`OS/Linux/test-deploy-auth-check.sh`) |
+| The deploy script did not restart the sidecar | Fixed: with `NEXO_COLLAB=1` it restarts the sidecar once the API is healthy. Units with placeholders (sidecar, backup) are copied only when none is installed, and the deploy stops while an installed unit still holds a placeholder |
 | Phase 3 as cut: no commit log, no crash re-drive | By the plan's cut, a change pending when the sidecar restarts is refused with "please redo"; retries rely on R's intent ids |
 | Plan section 9 single-user bugs B1–B7 | All seven fixed, each with a test: B1 `test_api_revision.R`, B2 `test_api_session.R` and `test_api_unknown_session.R`, B3 `test_api_collab_auth.R`, B4 `ui/sessionRecovery.test.ts`, B5 `test_api_storage.R`, B6 `test_api_pool.R`, B7 `api/open.test.ts` (Retry-After, 180 s deadline); nothing open |
 | Not built on purpose | Fork / "Save as" (D3), votes (D5) |
 
 ## 6. Rollback and operations
 
-The deploy kit is in `OS/Linux/`: `deploy-nexo.sh` (builds the client, installs the API unit, and with `NEXO_COLLAB=1`
-the sidecar unit; checks health and the nginx `/collab` WebSocket block), `lipidomic-api.service`,
-`nexo-collab.service`, `nexo-collab.env.example` and `nginx-nexo-locations.conf`. Secrets live only in the units'
-environment files (mode 600) on the server, never in git. The site-root and `/team` redirects are in the server's nginx
+The deploy kit is not part of this pull request; it lives on the Nexo deploy branch, in `OS/Linux/`: `deploy-nexo.sh` (run from the deploy checkout with `NEXO_RSCRIPT` set; builds the
+client, installs the API unit, and with `NEXO_COLLAB=1` the sidecar and backup units, restarts the sidecar; checks
+health, the nginx `/collab` WebSocket block and the public statuses), `lipidomic-api.service`, `nexo-collab.service`,
+`nexo-collab-backup.service`, `nexo-collab-backup.timer`, `nexo-collab.env.example` and `nginx-nexo-locations.conf`.
+Secrets live only in the units' environment files (mode 600) on the server, never in git. The site-root and `/team` redirects are in the server's nginx
 config, not in the snippet.
 
 **Backup the sidecar.** `frontends/nexo-collab/scripts/backup.mjs` (tested by `backup.test.mjs`):
@@ -138,7 +139,7 @@ node <server-home>/<repo>/frontends/nexo-collab/scripts/backup.mjs prune <backup
 4. Move the live `collab.sqlite` and store aside, put the scratch copies in their place, start the API, then the sidecar.
 
 **Roll back the code.** Check out the last good commit in the deploy checkout and run `deploy-nexo.sh` again (with
-`NEXO_COLLAB=1`, once the two deploy-script items of section 5 are fixed), then restart the sidecar. Rolling back the sidecar's SQLite schema means restoring a backup, never
+`NEXO_COLLAB=1`; it restarts the sidecar). Rolling back the sidecar's SQLite schema means restoring a backup, never
 editing the file by hand. **Turn collaboration off** without a rollback: build the client without `VITE_COLLAB_URL`;
 Nexo then runs single-user, as before Phase 1B (`test_nexo_collab_flagoff.cjs`); shared boards and their versions stay
 in the sidecar's database until it is turned on again. **Bring Team back** (not planned): remove the two

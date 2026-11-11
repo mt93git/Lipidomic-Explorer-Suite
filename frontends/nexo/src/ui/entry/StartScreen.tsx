@@ -31,7 +31,8 @@ const s = startStrings;
 export interface StartData { projects: ProjectRow[] | null; datasets: ReleasedDataset[] | null; checkpoints: Checkpoint[] | null }
 export async function loadStart(deps: { listProjects: () => Promise<ProjectRow[] | null>; listDatasets: () => Promise<ReleasedDataset[]>; getCheckpoints: () => Promise<Checkpoint[]> }): Promise<StartData> {
   const [projects, datasets, checkpoints] = await Promise.all([deps.listProjects().catch(() => null), deps.listDatasets().catch(() => null), deps.getCheckpoints().catch(() => null)]);
-  return { projects, datasets, checkpoints };
+  // A project's saved versions belong in its Version history, not among the loose checkpoints (FIX-PROD-G).
+  return { projects, datasets, checkpoints: checkpoints && checkpoints.filter(c => !c.version) };
 }
 export interface ProjectItem { projectId: string; name: string; client?: string; clientId?: string; by: string; createdAt: string; updatedAt: string; online: string[] }
 export interface ReleasedItem { adminDatasetId: string; name: string; client: string; releasedAt: string; canPrepare: boolean }

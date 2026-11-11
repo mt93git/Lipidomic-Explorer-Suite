@@ -138,6 +138,19 @@ async function browserTests(pw, name, base) {
       assert.deepEqual(errors, []);
       await context.close();
     }
+    { // FIX-PROD-G: a project's saved versions stay in its Version history, not under Your checkpoints.
+      const rec = (id, name, extra = {}) => ({ record: { id, name, sizeBytes: 1, sha256: id, createdAt: '2026-11-02T10:00:00Z', source: 'store', ...extra }, state: {} });
+      const saved = [rec('synthetic-own', 'Synthetic own save'), rec('synthetic-v1', 'v1 synthetic', { version: true }), rec('synthetic-before', 'before-restore', { version: true })];
+      const { context, page, errors } = await open(browser, base, { 'nexo-mock-entry': 'checkpoints', 'nexo-mock-checkpoints-v1': JSON.stringify(saved) });
+      const listed = page.getByRole('region', { name: 'Your checkpoints' });
+      await listed.getByText('Synthetic own save', { exact: true }).waitFor();
+      const names = await listed.locator('.start-name').allTextContents();
+      assert.ok(!names.includes('v1 synthetic') && !names.includes('before-restore'), `versions listed as checkpoints: ${names}`);
+      await listed.screenshot({ path: path.join(shots, `${name}-start-no-versions.png`) });
+      console.log(`PASS FIX-PROD-G ${name} start-leaves-out-versions`);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
   } finally { await browser.close(); }
 }
 (async () => {

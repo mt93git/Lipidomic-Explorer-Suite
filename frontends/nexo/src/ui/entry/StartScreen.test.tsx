@@ -104,6 +104,13 @@ it('loads checkpoints when projects are available', async () => {
   expect(await loadStart({ listProjects: async () => projects, listDatasets: async () => datasets, getCheckpoints })).toEqual({ projects, datasets, checkpoints: [] });
   expect(getCheckpoints).toHaveBeenCalledOnce();
 });
+it('Start leaves out project versions and keeps every other checkpoint', async () => {
+  const cp = (id: string, name: string, source: 'store' | 'folder' = 'store') => ({ id, name, sizeBytes: 1, sha256: id, createdAt: '2026-11-08T10:00:00Z', source });
+  const others = [cp('imported', 'Synthetic import'), cp('team', 'Synthetic Team', 'folder'), cp('auto', 'autosave'), cp('saved', 'Synthetic save')];
+  const versions = [{ ...cp('v1', 'v1 synthetic'), version: true }, { ...cp('before', 'before-restore'), version: true }];
+  const data = await loadStart({ listProjects: async () => [], listDatasets: async () => [], getCheckpoints: async () => [...versions, ...others] });
+  expect(data.checkpoints).toEqual(others);
+});
 it('checkpoint failure leaves projects and datasets available', async () => {
   expect(await loadStart({ listProjects: async () => projects, listDatasets: async () => datasets, getCheckpoints: async () => { throw new Error('503'); } })).toEqual({ projects, datasets, checkpoints: null });
 });

@@ -43,7 +43,7 @@ export interface CardSchema { controls: SchemaControl[]; actions: string[]; acti
   /** Pilot F1: this card's group colours follow Team's session palette (frontends/nexo-api/palette.R). */
   sessionPalette?: boolean }
 
-export interface Checkpoint { near_limit?: boolean; id:string; name:string; sizeBytes:number; sha256:string; createdAt:string; source: 'store'|'folder' }
+export interface Checkpoint { near_limit?: boolean; id:string; name:string; sizeBytes:number; sha256:string; createdAt:string; source: 'store'|'folder'; /** A live project's saved version (its Version history), not a loose checkpoint. */ version?: true }
 
 export interface ViolinPolicy { allowed:boolean; reason?:string }
 export interface ViolinRequest { mode:'describe'|'apply'|'verify'|'check'; settings?:import('../statistics/settings').Settings; dataFingerprint?:string }

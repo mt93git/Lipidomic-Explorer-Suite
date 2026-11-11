@@ -126,3 +126,19 @@ local({
   stopifnot(sum(vapply(records, function(x) is.null(x$lineage), logical(1))) == 5L)
   cat("PASS autosaves without lineage retain per-workspace limit\n")
 })
+# FIX-PROD-G: a version (a save the collab sidecar made) is marked so Start can leave it out; marking an existing
+# checkpoint as collab (same bytes) keeps it a plain checkpoint.
+local({
+  root <- tempfile(); on.exit(unlink(root, recursive = TRUE))
+  store <- api_store_files(root)
+  fixture <- "tests/dual-ui/fixtures/classic-seed7-synthetic.zip"
+  version <- store$save("versions", fixture, "v1 synthetic", collab = TRUE)
+  stopifnot(isTRUE(version$version), isTRUE(api_store_files(root)$list("versions")[[1L]]$version))
+  cat("PASS a collab save creates a version record\n")
+  own <- store$save("own", fixture, "synthetic save")
+  marked <- store$save("own", fixture, "v1 synthetic", collab = TRUE)
+  stopifnot(isTRUE(marked$collab), is.null(marked$version), is.null(api_store_files(root)$list("own")[[1L]]$version))
+  cat("PASS a collab save of existing bytes does not make it a version\n")
+  stopifnot(isTRUE(api_checkpoint_record(version)$version), !"version" %in% names(api_checkpoint_record(own)))
+  cat("PASS the checkpoint record passes version through\n")
+})

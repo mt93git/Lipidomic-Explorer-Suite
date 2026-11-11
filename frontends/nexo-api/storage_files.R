@@ -96,7 +96,9 @@ api_store_files <- function(root) {
         size_bytes = unname(file.info(zip)$size),
         created_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC"))
       if (!is.null(lineage)) x$lineage <- lineage
-      if (isTRUE(collab)) x$collab <- TRUE
+      # A record created by a collab save is a version of a live project (its Version history); the dedupe path above
+      # only marks an existing checkpoint collab and never makes it a version.
+      if (isTRUE(collab)) { x$collab <- TRUE; x$version <- TRUE }
       # Metadata is the commit marker and is always published last.
       api_storage_atomic(file.path(dir, paste0(id, ".json")), function(tmp)
         jsonlite::write_json(x, tmp, auto_unbox = TRUE, digits = NA))

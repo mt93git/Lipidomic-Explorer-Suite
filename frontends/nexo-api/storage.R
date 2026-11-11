@@ -23,8 +23,8 @@ api_scope_allow <- function(caller, workspace) {
     api_abort("api_forbidden_scope", "This session belongs to a workspace you cannot save into.")
   invisible(workspace)
 }
-api_checkpoint_record <- function(x, source = "store") list(id = x$id, name = x$name,
-  sizeBytes = x$size_bytes, sha256 = x$sha256, createdAt = x$created_at, source = source)
+api_checkpoint_record <- function(x, source = "store") c(list(id = x$id, name = x$name,
+  sizeBytes = x$size_bytes, sha256 = x$sha256, createdAt = x$created_at, source = source), if (isTRUE(x$version)) list(version = TRUE))
 # A member's records name their client.
 api_checkpoint_scoped_record <- function(x, workspace) {
   record <- api_checkpoint_record(x)
