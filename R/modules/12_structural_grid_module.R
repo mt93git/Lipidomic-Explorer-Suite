@@ -160,7 +160,7 @@ structural_grid_ui <- function(id) {
                 ),
                 card_body(
                   uiOutput(ns("de_not_run_banner_heatmap")),
-                  plotOutput(ns("heatmapPlot"), height = "600px"),
+                  structure_plot_output(ns("heatmapPlot"), height = "600px"),
                   uiOutput(ns("heatmap_stat_note"))
                 )
               ),
@@ -175,7 +175,7 @@ structural_grid_ui <- function(id) {
                 ),
                 card_body(
                   uiOutput(ns("de_not_run_banner_dotplot")),
-                  plotOutput(ns("dotplotPlot"), height = "600px"),
+                  structure_plot_output(ns("dotplotPlot"), height = "600px"),
                   uiOutput(ns("dotplot_stat_note"))
                 )
               )
@@ -227,7 +227,7 @@ structural_grid_ui <- function(id) {
                 ),
                 card_body(
                   uiOutput(ns("de_not_run_banner_merged")),
-                  plotOutput(ns("mergedPlot"), height = "600px"),
+                  structure_plot_output(ns("mergedPlot"), height = "600px"),
                   uiOutput(ns("merged_stat_note"))
                 )
               ),
@@ -242,7 +242,7 @@ structural_grid_ui <- function(id) {
                 ),
                 card_body(
                   uiOutput(ns("de_not_run_banner_diffall")),
-                  plotOutput(ns("diffAllPlot"), height = "600px"),
+                  structure_plot_output(ns("diffAllPlot"), height = "600px"),
                   uiOutput(ns("diffAll_stat_note"))
                 )
               )

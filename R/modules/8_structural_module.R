@@ -20,23 +20,104 @@ structure_team_style <- function(p) {
     if (inherits(current, "element_blank")) return(p)
     p + do.call(ggplot2::theme, stats::setNames(list(ggplot2::element_text(...)), element))
   }
-  tx <- STRUCTURE_TEAM_TEXT; fam <- "Arial"; sz <- 10   # default text: Arial 10
-  p <- p + ggplot2::theme(text = ggplot2::element_text(family = fam, size = sz, color = tx))
-  p <- restyle(p, "axis.text", family = fam, size = sz, color = tx, face = "plain")
-  p <- restyle(p, "axis.title", family = fam, size = sz, color = tx, face = "plain")
-  p <- restyle(p, "legend.text", family = fam, size = sz, color = tx)
-  p <- restyle(p, "legend.title", family = fam, size = sz, color = tx, face = "plain")
-  p <- restyle(p, "plot.title", family = fam, size = sz, color = tx, face = "bold")
-  p <- restyle(p, "plot.subtitle", family = fam, size = sz, color = tx)
-  p <- restyle(p, "strip.text", family = fam, size = sz, color = tx)
+  tx <- STRUCTURE_TEAM_TEXT; sz <- 10   # default text: Arial 10 (the family is set on the Plotly layout; ggplot keeps its default sans)
+  p <- p + ggplot2::theme(text = ggplot2::element_text(size = sz, color = tx))
+  p <- restyle(p, "axis.text", size = sz, color = tx, face = "plain")
+  p <- restyle(p, "axis.title", size = sz, color = tx, face = "plain")
+  p <- restyle(p, "legend.text", size = sz, color = tx)
+  p <- restyle(p, "legend.title", size = sz, color = tx, face = "plain")
+  p <- restyle(p, "plot.title", size = sz, color = tx, face = "bold")
+  p <- restyle(p, "plot.subtitle", size = sz, color = tx)
+  p <- restyle(p, "strip.text", size = sz, color = tx)
   if (!inherits(p$theme[["legend.key"]], "element_blank")) p <- p + ggplot2::theme(legend.key = ggplot2::element_blank())
   p
 }
 structure_team_look_on <- function() structural_team_view()
-# renderPlot that restyles the plot it returns (Team) and is otherwise the same.
+# Team: the structural figures are interactive Plotly charts (so the Appearance tab of the Canvas editor
+# works on them); every other interface keeps the static image. Same outputs, same ids.
+structure_plot_output <- function(id, width = "100%", height = "400px") {
+  if (structural_team_view()) plotly::plotlyOutput(id, width = width, height = height) else shiny::plotOutput(id, width = width, height = height)
+}
+structure_font <- list(family = "Arial, Helvetica, sans-serif", size = 10, color = STRUCTURE_TEAM_TEXT)
+structure_image_plotly <- function(g, width = 900, height = 600) {
+  f <- tempfile(fileext = ".png"); on.exit(unlink(f), add = TRUE)
+  ggplot2::ggsave(f, g, width = width / 96, height = height / 96, dpi = 96, device = "png")
+  uri <- paste0("data:image/png;base64,", jsonlite::base64_enc(readBin(f, "raw", file.info(f)$size)))
+  plotly::plot_ly(x = c(0, 1), y = c(0, 1), type = "scatter", mode = "markers", marker = list(opacity = 0), hoverinfo = "none") |>
+    plotly::layout(images = list(list(source = uri, xref = "paper", yref = "paper", x = 0, y = 1, sizex = 1, sizey = 1, xanchor = "left", yanchor = "top", layer = "below")),
+                   xaxis = list(visible = FALSE, range = c(0, 1)), yaxis = list(visible = FALSE, range = c(0, 1)))
+}
+# One ggplot -> Plotly. Title and subtitle become the Plotly title; plots Plotly cannot draw (polar donuts) are
+# placed as an image so the card still works.
+structure_ggplot_to_plotly <- function(g, panel = FALSE) {
+  lab <- tryCatch(ggplot2::get_labs(g), error = function(e) list())
+  ttl <- if (is.character(lab$title) && length(lab$title) == 1 && nzchar(lab$title)) lab$title else ""
+  sb <- if (is.character(lab$subtitle) && length(lab$subtitle) == 1 && nzchar(lab$subtitle)) lab$subtitle else ""
+  if (inherits(g$coordinates, "CoordPolar")) return(structure_image_plotly(g))
+  pl <- tryCatch(suppressWarnings(plotly::ggplotly(g)), error = function(e) NULL)
+  if (is.null(pl)) return(structure_image_plotly(g))
+  txt <- if (nzchar(ttl)) paste0("<b>", ttl, "</b>", if (nzchar(sb)) paste0("<br><sup>", sb, "</sup>") else "") else ""
+  if (!nzchar(txt)) return(pl)
+  if (panel) plotly::layout(pl, annotations = list(list(text = txt, x = 0.5, y = 1.02, xref = "paper", yref = "paper", xanchor = "center", yanchor = "bottom", showarrow = FALSE, font = structure_font)))
+  else plotly::layout(pl, title = list(text = txt, x = 0.01, xanchor = "left", font = structure_font), margin = list(t = if (nzchar(sb)) 80 else 50))
+}
+structure_team_plotly <- function(res, height = NULL) {
+  finish <- function(pl) {
+    h <- if (is.function(height)) tryCatch(height(), error = function(e) NULL) else height
+    pl <- plotly::layout(pl, paper_bgcolor = "#ffffff", plot_bgcolor = "#ffffff", font = structure_font,
+                         hoverlabel = list(bgcolor = "#ffffff", bordercolor = "#d9e1e3", font = list(family = structure_font$family, size = 10, color = "#20323b"), align = "left"))
+    if (is.numeric(h) && length(h) == 1 && is.finite(h) && h > 100) pl <- plotly::layout(pl, height = h)
+    pl |> plotly::event_register("plotly_click") |>
+      plotly::config(displaylogo = FALSE, scrollZoom = FALSE, responsive = TRUE, modeBarButtonsToRemove = c("lasso2d", "select2d"))
+  }
+  if (inherits(res, "plotly")) return(finish(res))
+  parts <- attr(res, "team_parts")
+  if (!is.null(parts)) {
+    pls <- lapply(parts, function(g) structure_ggplot_to_plotly(structure_team_style(g), panel = TRUE))
+    ncol <- max(1L, as.integer(attr(res, "team_ncol") %||% 2L))
+    pl <- plotly::subplot(pls, nrows = ceiling(length(pls) / ncol), shareX = FALSE, shareY = FALSE, titleX = TRUE, titleY = TRUE, margin = c(0.06, 0.06, 0.1, 0.1))
+    return(finish(pl))
+  }
+  if (inherits(res, "ggplot")) return(finish(structure_ggplot_to_plotly(structure_team_style(res))))
+  finish(plotly::plot_ly() |> plotly::layout(xaxis = list(visible = FALSE), yaxis = list(visible = FALSE),
+         annotations = list(list(text = "Nothing to draw for the current settings.", x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE, font = structure_font))))
+}
+# Correlation network as a native Plotly chart: round nodes (sized by their links), each link split at its middle
+# in the colors of the two nodes it joins, 1.5 pt (weakest) to 3 pt (strongest), dashed when negative.
+structure_network_plotly <- function(g, layout, mode) {
+  lay <- ggraph::create_layout(g, layout = layout)
+  ed <- as.data.frame(tidygraph::activate(g, edges))
+  deg <- as.numeric(igraph::degree(g))
+  col <- as.character(lay$color_val); col[is.na(col) | !nzchar(col)] <- "#B0B0B0"
+  nd <- data.frame(x = lay$x, y = lay$y, name = as.character(lay$name), color = col, degree = deg, stringsAsFactors = FALSE)
+  rng <- range(ed$AbsCor, na.rm = TRUE)
+  w_pt <- if (diff(rng) < 1e-9) rep(3, nrow(ed)) else 1.5 + 1.5 * (ed$AbsCor - rng[1]) / diff(rng)
+  w_px <- w_pt * 96 / 72
+  pl <- plotly::plot_ly()
+  for (i in seq_len(nrow(ed))) {
+    a <- nd[ed$from[i], ]; b <- nd[ed$to[i], ]
+    mx <- (a$x + b$x) / 2; my <- (a$y + b$y) / 2
+    dash <- if (identical(as.character(ed$Direction[i]), "- (Negative)")) "dash" else "solid"
+    tip <- sprintf("%s - %s<br>Pearson r = %.2f", a$name, b$name, ed$Pearson_r[i])
+    pl <- plotly::add_trace(pl, x = c(a$x, mx), y = c(a$y, my), type = "scatter", mode = "lines", line = list(color = a$color, width = w_px[i], dash = dash), hoverinfo = "text", text = tip, showlegend = FALSE)
+    pl <- plotly::add_trace(pl, x = c(mx, b$x), y = c(my, b$y), type = "scatter", mode = "lines", line = list(color = b$color, width = w_px[i], dash = dash), hoverinfo = "text", text = tip, showlegend = FALSE)
+  }
+  dr <- range(nd$degree); sz <- if (diff(dr) < 1e-9) rep(16, nrow(nd)) else 10 + 16 * (nd$degree - dr[1]) / diff(dr)
+  pl <- plotly::add_trace(pl, x = nd$x, y = nd$y, type = "scatter", mode = "markers+text", text = nd$name, textposition = "top center", textfont = structure_font,
+                          marker = list(size = sz, color = nd$color, line = list(color = "#b0b0b0", width = 1.2), opacity = 0.95),
+                          hoverinfo = "text", hovertext = paste0(nd$name, "<br>links: ", nd$degree), showlegend = FALSE)
+  plotly::layout(pl, title = list(text = paste0("<b>Undirected Correlation Network: ", mode, "</b><br><sup>Line width: correlation strength (3 pt strongest, 1.5 pt weakest). Dashed: negative correlation.</sup>"), x = 0.01, xanchor = "left", font = structure_font),
+                 xaxis = list(visible = FALSE, zeroline = FALSE, showgrid = FALSE), yaxis = list(visible = FALSE, zeroline = FALSE, showgrid = FALSE),
+                 margin = list(t = 80, l = 20, r = 20, b = 20))
+}
+# renderPlot that, in Team, returns the figure as an interactive Plotly chart and, elsewhere, is plain renderPlot.
 structure_render_plot <- function(expr, env = parent.frame(), quoted = FALSE, ...) {
   func <- shiny::installExprFunction(expr, "func", env, quoted)
-  shiny::renderPlot({ structure_team_style(func()) }, ...)
+  if (structural_team_view()) {
+    height <- list(...)$height
+    return(plotly::renderPlotly({ structure_team_plotly(func(), height = height) }))
+  }
+  shiny::renderPlot({ func() }, ...)
 }
 
 # Order display categories by chain length and unsaturation without rewriting labels.
@@ -2580,7 +2661,10 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       }
       
       if(length(plot_list) > 0) {
-        patchwork::wrap_plots(plot_list, ncol = min(2, length(plot_list)))
+        pw <- patchwork::wrap_plots(plot_list, ncol = min(2, length(plot_list)))
+        attr(pw, "team_parts") <- plot_list
+        attr(pw, "team_ncol") <- min(2, length(plot_list))
+        pw
       } else {
     # Return empty plot with message
         ggplot() + 
@@ -2732,27 +2816,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        }
        g <- net$graph
        border_col <- if (isTRUE(input$circledDots) && !is.null(input$borderColor) && nzchar(input$borderColor)) input$borderColor else "black"
-       if (structural_team_view()) {
-         # Team look: round nodes sized by how many links they have, each link drawn in the color of the node
-         # it leaves (split at its middle), 3 pt for the strongest correlations down to 1.5 pt for the weakest,
-         # dashed when the correlation is negative.
-         g <- g |> tidygraph::activate(nodes) |> dplyr::mutate(degree = tidygraph::centrality_degree())
-         pt_to_linewidth <- 1 / (ggplot2::.pt * 0.75)
-         hub_cut <- stats::quantile(igraph::degree(g), 0.85, names = FALSE)
-         p <- ggraph::ggraph(g, layout = input$networkLayout) +
-           ggraph::geom_edge_link2(aes(edge_colour = node.color_val, edge_width = AbsCor, filter = Direction == "+ (Positive)"), alpha = 0.9, lineend = "round") +
-           ggraph::geom_edge_link(aes(edge_colour = .N()$color_val[from], edge_width = AbsCor, filter = Direction == "- (Negative)"), alpha = 0.9, linetype = "dashed", lineend = "round") +
-           ggraph::scale_edge_colour_identity() +
-           ggraph::scale_edge_width_continuous(range = c(1.5, 3) * pt_to_linewidth, name = "|Correlation|") +
-           ggraph::geom_node_point(aes(fill = I(color_val), size = degree), shape = 21, color = "#b0b0b0", stroke = 0.8, alpha = 0.95) +
-           ggplot2::scale_size(range = c(4, 11), guide = "none") +
-           do.call(ggraph::geom_node_text, c(list(mapping = aes(label = name, fontface = ifelse(degree >= hub_cut & degree > 2, "bold", "plain")), repel = TRUE, size = 10 / ggplot2::.pt, family = "Arial", color = "#222222", bg.color = "white", bg.r = 0.15),
-             list(force = 4, box.padding = 1, point.padding = 0.8, max.overlaps = Inf))) +
-           ggplot2::theme_void() +
-           ggplot2::theme(legend.position = "right", legend.title = element_text(face = "plain"), plot.title = element_text(face = "bold", size = 16)) +
-           ggplot2::labs(title = paste("Undirected Correlation Network:", net$mode), subtitle = "Line width: correlation strength (3 pt strongest, 1.5 pt weakest). Dashed: negative correlation.")
-         return(p)
-       }
+       if (structural_team_view()) return(structure_network_plotly(g, input$networkLayout, net$mode))
        p <- ggraph::ggraph(g, layout = input$networkLayout) +
          ggraph::geom_edge_link(aes(color = Direction, edge_width = Significance), alpha = 0.7) +
          ggraph::scale_edge_width_manual(values = c("p < 0.05" = 0.5, "p < 0.01" = 1.2, "p < 0.001" = 2.0)) +
