@@ -31,6 +31,9 @@
   --pill-dirty:#f3dba6;
   --pill-saving:#cfe1f3;
   --pill-error:#f5c2b8;
+  /* New-version bar (ui/UpdateBar): ink on yellow, the same on any theme (tokens.test.ts). */
+  --update-bg:#ffd84d;
+  --update-fg:#141b24;
   --font-heading:18px;
   --font:'Nunito Sans',system-ui,sans-serif;
   --font-body:14px;

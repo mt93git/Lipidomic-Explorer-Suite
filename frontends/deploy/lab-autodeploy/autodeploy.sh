@@ -7,6 +7,8 @@
 # Production only takes a commit that staging has already deployed, and only migrations that staging has already applied.
 # Settings: ~/.config/lab-autodeploy/<env>.env (see env.example). State, status and logs: $STATE (default ~/lab-deploy/<env>).
 # The status is also copied, without server paths, to <Nexo client root>/deploy-status.json.
+# Each build gets its commit (VITE_BUILD_COMMIT, NEXT_PUBLIC_BUILD_COMMIT) so the apps can show a reload bar
+# when deploy-status.json reports a newer deployed commit.
 # Manual run: bash autodeploy.sh <env> [--force | --check-only]
 set -uo pipefail
 ENV_NAME=${1:?usage: autodeploy.sh staging|production [--force|--check-only]}
@@ -100,7 +102,7 @@ prepare() {
 step "prepare" prepare
 step "Nexo types (tsc)" bash -c "cd $BUILD/frontends/nexo && npx tsc --noEmit"
 step "Nexo tests (vitest)" bash -c "cd $BUILD/frontends/nexo && npx vitest run --reporter=dot --maxWorkers=4"
-step "Nexo build" bash -c "cd $BUILD/frontends/nexo && env $NEXO_BUILD_ENV npx vite build --base $NEXO_BASE"
+step "Nexo build" bash -c "cd $BUILD/frontends/nexo && env $NEXO_BUILD_ENV VITE_BUILD_COMMIT=$SHA npx vite build --base $NEXO_BASE"
 step "R syntax" bash -c "cd $BUILD && $RSCRIPT --vanilla tests/test_recursive_syntax.R"
 step "collaboration tests" bash -c "cd $BUILD/frontends/nexo-collab && npm ci --no-audit --no-fund --silent && npm test"
 step "Admin types (tsc)" bash -c "cd $BUILD/frontends/admin && npx tsc --noEmit"
@@ -147,7 +149,8 @@ put_admin() {  # sha [next-dir to restore instead of building]
     (cd $ADMIN_DIR/packages/admin-ingest && npm ci --no-audit --no-fund --silent && npm run build --silent) &&
     (cd $ADMIN_DIR/frontends/admin && npm ci --no-audit --no-fund --silent) &&
     if [ -n "${2:-}" ]; then rsync -a --delete $2/ $ADMIN_DIR/frontends/admin/.next/
-    else (cd $ADMIN_DIR/frontends/admin && set -a && . $ADMIN_ENV_FILE && set +a && npm run build); fi &&
+    else (cd $ADMIN_DIR/frontends/admin && set -a && . $ADMIN_ENV_FILE && set +a &&
+      NEXT_PUBLIC_BUILD_COMMIT=$1 NEXT_PUBLIC_DEPLOY_STATUS_PATH=${NEXO_BASE%/}/deploy-status.json npm run build); fi &&
     systemctl --user restart $ADMIN_UNIT
 }
 wait_up() {  # sha: Nexo API on that commit, collaboration service, nginx serves Nexo, Admin answers its sign-in page

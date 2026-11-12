@@ -10,6 +10,8 @@ export const strings = {
   // A lost API session (evicted or restarted) is reopened and the plots are put back.
   reconnecting: 'Reconnecting to the analysis…', reconnected: 'Analysis reconnected. Your plots were restored.',
   sessionLost: 'The analysis session was lost and could not be reopened. Reload the page to continue; your last save is kept.', reloadPage: 'Reload', saveFailedLost: 'Save failed · Session lost',
+  // A newer Nexo was deployed (UpdateBar).
+  newVersion: 'A new version of Nexo is available. Reload to update.', closeUpdateNotice: 'Close the update notice',
   // Ordered Team grouping controls.
   orderedHint: 'Drag items or use Alt+Arrow to reorder.', orderedAdd: 'Add grouping', orderedChoose: 'Choose a grouping…', orderedUp: 'Move up', orderedDown: 'Move down', orderedRemove: 'Remove', orderedPosition: 'Position', orderedOf: 'of',
   // Wave 2 library/canvas copy.
