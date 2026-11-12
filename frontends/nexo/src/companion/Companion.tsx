@@ -96,7 +96,8 @@ export function Companion({ screen }: { screen: Screen }) {
     if (tipRef.current?.contains(document.activeElement)) refocus.current = true;
     land(bigNow.current ?? bigBox('out'), flyFrames, 900, 800);
   }
-  function openChat() { if (phase === 'out') back('dismiss'); setTip(null); setChat(true); }
+  // The chat's question takes the focus: landing must not hand it back to the dock (typed keys would leave the question).
+  function openChat() { if (phase === 'out') { back('dismiss'); refocus.current = false; } setTip(null); setChat(true); }
   function toggleFewer(value: boolean) { writeFlag(storage(), user, 'fewer', value); setFlags(f => ({ ...f, fewer: value })); }
   // The entrance: Start, first visit only. A remount after it began (the canvas opened) docks it from where it stood.
   useLayoutEffect(() => { if (shared.entering) dock(); return clear; }, []);
