@@ -68,10 +68,6 @@ local({
     card <- api_card_create(s, id)
     for (action in steps[[id]]) { api_card_update(s, card$instanceId, actions = action); api_seed_rendered_inputs(s, card$instanceId) }
     rendered <- tryCatch(api_card_render(s, card$instanceId, 800, 600), error = identity)
-    # The analyst's module-trait renderer calls lipidomic_hook(), which this tree does not define (reported, R untouched).
-    if (inherits(rendered, "error") && grepl("lipidomic_hook", conditionMessage(rendered), fixed = TRUE)) {
-      cat("KNOWN", id, conditionMessage(rendered), "\n"); next
-    }
     if (inherits(rendered, "error")) stop(id, ": ", conditionMessage(rendered))
     stopifnot(identical(rendered$render, "plotly"), length(rendered$figure$data) > 0L, is.list(rendered$figure$layout))
     cat("PASS U3 Structure card is a Plotly figure:", id, "\n")

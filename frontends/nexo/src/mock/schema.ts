@@ -73,7 +73,7 @@ export function schemaFor(source: string, instance?: string, values: Record<stri
     {id:'violin_zoom_pct',type:'range',label:'Plot Height (px):',min:300,max:5000,step:50,default:2340}
   ] : source.includes('violin') ? [lipidControl('results_dashboard-plot_violin')] : source === 'logratio_tab-logratioPlot' ? [
     {id:'primary_grouping',type:'multiselect',label:'Primary Grouping (Order matters)',selectize:{plugins:['drag_drop']},options:['Condition','Time','Sex','Treatment_arm_by_dose_and_week','Sampling_batch_and_extraction_day'].map(v=>({value:v,label:v})),default:['Condition','Time']}
-  ] : source === 'results_dashboard-plot_pca' ? mockPcaScoreControls() : source === 'qc_pca_tab-pca2dPlot' ? pcaCustomColours(values) : source === 'volcano_tab-volcanoPlot' ? [
+  ] : source === 'results_dashboard-plot_pca' || source === 'results_dashboard-plot_pcascore' ? mockPcaScoreControls() : source === 'qc_pca_tab-pca2dPlot' ? pcaCustomColours(values) : source === 'volcano_tab-volcanoPlot' ? [
     // Team sliderInputs as the real API serves them (schema.R: type range with min/max/step; label and help in one string).
     {id:'volcano_alpha',type:'range',label:'Alpha:',min:0,max:1,step:0.05,default:0.7},
     {id:'volcano_weight_logp',type:'range',label:'Weight -Log10PControls how heavily the significance term counts when ranking labelled points.',min:0,max:5,step:0.1,default:1}
@@ -88,8 +88,7 @@ export function schemaFor(source: string, instance?: string, values: Record<stri
     // Chart audit b07 F3: the structural summary draws only after its module button (Team's placeholder before it).
     isLongitudinal(source) ? {actions:['submit_longitudinal_btn','btn_add_case'],actionControls:[{id:'submit_longitudinal_btn',label:'Generate Analysis',tab:null},{id:'btn_add_case',label:'Add Timecourse',tab:null}]} :
     source === 'structural_tab-summaryPlot' ? {actions:['runAnalysis'],actionControls:[{id:'runAnalysis',label:'Initiate Structural Analysis',tab:null}]} :
-    // NEXO-P5: Team's PCA score analysis sits in the dashboard module; its Run button is the PCA card's module action.
-    source === 'results_dashboard-plot_pca' ? {actions:['pcs_run'],actionControls:[{id:'pcs_run',label:'Run PCA score analysis',tab:'PCA score analysis'}]} : {actions:[]}),tabs:{},
+    {actions:[]}),tabs:{},
     ...(sessionPaletteFamily(source) ? {sessionPalette:true} : {})};
 }
 // saveFault: a test sets it to make the next checkpoint saves fail with that message (journey review 8.1).

@@ -14,3 +14,7 @@
 .topbar .account-menu[open]>summary::after{content:none}
 /* Phones: the account icon is a 32 px touch target, like the other top-bar controls. */
 @media(max-width:767px){.topbar .account-menu>summary.avatar{width:32px;height:32px}}
+/* The account menu's second item: the companion's chat (src/companion), above Sign out. */
+.topbar .account-chat{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-height:36px;padding:0 var(--space-3);white-space:nowrap;color:var(--ink,#1c2733);background:var(--paper,#fff);border:1px solid var(--line,#d5dbe1);border-radius:var(--radius-sm);box-shadow:var(--shadow-card)}
+.topbar .account-chat:hover{background:var(--paper-2,#f2f4f6)}
+.topbar .account-chat~.account-signout{top:calc(100% + 46px)}

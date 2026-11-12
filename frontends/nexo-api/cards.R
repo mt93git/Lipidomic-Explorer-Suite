@@ -432,7 +432,8 @@ api_card_render <- function(s, instanceId, width = 800, height = 600,
   unavailable <- function(e) {
     message <- conditionMessage(e)
     if (!nzchar(message)) message <- "The plot inputs are unavailable for this session."
-    api_abort("api_unprocessable", message)
+    # NEXO-P9 1: a silent req() stop is Team's answer for these inputs (Team shows no plot), not a failure to retry.
+    api_abort("api_unprocessable", message, note = TRUE)
   }
   # NEXO-P6 item 2: Team shows a validate(need()) message as a small grey note on an up-to-date card.
   noted <- function(e) if (nzchar(conditionMessage(e))) api_abort("api_unprocessable", conditionMessage(e), note = TRUE) else unavailable(e)

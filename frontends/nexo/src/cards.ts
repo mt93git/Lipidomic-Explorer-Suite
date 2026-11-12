@@ -23,7 +23,7 @@ import { unpackFigure } from './api/plotPayload';
 import { bindPlotClick, type ClickTarget } from './plotlyClick';
 import { bodyStatus, statusLabel } from './cardStatus';
 import type { CardShown } from './inspectorStatus';
-import { runNeedFor, runNeedKey, runNeedWaiting, markRunNeed, refusalMessage, UNAVAILABLE_INPUTS } from './runNeeds';
+import { runNeedFor, runNeedKey, runNeedWaiting, markRunNeed, refusalMessage, renderOnce, UNAVAILABLE_INPUTS } from './runNeeds';
 import { cardView, statusLabels, type CardStatus } from './cardView';
 import { jsonImage } from './mock/png';
 import { isThumb, type Tier } from './tiers';
@@ -111,6 +111,8 @@ export class Card {
   current?: Tier;
   figure?: Figure;
   private cache = new Map<string, Promise<PlotResult>>();
+  /** NEXO-P9 1: renders the server answered 4xx, by render key: not asked again until the key changes or Try again. */
+  private refused = new Map<string, unknown>();
   private png?: string;
   /** The Plotly card's key() when its snapshot was taken: a frozen card whose inputs or size changed takes a new one. */
   private pngFor?: string;
@@ -429,7 +431,7 @@ export class Card {
   }
   get firstRenderReady() { return this.hasRender && this.rendering === 0; }
   get prefetchKey() { return this.key(); }
-  get hasRender() { return this.renderer.kind === 'image' && !this.renderer.network ? !!imageCache.get(this.pngKey()) : this.cache.has(this.key()); }
+  get hasRender() { return this.renderer.kind === 'image' && !this.renderer.network ? !!imageCache.get(this.pngKey()) || this.refused.has(this.pngKey()) : this.cache.has(this.key()) || this.refused.has(this.key()); }
   get canPrefetch() { return !this.disposed && !this.node.finished && this.node.kind === 'plot' && !this.designRequired && !this.awaitingRun(); }
   /** b10 check 11: the card already says it needs its module button; no render request until it is pressed. */
   private awaitingRun() { const instance = this.instanceId(); return !!instance && runNeedWaiting(runNeedKey(this.session.sessionId, instance)); }
@@ -437,11 +439,11 @@ export class Card {
     const key=this.pngKey(dpr), width=Math.round(this.node.width),height=this.renderHeight(),instance=this.instanceId();
     if(!instance)return Promise.reject(new Error('Missing card instance'));
     if(this.awaitingRun())return Promise.reject(new Error(UNAVAILABLE_INPUTS));
-    return imageCache.load(key,()=>renderCard(this.session.sessionId,instance,width,height,'png',options,dpr).then(async result=>{
+    return renderOnce(this.refused,key,()=>imageCache.load(key,()=>renderCard(this.session.sessionId,instance,width,height,'png',options,dpr).then(async result=>{
       const blob='blob' in result?result.blob:await jsonImage(this.node.label,width,height,result.figure);
       const url=URL.createObjectURL(blob);await rememberImage(url,blob);
       return {url,bytes:blob.size};
-    }));
+    })));
   }
   /** Steph review 4b: what the card shows now (palette/paletteRedraw.ts), undefined when it shows no plot drawing. */
   drawingSignature(): string | undefined {
@@ -526,7 +528,7 @@ export class Card {
   private retryRender() {
     if (this.disposed) return;
     this.body.classList.remove('message');
-    const tier = this.current; this.cache.clear(); this.current = undefined;
+    const tier = this.current; this.cache.clear(); this.refused.clear(); this.current = undefined;
     if (tier) this.setTier(tier, true);
   }
   /** Row 11: while a figure is on its way the body is a neutral skeleton (shell.css), with the loading text the status machine reads. */
@@ -595,7 +597,7 @@ export class Card {
     const width = Math.round(this.node.width), key = this.key();
     let pending = this.cache.get(key);
     if (!pending) {
-      pending = instance ? renderCard(this.session.sessionId, instance, width, Math.round(this.node.height), 'json', options).then(result => { if (!('figure' in result)) throw new Error(this.renderer.groupComparison ? 'Expected the group comparison message' : 'Expected Plotly JSON'); return {figure:result.figure as Figure, provenance:result.provenance}; }) : getPlot(this.session.sessionId, plot!, this.inputs, width, options);
+      pending = renderOnce(this.refused, key, () => instance ? renderCard(this.session.sessionId, instance, width, Math.round(this.node.height), 'json', options).then(result => { if (!('figure' in result)) throw new Error(this.renderer.groupComparison ? 'Expected the group comparison message' : 'Expected Plotly JSON'); return {figure:result.figure as Figure, provenance:result.provenance}; }) : getPlot(this.session.sessionId, plot!, this.inputs, width, options));
       pending = pending.then(result => ({...result, figure: unpackFigure(result.figure)}));
       this.cache.set(key, pending); pending.catch(() => { if (this.cache.get(key) === pending) this.cache.delete(key); });
     }

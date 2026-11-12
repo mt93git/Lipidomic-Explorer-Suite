@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import catalog from './mock/catalog.json';
-import { availability, groupCatalog, renderKindFor, groupOrder, withTimePoints, newCardSize } from './catalog';
+import { availability, catalogEntryFor, groupCatalog, renderKindFor, groupOrder, withTimePoints, newCardSize } from './catalog';
 import type { CatalogEntry } from './api/types';
 const outputs = catalog.outputs as CatalogEntry[];
 describe('catalog', () => {
-  it('preserves Team group order and all 60 outputs', () => {
+  it('preserves Team group order and all 61 outputs (PCA score analysis, Team 8e2f5c07)', () => {
     const groups = groupCatalog(outputs);
     expect(groups.map(g => g.label)).toEqual(groupOrder);
-    expect(groups.map(g => g.count)).toEqual([5,14,4,4,5,9,1,3,5,2,3,4,1]);
-    expect(groups.reduce((sum, g) => sum + g.count, 0)).toBe(60);
+    expect(groups.map(g => g.count)).toEqual([6,14,4,4,5,9,1,3,5,2,3,4,1]);
+    expect(groups.reduce((sum, g) => sum + g.count, 0)).toBe(61);
   });
   // NEXO-P2: the analyst's new Structure card, as frontends/nexo-api/catalog.R lists it.
   it('lists Module-trait relationships with the API label, group and needs', () => {
@@ -49,8 +49,19 @@ describe('catalog', () => {
     expect(withTimePoints(undefined, {timepoints:true})).toBeUndefined();
   });
   it('resolves instance output suffixes and legacy dashboard ids', () => {
-    expect(renderKindFor('tcinstance_0123456789ab-heatmapPlot', outputs)).toBe('png');
-    expect(renderKindFor('results_dashboard-plot_pca', outputs)).toBe('plotly');
+    expect(renderKindFor({id: 'tcinstance_0123456789ab-plot_pca'}, outputs)).toBe('plotly');
+    expect(renderKindFor({id: 'tcinstance_0123456789ab-heatmapPlot', instance: {source: 'heatmap_barchart_tab-heatmapPlot'}}, outputs)).toBe('png');
+    expect(renderKindFor({id: 'results_dashboard-plot_pca'}, outputs)).toBe('plotly');
+  });
+  // NEXO-P7: two Team cards end in -heatmapPlot (Average signal heatmap: png; Structural grid heatmap: plotly).
+  it('a Structural grid heatmap instance is drawn as plotly, not as the Average signal heatmap', () => {
+    expect(renderKindFor({id: 'tcinstance_mwcvcxxj_vu2ztz30-heatmapPlot', instance: {source: 'structural_grid_tab-heatmapPlot'}}, outputs)).toBe('plotly');
+  });
+  it('every catalog entry resolves to itself, by its id and as a Team instance', () => {
+    for (const entry of outputs) {
+      expect(catalogEntryFor({id: entry.id}, outputs)?.id, entry.id).toBe(entry.id);
+      expect(catalogEntryFor({id: `tcinstance_0123456789ab-${entry.output}`, instance: {source: entry.id}}, outputs)?.id, entry.id).toBe(entry.id);
+    }
   });
 });
 // NEXO-P3: Team opens a Composition overview card 560 px tall (www/team/js/canvas.js newCardSize, compact shell rule);

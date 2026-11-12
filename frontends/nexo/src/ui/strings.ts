@@ -57,7 +57,7 @@ export const strings = {
   studyDesign: 'Study design', enlargePlot: 'Enlarge plot', selectTouch: 'Select', moveTouch: 'Move', inspectorTouch: 'Inspector',
   // NEXO-P5: Team's PCA score analysis heading and note (R/results_dashboard.R rd_pca_score_ui).
   pcaScoreTitle: 'PCA score analysis', pcaScoreHelp: 'Tests whether the sample scores on one principal component differ between groups. The PCA itself is not changed.',
-  pcaScorePlot: 'PCA scores by group, with significance stars', pcaScoreTable: 'Median PCA score per group', failPcaScore: 'load the PCA score analysis',
+  pcaScorePlotButton: 'Plot on canvas', pcaScorePlotNote: 'Adds the box plot and the group table as a figure on the canvas.', failPcaScore: 'load the PCA score analysis', failPcaScorePlot: 'add the PCA score figure',
   analysisHelp: 'Choose the analysis, then review and confirm before computing. Display settings below update the plot immediately.', discardChanges: 'Discard changes',
   helpText: 'V selects, H moves the view, I toggles the inspector. Scroll to pan; pinch to zoom.',
   pca: 'PCA', violin: 'Violin', dist: 'Distribution', comp: 'Composition', heat: 'Heatmap',

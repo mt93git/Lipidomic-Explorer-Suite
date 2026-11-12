@@ -7,7 +7,7 @@ import { align, distribute } from './canvas/align';
 import {dataUrl,list as illustrationAssets} from './illustrations/assets';
 import type {Visual} from './state/document';
 import {setAppearance} from './state/visualCommands';
-import { availability, availabilityReasons, groupCatalog, renderKindFor, newCardSize } from './catalog';
+import { availability, availabilityReasons, groupCatalog, renderKindFor, newCardSize, pcaScoreCard } from './catalog';
 import { clickSourceFor } from './plotlyClick';
 import { place } from './place';
 import { Card } from './cards';
@@ -180,7 +180,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     }, () => undefined);
   }
   function add(node: Node) {
-    const c = new Card(node, session, inspect, renderKindFor(node.id, catalog), restoringIds.has(node.id));
+    const c = new Card(node, session, inspect, renderKindFor(node, catalog), restoringIds.has(node.id));
     const fixedInputs = hasTeamInstance(node) ? undefined : store.get().nexo.nodes[node.id]?.inputs;
     if (fixedInputs) { c.fixedInputs = structuredClone(fixedInputs); Object.keys(c.inputs).forEach(k => delete c.inputs[k]); Object.assign(c.inputs, structuredClone(fixedInputs)); }
     c.onAction(action => {
@@ -695,7 +695,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     window.setTimeout(() => c.el.classList.remove('just-added'), 1600);
   }
   const locateTurn = new Map<string, number>();
-  async function addEntry(entry: CatalogEntry, signal?: AbortSignal, position?: DropPoint) {
+  async function addEntry(entry: CatalogEntry, signal?: AbortSignal, position?: DropPoint, start: {inputs: Record<string, unknown>; label: string} = {inputs: {}, label: entry.label}) {
       if (isReadOnly()) throw new Error('View only on this device.');
       if (signal?.aborted) return;
       const instanceId = 'tcinstance_' + Array.from(crypto.getRandomValues(new Uint8Array(6)), n => n.toString(16).padStart(2,'0')).join('');
@@ -705,16 +705,16 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       // The slot is taken at once by a placeholder (and brought into view), so the user sees where the plot
       // goes while the API creates it; queued additions do not pick the same slot.
       const slot = { ...(position ?? place([...cards.map(c => c.node), ...ghosts.map(g => g.rect)], wanted)), width, height };
-      const ghost = addGhost(slot, entry.label, !position);
+      const ghost = addGhost(slot, start.label, !position);
       const clearGhost = () => removeGhost(ghost);
       signal?.addEventListener('abort', clearGhost, { once: true });
       // Collab mode: the node is placed here and sent; the sidecar writes it into the document (api.ts createCard), and
       // its update arrives before the intent's answer. Only the card's tab is this page's write.
       const plotNow = plotHeightOf(entry.heightInput, entry.defaults), tallNow = plotNow === undefined ? height : cardHeightFor(plotNow);
-      const placed: Node | undefined = board ? {kind:'plot', id:`${instanceId}-${entry.output}`, label:entry.label, visual:{}, finished:null,
+      const placed: Node | undefined = board ? {kind:'plot', id:`${instanceId}-${entry.output}`, label:start.label, visual:{}, finished:null,
         ...(position ?? place([...cards.map(c => c.node), ...ghosts.map(g => g.rect)], {...slot, height:tallNow})), width, height:tallNow} : undefined;
       try {
-        await completeQueuedAdd(createCard(session.sessionId, entry.id, {}, instanceId, signal, placed), signal, (result, dropped) => {
+        await completeQueuedAdd(createCard(session.sessionId, entry.id, start.inputs, instanceId, signal, placed), signal, (result, dropped) => {
           if (result.error) throw new Error(String(result.error));
           clearGhost();
           if (placed) {
@@ -728,7 +728,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
           // Chart audit b05 F5: a card with a module plot height is that tall plus its chrome (width stays the default).
           const plot = plotHeightOf(entry.heightInput, result.inputs, result.plotHeight), tall = plot === undefined ? height : cardHeightFor(plot);
           const spot = dropped ?? place([...cards.map(c => c.node), ...ghosts.map(g => g.rect)], {...slot, height:tall});
-          const node: Node = {kind:'plot', id:result.nodeId, label:entry.label, ...spot, width,height:tall, finished:null, instance:{instanceId:result.instanceId,source:entry.id,inputs:result.inputs}};
+          const node: Node = {kind:'plot', id:result.nodeId, label:start.label, ...spot, width,height:tall, finished:null, instance:{instanceId:result.instanceId,source:entry.id,inputs:result.inputs}};
           history.dispatch(addNode(node));
           if (plot !== undefined) settleDrop([node.id], `add:${node.id}`);
           const c = cards.find(c => c.node.id === result.nodeId)!;
@@ -1022,6 +1022,13 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       const state = availability(entry, session.design);
       if (state !== 'add') throw new Error(availabilityReasons[state]);
       await addEntry(entry, signal, dropped);
+    },
+    async addPcaScore(nodeId) {
+      await catalogReady;
+      const pca = store.get().nodes.find(n => n.id === nodeId), card = pcaScoreCard(pca?.instance?.inputs ?? store.get().nexo.nodes[nodeId]?.inputs ?? session.inputs);
+      const entry = catalog.find(e => e.id === card.source);
+      if ((pca?.instance?.source ?? pca?.id) !== 'results_dashboard-plot_pca' || !entry) throw new Error('Unknown source');
+      await addEntry(entry, undefined, undefined, card);
     },
     undo: () => { history.undo(); }, redo: () => { history.redo(); },
     get canUndo() { return history.canUndo; }, get canRedo() { return history.canRedo; },

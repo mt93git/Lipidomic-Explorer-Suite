@@ -94,6 +94,24 @@
       "description": "Compare lipid patterns across groups."
     },
     {
+      "id": "results_dashboard-plot_pcascore",
+      "family": "results_dashboard",
+      "output": "plot_pcascore",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 620,
+        "height": 700
+      },
+      "label": "PCA score analysis",
+      "group": "Dashboard",
+      "description": "Compare the scores of one principal component between groups, with the tests and group medians."
+    },
+    {
       "id": "qc_pca_tab-boxplotAfterNorm",
       "family": "qc_pca_tab",
       "output": "boxplotAfterNorm",

@@ -13,8 +13,18 @@ const byOutput: Record<string, RunNeed> = {
 };
 /** FIX-PROD-H 1: a refusal (422) that carries the module's own sentence (Team's BQC placeholder); not a silent req() stop. */
 export function refusalMessage(error: unknown): string | undefined {
-  const e = error as { status?: unknown; message?: unknown } | null;
-  return e?.status === 422 && typeof e.message === 'string' && e.message !== UNAVAILABLE_INPUTS ? e.message : undefined;
+  const e = error as { status?: unknown; message?: unknown; note?: unknown } | null;
+  return e?.status === 422 && typeof e.message === 'string' && (e.message !== UNAVAILABLE_INPUTS || e.note === true) ? e.message : undefined;
+}
+/** NEXO-P9 1: a 4xx render is the server's answer for that render key (inputs, size, revision), not a transient failure:
+ *  it is kept in `refused` and not asked again. 5xx, 503 (api.ts retries it, honouring Retry-After) and network failures are. */
+export function renderOnce<T>(refused: Map<string, unknown>, key: string, render: () => Promise<T>): Promise<T> {
+  if (refused.has(key)) return Promise.reject(refused.get(key));
+  return render().catch(error => {
+    const status = (error as { status?: unknown } | null)?.status;
+    if (typeof status === 'number' && status >= 400 && status < 500) refused.set(key, error);
+    throw error;
+  });
 }
 export function runNeedFor(nodeId: string, message: string): RunNeed | undefined {
   if (message !== UNAVAILABLE_INPUTS) return undefined;

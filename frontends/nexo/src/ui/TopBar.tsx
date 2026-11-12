@@ -1,3 +1,5 @@
+import { Companion, openCompanionChat } from '../companion/Companion';
+const chatLabel = 'Chat with the guide';
 import { Suspense, useState, useSyncExternalStore } from 'react';
 import { collab } from '../collab/mode';
 import { currentRole, subscribeRole } from '../collab/roles';
@@ -20,6 +22,6 @@ export function TopBar({projectName,onCheckpoints,saveText,saveStatus,saveFailur
     {nearLimit && <span className="records-warning" role="status" title={s.recordsNearLimitHelp}>{s.recordsNearLimit}</span>}
     {collab() && <Suspense fallback={null}><Avatars/><CommentsPanel/></Suspense>}
     {board && role?.canShare && <><button onClick={() => setSharing(true)}>{s.share}</button>{sharing && <Suspense fallback={null}><Share board={board} projectName={projectName} onClose={() => setSharing(false)}/></Suspense>}</>}
-    <details className="account-menu" onToggle={e => setAccountOpen(e.currentTarget.open)}><summary className="avatar" aria-label={s.accountLabel} data-tip={s.accountLabel}><svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="9" cy="6" r="3"/><path d="M3 16c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg></summary><button type="button" className="account-signout" hidden={!accountOpen} onClick={() => { void signOut().then(() => location.reload()); }}>Sign out</button></details>
+    <Companion screen={'canvas'}/><details className="account-menu" onToggle={e => setAccountOpen(e.currentTarget.open)}><summary className="avatar" aria-label={s.accountLabel} data-tip={s.accountLabel}><svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="9" cy="6" r="3"/><path d="M3 16c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg></summary><button type="button" className="account-chat" aria-label={chatLabel} hidden={!accountOpen} onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); openCompanionChat(); }}>{chatLabel}</button><button type="button" className="account-signout" hidden={!accountOpen} onClick={() => { void signOut().then(() => location.reload()); }}>Sign out</button></details>
   </header>;
 }

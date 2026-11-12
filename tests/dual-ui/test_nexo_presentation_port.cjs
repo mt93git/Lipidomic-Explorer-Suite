@@ -112,11 +112,11 @@ async function journey(pw, name, base) {
     console.log(`PASS P2b ${name} nexo-after-publication-drops-the-black-frame`);
     console.log(`PASS P2 ${name} publication-style-frame-zero-lines-arial-10-outline-0.4`);
 
-    // 3. Group outlines: a dotted ellipse per group, in its marker color, fully inside the axes.
+    // 3. Group outlines: a dashed ellipse per group (Team eac6bb75: dashed group outlines), in its marker color, fully inside the axes.
     series = await appearance(PCA);
     await series.getByRole('button', { name: 'Group outlines: Off', exact: true }).click();
     await until(page, PCA, el => (el.layout.shapes || []).filter(s => String(s.name).startsWith('team-ellipse:')).length === 2);
-    assert.deepEqual(await plot(page, PCA, el => el.layout.shapes.map(s => [s.line.dash, s.line.color === el.data[el.layout.shapes.indexOf(s)].marker.color])), [['dot', true], ['dot', true]]);
+    assert.deepEqual(await plot(page, PCA, el => el.layout.shapes.map(s => [s.line.dash, s.line.color === el.data[el.layout.shapes.indexOf(s)].marker.color])), [['dash', true], ['dash', true]]);
     assert.equal(await plot(page, PCA, outlinesInside), true, 'an outline runs past the axes');
     assert.equal(await page.locator(`.card[data-id="${PCA}"] .shapelayer path`).count(), 2);
     assert.equal(await series.getByRole('button', { name: 'Group outlines: On', exact: true }).getAttribute('aria-pressed'), 'true');

@@ -16,8 +16,17 @@ function member(v:unknown,kind:'x'|'y'):{packed:boolean;value:unknown}{
   if(kind==='y'&&only(v,['teamFloat64'])&&typeof v.teamFloat64==='string')return {packed:true,value:doubles(v.teamFloat64)};
   throw new Error('malformed packed '+kind);
 }
-export function unpackFigure<T>(figure:T):T{
+/** NEXO-P9 2: Team's rule (plotly_build.team_compact_distribution): a per-point hovertemplate whose entries are all the
+ * same string is that one string, the same text for every point. plotly R expands the dashboard violin's template per
+ * sample, and hovering a violin's body Plotly hands the whole array to its formatter ("t.replace is not a function"). */
+const repeated=(h:unknown):h is string[]=>Array.isArray(h)&&h.length>1&&typeof h[0]==='string'&&h.every(v=>v===h[0]);
+function compactTemplates<T>(figure:T):T{
   const f=figure as Packed;
+  if(!plain(f)||!Array.isArray(f.data)||!f.data.some(t=>plain(t)&&repeated(t.hovertemplate)))return figure;
+  return {...f,data:f.data.map(t=>plain(t)&&repeated(t.hovertemplate)?{...t,hovertemplate:t.hovertemplate[0]}:t)} as T;
+}
+export function unpackFigure<T>(received:T):T{
+  const figure=compactTemplates(received),f=figure as Packed;
   if(!plain(f)||f.teamPacked!==1||!Array.isArray(f.data))return figure;
   let decoded:{x:unknown[]|null;y:unknown[]|null}[];
   try{

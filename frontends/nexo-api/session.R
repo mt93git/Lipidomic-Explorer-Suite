@@ -3,6 +3,15 @@ api_debug <- function(...) if (nzchar(Sys.getenv("NEXO_API_DEBUG"))) message(for
 api_abort <- function(class, message, note = FALSE) {
   stop(structure(list(message = message, call = NULL, note = isTRUE(note)), class = c(class, "error", "condition")))
 }
+# The analyst's Structure module asks lipidomic_hook("inference_allowed") (R/modules/8_structural_module.R). Upstream
+# keeps a hook registry (R/core/hooks.R: a hook nobody registered returns its first argument) and Team registers
+# inference_allowed (R/frontends/team/hooks/networks.R). A tree without them gets the same answers here; a tree with
+# its own registry keeps it.
+if (!exists("lipidomic_hook", mode = "function")) {
+  api_hooks <- list(inference_allowed = function(allowed, session, shared_data, ...)
+    isTRUE(allowed) && guided_local_inference_allowed(session, shared_data))
+  lipidomic_hook <- function(name) api_hooks[[name]] %||% function(value, ...) value
+}
 api_alive <- function(s) {
   if (isTRUE(s$broken) || isTRUE(s$closed))
     api_abort("session_lost", "Session is no longer usable; reopen the checkpoint.")
@@ -415,6 +424,14 @@ api_session_open <- function(zip) {
   if (length(restores)) {
     api_inputs(s, team_canvas_restore_complete =
       list(token = tail(restores, 1L)[[1L]]$restoreToken, ok = TRUE))
+    api_flush(s)
+  }
+  # Team's workspace has no review box (R/guided_workflow.R design_issues, team_simple_review_enabled): the restored
+  # unit and relationship are the confirmed design its inference_check (R/server.R) uses. The API's stand-in for that
+  # confirmation is guide_design_confirm, so a design Team considers confirmed opens confirmed; none still asks.
+  restored <- api_read(s, list(unit = domain$input$guide_unit, type = domain$input$guide_design_type))
+  if (team_simple_review_enabled() && guide_valid_design(TRUE, restored$unit, restored$type)) {
+    api_inputs(s, guide_design_confirm = TRUE)
     api_flush(s)
   }
   s$revision <- api_read(s, shared$preparation_state()$revision)

@@ -128,7 +128,7 @@ api_catalog <- local({
         id == "results_dashboard-plot_heat"
       compact <- family == "barchart" || id %in% c("results_dashboard-plot_comp", "results_dashboard-plot_dist")
       size <- list(width = if (roomy) 1000L else if (id == "cellular_org_tab-stressPlot") 900L else 620L,
-        height = if (roomy) 1100L else if (compact) 380L else 720L)
+        height = if (roomy) 1100L else if (compact) 380L else if (id == "results_dashboard-plot_pcascore") 700L else 720L)
       entry <- c(list(id = id, family = family, output = output,
         render = api_catalog_render(id, family, output), allowedInputs = allowed,
         defaults = defaults[intersect(names(defaults), allowed)],

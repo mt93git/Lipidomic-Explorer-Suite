@@ -50,6 +50,8 @@ export interface CanvasHandle {
   /** Exact card X/Y in px (0-1e6), neighbours settled; one undo step. */
   setCardPosition(id:string, pos:{x:number;y:number}):void;
   addCard(source: string, signal?: AbortSignal, position?: { x: number; y: number }): Promise<void>;
+  /** Team's "Plot on canvas" on a PCA card: a PCA score card with that card's settings (catalog.ts pcaScoreCard). */
+  addPcaScore(nodeId: string): Promise<void>;
   undo(): void;
   redo(): void;
   readonly canUndo: boolean;

@@ -127,12 +127,12 @@ const scatterGroups: any = {data: [
 ], layout: {xaxis: {}, yaxis: {}, shapes: [{type: 'rect', x0: 0, x1: 1, y0: 0, y1: 1}]}};
 const outlines = (f: any) => (f.layout.shapes ?? []).filter((s: any) => String(s.name).startsWith('team-ellipse:'));
 
-it('Group outlines: a dotted 95% data ellipse per marker series, drawn from the plotted points as layout shapes', () => {
+it('Group outlines: a dashed 95% data ellipse per marker series (Team eac6bb75), drawn from the plotted points as layout shapes', () => {
   const out = applyEditor(scatterGroups, {groupEllipses: true});
   const [a, b] = outlines(out);
   expect(outlines(out)).toHaveLength(2);
   expect(a).toMatchObject({type: 'path', name: 'team-ellipse:' + sourceKey(scatterGroups.data[0], scatterGroups.data), xref: 'x', yref: 'y',
-    line: {color: '#123456', width: 1.5, dash: 'dot'}, fillcolor: 'rgba(0,0,0,0)', layer: 'above', editable: false});
+    line: {color: '#123456', width: 1.5, dash: 'dash'}, fillcolor: 'rgba(0,0,0,0)', layer: 'above', editable: false});
   expect(b.line.color).toBe('#654321');
   // A: mean (0,0), variances 2/3 and 8/3, no covariance: major axis vertical, a = sqrt(5.991 * 8/3) = 3.997; 72 steps.
   expect(a.path.startsWith('M0,3.997 L')).toBe(true); expect(a.path.match(/ L/g)).toHaveLength(71); expect(a.path.endsWith(' Z')).toBe(true);

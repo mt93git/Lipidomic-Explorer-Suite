@@ -201,7 +201,7 @@ function Boot() {
   // The sign-in page is a whole page with its own bar (ENTRY-5).
   if (screen.name === 'signin') return <SignInScreen onSignedIn={() => void retry()} signedOutFrom={signedOutFrom()}/>;
   const step = screen.name === 'prepare' || screen.name === 'check' ? 'review' : 'data';
-  return <div className="entry-page"><EntryBar step={step} account={adminDisplayName()}/>{
+  return <div className="entry-page"><EntryBar step={step} account={adminDisplayName()} companion={screen.name === 'prepare' ? 'data' : screen.name === 'check' ? 'review' : 'start'}/>{
     screen.name === 'start' ? <StartScreen view={knownAdminView()} onOpenProject={id => void openProject(id)} onPrepareDataset={prepareDataset} onImportCheckpoint={importCheckpoint}/>
     : screen.name === 'prepare' ? <PrepareScreen dataset={{ adminDatasetId: screen.id, ...screen.row }} choices={screen.choices} onCancel={() => { setError(false); setScreen({ name: 'start' }); }}
         onPrepared={(settings, _sessionId, opened) => setScreen({ name: 'check', id: screen.id, choices: screen.choices, row: screen.row, settings, session: opened })}/>

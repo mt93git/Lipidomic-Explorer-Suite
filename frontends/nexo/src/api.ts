@@ -21,7 +21,8 @@ import { collab } from './collab/mode';
 import type { IntentKind } from './collab/intents';
 import { mockPng } from './mock/png';
 import { confirmedMessage, unconfirmedMessage } from './groupComparison/fixture';
-import { mockPcaScore } from './mock/pcaScore';
+import { mockPcaScore, mockPcaScoreFigure } from './mock/pcaScore';
+import { mockCompanionAsk } from './mock/companion';
 import type { Catalog, CardResult, CardUpdate, CardRender, DatasetOpen, DatasetSession, DatasetSettings, Design, Inputs, Node, Session, PlotResult } from './api/types';
 import { interpretDatasetResponse } from './api/datasetSession';
 import { mockDatasetRecord, mockDatasetChoices, mockPreparedCounts, mockDatasetCounters } from './mock/dataset';
@@ -359,6 +360,7 @@ const renderCardRoute = sessionRoute('renderCard', (id: string, instance: string
   if (/^structural_(grid_)?tab-/.test(card.source)) { const shown = card.source === 'structural_tab-summaryPlot' && !mockPressed.get(`${id}/${instance}`)?.has('runAnalysis') ? {label:MOCK_STRUCTURAL_PLACEHOLDER} : mockComputedLabel(card.source, entry.label, card.inputs, instance); mockCounters.labels[instance] = shown.label; return {render:card.render, figure:mockStructureFigure(card.source, shown.label), provenance:{mock:true}}; }
   if (card.render === 'png') { const shown = mockComputedLabel(card.source, entry.label, card.inputs, instance, sessionPaletteFamily(card.source) ? mockPaletteOverride(id, 'Control') : undefined); mockCounters.labels[instance] = shown.label; (mockCounters.pngRenders ??= []).push({instance,width,height,dpr}); return {blob:await mockPng(shown.label,width,height,shown.fill,dpr), revision:'1'}; }
   if (/3dPlot$/.test(card.source)) return {render:card.render, figure:mockScene3d(entry.label), provenance:{mock:true}};
+  if (card.source === 'results_dashboard-plot_pcascore') return {render:card.render, figure:mockPcaScoreFigure(card.inputs), provenance:{mock:true}};
   if (entry.clickSource) return {render:card.render, figure:mockClickFigure(instance, entry, card.inputs), provenance:{mock:true}};
   const dashboard = card.source.match(/^results_dashboard-plot_(pca|violin|dist|comp|heat)$/)?.[1] as PlotId | undefined;
   return {render:card.render, figure: card.render === 'visnetwork' ? {nodes:[{id:1,label:'Lipid'},{id:2,label:'Pathway'}],edges:[{from:1,to:2}]} : card.render === 'html' ? mockComparison(id,instance) : (dashboard ? mockSessionColours(id, structuredClone(plots[dashboard])) : {data:[{type:'scatter',x:[1,2,3],y:[2,1,3]}],layout:{title:(mockCounters.labels[instance] = mockComputedLabel(card.source, entry.label, card.inputs).label)}}), provenance:{mock:true}};
@@ -436,7 +438,7 @@ export const violinStatistics = (id:string, instance:string, body:import('./api/
 const violinRoute = sessionRoute('violinStatistics', (id:string, instance:string, body:import('./api/types').ViolinRequest):Promise<import('./api/types').ViolinReply> => mock ? enqueue(()=>(mockViolinCard(id,instance),mockViolinStatistics(instance,body,mockDataFingerprint(id,instance)))) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/statistics/violin`,body));
 export const violinPolicy = sessionRoute('violinPolicy', (id:string):Promise<import('./api/types').ViolinPolicy> => mock ? enqueue(async()=>({...mockViolinPolicy})) : request(`${path(id)}/statistics/violin/policy`));
 /** NEXO-P5: Team's PCA score analysis of a dashboard PCA card (GET .../pca-score). */
-export const pcaScore = sessionRoute('pcaScore', (id:string,instance:string):Promise<import('./api/types').PcaScoreReply> => mock ? enqueue(async()=>{const card=cards.get(`${id}/${instance}`),node=card?undefined:mockSession(id).canvas.nodes.find(n=>cardInstanceId(n)===instance);if(!card&&!node)throw new Error('Unknown card');return mockPcaScore(card?.source??node!.instance?.source??node!.id,card?.inputs??node?.instance?.inputs??mockSession(id).inputs,!!mockPressed.get(`${id}/${instance}`)?.has('pcs_run'));}) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/pca-score`));
+export const pcaScore = sessionRoute('pcaScore', (id:string,instance:string):Promise<import('./api/types').PcaScoreReply> => mock ? enqueue(async()=>{const card=cards.get(`${id}/${instance}`),node=card?undefined:mockSession(id).canvas.nodes.find(n=>cardInstanceId(n)===instance);if(!card&&!node)throw new Error('Unknown card');return mockPcaScore(card?.source??node!.instance?.source??node!.id,card?.inputs??node?.instance?.inputs??mockSession(id).inputs);}) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/pca-score`));
 export const groupComparison = sessionRoute('groupComparison', (id:string,instance:string):Promise<import('./api/types').GroupComparisonReply> => mock ? enqueue(async()=>(mockCard(id,instance),mockComparison(id,instance))) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/group-comparison`));
 export const confirmGroupComparison = (id:string, instance:string, token:string):Promise<import('./api/types').GroupComparisonReply> => collab()
   ? viaIntent('confirmBaseline', {instance}, {instanceId: instance, confirmationToken: token}, () => groupComparison(id, instance))
@@ -573,3 +575,10 @@ async function mockFailedDownload(status:number, body:{error:string;message:stri
 }
 // A Plotly 3D scene (WebGL) as the PCA/loadings 3D cards draw it.
 const mockScene3d = (title:string) => ({data:['Control','Treatment'].map((name,g) => ({type:'scatter3d', mode:'markers', name, x:[1,2,3].map(v=>v+g), y:[2,1,3].map(v=>v-g), z:[3,1,2]})), layout:{title, scene:{xaxis:{title:'PC1'}, yaxis:{title:'PC2'}, zaxis:{title:'PC3'}}}});
+
+// The companion's chat (frontends/nexo-api companion route, built in parallel): one question with the screen and the
+// selected card; the reply's Markdown is rendered safely by src/companion/markdown.ts.
+export type CompanionAnswer = { text: string; label: string; grounded: boolean };
+export function askCompanion(question: string, screen: string, card: string | null): Promise<CompanionAnswer> {
+ return mock ? new Promise(done => setTimeout(() => done(mockCompanionAsk(question)), 150)) : request<CompanionAnswer>('/companion/ask', { question, screen, card }, 'POST');
+}

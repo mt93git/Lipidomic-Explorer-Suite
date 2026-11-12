@@ -8,6 +8,8 @@ const read: Record<string, string[]> = {
   dist: ['color_by'],
   comp: ['color_by', 'comp_class_selection', 'comp_group_selection', 'comp_axis_mode'],
   heat: ['color_by', 'top_n', 'heat_group_selection', 'heat_lipid_selection', 'heat_significance'],
+  // NEXO-P8: the PCA score card (Team 8e2f5c07): the drawer's default; its analysis controls are under Statistics.
+  pcascore: ['color_by'],
 };
 export function dashboardSchema(source: string, schema: CardSchema): CardSchema {
   const keys = read[/^results_dashboard-plot_(\w+)$/.exec(source)?.[1] ?? ''];

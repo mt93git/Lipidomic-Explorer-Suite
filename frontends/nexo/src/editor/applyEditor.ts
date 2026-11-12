@@ -54,14 +54,14 @@ function ellipsePath(points:[number,number][]){
   let path='M';for(let j=0;j<coords.length;j+=2)path+=(j?' L':'')+Number(coords[j].toPrecision(6))+','+Number(coords[j+1].toPrecision(6));
   return {path:path+' Z',bounds:{x:[xmin,xmax],y:[ymin,ymax]}};
 }
-/** Group outlines: one dotted ellipse per visible marker series, in its marker color, as layout shapes. Presentation only. */
+/** Group outlines: one dashed ellipse (Team eac6bb75) per visible marker series, in its marker color, as layout shapes. Presentation only. */
 function groupOutlines(out:Figure,original:Figure){
   const shapes:PlotObject[]=[],bounds:Record<'x'|'y',number[]>={x:[Infinity,-Infinity],y:[Infinity,-Infinity]};
   for(const i of ellipseSeries(out)){
     const t=out.data[i],key=sourceKey(original.data[i],original.data),color=t.marker?.color;
     if(!key||t.visible===false||t.visible==='legendonly'||typeof color!=='string')continue;
     const e=ellipsePath(numericPoints(t));if(!e)continue;
-    shapes.push({type:'path',name:ELLIPSE_PREFIX+key,xref:'x',yref:'y',path:e.path,line:{color,width:1.5,dash:'dot'},fillcolor:'rgba(0,0,0,0)',layer:'above',editable:false});
+    shapes.push({type:'path',name:ELLIPSE_PREFIX+key,xref:'x',yref:'y',path:e.path,line:{color,width:1.5,dash:'dash'},fillcolor:'rgba(0,0,0,0)',layer:'above',editable:false});
     for(const a of ['x','y'] as const){bounds[a][0]=Math.min(bounds[a][0],e.bounds[a][0]);bounds[a][1]=Math.max(bounds[a][1],e.bounds[a][1]);}
   }
   if(!shapes.length)return;

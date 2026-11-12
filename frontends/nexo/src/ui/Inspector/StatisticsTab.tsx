@@ -62,7 +62,7 @@ export function StatisticsTab({node,handle}:{node:Node;handle:CanvasHandle}){
  const select=(label:string,value:string,options:Record<string,string>,onChange:(v:string)=>void)=><label style={{display:'block',margin:'8px 0'}}>{label}<select aria-label={label} style={{display:'block',width:'100%'}} value={value} onChange={e=>onChange(e.target.value)}>{Object.entries(options).map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
  const pairs:Pair[]=(description?.groups??[]).flatMap((g,i,groups)=>groups.slice(i+1).map(h=>({a:g.group,b:h.group})));
  const baseline = applied??sanitizeSettings({...DEFAULT_SETTINGS,comparisons:pairs,effect:'hedges_g'});
- if(hasPcaScore(source))return <PcaScoreSection node={current} handle={handle}/>;
+ if(hasPcaScore(source))return <PcaScoreSection node={current} source={source} handle={handle}/>;
  if(source?.includes('group_comparison'))return <GroupComparisonSection node={current} handle={handle} instanceId={node.instance?.instanceId??instanceId}/>;
  if(!eligible)return <><p>Statistics are available for independent violin copies.</p>{message&&<p role="alert">{message}</p>}</>;
  const status=result&&(reply?.status==='unchanged'||reply?.status==='invalidated')?statusFor({...reply,matchesCurrent:(reply.dataFingerprint??reply.result?.dataFingerprint)===result.dataFingerprint},changedBy):result?statusFor(reply??{status:'ok'}):reply?.status==='ok'?statusFor(null):statusFor(reply,changedBy);

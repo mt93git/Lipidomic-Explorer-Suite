@@ -1,6 +1,7 @@
 # Load the statistics adapter here so both run.R and direct router users get it.
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "statistics.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "export.R"), local = TRUE)
+source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "companion.R"), local = TRUE)
 if (!exists("api_dataset_route", mode = "function"))
   source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "datasets.R"), local = globalenv())
 if (!exists("api_pool_status", mode = "function"))
@@ -91,6 +92,10 @@ function() list(ok = TRUE, commit = api_commit, root = getwd(), r = as.character
 # The catalog is static and cached at startup (run.R): serve it outside the engine lock
 # so a page load does not wait behind a 10 s session open.
 function(res) list(version = "1", outputs = api_catalog())
+
+#* Companion answer from the analyst's knowledge base (companion.R); no engine work, so outside the engine lock
+#* @post /api/v1/companion/ask
+function(req, res) api_handle(res, { api_admin_caller(api_admin_authorization(req)); api_companion_ask(api_body(req)) })
 
 # Checkpoint routes are scoped per client when LIPIDOMIC_ADMIN_REQUIRE_USER=1 (docs/integration/nexo-store-scope.md):
 # api_admin_caller() is NULL while it is off, and every route behaves as before.
