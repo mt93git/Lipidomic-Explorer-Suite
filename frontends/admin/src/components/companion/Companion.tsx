@@ -104,7 +104,8 @@ export function Companion({ screen: pathScreen, user: signedIn = null, apiBase =
     if (tipRef.current?.contains(document.activeElement)) refocus.current = true;
     land(bigNow.current ?? bigBox('out'), flyFrames, 900, 800);
   }
-  function openChat() { if (phase === 'out') back('dismiss'); setTip(null); setChat(true); }
+  // Admin: the chat's input keeps the focus; the flight home must not hand it back to the dock mid-question.
+  function openChat() { if (phase === 'out') back('dismiss'); refocus.current = false; setTip(null); setChat(true); }
   function toggleFewer(value: boolean) { writeFlag(storage(), user, 'fewer', value); setFlags(f => ({ ...f, fewer: value })); }
   // The entrance: the first signed-in screen, first visit only. A remount after it began docks it from where it stood.
   // Admin: not this instance's own entrance (started), which React's StrictMode re-runs these effects over in dev.

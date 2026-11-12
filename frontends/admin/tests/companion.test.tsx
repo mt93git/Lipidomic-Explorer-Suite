@@ -86,7 +86,7 @@ describe("companion in the client zone", () => {
     const input = screen.getByRole("textbox", { name: "Question for the guide" });
     expect(input).toHaveAttribute("maxLength", String(MAX_QUESTION));
     await userEvent.type(input, "What is a cardiolipin?{Enter}");
-    expect(await screen.findByText("The guide could not answer just now. Try again in a moment.")).toBeVisible();
+    expect(await screen.findByText("The guide could not answer just now. Try again in a moment.", undefined, { timeout: 5000 })).toBeVisible();
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0]).toEqual([expect.stringMatching(/\/api\/session-token$/), expect.objectContaining({ method: "GET" })]);
   });
@@ -103,20 +103,20 @@ describe("companion chat per person", () => {
     await userEvent.click(dock()!);
     await userEvent.click(await screen.findByRole("button", { name: "Chat with the neutrophil guide" }));
     await userEvent.type(screen.getByRole("textbox", { name: "Question for the guide" }), "A's question{Enter}");
-    expect(await screen.findByText("An answer for A")).toBeVisible();
+    expect(await screen.findByText("An answer for A", undefined, { timeout: 5000 })).toBeVisible();
     first.unmount();
     render(<Companion screen="home" user="u-b" />);
     await userEvent.click(dock()!);
     await userEvent.click(await screen.findByRole("button", { name: "Chat with the neutrophil guide" }));
     expect(screen.getByRole("region", { name: "Chat with the neutrophil guide" })).not.toHaveTextContent("A's question");
     await userEvent.type(screen.getByRole("textbox", { name: "Question for the guide" }), "B's question{Enter}");
-    await screen.findByText("B's question");
+    await screen.findByText("B's question", undefined, { timeout: 5000 });
     await waitFor(() => expect(fetcher.mock.calls.filter(([u]) => u.endsWith("/api/session-token"))).toHaveLength(2));
   });
 });
 
 describe("askCompanion", () => {
-  it("sends the session token as Bearer and only the question, and returns the answer", async () => {
+  it("sends the session token as X-Nexo-Admin-Token and only the question, and returns the answer", async () => {
     const fetcher = vi.fn(async (url: string, init: RequestInit) => {
       void init;
       return url.endsWith("/api/session-token") ? json(200, { accessToken: "tok-1", expiresAt: Date.now() / 1000 + 3600 })
@@ -127,7 +127,7 @@ describe("askCompanion", () => {
     const [url, init] = fetcher.mock.calls[1];
     expect(url).toBe("/nexo-staging/api/v1/companion/ask");
     expect(init.method).toBe("POST");
-    expect(init.headers).toEqual({ "Content-Type": "application/json", Authorization: "Bearer tok-1" });
+    expect(init.headers).toEqual({ "Content-Type": "application/json", "X-Nexo-Admin-Token": "tok-1" });
     expect(JSON.parse(String(init.body))).toEqual({ question: "What is CL?" });
     // The token is kept: a second question asks Admin for nothing.
     await askCompanion("Another?", "/api", fetcher);

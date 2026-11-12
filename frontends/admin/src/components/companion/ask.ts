@@ -1,7 +1,8 @@
 import { withBasePath } from "@/lib/base-path";
 
 // The companion's chat, Nexo's contract (frontends/nexo-api companion route): POST <NEXO_API_BASE>/v1/companion/ask with
-// {question} and the signed-in person's access token as Authorization: Bearer; the reply is {text, label, grounded}.
+// {question} and the signed-in person's access token in X-Nexo-Admin-Token (as Nexo sends it: the
+// public /api can sit behind HTTP Basic, which takes Authorization); the reply is {text, label, grounded}.
 // The token comes from Admin's own same-origin GET <basePath>/api/session-token (src/lib/session-token.ts). The API's
 // optional `screen` only knows Nexo's five screens (it answers 422 to anything else) and `card` names a Nexo card, so
 // Admin sends neither.
@@ -33,7 +34,7 @@ export async function askCompanion(question: string, apiBase: string, fetcher: F
     if (!token) throw new Error("No access token.");
     const response = await fetcher(`${apiBase.replace(/\/+$/, "")}/v1/companion/ask`, {
       method: "POST", credentials: "same-origin", cache: "no-store",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: q }),
+      headers: { "Content-Type": "application/json", "X-Nexo-Admin-Token": token }, body: JSON.stringify({ question: q }),
     });
     if (response.status === 401 && !fresh) continue;
     if (!response.ok) throw new Error(`The guide answered ${response.status}.`);
