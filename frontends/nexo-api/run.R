@@ -18,6 +18,8 @@ source("R/global.R", local = globalenv())
 source(file.path(api_run_dir, "requirements.R"), local = globalenv())
 api_missing <- api_missing_team_symbols()
 if (length(api_missing)) stop("Nexo API requires these Team symbols: ", paste(api_missing, collapse = ", "))
+api_old <- api_old_packages()
+if (length(api_old)) stop("Nexo API needs newer R packages: ", paste(api_old, collapse = "; "))
 # export.R: schema.R lists a card's file inputs from it (b11 F3), so it loads with the engine, not only in plumber.R.
 api_engine_files <- c("health.R", "session.R", "schema.R", "catalog.R", "cards.R", "export.R", "storage_files.R", "storage.R", "analysis.R", "palette.R", "cohort.R", "nexo_store.R", "render_disk.R", "pool.R")
 for (file in api_engine_files) source(file.path(api_run_dir, file), local = globalenv())
