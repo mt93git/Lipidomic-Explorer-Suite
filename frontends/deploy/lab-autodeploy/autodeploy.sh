@@ -28,7 +28,7 @@ RSCRIPT=${RSCRIPT:-Rscript}
 MIN_FREE_GB=${MIN_FREE_GB:-8}
 mkdir -p $A/runs
 exec 9>$ROOT/lock          # one run at a time across both envs (memory)
-flock -n 9 || exit 0
+flock -w 1800 9 || exit 0   # wait for the other environment's run (both timers fire together)
 
 SHA=$(timeout 60 git ls-remote $REPO refs/heads/$BRANCH 2>/dev/null | cut -f1)
 [ -n "$SHA" ] || exit 0    # GitHub not reachable: try again next run
