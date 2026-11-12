@@ -1,0 +1,8 @@
+/* The "new version deployed" bar (update-notice.tsx): thin, yellow, fixed above everything at the top of the page. */
+.bar { position: fixed; z-index: 1000; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 36px; padding: 4px 12px; background: #ffe58f; color: var(--navy); border-bottom: 1px solid var(--warning); font: 600 13px/1.3 var(--font-body), system-ui, sans-serif; box-shadow: var(--shadow); }
+.bar button { font: inherit; cursor: pointer; border-radius: 5px; }
+.bar button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.reload { padding: 4px 12px; border: 1px solid var(--navy); background: var(--navy); color: white; }
+.reload:hover { background: var(--blue); border-color: var(--blue); }
+.close { padding: 0 8px; border: 1px solid transparent; background: transparent; color: var(--navy); font-size: 18px; line-height: 1; min-height: 28px; }
+.close:hover { border-color: var(--navy); }

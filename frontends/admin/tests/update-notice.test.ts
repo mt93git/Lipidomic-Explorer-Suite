@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CHECK_EVERY_MS, FIRST_CHECK_MS, readDeployStatus, updateNoticeConfig, updateToAnnounce } from "@/lib/update-notice";
+import { CHECK_EVERY_MS, FIRST_CHECK_MS, deployedCommit, readDeployStatus, updateNoticeConfig, updateToAnnounce } from "@/lib/update-notice";
 
 // Synthetic commits only.
 const BUILT = "a".repeat(40);
@@ -50,6 +50,16 @@ describe("which deployed commit to announce", () => {
   it("stays quiet for the dismissed commit only", () => {
     expect(updateToAnnounce(BUILT, { state: "deployed", commit: NEWER }, NEWER)).toBeNull();
     expect(updateToAnnounce(BUILT, { state: "deployed", commit: LATER }, NEWER)).toBe(LATER);
+  });
+});
+
+describe("the deployed commit in a status", () => {
+  it("is the commit of a deployed status, else null", () => {
+    expect(deployedCommit({ state: "deployed", commit: NEWER, finished: "2026-01-01T00:00:00Z" })).toBe(NEWER);
+    expect(deployedCommit({ state: "deployed", commit: BUILT })).toBe(BUILT);
+    for (const status of [null, "x", { state: "deploying", commit: NEWER }, { state: "deployed" }, { state: "deployed", commit: "" }]) {
+      expect(deployedCommit(status)).toBeNull();
+    }
   });
 });
 

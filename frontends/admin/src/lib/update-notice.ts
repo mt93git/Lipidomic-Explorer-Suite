@@ -13,13 +13,18 @@ export function updateNoticeConfig(env: { NEXT_PUBLIC_BUILD_COMMIT?: string; NEX
   return buildCommit && statusPath ? { buildCommit, statusPath } : null;
 }
 
+// The commit of a status whose state is "deployed", or null (any other state, or no usable commit).
+export function deployedCommit(status: unknown): string | null {
+  if (!status || typeof status !== "object") return null;
+  const { state, commit } = status as { state?: unknown; commit?: unknown };
+  return state === "deployed" && typeof commit === "string" && commit ? commit : null;
+}
+
 // The deployed commit to tell the user about, or null: only state "deployed", a commit other than this build's, and
 // not the one the user already closed the notice for.
 export function updateToAnnounce(buildCommit: string, status: unknown, dismissedCommit: string | null): string | null {
-  if (!status || typeof status !== "object") return null;
-  const { state, commit } = status as { state?: unknown; commit?: unknown };
-  if (state !== "deployed" || typeof commit !== "string" || !commit) return null;
-  return commit === buildCommit || commit === dismissedCommit ? null : commit;
+  const commit = deployedCommit(status);
+  return commit === null || commit === buildCommit || commit === dismissedCommit ? null : commit;
 }
 
 // The status file's JSON, or null for a non-200, bad JSON or a network error.
