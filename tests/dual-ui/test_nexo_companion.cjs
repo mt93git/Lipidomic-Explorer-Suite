@@ -77,7 +77,7 @@ async function browserTests(pw, name, base) {
     await panel.getByRole('textbox', { name: 'Question for the guide' }).fill('What does PCA show?');
     await button(panel, 'Send').click();
     await panel.locator('.companion-a strong', { hasText: 'Definition' }).waitFor();
-    assert.equal(await panel.locator('.companion-label').last().textContent(), 'Answered from the local guide.');
+    assert.equal(await panel.locator('.companion-label').last().textContent(), 'Knowledge base · 3 passages');
     await page.locator('.companion-fly').waitFor({ state: 'detached', timeout: 3_000 }); // back in the dock above the panel
     await shot(page, 'chat');
     console.log(`PASS COMPANION ${name} chat-answers`);

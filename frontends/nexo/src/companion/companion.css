@@ -41,3 +41,6 @@
 .companion-label{margin:6px 0 0;font-size:11px;color:#5b6b78}
 .companion-foot{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line,#e3e7ec)}
 .companion-foot input{flex:1;min-width:0;border:2px solid var(--blue-fg,#1d4f7c);border-radius:var(--radius-sm,6px);padding:6px 8px;font:inherit}
+/* Phones: a 32 px touch target (test_nexo_access) that still lets the top bar fit 390 px
+   (test_nexo_collab_presence): the slot takes back 6 px of the gap before it. */
+@media(max-width:767px){.topbar .companion-slot,.topbar .companion-dock{width:32px;height:32px}.topbar .companion-slot{margin-left:-6px}}
