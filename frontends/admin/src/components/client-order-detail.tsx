@@ -4,6 +4,7 @@ import { clientMayOpenNexo, type ClientDeliverable } from "@/lib/deliverables";
 import { mayOpenInNexo, nexoDatasetLink } from "@/lib/release";
 import { ClientDeliverables } from "./deliverables";
 import { LabContact } from "./lab-contact";
+import { CompanionScreen } from "./companion/screen";
 import styles from "./client-portal.module.css";
 
 // An order as a client member follows it: six steps with their dates, where it is now, and the order's own facts.
@@ -21,6 +22,7 @@ export function ClientOrderDetail({ order, clientName, example, shipping = null,
   const steps = clientSteps(order);
   const closed = declined(order);
   return <>
+    {!closed && (step === 2 || step === 6) && <CompanionScreen screen={step === 2 ? "shipping" : "results"} />}
     <div className="page-heading">
       <div><div className="eyebrow"><Link href="/client/home">Your orders</Link> / Order detail</div><h1>{order.code}</h1><p>{order.title}</p></div>
       <Link className="button secondary" href="/client/home">← Back to your orders</Link>
