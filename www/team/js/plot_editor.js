@@ -220,7 +220,7 @@
       var t=gd.data[i],full=(gd._fullData||[])[i]||t,key=b.traces[i]&&b.traces[i].sourceKey;if(!key||hidden.has(i)||t.visible===false||t.visible==='legendonly')return;
       var chosen=desired[i]&&desired[i].color,marker=t.marker||{},fullMarker=full.marker||{},color=chosen||(typeof marker.color==='string'?marker.color:typeof fullMarker.color==='string'?fullMarker.color:null);
       if(!color)return;var e=ellipsePath(numericPoints(t));if(!e)return;
-      shapes.push({type:'path',name:ELLIPSE_PREFIX+key,xref:'x',yref:'y',path:e.path,line:{color:color,width:1.5,dash:'dot'},fillcolor:'rgba(0,0,0,0)',layer:'above',editable:false});
+      shapes.push({type:'path',name:ELLIPSE_PREFIX+key,xref:'x',yref:'y',path:e.path,line:{color:color,width:1.5,dash:'dash'},fillcolor:'rgba(0,0,0,0)',layer:'above',editable:false});
       ['x','y'].forEach(function(a){bounds[a][0]=Math.min(bounds[a][0],e.bounds[a][0]);bounds[a][1]=Math.max(bounds[a][1],e.bounds[a][1]);});
     });
     return {shapes:shapes,bounds:bounds};
