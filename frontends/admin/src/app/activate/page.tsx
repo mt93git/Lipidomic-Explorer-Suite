@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { Companion } from "@/components/companion/Companion";
 import { getEnvironment } from "@/lib/environment";
 import { isTokenHash } from "@/lib/password-reset";
 import { MIN_PASSWORD } from "@/lib/people";
@@ -16,7 +17,7 @@ export default async function ActivatePage({ searchParams }: { searchParams: Pro
   const { token_hash: tokenHash, type } = await searchParams;
   return <>
     <header className="topbar"><Link className="brand" href="/"><span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span></Link></header>
-    <main className="auth-page"><section className="auth-card" aria-labelledby="reset-title">
+    <main className="auth-page"><Companion screen="activate" /><section className="auth-card" aria-labelledby="reset-title">
       <div className="eyebrow">Lipidomics service</div>{mock && <span className="example-label">Example data</span>}
       {type === "recovery" && isTokenHash(tokenHash) ? <ResetForm tokenHash={tokenHash} minPassword={MIN_PASSWORD} purpose="activate" /> : <ExpiredLink purpose="activate" />}
     </section></main>

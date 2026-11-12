@@ -1,14 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 // The happy path of the release side, in demo mode: enter the demo as lab staff, build a dataset for an order
-// at Processed, sign as two different demo people, release, see the Team project id, and find the order in the
+// at Processed, sign as two different demo people, release, see it In Nexo, and find the order in the
 // pipeline's Released list. Open in Nexo (<NEXT_PUBLIC_NEXO_URL>/?dataset=<id>, set in playwright.config.ts) appears
 // on the released, current version (release page, Datasets, order detail) and disappears once it is withdrawn.
 // Dev-server compiles happen on first visit, so the route-change waits are generous.
 const slow = { timeout: 60_000 };
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-test("build a dataset for an order at Processed, sign as two demo people, release, see the Team project and the order at Released", async ({ page }) => {
+test("build a dataset for an order at Processed, sign as two demo people, release, see it In Nexo and the order at Released", async ({ page }) => {
   test.setTimeout(300_000);
   await page.goto("/admin/sign-in");
   await page.getByRole("button", { name: "Enter example workspace" }).click();
@@ -56,10 +55,9 @@ test("build a dataset for an order at Processed, sign as two demo people, releas
   await page.getByRole("button", { name: "Release dataset" }).click();
   await expect(page).toHaveURL(/\?released=1$/, slow);
   await expect(page.getByRole("status")).toContainText("Dataset v1 released. ORD048 is now Released", slow);
-  const project = page.getByRole("region", { name: "Team project" });
-  await expect(project).toContainText("ORD048 Example processing review");
-  await expect(project.getByText(UUID)).toBeVisible();
-  await expect(project.getByRole("link", { name: "Open in Nexo" })).toHaveAttribute("href", nexoHref);
+  const inNexo = page.getByRole("region", { name: "In Nexo" });
+  await expect(inNexo).toContainText("ORD048 · v1");
+  await expect(inNexo.getByRole("link", { name: "Open in Nexo" })).toHaveAttribute("href", nexoHref);
   await expect(page.getByRole("button", { name: "Withdraw" })).toBeVisible();
 
   await page.getByRole("navigation", { name: "Admin navigation" }).getByRole("link", { name: "Pipeline" }).click();
