@@ -1666,6 +1666,7 @@
     // Shell cards show only title, plot and footer (card_frame.js): a composition card opens compact,
     // at RC4's 380 px maximum so the figure keeps as much height as the card allows.
     var compactCard=document.body.classList.contains('ts-shell-app')&&/^(results_dashboard-plot_(comp|dist)|barchart-(bar|donut)Plot(Unf|F)iltered)$/.test(source);
+    if(source==='results_dashboard-plot_pcascore')return {width:620,height:700,fixed:true};
     return {width:roomyHeatmap ? 1000 : bigRaster ? 900 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : bigRaster ? 860 : compactCard ? (source==='results_dashboard-plot_comp' ? 560 : 380) : 720, fixed:roomyHeatmap || widePanels || compactCard || bigRaster};
   }
   // The first free place in the two-column grid, clear of every visible card and skeleton card.
@@ -3389,6 +3390,8 @@
       catalogSource:function(id){var r=records.get(id);return r?sourceKey(r):null;},
       deReady:deReady,designReady:function(){return designReady;},inferenceGate:function(){return inferenceGate;},timePointsReady:function(){return timePointsReady;},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
+      // PCA card -> Statistics tab: "Plot on canvas" adds the PCA score figure as its own card with the tab's settings.
+      addPcaScore:function(id){editDuringHydration();var copied=copyData(records.get(id));if(!copied||copied.source!=='results_dashboard-plot_pca')return false;var pcs={};Object.keys(copied.inputs||{}).forEach(function(k){if(/^pcs_/.test(k))pcs[k]=copied.inputs[k];});var inputs=JSON.parse(JSON.stringify(copied.inputs||{}));copied.source='results_dashboard-plot_pcascore';copied.inputs=inputs;copied.visual={};copied.statistics=null;copied.width=620;copied.height=700;copied.label='PCA score analysis · '+(pcs.pcs_pc||'PC1');return requestInstance(copied.source,copied);},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
       copyPlotAsInstance:function(id){editDuringHydration();var copied=copyData(records.get(id));if(!copied)return false;lastInstanceRequest=null;return requestInstance(copied.source,copied)&&lastInstanceRequest?lastInstanceRequest:false;},

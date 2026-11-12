@@ -3,6 +3,7 @@
 api_catalog_copy <- list(
   "results_dashboard-plot_pca" = list(label = "Principal components", description = "Compare sample structure across the prepared data.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_violin" = list(label = "Feature distributions", description = "Review the distribution of selected features.", group = "Dashboard", needs = NULL),
+  "results_dashboard-plot_pcascore" = list(label = "PCA score analysis", description = "Compare the scores of one principal component between groups, with the tests and group medians.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_dist" = list(label = "Signal distribution", description = "Inspect the distribution of measured signal.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_comp" = list(label = "Composition overview", description = "Compare signal shares across groups.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_heat" = list(label = "Abundance heatmap", description = "Compare lipid patterns across groups.", group = "Dashboard", needs = NULL),

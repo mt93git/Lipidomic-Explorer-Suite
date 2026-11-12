@@ -90,3 +90,7 @@ body.guided-app .rd-header h2{display:none}
 .rd-pca-score select, .rd-pca-score .form-control, .rd-pca-score .btn { width: 100%; }
 .rd-pca-score .form-group, .rd-pca-score .shiny-input-container { width: 100% !important; max-width: 100% !important; min-width: 0; }
 .rd-pca-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(0,0,0,.25); }
+
+/* PCA score: the button that adds the figure to the canvas lives on the PCA card only. */
+.rd-pca-score.is-score-card .rd-pcs-plot-btn,.rd-pca-score.is-score-card .rd-pcs-plot-note{display:none}
+.rd-pca-score .rd-pcs-plot-btn{width:100%;margin-top:6px}
