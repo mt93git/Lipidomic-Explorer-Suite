@@ -1,0 +1,9 @@
+[Unit]
+Description=Run the Nexo staging auto-deploy every 5 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=5min
+
+[Install]
+WantedBy=timers.target

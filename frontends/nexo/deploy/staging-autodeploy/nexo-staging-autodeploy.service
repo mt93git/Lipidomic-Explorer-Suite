@@ -1,0 +1,8 @@
+[Unit]
+Description=Nexo staging auto-deploy (checks the tracked branch on GitHub; staging only)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/staging-auto/autodeploy.sh
+Nice=10
+TimeoutStartSec=1800
