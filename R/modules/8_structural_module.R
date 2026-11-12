@@ -2585,7 +2585,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       cor_df <- as.data.frame(as.table(cor_mat)) %>%
          dplyr::filter(!is.na(Freq)) %>%
          dplyr::rename(Node_1 = Var1, Node_2 = Var2, Pearson_r = Freq) %>%
-         dplyr::mutate(AbsCor = abs(Pearson_r)) %>%
+         dplyr::mutate(Node_1 = as.character(Node_1), Node_2 = as.character(Node_2), AbsCor = abs(Pearson_r)) %>%
          dplyr::filter(AbsCor >= input$networkThresh)
          
       if(nrow(cor_df) == 0) return(NULL)
