@@ -75,4 +75,6 @@ Suggests:
     httr,
     httr2,
     future,
-    promises
+    promises,
+    plumber,
+    callr
