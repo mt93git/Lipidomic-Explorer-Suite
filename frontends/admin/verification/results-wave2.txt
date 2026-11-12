@@ -1,0 +1,106 @@
+Wave 2 results verification (2026-11-07)
+
+Implemented: ingest results, server parse and SHA-256, stop override gate, demo/live
+accept seam, lab-wide name dictionary, missing names for the session's last file,
+synthetic fixture, unit/demo-boundary tests, exactly one results Playwright spec.
+No navigation.ts or pipeline-overview.tsx edits.
+
+Environment/dependency commands and output:
+- npm ci --prefix frontends/admin
+  Failed: esbuild install.js spawnSync .../esbuild EPERM.
+- npm ci --prefix packages/admin-ingest
+  Failed: npm "Exit handler never called!".
+- npm install --prefix frontends/admin --ignore-scripts --cache /tmp/admin-npm-cache
+  Failed: EAI_AGAIN registry.npmjs.org for @playwright/test.
+- npm install --prefix frontends/admin --offline --ignore-scripts
+  Failed: ENOTCACHED @playwright/test.
+- npm ci --prefix packages/admin-ingest --ignore-scripts --offline
+  Failed: ENOTCACHED zip-stream-4.1.1.tgz. exceljs is absent.
+- npm run build --prefix packages/admin-ingest
+  Initially: tsc not found.
+- node frontends/admin/node_modules/typescript/bin/tsc -p packages/admin-ingest/tsconfig.json
+  Missing node:crypto/Buffer types and exceljs; emitted ignored dist artifacts.
+- npm install --prefix frontends/admin --package-lock-only --ignore-scripts --offline
+  up to date, audited 530 packages in 234ms; found 0 vulnerabilities.
+  Existing unrelated lock records were preserved afterwards; new file-link and
+  Playwright 1.55.0 entries were retained.
+
+To continue validation without network, existing frontend node_modules were copied
+from a neighboring checkout into this workspace (no tracked files changed there).
+The locally available Playwright runner is 1.64.1; package.json and the lockfile pin
+1.55.0 as required. A symlink connects the local ingest package. No replacement or
+mock of exceljs or ingest logic was added.
+
+TDD limitation: tests/results.test.ts was written before its implementation.
+The first command, npm test --prefix frontends/admin -- --run tests/results.test.ts,
+failed with "vitest: not found". Later it failed resolving the local package, then
+exceljs. A meaningful red-to-green logic run could not be completed. The demo
+boundary test also remains unexecuted because its import requires exceljs.
+
+Final requested command outputs (working directory frontends/admin):
+
+$ npm test
+> @lipidomic-explorer/admin@0.1.0 test
+> vitest run
+Test Files  2 failed | 17 passed (19)
+     Tests  92 passed (92)
+FAIL tests/results-integration.test.ts
+FAIL tests/results.test.ts
+Error: Failed to resolve import "exceljs" from "../../packages/admin-ingest/dist/workbook.js".
+Full output: results-wave2-tests.txt.
+
+$ npm run typecheck
+> @lipidomic-explorer/admin@0.1.0 typecheck
+> tsc --noEmit
+(exit 0, no diagnostics)
+
+$ npm run lint
+> @lipidomic-explorer/admin@0.1.0 lint
+> eslint . --max-warnings=0
+(exit 0, no diagnostics)
+
+$ npm run build
+> @lipidomic-explorer/admin@0.1.0 build
+> node scripts/next.mjs build
+[admin] Google Fonts unavailable or system mode selected; using system font fallbacks. Set ADMIN_FONT_MODE=google to require brand fonts.
+Next.js 15.5.28
+Creating an optimized production build ...
+Failed to compile.
+../../packages/admin-ingest/dist/workbook.js
+Module not found: Can't resolve 'exceljs'
+Import traces: dist/index.js -> src/lib/results.ts -> results actions / dictionary page.
+> Build failed because of webpack errors
+(exit 1)
+
+$ npm run e2e -- --list
+> @lipidomic-explorer/admin@0.1.0 e2e
+> playwright test --list
+Listing tests:
+  [chromium] > results.spec.ts:4:5 > review a flagged synthetic blank and accept results
+Total: 1 test in 1 file
+(exit 0; local runner 1.64.1)
+
+$ npm run e2e
+> @lipidomic-explorer/admin@0.1.0 e2e
+> playwright test
+Error: Process from config.webServer exited early.
+(exit 1; browser journey did not execute)
+
+Additional checks:
+- git diff --check: exit 0.
+- Earlier typecheck found the action state typing issue; fixed, final typecheck passes.
+- Earlier Playwright listing found import.meta unsupported in CommonJS; fixed by
+  resolving the fixture with process.cwd(), final listing discovers one spec.
+- An initial e2e invocation from repository root returned ENOENT package.json;
+  corrected by running in frontends/admin as shown above.
+
+Remaining coordinator validation: install the complete ingest dependency tree,
+build it, npm ci in frontends/admin (pinned Playwright 1.55.0), run all commands
+again, install Chromium if needed, and verify authenticated RPC/storage/RLS against
+staging. Pending files require one server process; reviews expire after one hour.
+
+Commit attempt:
+$ git add frontends/admin
+$ git commit -m 'Add staff results ingestion and name dictionary screens'
+Both failed: Unable to create .../.git/worktrees/router-20261107-220240-3b82b5/index.lock:
+Read-only file system. Changes remain uncommitted for Fabric.

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { Companion } from "@/components/companion/Companion";
 import { publicClientContact } from "@/lib/data/order-requests";
 import { getEnvironment } from "@/lib/environment";
 import { RequestAccessForm } from "./request-access-form";
@@ -15,7 +16,7 @@ export default async function RequestAccessPage() {
   const contact = await publicClientContact();
   return <>
     <header className="topbar"><Link className="brand" href="/"><span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span></Link></header>
-    <main className="auth-page"><section className="auth-card wide" aria-labelledby="access-title">
+    <main className="auth-page"><Companion screen="request-access" /><section className="auth-card wide" aria-labelledby="access-title">
       <div className="eyebrow">Lipidomics service</div>{mock && <span className="example-label">Example data</span>}
       <RequestAccessForm contact={contact} />
     </section></main>

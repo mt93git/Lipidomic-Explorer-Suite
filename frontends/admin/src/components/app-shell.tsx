@@ -10,11 +10,14 @@ import { initials } from "@/lib/initials";
 import { sidebarNavigation, waveTag } from "@/lib/navigation";
 import { GlobalSearch } from "./global-search";
 import { ScopeControl } from "./scope-control";
+import { Companion } from "./companion/Companion";
+import { clientScreen } from "./companion/model";
 
 const countLabels: Record<string, string> = { "/people": "access requests waiting" };
 
-// counts: waiting items per sidebar href (only numbers above zero are shown).
-export function AppShell({ session, children, counts = {} }: { session: AppSession; children: ReactNode; counts?: Record<string, number> }) {
+// counts: waiting items per sidebar href (only numbers above zero are shown). nexoApiBase: where the client view's
+// companion asks its questions (NEXO_API_BASE, read by the workspace layout).
+export function AppShell({ session, children, counts = {}, nexoApiBase }: { session: AppSession; children: ReactNode; counts?: Record<string, number>; nexoApiBase?: string }) {
   const pathname = stripBasePath(usePathname() || "/");
   const staff = session.view === "staff";
   // Phone only (CSS decides): the view switch, scope, user chip and sign-out sit behind a Menu button.
@@ -48,6 +51,8 @@ export function AppShell({ session, children, counts = {} }: { session: AppSessi
       </Link>
       {/* A client has few orders, all on Client home: no search box until client search exists. */}
       {staff && <GlobalSearch staff clients={session.clients} />}
+      {/* The neutrophil companion: the client view only, never lab staff; it stays in the bar on a phone (not in Menu). */}
+      {!staff && <Companion screen={clientScreen(pathname)} user={session.userId} apiBase={nexoApiBase} />}
       <button type="button" className="menu-button" ref={menuButton} aria-expanded={menuOpen} aria-controls="topbar-menu" onClick={() => setMenuOpen(!menuOpen)}>
         Menu <span aria-hidden="true">{menuOpen ? "▴" : "▾"}</span>
       </button>

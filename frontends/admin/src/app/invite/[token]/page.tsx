@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { Companion } from "@/components/companion/Companion";
 import { DataError, previewInvitation, signedInEmail } from "@/lib/data/people";
 import { getEnvironment } from "@/lib/environment";
 import { formatLabInstant } from "@/lib/lab-time";
@@ -27,7 +28,7 @@ export default async function InvitePage({ params, searchParams }: { params: Pro
   const signedIn = invitation?.hasAccount ? await signedInEmail() : null;
   return <>
     <header className="topbar"><Link className="brand" href="/"><span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span></Link></header>
-    <main className="auth-page"><section className="auth-card" aria-labelledby="invite-title">
+    <main className="auth-page"><Companion screen="invite" /><section className="auth-card" aria-labelledby="invite-title">
       <div className="eyebrow">Invitation</div>{mock && <span className="example-label">Example data</span>}
       {invitation ? <>
         <h1 id="invite-title">Join as {invitation.target}.</h1>

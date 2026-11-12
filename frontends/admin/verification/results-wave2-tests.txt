@@ -1,0 +1,71 @@
+
+> @lipidomic-explorer/admin@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.7 <repo>/frontends/admin
+
+ ✓ tests/pipeline.test.tsx (19 tests) 715ms
+ ✓ tests/pipeline-overview.test.tsx (5 tests) 392ms
+ ✓ tests/shell.test.tsx (4 tests) 196ms
+ ✓ tests/overview-integration.test.tsx (2 tests) 291ms
+ ✓ tests/choose-client.test.tsx (5 tests) 72ms
+ ✓ tests/sign-in.test.tsx (2 tests) 63ms
+ ✓ tests/stepper.test.tsx (3 tests) 56ms
+ ✓ tests/pipeline-filters.test.ts (21 tests) 8ms
+ ✓ tests/actions.test.ts (8 tests) 6ms
+ ✓ tests/auth.test.ts (6 tests) 6ms
+ ✓ tests/action-redirect.test.ts (2 tests) 2ms
+ ✓ tests/demo-data.test.ts (3 tests) 2ms
+ ✓ tests/page-redirect.test.ts (1 test) 2ms
+ ✓ tests/server-client.test.ts (5 tests) 6ms
+ ✓ tests/config.test.ts (3 tests) 2ms
+ ✓ tests/security.test.ts (2 tests) 3ms
+ ✓ tests/middleware-routing.test.ts (1 test) 3ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-integration.test.ts [ tests/results-integration.test.ts ]
+Error: Failed to resolve import "exceljs" from "../../packages/admin-ingest/dist/workbook.js". Does the file exist?
+  Plugin: vite:import-analysis
+  File: <repo>/packages/admin-ingest/dist/workbook.js:2:21
+  1  |  import { createHash } from 'node:crypto';
+  2  |  import ExcelJS from 'exceljs';
+     |                       ^
+  3  |  import { matrixProblems } from './validation.js';
+  4  |  export const METADATA_COLUMNS = ['FullName', 'Group1Term', 'Group2Term', 'ReplicateTerm', 'PatientTerm', 'TimePointTe...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/config.js:29250:43
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/config.js:29247:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/config.js:27370:18
+ ❯ node_modules/vite/dist/node/chunks/config.js:27428:32
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/config.js:27396:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/config.js:29048:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22914:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/results.test.ts [ tests/results.test.ts ]
+Error: Failed to resolve import "exceljs" from "../../packages/admin-ingest/dist/workbook.js". Does the file exist?
+  Plugin: vite:import-analysis
+  File: <repo>/packages/admin-ingest/dist/workbook.js:2:21
+  1  |  import { createHash } from 'node:crypto';
+  2  |  import ExcelJS from 'exceljs';
+     |                       ^
+  3  |  import { matrixProblems } from './validation.js';
+  4  |  export const METADATA_COLUMNS = ['FullName', 'Group1Term', 'Group2Term', 'ReplicateTerm', 'PatientTerm', 'TimePointTe...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/config.js:29250:43
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/config.js:29247:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/config.js:27370:18
+ ❯ node_modules/vite/dist/node/chunks/config.js:27428:32
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/config.js:27396:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/config.js:29048:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22914:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 17 passed (19)
+      Tests  92 passed (92)
+   Start at  22:09:28
+   Duration  4.59s (transform 271ms, setup 1.16s, collect 575ms, tests 1.82s, environment 3.30s, prepare 613ms)
+

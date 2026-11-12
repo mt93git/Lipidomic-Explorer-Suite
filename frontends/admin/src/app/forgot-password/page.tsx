@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { Companion } from "@/components/companion/Companion";
 import { getEnvironment } from "@/lib/environment";
 import { RESET_SENT } from "@/lib/password-reset";
 import { nexoReturnPath } from "@/lib/return-path";
@@ -15,7 +16,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
   const next = nexoReturnPath((await searchParams).next);
   return <>
     <header className="topbar"><Link className="brand" href="/"><span className="brand-name">Lipidomic Explorer</span><span className="badge">ADMIN</span></Link></header>
-    <main className="auth-page"><section className="auth-card" aria-labelledby="forgot-title">
+    <main className="auth-page"><Companion screen="forgot-password" /><section className="auth-card" aria-labelledby="forgot-title">
       <div className="eyebrow">Lipidomics service</div>{mock && <span className="example-label">Example data</span>}
       <ForgotForm sentMessage={RESET_SENT} next={next} />
     </section></main>
