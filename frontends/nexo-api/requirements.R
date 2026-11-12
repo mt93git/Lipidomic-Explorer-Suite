@@ -17,3 +17,14 @@ api_skip_unless_team_ready <- function(test) {
   cat(sprintf("SKIP %s: needs the production Team port (PRs 8 and 9); missing %s\n", test, paste(missing, collapse = ", ")))
   quit(save = "no", status = 0)
 }
+# zip < 3.0.0: zip_append() (nexo_store.R, cohort.R) duplicates a member, so read_session_archive rejects the checkpoint.
+api_min_packages <- c(zip = "3.0.0")
+# "zip 2.3.3 (needs >= 3.0.0)" for each package below its minimum; a missing package counts too.
+api_old_packages <- function(min = api_min_packages) {
+  old <- vapply(names(min), function(pkg) {
+    have <- tryCatch(as.character(utils::packageVersion(pkg)), error = function(e) NA_character_)
+    if (is.na(have)) return(sprintf("%s not installed (needs >= %s)", pkg, min[[pkg]]))
+    if (package_version(have) < package_version(min[[pkg]])) sprintf("%s %s (needs >= %s)", pkg, have, min[[pkg]]) else NA_character_
+  }, character(1), USE.NAMES = FALSE)
+  old[!is.na(old)]
+}
