@@ -22,7 +22,7 @@
     var statsBody = document.createElement('div'); statsBody.className = 'tc-inspector-body tc-inspector-statistics';
     var dataBody = document.createElement('div'); dataBody.className = 'tc-inspector-body tc-inspector-data';
     var exportBody = document.createElement('div'); exportBody.className = 'tc-inspector-body tc-inspector-export';
-    var activeTab = 'appearance', movedStats = null, statsHome = null, movedData = [], dataPending = 0;
+    var activeTab = 'appearance', movedStats = null, statsHome = null, movedPca = null, pcaHome = null, movedData = [], dataPending = 0;
     var tabList = [['data', 'Data', dataBody], ['appearance', 'Appearance', body], ['statistics', 'Statistics', statsBody], ['export', 'Export', exportBody]].map(function (spec) {
       var button = document.createElement('button'); button.type = 'button'; button.className = 'tc-inspector-tab'; button.textContent = spec[1];
       button.id = 'tc-inspector-tab-' + spec[0]; spec[2].id = 'tc-inspector-panel-' + spec[0];
@@ -49,6 +49,7 @@
     function release() {
       if (moved && home && home.parentNode) home.replaceWith(moved); else if (moved) moved.remove(); moved = home = null;
       if (movedStats && statsHome && statsHome.parentNode) statsHome.replaceWith(movedStats); else if (movedStats) movedStats.remove(); movedStats = statsHome = null;
+      if (movedPca && pcaHome && pcaHome.parentNode) pcaHome.replaceWith(movedPca); else if (movedPca) movedPca.remove(); movedPca = pcaHome = null;
       statsBody.textContent = '';
       movedData.forEach(function (m) { if (m.home.parentNode) m.home.replaceWith(m.el); else dropOrphan(m.el); }); movedData = [];
       dataBody.textContent = ''; exportBody.textContent = '';
@@ -68,7 +69,7 @@
       }
       // Retry for a while (time, not mutation count) while the plot is still rendering.
       dataPending = !chrome.length && !n.querySelector('.gc-root') ? Date.now() + 15000 : 0;
-      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; (exportRow(el) ? exportBody : dataBody).appendChild(el); });
+      chrome.forEach(function (el) { var home = document.createComment('card-figure-chrome'); el.before(home); movedData.push({el: el, home: home}); el.inert = false; (el.classList.contains('rd-pca-score') ? statsBody : exportRow(el) ? exportBody : dataBody).appendChild(el); });
       // Downloads went to Export: a card whose only chrome was a download row still explains Data.
       if (!chrome.length || !dataBody.querySelector(':scope > :not(.tc-inspector-data-settings)')) {
         var note = document.createElement('p'); note.className = 'tc-inspector-data-note';
@@ -88,6 +89,8 @@
         };statsBody.appendChild(open);return;
       }
       note.className = 'tc-statistics-unsupported';
+      // PCA cards carry a PCA score analysis panel (moved here from the card by fillData).
+      if (/pca/i.test(id) && n.querySelector('.rd-pca-score')) return;
       note.textContent = /pca/i.test(id) ? 'PCA is an exploratory ordination without a group test, so no significance annotations are added.' :
         id === 'results_dashboard-plot_violin' ? 'Statistics run on independent canvas copies. Remove this plot, then add the violin plot from the catalog to create a copy.' :
         'Statistics are available for independent copies of the Results dashboard violin plot. This view does not support canvas statistics; use its analysis controls for any tests it provides.';
@@ -169,7 +172,12 @@
       if (moved) { home = document.createComment('property-controls'); moved.before(home); body.appendChild(moved); if (moved.tagName === 'DETAILS') moved.open = true; }
       movedStats = node.querySelector(':scope > .tc-statistics');
       if (movedStats) { statsHome = document.createComment('statistics-controls'); movedStats.before(statsHome); statsBody.appendChild(movedStats); }
-      else if (!node.classList.contains('tc-illustration')) explainStatistics(node);
+      else {
+        // A PCA card keeps its PCA score analysis panel in the card's hidden module host: show it under Statistics.
+        var pm = /^(.*)-plot_pca$/.exec(node.dataset.plotId || ''), ph = pm && document.getElementById(pm[1] + '_host'), pp = ph && ph.querySelector('.rd-pca-score');
+        if (pp) { movedPca = pp; pcaHome = document.createComment('pca-score-panel'); pp.before(pcaHome); statsBody.appendChild(pp); }
+        else if (!node.classList.contains('tc-illustration')) explainStatistics(node);
+      }
       if (!node.classList.contains('tc-illustration')) fillData(node);
       window.dispatchEvent(new CustomEvent('team-canvas-panel-open', {detail:{kind:'appearance'}}));
       inspector.hidden = false; layout.classList.add('tc-inspecting'); trigger.disabled = false; trigger.setAttribute('aria-expanded', 'true'); state(); inspector.scrollTop = 0;

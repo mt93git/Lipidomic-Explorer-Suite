@@ -134,11 +134,53 @@ rd_class <- function(lipids) {
   cls
 }
 
+# Composition overview: a legend outside the bars, at the right, lists every visible class with a dot in its color,
+# in the same order as the stack (top to bottom).
+# The script recomputes the names after every draw, so a class that is turned off, by the class selector or by
+# "Show series" in Appearance, loses its name at once and the others close up. Presentation only: it reads the plotted
+# values and never changes them.
+rd_comp_label_js <- "function(el, x) {
+  var PREFIX = 'team-bar-label:', busy = false;
+  function visibleBar(t) { return t && t.type === 'bar' && t.visible !== false && t.visible !== 'legendonly'; }
+  function others(gd) { return (gd.layout.annotations || []).filter(function (a) { return !(a && typeof a.name === 'string' && a.name.indexOf(PREFIX) === 0); }); }
+  function labels(gd) {
+    var full = gd._fullLayout; if (!full || !full.xaxis || !full.yaxis || !full._size) return null;
+    var cats = full.xaxis._categories || []; if (!cats.length) return [];
+    var last = cats[cats.length - 1], h = full._size.h; if (!(h > 0)) return null;
+    var items = [];
+    (gd.data || []).forEach(function (t) {
+      if (!visibleBar(t) || !Array.isArray(t.x) || !Array.isArray(t.y)) return;
+      var i = t.x.indexOf(last), v = Number(t.y[i]); if (i < 0 || !isFinite(v) || v <= 0) return;
+      var c = t.marker && typeof t.marker.color === 'string' ? t.marker.color : '#52514e';
+      items.push({ name: String(t.name), color: c });
+    });
+    if (!items.length) return [];
+    // The legend lists the classes in the same order as the stack, top to bottom: the last trace drawn is the top segment.
+    items.reverse();
+    var pitch = Math.max(11, Math.min(17, h / items.length)), fs = Math.max(9, Math.min(12, Math.round(pitch - 4))), text = (full.font && full.font.color) || '#52514e';
+    return items.map(function (it, k) {
+      return { name: PREFIX + it.name, xref: 'paper', yref: 'paper', x: 1.02, y: Math.round((1 - (k + 0.5) * pitch / h) * 10000) / 10000, showarrow: false,
+        text: '<span style=\"color:' + it.color + '\">●</span> ' + it.name, xanchor: 'left', yanchor: 'middle', align: 'left', font: { size: fs, color: text }, captureevents: false };
+    });
+  }
+  function sig(list) { return JSON.stringify((list || []).map(function (a) { return [a.name, a.y, a.text, a.x, a.font && a.font.size]; })); }
+  function refresh() {
+    if (busy || !el.layout || !window.Plotly) return;
+    var wanted = labels(el); if (wanted === null) return;
+    var current = (el.layout.annotations || []).filter(function (a) { return a && typeof a.name === 'string' && a.name.indexOf(PREFIX) === 0; });
+    if (sig(current) === sig(wanted)) return;
+    busy = true;
+    Promise.resolve(window.Plotly.relayout(el, { annotations: others(el).concat(wanted) })).catch(function () {}).then(function () { busy = false; });
+  }
+  el.on('plotly_afterplot', refresh);
+  refresh();
+}"
+
 rd_layout <- function(p, ..., margin = list(l = 60, r = 20, t = 10, b = 60)) {
   plotly::layout(p, paper_bgcolor = "#ffffff", plot_bgcolor = "#ffffff",
-                 font = list(family = "Inter, system-ui, sans-serif", size = 12, color = "#52514e"),
+                 font = list(family = "Arial, Helvetica, sans-serif", size = 10, color = "#52514e"),
                  hoverlabel = list(bgcolor = "#ffffff", bordercolor = "#d9e1e3",
-                                   font = list(family = "Inter, system-ui, sans-serif", size = 12,
+                                   font = list(family = "Arial, Helvetica, sans-serif", size = 10,
                                                color = "#20323b"), align = "left"),
                  margin = margin, ...) |>
     plotly::event_register("plotly_click") |>
@@ -209,6 +251,21 @@ rd_sample_card <- function(sample, meta) {
     else shiny::tags$p("No additional confirmed metadata are available for this sample."))
 }
 
+rd_pca_score_ui <- function(ns) {
+  div(class = "rd-pca-score",
+    tags$h4("PCA score analysis"),
+    p(class = "rd-card-sub", "Tests whether the sample scores on one principal component differ between groups. The PCA itself is not changed."),
+    selectInput(ns("pcs_pc"), "Principal component", c("PC1", "PC2", "PC3", "PC4", "PC5"), selectize = FALSE),
+    checkboxGroupInput(ns("pcs_groups"), "Groups to compare", choices = character()),
+    selectInput(ns("pcs_test"), "Tests", c("Kruskal-Wallis + Mann-Whitney U (rank-based)" = "rank", "One-way ANOVA + Welch t-test" = "param"), selectize = FALSE),
+    selectInput(ns("pcs_corr"), "Multiple-testing correction", c("Benjamini-Hochberg (FDR)" = "BH", "Holm" = "holm", "Bonferroni" = "bonferroni", "None (unadjusted)" = "none"), selectize = FALSE),
+    actionButton(ns("pcs_run"), "Run PCA score analysis", class = "btn-sm btn-primary"),
+    uiOutput(ns("pcs_status")),
+    plotly::plotlyOutput(ns("pcs_plot"), height = "340px"),
+    uiOutput(ns("pcs_table")),
+    uiOutput(ns("pcs_report")))
+}
+
 rd_card <- function(ns, id, title, subtitle, height = "420px") {
   div(class = "rd-card",
     div(class = "rd-card-head",
@@ -218,7 +275,48 @@ rd_card <- function(ns, id, title, subtitle, height = "420px") {
     if (id %in% c("comp", "heat")) uiOutput(ns(paste0("select_", id))),
     plotly::plotlyOutput(ns(paste0("plot_", id)), height = height),
     uiOutput(ns(paste0("detail_", id))),
-    uiOutput(ns(paste0("note_", id)), class = "rd-card-note"))
+    uiOutput(ns(paste0("note_", id)), class = "rd-card-note"),
+    if (id == "pca") rd_pca_score_ui(ns))
+}
+
+# ---- PCA score statistics (Team Canvas, Statistics tab of the PCA card) -------
+# Tests the sample scores of one principal component between sample groups. It never
+# changes the PCA itself: scores come from pca_data() and are only read here.
+rd_pca_score_stars <- function(p) {
+  ifelse(is.na(p), "", ifelse(p < 0.001, "***", ifelse(p < 0.01, "**", ifelse(p < 0.05, "*", "ns"))))
+}
+rd_pca_score_fmt <- function(p) {
+  ifelse(is.na(p), "NA", ifelse(p < 0.0001, "< 0.0001", formatC(p, digits = 2, format = "fg", flag = "#")))
+}
+rd_pca_score_stats <- function(score, group, test = c("rank", "param"), correction = c("BH", "holm", "bonferroni", "none")) {
+  test <- match.arg(test); correction <- match.arg(correction)
+  group <- as.character(group); lev <- unique(group)
+  keep <- is.finite(score); score <- score[keep]; group <- group[keep]
+  n <- vapply(lev, function(g) sum(group == g), integer(1)); names(n) <- lev
+  tested <- lev[n[lev] >= 2L]
+  skipped <- setdiff(lev, tested)
+  med <- vapply(lev, function(g) if (n[[g]]) stats::median(score[group == g]) else NA_real_, numeric(1)); names(med) <- lev
+  omni <- NULL
+  if (length(tested) >= 3L) {
+    k <- group %in% tested; gf <- factor(group[k], levels = tested)
+    omni <- if (identical(test, "rank")) {
+      r <- stats::kruskal.test(score[k], gf)
+      list(name = "Kruskal-Wallis", p = unname(r$p.value))
+    } else {
+      r <- summary(stats::aov(score[k] ~ gf))[[1]]
+      list(name = "One-way ANOVA", p = unname(r[["Pr(>F)"]][1]))
+    }
+  }
+  prs <- if (length(tested) >= 2L) utils::combn(tested, 2L, simplify = FALSE) else list()
+  rows <- lapply(prs, function(pr) {
+    a <- score[group == pr[1]]; b <- score[group == pr[2]]
+    p <- tryCatch(if (identical(test, "rank")) suppressWarnings(stats::wilcox.test(a, b, exact = FALSE)$p.value) else stats::t.test(a, b)$p.value, error = function(e) NA_real_)
+    data.frame(A = pr[1], B = pr[2], p_raw = p, stringsAsFactors = FALSE)
+  })
+  pairs <- if (length(rows)) do.call(rbind, rows) else data.frame(A = character(), B = character(), p_raw = numeric(), stringsAsFactors = FALSE)
+  pairs$p_adj <- if (nrow(pairs)) stats::p.adjust(pairs$p_raw, method = correction) else numeric()
+  pairs$stars <- rd_pca_score_stars(pairs$p_adj)
+  list(n = n, median = med, tested = tested, skipped = skipped, omnibus = omni, pairs = pairs, test = test, correction = correction)
 }
 
 results_dashboard_ui <- function(id = "results_dashboard") {
@@ -609,6 +707,75 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
             cl$n_constant)
   })
 
+  # ---- PCA score analysis (Statistics tab) ---------------------------------------
+  observe({
+    si <- sample_info()
+    updateCheckboxGroupInput(session, "pcs_groups", choices = si$levels, selected = { keep <- intersect(si$levels, isolate(input$pcs_groups)); if (length(keep) >= 2L) keep else si$levels }, inline = FALSE)
+  })
+  pcs_result <- eventReactive(input$pcs_run, {
+    d <- pca_data(); si <- sample_info()
+    k <- as.integer(sub("^PC", "", input$pcs_pc %||% "PC1"))
+    validate(need(is.finite(k) && k >= 1L && k <= ncol(d$pc$x), "This principal component does not exist for the current data."))
+    chosen <- intersect(si$levels, input$pcs_groups %||% si$levels)
+    validate(need(length(chosen) >= 2L, "Choose at least two groups."))
+    grp <- as.character(si$group); sc <- unname(d$pc$x[, k]); keepg <- grp %in% chosen
+    res <- rd_pca_score_stats(sc[keepg], grp[keepg], test = input$pcs_test %||% "rank", correction = input$pcs_corr %||% "BH")
+    validate(need(length(res$tested) >= 2L, "At least two chosen groups need two or more samples."))
+    list(res = res, k = k, ve = d$ve[k], score = sc[keepg], group = grp[keepg], sample = names(d$pc$x[, k])[keepg],
+         levels = chosen, colors = si$colors)
+  })
+  output$pcs_status <- renderUI({
+    if (is.null(input$pcs_run) || input$pcs_run < 1) return(tags$p(class = "rd-card-note", "Choose the component, groups and tests, then run the analysis."))
+    NULL
+  })
+  output$pcs_plot <- plotly::renderPlotly({
+    r <- pcs_result(); res <- r$res; lev <- intersect(r$levels, res$tested)
+    lab <- stats::setNames(sprintf("%s<br>(n=%d)", lev, res$n[lev]), lev)
+    p <- plotly::plot_ly()
+    for (g in lev) {
+      i <- r$group == g; col <- r$colors[[g]]; if (is.null(col) || is.na(col)) col <- "#6b7280"
+      p <- plotly::add_trace(p, type = "box", x = rep(unname(lab[g]), sum(i)), y = r$score[i], name = g, text = r$sample[i],
+        boxpoints = "all", jitter = 0.45, pointpos = 0, fillcolor = grDevices::adjustcolor(col, 0.30),
+        line = list(color = "#6b7280", width = 1), marker = list(color = col, size = 7, line = list(color = "#ffffff", width = 0.6)),
+        hoverinfo = "y+text", showlegend = FALSE)
+    }
+    yr <- range(r$score[r$group %in% lev], na.rm = TRUE); span <- max(diff(yr), 1e-9); pr <- res$pairs
+    shapes <- list(); ann <- list(); top <- yr[2]
+    for (i in seq_len(nrow(pr))) {
+      x1 <- match(pr$A[i], lev) - 1; x2 <- match(pr$B[i], lev) - 1
+      y0 <- yr[2] + span * (0.06 + 0.10 * (i - 1)); y1 <- y0 + span * 0.025; top <- max(top, y1)
+      shapes[[length(shapes) + 1L]] <- list(type = "path", path = sprintf("M %s,%s L %s,%s L %s,%s L %s,%s", x1, y0, x1, y1, x2, y1, x2, y0), line = list(color = "#52514e", width = 1))
+      ann[[length(ann) + 1L]] <- list(x = (x1 + x2) / 2, y = y1, text = pr$stars[i], showarrow = FALSE, yanchor = "bottom", xanchor = "center", font = list(size = 12, color = "#20323b"))
+    }
+    ttl <- if (!is.null(res$omnibus)) sprintf("%s p = %s", res$omnibus$name, rd_pca_score_fmt(res$omnibus$p)) else NULL
+    if (!is.null(ttl)) ann[[length(ann) + 1L]] <- list(x = 0, y = 1, xref = "paper", yref = "paper", text = ttl, showarrow = FALSE, xanchor = "left", yanchor = "bottom", font = list(size = 10, color = "#52514e"))
+    p |> rd_layout(meta = team_condition_meta(), shapes = shapes, annotations = ann,
+      xaxis = list(title = "", type = "category", categoryorder = "array", categoryarray = unname(lab[lev])),
+      yaxis = list(title = sprintf("PC%d score (%.1f%% of variance)", r$k, r$ve), zeroline = TRUE, zerolinecolor = "#b9b8b2", gridcolor = "#ebeae6", range = c(yr[1] - span * 0.05, top + span * 0.12)),
+      showlegend = FALSE, margin = list(l = 60, r = 15, t = 30, b = 60))
+  })
+  output$pcs_table <- renderUI({
+    r <- pcs_result(); res <- r$res; lev <- intersect(r$levels, names(res$n))
+    rows <- lapply(lev, function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) col <- "#52514e"
+      tags$tr(tags$td(tags$span(class = "rd-pca-swatch", style = paste0("background:", col)), g), tags$td(style = "text-align:right", sprintf("%+.2f", res$median[[g]])), tags$td(style = "text-align:right", res$n[[g]])) })
+    tags$table(class = "rd-pca-score-table", tags$thead(tags$tr(tags$th("Group"), tags$th(style = "text-align:right", sprintf("Median PC%d", r$k)), tags$th(style = "text-align:right", "n"))), tags$tbody(rows))
+  })
+  output$pcs_report <- renderUI({
+    r <- pcs_result(); res <- r$res; pr <- res$pairs
+    rank <- identical(res$test, "rank")
+    corr <- c(BH = "Benjamini-Hochberg", holm = "Holm", bonferroni = "Bonferroni", none = "no")[[res$correction]]
+    verdict <- function(p) if (is.na(p)) "not computed" else if (p < 0.05) "significant" else if (p < 0.10) "borderline" else "not significant"
+    lines <- c("Statistical tests performed:",
+      if (!is.null(res$omnibus)) sprintf("1. %s across all %d groups at once: p = %s (%s).", res$omnibus$name, length(res$tested), rd_pca_score_fmt(res$omnibus$p), if (res$omnibus$p < 0.05) "the groups differ" else "no evidence that the groups differ"),
+      sprintf("%s. %s on each pair of groups (%d comparison%s).", if (!is.null(res$omnibus)) "2" else "1", if (rank) "Mann-Whitney U (normal approximation)" else "Welch t-test", nrow(pr), if (nrow(pr) == 1L) "" else "s"),
+      if (identical(res$correction, "none")) "No multiple-testing correction was applied; p-values are unadjusted." else sprintf("%s correction across the %d pairwise comparison%s.", corr, nrow(pr), if (nrow(pr) == 1L) "" else "s"))
+    cmp <- sprintf("%s vs %s: %sp = %s (%s) %s", pr$A, pr$B, if (identical(res$correction, "none")) "" else "adjusted ", rd_pca_score_fmt(pr$p_adj), vapply(pr$p_adj, verdict, ""), pr$stars)
+    note <- if (length(res$skipped)) sprintf("Not tested (fewer than 2 samples): %s.", paste(res$skipped, collapse = ", "))
+    tagList(tags$div(class = "rd-pca-score-report", lapply(lines, tags$p)), tags$div(class = "rd-pca-score-report", lapply(cmp, tags$p)),
+      tags$p(class = "rd-card-note", "Stars: * adjusted p < 0.05, ** < 0.01, *** < 0.001, ns = not significant. Scores are descriptive coordinates of an unsupervised PCA; p-values are exploratory."),
+      if (!is.null(note)) tags$p(class = "rd-card-note", note))
+  })
+
   # Selections are persisted as input strings, not encoded in plotted values.
   selection <- function(raw, choices) {
     if (is.null(raw) || identical(raw, "__ALL__")) return(choices)
@@ -690,7 +857,11 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
       validate(need(length(chosen)>0,'Select at least one lipid class.'),need(length(visible)>0,'Select at least one condition.'))
       lev<-levels(d$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
       p<-plotly::plot_ly(source=session$ns('rd_comp'))
-      for(cl in lev) {
+      # Stack order: the largest class at the bottom, growing smaller toward the top (less to more, top to bottom).
+      class_means<-if(group_mode) tapply(source$groups$Mean_share_pct[as.character(source$groups$Group)%in%visible],as.character(source$groups$Class)[as.character(source$groups$Group)%in%visible],function(v) mean(v,na.rm=TRUE)) else tapply(d$Share_pct[d$Group_visible],as.character(d$Class)[d$Group_visible],function(v) mean(v,na.rm=TRUE))
+      class_means<-unname(class_means[lev]);class_means[!is.finite(class_means)]<-0
+      plot_order<-lev[order(-class_means,lev)]
+      for(cl in plot_order) {
         if(group_mode) {
           df<-source$groups[as.character(source$groups$Class)==cl & as.character(source$groups$Group)%in%visible,,drop=FALSE]
           x<-as.character(df$Group);y<-df$Mean_share_pct
@@ -703,14 +874,14 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
         }
         p<-plotly::add_trace(p,x=x,y=y,type='bar',name=cl,legendgroup=cl,
           visible=cl%in%chosen,meta=list(teamSourceKey=paste0('team-composition:',cl)),
-          marker=list(color=unname(cols[cl]),line=list(color='#fcfcfb',width=1)),text=hover,hovertemplate='%{text}<extra></extra>')
+          marker=list(color=unname(cols[cl]),line=list(color='#fcfcfb',width=1)),text=hover,textposition='none',hovertemplate='%{text}<extra></extra>')
       }
       axis<-if(group_mode) list(title='Condition / cell type',type='category',tickmode='array',tickvals=x,ticktext=paste0(x,' · n = ',counts)) else sample_axis(x,'comp')
-      return(p |> rd_layout(barmode='stack',bargap=.15,
+      return(htmlwidgets::onRender(p |> rd_layout(barmode='stack',bargap=.15,
         meta=list(teamConditions=unname(sort(sample_info()$levels,method='radix')),teamComposition=list(version=1L,axisMode=if(group_mode)'group' else 'sample',groupInputId=session$ns('comp_group_selection'),groupIds=unique(as.character(d$Group)),estimator='Equal-weight mean of per-sample selected-class signal percentages'),
           teamClassSelection=list(inputId=session$ns('comp_class_selection'),classes=unname(lev),selected=unname(chosen),serverEstimator=TRUE)),
         xaxis=axis,yaxis=list(title=if(group_mode)'Mean share of selected signal (%)' else 'Share of selected signal (%)',range=c(0,100)),
-        showlegend=FALSE,margin=list(l=60,r=15,t=10,b=100)))
+        showlegend=FALSE,margin=list(l=60,r=125,t=10,b=100)),rd_comp_label_js))
     }
     df<-comp_full();lev<-levels(df$Class);cols<-rd_class_colors(lev,rd_value(shared_data$class_color_map))
     df$Hover<-paste0(unname(sample_hover()[as.character(df$Sample)]),"<br>Class: ",as.character(htmltools::htmlEscape(as.character(df$Class))))

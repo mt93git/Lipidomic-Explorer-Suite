@@ -95,6 +95,23 @@
     var label = sk.querySelector('.tc-card-skeleton-text'); if (label.textContent !== text) label.textContent = text;
   }
   var updatingSince = new WeakMap();
+  // The structural views (Remodeling shifts, Species) compute only on a button click. Once the comparison
+  // is ready the card presses that button itself, once per card and step, so nobody has to find it.
+  // Species has a second step ("Load species plot"): it waits until the shift list exists, because the
+  // plot draws the shifts that are selected there (the first four are preselected).
+  var autoRan = new Set();
+  function inputValue(key) { var all = window.Shiny && window.Shiny.shinyapp && window.Shiny.shinyapp.$inputValues; if (!all) return undefined; if (key in all) return all[key]; var hit = Object.keys(all).find(function (k) { return k.indexOf(key + ':') === 0; }); return hit ? all[hit] : undefined; }
+  function autoRun(node, id, need) {
+    var source = window.TeamCanvas && TeamCanvas.catalogSource ? TeamCanvas.catalogSource(id) : id;
+    if (!need || need.kind !== 'run' || !need.button || !/^structural_tab-/.test(String(source))) return;
+    var plotId = node.dataset.plotId || id, key = String(plotId) + '|' + need.button; if (autoRan.has(key)) return;
+    var ns = String(plotId).split('-')[0];
+    if (need.button === 'updateSpecies') { var shifts = inputValue(ns + '-selectedDetails'); if (shifts == null || shifts === '' || (Array.isArray(shifts) && !shifts.length)) return; }
+    var run = runButton(plotId, need.button); if (!run || run.disabled) return;
+    if (document.documentElement.classList.contains('shiny-busy')) return;
+    autoRan.add(key);
+    setTimeout(function () { if (window.jQuery) jQuery(run).trigger('click'); else run.click(); }, 400);
+  }
   function paintCard(node) {
     var id = node.dataset.plotId, state = id && window.TeamCanvas && TeamCanvas.cardStatus ? TeamCanvas.cardStatus(id) : null;
     // Autosave and unrelated outputs briefly mark Shiny busy; show Updating only once it persists.
@@ -108,6 +125,7 @@
     var need = state === 'waiting' && window.TeamCanvasCatalog && TeamCanvasCatalog.needs && TeamCanvas.catalogSource ? TeamCanvasCatalog.needs(TeamCanvas.catalogSource(id), id) : null;
     var kind = kindOf(state), key = kind + '|' + (need ? need.status : '');
     node._tcNeed = need;
+    autoRun(node, id, need);
     if (chip.dataset.state === state && chip.dataset.need === key) return state;
     var label = need ? [need.status, need.reason] : LABELS[kind];
     chip.dataset.state = state; chip.dataset.kind = kind; chip.dataset.need = key; chip.title = label[1];

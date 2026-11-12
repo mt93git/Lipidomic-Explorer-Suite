@@ -17,3 +17,5 @@
 .tpe-palette-swatches{display:flex;gap:3px;margin:8px 0}.tpe-palette-swatches span{display:block;width:28px;height:22px;border:1px solid #0002;border-radius:3px}
 
 .tpe-condition-chips{display:flex;flex-wrap:wrap;gap:5px}.tc-node .tpe-condition-chips button[aria-pressed=true],.tpe-condition-chips button[aria-pressed=true]{background:#205a98!important;color:#fff!important}.tpe-condition-chips button[aria-pressed=false]{background:#fff!important;color:#536b86!important}
+.tpe-series-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 8px}.tpe-series-actions button[aria-pressed=true]{background:#dcebfa;border-color:#2f6fa8;font-weight:600}
+.tpe-reset-color{margin-left:6px;padding:2px 8px;font-size:12px}
