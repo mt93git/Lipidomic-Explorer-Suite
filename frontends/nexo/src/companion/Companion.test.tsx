@@ -73,3 +73,19 @@ test('a person who already saw the arrival gets no arrival and no Home tip on th
   c.wait(15_000);
   expect(c.messages).toEqual([]);
 });
+
+test("Home's tip uses Nexo's Home wording, not Team's", async () => {
+  store = { 'nexo.companion.seen.synthetic-user-1': '1', 'nexo.companion.tipped.synthetic-user-1': 'start' };
+  const c = await home();
+  signedIn(c);
+  c.dock().props.onClick({ detail: 1 }); c.render();
+  c.wait(1_500);
+  expect(c.messages).toHaveLength(1);
+  const [tip] = c.messages;
+  expect(tip).toMatch(/^Choose how to begin/);
+  // Team's Data screen has "Open latest" and a new abundance matrix; Nexo's Home (ui/entry/StartScreen.tsx) has Continue,
+  // the projects' Open and Prepare for a released dataset.
+  expect(tip).not.toMatch(/Open latest|abundance matrix/i);
+  expect(tip).toMatch(/Continue/);
+  expect(tip).toMatch(/prepare/i);
+});
