@@ -2,8 +2,8 @@
 //   2. A Batch card without 2 BQC samples shows Team's sentence as a small grey centred note; the card is up to date.
 //   4. A board's fixed violin view (no instance) shows no "n = N samples" labels; an instance copy does (Team attaches
 //      violin statistics only to an instance).
-//   5. Selected-feature distributions in a card shorter than Team's plot height: the image is drawn at the plot height
-//      (violin_zoom_pct) and contained in the card; reopening keeps violin_zoom_pct.
+//   5. Selected-feature distributions in a card shorter than Team's plot height: the image is drawn at the card body, as
+//      Team's canvas resize() sizes the plot output (not at violin_zoom_pct); reopening keeps violin_zoom_pct.
 // Screenshots: docs/integration/nexo-team-parity/<NEXO_PARITY_SHOT or "after">-<item>-<engine>.png, taken before the
 // assertions so the same file records the state of any build.
 // node tests/dual-ui/test_nexo_team_parity.cjs
@@ -90,7 +90,7 @@ async function browserTests(pw, name, base) {
     assert.equal(await nLabels(page, FIXED), 0, 'the fixed violin view has no n labels');
     console.log(`PASS P6 ${name} fixed-violin-view-has-no-n-labels-instance-copy-has`);
 
-    // 5. The tall plot: drawn at violin_zoom_pct, contained (whole, centred) in the shorter card; the input is kept.
+    // 5. The tall plot: drawn at the card body (Team's canvas), contained in the card; the input is kept.
     await page.evaluate(nodeId => window.__nexo.handle.focusNode(nodeId), TALL);
     const tall = card(page, TALL);
     await tall.locator('.body img').waitFor({ timeout: 15000 });
@@ -100,11 +100,11 @@ async function browserTests(pw, name, base) {
     const fit = await tall.evaluate(el => { const img = el.querySelector('.body img'), body = el.querySelector('.body');
       return { natural: [img.naturalWidth, img.naturalHeight], fit: getComputedStyle(img).objectFit, box: [img.offsetWidth, img.offsetHeight], body: [body.clientWidth, body.clientHeight], scroll: body.scrollHeight - body.clientHeight }; });
     const dpr = fit.natural[0] / 440;
-    assert.equal(fit.natural[1] / dpr, PLOT_HEIGHT, `image drawn at Team's plot height (${JSON.stringify(fit)})`);
+    assert.equal(Math.round(fit.natural[1] / dpr), fit.body[1], `image drawn at the card body (${JSON.stringify(fit)})`);
     assert.ok(fit.fit === 'contain' && fit.box[1] <= fit.body[1] && fit.scroll <= 0, `the whole image is contained in the card (${JSON.stringify(fit)})`);
     const kept = await page.evaluate(nodeId => window.__nexo.store.get().nodes.find(n => n.id === nodeId).instance.inputs.violin_zoom_pct, TALL);
     assert.equal(kept, PLOT_HEIGHT, 'reopen keeps violin_zoom_pct');
-    console.log(`PASS P6 ${name} tall-image-drawn-at-plot-height-contained-input-kept`);
+    console.log(`PASS P6 ${name} tall-image-drawn-at-card-body-contained-input-kept`);
 
     assert.deepEqual(errors, []); console.log(`PASS P6 ${name} no-page-errors`);
   } finally { await browser.close(); }
