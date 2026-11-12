@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Contributor guardrails (opt in once per clone: git config core.hooksPath .githooks).
+# Overrides, for the maintainer only: LAB_ALLOW_PROTECTED=1, LAB_ALLOW_DATA=1.
+set -u
+stop() { echo "pre-commit: $1" >&2; exit 1; }
+
+branch=$(git symbolic-ref --short -q HEAD || true)
+case "$branch" in
+  main|integration/*)
+    [ "${LAB_ALLOW_PROTECTED:-}" = 1 ] || stop "do not commit on '$branch'. Start a topic branch from the base: git switch -c <your-name>/<topic> origin/<base>" ;;
+esac
+
+# New data files belong only in test fixtures, and only synthetic ones.
+if [ "${LAB_ALLOW_DATA:-}" != 1 ]; then
+  data=$(git diff --cached --name-only --diff-filter=A | grep -iE '\.(zip|xlsx|xls|csv|tsv|rds|rdata|sqlite|db)$' | grep -vE '(^|/)tests/(.*/)?fixtures/' || true)
+  [ -z "$data" ] || stop "data files outside tests/**/fixtures (real data never goes in git):
+$data"
+fi
+
+# Large files.
+git diff --cached --name-only --diff-filter=AM | while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  size=$(wc -c < "$f" | tr -d ' ')
+  [ "$size" -le 5000000 ] || { echo "pre-commit: $f is larger than 5 MB" >&2; exit 1; }
+done || exit 1
+
+# Secrets in added lines.
+if git diff --cached -U0 --no-color | grep '^+' | grep -qE 'BEGIN [A-Z ]*PRIVATE KEY|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{30,}'; then
+  stop "the staged changes contain what looks like a private key or token. Remove it."
+fi
+
+# R files must parse (the PR template's AST check).
+if command -v Rscript >/dev/null 2>&1; then
+  git diff --cached --name-only --diff-filter=AM | grep -iE '\.R$' | while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    Rscript --vanilla -e 'invisible(parse(commandArgs(TRUE)[1]))' "$f" >/dev/null 2>&1 || { echo "pre-commit: $f does not parse" >&2; exit 1; }
+  done || exit 1
+fi
+exit 0
