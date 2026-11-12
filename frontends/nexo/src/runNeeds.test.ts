@@ -30,3 +30,39 @@ describe('run needs (Team Canvas "Generate analysis")', () => {
     expect(cards).toMatch(/confirming:!!this\.body\.querySelector\('\.gc-confirm,\.run-need'\)/);
   });
 });
+
+// NEXO-P2 (www/team/js/card_status.js autoRun, Team e83593ee): Remodeling shifts and Species run their structural analysis on
+// their own once the comparison is ready, once per card and step. Species' second step ("Load species plot") waits until the
+// shift list (selectedDetails) exists. Only structural_tab- cards.
+describe('structural steps press themselves', async () => {
+  const { autoRunStep, claimAutoRun } = await import('./runNeeds') as unknown as {
+    autoRunStep: (source: string, ready: boolean, pressed: readonly string[], inputs: Record<string, unknown>) => string | undefined;
+    claimAutoRun: (key: string) => boolean };
+  it('Remodeling shifts runs its structural analysis once the comparison is ready', () => {
+    expect(autoRunStep('structural_tab-summaryPlot', false, [], {})).toBeUndefined();
+    expect(autoRunStep('structural_tab-summaryPlot', true, [], {})).toBe('runAnalysis');
+    expect(autoRunStep('structural_tab-summaryPlot', true, ['runAnalysis'], {})).toBeUndefined();
+  });
+  it('Species loads its plot only once the shift list exists', () => {
+    const species = 'structural_tab-speciesPlotPlot';
+    expect(autoRunStep(species, true, [], {})).toBe('runAnalysis');
+    expect(autoRunStep(species, true, ['runAnalysis'], {})).toBeUndefined();
+    expect(autoRunStep(species, true, ['runAnalysis'], { selectedDetails: [] })).toBeUndefined();
+    expect(autoRunStep(species, true, ['runAnalysis'], { selectedDetails: ['PC | PC 34:1'] })).toBe('updateSpecies');
+    expect(autoRunStep(species, true, ['runAnalysis', 'updateSpecies'], { selectedDetails: ['PC | PC 34:1'] })).toBeUndefined();
+  });
+  it('only structural_tab- cards press themselves', () => {
+    for (const source of ['longitudinal_tab-macroclass_plot', 'structural_grid_tab-dotplotPlot', 'structural_tab-networkPlot'])
+      expect(autoRunStep(source, true, [], {}), source).toBeUndefined();
+  });
+  it('a step is pressed once per card', () => {
+    expect(claimAutoRun('s1/tcinstance_0123456789ab|runAnalysis')).toBe(true);
+    expect(claimAutoRun('s1/tcinstance_0123456789ab|runAnalysis')).toBe(false);
+    expect(claimAutoRun('s1/tcinstance_0123456789ab|updateSpecies')).toBe(true);
+  });
+  it('the canvas presses the step through the card run action once the design gate is clear', () => {
+    const canvas = readFileSync(new URL('./canvas.ts', import.meta.url), 'utf8');
+    expect(canvas).toMatch(/autoRunStep\(/);
+    expect(canvas).toMatch(/claimAutoRun\(/);
+  });
+});

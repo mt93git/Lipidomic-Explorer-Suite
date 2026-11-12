@@ -1,3 +1,5 @@
+import { collab } from '../collab/mode';
+import { currentRole, subscribeRole } from '../collab/roles';
 import { AnalysisSettings } from './AnalysisSettings';
 import { SessionPalettePanel } from './SessionPalette';
 import { CohortEntry } from './Cohort/CohortEntry';
@@ -13,7 +15,7 @@ import { reopenSession } from './sessionRecovery';
 import { checkpointLabel } from './topBarLabel';
 import { datasetSummary } from './datasetPrepare';
 import { Inspector } from './Inspector/Inspector';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createCard, getCatalog, type Session } from '../api';
 import { mountCanvas } from '../canvas';
 import { CanvasHandleContext, tabsBridges, type Camera, type CanvasHandle } from '../canvas/handle';
@@ -38,6 +40,7 @@ function ReadOnlyBanner() {
   // Journey review 9.2: compact on phones (CSS) and, once dismissed, gone for the rest of this browser session.
   const key = 'nexo-view-only-dismissed', [open, setOpen] = useState(() => { try { return sessionStorage.getItem(key) !== '1'; } catch { return true; } });
   const dismiss = () => { setOpen(false); try { sessionStorage.setItem(key, '1'); } catch { /* private mode: dismiss for this page only */ } };
+  if (readOnlyReason() === 'role') return null; // Role guidance is in StatusBand.
   return open && <div className="readonly-banner" role="note"><p>{readOnlyReason() === 'link' ? s.viewOnlyLink : s.viewOnlyDevice}</p><button aria-label={s.dismissViewOnly} data-tip={s.dismissViewOnly} onClick={dismiss}>{s.close}</button></div>;
 }
 // Centred hint over an empty tab; only the button takes pointer events, so drops still reach the canvas.
@@ -65,8 +68,14 @@ function EmptyCanvas({ handle }: { handle: CanvasHandle | null }) {
     </>}
   </div></div>;
 }
-export function App({ session, title }: { session: Session; title?: string }) {
+// UX review 2, scene 7: the pill's dot per board state (ui/shell.css colours saving and paused; dirty is Engine busy).
+// Live (connected, synced, every edit acknowledged) is the saved state's green dot (FIX-JOINER-PHONE: 'collab' has no
+// colour, so it was the grey default); View only and an engine wait keep the grey dot.
+const collabDot=(engine:string,text:string)=>engine?'collab':/^(Connecting|Syncing|Reconnecting)/.test(text)?'saving':/^(Offline|Signed out)/.test(text)?'paused':text.startsWith('Engine busy')?'dirty':text.startsWith('Live')?'saved':'collab';
+/** `notice`: shown in the status band (a dataset board's BoardNotice, main.tsx). */
+export function App({ session, title, notice }: { session: Session; title?: string; notice?: ReactNode }) {
   const host = useRef<HTMLDivElement>(null), mounted = useRef(false), [ready, setReady] = useState(false);
+  useSyncExternalStore(subscribeRole, currentRole, currentRole);
   const state = useShell(), readOnly = isReadOnly();
   const cameras = useRef<Record<string, Camera>>({});
   const activeCameraTab = useRef('');
@@ -81,6 +90,8 @@ export function App({ session, title }: { session: Session; title?: string }) {
   const [nearLimit, setNearLimit] = useState(session.near_limit === true);
   const [saveFailure,setSaveFailure]=useState(''),[saveLost,setSaveLost]=useState(false);
   const [sessionLost,setSessionLost]=useState(false),lostRef=useRef(false);
+  const collaborating = !!collab(), unsynced = useRef(false), resyncing = useRef<() => boolean>(() => false);
+  const [collabText, setCollabText] = useState('Connecting'), [engineText, setEngineText] = useState('');
   const saver=useRef<ReturnType<typeof createAutosave> | null>(null);
   // The top bar names the checkpoint this page opened (or last saved by name), or the dataset it was prepared from; autosave keeps it.
   const [projectName,setProjectName]=useState<string>(title ?? s.project);
@@ -200,7 +211,7 @@ export function App({ session, title }: { session: Session; title?: string }) {
   useEffect(()=>{
     if(!handle)return;
     if(import.meta.env.VITE_API_MOCK==='1')Object.assign((window as unknown as {__nexo:object}).__nexo,{handle});
-    if(readOnly)return; // View only: no autosave and no checkpoint requests.
+    if(readOnly||collaborating)return; // Shared projects are saved by the sidecar in a later phase.
     const a=createAutosave({save:token=>saveNamed('autosave',token)});saver.current=a;
     let failed=false;
     const offStatus=a.subscribe(()=>{const st=a.state();setSaveText(st.text);setSaveStatus(st.status);setSaveFailure(st.failure);setSaveLost(st.lost);
@@ -210,26 +221,54 @@ export function App({ session, title }: { session: Session; title?: string }) {
     // Steph review row 12: the document as opened is the clean one; a change undone back to it leaves nothing unsaved.
     a.baseline(previous);
     const off=handle.onChange(()=>{const next=JSON.stringify(tabsBridges.get(handle)!.document());if(next!==previous){previous=next;a.markDirty(next);}});
-    // Steph review rows 2/12: saved with a confirmed design that this session does not hold (production's restore
-    // re-applies the archived design inputs, so this is the case where they did not come back, and the mock):
-    // ask at once, prefilled, one click. Never confirmed by itself.
-    if(handle.savedDesign?.()&&!session.design?.confirmed)setDesignOpen(true);
     const visibility=()=>{if(document.visibilityState==='hidden')void a.flush();};
-    const leaving=(event:BeforeUnloadEvent)=>{const state=a.state();if(state.revision!==state.savedRevision){event.preventDefault();event.returnValue='';}};
-    window.addEventListener('beforeunload',leaving);
     document.addEventListener('visibilitychange',visibility);
     if(import.meta.env.VITE_API_MOCK==='1')Object.assign((window as unknown as {__nexo:object}).__nexo,{autosave:a,handle});
-    return()=>{off();offStatus();a.dispose();window.removeEventListener('beforeunload',leaving);document.removeEventListener('visibilitychange',visibility);};
+    return()=>{off();offStatus();a.dispose();document.removeEventListener('visibilitychange',visibility);};
+  },[handle]);
+  useEffect(()=>{
+    if(handle&&!readOnly&&handle.savedDesign?.()&&!session.design?.confirmed)setDesignOpen(true);
+  },[handle]);
+  useEffect(()=>{
+    if(!handle||(!collaborating&&readOnly))return;
+    const leaving=(event:BeforeUnloadEvent)=>{
+      const saved=collaborating ? null : saver.current?.state();
+      if(collaborating ? unsynced.current && !resyncing.current() : saved && saved.revision!==saved.savedRevision){event.preventDefault();event.returnValue='';}
+    };
+    window.addEventListener('beforeunload',leaving);
+    return()=>window.removeEventListener('beforeunload',leaving);
+  },[handle]);
+  useEffect(()=>{
+    if(!collaborating)return;
+    let live=true,off:(()=>void)|undefined;
+    void import('../collab/versions').then(({subscribePill})=>{
+      if(live)off=subscribePill(status=>{unsynced.current=status.unsynced;setCollabText(status.text);});
+    });
+    return()=>{live=false;off?.();};
+  },[]);
+  // Collaboration (collab/session.ts): renders and reads follow the sidecar's meta.session, a lost session waits for the
+  // sidecar's next one (no reopen here), and a refusal from before a resync reload is said once. On a new session (a
+  // restore) every card's Data form reloads from it, on every page.
+  useEffect(()=>{
+    if(!handle||!collaborating)return;
+    let live=true,off:(()=>void)|undefined;
+    void Promise.all([import('../collab/session'),import('../collab/refused')]).then(([{followSharedSession,waitingText},refused])=>{
+      if(!live)return;
+      resyncing.current=refused.resyncing;const refusal=refused.takeRefusal();if(refusal)notify(refusal,true);
+      off=followSharedSession(session,{waiting:waiting=>setEngineText(waiting?waitingText:''),refresh:()=>tabsBridges.get(handle)!.document().nodes.forEach(n=>{handle.refreshCard(n.id);window.dispatchEvent(new CustomEvent('nexo-inputs-restored',{detail:n.id}));})});
+    });
+    return()=>{live=false;off?.();};
   },[handle]);
   // A lost API session (evicted, closed, restarted): api.ts waits for this once per loss, then retries the request.
   // Autosave pauses meanwhile; the cards are put back on the reopened session and drawn again through the normal path.
+  // With collaboration on the sidecar reopens it instead (the effect above).
   useEffect(()=>{
-    if(!handle)return;
+    if(!handle||collaborating)return;
     setSessionRecovery(async lost=>{
       const a=saver.current;a?.pause();notify(s.reconnecting);
       const nodes=tabsBridges.get(handle)!.document().nodes as import('../api').Node[];
       try{
-        const next=await reopenSession(lost,{checkpoint:new URL(location.href).searchParams.get('checkpoint'),design:session.design,nodes,nexoInputs:id=>handle.nexoInputs(id),nexoActions:id=>handle.nexoActions?.(id)??[]});
+        const next=await reopenSession(lost,{checkpoint:new URL(location.href).searchParams.get('checkpoint'),dataset:(session as import('../api').DatasetSession).dataset,design:session.design,nodes,nexoInputs:id=>handle.nexoInputs(id),nexoActions:id=>handle.nexoActions?.(id)??[]});
         if(!readOnly)a?.resume();notify(s.reconnected);
         // Redraw once the alias points at the reopened session (api.ts sets it when this resolves).
         setTimeout(()=>nodes.forEach(n=>handle.refreshCard(n.id)),0);
@@ -287,7 +326,7 @@ export function App({ session, title }: { session: Session; title?: string }) {
     setPicker(null);
   };
 
-  return <CanvasHandleContext.Provider value={handle}><TopBar nearLimit={nearLimit} projectName={projectName} onCheckpoints={()=>setCheckpointsOpen(true)} saveText={saveText} saveStatus={saveStatus} saveFailure={saveFailure} onRetrySave={()=>void saver.current?.flush()} onReopen={saveLost?()=>void reopenNow():undefined}/><div className={`shell ${state.ui.libraryOpen && !readOnly ? '' : 'library-closed'} ${state.ui.inspectorOpen || figureMode ? 'inspector-open' : ''}`}>
+  return <CanvasHandleContext.Provider value={handle}><TopBar nearLimit={nearLimit} projectName={projectName} onCheckpoints={()=>setCheckpointsOpen(true)} saveText={collaborating?(engineText||collabText):saveText} saveStatus={collaborating?collabDot(engineText,collabText):saveStatus} saveFailure={saveFailure} onRetrySave={()=>void saver.current?.flush()} onReopen={saveLost?()=>void reopenNow():undefined}/><div className={`shell ${state.ui.libraryOpen && !readOnly ? '' : 'library-closed'} ${state.ui.inspectorOpen || figureMode ? 'inspector-open' : ''}`}>
     <Rail/>{!readOnly && <Library/>}<main className="canvas-column" aria-label={s.canvasArea}><div className="canvas-header"><TabsBar editTabs={edit} activate={id => {
         if (!handle) return;
         const next = tabs.clone(store.get().tabs); if (!tabs.setActive(next, id)) return;
@@ -300,7 +339,7 @@ export function App({ session, title }: { session: Session; title?: string }) {
         const result = tabs.deleteTab(next, id, target);
         if (result.ok) tabsBridges.get(handle)!.dispatch(tabsCommand(next, plan.removals.length ? [removeNodes(plan.removals)] : []));
       }}/>
-      {picker && <div role="dialog" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setPicker(null); } }} aria-label={picker === 'move' ? s.moveToTab : s.copyToTab}><button onClick={() => setPicker(picker === 'move' ? 'copy' : 'move')}>{picker === 'move' ? s.copyToTabMenu : s.moveToTabMenu}</button><p className="picker-heading">{picker === 'move' ? s.moveToTab : s.copyToTab}</p>{state.tabs.tabs.filter(t => picker === 'copy' || t.id !== state.tabs.active).map(t => <button key={t.id} onClick={() => move(t.id)}>{t.id === state.tabs.active ? p.currentTab(t.name) : t.name}</button>)}<button onClick={() => setPicker(null)}>{s.cancel}</button></div>}<CohortEntry sessionId={session.sessionId} onChanged={()=>saver.current?.markDirty()}/><Toolbar onAnalysis={()=>setAnalysisOpen(true)} onSave={()=>setCheckpointsOpen(true)} onDownload={()=>void download()} onShortcuts={()=>setShortcutsOpen(true)}/></div><StatusBand figureMode={figureMode} summary={datasetSummary(session)}/>{sessionLost && <div className="session-lost" role="alert">{s.sessionLost}<button type="button" onClick={()=>void reopenNow()}>{s.reopenSession}</button><button type="button" onClick={()=>location.reload()}>{s.reloadPage}</button></div>}{readOnly && <ReadOnlyBanner/>}<div className="canvas-body"><div id="canvas-host" role="tabpanel" aria-labelledby={state.tabs.active} ref={host}/>{ready && <ZoomPill/>}{ready && !figureMode && !(state.tabs.tabs.find(t => t.id === state.tabs.active)?.nodes.length) && <EmptyCanvas handle={handle}/>}</div>{!analysisOpen && <Toast/>}</main>
+      {picker && <div role="dialog" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setPicker(null); } }} aria-label={picker === 'move' ? s.moveToTab : s.copyToTab}><button onClick={() => setPicker(picker === 'move' ? 'copy' : 'move')}>{picker === 'move' ? s.copyToTabMenu : s.moveToTabMenu}</button><p className="picker-heading">{picker === 'move' ? s.moveToTab : s.copyToTab}</p>{state.tabs.tabs.filter(t => picker === 'copy' || t.id !== state.tabs.active).map(t => <button key={t.id} onClick={() => move(t.id)}>{t.id === state.tabs.active ? p.currentTab(t.name) : t.name}</button>)}<button onClick={() => setPicker(null)}>{s.cancel}</button></div>}<CohortEntry sessionId={session.sessionId} onChanged={()=>saver.current?.markDirty()}/><Toolbar onAnalysis={()=>setAnalysisOpen(true)} onSave={()=>setCheckpointsOpen(true)} onDownload={()=>void download()} onShortcuts={()=>setShortcutsOpen(true)}/></div><StatusBand figureMode={figureMode} summary={datasetSummary(session)} notice={notice}/>{sessionLost && <div className="session-lost" role="alert">{s.sessionLost}<button type="button" onClick={()=>void reopenNow()}>{s.reopenSession}</button><button type="button" onClick={()=>location.reload()}>{s.reloadPage}</button></div>}{readOnly && <ReadOnlyBanner/>}<div className="canvas-body"><div id="canvas-host" role="tabpanel" aria-labelledby={state.tabs.active} ref={host}/>{ready && <ZoomPill/>}{ready && !figureMode && !(state.tabs.tabs.find(t => t.id === state.tabs.active)?.nodes.length) && <EmptyCanvas handle={handle}/>}</div>{!analysisOpen && <Toast/>}</main>
     <aside className="inspector-column"><PanelBoundary resetKey={figureMode}>{handle && (figureMode ? <FigurePage handle={handle}/> : <Inspector handle={handle}/>)}</PanelBoundary></aside>
   </div>{analysisOpen && <AnalysisSettings session={session} onClose={()=>setAnalysisOpen(false)} onApplied={()=>saver.current?.markDirty()}/>}{designOpen && <DesignDialog sessionId={session.sessionId} saved={handle?.savedDesign?.()} onClose={() => setDesignOpen(false)} onConfirmed={design => { session.design = design; tabsBridges.get(handle!)?.refresh(); }}/>}{shortcutsOpen && <ShortcutsDialog onClose={()=>setShortcutsOpen(false)}/>}{state.ui.paletteOpen && !readOnly && <SessionPalettePanel session={session} onClose={()=>ui({paletteOpen:false})} onApplied={()=>saver.current?.markDirty()}/>}{checkpointsOpen && <CheckpointsDialog onClose={()=>setCheckpointsOpen(false)} save={label=>saveNamed(label)}/>}</CanvasHandleContext.Provider>;
 }

@@ -1,5 +1,12 @@
 /** All new shell copy. Checkpoint labels and the untouched canvas supply their own content. */
 export const strings = {
+  viewOnlyRole: 'View only — ask the owner for edit access', commentRole: 'You can comment', share: 'Share',
+  // Share dialog and role changes (UX review 2, scene 4).
+  shareWho: "Lab staff and this client's members can open this project. Roles decide what each person can change.",
+  shareWhoLab: 'Lab staff can open this project. Roles decide what each person can change.',
+  shareYou: '(you)', shareNotListed: 'Not listed? Add the person as a client member in Admin first.',
+  copyLink: 'Copy link', linkCopied: 'Link copied', linkNotCopied: 'Could not copy the link: copy it from the address bar.', done: 'Done',
+  fromAdmin: 'from Admin',
   // A lost API session (evicted or restarted) is reopened and the plots are put back.
   reconnecting: 'Reconnecting to the analysis…', reconnected: 'Analysis reconnected. Your plots were restored.',
   sessionLost: 'The analysis session was lost and could not be reopened. Reload the page to continue; your last save is kept.', reloadPage: 'Reload', saveFailedLost: 'Save failed · Session lost',
@@ -21,10 +28,10 @@ export const strings = {
   paletteFollowsSession: 'Group colours and shapes follow the session palette.', paletteOpen: 'Session palette…', paletteOwnColours: 'This plot uses its own colours (Appearance tab).', notOnLayout: 'not on this layout', designSaved: 'Saved with this design by the author; confirm to enable differential plots.',
   analysisSettings: 'Analysis settings', analysisUpdating: 'Updating all plots…', analysisApplied: 'Analysis settings applied', analysisUndone: 'Analysis settings restored', analysisLoading: 'Loading settings…', analysisDiscard: 'Discard', analysisApply: 'Apply',
   roundedRectangle: 'rounded rectangle', pageGuides: 'Page guides', resetOrder: 'Reset order (tab order)', selectTabPlots: 'Select all in tab', conditionColors: 'Condition colours',
-  nexoCircle:'Circle',nexoSquare:'Square',nexoDiamond:'Diamond',nexoCross:'Cross',nexoSymbolX:'X',nexoTriangleUp:'Triangle up',nexoTriangleDown:'Triangle down',nexoStar:'Star',nexoCircleOpen:'Open circle',nexoSquareOpen:'Open square',nexoDiamondOpen:'Open diamond',nexoSolid:'Solid',nexoDotted:'Dotted',nexoDashed:'Dashed',nexoLongDash:'Long dash',nexoDashDot:'Dash dot',nexoLongDashDot:'Long dash dot',
-  nexoSeries:'Series style', nexoLegendOrder:'Legend order', nexoReversed:'Reversed', nexoGrouped:'Grouped', nexoGroupedReversed:'Grouped, reversed', nexoSymbol:'Marker symbol', nexoDash:'Line dash', nexoReferences:'Reference lines & bands', nexoDataCoordinates:'Positions use data coordinates on the primary axes.', nexoReferenceLine:'Reference line', nexoBand:'Shaded band', nexoReference:'Reference', nexoXStart:'x start', nexoXEnd:'x end', nexoYStart:'y start', nexoYEnd:'y end', nexoColor:'Colour', nexoLineWidth:'Line width', nexoOpacity:'Opacity', nexoRemove:'Remove', nexoAddLine:'Add reference line', nexoAddBand:'Add shaded band', nexoArrows:'Arrow annotations', nexoAnnotation:'Annotation', nexoText:'Text', nexoXCoordinate:'x coordinate', nexoYCoordinate:'y coordinate', nexoArrowX:'Arrow x (px)', nexoArrowY:'Arrow y (px)', nexoFontSize:'Font size', nexoAddArrow:'Add arrow annotation',
+  nexoSolid:'Solid',nexoDotted:'Dotted',nexoDashed:'Dashed',nexoLongDash:'Long dash',nexoDashDot:'Dash dot',nexoLongDashDot:'Long dash dot',
+  nexoSeries:'Series style', nexoLegendOrder:'Legend order', nexoReversed:'Reversed', nexoGrouped:'Grouped', nexoGroupedReversed:'Grouped, reversed', nexoDash:'Line dash', nexoReferences:'Reference lines & bands', nexoDataCoordinates:'Positions use data coordinates on the primary axes.', nexoReferenceLine:'Reference line', nexoBand:'Shaded band', nexoReference:'Reference', nexoXStart:'x start', nexoXEnd:'x end', nexoYStart:'y start', nexoYEnd:'y end', nexoColor:'Colour', nexoLineWidth:'Line width', nexoOpacity:'Opacity', nexoRemove:'Remove', nexoAddLine:'Add reference line', nexoAddBand:'Add shaded band', nexoArrows:'Arrow annotations', nexoAnnotation:'Annotation', nexoText:'Text', nexoXCoordinate:'x coordinate', nexoYCoordinate:'y coordinate', nexoArrowX:'Arrow x (px)', nexoArrowY:'Arrow y (px)', nexoFontSize:'Font size', nexoAddArrow:'Add arrow annotation',
   nexoBadge:'Nexo style', nexoTeamView:'Show as Team draws it', nexoAxis:'Axis range & scale', nexoTicks:'Ticks', nexoWeightsMargins:'Weights & margins', nexoAuto:'auto', nexoX:'Horizontal axis', nexoY:'Vertical axis', nexoScale:'Scale', nexoLinear:'Linear', nexoLog:'Log', nexoMin:'Minimum', nexoMax:'Maximum', nexoTickFormat:'Tick format', nexoTickSpacing:'Tick spacing', nexoTickCount:'Tick count', nexoBold:'Bold', nexoNormal:'Normal', nexoMargins:'margins', nexoTitle:'Title weight', nexoAxisTitles:'Axis title weight', nexoLegend:'Legend weight', nexoMargin:'Margin', nexoLeft:'left', nexoRight:'right', nexoTop:'top', nexoBottom:'bottom', nexoPadding:'padding', nexoReset:'Reset Nexo style',
-  app: 'Lipidomic Explorer', logo: 'LE', project: 'Checkpoints', checkpointsTitle: 'Open or save a checkpoint', accountLabel: 'Account', data: 'Data', review: 'Review', canvas: 'Canvas',
+  app: 'Lipidomic Explorer', yourBoard: 'your board', logo: 'Libreros Lab', project: 'Checkpoints', checkpointsTitle: 'Open or save a checkpoint', accountLabel: 'Account', data: 'Data', review: 'Review', canvas: 'Canvas',
   steps: 'Analysis steps', ready: 'Autosave ready', dirty: 'Unsaved changes · Autosave on',
   viewOnly: 'View only', viewOnlyDevice: 'View only on this device. Open Nexo on a computer to edit.',
   viewOnlyLink: 'View only link. Open Nexo without ?mode=view to edit.', dismissViewOnly: 'Dismiss view-only notice',
@@ -45,9 +52,12 @@ export const strings = {
   helpArrange: 'Move and resize', helpArrangeText: 'Drag a card header to move it; drag its corner to resize. Select several cards to align them in Canvas tools. Use Fit to see every card.',
   helpFinish: 'Finish and export', helpFinishText: 'Finish captures a snapshot of the prepared result. Edit figure reconnects it to the current analysis. Use the Figure page to arrange and export finished plots together, or export a selected plot from its Export tab.',
   helpSave: 'Save your work', helpSaveText: 'Autosave keeps your layout, colours and finished snapshots in the current checkpoint. Save a named checkpoint to keep a separate version. Download ZIP keeps a copy you can open in Team or Nexo.',
-  recordsNearLimit: 'Records near size limit', recordsNearLimitHelp: 'Project records are near the size limit for one checkpoint. Later runs may not save; Download ZIP keeps a copy of your work.',
+  recordsNearLimit: 'Records near size limit', recordsNearLimitHelp: 'Nexo keeps saving this board, but its run history is near Team’s size limit, so Team may stop saving it after more runs there — Download ZIP keeps a copy.',
   plotChangedExport: 'Plot changed — export again.',
   studyDesign: 'Study design', enlargePlot: 'Enlarge plot', selectTouch: 'Select', moveTouch: 'Move', inspectorTouch: 'Inspector',
+  // NEXO-P5: Team's PCA score analysis heading and note (R/results_dashboard.R rd_pca_score_ui).
+  pcaScoreTitle: 'PCA score analysis', pcaScoreHelp: 'Tests whether the sample scores on one principal component differ between groups. The PCA itself is not changed.',
+  pcaScorePlotButton: 'Plot on canvas', pcaScorePlotNote: 'Adds the box plot and the group table as a figure on the canvas.', failPcaScore: 'load the PCA score analysis', failPcaScorePlot: 'add the PCA score figure',
   analysisHelp: 'Choose the analysis, then review and confirm before computing. Display settings below update the plot immediately.', discardChanges: 'Discard changes',
   helpText: 'V selects, H moves the view, I toggles the inspector. Scroll to pan; pinch to zoom.',
   pca: 'PCA', violin: 'Violin', dist: 'Distribution', comp: 'Composition', heat: 'Heatmap',
@@ -66,7 +76,7 @@ export const strings = {
   library: 'Library', plotLibrary: 'Plot library', illustrationLibrary: 'Scientific illustrations', closeLibraryPanel: 'Close library', libraryContent: 'Library content',
   searchPlots: 'Search plots', searchIllustrations: 'Search illustrations', loadingPlots: 'Loading plots…', confirmDesignFor: 'Confirm study design for', confirmDesignLink: 'Confirm study design…', needsTimePoints: 'needs two or more time points', notForPaired: 'not for a paired design', addLabel: 'Add',
   noPlots: 'No plots match.', noIllustrations: 'No illustrations match. Try a sample, cell or instrument.',
-  inspectorLabel: 'Inspector', actionDuplicate: 'Duplicate', morePlotActions: 'More plot actions', backToOverview: 'Back to overview', overviewLimited: 'Overview limited to 10 %: pan or use the minimap to reach the rest of the canvas.', actionCopyPlot: 'Copy settings', actionCopyToTab: 'Copy to tab…', actionMoveToTab: 'Move to tab…', actionEditIllustration: 'Edit illustration', closeInspector: 'Close inspector', selectToInspect: 'Select a plot or object to see its settings.', inspectorTabs: 'Inspector tabs',
+  inspectorLabel: 'Inspector', actionDuplicate: 'Duplicate', morePlotActions: 'More plot actions', backToOverview: 'Back to overview', actionCopyPlot: 'Copy settings', actionCopyToTab: 'Copy to tab…', actionMoveToTab: 'Move to tab…', actionEditIllustration: 'Edit illustration', closeInspector: 'Close inspector', selectToInspect: 'Select a plot or object to see its settings.', inspectorTabs: 'Inspector tabs',
   editFigure: 'Edit figure', finishedFigure: 'Finished figure.', finishPlot: 'Finish plot', figureDetails: 'Figure details', labelHeading: 'Label', tierHeading: 'Tier', upToDate: 'Up to date', updateFailed: 'Update failed', settingsUnavailable: 'Settings unavailable',
   failCsv: 'download the plot data', failDownload: 'download the file', failPng: 'download the PNG', failSvg: 'download the SVG', failPdf: 'download the PDF', failJson: 'copy the figure JSON', loadLiveFirst: 'Load a live plot first.',
   copyJson: 'Copy figure JSON', failSchema: 'load the plot settings', failUpdate: 'update the plot', failAction: 'run this action', moduleDialog: 'Details', failDuplicate: 'duplicate the selection',
@@ -85,6 +95,8 @@ export const shortcuts = [['L', 'Show or hide the plot library'], ['Shift + L', 
     ['Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z', 'Undo, redo'], ['Esc', 'Clear search, or close the menu, inspector, library, then selection'], ['I', 'Show or hide the inspector'], ['?', 'Show this list']] as const;
 /** Sentences with a value inside. */
 export const phrases = {
+  shareTitle: (project: string) => `Share ${project}`,
+  roleNow: (role: string) => `Your role on this project is now ${role}.`,
   noPlotMatches: (query: string) => `No plot matches “${query}”.`,
   restoringPlot: (label: string) => `Restoring ${label}…`,
   restorePlotFailed: (label: string) => `Couldn’t bring back ${label}.`,

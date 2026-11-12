@@ -3,20 +3,25 @@ import { useEffect,useRef,useState } from 'react';
 import { listCheckpoints,uploadCheckpoint,checkpointDownload,deleteCheckpoint,knownAdminView,adminSignInUrl,AdminSignInRequired,type Checkpoint } from '../../api';
 import { uploadAllowed } from '../uploadAccess';
 import { Confirm } from './Confirm';
-import { notify } from '../model';
+import { notify, ui } from '../model';
 import { checkpointRows } from '../checkpointList';
 import { isReadOnly } from '../../state/readonly';
+import { collab } from '../../collab/mode';
+// Collab mode: the project's versions live in the Version history panel (ui/Panels/VersionHistory.tsx, UX-B4), so the
+// Checkpoints title opens that panel instead of this dialog.
 export function CheckpointsDialog({onClose,save}:{onClose:()=>void;save:(label:string)=>Promise<Checkpoint>}) {
  const ref=useRef<HTMLDialogElement>(null),[records,setRecords]=useState<Checkpoint[]>([]),[label,setLabel]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[deleting,setDeleting]=useState<Checkpoint|null>(null);
- const [loaded,setLoaded]=useState(false),[signIn,setSignIn]=useState(false);
+ const [loaded,setLoaded]=useState(false),[signIn,setSignIn]=useState(false),board=collab();
  const refresh=async()=>{setRecords(await listCheckpoints());setLoaded(true);};
- useEffect(()=>{const previous=document.activeElement as HTMLElement;const dialog=ref.current!;dialog.showModal();void refresh().catch(e=>{setSignIn(e instanceof AdminSignInRequired);setError(e instanceof AdminSignInRequired?e.message:String(e));});return()=>{dialog.close();previous?.focus();};},[]);
+ useEffect(()=>{if(board){ui({versionsOpen:true});onClose();return;}const previous=document.activeElement as HTMLElement;const dialog=ref.current!;dialog.showModal();void refresh().catch(e=>{setSignIn(e instanceof AdminSignInRequired);setError(e instanceof AdminSignInRequired?e.message:String(e));});return()=>{dialog.close();previous?.focus();};},[]);
  const open=(id:string)=>{const url=new URL(location.href);url.searchParams.set('checkpoint',id);location.assign(url);};
+ const downloadZip=async(id:string,name:string)=>{const a=document.createElement('a');a.href=await checkpointDownload(id);a.download=`${name}.zip`;a.click();if(a.href.startsWith('blob:'))setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
  async function run(fn:()=>Promise<void>){setBusy(true);setError('');setSignIn(false);try{await fn();}catch(e){setSignIn(e instanceof AdminSignInRequired);setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
  // Journey review 8.3: the open checkpoint first (marked Current), then Team's, named saves and autosaves, newest first.
  const current=new URL(location.href).searchParams.get('checkpoint'),order=checkpointRows(records).map(r=>r.id);
  const ordered=[...records].sort((a,b)=>Number(b.id===current)-Number(a.id===current)||order.indexOf(a.id)-order.indexOf(b.id));
  const valid=Array.from(label.trim()).length>=1&&Array.from(label.trim()).length<=80,readOnly=isReadOnly();
+ if(board)return null;
  return <dialog ref={ref} aria-label={s.checkpoints} onCancel={e=>{e.preventDefault();onClose();}} style={{width:'min(760px,90vw)'}}><h2>{s.checkpoints}</h2>
   {!readOnly&&<><form onSubmit={e=>{e.preventDefault();if(valid)void run(async()=>{const record=await save(label.trim());notify(p.savedAs(record.name));onClose();});}}>
    <label>{s.newCheckpoint}<input autoFocus value={label} onChange={e=>setLabel(e.target.value)} required maxLength={160}/></label>
@@ -26,7 +31,7 @@ export function CheckpointsDialog({onClose,save}:{onClose:()=>void;save:(label:s
   <p role="alert">{error}</p>{signIn&&<a className="primary sign-in" href={adminSignInUrl(location.href)}>{d.signIn}</a>}<h3>{s.savedCheckpoint}</h3>
   <div aria-busy={busy}>{loaded&&!records.length&&<p>{s.empty}</p>}{ordered.map(record=><article className="library-row" key={record.id} aria-current={record.id===current||undefined}><span><strong>{record.name==='autosave'?s.autosave:record.name}{record.id===current&&<span className="current-chip">{s.currentCheckpoint}</span>}</strong><small>{new Date(record.createdAt).toLocaleString()} · {record.sizeBytes.toLocaleString()} bytes · {record.source}</small></span>
    <button disabled={busy} onClick={()=>open(record.id)}>{s.open}</button>
-   <button disabled={busy} onClick={()=>void run(async()=>{const a=document.createElement('a');a.href=await checkpointDownload(record.id);a.download=`${record.name}.zip`;a.click();if(a.href.startsWith('blob:'))setTimeout(()=>URL.revokeObjectURL(a.href),1000);})}>{s.download}</button>
+   <button disabled={busy} onClick={()=>void run(()=>downloadZip(record.id,record.name))}>{s.download}</button>
    {record.source==='store'&&!readOnly&&<button disabled={busy} onClick={()=>setDeleting(record)}>{s.deleteLabel}</button>}
   </article>)}</div>
   <button onClick={onClose}>{s.exportClose}</button>

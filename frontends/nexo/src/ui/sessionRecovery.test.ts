@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 const api = vi.hoisted(() => ({
-  openSession: vi.fn(), confirmDesign: vi.fn(async () => ({})), createCard: vi.fn(async () => ({})), updateCard: vi.fn(async () => ({})), replayHeldEdits: vi.fn(async () => {}),
+  openSession: vi.fn(), openDatasetSession: vi.fn(), confirmDesign: vi.fn(async () => ({})), createCard: vi.fn(async () => ({})), updateCard: vi.fn(async () => ({})), replayHeldEdits: vi.fn(async () => {}),
   replayActions: vi.fn(async (..._args: unknown[]) => ({replayed:['runAnalysis'], failed:[] as string[], pressed:['runAnalysis'], settled:true})),
 }));
 vi.mock('../api', async () => { const s = await import('../api/session'); return { ...api, isSessionLost: s.isSessionLost, SessionLostError: s.SessionLostError }; });
@@ -44,6 +44,14 @@ describe('reopenSession', () => {
     expect(api.replayActions).toHaveBeenCalledTimes(1);
     api.replayActions.mockRejectedValueOnce(new SessionLostError());
     await expect(reopenSession('s1', {checkpoint:'ck', design:undefined, nodes:[plot('n1',{instanceId:'tcinstance_s', source:'a'})], nexoInputs:() => undefined, nexoActions:() => ['runAnalysis']})).rejects.toBeInstanceOf(SessionLostError);
+  });
+  it('reopens a dataset with its saved settings and replays edits', async () => {
+    const dataset = {adminDatasetId:'dataset', settings:{samples:['A']}};
+    api.openDatasetSession.mockResolvedValue({status:'ready', session:{sessionId:'s2', canvas:{nodes:[]}}});
+    expect(await reopenSession('s1', {checkpoint:null, dataset, design:undefined, nodes:[plot('n1',{instanceId:'i1', source:'source'})], nexoInputs:() => undefined})).toBe('s2');
+    expect(api.openDatasetSession).toHaveBeenCalledWith('dataset', {samples:['A']});
+    expect(api.replayHeldEdits).toHaveBeenCalledWith('s1','s2');
+    expect(api.createCard).toHaveBeenCalledWith('s2','source',{},'i1');
   });
   it('fails without a checkpoint to reopen', async () => {
     await expect(reopenSession('s1', {checkpoint:null, design:undefined, nodes:[], nexoInputs:() => undefined})).rejects.toBeInstanceOf(SessionLostError);

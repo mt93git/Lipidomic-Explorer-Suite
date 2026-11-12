@@ -1,5 +1,7 @@
 import { createImageCache } from '../imageCache';
 import { afterEach, expect, it, vi } from 'vitest';
+import { useAdminTokenFetch } from './adminToken';
+useAdminTokenFetch(async () => new Response('{}', {status: 401}));
 import { getAnalysis, updateAnalysis } from '../api';
 import { analysisCacheKey, analysisGeneration, onAnalysisChange } from '../analysisGeneration';
 import fixture from './mock/analysis.json';

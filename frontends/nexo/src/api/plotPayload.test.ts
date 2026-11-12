@@ -25,3 +25,12 @@ it('leaves a damaged packed figure exactly as received (nothing half-decoded)',(
   (f:any)=>{f.data[0].y.extra=1;},
  ]){const f:any=packed();damage(f);const before=JSON.stringify(f);expect(JSON.stringify(unpackFigure(f))).toBe(before);}
 });
+// NEXO-P9 2: plotly R expands the dashboard violin's one hover template per sample. Hovering a violin's body, Plotly
+// hands the whole array to its template formatter: "t.replace is not a function". Team's rule (R/results_dashboard.R
+// plotly_build.team_compact_distribution): identical templates become the one scalar, the same text for every point.
+it('a violin\'s repeated per-point hover template becomes one string', () => {
+  const template = '%{text}<br>log10 prepared abundance: %{y:.3f}<extra></extra>';
+  const figure = { data: [{ type: 'violin', y: [1, 2, 3], text: ['a', 'b', 'c'], hovertemplate: [template, template, template] }], layout: {} };
+  expect(unpackFigure(figure).data[0].hovertemplate).toBe(template);
+  expect(figure.data[0].hovertemplate).toEqual([template, template, template]);
+});

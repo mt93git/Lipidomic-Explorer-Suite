@@ -1,5 +1,5 @@
 import { strings as s, phrases as p, keys, tip } from '../strings';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { CardAction } from '../../cards';
 import type { CanvasHandle } from '../../canvas/handle';
 import { DataTab } from './DataTab';
@@ -10,6 +10,10 @@ import { ui, useShell } from '../model';
 import { isStale } from '../../export/finalize';
 import { isReadOnly } from '../../state/readonly';
 import { inspectorStatus } from '../../inspectorStatus';
+import { collab } from '../../collab/mode';
+import { retryLazy } from '../retryLazy';
+// Collab only (lazy: flag off loads no yjs): who else is editing this card (prototype scene 2).
+const EditingBanner = retryLazy(() => import('./EditingBanner').then(m => ({ default: m.EditingBanner })));
 /** The plot's actions, moved off the card (it carries no action bar): the main two, then a menu. */
 function InspectorActions({handle,node}:{handle:CanvasHandle;node:NonNullable<ReturnType<CanvasHandle['getSession']>['canvas']['nodes'][number]>}) {
   const [open,setOpen]=useState(false), wrap=useRef<HTMLDivElement>(null);
@@ -66,6 +70,7 @@ export function Inspector({handle}:{handle:CanvasHandle}) {
       {node && open && ids.length===1 && !readOnly && <InspectorActions handle={handle} node={node}/>}</header>
     {node && open && <p role="status">{finished && status==='Up to date' ? finished : finished ? status : inspectorStatus(handle.cardShown?.(node.id), status)}</p>}
     {!node || !open ? <p>{s.selectToInspect}</p> : ids.length===1 && <>
+      {collab() && <Suspense fallback={null}><EditingBanner nodeId={node.id}/></Suspense>}
       <div role="tablist" aria-label={s.inspectorTabs} style={{display:'flex'}}>{choices.map(t=><button key={t} role="tab" aria-selected={active===t} onClick={()=>setTab(t)}>{t}</button>)}</div>
       {node.finished && node.kind!=='illustration' && <p>{s.finishedFigure}</p>}
       {(!node.finished || node.kind==='illustration') && <details><summary>{s.figureDetails}</summary><h3>{s.labelHeading}</h3><p>{node.label}</p><h3>{s.tierHeading}</h3><p>{Array.from(document.querySelectorAll<HTMLElement>('.card')).find(el=>el.dataset.id===node.id)?.dataset.tier ?? 'live'}</p></details>}

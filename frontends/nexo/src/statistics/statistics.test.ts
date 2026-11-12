@@ -29,3 +29,9 @@ describe('Team statistics pure port', () => {
     it('uses axis baseline and supports horizontal traces and removal', () => { const horizontal = { data: [{ orientation: 'h', y: ['A', 'B', 'C'], x: [0, 5, 10] }], layout: { xaxis: { range: [-2, 12] } } }; const spec = bracketAnnotations(horizontal, rowsForDisplay(result, p), p); expect(spec.shapes[0].y0).toBe(0); expect(spec.shapes[0].x1).toBeCloseTo(12 + 14 * .08 * .6); expect(applyStatisticsToFigure(applyStatisticsToFigure(figure, { presentation: p, applied: a, result }), null).layout.annotations).toEqual([{ text: 'keep' }]); });
     it('copies six provenance fields and uses Team methods/status wording', () => { expect(provenanceOf(result, a)).toEqual(result.provenance); expect(provenanceOf(result, a)).not.toBe(result.provenance); expect(methodsNote(result, a)).toBe('Method. Independent. Labels use adj. p: * < 0.05, ** < 0.01, *** < 0.001, ns otherwise. Computed 2026-11-06T00:00:00Z.'); expect(statusFor({ status: 'ok' })).toBe(STATUS.current); expect(statusFor({ status: 'blocked', reason: 'Blocked.' })).toBe('Blocked.'); });
 });
+
+// UX review 2, group 5 (plan "Phases 3–7 as cut"): invalidated statistics name who changed the board (meta.lastChange).
+it('invalidated statistics say who changed the board', () => {
+  expect(statusFor({ status: 'invalidated' }, 'Blair Synthetic')).toBe('No current statistics: the data, displayed lipid, grouping, participant IDs or design approval changed after they were confirmed (changed by Blair Synthetic). Review and confirm to compute them again.');
+  expect(statusFor({ status: 'invalidated' })).toBe(STATUS.invalid);
+});

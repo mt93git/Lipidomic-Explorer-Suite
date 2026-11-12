@@ -73,12 +73,20 @@ api_store_files <- function(root) {
     path
   })
   list(list = list_records,
-    save = function(project, path, label) api_storage_io({
+    save = function(project, path, label, lineage = NULL, collab = FALSE) api_storage_io({
       dir <- project_dir(project); api_storage_label(label)
       api_storage_dir(file.path(root, "projects")); api_storage_dir(dir)
       id <- digest::digest(file = path, algo = "sha256")
       existing <- record(project, id)
-      if (!is.null(existing)) { load_record(project, id); return(existing) }
+      if (!is.null(existing)) {
+        load_record(project, id)
+        if (isTRUE(collab) && !isTRUE(existing$collab)) {
+          existing$collab <- TRUE
+          api_storage_atomic(file.path(dir, paste0(id, ".json")), function(tmp)
+            jsonlite::write_json(existing, tmp, auto_unbox = TRUE, digits = NA))
+        }
+        return(existing)
+      }
       zip <- file.path(dir, paste0(id, ".zip"))
       api_storage_atomic(zip, function(tmp) {
         if (!file.copy(path, tmp) || !identical(digest::digest(file = tmp, algo = "sha256"), id))
@@ -87,6 +95,10 @@ api_store_files <- function(root) {
       x <- list(id = id, project = project, name = label, sha256 = id,
         size_bytes = unname(file.info(zip)$size),
         created_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC"))
+      if (!is.null(lineage)) x$lineage <- lineage
+      # A record created by a collab save is a version of a live project (its Version history); the dedupe path above
+      # only marks an existing checkpoint collab and never makes it a version.
+      if (isTRUE(collab)) { x$collab <- TRUE; x$version <- TRUE }
       # Metadata is the commit marker and is always published last.
       api_storage_atomic(file.path(dir, paste0(id, ".json")), function(tmp)
         jsonlite::write_json(x, tmp, auto_unbox = TRUE, digits = NA))

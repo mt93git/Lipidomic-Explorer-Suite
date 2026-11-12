@@ -17,6 +17,8 @@ import { followsSessionPalette, PALETTE_FOLLOWERS_EVENT } from '../../palette/pa
 // confirmation or an analysis change every cached schema is stale, and the open Data tab reloads its own.
 export const SCHEMA_STALE_EVENTS = ['nexo-design-confirmed', 'nexo-analysis-applied'] as const; // an analysis undo applies through accept() too
 if (typeof window !== 'undefined') SCHEMA_STALE_EVENTS.forEach(name => window.addEventListener(name, () => cache.clear()));
+// A card's inputs changed on the server (undo/redo, another person's change, a restore): no cached form keeps the old values.
+if (typeof window !== 'undefined') window.addEventListener('nexo-inputs-restored', () => cache.clear());
 export function DataTab({node,handle,onStatus}:{node:Node;handle:CanvasHandle;onStatus:(s:string)=>void}) {
   const sessionId = handle.getSession().sessionId, instanceId = cardInstanceId(node), key = sessionId + '/' + instanceId;
   const [schema,setSchema] = useState(cache.get(key));
@@ -56,17 +58,18 @@ export function DataTab({node,handle,onStatus}:{node:Node;handle:CanvasHandle;on
   // A fixed dashboard card draws with the inputs kept in Nexo's member; the server's form only knows the
   // session's dashboard values, so show the card's own (after a reopen they differ).
   const own = node.instance?.instanceId || node.instance?.id ? undefined : handle.nexoInputs(node.id);
-  const shown = own ? {...schema, controls: schema.controls.map(c => c.id in own ? {...c, value: own[c.id]} : c)} as CardSchema : schema;
+  const read = dashboardSchema(node.instance?.source ?? node.id, schema);
+  const shown = own ? {...read, controls: read.controls.map(c => c.id in own ? {...c, value: own[c.id]} : c)} as CardSchema : read;
   // b11 F3: the module's configuration file inputs (pathway "Upload Layout JSON (.json):"), above the controls.
   const files = schema.uploads?.length ? <UploadControls uploads={schema.uploads} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus}
     onUploaded={(id, file, result) => handle.recordUpload?.(node.id, id, file, result.inputs)}/> : null;
-  if (!schema.controls.length && !schema.actionControls?.length) return files || noteKind === 'follows' ? <>{paletteNote}{files}</> : <>{paletteNote}<p>This figure has no data controls.</p></>;
+  if (!shown.controls.length && !shown.actionControls?.length) return files || noteKind === 'follows' ? <>{paletteNote}{files}</> : <>{paletteNote}<p>This figure has no data controls.</p></>;
   // Computed controls (Team's run-time renderUI) are Nexo's own: mounted beside the schema form, kept in Nexo's member.
   const computed = shown.controls.filter(isComputedControl), member = handle.nexoInputs(node.id);
   const plain = computed.length ? {...shown, controls: shown.controls.filter(c => !isComputedControl(c))} as CardSchema : shown;
   const extra = computed.length ? <ComputedControls key={`computed-${version}-${computed.map(c => c.id).join('|')}`} controls={computed} own={member} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onCommit={(patch, baseline) => handle.setComputedInputs?.(node.id, patch, baseline)}/> : null;
   if (!plain.controls.length && !plain.actionControls?.length) return <>{replayNote}{paletteNote}{files}{extra}</>;
-  return <>{replayNote}{paletteNote}{files}{extra}<SchemaForm key={version} schema={dashboardSchema(node.instance?.source ?? node.id, plain)} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onUpdated={async (inputs,refresh) => {
+  return <>{replayNote}{paletteNote}{files}{extra}<SchemaForm key={version} schema={plain} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onUpdated={async (inputs,refresh) => {
     handle.updateCardInputs(node.id,inputs); cacheInputs(key,inputs);
     if(refresh) { const next = await getCardSchema(sessionId,instanceId); cache.set(key,next); setSchema(next); }
   }} onActed={async (_inputs, action) => {

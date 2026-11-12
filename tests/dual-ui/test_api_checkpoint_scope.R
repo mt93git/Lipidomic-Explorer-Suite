@@ -173,6 +173,21 @@ stopifnot(file.exists(file.path(workspace_a, paste0(saved_a$body$id, ".zip"))),
   !file.exists(file.path(store_root, "projects", "nexo-pilot", paste0(saved_a$body$id, ".zip"))))
 staff_into_a <- save_into(session_a, "staff into a", "token-staff", 0.7)
 stopifnot(staff_into_a$status == 200L, file.exists(file.path(workspace_a, paste0(staff_into_a$body$id, ".zip"))))
+# Recreate the backend at the same root, clearing its cached instance as on restart.
+close_all()
+source("frontends/nexo-api/storage.R")
+stopifnot(length(api_store_files(store_root)$list(api_client_workspace(client_a))) == 3L)
+resolved <- api_checkpoint_resolve(staff_into_a$body$id, list(staff = TRUE), api_client_workspace(client_a))
+stopifnot(identical(resolved$workspace, api_client_workspace(client_a)))
+reopened <- post_json("/api/v1/sessions", list(checkpointId = staff_into_a$body$id,
+  workspace = api_client_workspace(client_a)), "token-staff")
+stopifnot(reopened$status == 200L,
+  identical(api_sessions[[reopened$body$sessionId]]$workspace, api_client_workspace(client_a)))
+cat("PASS staff checkpoint resolves and reopens on client workspace after store restart\n")
+refused <- post_json("/api/v1/sessions", list(checkpointId = staff_into_a$body$id,
+  workspace = api_client_workspace(client_a)), "token-b")
+stopifnot(refused$status == 403L, identical(refused$body$error, "forbidden_scope"))
+cat("PASS member explicitly naming another client workspace gets 403 forbidden_scope\n")
 a_ids <- c(saved_a$body$id, autosave_a$body$id, staff_into_a$body$id)
 cat("PASS member save and autosave land in nexo-client-<A>; B and a member without clients get 403 forbidden_scope; staff may save there\n")
 
@@ -206,6 +221,9 @@ stopifnot(downloaded$status == 200L, is.raw(downloaded$body),
   identical(digest::digest(downloaded$body, algo = "sha256", serialize = FALSE), saved_a$body$id))
 restored_a <- post_json("/api/v1/sessions", list(checkpointId = saved_a$body$id), "token-a")
 stopifnot(restored_a$status == 200L)
+stopifnot(identical(restored_a$body$workspace, api_sessions[[restored_a$body$sessionId]]$workspace),
+  identical(restored_a$body$workspace, api_client_workspace(client_a)))
+cat("PASS checkpoint open answer carries session workspace\n")
 resaved <- save_into(restored_a$body$sessionId, "a resaved", "token-a", 0.3)
 stopifnot(resaved$status == 200L, identical(resaved$body$clientId, client_a),
   file.exists(file.path(workspace_a, paste0(resaved$body$id, ".zip"))))

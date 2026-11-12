@@ -30,6 +30,7 @@ api_cohort_apply <- function(s, lipids) api_guard(s, api_with_loop(s, shiny::iso
 })))
 
 api_cohort_set <- function(s, lipids) {
+  api_mutation(s, NULL, NULL, (function() {
   if (is.list(lipids)) {
     if (!all(vapply(lipids, function(x) is.character(x) && length(x) == 1L, logical(1))))
       api_abort("api_bad_request", "Expected a list of lipid names.")
@@ -45,6 +46,7 @@ api_cohort_set <- function(s, lipids) {
   api_render_epoch_bump(s)
   api_flush(s)
   api_cohort_get(s)
+  })())
 }
 
 api_cohort_append <- function(path, s) {

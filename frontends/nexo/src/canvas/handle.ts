@@ -50,6 +50,8 @@ export interface CanvasHandle {
   /** Exact card X/Y in px (0-1e6), neighbours settled; one undo step. */
   setCardPosition(id:string, pos:{x:number;y:number}):void;
   addCard(source: string, signal?: AbortSignal, position?: { x: number; y: number }): Promise<void>;
+  /** Team's "Plot on canvas" on a PCA card: a PCA score card with that card's settings (catalog.ts pcaScoreCard). */
+  addPcaScore(nodeId: string): Promise<void>;
   undo(): void;
   redo(): void;
   readonly canUndo: boolean;
@@ -111,11 +113,16 @@ export const tabsBridges = new WeakMap<CanvasHandle, TabsBridge>();
 
 import { toCanvasV1 } from '../state/serialize';
 import { validate as validateTabs } from '../state/tabs';
+import { collab } from '../collab/mode';
 /** Install after the canvas bridge exists; snapshots exclude camera and selection. */
 export function checkpointHandle(handle: CanvasHandle) {
  return Object.assign(handle, {snapshotState() {
   const doc=tabsBridges.get(handle)!.document();
-  const state=toCanvasV1(doc as {nodes: import('../api').Node[];libraryHidden?:boolean;document?:import('../state/document').Document|null},validateTabs(doc.tabs,doc.nodes.map(n=>n.id)));
+  const tabs=validateTabs(doc.tabs,doc.nodes.map(n=>n.id));
+  // Phase 2 has no committed-change history: save the first tab, never a peer's personal view.
+  if(collab()) tabs.active=tabs.tabs[0].id;
+  const state=toCanvasV1(doc as {nodes: import('../api').Node[];libraryHidden?:boolean;document?:import('../state/document').Document|null},tabs);
+  if(collab()) state.tabs=Object.assign(tabs,{savedActive:tabs.active});
   state.document=(doc as typeof doc & {document?:import("../state/document").Document}).document??null;
   const checked=validateFigureState(state);if(!checked.ok)throw Error(checked.message);return state;
  }});

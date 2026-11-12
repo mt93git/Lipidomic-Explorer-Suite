@@ -1,0 +1,17 @@
+/* Avatar stack as prototype scene 1: overlapping initials, me first and ringed, Lab/Client and phone marks, a card. */
+.presence-stack{display:flex;align-items:center}
+.presence-person{position:relative;margin-left:-8px}
+.presence-person:first-child{margin-left:0}
+.topbar .presence-stack .presence-avatar{position:relative;display:grid;place-items:center;width:30px;height:30px;min-width:30px;min-height:30px;padding:0;border-radius:50%;border:2px solid var(--navy);background:#7256b5;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.topbar .presence-stack .presence-avatar.me{background:var(--accent);box-shadow:0 0 0 2px #fff;cursor:default}
+.presence-org{position:absolute;left:-5px;bottom:-5px;width:14px;height:14px;border-radius:50%;background:#fff;color:var(--navy);font-size:8px;line-height:14px;font-weight:800;text-align:center}
+.presence-device{position:absolute;right:-5px;bottom:-5px;width:14px;height:14px;border-radius:50%;background:var(--navy);display:grid;place-items:center}
+.presence-device svg{width:9px;height:9px;fill:none;stroke:#fff;stroke-width:2}
+.presence-card{display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:60;min-width:170px;padding:10px 12px;flex-direction:column;gap:2px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-pop);font-size:12px;white-space:nowrap;text-align:left}
+.presence-card::before{content:'';position:absolute;left:0;right:0;top:-9px;height:9px}
+.presence-card b{font-size:13px}.presence-card span{color:var(--muted)}
+.topbar .presence-card button{align-self:flex-start;margin-top:6px;padding:2px 10px;border:1px solid var(--line);border-radius:var(--radius-pill);background:var(--paper);color:var(--ink)}
+.topbar .presence-card button:hover{background:var(--tint)}
+.presence-person:hover .presence-card,.presence-person:focus-within .presence-card{display:flex}
+.presence-more{display:grid;place-items:center;width:30px;height:30px;margin-left:-8px;border-radius:50%;border:2px solid var(--navy);background:#ffffff26;color:#fff;font-size:11px;font-weight:700}
+.topbar .presence-stack .presence-avatar[aria-pressed=true]{box-shadow:0 0 0 2px var(--navy),0 0 0 4px #c9b8ff;z-index:1}

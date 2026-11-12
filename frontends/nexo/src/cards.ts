@@ -8,19 +8,22 @@ import { analysisCacheKey, onAnalysisChange } from './analysisGeneration';
 import { exportReceipts } from './export/changedNotice';
 import { strings as s, phrases as p, keys, tip } from './ui/strings';
 import {isStale,messages,provenance,snapshotFits} from './export/finalize';
-import {applyNexoStatistics as applyStatisticsToFigure} from './editor/applyNexoStatistics';
+import {applyNexoStatistics as applyStatisticsToFigure, placeStatistics} from './editor/applyNexoStatistics';
+import { describesGroups } from './statistics/result';
+import { imageHeightFor } from './canvas/plotHeight';
 import type {Visual} from './state/document';
 import {applyNexoStyle} from './editor/applyNexoStyle';
-import {applyEditor} from './editor/applyEditor';
+import {applyEditor, withTeamFont} from './editor/applyEditor';
 import {figure as gcFigure,stateFrom as gcState,type GcMessage} from './groupComparison/model';
-import { renderCard, updateCard, sendCardEvent, getPlot, inputsFor, confirmGroupComparison, type Figure, type Node, type PlotId, type PlotResult, type Session } from './api';
+import { renderCard, updateCard, sendCardEvent, getPlot, inputsFor, confirmGroupComparison, violinStatistics, type Figure, type Node, type PlotId, type PlotResult, type Session } from './api';
 import type { RenderKind } from './api/types';
-import { fixedInstanceId } from './api/instance';
+import { cardInstanceId, fixedInstanceId } from './api/instance';
+import type { StatisticsResult } from './state/document';
 import { unpackFigure } from './api/plotPayload';
 import { bindPlotClick, type ClickTarget } from './plotlyClick';
-import { bodyStatus } from './cardStatus';
+import { bodyStatus, statusLabel } from './cardStatus';
 import type { CardShown } from './inspectorStatus';
-import { runNeedFor, runNeedKey, runNeedWaiting, markRunNeed, UNAVAILABLE_INPUTS } from './runNeeds';
+import { runNeedFor, runNeedKey, runNeedWaiting, markRunNeed, refusalMessage, renderOnce, UNAVAILABLE_INPUTS } from './runNeeds';
 import { cardView, statusLabels, type CardStatus } from './cardView';
 import { jsonImage } from './mock/png';
 import { isThumb, type Tier } from './tiers';
@@ -30,10 +33,14 @@ import { imageReady } from './imageReady';
 import { drawNetwork } from './network/vis';
 import { hashText, imageSignature, rememberImage } from './drawingSignature';
 import { hasGl3d, purgePlot } from './gl';
+import { fitViolins } from './violinSpan';
 import type { VisWidget } from './network/visData';
+import { bindCompositionLegend } from './editor/compositionLegend';
 interface Plotly {
   newPlot(el: HTMLElement, data: unknown[], layout: Record<string, unknown>, config: Record<string, unknown>): Promise<unknown>;
   react: Plotly["newPlot"];
+  restyle(el: HTMLElement, update: Record<string, unknown>, indices: number[]): Promise<unknown>;
+  relayout(el: HTMLElement, update: Record<string, unknown>): Promise<unknown>;
   purge(el: HTMLElement): void;
   toImage(el: HTMLElement | { data: unknown[]; layout: Record<string, unknown> }, options: Record<string, unknown>): Promise<string>;
   downloadImage(el: HTMLElement, options: Record<string, unknown>): Promise<unknown>;
@@ -84,10 +91,13 @@ export class Card {
   readonly exportNotice = document.createElement('p');
   private designRequired = false;
   private statusTimer = 0;
+  /** Collab mode: "Updated by <name>" on the status line for about 10 s (changedBy), drawn, and named in the loading veil. */
+  private changeNote?: { text: string; until: number }; private noteTimer = 0;
   private chromeObserver: MutationObserver;
   /** Chart audit b05 F5: the card is sized from its module's plot height; the image is drawn at the body height. */
-  plotBody = false;
-  private renderHeight() { return Math.round(this.node.height) - (this.plotBody ? CARD_CHROME : 0); }
+  /** The input holding Team's plot height for this card (catalog heightInput), set by canvas.ts. */
+  plotInput?: string;
+  private renderHeight() { return imageHeightFor(this.node.height, this.plotInput); }
   private capturing = false;
   private rendering = 0;
   private pendingStatus?: CardStatus;
@@ -101,6 +111,8 @@ export class Card {
   current?: Tier;
   figure?: Figure;
   private cache = new Map<string, Promise<PlotResult>>();
+  /** NEXO-P9 1: renders the server answered 4xx, by render key: not asked again until the key changes or Try again. */
+  private refused = new Map<string, unknown>();
   private png?: string;
   /** The Plotly card's key() when its snapshot was taken: a frozen card whose inputs or size changed takes a new one. */
   private pngFor?: string;
@@ -270,9 +282,11 @@ export class Card {
       // Row 11: label, tone and offered action come from the one mapping (cardView.ts); the card carries state and tone for its body styling.
       const view = cardView(state, { designRequired: this.designRequired });
       this.el.dataset.state = state; this.el.dataset.tone = view.tone;
-      this.status.dataset.state = state; this.status.setAttribute('aria-label', view.label); this.status.title = view.label;
+      const text = statusLabel(view.label, this.changeNote, Date.now());
+      this.status.dataset.state = state; this.status.setAttribute('aria-label', text); this.status.title = text;
+      this.status.toggleAttribute('data-note', text !== view.label); // shell.css draws the note's text
       const dot = document.createElement('i'); dot.setAttribute('aria-hidden','true');
-      const label = document.createElement('span'); label.className = 'card-status-text'; label.textContent = view.label;
+      const label = document.createElement('span'); label.className = 'card-status-text'; label.textContent = text;
       this.status.replaceChildren(dot, label);
       this.announceShown();
       if (view.action) {
@@ -290,7 +304,7 @@ export class Card {
     if (this.node.kind==='illustration') {this.setStatus('current');return;}
     if (this.node.kind === 'plot' && this.node.finished) { this.setStatus(isStale(this.node,(this.session.preparation as {revision?:number})?.revision??0) ? 'finished-stale' : 'finished'); return; }
     const state = bodyStatus({rendering:this.rendering, text:this.body.textContent?.trim() ?? '', drawn:!!this.body.querySelector('img,.js-plotly-plot,.network canvas'),
-      confirming:!!this.body.querySelector('.gc-confirm,.run-need'), restoringText:this.restoring ? p.restoringPlot(this.node.label) : ''});
+      confirming:!!this.body.querySelector('.gc-confirm,.run-need'), noted:!!this.body.querySelector('.validation-note'), restoringText:this.restoring ? p.restoringPlot(this.node.label) : ''});
     if (state) this.setStatus(state, state === 'updating' && this.rendering > 0);
     this.announceShown();
   }
@@ -334,8 +348,10 @@ export class Card {
           temporary=document.createElement('div');
           Object.assign(temporary.style,{position:'fixed',left:'-10000px',top:'0',width:`${this.node.width}px`,height:`${this.node.height-CARD_CHROME}px`});
           document.body.append(temporary);gd=temporary;
-          const edited=applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure,(this.node.visual as Visual|undefined)?.editor),true),this.node.statistics);
+          const edited=applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure,(this.node.visual as Visual|undefined)?.editor),true),this.node.statistics,this.described);
           await Plotly.newPlot(gd,structuredClone(edited.data),{...structuredClone(edited.layout),width:this.node.width,height:this.node.height-CARD_CHROME},{displayModeBar:false});
+          await fitViolins(Plotly,gd); await placeStatistics(Plotly, gd, this.node.statistics, this.described);
+          await bindCompositionLegend(Plotly,gd);
         }
         url=await Plotly.toImage(gd,{format:'svg',width:Math.round(this.node.width),height:Math.round(this.node.height-CARD_CHROME)});
       } else if (this.body.querySelector('.network canvas')) {
@@ -415,7 +431,7 @@ export class Card {
   }
   get firstRenderReady() { return this.hasRender && this.rendering === 0; }
   get prefetchKey() { return this.key(); }
-  get hasRender() { return this.renderer.kind === 'image' && !this.renderer.network ? !!imageCache.get(this.pngKey()) : this.cache.has(this.key()); }
+  get hasRender() { return this.renderer.kind === 'image' && !this.renderer.network ? !!imageCache.get(this.pngKey()) || this.refused.has(this.pngKey()) : this.cache.has(this.key()) || this.refused.has(this.key()); }
   get canPrefetch() { return !this.disposed && !this.node.finished && this.node.kind === 'plot' && !this.designRequired && !this.awaitingRun(); }
   /** b10 check 11: the card already says it needs its module button; no render request until it is pressed. */
   private awaitingRun() { const instance = this.instanceId(); return !!instance && runNeedWaiting(runNeedKey(this.session.sessionId, instance)); }
@@ -423,11 +439,11 @@ export class Card {
     const key=this.pngKey(dpr), width=Math.round(this.node.width),height=this.renderHeight(),instance=this.instanceId();
     if(!instance)return Promise.reject(new Error('Missing card instance'));
     if(this.awaitingRun())return Promise.reject(new Error(UNAVAILABLE_INPUTS));
-    return imageCache.load(key,()=>renderCard(this.session.sessionId,instance,width,height,'png',options,dpr).then(async result=>{
+    return renderOnce(this.refused,key,()=>imageCache.load(key,()=>renderCard(this.session.sessionId,instance,width,height,'png',options,dpr).then(async result=>{
       const blob='blob' in result?result.blob:await jsonImage(this.node.label,width,height,result.figure);
       const url=URL.createObjectURL(blob);await rememberImage(url,blob);
       return {url,bytes:blob.size};
-    }));
+    })));
   }
   /** Steph review 4b: what the card shows now (palette/paletteRedraw.ts), undefined when it shows no plot drawing. */
   drawingSignature(): string | undefined {
@@ -455,7 +471,7 @@ export class Card {
   dispose() {
     if (this.disposed) return;
     this.cancelTitleEdit?.();
-    this.offAnalysis(); this.disposed = true; this.revision++; clearTimeout(this.resizeTimer); this.observer.disconnect(); this.chromeObserver.disconnect(); clearTimeout(this.statusTimer);
+    this.offAnalysis(); this.disposed = true; this.revision++; clearTimeout(this.resizeTimer); this.observer.disconnect(); this.chromeObserver.disconnect(); clearTimeout(this.statusTimer); clearTimeout(this.noteTimer);
     if (this.plot) purgePlot(window.Plotly, this.plot);
     if (this.parked) purgePlot(window.Plotly, this.parked);
     this.parked = undefined;
@@ -512,13 +528,14 @@ export class Card {
   private retryRender() {
     if (this.disposed) return;
     this.body.classList.remove('message');
-    const tier = this.current; this.cache.clear(); this.current = undefined;
+    const tier = this.current; this.cache.clear(); this.refused.clear(); this.current = undefined;
     if (tier) this.setTier(tier, true);
   }
   /** Row 11: while a figure is on its way the body is a neutral skeleton (shell.css), with the loading text the status machine reads. */
   private showLoading() {
     const box = document.createElement('div'); box.className = 'card-skeleton'; box.setAttribute('aria-busy', 'true');
     const text = document.createElement('span'); text.textContent = this.restoring ? p.restoringPlot(this.node.label) : 'Loading figure…';
+    if (this.changeNote && Date.now() < this.changeNote.until) box.dataset.note = this.changeNote.text; // shell.css draws it
     box.append(text); this.body.classList.remove('message'); this.body.replaceChildren(box);
   }
   private renderFailed(error: unknown) {
@@ -528,7 +545,9 @@ export class Card {
     // A view Team builds only on request (Generate Analysis): name the step and offer the module button, as Team Canvas does.
     const need = this.restoring ? undefined : runNeedFor(this.node.id, text);
     const needInstance = this.instanceId(); if (need && needInstance) markRunNeed(runNeedKey(this.session.sessionId, needInstance));
-    message.textContent = this.restoring ? p.restorePlotFailed(this.node.label) : need ? `${need.status}. ${need.reason}` : text;
+    message.textContent = this.restoring ? refusalMessage(error) ?? p.restorePlotFailed(this.node.label) : need ? `${need.status}. ${need.reason}` : text;
+    // NEXO-P6 item 2: Team's validation message is a small grey centred note (shell.css), the card stays up to date.
+    if (!need && (error as {note?: unknown} | null)?.note === true) message.className = 'validation-note';
     this.body.append(message);
     if (need && !isReadOnly()) {
       const run = document.createElement('button'); run.type = 'button'; run.className = 'run-need'; run.textContent = need.action;
@@ -541,7 +560,7 @@ export class Card {
       };
       this.body.append(run);
     }
-    if (this.restoring) {
+    if (this.restoring && !refusalMessage(error)) {
       const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = s.tryAgain;
       retry.addEventListener('pointerdown', e => e.stopPropagation()); retry.onclick = () => this.retryRender();
       this.body.append(retry);
@@ -551,15 +570,25 @@ export class Card {
     if (url) { const img = document.createElement('img'); img.src = url; img.alt = this.node.label; this.body.append(img); }
     else this.body.textContent = this.restoring ? p.restoringPlot(this.node.label) : 'Snapshot unavailable';
   }
+  /** FIX-PROD-H 3: as Team's canvas_statistics.js, a violin card asks the server for its group counts (describe) to
+   *  draw the n labels; without an answer the plot draws without them. */
+  private described?: StatisticsResult['groups'];
+  private describedFor?: string;
+  private describe(): Promise<void> {
+    const key = this.key();
+    if (!describesGroups(this.node) || this.describedFor === key) return Promise.resolve();
+    return violinStatistics(this.session.sessionId, cardInstanceId(this.node), {mode: 'describe'})
+      .then(reply => { this.described = reply.describe?.groups; this.describedFor = key; }, () => { this.described = undefined; });
+  }
   private fetchFigure(): Promise<PlotResult> {
     if (this.renderer.groupComparison) return this.fetchMessage().then(result => {
       const message = result.figure as GcMessage;
       if (message.requiresConfirmation) throw new NeedsConfirmation(message.confirmationToken);
       this.gcMessage = message; return {figure:this.gcFigure(), provenance:result.provenance};
     });
-    return this.fetchMessage();
+    return Promise.all([this.fetchMessage(), this.describe()]).then(([result]) => ({...result, figure: withTeamFont(result.figure as import('./editor/applyEditor').Figure) as unknown as Figure}));
   }
-  private gcFigure(): Figure { return gcFigure(gcState(this.gcMessage!, (this.node.visual as Visual | undefined)?.groupComparison), Math.round(this.node.width)) as unknown as Figure; }
+  private gcFigure(): Figure { return withTeamFont(gcFigure(gcState(this.gcMessage!, (this.node.visual as Visual | undefined)?.groupComparison), Math.round(this.node.width)) as unknown as import('./editor/applyEditor').Figure) as unknown as Figure; }
   private fetchMessage(options?: RequestOptions): Promise<PlotResult> {
     const plot = this.node.id.match(/results_dashboard-plot_(pca|violin|dist|comp|heat)/)?.[1] as PlotId | undefined;
     const instance = this.instanceId();
@@ -568,7 +597,7 @@ export class Card {
     const width = Math.round(this.node.width), key = this.key();
     let pending = this.cache.get(key);
     if (!pending) {
-      pending = instance ? renderCard(this.session.sessionId, instance, width, Math.round(this.node.height), 'json', options).then(result => { if (!('figure' in result)) throw new Error(this.renderer.groupComparison ? 'Expected the group comparison message' : 'Expected Plotly JSON'); return {figure:result.figure as Figure, provenance:result.provenance}; }) : getPlot(this.session.sessionId, plot!, this.inputs, width, options);
+      pending = renderOnce(this.refused, key, () => instance ? renderCard(this.session.sessionId, instance, width, Math.round(this.node.height), 'json', options).then(result => { if (!('figure' in result)) throw new Error(this.renderer.groupComparison ? 'Expected the group comparison message' : 'Expected Plotly JSON'); return {figure:result.figure as Figure, provenance:result.provenance}; }) : getPlot(this.session.sessionId, plot!, this.inputs, width, options));
       pending = pending.then(result => ({...result, figure: unpackFigure(result.figure)}));
       this.cache.set(key, pending); pending.catch(() => { if (this.cache.get(key) === pending) this.cache.delete(key); });
     }
@@ -579,7 +608,7 @@ export class Card {
     try { const styled=applyNexoStyle(figure,this.nexoStyle);this.el.querySelector('.nexo-style-error')?.remove();return styled; }
     catch(error){let reason=this.el.querySelector<HTMLElement>('.nexo-style-error');if(!reason){reason=document.createElement('p');reason.className='nexo-style-error';reason.setAttribute('role','alert');this.el.append(reason);}reason.textContent=error instanceof Error?error.message:String(error);return figure;}
   }
-  private edited() { return applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure, (this.node.visual as Visual | undefined)?.editor)),this.node.statistics); }
+  private edited() { return applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure, (this.node.visual as Visual | undefined)?.editor)),this.node.statistics,this.described); }
   private async live(revision: number) {
     this.rendering++;
     this.showLoading();
@@ -596,6 +625,9 @@ export class Card {
       // Plotly.react only updates a div that keeps its js-plotly-plot class; resetting className would make it newPlot again.
       const el = reuse ? parked : document.createElement('div'); el.classList.add('plot'); this.body.replaceChildren(el); this.plot = el;
       await Plotly[reuse ? 'react' : 'newPlot'](el, structuredClone(edited.data), { ...structuredClone(edited.layout), width, height: this.node.height - CARD_CHROME }, { displayModeBar: false, responsive: true });
+      await fitViolins(Plotly, el); await placeStatistics(Plotly, el, this.node.statistics, this.described);
+      // Team's Composition legend outside the bars (an htmlwidgets hook in R): drawn here, and again after every draw.
+      await bindCompositionLegend(Plotly, el);
       if (revision !== this.revision) { if (this.parked !== el) purgePlot(Plotly, el); return; }
       if (!reuse) this.bindClicks(el, result.figure);
       this.restoring = false; this.changed();
@@ -622,8 +654,16 @@ export class Card {
       if (revision !== this.revision || this.disposed) return;
       this.figure = result.figure;
       const width = Math.round(this.node.width), height = this.node.height - CARD_CHROME, edited = this.edited();
-      // toImage on the figure draws into Plotly's own hidden clone and removes it.
-      const png = await Plotly.toImage({ data: structuredClone(edited.data), layout: { ...structuredClone(edited.layout), width, height } }, { format: 'png', width, height });
+      // toImage on the figure draws into Plotly's own hidden clone and removes it. Violins are fitted and their statistics
+      // placed on a drawn plot (its calcdata and axis: violinSpan.ts, placeStatistics), and a Composition overview needs a
+      // drawn plot for its legend (bindCompositionLegend), so those are drawn off screen first.
+      const drawn = { data: structuredClone(edited.data), layout: { ...structuredClone(edited.layout), width, height } };
+      let png: string;
+      if (drawn.data.some(t => (t as { type?: unknown }).type === 'violin') || (edited.layout as Record<string, any>).meta?.teamComposition) {
+        const gd = document.createElement('div'); Object.assign(gd.style, {position:'fixed', left:'-10000px', top:'0', width:`${width}px`, height:`${height}px`}); document.body.append(gd);
+        try { await Plotly.newPlot(gd, drawn.data, drawn.layout, {displayModeBar:false}); await fitViolins(Plotly, gd); await placeStatistics(Plotly, gd, this.node.statistics, this.described); await bindCompositionLegend(Plotly, gd); png = await Plotly.toImage(gd, { format: 'png', width, height }); }
+        finally { purgePlot(Plotly, gd); gd.remove(); }
+      } else png = await Plotly.toImage(drawn, { format: 'png', width, height });
       if (revision !== this.revision || this.disposed) return;
       this.restoring = false; this.png = png; this.pngFor = this.key(); this.body.replaceChildren(); this.snapshot(png); this.changed();
     }).catch(error => { if (revision === this.revision && !this.disposed && !this.png) { this.body.replaceChildren(); if (error instanceof NeedsConfirmation) this.confirmPrompt(error.token); else { this.renderFailed(error); this.body.classList.add('message'); } } })
@@ -647,6 +687,12 @@ export class Card {
     box.append(text, b); this.body.replaceChildren(box);
   }
   /** A module action ran on the server (Data tab button): drop this card's cached renders and draw it again. */
+  /** Phase 3 (collab/render.ts): another person changed this card. Say so for about 10 s and draw it again. */
+  changedBy(text: string) {
+    this.changeNote = { text, until: Date.now() + 10_000 }; clearTimeout(this.noteTimer);
+    const repaint = () => { this.pendingStatus = undefined; this.syncStatus(); };
+    this.noteTimer = window.setTimeout(repaint, 10_000); repaint(); this.reload();
+  }
   reload() {
     this.actionRuns++; this.cache.clear(); this.png = undefined; this.pngFor = undefined;
     const tier = this.current; if (tier && !this.disposed) { this.current = undefined; this.setTier(tier); }
@@ -657,12 +703,14 @@ export class Card {
     this.rendering++;
     const Plotly=await plotlyReady().catch(()=>undefined);
     if(!Plotly || this.disposed){this.rendering--;this.syncStatus();return;}
-    const figure=applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure,(this.node.visual as Visual | undefined)?.editor)),this.node.statistics);
+    const figure=applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure,(this.node.visual as Visual | undefined)?.editor)),this.node.statistics,this.described);
     const el=this.plot??document.createElement('div');
     const temporary=!this.plot;
     if(temporary)this.body.append(el);
     try {
       await Plotly.react(el,figure.data,{...figure.layout,width:this.node.width,height:this.node.height-CARD_CHROME},{displayModeBar:false});
+      await fitViolins(Plotly,el); await placeStatistics(Plotly, el, this.node.statistics, this.described);
+      await bindCompositionLegend(Plotly,el);
       this.png=await Plotly.toImage(el,{format:'png',width:this.node.width,height:this.node.height-CARD_CHROME}); this.pngFor=this.key();
       if(temporary&&this.current==='frozen'){this.body.replaceChildren();this.snapshot(this.png);}
     } catch { /* Keep the last successful snapshot if Plotly cannot export. */ } finally {this.rendering--;if(temporary){purgePlot(Plotly,el);el.remove();}this.syncStatus();}

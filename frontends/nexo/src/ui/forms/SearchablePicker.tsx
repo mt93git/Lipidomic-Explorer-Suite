@@ -77,7 +77,8 @@ export function SearchablePicker({id, label, options, value, multiple, onChange,
         data-value={value as string} hidden={!filtered.length} style={{'--picker-rows': wholeRows(filtered.length)} as React.CSSProperties}>
         {filtered.map(o => <div key={o.value} id={optionId(o.value)} role="option" aria-selected={o.value === value}
           className={`picker-option${o.value === current ? ' is-active' : ''}`}
-          onMouseDown={e => e.preventDefault()} onClick={() => { setActive(o.value); if (o.value !== value) onChange(o.value); }}>
+          onMouseDown={e => e.preventDefault()} onClick={e => { if (e.currentTarget.closest('fieldset:disabled')) return; // view only: inert, as the fieldset's own controls
+            setActive(o.value); if (o.value !== value) onChange(o.value); }}>
           <span className="picker-label">{o.label}</span><Check/></div>)}
       </div>}
       {!filtered.length && <p className="picker-empty" aria-hidden="true">{t.noMatches}</p>}

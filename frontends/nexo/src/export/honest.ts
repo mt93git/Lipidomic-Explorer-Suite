@@ -11,8 +11,9 @@ const shorten = (text: string, max = 90) => {
   return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s.,;:]+$/, '')}…`;
 };
 /** A card that draws a module placeholder or validate() message cannot produce the module's own downloads. */
-export function downloadBlockedReason(card: { status: BodyStatus | undefined; message: string }): string | null {
-  return card.status === 'error' && card.message.trim() ? shorten(card.message) : null;
+export function downloadBlockedReason(card: { status: BodyStatus | undefined; message: string; note?: boolean }): string | null {
+  // NEXO-P6 item 2: Team's validation note (an up-to-date card) blocks the module's downloads as an error does.
+  return (card.status === 'error' || card.note === true) && card.message.trim() ? shorten(card.message) : null;
 }
 const WEBGL = new Set(['scatter3d', 'mesh3d', 'surface', 'cone', 'streamtube', 'isosurface', 'volume', 'scattergl', 'splom', 'heatmapgl', 'pointcloud', 'parcoords']);
 export const uses3d = (data: { type?: string }[] | undefined) => !!data?.some(t => WEBGL.has(t.type ?? 'scatter'));

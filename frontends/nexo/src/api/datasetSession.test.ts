@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { interpretDatasetResponse } from './datasetSession';
+import { interpretDatasetResponse, datasetPreview } from './datasetSession';
 import { openDatasetSession } from '../api';
 import { AdminSignInRequired, forgetAdminToken } from './adminToken';
 import { datasetStrings as d } from '../ui/strings';
@@ -59,13 +59,13 @@ describe('openDatasetSession', () => {
     await expect(openDatasetSession(id, settings)).resolves.toMatchObject({ status: 'ready', session: { sessionId: 'next', dataset: { orderCode: 'ORD041' } } });
     expect(JSON.parse(posts(fetch)[1][1].body as string)).toStrictEqual({ adminDatasetId: id, settings });
   });
-  it('sends the Admin token as a Bearer header and asks Admin once while it is fresh', async () => {
+  it('sends the Admin token in its dedicated header and asks Admin once while it is fresh', async () => {
     const fetch = routes(signedIn, json(422, choices), json(200, { sessionId: 'next', design }));
     vi.stubGlobal('fetch', fetch);
     await openDatasetSession(id); await openDatasetSession(id, { samples: ['A'] });
     expect(fetch.mock.calls[0][0]).toBe(tokenUrl);
     expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'same-origin' });
-    for (const [, init] of posts(fetch)) expect(init.headers).toStrictEqual({ 'Content-Type': 'application/json', Authorization: 'Bearer synthetic-token' });
+    for (const [, init] of posts(fetch)) expect(init.headers).toStrictEqual({ 'Content-Type': 'application/json', 'X-Nexo-Admin-Token': 'synthetic-token' });
     expect(tokens(fetch)).toBe(1);
   });
   it('asks the person to sign in to Admin when Admin says signed out, without asking the API', async () => {
@@ -117,5 +117,34 @@ describe('openDatasetSession', () => {
     const controller = new AbortController(); controller.abort();
     await expect(openDatasetSession(id, undefined, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+// POST /api/v1/datasets/preview (nexo-entry-build.md C3): Team's detection counts for the Prepare page, same auth as an open.
+describe('datasetPreview', () => {
+  afterEach(() => forgetAdminToken());
+  const body = { adminDatasetId: id, samples: ['A', 'B'], minDetectionPct: 50, detectionScope: 'group', dropNonDetected: true };
+  const answer = { kept: 74, total: 76, leftOut: ['PC 38:0', 'PS 36:1'], histogram: [{ detectedIn: 0, kept: 0, leftOut: 2 }], samples: 2, missing: { values: 78, cells: 444 } };
+  it('posts the samples and detection settings with the Admin token and returns Team\'s counts', async () => {
+    const fetch = routes(signedIn, json(200, answer));
+    vi.stubGlobal('fetch', fetch);
+    await expect(datasetPreview(body)).resolves.toStrictEqual(answer);
+    expect(posts(fetch)[0][0]).toBe('/api/v1/datasets/preview');
+    expect(posts(fetch)[0][1]).toMatchObject({ method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Nexo-Admin-Token': 'synthetic-token' } });
+    expect(JSON.parse(posts(fetch)[0][1].body as string)).toStrictEqual(body);
+  });
+  it('answers null when the route is not there (404)', async () => {
+    vi.stubGlobal('fetch', routes(signedIn, json(404, { error: 'not_found' })));
+    await expect(datasetPreview(body)).resolves.toBeNull();
+  });
+  it('answers null when the request fails', async () => {
+    vi.stubGlobal('fetch', routes(signedIn, () => { throw new TypeError('Failed to fetch'); }));
+    await expect(datasetPreview(body)).resolves.toBeNull();
+  });
+  it('answers null signed out, without asking the API', async () => {
+    const fetch = routes(() => json(401, { error: 'signed_out' }));
+    vi.stubGlobal('fetch', fetch);
+    await expect(datasetPreview(body)).resolves.toBeNull();
+    expect(posts(fetch)).toEqual([]);
   });
 });

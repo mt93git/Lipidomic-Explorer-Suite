@@ -1,0 +1,46 @@
+/* The neutrophil companion (docs/integration/nexo-companion/prototype.html): Team's artwork and motion, Nexo's face,
+   borders and blue. The 38 px slot sits in the top bar left of the account menu; everything that leaves it is fixed. */
+.topbar .companion-slot{display:inline-flex;flex:none;width:38px;height:38px}
+.topbar .companion-dock,.companion-fly{width:38px;height:38px;min-width:0;min-height:0;padding:0;border:0;border-radius:50%;cursor:pointer;background:radial-gradient(circle,#d9edf0 0%,#eaf4f7 58%,transparent 70%)}
+.topbar .companion-dock:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.companion-dock svg,.companion-fly svg,.companion-mini svg{width:100%;height:100%;display:block;overflow:visible}
+.companion-dock .cell-body,.companion-fly .cell-body,.companion-mini .cell-body{transform-origin:80px 85px;animation:assistant-float 3.4s ease-in-out infinite}
+.companion-dock .cell-eyes,.companion-fly .cell-eyes,.companion-mini .cell-eyes{transform-box:fill-box;transform-origin:center;animation:assistant-blink 5s infinite}
+.companion-dock.hello .cell-body,.companion-fly.hello .cell-body{animation:assistant-wave .65s ease-in-out 2}
+@keyframes assistant-float{0%,100%{transform:translateY(1px) scale(1)}50%{transform:translateY(-7px) scale(1.05)}}
+@keyframes assistant-blink{0%,43%,48%,100%{transform:scaleY(1)}45%,46%{transform:scaleY(.12)}}
+@keyframes assistant-wave{0%,100%{transform:rotate(0) translateY(0)}25%{transform:rotate(-10deg) translateY(-5px)}65%{transform:rotate(10deg) translateY(-5px)}}
+@media (prefers-reduced-motion:reduce){.companion-dock *,.companion-fly *,.companion-mini *{animation:none!important}}
+.companion-fly{position:fixed;z-index:60;transform-origin:0 0}
+.companion-fly[data-phase="entrance"],.companion-fly[data-phase="docked"]{pointer-events:none}
+.companion-ring{position:fixed;z-index:59;border:2px solid #78AFE0;border-radius:50%;pointer-events:none;opacity:0}
+.companion-pop{position:fixed;z-index:61;box-sizing:border-box;background:var(--paper,#fff);color:var(--ink,#141b24);border:1px solid var(--line-strong,#cfd6de);border-radius:var(--radius-sm,6px);box-shadow:0 8px 28px #16223029;font:13px/1.45 var(--font,system-ui,sans-serif);text-align:left}
+.companion-pop b{display:block;margin-bottom:4px;font-size:14px}
+.companion-bubble{width:260px;padding:12px 14px;pointer-events:none}
+.companion-bubble b{font-size:18px}
+.companion-tip{width:300px;padding:12px 14px}
+.companion-tip:focus{outline:none}
+.companion-tip[data-auto]{pointer-events:none}
+.companion-tip::after{content:"";position:absolute;width:12px;height:12px;background:var(--paper,#fff);border:1px solid var(--line-strong,#cfd6de);border-width:0 1px 1px 0}
+.companion-tip[data-arrow="right"]::after{right:-7px;top:22px;transform:rotate(-45deg)}
+.companion-tip[data-arrow="upr"]::after{top:-7px;right:22px;transform:rotate(225deg)}
+.companion-tip-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;color:#5b6b78}
+.companion-tip-actions label{display:inline-flex;align-items:center;gap:4px}
+.companion-tip-actions button,.companion-foot button{background:var(--blue-fg,#1d4f7c);color:#fff;border:0;border-radius:var(--radius-sm,6px);padding:5px 12px;font-weight:700;cursor:pointer}
+.companion-foot button:disabled{opacity:.55;cursor:default}
+.companion-panel{width:330px;max-width:calc(100vw - 24px);max-height:min(600px,calc(100vh - 70px));display:flex;flex-direction:column;overflow:hidden}
+.companion-head{display:flex;gap:10px;align-items:center;padding:14px;border-bottom:1px solid var(--line,#e3e7ec)}
+.companion-mini{width:54px;height:54px;flex:none}
+.companion-kicker{font:600 10px/1.3 var(--font,system-ui);letter-spacing:.14em;color:#486779}
+.companion-head h2{margin:2px 0 0;font-size:18px;font-weight:700}
+.companion-close{margin-left:auto;align-self:flex-start;border:0;background:none;font-size:18px;cursor:pointer;color:var(--ink,#141b24)}
+.companion-body{flex:1;overflow:auto;padding:12px 14px;display:grid;gap:10px;align-content:start}
+.companion-q{justify-self:end;margin:0;background:var(--blue-fg,#1d4f7c);color:#fff;border-radius:var(--radius-sm,6px);padding:8px 12px}
+.companion-a{background:#f4f7f9;border:1px solid #e1e8ec;border-radius:var(--radius-sm,6px);padding:10px 12px;font-size:12.5px}
+.companion-a .companion-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 6px}
+.companion-label{margin:6px 0 0;font-size:11px;color:#5b6b78}
+.companion-foot{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line,#e3e7ec)}
+.companion-foot input{flex:1;min-width:0;border:2px solid var(--blue-fg,#1d4f7c);border-radius:var(--radius-sm,6px);padding:6px 8px;font:inherit}
+/* Phones: a 32 px touch target (test_nexo_access) that still lets the top bar fit 390 px
+   (test_nexo_collab_presence): the slot takes back 6 px of the gap before it. */
+@media(max-width:767px){.topbar .companion-slot,.topbar .companion-dock{width:32px;height:32px}.topbar .companion-slot{margin-left:-6px}}

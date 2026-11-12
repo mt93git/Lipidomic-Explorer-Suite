@@ -36,7 +36,6 @@ export function applyNexoStyle(figure:Figure,value?:NexoStyle):Figure {
  if(a[`${axis==='x'?'ax':'ay'}ref`]===axis&&typeof a[axis==='x'?'ax':'ay']==='number'){const tail=axis==='x'?'ax':'ay';if(isLog&&a[tail]<=0)throw Error(`Log ${axis} annotations require positive coordinates.`);a[tail]=isLog?Math.log10(a[tail]):10**a[tail];}
  }}
  for(const patch of style.series??[]){const trace=out.data[patch.index];if(!trace)continue;const source=baselineOf(base);if(patch.sourceKey&&sourceKey(source.data[patch.index],source.data)!==patch.sourceKey)continue;
- if(patch.markerSymbol&&['scatter','scattergl','box','violin'].includes(trace.type??'scatter'))trace.marker={...trace.marker,symbol:patch.markerSymbol};
  if(patch.lineDash&&['scatter','scattergl'].includes(trace.type??'scatter'))trace.line={...trace.line,dash:patch.lineDash};}
  if(style.legendOrder)out.layout.legend={...out.layout.legend,traceorder:style.legendOrder};
  if(style.shapes)out.layout.shapes=[...(out.layout.shapes??[]).filter((shape:PlotObject)=>!String(shape.name??'').startsWith('nexo-style-v1:')),...style.shapes.map((shape,index)=>({name:`nexo-style-v1:${index}`,type:shape.type,xref:'x',yref:'y',x0:shape.x0,x1:shape.x1,y0:shape.y0,y1:shape.y1,line:{color:shape.color??'#555555',width:shape.width??1},...(shape.type==='rect'?{fillcolor:shape.color??'#555555'}:{}),opacity:shape.opacity??(shape.type==='rect'?.2:1)}))];

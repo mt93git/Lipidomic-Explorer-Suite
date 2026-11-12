@@ -77,3 +77,41 @@ token check; staff do not list client workspaces; existing checkpoints are not m
 
 Left: factor the module wiring shared with `api_session_open()`; Team itself should read only the Abundance sheet of a v1
 workbook (see the design doc, §2).
+
+## Importing Team checkpoints
+
+Before importing, back up the storage directory first.
+
+```sh
+Rscript --vanilla frontends/nexo-api/tools/import_checkpoints.R --manifest checkpoints.tsv --storage checkpoint-store --workspace lab --report import-report.tsv
+```
+
+Run from the application root. The manifest is a TSV with header `path<TAB>label`,
+followed by one ZIP path and operator label per row. Use `--verify-only` to perform
+all checks in temporary storage without writing the destination storage directory.
+
+The report has columns `label`, `sha256`, `size_bytes`, `imported`, `cards`,
+`cards_rendered`, `equal`, `differences`, `metadata_id_policy`, and `error`. `imported` is `yes` for a new record,
+`already` for identical bytes already stored, or `no` when no import occurred
+(including verify-only). Each row opens through Nexo, renders its plot cards, and
+compares Team inputs, analysis, design, cohort and canvas nodes after re-saving.
+Newly materialized default inputs and regenerated applied receipt `request_id`,
+`completed_at`, and `revision` are excluded; opening reapplies preparation and may
+advance that revision. Every archived input and the dataset bytes are checked.
+`analysis$applied$spec$metadata_id` must match: it hashes the scientific metadata,
+so a change requires review rather than a blanket exclusion. The report repeats
+this rule in `metadata_id_policy`.
+`equal=yes` records that comparison. `differences` lists differing input IDs and
+state keys separated by semicolons, never values (including nested sample/file
+names); a mismatch stays `equal=no` without using R's fragile list-difference
+formatter. `error` contains the boundary error on failure.
+Failures do not stop later rows. Exit status is zero only if every row passes
+(and is imported or already present, except in verify-only mode). Reports contain
+operator labels and verification metadata; they do not dump scientific values.
+
+Nexo preserves all archived input values that a person has not edited, including
+structured custom inputs, explicit nulls and controls belonging to unmounted Team
+panels. Browser update echoes retain the archived vector/list types. Explicit Nexo
+input edits take precedence when saving. QC decision history is carried from the
+archive because Nexo has no QC decision editor and Team's exporter otherwise
+rebuilds that history from the absent QC settings bridge.

@@ -16,5 +16,15 @@ it('shows on each dashboard plot only the inputs that plot reads', () => {
 it('leaves other modules and their buttons untouched', () => {
   const s = { ...schema(), actionControls: [{ id: 'go', label: 'Go', tab: null }] };
   expect(dashboardSchema('qc_pca_tab-pca2dPlot', s)).toEqual(s);
-  expect(dashboardSchema('results_dashboard-plot_pca', s).actionControls).toEqual(s.actionControls);
+});
+// NEXO-P5: Team's inspector moves the PCA score analysis (and its Run button) to Statistics, never to Data.
+it('keeps the PCA score Run button off the dashboard Data tab', () => {
+  const s = { ...schema(), actions: ['pcs_run'], actionControls: [{ id: 'pcs_run', label: 'Run PCA score analysis', tab: 'PCA score analysis' }] };
+  for (const plot of ['pca', 'violin', 'dist', 'comp', 'heat']) expect(dashboardSchema(`results_dashboard-plot_${plot}`, s).actionControls).toEqual([]);
+});
+// NEXO-P8: Team's drawer shows color_by on a PCA score card (canvas.js compactDashboardControls, default keys); its
+// PCA score controls are under Statistics (PcaScoreSection), not Data.
+it('shows color_by only on the PCA score card\'s Data tab', () => {
+  const s = { ...schema(), controls: [...schema().controls, ...['pcs_pc', 'pcs_groups', 'pcs_test', 'pcs_corr'].map(id => ({ id, type: 'select' as const, label: id }))] };
+  expect(dashboardSchema('results_dashboard-plot_pcascore', s).controls.map(c => c.id)).toEqual(['color_by']);
 });

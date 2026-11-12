@@ -26,3 +26,24 @@ it('does not create a card whose Library add was cancelled in the API queue', as
  await expect(createCard('session','plot',{},'instance',controller.signal)).rejects.toMatchObject({name:'AbortError'});
  expect(fetch).not.toHaveBeenCalled();
 });
+
+it('honours Retry-After and succeeds after two busy responses', async () => {
+  vi.useFakeTimers();
+  try {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response('{}', {status:503, headers:{'Retry-After':'2'}})).mockResolvedValueOnce(new Response('{}', {status:503})).mockResolvedValueOnce(new Response('{"sessionId":"ready"}', {status:200}));
+    vi.stubGlobal('fetch', fetch);
+    const result = openSession('retry');
+    await vi.advanceTimersByTimeAsync(1999); expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1); expect(fetch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1000); await expect(result).resolves.toMatchObject({sessionId:'ready'});
+  } finally { vi.useRealTimers(); }
+});
+it('reports the busy response at the 180 second deadline', async () => {
+  vi.useFakeTimers();
+  try {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"message":"busy"}', {status:503, headers:{'Retry-After':'60'}})));
+    const result = openSession('deadline');
+    const assertion = expect(result).rejects.toThrow('busy');
+    await vi.advanceTimersByTimeAsync(180000); await assertion;
+  } finally { vi.useRealTimers(); }
+});

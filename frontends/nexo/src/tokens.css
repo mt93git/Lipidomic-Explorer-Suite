@@ -68,6 +68,14 @@
   --motion-skeleton:1.4s;
   --ease:cubic-bezier(.2,.7,.2,1);
   --motion:var(--motion-hover);
+  /* Nexo entry (nexo-entry-build.md C6): the field border (3.5:1 on paper), the field height and the two title sizes. */
+  --field:#7d8a99;
+  --field-h:40px;
+  --h1:24px;
+  --h2:18px;
+}
+@media (pointer:coarse) {
+  :root { --field-h:44px; }
 }
 body { font:var(--font-body)/var(--line-height-body) var(--font); }
 button,input,select,textarea { font-family:inherit; }

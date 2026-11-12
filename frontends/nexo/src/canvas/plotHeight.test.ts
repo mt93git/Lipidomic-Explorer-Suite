@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_CHROME } from '../cards';
-import { cardHeightFor, plotHeightForCard, plotHeightOf, heightInputCommands, reopenPlotHeight } from './plotHeight';
+import { cardHeightFor, plotHeightForCard, plotHeightOf, heightInputCommands, imageHeightFor } from './plotHeight';
 import { createHistory } from '../state/history';
 import { createStore } from '../state/store';
 import type { CanvasState } from '../state/types';
@@ -48,10 +48,16 @@ describe('violin card height follows the module plot height', () => {
     history.undo();
     expect(store.get().nodes).toEqual(before);
   });
-  it('reopen keeps the stored geometry and writes it back to the input when they disagree', () => {
-    expect(reopenPlotHeight('violin_zoom_pct', { violin_zoom_pct: 2340 }, 2340 + CARD_CHROME)).toBeUndefined();
-    expect(reopenPlotHeight('violin_zoom_pct', { violin_zoom_pct: 5000 }, 4000)).toBeUndefined();
-    expect(reopenPlotHeight('violin_zoom_pct', { violin_zoom_pct: 2340 }, 1200 + CARD_CHROME)).toBe(1200);
-    expect(reopenPlotHeight('violin_zoom_pct', {}, 720)).toBe(700);
+  // Team's canvas resize() sets a card's plot output to the card body (www/team/js/canvas.js resize), so Shiny draws the
+  // violin at the body size whatever violin_zoom_pct says; 3000 is the module tab's height, not the card's. A saved
+  // violin_zoom_pct of 3000 in a 720 card asked for a 620x3000 PNG and shrank it to a strip (final comparison card 05).
+  it('a plot-height card asks for its image at its body height, not the saved plot height', () => {
+    expect(imageHeightFor(720, 'violin_zoom_pct')).toBe(720 - CARD_CHROME);
+    expect(imageHeightFor(2340 + CARD_CHROME, 'violin_zoom_pct')).toBe(2340);
+    expect(imageHeightFor(720, undefined)).toBe(720);
+  });
+  it('reopen keeps Team\'s plot height: a card\'s stored geometry is not written back to the input', async () => {
+    const module = await import('./plotHeight') as Record<string, unknown>;
+    expect(module.reopenPlotHeight).toBeUndefined();
   });
 });

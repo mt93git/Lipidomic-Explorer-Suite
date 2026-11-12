@@ -1,4 +1,6 @@
 import {expect,it,vi,afterEach} from 'vitest';
+import { useAdminTokenFetch } from './api/adminToken';
+useAdminTokenFetch(async () => new Response('{}', {status: 401}));
 import {RequestQueue, prefetchEnabled} from './prefetch';
 afterEach(()=>vi.useRealTimers());
 it('serves HIGH FIFO before LOW sorted by current distance, re-sorting on camera change',async()=>{

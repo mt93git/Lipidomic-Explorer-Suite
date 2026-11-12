@@ -22,7 +22,8 @@ describe('applyEditor',()=>{
     const out=applyEditor(figure,{traces:[{index:2,name:'Other',lineWidth:3,markerSize:9,opacity:0.5}]});
     expect(out.data[2]).toMatchObject({name:'Other',line:{width:3},marker:{size:9},opacity:0.5});
     expect(out.data[0]).toEqual(figure.data[0]);
-    expect(applyEditor({data:[{marker:{color:[1,2]}}],layout:{}},{traces:[{index:0,color:'#ffffff'}]}).data[0].marker.color).toEqual([1,2]);
+    // Per-point colors stay where the trace draws no point markers (a point trace takes one color: Team 006468be).
+    expect(applyEditor({data:[{type:'bar',marker:{color:[1,2]}}],layout:{}},{traces:[{index:0,color:'#ffffff'}]}).data[0].marker.color).toEqual([1,2]);
   });
   it('clamps added annotations to 30 and preserves source annotations',()=>{
     const annotations=Array.from({length:40},()=>({text:'<note>',x:0.5,y:0.5,xref:'paper' as const,yref:'paper' as const,showarrow:false as const,font:{size:12,color:'#000000'}}));
@@ -33,8 +34,10 @@ describe('applyEditor',()=>{
     const out=applyEditor(figure,{swapAxes:true});expect(out.data[0].x).toEqual([3,4]);expect(out.data[0].y).toEqual([1,2]);
     expect(applyEditor(out,{})).toEqual(figure);
   });
-  it('applies white, black Arial publication style and fine axes',()=>{
-    expect(applyEditor(figure,{}, {publication:true}).layout).toMatchObject({paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{family:'Arial',color:'#000000'},xaxis:{linewidth:0.75}});
+  it('applies Publication style: Arial 10 and a black mirrored frame, backgrounds untouched (Team e70093cc)',()=>{
+    const layout=applyEditor(figure,{}, {publication:true}).layout;
+    expect(layout).toMatchObject({font:{family:'Arial',size:10},xaxis:{linewidth:1,mirror:true,linecolor:'#000000',showgrid:false}});
+    expect(layout.paper_bgcolor).toBeUndefined();
   });
 });
 
@@ -67,7 +70,7 @@ it('hides companion layers but never the last scientific group',()=>{
   expect(applyEditor(f,{traces}).data.map(t=>t.visible)).toEqual([false,false,undefined]);
   expect(applyEditor(f,{traces:[...traces,{index:2,sourceKey:'source:b',hidden:true}]})).toEqual(f);
 });
-import { nexoEditor, presetOf, publicationEditor } from './applyEditor';
+import { nexoEditor, presetEditor, presetOf, publicationEditor, sourceKey } from './applyEditor';
 import { serializeEditor } from './editorState';
 describe('Nexo preset',()=>{
   const dashboard: Figure = {data:[
@@ -101,16 +104,38 @@ describe('Nexo preset',()=>{
     expect(presetOf(dashboard,{...nexoEditor(dashboard),layout:{...nexoEditor(dashboard).layout,'font.size':20}})).toBeUndefined();
     expect(applyEditor(applyEditor(dashboard,nexoEditor(dashboard)),{})).toEqual(dashboard);
   });
+  // NEXO-P3: the preset buttons replace the editor with presetEditor(preset, figure, editor). What a preset set goes back
+  // to the figure's own setting first, so the last preset chosen wins; the user's own edits stay, as Team's Publication
+  // (plot_editor.js, applied on the current state) keeps them.
+  it('a preset starts from the figure\'s own settings: Nexo after Publication keeps no black mirrored frame',()=>{
+    const nexo=presetEditor('nexo',dashboard,publicationEditor(dashboard));
+    expect(nexo).toEqual(nexoEditor(dashboard,{}));
+    expect(nexo.layout).not.toHaveProperty('xaxis.mirror');expect(nexo.layout).not.toHaveProperty('xaxis.linecolor');
+    expect(applyEditor(applyEditor(dashboard,publicationEditor(dashboard)),nexo).layout.xaxis.mirror).toBeUndefined();
+    expect(presetEditor('publication',dashboard,nexoEditor(dashboard))).toEqual(publicationEditor(dashboard,{}));
+    expect(presetEditor('team',dashboard,nexoEditor(dashboard))).toEqual({});
+  });
+  it('a preset keeps the user\'s own edits, made before or after the previous preset',()=>{
+    const mine={layout:{'title.text':'Mine'},traces:[{index:0,sourceKey:sourceKey(dashboard.data[0],dashboard.data),markerSymbol:'diamond' as const}]};
+    const published=publicationEditor(dashboard,mine);
+    // After Publication the user draws the x axis line red: an edit of their own, it stays.
+    const edited={...published,layout:{...published.layout,'xaxis.linecolor':'#ff0000'}};
+    const nexo=presetEditor('nexo',dashboard,edited);
+    expect(nexo.layout).toMatchObject({'title.text':'Mine','xaxis.linecolor':'#ff0000','font.family':'system-ui'});
+    expect(nexo.layout).not.toHaveProperty('yaxis.mirror');expect(nexo.layout).not.toHaveProperty('yaxis.zerolinecolor');
+    expect(nexo.traces).toEqual([{index:0,sourceKey:sourceKey(dashboard.data[0],dashboard.data),markerSymbol:'diamond'}]);
+    expect(presetEditor('publication',dashboard,mine)).toEqual(publicationEditor(dashboard,mine));
+  });
 });
 
-it('tints a violin inner box from the palette colour instead of keeping Team\'s previous tint',()=>{
+it('tints a violin inner box from the palette colour, two shades darker (Team bb410e93)',()=>{
   const f:Figure={data:[{type:'violin',name:'Control',x:['Control'],y:[1,2],fillcolor:'#BCD8EC',line:{color:'#677782'},marker:{color:'#000000'},box:{visible:true,fillcolor:'#A0B8C9',line:{color:'#4B565E'}}}],layout:{meta:{teamConditions:['Control']}}};
   const out=applyEditor(f,{palette:'Okabe–Ito'});
   expect(out.data[0].fillcolor).toBe('rgba(230,159,0,1)');
-  expect(out.data[0].box).toMatchObject({visible:true,fillcolor:'#c48700',line:{color:'#5c4000'}});
+  expect(out.data[0].box).toMatchObject({visible:true,fillcolor:'#a16f00',line:{color:'#5c4000'}});
   expect(applyEditor(f,{}).data[0].box).toEqual(f.data[0].box);
   const bare={data:[{type:'violin',name:'Control',x:['Control'],y:[1],fillcolor:'#BCD8EC',box:{visible:true}}],layout:{meta:{teamConditions:['Control']}}};
-  expect(applyEditor(bare,{palette:'Okabe–Ito'}).data[0].box).toEqual({visible:true});
+  expect(applyEditor(bare,{palette:'Okabe–Ito'}).data[0].box).toEqual({visible:true,fillcolor:'#a16f00',line:{color:'#5c4000'}});
 });
 it('paints the 3D scene when Plot background is set on a 3D figure (plot_bgcolor alone is ignored by a scene)',()=>{
   const f={data:[{type:'scatter3d',x:[1],y:[2],z:[3]},{type:'scatter3d',x:[2],y:[1],z:[0],scene:'scene2'}],layout:{scene:{xaxis:{title:{text:'PC1'}}},scene2:{}}};
@@ -130,5 +155,24 @@ describe('applyEditor with a one-condition study',()=>{
     const out=applyEditor(one,{palette:'Viridis'});
     expect(out.data[0].marker.color).toBe(PALETTES.Viridis[0]);
     expect(out.data[1].marker.color).toBe('#654321');
+  });
+});
+// Team's publication format (eac6bb75) renames each PCA group's trace "<group> (n = N)" with legendgroup <group>. A series
+// edit saved before it keys the old trace (name = group, no legendgroup); it still applies to that group (card 24).
+describe('a series edit saved before the publication format', () => {
+  const oldKey = (group: string) => { const t = {type:'scatter', name:group, x:[1], y:[1]}; return sourceKey(t, [t]); };
+  const pca: Figure = {data: [
+    {type:'scatter',name:'GroupA (n = 4)',legendgroup:'GroupA',x:[1],y:[1]},
+    {type:'scatter',name:'GroupB (n = 5)',legendgroup:'GroupB',x:[2],y:[2]},
+    {type:'scatter',name:'GroupC (n = 6)',legendgroup:'GroupC',x:[3],y:[3]},
+  ], layout:{}};
+  it('hides and renames the group it was saved for', () => {
+    const out = applyEditor(pca, {traces:[{index:2, sourceKey:oldKey('GroupC'), name:'C', hidden:true}]});
+    expect(out.data.map(t => t.visible)).toEqual([undefined, undefined, false]);
+    expect(out.data[2].name).toBe('C');
+  });
+  it('matches nothing when no trace carries that group', () => {
+    const out = applyEditor(pca, {traces:[{index:2, sourceKey:oldKey('GroupD'), hidden:true}]});
+    expect(out.data.map(t => t.visible)).toEqual([undefined, undefined, undefined]);
   });
 });

@@ -1,7 +1,16 @@
 # Long-lived headless Team sessions. No testServer or harness render counters.
 api_debug <- function(...) if (nzchar(Sys.getenv("NEXO_API_DEBUG"))) message(format(Sys.time(), "%H:%M:%OS3"), " api: ", ...)
-api_abort <- function(class, message) {
-  stop(structure(list(message = message, call = NULL), class = c(class, "error", "condition")))
+api_abort <- function(class, message, note = FALSE) {
+  stop(structure(list(message = message, call = NULL, note = isTRUE(note)), class = c(class, "error", "condition")))
+}
+# The analyst's Structure module asks lipidomic_hook("inference_allowed") (R/modules/8_structural_module.R). Upstream
+# keeps a hook registry (R/core/hooks.R: a hook nobody registered returns its first argument) and Team registers
+# inference_allowed (R/frontends/team/hooks/networks.R). A tree without them gets the same answers here; a tree with
+# its own registry keeps it.
+if (!exists("lipidomic_hook", mode = "function")) {
+  api_hooks <- list(inference_allowed = function(allowed, session, shared_data, ...)
+    isTRUE(allowed) && guided_local_inference_allowed(session, shared_data))
+  lipidomic_hook <- function(name) api_hooks[[name]] %||% function(value, ...) value
 }
 api_alive <- function(s) {
   if (isTRUE(s$broken) || isTRUE(s$closed))
@@ -10,6 +19,27 @@ api_alive <- function(s) {
 # Compare canvas states by JSON, including empty named/unnamed node lists.
 api_canonical_json <- function(x) as.character(jsonlite::toJSON(x,
   auto_unbox = TRUE, null = "null", digits = NA))
+# Browser bindings preserve slider vectors and structured custom input payloads.
+api_echo_value <- function(value, template) {
+  if (is.list(template)) {
+    if (!is.list(value) && length(value) == length(unlist(template)))
+      value <- utils::relist(value, skeleton = template)
+    if (is.list(value) && length(value) == length(template)) {
+      if (is.null(names(value))) names(value) <- names(template)
+      for (i in seq_along(value)) value[i] <- list(api_echo_value(value[[i]], template[[i]]))
+    }
+    return(value)
+  }
+  if (is.list(value)) value <- unlist(value, use.names = FALSE)
+  if (is.numeric(template)) {
+    converted <- suppressWarnings(if (is.integer(template)) as.integer(value) else as.numeric(value))
+    if (length(converted) == length(value) && !anyNA(converted)) value <- converted
+  } else if (is.logical(template)) {
+    converted <- as.logical(value)
+    if (!anyNA(converted)) value <- converted
+  }
+  value
+}
 api_bus <- function() {
   b <- new.env(parent = emptyenv())
   b$log <- list(); b$queue <- list(); b$echoed <- 0L
@@ -70,17 +100,13 @@ api_bus <- function() {
         queued[[id]]$value <- options$selected %||% options$values[[1L]]
       }
       value <- queued[[id]]$value
-      if (is.list(value)) value <- unlist(value, use.names = FALSE)
       archived <- tryCatch(b$types()[[id]], error = function(e) NULL)
       # An input that does not exist yet raises shiny.silent.error on read.
       current <- tryCatch(shiny::isolate(mock$input[[id]]), error = function(e) NULL)
       # updateNumericInput sends its value as text (formatNoSci) and the browser's numeric binding reads a number
       # back: an input that already holds a number keeps the number type, like an archived numeric one.
-      if (is.null(archived) && is.numeric(current) && length(current) == 1L) archived <- current
-      if (is.character(value) && length(value) == 1L && !is.null(archived)) {
-        if (is.numeric(archived)) { n <- suppressWarnings(as.numeric(value)); if (!is.na(n)) value <- n }
-        else if (is.logical(archived)) { l <- as.logical(value); if (!is.na(l)) value <- l }
-      }
+      if (is.null(archived)) archived <- current
+      value <- api_echo_value(value, archived)
       if (!identical(current, value)) values[id] <- list(value)
     }
     if (length(values)) {
@@ -217,6 +243,8 @@ api_guard <- function(s, expr) api_time_limited({
 api_inputs <- function(s, ...) {
   api_alive(s)
   values <- list(...)
+  if (!is.null(s$changed_inputs) && !isTRUE(s$restoring))
+    s$changed_inputs <- union(s$changed_inputs, names(values))
   api_guard(s, api_with_loop(s, do.call(s$mock$setInputs, values)))
   api_render_epoch_bump(s, names(values))
   invisible(s)
@@ -286,8 +314,11 @@ api_output_lazy <- function(mock) {
     # copies (never the original results_dashboard outputs) and reads Data slots only for analysis settings,
     # after api_output_want(). On the pilot checkpoint they were 63 outputs and 6.5 s of every open.
     hidden <- startsWith(name, "results_dashboard-") || startsWith(name, "data_hub-")
-    if (is.function(func) && (hidden || (startsWith(name, "tcinstance_") && is.function(kind) &&
-        any(vapply(kinds, identical, logical(1), kind))))) {
+    # A renderPlot with a fixed or reactive height (e.g. Team's outlierPlot, height = function() ...) carries a copy
+    # of plotOutput with its height formal changed, not plotOutput itself: told apart by its class, else every card
+    # of that family drew it eagerly (and once per settling round), though no card showed it.
+    plot <- inherits(func, "shiny.renderPlot") || (is.function(kind) && any(vapply(kinds, identical, logical(1), kind)))
+    if (is.function(func) && (hidden || (startsWith(name, "tcinstance_") && plot))) {
       gate <- shiny::reactiveVal(isTRUE(lazy$wanted[[name]]))
       lazy$gates[[name]] <- gate
       real <- func
@@ -313,6 +344,15 @@ api_output_want <- function(s, name) {
 api_read <- function(s, expr) api_guard(s, api_with_loop(s, shiny::isolate(expr)))
 api_require <- function(ok, reason) if (!isTRUE(ok)) api_abort("api_unprocessable", reason)
 
+# Team's QC module also hands shared data its PCA settings (R/modules/2_qc_boxplot_module.R settings_out, through
+# R/server.R qc_settings_bridge) from its restored inputs; the shared preparation state does not record them. Same
+# rule as the module, only for the inputs the checkpoint saved: none saved keeps shared data's own defaults (omics).
+api_qc_pca_settings <- function(inputs) {
+  value <- function(id) { v <- inputs[[paste0("qc_pca_tab-", id)]]; if (is.list(v)) unlist(v, use.names = FALSE) else v }
+  out <- list(pcaMode = value("pcaMode"), maxPCs = value("maxPCs"), dropMisc = value("dropMisc"))
+  if (!is.null(value("mergeReplicatesMode"))) out$mergeReplicates <- identical(value("mergeReplicatesMode"), "merged")
+  Filter(Negate(is.null), out)
+}
 api_session_open <- function(zip) {
   zip <- normalizePath(zip, mustWork = TRUE)
   archive <- read_session_archive(zip, include_team_canvas = TRUE,
@@ -331,7 +371,7 @@ api_session_open <- function(zip) {
   if (is.null(saved$spec$settings) || is.null(saved$spec$selected))
     api_abort("api_unprocessable", paste("This checkpoint predates Team's shared preparation state;",
       "open it in Team and save it once, then reopen it in Nexo."))
-  settings <- shiny::reactiveVal(saved$spec$settings)
+  settings <- shiny::reactiveVal(utils::modifyList(saved$spec$settings, api_qc_pca_settings(archive$state$inputs)))
   shared <- NULL
   shiny::withReactiveDomain(domain, {
     shared <- shared_data_server("data_hub", external_settings = shiny::reactive(settings()),
@@ -349,11 +389,7 @@ api_session_open <- function(zip) {
         if (isTRUE(shared$inference_allowed(FALSE))) da_reason() else NULL
     }
     # runAnalysis empties restored_inputs(); keep the archived types for later echoes.
-    bus$types <- local({ cache <- list(); function() {
-      now <- tryCatch(shiny::isolate(shared$restored_inputs()), error = function(e) NULL)
-      if (length(now)) cache <<- now
-      cache
-    } })
+    bus$types <- function() archive$state$inputs %||% list()
     team_canvas_server(domain$input, domain$output, domain, shared)
     dashboard_data <- if (exists("team_missingness_data_adapter", mode = "function"))
       team_missingness_data_adapter(shared) else shared
@@ -390,6 +426,14 @@ api_session_open <- function(zip) {
       list(token = tail(restores, 1L)[[1L]]$restoreToken, ok = TRUE))
     api_flush(s)
   }
+  # Team's workspace has no review box (R/guided_workflow.R design_issues, team_simple_review_enabled): the restored
+  # unit and relationship are the confirmed design its inference_check (R/server.R) uses. The API's stand-in for that
+  # confirmation is guide_design_confirm, so a design Team considers confirmed opens confirmed; none still asks.
+  restored <- api_read(s, list(unit = domain$input$guide_unit, type = domain$input$guide_design_type))
+  if (team_simple_review_enabled() && guide_valid_design(TRUE, restored$unit, restored$type)) {
+    api_inputs(s, guide_design_confirm = TRUE)
+    api_flush(s)
+  }
   s$revision <- api_read(s, shared$preparation_state()$revision)
   df <- api_read(s, shared$data_processed_allow_missing())
   inputs <- archive$state$inputs[startsWith(names(archive$state$inputs), "results_dashboard-")]
@@ -402,18 +446,24 @@ api_session_open <- function(zip) {
   s$samples <- ncol(df) - 1L; s$lipids <- nrow(df)
   s$sha256 <- digest::digest(file = zip, algo = "sha256")
   s$archived_inputs <- archive$state$inputs %||% list()
+  s$archived_qc_decisions <- archive$state$outliers$qc_decisions
+  s$changed_inputs <- character()
   s$project_records <- api_project_records_bytes(zip)
   s$cards <- new.env(parent = emptyenv())
   s$instance_sources <- new.env(parent = emptyenv())
   s$created <- s$last_used <- Sys.time()
   if (exists("api_cohort_restore", mode = "function")) api_cohort_restore(s, zip)
   if (exists("api_nexo_read", mode = "function")) s$nexo <- api_nexo_read(zip)
+  s$engineRevision <- 0L
+  s$openedSha256 <- s$sha256
   success <- TRUE
   s
 }
 
 
 api_session_close <- function(s) {
+  if (!isTRUE(s$closed) && !is.null(s$engineRevision)) api_session_dirty(s)
+  api_mutation(s, NULL, NULL, (function() {
   on.exit({
     s$closed <- TRUE
     if (!is.null(s$sessionId) && exists(s$sessionId, api_sessions, inherits = FALSE)) {
@@ -426,6 +476,7 @@ api_session_close <- function(s) {
   })
   if (!isTRUE(s$closed)) s$mock$close()
   invisible(NULL)
+  })())
 }
 api_de_state <- function(s) {
   messages <- s$bus$messages("team-canvas-de-state")
@@ -437,6 +488,7 @@ api_design_state <- function(s) api_read(s, list(
   type = tryCatch(s$mock$input$guide_design_type, error = function(e) NULL),
   confirmed = isTRUE(tryCatch(s$mock$input$guide_design_confirm, error = function(e) FALSE))))
 api_design <- function(s, unit, type, confirm) {
+  api_mutation(s, NULL, NULL, (function() {
   if (!is.character(unit) || length(unit) != 1L || is.na(unit) ||
       !is.character(type) || length(type) != 1L || is.na(type) ||
       !type %in% c("independent", "paired", "uncertain") ||
@@ -446,19 +498,75 @@ api_design <- function(s, unit, type, confirm) {
   api_inputs(s, guide_unit = unit, guide_design_type = type, guide_design_confirm = confirm)
   api_flush(s)
   c(api_design_state(s), list(deState = api_de_state(s)))
+  })())
 }
 api_sessions <- new.env(parent = emptyenv())
-api_session_counter <- 0L
+# OS entropy avoids sharing R's scientific RNG state with session identities.
+api_session_random_hex <- function(n) {
+  con <- file("/dev/urandom", "rb", raw = TRUE); on.exit(close(con))
+  bytes <- readBin(con, "raw", n = n)
+  if (length(bytes) != n) stop("Cannot obtain session identity entropy.")
+  paste(sprintf("%02x", as.integer(bytes)), collapse = "")
+}
+api_session_generation <- api_session_random_hex(6L)
+api_session_id <- function() paste(api_session_generation, api_session_random_hex(16L), sep = ".")
+api_session_lease_live <- function(s) {
+  lease <- s$lease
+  !is.null(lease) && isTRUE(as.numeric(difftime(Sys.time(), lease$renewedAt, units = "secs")) < 180) &&
+    isTRUE(lease$connections + lease$inFlight > 0)
+}
+api_session_leases <- function() sum(vapply(as.list(api_sessions), api_session_lease_live, logical(1)))
+api_session_admit <- function() {
+  live <- api_session_leases()
+  if (live >= as.integer(Sys.getenv("LIPIDOMIC_API_LIVE_PROJECTS", "2")))
+    stop(structure(list(message = "capacity", call = NULL, liveProjects = live),
+      class = c("api_capacity", "error", "condition")))
+}
+api_session_make_room <- function() {
+  ids <- ls(api_sessions)
+  ids <- ids[!vapply(ids, function(id) api_session_lease_live(api_sessions[[id]]), logical(1))]
+  if (length(ls(api_sessions)) >= 2L && length(ids)) {
+    oldest <- which.min(vapply(ids, function(id) as.numeric(api_sessions[[id]]$last_used), numeric(1)))
+    api_session_close(api_sessions[[ids[[oldest]]]])
+  }
+}
+api_session_bind <- function(s, collab = NULL) {
+  s$kind <- if (is.null(collab)) "legacy" else "collab"
+  if (!is.null(collab)) { s$project <- collab$project; s$workspace <- collab$workspace }
+  s
+}
+api_session_join <- function(s) {
+  out <- list(sessionId = s$sessionId, generation = api_session_generation,
+    engineRevision = s$engineRevision %||% 0L,
+    preparation = list(revision = s$revision, check = s$receipt), samples = s$samples, lipids = s$lipids,
+    design = api_design_state(s), cards = unname(as.list(s$cards)))
+  if (!is.null(s$dataset)) out$dataset <- s$dataset
+  out
+}
+api_session_lease <- function(s, body) {
+  count <- function(x) is.numeric(x) && length(x) == 1L && is.finite(x) && x >= 0 && x == floor(x)
+  if (!identical(s$kind, "collab") || !count(body$connections) || !count(body$inFlight))
+    api_abort("api_bad_request", "Expected collab lease connection and in-flight counts.")
+  s$lease <- list(connections = body$connections, inFlight = body$inFlight, renewedAt = Sys.time())
+  list(ok = TRUE)
+}
+api_pressure <- FALSE
 # A live session stands for its checkpoint only until something changes it; a save
 # makes it the saved checkpoint again (api_checkpoint_save).
-api_session_dirty <- function(s) { s$dirty <- TRUE; invisible(s) }
-api_session_for_checkpoint <- function(path) {
+api_session_dirty <- function(s) {
+  s$dirty <- TRUE
+  if (!isTRUE(s$restoring) && (is.null(s$mutation) || !isTRUE(s$mutation$bumped))) {
+    s$engineRevision <- (s$engineRevision %||% 0L) + 1L
+    if (!is.null(s$mutation)) s$mutation$bumped <- TRUE
+  }
+  invisible(s)
+}
+api_session_for_checkpoint <- function(path, collab = NULL) {
+  if (!is.null(collab)) api_session_admit()
   sha <- digest::digest(file = path, algo = "sha256")
-  # Render workers (pool.R) open the same checkpoint while this process opens it.
-  if (exists("api_pool_prepare", mode = "function")) api_pool_prepare(normalizePath(path, mustWork = TRUE), sha)
   for (id in ls(api_sessions)) {
     s <- api_sessions[[id]]
-    if (identical(s$sha256, sha)) {
+    if (is.null(collab) && !identical(s$kind, "collab") && identical(s$sha256, sha)) {
       if (isTRUE(s$broken) || isTRUE(s$closed)) api_session_close(s) else if (!isTRUE(s$dirty)) {
         s$last_used <- Sys.time()
         return(s)
@@ -466,32 +574,53 @@ api_session_for_checkpoint <- function(path) {
       # A dirty session holds edits the checkpoint does not: leave it to its tab, open fresh.
     }
   }
-  if (length(ls(api_sessions)) >= 2L) {
-    ids <- ls(api_sessions)
-    oldest <- which.min(vapply(ids, function(id) as.numeric(api_sessions[[id]]$last_used), numeric(1)))
-    api_session_close(api_sessions[[ids[[oldest]]]])
-  }
+  # Render workers (pool.R) open the same checkpoint while this process opens it.
+  if (exists("api_pool_prepare", mode = "function")) api_pool_prepare(normalizePath(path, mustWork = TRUE), sha)
+  api_session_make_room()
   s <- api_session_open(path)
-  api_session_counter <<- api_session_counter + 1L
-  s$sessionId <- paste0("s", api_session_counter)
+  s$sessionId <- api_session_id()
+  s$kind <- "legacy"
+  s$workspace <- api_workspace()
+  api_session_bind(s, collab)
   api_sessions[[s$sessionId]] <- s
   s
 }
 api_sessions_closed <- new.env(parent = emptyenv())
-api_session_get <- function(id, touch = TRUE) {
+# The session an id names, with no caller check: for the API's own work (render pool, warm queue), never for a route.
+api_session_find <- function(id) {
+  if (grepl("^[0-9a-f]{12}[.][0-9a-f]{32}$", id) &&
+      !identical(sub("[.].*$", "", id), api_session_generation))
+    api_abort("session_lost", "This session belongs to a previous API process; reopen it.")
   if (!exists(id, api_sessions, inherits = FALSE)) {
     if (exists(id, api_sessions_closed, inherits = FALSE)) api_abort("session_lost", "This session was closed or evicted; reopen the checkpoint.")
     api_abort("api_not_found", "Unknown session.")
   }
   s <- api_sessions[[id]]
   api_alive(s)
+  s
+}
+# A route's session: the caller must be allowed to use it (plan section 2.1).
+api_session_get <- function(id, caller = NULL, touch = TRUE) {
+  s <- api_session_find(id)
+  if (identical(s$kind, "collab")) {
+    if (is.null(caller) || isTRUE(caller$anonymous)) api_dataset_admin_fail(401L, "admin_auth_required")
+    api_scope_allow(caller, s$workspace)
+    if (isTRUE(caller$service)) {
+      if (!identical(caller$project, s$project)) api_abort("api_forbidden_scope", "Project does not match this session.")
+    } else if (!isTRUE(caller$sessionRead)) api_abort("api_forbidden_scope", "Collab mutations require the project's service identity.")
+  } else if (identical(Sys.getenv("LIPIDOMIC_ADMIN_REQUIRE_USER"), "1")) {
+    if (is.null(caller) || isTRUE(caller$anonymous)) api_dataset_admin_fail(401L, "admin_auth_required")
+    if (isTRUE(caller$service) && !isTRUE(caller$sessionRead))
+      api_abort("api_forbidden_scope", "Service identity is only enabled for reads.")
+    api_scope_allow(caller, s$workspace %||% api_workspace())
+  }
   if (touch) s$last_used <- Sys.time()
   s
 }
 api_sessions_evict_idle <- function(minutes = 30) {
   for (id in ls(api_sessions)) {
     s <- api_sessions[[id]]
-    if (as.numeric(difftime(Sys.time(), s$last_used, units = "mins")) >= minutes)
+    if (!api_session_lease_live(s) && as.numeric(difftime(Sys.time(), s$last_used, units = "mins")) >= minutes)
       api_session_close(s)
   }
   invisible(NULL)
@@ -556,15 +685,87 @@ api_rss_soft_mb <- function() as.integer(Sys.getenv("LIPIDOMIC_API_RSS_SOFT_MB",
 api_rss_hard_mb <- function() as.integer(Sys.getenv("LIPIDOMIC_API_RSS_HARD_MB", "2700"))
 api_memory_guard <- function(rss = api_rss_mb(), current = NULL,
                              quit = function(status) later::later(function() base::quit(save = "no", status = status), 1)) {
+  api_pressure <<- FALSE
   if (is.na(rss)) return(invisible(NULL))
   if (rss > api_rss_hard_mb()) { quit(3L); return(invisible("hard")) }
   if (rss <= api_rss_soft_mb()) return(invisible(NULL))
   ids <- ls(api_sessions)
   used <- vapply(ids, function(id) as.numeric(api_sessions[[id]]$last_used), numeric(1))
   keep <- if (!is.null(current)) current$sessionId else if (length(ids)) ids[[which.max(used)]] else NULL
-  others <- setdiff(ids, keep)
+  leased <- ids[vapply(ids, function(id) api_session_lease_live(api_sessions[[id]]), logical(1))]
+  # Under lease pressure the newest unleased session is also an eviction candidate.
+  others <- if (length(leased)) setdiff(ids, leased) else setdiff(ids, keep)
   if (length(others)) api_session_close(api_sessions[[others[[which.min(used[others])]]]])
+  remaining <- as.list(api_sessions)
+  api_pressure <<- length(remaining) > 0L && all(vapply(remaining, api_session_lease_live, logical(1)))
   for (id in ls(api_sessions)) api_render_cache_clear(api_sessions[[id]])
   gc(verbose = FALSE)
   invisible("soft")
+}
+
+# One mutation boundary also covers nested calls (replay updates).
+# Routes pass HTTP context after authorization; direct engine calls pass NULL.
+api_mutation <- function(s, req, res, expr, body_revision = TRUE, handle = NULL) {
+  if (!is.null(s$mutation)) return(force(expr))
+  intent <- req$HTTP_X_NEXO_INTENT
+  now <- Sys.time()
+  if (is.null(s$intents)) s$intents <- new.env(parent = emptyenv())
+  for (key in ls(s$intents, all.names = TRUE))
+    if (as.numeric(difftime(now, s$intents[[key]]$at, units = "secs")) >= 600) rm(list = key, envir = s$intents)
+  if (!is.null(intent) && length(intent) == 1L && nzchar(intent)) {
+    stored <- s$intents[[intent]]
+    if (!is.null(stored)) {
+      if (!is.null(res)) {
+        res$status <- stored$status
+        res$headers[["X-Nexo-Engine-Revision"]] <- as.character(stored$revision)
+      }
+      return(stored$body)
+    }
+  } else intent <- NULL
+  s$mutation <- new.env(parent = emptyenv())
+  on.exit({
+    s$mutation <- NULL
+    if (!is.null(res)) res$headers[["X-Nexo-Engine-Revision"]] <- as.character(s$engineRevision %||% 0L)
+  })
+  answer <- tryCatch(force(expr), error = function(e) {
+    # Typed errors have an HTTP answer too. Unknown failures propagate without inventing an answer.
+    if (!is.null(intent) && !is.null(res) && !is.null(handle)) {
+      body <- handle(res, stop(e))
+      body$engineRevision <- s$engineRevision %||% 0L
+      s$intents[[intent]] <- list(at = Sys.time(), status = res$status, body = body,
+        revision = s$engineRevision %||% 0L)
+    }
+    stop(e)
+  })
+  if (isTRUE(body_revision) && is.list(answer)) answer$engineRevision <- s$engineRevision %||% 0L
+  if (!is.null(intent)) s$intents[[intent]] <- list(at = Sys.time(), status = res$status %||% 200L,
+    body = answer, revision = s$engineRevision %||% 0L)
+  answer
+}
+api_render_answer <- function(s, res, expr) {
+  revision <- s$engineRevision %||% 0L
+  # Error answers also belong to this render's start revision (including a stale-job fallback).
+  on.exit(if (!is.null(res)) res$headers[["X-Nexo-Engine-Revision"]] <- as.character(revision))
+  answer <- force(expr)
+  answer$engineRevision <- revision
+  answer$where <- "main"
+  answer
+}
+# Attach the settled answer's revision, including an idempotent answer from an older revision.
+# The revision header is assigned, never res$setHeader: plumber appends, and two values read "3, 3" (NaN).
+api_revision_header <- function(res, answer, id = NULL) {
+  revision <- if (is.list(answer)) answer$engineRevision else NULL
+  response_revision <- res$headers[["X-Nexo-Engine-Revision"]]
+  if (is.null(revision) && !is.null(response_revision))
+    revision <- as.integer(response_revision)
+  if (is.null(revision) && is.character(id) && length(id) == 1L &&
+      exists(id, api_sessions, inherits = FALSE))
+    revision <- api_sessions[[id]]$engineRevision %||% 0L
+  if (!is.null(revision)) {
+    res$headers[["X-Nexo-Engine-Revision"]] <- as.character(revision)
+    if (is.list(answer) && (!is.null(answer$engineRevision) || !is.null(answer$error) ||
+        (!is.null(answer$ok) && !is.null(response_revision))))
+      answer$engineRevision <- revision
+  }
+  answer
 }

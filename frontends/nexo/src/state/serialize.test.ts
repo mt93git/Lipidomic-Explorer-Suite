@@ -16,3 +16,10 @@ test('figure page document survives the v1 round trip (Team keeps it in team-can
  const back=fromCanvasV1(state);expect(back.document).toEqual(document);
  expect(toCanvasV1(back,tabs.validate(state.tabs,nodes.map(n=>n.id)))).toEqual(state);
 });
+test('a Team canvas with a PCA score card opens in Nexo and saves back with the card and its settings',()=>{
+ // Team 8e2f5c07: "Plot on canvas" saves a results_dashboard-plot_pcascore instance with the PCA card's inputs.
+ const team={version:'1',libraryHidden:false,tabs:null,document:null,nodes:[{kind:'plot',id:'tcinstance_aa11bb22cc33-plot_pcascore',label:'PCA score analysis · PC2',x:0,y:0,width:620,height:700,visual:{},finished:null,
+  instance:{id:'tcinstance_aa11bb22cc33',source:'results_dashboard-plot_pcascore',inputs:{pcs_pc:'PC2',pcs_groups:['Control','Case'],pcs_test:'param',pcs_corr:'holm'}}}]};
+ const back=fromCanvasV1(team);expect(back.nodes[0].instance?.source).toBe('results_dashboard-plot_pcascore');
+ const saved=toCanvasV1(back,back.tabs);expect(saved.nodes[0]).toMatchObject({id:team.nodes[0].id,label:team.nodes[0].label,width:620,height:700,instance:team.nodes[0].instance});
+});

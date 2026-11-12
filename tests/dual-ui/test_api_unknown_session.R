@@ -26,6 +26,9 @@ local({
     cat("SKIP test_api_unknown_session: needs the production Team port (PRs 8 and 9)\n"); quit(save = "no", status = 0)
   }
   if (is.null(health)) stop("API did not become healthy: ", child$read_error())
+  old <- httr::GET(sprintf("http://127.0.0.1:%d/api/v1/sessions/000000000000.%s", port, strrep("a", 32)))
+  stopifnot(httr::status_code(old) == 409L, httr::content(old)$error == "session_lost")
+  cat("PASS previous-generation session answers 409 session_lost\n")
   card <- "/cards/tcinstance_000000000000"
   routes <- list(
     list("POST", "/canvas/validate", list(token = "t1", state = list())),

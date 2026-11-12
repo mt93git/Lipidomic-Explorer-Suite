@@ -64,6 +64,24 @@ for (i in seq_along(ids)) if (!same_render(results[[i]], api_card_render(s, ids[
   stop("worker render differs from the main render: ", sources[[i]])
 cat("PASS workers draw cards in parallel (overlapping), equal to the main process's render (PNG bytes; Plotly traces to 1e-9)\n")
 
+# A signed-in request is authorized once; pool callbacks find the session internally.
+local({
+  old <- Sys.getenv("LIPIDOMIC_ADMIN_REQUIRE_USER", unset = NA_character_)
+  on.exit(if (is.na(old)) Sys.unsetenv("LIPIDOMIC_ADMIN_REQUIRE_USER") else
+    Sys.setenv(LIPIDOMIC_ADMIN_REQUIRE_USER = old))
+  Sys.setenv(LIPIDOMIC_ADMIN_REQUIRE_USER = "1")
+  caller <- list(staff = TRUE, clients = character())
+  signed_in <- api_session_get(s$sessionId, caller)
+  api_render_cache_clear(signed_in)
+  job <- api_pool_job(signed_in, ids[[1L]], 619, 680, "auto")
+  stopifnot(inherits(job, "api_pool_job"))
+  out <- await(api_pool_submit(job))
+  stopifnot(isTRUE(out$ok))
+  result <- api_pool_finish(job, out, function() stop("unexpected fallback"))
+  stopifnot(identical(result$where, "worker"))
+  cat("PASS signed-in worker render completes with REQUIRE_USER=1\n")
+})
+
 # 4. Session-level state follows the session: a targeted cohort set in the main process.
 lipids <- head(api_cohort_lipids(s), 6L)
 invisible(api_cohort_set(s, lipids))
@@ -126,6 +144,34 @@ refused <- tryCatch(api_pool_finish(job, list(ok = FALSE, class = "api_unprocess
 stopifnot(identical(refused, "module says no"))
 cat("PASS computed-control cards stay in the main process; only the module's 422 is forwarded\n")
 
+# B6. Saving updates the ZIP identity, but workers still hold the opened content.
+local({
+  directory <- tempfile(); dir.create(directory)
+  old <- Sys.getenv("LIPIDOMIC_STORAGE_DIR", unset = NA_character_)
+  Sys.setenv(LIPIDOMIC_STORAGE_DIR = directory)
+  on.exit({
+    if (is.na(old)) Sys.unsetenv("LIPIDOMIC_STORAGE_DIR") else Sys.setenv(LIPIDOMIC_STORAGE_DIR = old)
+    unlink(directory, recursive = TRUE)
+  })
+  canvas <- list(version = "1", libraryHidden = FALSE, nodes = list())
+  before <- s$engineRevision
+  saved <- api_checkpoint_save_revision(s, NULL, NULL, "synthetic save", list(token = "save-worker-test", state = canvas))
+  stopifnot(identical(s$engineRevision, before + 1L), !identical(s$sha256, s$openedSha256))
+  # A second tab reusing the saved session must not retarget its workers to the new ZIP either.
+  stopifnot(identical(api_session_for_checkpoint(api_store()$load(api_workspace(), saved$id)), s))
+  health <- api_pool_status()
+  stopifnot(length(health$workers) == 2L, is.numeric(health$inFlight),
+    all(vapply(health$workers, function(w) identical(w$checkpoint, s$openedSha256), logical(1))))
+  api_render_cache_clear(s)
+  job <- api_pool_job(s, ids[[1L]], 733, 680, "auto")
+  if (is.null(job)) stop("FAIL save then render stays on a worker: where=main (expected worker)")
+  out <- await(api_pool_submit(job))
+  result <- api_pool_finish(job, out, function() list(where = "main"))
+  if (!identical(result$where, "worker")) stop("FAIL save then render stays on a worker: expected where=worker")
+  stopifnot(identical(result$provenance$checkpointSha256, s$sha256))
+  cat("PASS save then render stays on a worker\n")
+})
+
 # 8. Over HTTP (run.R, two workers): the render route answers through a promise. Two renders
 # sent together both come back, while a third request is served by the main process meanwhile.
 api_pool_stop()
@@ -137,17 +183,32 @@ if (requireNamespace("plumber", quietly = TRUE) && requireNamespace("httr", quie
     setwd(root)
     Sys.setenv(LIPIDOMIC_API_CHECKPOINT_DIR = directory, LIPIDOMIC_API_PORT = port, LIPIDOMIC_API_WORKERS = "2",
       LIPIDOMIC_STORAGE_DIR = file.path(directory, "store"), LIPIDOMIC_API_WORKSPACE = "pool-test")
+    Sys.setenv(LIPIDOMIC_ADMIN_SUPABASE_URL = "https://admin.invalid",
+      LIPIDOMIC_ADMIN_ANON_KEY = "synthetic-anon")
+    options(lipidomic.admin.http_fetcher = function(method, url, headers, payload = NULL) {
+      stopifnot(grepl("/rpc/nexo_caller$", url),
+        identical(headers[["Authorization"]], "Bearer synthetic-pool-user"))
+      list(status = 200L, body = charToRaw('[{"caller":"synthetic-user","caller_view":"staff","client_id":null}]'))
+    })
     source("frontends/nexo-api/run.R")
   }, args = list(getwd(), directory, port), libpath = .libPaths(), cmdargs = "--vanilla")
   on.exit({ child$kill(); unlink(directory, recursive = TRUE) })
+  auth <- httr::add_headers(`X-Nexo-Admin-Token` = "synthetic-pool-user")
   base <- sprintf("http://127.0.0.1:%d/api/v1", port)
-  get <- function(path) tryCatch(httr::content(httr::GET(paste0(base, path), httr::timeout(5))), error = function(e) NULL)
+  get <- function(path) tryCatch(httr::content(httr::GET(paste0(base, path), auth, httr::timeout(5))), error = function(e) NULL)
   deadline <- Sys.time() + 120
   while (is.null(get("/health")) && child$is_alive() && Sys.time() < deadline) Sys.sleep(0.3)
   if (is.null(get("/health"))) stop("API did not start: ", child$read_error())
-  post <- function(path, body) httr::content(httr::POST(paste0(base, path), body = body, encode = "json", httr::timeout(300)))
+  post <- function(path, body) {
+    response <- httr::POST(paste0(base, path), auth, body = body, encode = "json", httr::timeout(300))
+    answer <- httr::content(response)
+    if (httr::status_code(response) != 200L)
+      stop("POST ", path, ": HTTP ", httr::status_code(response), " ", answer$error %||% "unexpected response")
+    stopifnot(identical(httr::headers(response)[["x-nexo-engine-revision"]], as.character(answer$engineRevision)))
+    answer
+  }
   session <- post("/sessions", list(checkpointId = "synthetic"))
-  stopifnot(identical(session$renderWorkers, 2L))
+  stopifnot(identical(session$renderWorkers, 2L), identical(session$engineRevision, 0L))
   cards <- vapply(c("results_dashboard-plot_pca", "qc_pca_tab-boxplotAfterNorm"), function(src)
     post(paste0("/sessions/", session$sessionId, "/cards"), list(source = src))$instanceId, "")
   deadline <- Sys.time() + 180
@@ -156,9 +217,9 @@ if (requireNamespace("plumber", quietly = TRUE) && requireNamespace("httr", quie
   pool <- curl::new_pool(); answers <- list()
   for (card in cards) {
     h <- curl::new_handle(post = TRUE, postfields = '{"width":620,"height":680,"format":"auto"}')
-    curl::handle_setheaders(h, "Content-Type" = "application/json")
+    curl::handle_setheaders(h, "Content-Type" = "application/json", "X-Nexo-Admin-Token" = "synthetic-pool-user")
     local({ id <- card; curl::curl_fetch_multi(sprintf("%s/sessions/%s/cards/%s/render", base, session$sessionId, id),
-      done = function(r) answers[[id]] <<- list(status = r$status_code, type = r$type, size = length(r$content), at = Sys.time()),
+      done = function(r) answers[[id]] <<- list(status = r$status_code, type = r$type, size = length(r$content), headers = rawToChar(r$headers), at = Sys.time()),
       fail = function(e) answers[[id]] <<- list(status = 0L, error = e), handle = h, pool = pool) })
   }
   health <- curl::new_handle(); busy <- NA
@@ -166,12 +227,35 @@ if (requireNamespace("plumber", quietly = TRUE) && requireNamespace("httr", quie
     handle = health, pool = pool)
   curl::multi_run(timeout = 300, pool = pool)
   stopifnot(length(answers) == 2L, all(vapply(answers, function(a) identical(a$status, 200L), logical(1))))
+  stopifnot(all(vapply(answers, function(a) grepl("X-Nexo-Engine-Revision: 2", a$headers, ignore.case = TRUE), logical(1))))
   stopifnot(grepl("json", answers[[cards[[1L]]]]$type), identical(answers[[cards[[2L]]]]$type, "image/png"), answers[[cards[[2L]]]]$size > 1000L)
   # /health was answered while the workers drew: the main process was not held by the renders.
   stopifnot(isTRUE(busy >= 1L))
-  again <- httr::POST(sprintf("%s/sessions/%s/cards/%s/render", base, session$sessionId, cards[[2L]]),
+  again <- httr::POST(sprintf("%s/sessions/%s/cards/%s/render", base, session$sessionId, cards[[2L]]), auth,
     body = list(width = 620, height = 680, format = "auto"), encode = "json")
   stopifnot(httr::status_code(again) == 200L, identical(httr::headers(again)[["content-type"]], "image/png"))
+  stopifnot(identical(httr::headers(again)[["x-nexo-engine-revision"]], "2"))
+  validated <- httr::POST(sprintf("%s/sessions/%s/canvas/validate", base, session$sessionId), auth,
+    body = list(token = "http-pool-validate", state = list(version = "1", libraryHidden = FALSE, nodes = list())), encode = "json")
+  validated_revision <- httr::content(validated)$engineRevision
+  stopifnot(httr::status_code(validated) == 200L, isTRUE(httr::content(validated)$ok),
+    identical(httr::headers(validated)[["x-nexo-engine-revision"]], as.character(validated_revision)))
+  save_body <- list(label = "synthetic HTTP save", canvas = list(token = "http-pool-save", state = httr::content(validated)$state))
+  saved <- httr::POST(sprintf("%s/sessions/%s/checkpoints", base, session$sessionId),
+    httr::add_headers(`X-Nexo-Intent` = "synthetic-http-save", `X-Nexo-Admin-Token` = "synthetic-pool-user"), body = save_body, encode = "json")
+  stopifnot(httr::status_code(saved) == 200L,
+    identical(httr::headers(saved)[["x-nexo-engine-revision"]], as.character(validated_revision + 1L)),
+    is.null(httr::content(saved)$engineRevision))
+  created <- post(paste0("/sessions/", session$sessionId, "/cards"), list(source = "results_dashboard-plot_pca"))
+  replayed <- httr::POST(sprintf("%s/sessions/%s/checkpoints", base, session$sessionId),
+    httr::add_headers(`X-Nexo-Intent` = "synthetic-http-save", `X-Nexo-Admin-Token` = "synthetic-pool-user"), body = save_body, encode = "json")
+  current <- get(paste0("/sessions/", session$sessionId))
+  stopifnot(httr::status_code(replayed) == 200L, identical(httr::content(saved), httr::content(replayed)),
+    identical(httr::headers(saved)[["x-nexo-engine-revision"]], httr::headers(replayed)[["x-nexo-engine-revision"]]),
+    identical(created$engineRevision, current$engineRevision), current$engineRevision > validated_revision + 1L)
+  cat("PASS validate and save carry revision headers while checkpoint records keep their shape\n")
+  cat("PASS a save intent replays its body and original revision after a later mutation\n")
+  cat("PASS mutation, worker JSON/PNG and cached PNG answers carry engine revision headers\n")
   cat(sprintf("PASS over HTTP two renders run on workers through promises; /health answered meanwhile (busy workers: %d)\n", busy))
 }) else cat("SKIP part 8: plumber, httr or curl not installed\n")
 cat("PASS test_api_pool\n")

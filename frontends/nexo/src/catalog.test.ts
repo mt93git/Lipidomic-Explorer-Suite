@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import catalog from './mock/catalog.json';
-import { availability, groupCatalog, renderKindFor, groupOrder, withTimePoints } from './catalog';
+import { availability, catalogEntryFor, groupCatalog, renderKindFor, groupOrder, withTimePoints, newCardSize } from './catalog';
 import type { CatalogEntry } from './api/types';
 const outputs = catalog.outputs as CatalogEntry[];
 describe('catalog', () => {
-  it('preserves Team group order and all 59 outputs', () => {
+  it('preserves Team group order and all 61 outputs (PCA score analysis, Team 8e2f5c07)', () => {
     const groups = groupCatalog(outputs);
     expect(groups.map(g => g.label)).toEqual(groupOrder);
-    expect(groups.map(g => g.count)).toEqual([5,14,4,4,5,8,1,3,5,2,3,4,1]);
-    expect(groups.reduce((sum, g) => sum + g.count, 0)).toBe(59);
+    expect(groups.map(g => g.count)).toEqual([6,14,4,4,5,9,1,3,5,2,3,4,1]);
+    expect(groups.reduce((sum, g) => sum + g.count, 0)).toBe(61);
+  });
+  // NEXO-P2: the analyst's new Structure card, as frontends/nexo-api/catalog.R lists it.
+  it('lists Module-trait relationships with the API label, group and needs', () => {
+    const entry = outputs.find(e => e.id === 'structural_tab-moduleTraitPlot');
+    expect(entry && {label:entry.label, group:entry.group, needs:entry.needs, render:entry.render}).toEqual({label:'Module-trait relationships', group:'Structure', needs:'de', render:'plotly'});
+  });
+  // Team draws the Structure figures as Plotly charts (structure_render_plot); the API catalog says plotly for them.
+  it('draws every Structure figure as a Plotly chart', () => {
+    const structure = outputs.filter(e => /^structural_(grid_)?tab-/.test(e.id));
+    expect(structure.filter(e => e.render !== 'plotly').map(e => e.id)).toEqual([]);
   });
   it('uses plotly for dashboard outputs', () => expect(outputs.filter(e => e.family === 'results_dashboard').every(e => e.render === 'plotly')).toBe(true));
   it('uses png for heatmapPlot', () => expect(outputs.find(e => e.id === 'heatmap_barchart_tab-heatmapPlot')?.render).toBe('png'));
@@ -39,7 +49,25 @@ describe('catalog', () => {
     expect(withTimePoints(undefined, {timepoints:true})).toBeUndefined();
   });
   it('resolves instance output suffixes and legacy dashboard ids', () => {
-    expect(renderKindFor('tcinstance_0123456789ab-heatmapPlot', outputs)).toBe('png');
-    expect(renderKindFor('results_dashboard-plot_pca', outputs)).toBe('plotly');
+    expect(renderKindFor({id: 'tcinstance_0123456789ab-plot_pca'}, outputs)).toBe('plotly');
+    expect(renderKindFor({id: 'tcinstance_0123456789ab-heatmapPlot', instance: {source: 'heatmap_barchart_tab-heatmapPlot'}}, outputs)).toBe('png');
+    expect(renderKindFor({id: 'results_dashboard-plot_pca'}, outputs)).toBe('plotly');
   });
+  // NEXO-P7: two Team cards end in -heatmapPlot (Average signal heatmap: png; Structural grid heatmap: plotly).
+  it('a Structural grid heatmap instance is drawn as plotly, not as the Average signal heatmap', () => {
+    expect(renderKindFor({id: 'tcinstance_mwcvcxxj_vu2ztz30-heatmapPlot', instance: {source: 'structural_grid_tab-heatmapPlot'}}, outputs)).toBe('plotly');
+  });
+  it('every catalog entry resolves to itself, by its id and as a Team instance', () => {
+    for (const entry of outputs) {
+      expect(catalogEntryFor({id: entry.id}, outputs)?.id, entry.id).toBe(entry.id);
+      expect(catalogEntryFor({id: `tcinstance_0123456789ab-${entry.output}`, instance: {source: entry.id}}, outputs)?.id, entry.id).toBe(entry.id);
+    }
+  });
+});
+// NEXO-P3: Team opens a Composition overview card 560 px tall (www/team/js/canvas.js newCardSize, compact shell rule);
+// its width and every other card keep the catalog size.
+it('a new Composition overview card opens at Team\'s 560 px height', () => {
+  const comp = outputs.find(o => o.id === 'results_dashboard-plot_comp')!, pca = outputs.find(o => o.id === 'results_dashboard-plot_pca')!;
+  expect(newCardSize(comp)).toEqual({ width: comp.defaultSize.width, height: 560 });
+  expect(newCardSize(pca)).toEqual(pca.defaultSize);
 });

@@ -99,9 +99,9 @@ async function browserTests(pw,name,base) {
   // H8: the start page groups checkpoints (Team first, then named saves, then autosaves) and says when and where each came from.
   await page.goto(`${base}/nexo/`);const team=page.getByRole('region',{name:'Prepared in Team',exact:true});await team.waitFor();
   const regions=await page.locator('.picker-group h2').allTextContents();assert.equal(regions[0],'Prepared in Team');assert(regions.includes('Saved checkpoints'));
-  assert.match(await team.getByRole('button').first().textContent(),/Synthetic demo.*From Team/);
-  const saves=page.getByRole('region',{name:'Saved checkpoints',exact:true});assert.match(await saves.getByRole('button').first().textContent(),/demo.*\d.*Saved in Nexo/);
-  await team.getByRole('button').first().click();await page.waitForSelector('.card');
+  assert.match(await team.locator('li').first().textContent(),/Synthetic demo.*From Team/);
+  const saves=page.getByRole('region',{name:'Saved checkpoints',exact:true});assert.match(await saves.locator('li').first().textContent(),/demo.*\d.*Saved in Nexo/);
+  await team.getByRole('link').first().click();await page.waitForSelector('.card');
   console.log(`PASS H8 ${name} picker-groups-team-first-with-date-and-source`);
   assert.deepEqual(errors,[]);console.log(`PASS H4 ${name} no-console-errors`);await context.close();
   // H8: a checkpoint that fails to open offers Try again (the same checkpoint) besides choosing another.

@@ -1,0 +1,13 @@
+/* The join card: who prepared the board, its settings, and a progress bar while the shared board opens. */
+.join-card{width:min(520px,calc(100% - 32px))}
+.join-head{display:flex;gap:16px;align-items:center}.join-head img{flex:none}
+.join-head h1{margin:0;font-size:var(--h1,24px);line-height:1.25}.join-head p{margin:4px 0 0;color:var(--muted)}
+.join-card dl{margin:20px 0 0;display:grid;gap:8px}
+.join-card dl div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px}
+.join-card dt{color:var(--muted)}.join-card dd{margin:0}
+.join-status{margin-top:20px}.join-status p{margin:0;font-size:var(--font-small,12px);color:var(--muted)}
+.join-progress{height:6px;margin-top:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.join-progress i{display:block;width:40%;height:100%;border-radius:999px;background:var(--accent);animation:join-slide 1.4s ease-in-out infinite}
+@keyframes join-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@media(prefers-reduced-motion:reduce){.join-progress i{animation:none;width:100%;opacity:.45}}
+@media(max-width:480px){.join-head{align-items:flex-start}.join-head img{width:40px;height:40px}.join-card dl div{grid-template-columns:minmax(0,1fr);gap:2px}}

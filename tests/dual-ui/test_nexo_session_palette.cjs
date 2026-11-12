@@ -71,6 +71,8 @@ async function browserTests(pw, name, base) {
     await page.waitForFunction(c0 => { const p = document.querySelector('#world .card[data-id="results_dashboard-plot_pca"] .js-plotly-plot'); return (p?.data || []).some(t => t.name === 'Control' && String(t.marker?.color) === c0); }, control0, { timeout: 15000 });
     assert.deepEqual(await page.evaluate(() => window.__nexoPaletteMock.patches.at(-1)), { restore: { useCustomColors: false, customColors: {}, activePalette: 'Default' } });
     await page.waitForFunction(() => document.querySelector('[aria-label="Colour for Control"]')?.value === '#377eb8');
+    // The QC image redraws too (after the violin's describe), so the Redo check below does not pass on its old label.
+    await page.waitForFunction(i => !/#AA3300/i.test(window.__nexoMock.labels[i] || ''), qc, { timeout: 15000 });
     await page.locator('#viewport').focus(); await page.keyboard.press('Control+Shift+z');
     await page.waitForFunction(i => /#AA3300/i.test(window.__nexoMock.labels[i] || ''), qc, { timeout: 15000 });
     assert.equal((await traceColour(page, 'Control')).toUpperCase(), '#AA3300');

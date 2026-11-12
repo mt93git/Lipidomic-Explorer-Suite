@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { prepareState, setSample, setSamples, setValue, settingsBody, canConfirm } from './datasetPrepare';
+import { prepareState, setSample, setSamples, setValue, settingsBody, canConfirm, changeCount, sampleGroups } from './datasetPrepare';
 import type { PreparationChoices } from '../api/types';
 
 // The 422 preparation_choices_required body as frontends/nexo-api/datasets.R builds it: Team's QC widget
@@ -83,5 +83,28 @@ describe('canConfirm', () => {
     const state = setSamples(prepareState(body), []);
     expect(canConfirm(state)).toBe(false);
     expect(canConfirm(setSamples(state, ['Control_1']))).toBe(true);
+  });
+});
+
+describe('changeCount', () => {
+  it('is 0 with Team\'s defaults and every sample', () => { expect(changeCount(prepareState(body))).toBe(0); });
+  it('counts each setting changed from its default', () => {
+    expect(changeCount(setValue(setValue(prepareState(body), 'normalizationMethod', 'pqn'), 'minDetectionPct', 50))).toBe(2);
+  });
+  it('counts the sample selection once, however many samples are left out', () => {
+    expect(changeCount(setSamples(prepareState(body), ['Control_1']))).toBe(1);
+  });
+  it('is 0 again when a setting is set back to its default', () => {
+    expect(changeCount(setValue(setValue(prepareState(body), 'useImputation', false), 'useImputation', true))).toBe(0);
+  });
+});
+
+describe('sampleGroups', () => {
+  it('groups the samples by the 422\'s sampleGroups, in workbook order', () => {
+    const groups = Object.fromEntries(samples.map(s => [s, s.startsWith('Control') ? 'Control' : 'Treated']));
+    expect(sampleGroups(prepareState({ ...body, sampleGroups: groups }))).toEqual([['Control', samples.slice(0, 3)], ['Treated', samples.slice(3)]]);
+  });
+  it('is one group "Samples" without sampleGroups', () => {
+    expect(sampleGroups(prepareState(body))).toEqual([['Samples', samples]]);
   });
 });

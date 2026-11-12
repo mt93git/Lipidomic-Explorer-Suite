@@ -83,8 +83,9 @@ async function grid(page, columns, width = 380, height = 300) {
 }
 async function addCards(page, render, count) {
   // Team's module refuses to draw these without configuration (validate()): the editable vector views, and the
-  // BQC deviation plot until 2 BQC samples are chosen (its placeholder, honest exports). They never draw live here.
-  const sources = catalog.filter(e => e.render === render && !/VectorPlot$|bqcDeviationPlot$/.test(e.id)).map(e => e.id);
+  // three BQC views until 2 BQC samples are chosen (Team's sentence, cards.R api_bqc_placeholder). They never draw live here.
+  // The violin card draws at its own plot height (cards.ts renderHeight), not the grid size the prefetch check counts.
+  const sources = catalog.filter(e => e.render === render && !/VectorPlot$|^qc_pca_tab-bqc|violin_plot_render$/.test(e.id)).map(e => e.id);
   let added = 0;
   for (let i = 0; added < count && i < count * 4; i++) {
     const ok = await page.evaluate(source => window.__nexo.handle.addCard(source).then(() => true, () => false), sources[i % sources.length]);

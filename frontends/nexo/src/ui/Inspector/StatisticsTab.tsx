@@ -3,12 +3,14 @@ import {useEffect,useRef,useState} from 'react';
 import {violinStatistics,type Node,type ViolinPolicy,type ViolinReply} from '../../api';
 import {cardInstanceId} from '../../api/instance';
 import {GroupComparisonSection} from './GroupComparisonSection';
+import {PcaScoreSection,hasPcaScore} from './PcaScoreSection';
 import type {CanvasHandle} from '../../canvas/handle';
 import type {Statistics} from '../../state/document';
 import {TESTS,CORRECTIONS,SCOPES,EFFECTS,DEFAULT_SETTINGS,DEFAULT_PRESENTATION,sanitizeSettings,sanitizePresentation,diffSettings,effectAllowedFor,statusFor,pairKey,type Settings,type Presentation,type Pair} from '../../statistics/settings';
 import {rowsForDisplay,methodsNote,formatP,stars,nLabel} from '../../statistics/result';
 import {statisticsCsv} from '../../statistics/csv';
 import {StatsDiff} from './StatsDiff';
+import {collab} from '../../collab/mode';
 export function stagedAfter(applied:Settings,change:Partial<Settings>):Settings{return sanitizeSettings({...applied,...change});}
 export function canDiscard(staged: Settings, baseline: Settings) { return diffSettings(sanitizeSettings(baseline), sanitizeSettings(staged)).length > 0; }
 export function canConfirm(staged:Settings,applied:Settings|null,policy:ViolinPolicy|undefined){return !!policy?.allowed&&staged.comparisons.length>0&&diffSettings(applied,sanitizeSettings(staged)).length>0;}
@@ -23,6 +25,9 @@ export function StatisticsTab({node,handle}:{node:Node;handle:CanvasHandle}){
  const presentation=sanitizePresentation(statistics?.presentation),result=statistics?.result;
  const [staged,setStaged]=useState(()=>applied??sanitizeSettings({...DEFAULT_SETTINGS,effect:'hedges_g'}));
  const [reply,setReply]=useState<ViolinReply>(),[description,setDescription]=useState<ViolinReply['describe']>(),[policy,setPolicy]=useState<ViolinPolicy>(),[busy,setBusy]=useState(false),[review,setReview]=useState(false),[message,setMessage]=useState('');
+ // UX review 2, group 5: who last changed this card or the whole board (meta.lastChange), for the invalidation text.
+ const [changedBy,setChangedBy]=useState<string>();
+ useEffect(()=>{if(collab())void import('../../collab/provider').then(m=>{const c=m.getProvider()?.document.getMap('meta').get('lastChange') as {nodeId?:string|null;displayName?:string}|undefined;setChangedBy(c&&(!c.nodeId||c.nodeId===node.id)?c.displayName:undefined);});},[reply,node.id]);
  const mounted=useRef(true),generation=useRef(0);
  // Cards added in this session keep their id in instance.instanceId; cardInstanceId reads both shapes and the
  // legacy dashboard nodes, which the server renders through a fixed v0 instance (tcinstance_v0_<output>).
@@ -57,9 +62,10 @@ export function StatisticsTab({node,handle}:{node:Node;handle:CanvasHandle}){
  const select=(label:string,value:string,options:Record<string,string>,onChange:(v:string)=>void)=><label style={{display:'block',margin:'8px 0'}}>{label}<select aria-label={label} style={{display:'block',width:'100%'}} value={value} onChange={e=>onChange(e.target.value)}>{Object.entries(options).map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
  const pairs:Pair[]=(description?.groups??[]).flatMap((g,i,groups)=>groups.slice(i+1).map(h=>({a:g.group,b:h.group})));
  const baseline = applied??sanitizeSettings({...DEFAULT_SETTINGS,comparisons:pairs,effect:'hedges_g'});
+ if(hasPcaScore(source))return <PcaScoreSection node={current} source={source} handle={handle}/>;
  if(source?.includes('group_comparison'))return <GroupComparisonSection node={current} handle={handle} instanceId={node.instance?.instanceId??instanceId}/>;
  if(!eligible)return <><p>Statistics are available for independent violin copies.</p>{message&&<p role="alert">{message}</p>}</>;
- const status=result&&(reply?.status==='unchanged'||reply?.status==='invalidated')?statusFor({...reply,matchesCurrent:(reply.dataFingerprint??reply.result?.dataFingerprint)===result.dataFingerprint}):result?statusFor(reply??{status:'ok'}):reply?.status==='ok'?statusFor(null):statusFor(reply);
+ const status=result&&(reply?.status==='unchanged'||reply?.status==='invalidated')?statusFor({...reply,matchesCurrent:(reply.dataFingerprint??reply.result?.dataFingerprint)===result.dataFingerprint},changedBy):result?statusFor(reply??{status:'ok'}):reply?.status==='ok'?statusFor(null):statusFor(reply,changedBy);
  return <section aria-label="Violin statistics" style={{padding:8}}>
   <p role="status" data-statistics-status={reply?.status??'none'}>{busy?'Checking or computing statistics…':message||status}</p>
   {(message||reply?.status==='error'||reply?.status==='invalidated'||reply?.status==='blocked')&&<button disabled={busy} onClick={()=>void inspect('verify')}>Retry check</button>}

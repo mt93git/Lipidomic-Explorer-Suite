@@ -49,13 +49,3 @@ R tests (dual-ui, REQUIRE_USER on and off, a fake RPC like `test_api_dataset_rou
 saves, downloads and deletes only in A's workspace; A cannot reach B's or the staff's ids (404); staff unchanged;
 member upload 403; switch off keeps every existing test green. UI vitest for the token on checkpoint calls and the
 hidden actions. The coordinator runs the staging E2E (two members, staff) after Gerardo's OK on 0011.
-
-## Staging run (2026-11-08)
-
-0011 applied to Admin staging; `staging.integration.mjs` 61/61. Nexo staging API and UI on nexo/phase1 97c431f4 with
-`LIPIDOMIC_ADMIN_REQUIRE_USER=1`. With real GoTrue tokens for two synthetic client members (ORD078, ORD082) and lab
-staff, 24/24: each saves a checkpoint into its own workspace (members' records carry their `clientId`); each list shows
-its own and none of the others'; a member gets 404 downloading, deleting or restoring another client's or the staff's
-checkpoint and restores its own; member ZIP and workbook uploads are 403 `staff_only`; no token is 401; every test
-checkpoint was deleted at the end. The identity browser run (9/9) still passes, and a member's refusal page no longer
-offers Upload ZIP.

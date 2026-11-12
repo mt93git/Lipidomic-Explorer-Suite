@@ -26,9 +26,8 @@ export function heightInputCommands(nodes: readonly Box[], id: string, input: st
   const commands = node.width === size.width && node.height === cardHeightFor(plot) ? [] : sizeCommands(nodes as Box[], id, { width: size.width, height: cardHeightFor(plot) }, key);
   return current[input] === plot ? commands : [...commands, setNodeInputs(id, { ...current, [input]: plot })];
 }
-/** Reopen: the plot height to write back when the stored card height disagrees with the input, else undefined.
- *  Agreeing includes Team's off-step defaults (n_rows * 260, e.g. 2340) and values above the 4000 px canvas cap. */
-export function reopenPlotHeight(input: string, inputs: Record<string, unknown> | undefined, cardHeight: number): number | undefined {
-  const current = plotHeightOf(input, inputs);
-  return current !== undefined && cardHeightFor(current) === cardHeight ? undefined : plotHeightForCard(cardHeight);
-}
+/** The image height a card asks for: its body for a plot-height card, else the whole card. Team's canvas resize() sets
+ *  the plot output to the card body (www/team/js/canvas.js), so the saved plot height (the module tab's plotOutput
+ *  height) sizes a new card but never the image of a stored one. The saved value is left untouched. */
+export const imageHeightFor = (cardHeight: number, input: string | undefined): number =>
+  Math.round(cardHeight) - (input ? CARD_CHROME : 0);

@@ -44,6 +44,7 @@ api_violin_settings <- function(settings, required = FALSE) {
 }
 
 api_violin_stats <- function(s, instanceId, mode, settings = NULL, dataFingerprint = NULL) {
+  api_mutation(s, NULL, NULL, (function() {
   card <- tryCatch(api_card_get(s, instanceId), api_not_found = function(e)
     api_abort("api_unprocessable", "Statistics are available for violin cards only"))
   api_require(identical(card$source, "results_dashboard-plot_violin"),
@@ -68,10 +69,13 @@ api_violin_stats <- function(s, instanceId, mode, settings = NULL, dataFingerpri
   if (!length(messages)) api_abort("api_unavailable", "No Team violin statistics reply after 8 flushes")
   reply <- tail(messages, 1L)[[1L]]
   reply$policy <- api_violin_policy(s)
+  if (identical(mode, "apply") && identical(reply$status, "ok")) api_session_dirty(s)
   reply
+  })())
 }
 
 api_group_comparison <- function(s, instanceId, confirmationToken = NULL) {
+  api_mutation(s, NULL, NULL, (function() {
   card <- api_card_get(s, instanceId)
   api_require(identical(card$source, "group_comparison_tab-comparisonPlot"),
     "Group comparison is available for group comparison cards only")
@@ -86,4 +90,25 @@ api_group_comparison <- function(s, instanceId, confirmationToken = NULL) {
   api_flush(s)
   messages <- Filter(function(x) identical(x$id, instanceId), s$bus$messages("team-group-comparison-data"))
   if (length(messages)) tail(messages, 1L)[[1L]] else list(id = instanceId, requiresConfirmation = TRUE)
+  })())
+}
+
+# NEXO-P5/P8: Team's PCA score analysis of a dashboard PCA card or of its PCA score card (R/results_dashboard.R
+# rd_pca_score_ui; Team's inspector shows it under Statistics of both). Its controls are the card's own inputs (pcs_pc,
+# pcs_groups, pcs_test, pcs_corr), PATCH .../cards/<id>. Since Team 8e2f5c07 the boxplot and the group table are the
+# canvas card's figure (plot_pcascore); this reads the report lines Team's module rendered for the inspector; a
+# validate() refusal comes back as `message`.
+api_pca_score_text <- function(node) { x <- trimws(gsub("\\s+", " ", xml2::xml_text(node))); if (is.na(x)) "" else x }
+api_pca_score <- function(s, instanceId) {
+  refuse <- function() api_abort("api_unprocessable", "PCA score analysis is available for dashboard PCA cards only")
+  card <- tryCatch(api_card_get(s, instanceId), api_not_found = function(e) refuse())
+  if (!card$source %in% c("results_dashboard-plot_pca", "results_dashboard-plot_pcascore")) refuse()
+  api_flush(s)
+  out <- list(message = NULL, report = list())
+  v <- tryCatch(api_read(s, s$mock$getOutput(paste0(instanceId, "-pcs_report"))),
+    validation = function(e) { out$message <<- conditionMessage(e); NULL }, error = function(e) NULL)
+  if (is.list(v) && is.character(v$html) && nzchar(v$html)) out$report <- lapply(
+    xml2::xml_find_all(xml2::read_html(v$html), "//body/div/p | //body/p"), function(p)
+      list(text = api_pca_score_text(p), note = identical(xml2::xml_attr(p, "class"), "rd-card-note")))
+  out
 }

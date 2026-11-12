@@ -1,5 +1,5 @@
 import {expect,it,vi,afterEach} from 'vitest';
-import {validateNexo,setNexoStyle,validateNexoStyle} from './nexo';
+import {validateNexo,setNexoStyle,validateNexoStyle,migrateMarkerSymbols} from './nexo';
 import {createStore} from './store';
 import {createHistory} from './history';
 import {addNode,removeNodes} from './commands';
@@ -46,7 +46,7 @@ it('a malformed optional member never prevents reading the Team member',async()=
 it('sanitizes stretch fields, nested unknown keys, values and collection limits',()=>{
  const valid={type:'rect',x0:1,x1:2,y0:3,y1:4,color:'#abcdef',opacity:.2,width:2,junk:1};
  const style=validateNexoStyle({series:[{index:0,sourceKey:'a',markerSymbol:'diamond',lineDash:'dash',junk:1},{index:-1,markerSymbol:'circle'},{index:1,markerSymbol:'invalid'},{index:2,lineDash:'invalid'}],legendOrder:'reversed',shapes:[valid,{...valid,x0:NaN}],annotations:[{text:'a',x:1,y:2,ax:-20,ay:30,size:12,color:'#abcdef',xref:'paper',showarrow:false},{text:'b',x:Infinity,y:1}]});
- expect(style.series).toEqual([{index:0,sourceKey:'a',markerSymbol:'diamond',lineDash:'dash'}]);expect(style.legendOrder).toBe('reversed');expect(style.shapes).toEqual([{type:'rect',x0:1,x1:2,y0:3,y1:4,color:'#abcdef',opacity:.2,width:2}]);expect(style.annotations).toEqual([{text:'a',x:1,y:2,ax:-20,ay:30,size:12,color:'#abcdef'}]);
+ expect(style.series).toEqual([{index:0,sourceKey:'a',lineDash:'dash'}]);expect(style.legendOrder).toBe('reversed');expect(style.shapes).toEqual([{type:'rect',x0:1,x1:2,y0:3,y1:4,color:'#abcdef',opacity:.2,width:2}]);expect(style.annotations).toEqual([{text:'a',x:1,y:2,ax:-20,ay:30,size:12,color:'#abcdef'}]);
  expect(validateNexoStyle({shapes:Array(60).fill(valid)}).shapes).toHaveLength(50);expect(validateNexoStyle({annotations:Array(40).fill({text:'a',x:1,y:1})}).annotations).toHaveLength(30);
 });
 
@@ -69,4 +69,18 @@ it('keeps the inputs of a fixed dashboard card in the Nexo member, with undo, ne
  const round=validateNexo(JSON.parse(JSON.stringify(store.get().nexo)),[fixed.id]);expect(round.nodes[fixed.id].inputs).toEqual({color_by:'Group2',top_n:10});
  expect(validateNexo({version:1,nodes:{a:{inputs:[1]}}}).nodes.a).toBeUndefined();
  expect(validateNexo({version:1,nodes:{a:{inputs:Object.fromEntries(Array.from({length:251},(_,i)=>['k'+i,i]))}}}).nodes.a).toBeUndefined();
+});
+
+// NEXO-P3: one marker shape control, Team's. Nexo's own "Series style → Marker symbol" (nexo series markerSymbol) moves on
+// load to Team's saved field (visual.editor.traces markerSymbol); shapes Team does not offer are dropped.
+it('Nexo\'s own marker symbol moves to Team\'s markerSymbol on load; Team\'s own choice wins; other shapes are dropped',()=>{
+ const nodes=[{id:'a',visual:{editor:{traces:[{index:0,sourceKey:'k0',color:'#123456'}]}}},{id:'b',visual:{}},{id:'c',visual:{editor:{traces:[{index:0,markerSymbol:'square'}]}}},{id:'d',visual:{}}];
+ const nexo={version:1,nodes:{a:{style:{series:[{index:0,sourceKey:'k0',markerSymbol:'diamond'},{index:1,sourceKey:'k1',markerSymbol:'cross',lineDash:'dash'}]}},b:{style:{series:[{index:2,markerSymbol:'star'}]}},c:{style:{series:[{index:0,markerSymbol:'triangle-up'}]}}}};
+ const before=JSON.stringify(nodes),moved=migrateMarkerSymbols(nodes,nexo) as any[];
+ expect(moved[0].visual.editor.traces).toEqual([{index:0,sourceKey:'k0',color:'#123456',markerSymbol:'diamond'}]);
+ expect(moved[1].visual.editor).toEqual({traces:[{index:2,markerSymbol:'star'}]});
+ expect(moved[2].visual.editor.traces).toEqual([{index:0,markerSymbol:'square'}]);
+ expect(moved[3]).toBe(nodes[3]);expect(JSON.stringify(nodes)).toBe(before);
+ // Nexo keeps no marker symbol of its own; a line dash stays.
+ expect(validateNexo(nexo).nodes).toEqual({a:{style:{series:[{index:1,sourceKey:'k1',lineDash:'dash'}]}}});
 });

@@ -86,7 +86,11 @@ api_catalog_render_kind <- function(output, family_file, team_dir = "R/frontends
     hit <- regmatches(text, regexec(pattern, text, perl = TRUE))[[1L]]
     if (length(hit) >= 2L) hit[[2L]]
   })))
-  found <- renderers(paste(readLines(family_file, warn = FALSE), collapse = "\n"))
+  family_text <- paste(readLines(family_file, warn = FALSE), collapse = "\n")
+  found <- renderers(family_text)
+  # Team draws the Structure figures as Plotly charts: their module rebinds renderPlot to structure_render_plot
+  # (8_structural_module.R), which returns renderPlotly under the Team interface the API runs.
+  if (identical(found, "renderPlot") && grepl("renderPlot <- structure_render_plot", family_text, fixed = TRUE)) found <- "renderPlotly"
   if (!length(found)) found <- renderers(api_catalog_team_texts(team_dir))
   if (length(found) != 1L) return(NULL)
   unname(api_catalog_render_kinds[[found]])
@@ -124,7 +128,7 @@ api_catalog <- local({
         id == "results_dashboard-plot_heat"
       compact <- family == "barchart" || id %in% c("results_dashboard-plot_comp", "results_dashboard-plot_dist")
       size <- list(width = if (roomy) 1000L else if (id == "cellular_org_tab-stressPlot") 900L else 620L,
-        height = if (roomy) 1100L else if (compact) 380L else 720L)
+        height = if (roomy) 1100L else if (compact) 380L else if (id == "results_dashboard-plot_pcascore") 700L else 720L)
       entry <- c(list(id = id, family = family, output = output,
         render = api_catalog_render(id, family, output), allowedInputs = allowed,
         defaults = defaults[intersect(names(defaults), allowed)],

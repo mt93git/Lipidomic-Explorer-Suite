@@ -60,7 +60,7 @@ it('round trip: the output of F1-F5 passes validateState', () => {
 });
 it('copy/paste and apply to tab carry the Nexo-only style: whole for the same series, axes/ticks/weights/margins for another chart, none for images; one undo', async () => {
   const { createStore } = await import('../state/store'); const { createHistory } = await import('../state/history'); const { validateNexo } = await import('../state/nexo');
-  const nexoStyle = { yaxis: { type: 'log' as const, min: 1 }, titleWeight: 'bold' as const, series: [{ index: 0, markerSymbol: 'square' as const }], shapes: [{ type: 'line' as const, x0: 0, x1: 1, y0: 2, y1: 2 }] };
+  const nexoStyle = { yaxis: { type: 'log' as const, min: 1 }, titleWeight: 'bold' as const, series: [{ index: 0, lineDash: 'dot' as const }], shapes: [{ type: 'line' as const, x0: 0, x1: 1, y0: 2, y1: 2 }] };
   const clip = copyStyle(plot('v'), violin, nexoStyle)!;
   expect(clip.nexoStyle).toEqual(nexoStyle);
   expect(pasteEntry(clip, plot('v2', { visual: {} }), violin)!.nexoStyle).toEqual(nexoStyle);
