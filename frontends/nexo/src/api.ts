@@ -557,7 +557,9 @@ function mockSessionColours<T>(id:string, figure:T):T {
 // Targeted lipid cohort (Team's Single Lipid Analysis Mode; frontends/nexo-api/cohort.R). A change redraws every card.
 export type CohortState = import('./mock/cohort').CohortState;
 if (mock) Object.assign(window, {__nexoCohortMock: mockCohortCounters});
-export const getCohort = sessionRoute('getCohort', (id:string, options?: RequestOptions):Promise<CohortState> => mock ? enqueue(async () => (mockSession(id), mockCohortGet(id)), {...options, shared:true}) : request(`${path(id)}/cohort`, undefined, undefined, undefined, {...options, shared:true}));
+// The live id is read when the request is sent, not when it is queued: a background read queued on the prepare session
+// goes to the Canvas session that replaced it (collab/session.ts), never to the closed one.
+export const getCohort = sessionRoute('getCohort', (id:string, options?: RequestOptions):Promise<CohortState> => mock ? enqueue(async () => (mockSession(id), mockCohortGet(id)), {...options, shared:true}) : enqueue(async () => send<CohortState>(`${path(liveSession(id))}/cohort`, undefined, 'GET', undefined, await adminHeaders()), {...options, shared:true}));
 export async function setCohort(id:string, lipids:string[]):Promise<CohortState> {
  const result = collab() ? await viaIntent('cohort', {}, {lipids}, () => getCohort(id)) : await sessionRoute('setCohort', (id:string) => mock ? enqueue(async () => (mockSession(id), mockCohortPut(id, {lipids}))) : request<CohortState>(`${path(id)}/cohort`, {lipids}, 'PUT'))(id);
  heldEdits(id).cohort = [...lipids];
