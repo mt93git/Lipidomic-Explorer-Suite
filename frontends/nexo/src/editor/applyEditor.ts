@@ -22,6 +22,14 @@ export function sourceKey(t:PlotObject,data:PlotObject[],legacy=false):string{
   let hash=2166136261;for(let c=0;c<signature.length;c++){hash^=signature.charCodeAt(c);hash=Math.imul(hash,16777619);}
   return JSON.stringify([parts[0],String(parts[1]).slice(0,100),String(parts[2]).slice(0,100),hash>>>0,0]);
 }
+// Team's publication format (eac6bb75) renamed each group's trace "<group> (n = N)" with legendgroup <group>. A series edit
+// saved before it keys the old trace (name = group, no legendgroup): it belongs to the one trace of that group.
+function renamedGroup(key:string,data:PlotObject[]):number{
+  let old:unknown;try{old=JSON.parse(key);}catch{return -1;}
+  if(!Array.isArray(old)||old.length!==5||typeof old[1]!=='string'||!old[1]||old[2]!=='')return -1;
+  const hits=data.flatMap((t,i)=>(t.type||'scatter')===old[0]&&t.legendgroup===old[1]&&String(t.name??'').replace(/ \(n = \d+\)$/,'')===old[1]&&t.name!==old[1]?[i]:[]);
+  return hits.length===1?hits[0]:-1;
+}
 // Trace types whose points take Team's marker shapes (www/team/js/plot_editor.js). 3D scatter only draws circle, square and diamond.
 const POINT_SCATTER=['scatter','scattergl','scatter3d','scatterpolar','scatterpolargl','scatterternary','scattergeo','scattercarpet'];
 export const symbolChoices=(t:PlotObject):readonly string[]=>t.type==='scatter3d'?['circle','square','diamond']:MARKER_SYMBOLS;
@@ -180,7 +188,7 @@ export function applyEditor(figure:Figure,editor:Editor|undefined,options:{publi
   const conditions=teamConditionsOf(original.layout),labels=[...new Set((conditions??original.data.map(t=>t.meta?.teamCondition||t.legendgroup||t.name)).filter(Boolean))];
   const patches=new Map<number,EditorTrace>();
   const allKeyed=original.data.every(t=>sourceKey(t,original.data)!=='');
-  for(const patch of s.traces??[]){if(!patch.sourceKey&&!allKeyed)continue;const index=patch.sourceKey?original.data.findIndex(t=>[sourceKey(t,original.data),sourceKey(t,original.data,true)].includes(patch.sourceKey!)):patch.index;if(index>=0)patches.set(index,patch);}
+  for(const patch of s.traces??[]){if(!patch.sourceKey&&!allKeyed)continue;let index=patch.sourceKey?original.data.findIndex(t=>[sourceKey(t,original.data),sourceKey(t,original.data,true)].includes(patch.sourceKey!)):patch.index;if(index<0&&patch.sourceKey)index=renamedGroup(patch.sourceKey,original.data);if(index>=0)patches.set(index,patch);}
   const hidden=new Set<number>();
   for(const [i,p] of patches)if(p.hidden){const t=original.data[i];if(!t)continue;original.data.forEach((a,j)=>{if(j===i||(t.legendgroup&&a.legendgroup===t.legendgroup&&(!t.meta?.teamPanel||a.meta?.teamPanel===t.meta.teamPanel)))hidden.add(j);});}
   const candidates=original.data.flatMap((t,i)=>t.visible!==false&&t.visible!=='legendonly'&&['x','y','z','values'].some(k=>t[k]?.length)?[i]:[]);

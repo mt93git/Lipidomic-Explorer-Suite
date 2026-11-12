@@ -157,3 +157,22 @@ describe('applyEditor with a one-condition study',()=>{
     expect(out.data[1].marker.color).toBe('#654321');
   });
 });
+// Team's publication format (eac6bb75) renames each PCA group's trace "<group> (n = N)" with legendgroup <group>. A series
+// edit saved before it keys the old trace (name = group, no legendgroup); it still applies to that group (card 24).
+describe('a series edit saved before the publication format', () => {
+  const oldKey = (group: string) => { const t = {type:'scatter', name:group, x:[1], y:[1]}; return sourceKey(t, [t]); };
+  const pca: Figure = {data: [
+    {type:'scatter',name:'GroupA (n = 4)',legendgroup:'GroupA',x:[1],y:[1]},
+    {type:'scatter',name:'GroupB (n = 5)',legendgroup:'GroupB',x:[2],y:[2]},
+    {type:'scatter',name:'GroupC (n = 6)',legendgroup:'GroupC',x:[3],y:[3]},
+  ], layout:{}};
+  it('hides and renames the group it was saved for', () => {
+    const out = applyEditor(pca, {traces:[{index:2, sourceKey:oldKey('GroupC'), name:'C', hidden:true}]});
+    expect(out.data.map(t => t.visible)).toEqual([undefined, undefined, false]);
+    expect(out.data[2].name).toBe('C');
+  });
+  it('matches nothing when no trace carries that group', () => {
+    const out = applyEditor(pca, {traces:[{index:2, sourceKey:oldKey('GroupD'), hidden:true}]});
+    expect(out.data.map(t => t.visible)).toEqual([undefined, undefined, undefined]);
+  });
+});
