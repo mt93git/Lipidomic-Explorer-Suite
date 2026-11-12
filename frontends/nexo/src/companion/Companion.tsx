@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { askCompanion } from '../api';
-import { adminUserId } from '../api/adminToken';
+import { adminAnswered, adminUserId } from '../api/adminToken';
 import { Art } from './Art';
 import { formatAnswer } from './markdown';
 import { autoTip, next, readFlags, readTipped, startPhase, writeFlag, writeTipped, type Phase, type Screen } from './model';
@@ -47,8 +47,10 @@ const dockFrames = (from: Box, to: Box): Keyframe[] => { const dx = from.x - to.
 const appearFrames: Keyframe[] = [{ opacity: 0, transform: 'translateY(40px) scale(.3)' }, { opacity: 1, transform: 'translateY(-6px) scale(1.06)', offset: .75 }, { opacity: 1, transform: 'none' }];
 
 export function Companion({ screen }: { screen: Screen }) {
-  const user = adminUserId() ?? 'local';
-  const [flags, setFlags] = useState(() => readFlags(storage(), user));
+  // The entry bar mounts it on the loading screen, before Admin says who is signed in: the flags are that person's once known.
+  const known = adminAnswered(), user = adminUserId() ?? 'local';
+  const [flags, setFlags] = useState(() => readFlags(storage(), user)), [flagsOf, setFlagsOf] = useState(user);
+  if (flagsOf !== user) { setFlagsOf(user); setFlags(readFlags(storage(), user)); }
   const [phase, setPhase] = useState<Phase>('docked'), [floating, setFloating] = useState<Box | null>(null);
   const [tip, setTip] = useState<{ screen: Screen; auto: boolean } | null>(null);
   const [bubble, setBubble] = useState(false), [hello, setHello] = useState(false), [chat, setChat] = useState(false), [move, setMove] = useState(0);
@@ -99,9 +101,9 @@ export function Companion({ screen }: { screen: Screen }) {
   // The chat's question takes the focus: landing must not hand it back to the dock (typed keys would leave the question).
   function openChat() { if (phase === 'out') { back('dismiss'); refocus.current = false; } setTip(null); setChat(true); }
   function toggleFewer(value: boolean) { writeFlag(storage(), user, 'fewer', value); setFlags(f => ({ ...f, fewer: value })); }
-  // The entrance: Start, first visit only. A remount after it began (the canvas opened) docks it from where it stood.
+  // The entrance: Start, first visit only, once Admin answered. A remount after it began (the canvas opened) docks it from where it stood.
   useLayoutEffect(() => { if (shared.entering) dock(); return clear; }, []);
-  useLayoutEffect(() => { if (!shared.entering && !shared.played && phase === 'docked' && startPhase(flags, screen) === 'entrance') enter(); }, [screen]);
+  useLayoutEffect(() => { if (known && !shared.entering && !shared.played && phase === 'docked' && startPhase(flags, screen) === 'entrance') enter(); }, [screen, known]);
   // Out: Esc or a click anywhere else sends it back to the dock.
   useEffect(() => {
     if (phase !== 'out') return;
