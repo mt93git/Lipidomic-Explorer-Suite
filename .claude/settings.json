@@ -9,13 +9,13 @@
       "Bash(git reset --hard:*)",
       "Bash(git clean -fd:*)",
       "Bash(git add .:*)",
-      "Bash(git add -A:*)",
-      "Bash(gh pr merge:*)"
+      "Bash(git add -A:*)"
     ],
     "ask": [
       "Bash(git push:*)",
       "Bash(gh pr create:*)",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr merge:*)"
     ]
   }
 }

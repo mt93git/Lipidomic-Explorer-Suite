@@ -1,0 +1,8 @@
+[Unit]
+Description=Lab auto-deploy of Nexo and Admin (%i)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/lab-deploy/autodeploy.sh %i
+Nice=10
+TimeoutStartSec=2400
