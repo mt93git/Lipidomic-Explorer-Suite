@@ -74,11 +74,16 @@ async function browserTests(pw, name, base) {
     await button(page.getByRole('dialog', { name: 'Arrange your plots', exact: true }), 'Chat with the neutrophil guide').click();
     const panel = page.getByRole('region', { name: 'Chat with the neutrophil guide', exact: true });
     await panel.getByRole('heading', { name: 'How can I help?', exact: true }).waitFor();
-    await panel.getByRole('textbox', { name: 'Question for the guide' }).fill('What does PCA show?');
+    // Keys typed while it flies back stay in the question: landing does not move the focus to the dock.
+    await page.locator('.companion-fly').waitFor({ state: 'detached', timeout: 3_000 });
+    await page.waitForTimeout(100);
+    const question = panel.getByRole('textbox', { name: 'Question for the guide' });
+    assert.equal(await question.evaluate(el => el === document.activeElement), true, 'the question keeps the focus after the flight');
+    await page.keyboard.type('What does PCA show?');
+    assert.equal(await question.inputValue(), 'What does PCA show?');
     await button(panel, 'Send').click();
     await panel.locator('.companion-a strong', { hasText: 'Definition' }).waitFor();
     assert.equal(await panel.locator('.companion-label').last().textContent(), 'Knowledge base · 3 passages');
-    await page.locator('.companion-fly').waitFor({ state: 'detached', timeout: 3_000 }); // back in the dock above the panel
     await shot(page, 'chat');
     console.log(`PASS COMPANION ${name} chat-answers`);
     assert.deepEqual(errors, []);
