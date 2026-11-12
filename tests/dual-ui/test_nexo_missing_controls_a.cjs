@@ -58,17 +58,18 @@ async function browserTests(pw, name, base) {
     // --- 1. Species plot ---------------------------------------------------------------------------------------
     const speciesId = await add(SPECIES), species = await instanceOf(speciesId);
     await open(speciesId);
-    const initiate = inspector.getByRole('button', { name: 'Initiate Structural Analysis', exact: true });
-    await initiate.waitFor();
-    assert.equal(await inspector.getByText('Select Shifts to Visualize:', { exact: true }).count(), 0, 'no shift selector before the action');
-    await waitLabel(species, /Initiate Structural Analysis/, 'placeholder before the action');
+    // NEXO-P2 (Team card_status.js autoRun): the card runs its structural analysis itself, then, once the shift list exists
+    // (Team's default: the first four), loads its species plot itself; each step once.
+    await waitLabel(species, /· 4 shifts: PC \| PC 34:1, PE \| PE 36:2, TG \| TG 52:2, SM \| SM d18:1\/16:0$/, 'the species plot loaded by itself');
+    assert.deepEqual(await page.evaluate(i => window.__nexoMock.cardPatches.filter(p => p.instance === i && p.body.actions?.length).map(p => p.body.actions), species), [['runAnalysis'], ['updateSpecies']]);
+    assert.deepEqual(await page.evaluate(id => window.__nexo.store.get().nexo.nodes[id]?.actions, speciesId), ['runAnalysis', 'updateSpecies']);
+    await inspector.getByRole('button', { name: 'Initiate Structural Analysis', exact: true }).waitFor();
     // The differential tab's controls: Team's tab title, never the raw value.
     assert.equal(await inspector.locator('legend', { hasText: 'Differential Acyl Chain Expression' }).count(), 1, 'differential tab titled as in Team');
     assert.equal(await inspector.locator('legend', { hasText: 'differential_view' }).count(), 0, 'no raw differential_view heading');
-    console.log(`PASS MCA ${name} species-before-action-no-selector-titled-groups`);
-    await initiate.click();
+    console.log(`PASS MCA ${name} species-runs-and-loads-itself-titled-groups`);
     const shifts = inspector.locator('select#selectedDetails');
-    await shifts.waitFor({ timeout: 10000 }).catch(() => { throw new Error('no "Select Shifts to Visualize:" after Initiate Structural Analysis'); });
+    await shifts.waitFor({ timeout: 10000 }).catch(() => { throw new Error('no "Select Shifts to Visualize:" after the structural analysis'); });
     assert.equal(await inspector.getByText('Select Shifts to Visualize:', { exact: true }).count(), 1);
     assert.deepEqual(await shifts.evaluate(s => [...s.selectedOptions].map(o => o.value)), ['PC | PC 34:1', 'PE | PE 36:2', 'TG | TG 52:2', 'SM | SM d18:1/16:0'], "Team's default: the first four shifts");
     assert.equal(await shifts.locator('option').count(), 6);

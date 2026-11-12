@@ -51,7 +51,7 @@ export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:(
   useEffect(() => { const armed = (e: Event) => setCommenting((e as CustomEvent<boolean>).detail); addEventListener('nexo-comment-armed', armed); return () => removeEventListener('nexo-comment-armed', armed); }, []);
   const comment = collab() && canComment() && <button aria-pressed={commenting} onClick={() => dispatchEvent(new Event('nexo-comment-mode'))}>Comment</button>;
   const tidy = !readOnly && <button disabled={!handle} onClick={() => handle?.tidy()}>{s.tidy}</button>;
-  // "Undo mine" (product owner, 2026-11-10): with nothing on the geometry stack, Undo takes back my last settled science change (collab/intents.ts).
+  // "Undo mine" (Gerardo, 2026-11-10): with nothing on the geometry stack, Undo takes back my last settled science change (collab/intents.ts).
   const [mine, setMine] = useState(false);
   useEffect(() => { const told = (e: Event) => setMine((e as CustomEvent<boolean>).detail); addEventListener('nexo-undo-mine', told); return () => removeEventListener('nexo-undo-mine', told); }, []);
   const history = !readOnly && <><button disabled={!handle?.canUndo && !mine} onClick={() => { if (handle?.canUndo) handle.undo(); else void import('../collab/intents').then(m => m.undoMine()); }}>{s.undoTool}</button><button disabled={!handle?.canRedo} onClick={() => handle?.redo()}>{s.redoTool}</button></>;

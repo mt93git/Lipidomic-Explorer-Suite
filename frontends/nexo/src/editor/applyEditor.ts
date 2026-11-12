@@ -1,4 +1,4 @@
-import { isHex, serializeEditor, type Editor } from './editorState';
+import { isHex, MARKER_SYMBOLS, serializeEditor, type Editor } from './editorState';
 import { PALETTES } from './palettes';
 import type { EditorTrace } from '../state/document';
 // Plotly JSON is extensible; keep arbitrary scientific attributes at this boundary.
@@ -22,9 +22,58 @@ export function sourceKey(t:PlotObject,data:PlotObject[],legacy=false):string{
   let hash=2166136261;for(let c=0;c<signature.length;c++){hash^=signature.charCodeAt(c);hash=Math.imul(hash,16777619);}
   return JSON.stringify([parts[0],String(parts[1]).slice(0,100),String(parts[2]).slice(0,100),hash>>>0,0]);
 }
+// Trace types whose points take Team's marker shapes (www/team/js/plot_editor.js). 3D scatter only draws circle, square and diamond.
+const POINT_SCATTER=['scatter','scattergl','scatter3d','scatterpolar','scatterpolargl','scatterternary','scattergeo','scattercarpet'];
+export const symbolChoices=(t:PlotObject):readonly string[]=>t.type==='scatter3d'?['circle','square','diamond']:MARKER_SYMBOLS;
 export function seriesCapabilities(t:PlotObject){
   const type=t.type||'scatter',mode=String(t.mode||'markers'),scatter=['scatter','scattergl'].includes(type);
-  return {marker:scatter?mode.includes('markers'):['bar','histogram','box','violin','waterfall'].includes(type),markerSize:scatter&&mode.includes('markers'),line:scatter?mode.includes('lines'):['box','violin','bar','histogram'].includes(type),fill:['box','violin','bar','histogram'].includes(type)||!!(scatter&&t.fill&&t.fill!=='none'&&!t.fillgradient),continuous:['heatmap','contour','histogram2d'].includes(type)};
+  // Every trace that draws point markers: scatter-like traces in markers mode, and the sample points of a box or violin.
+  const pointer=(POINT_SCATTER.includes(type)&&mode.includes('markers'))||(type==='box'&&t.boxpoints!==false&&t.boxpoints!=='false')||(type==='violin'&&t.points!==false&&t.points!=='false');
+  return {marker:POINT_SCATTER.includes(type)?mode.includes('markers'):['bar','histogram','box','violin','waterfall'].includes(type),pointer,markerSize:pointer,line:scatter?mode.includes('lines'):['box','violin','bar','histogram'].includes(type),fill:['box','violin','bar','histogram'].includes(type)||!!(scatter&&t.fill&&t.fill!=='none'&&!t.fillgradient),continuous:['heatmap','contour','histogram2d'].includes(type)};
+}
+// Group outlines (Team 23d288aa): the plotted numeric coordinates of a trace.
+function numericPoints(t:PlotObject):[number,number][]{
+  const xs=t.x,ys=t.y,list=(v:unknown):v is ArrayLike<unknown>=>Array.isArray(v)||ArrayBuffer.isView(v);if(!list(xs)||!list(ys))return [];
+  const out:[number,number][]=[];for(let i=0;i<Math.min(xs.length,ys.length);i++){const x=Number(xs[i]),y=Number(ys[i]);if(typeof xs[i]!=='string'&&typeof ys[i]!=='string'&&Number.isFinite(x)&&Number.isFinite(y))out.push([x,y]);}
+  return out;
+}
+// 95% data ellipse: squared Mahalanobis radius of a chi-square with 2 degrees of freedom; same path as Team's.
+const ELLIPSE_CHI2=5.991,ELLIPSE_STEPS=72,ELLIPSE_PREFIX='team-ellipse:';
+function ellipsePath(points:[number,number][]){
+  const n=points.length;if(n<3)return null;
+  let mx=0,my=0;for(const p of points){mx+=p[0];my+=p[1];}mx/=n;my/=n;
+  let sxx=0,syy=0,sxy=0;for(const p of points){const dx=p[0]-mx,dy=p[1]-my;sxx+=dx*dx;syy+=dy*dy;sxy+=dx*dy;}sxx/=n-1;syy/=n-1;sxy/=n-1;
+  const tr=sxx+syy,det=sxx*syy-sxy*sxy,disc=Math.sqrt(Math.max(0,tr*tr/4-det)),l1=tr/2+disc,l2=tr/2-disc;
+  if(!(l1>0)||!(l2>1e-12*l1))return null;
+  // Unit eigenvector of l1 (major axis); the minor axis is perpendicular.
+  let vx:number,vy:number;if(Math.abs(sxy)>1e-12){vx=l1-syy;vy=sxy;}else if(sxx>=syy){vx=1;vy=0;}else{vx=0;vy=1;}
+  const len=Math.hypot(vx,vy);vx/=len;vy/=len;
+  const a=Math.sqrt(ELLIPSE_CHI2*l1),b=Math.sqrt(ELLIPSE_CHI2*l2),coords:number[]=[];let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  for(let k=0;k<ELLIPSE_STEPS;k++){const th=2*Math.PI*k/ELLIPSE_STEPS,u=a*Math.cos(th),v=b*Math.sin(th),x=mx+u*vx-v*vy,y=my+u*vy+v*vx;
+    coords.push(x,y);xmin=Math.min(xmin,x);xmax=Math.max(xmax,x);ymin=Math.min(ymin,y);ymax=Math.max(ymax,y);}
+  let path='M';for(let j=0;j<coords.length;j+=2)path+=(j?' L':'')+Number(coords[j].toPrecision(6))+','+Number(coords[j+1].toPrecision(6));
+  return {path:path+' Z',bounds:{x:[xmin,xmax],y:[ymin,ymax]}};
+}
+/** Group outlines: one dotted ellipse per visible marker series, in its marker color, as layout shapes. Presentation only. */
+function groupOutlines(out:Figure,original:Figure){
+  const shapes:PlotObject[]=[],bounds:Record<'x'|'y',number[]>={x:[Infinity,-Infinity],y:[Infinity,-Infinity]};
+  for(const i of ellipseSeries(out)){
+    const t=out.data[i],key=sourceKey(original.data[i],original.data),color=t.marker?.color;
+    if(!key||t.visible===false||t.visible==='legendonly'||typeof color!=='string')continue;
+    const e=ellipsePath(numericPoints(t));if(!e)continue;
+    shapes.push({type:'path',name:ELLIPSE_PREFIX+key,xref:'x',yref:'y',path:e.path,line:{color,width:1.5,dash:'dot'},fillcolor:'rgba(0,0,0,0)',layer:'above',editable:false});
+    for(const a of ['x','y'] as const){bounds[a][0]=Math.min(bounds[a][0],e.bounds[a][0]);bounds[a][1]=Math.max(bounds[a][1],e.bounds[a][1]);}
+  }
+  if(!shapes.length)return;
+  out.layout.shapes=[...(out.layout.shapes??[]),...shapes];
+  // Plotly autoranges to shapes; an axis whose range R fixed is widened just enough to show the whole outline.
+  for(const a of ['x','y'] as const){const axis=out.layout[a+'axis'];if(!axis||!Array.isArray(axis.range)||axis.autorange===true||(axis.type&&axis.type!=='linear'))continue;
+    const [r0,r1]=axis.range.map(Number),flipped=r0>r1,pad=(bounds[a][1]-bounds[a][0])*0.03,lo=Math.min(r0,r1,bounds[a][0]-pad),hi=Math.max(r0,r1,bounds[a][1]+pad);
+    axis.range=flipped?[hi,lo]:[lo,hi];axis.autorange=false;}
+}
+/** Marker series that can carry a group outline: a 2D scatter in markers mode on the default axes, outside panels, with 3+ points. */
+export function ellipseSeries(f:Figure):number[]{
+  return f.data.flatMap((t,i)=>seriesCapabilities(t).markerSize&&['scatter','scattergl'].includes(t.type||'scatter')&&(!t.xaxis||t.xaxis==='x')&&(!t.yaxis||t.yaxis==='y')&&!t.meta?.teamPanel&&numericPoints(t).length>=3?[i]:[]);
 }
 export const editableColor=(t:PlotObject,path:string)=>{const obj=readPath(t,path)||{};return (obj.color==null||['string','number','boolean'].includes(typeof obj.color))&&!obj.colorscale&&!obj.coloraxis;};
 export const supportsHeatScale=(t:PlotObject)=>t.type==='heatmap'&&!t.coloraxis&&!t.reversescale&&t.zmid==null;
@@ -66,19 +115,17 @@ function orient(f:Figure):Figure{
   }
   return {data,layout};
 }
-function publicationGroup(label:string):string|undefined{
-  const key=label.toLowerCase().replace(/[^a-z]/g,'');
-  if(/^healthy(?:$|[_ -])/i.test(label))return '#7A7A7A';
-  if(['steady','steadystate','scsteadystate'].includes(key))return '#377eb8';
-  if(['pain','crisis','paincrisis','scpaincrisis'].includes(key))return '#d82332';
-}
+// Plotly gives these traces an x and a y axis even when the layout names none.
+const CARTESIAN=['scatter','scattergl','bar','box','violin','heatmap','contour','histogram','histogram2d','waterfall'];
+/** Publication style as Team's final plot_editor.js: only a full frame around the plot (mirrored black axis lines), black
+ * zero lines and Arial 10; grid lines are removed; a 0.4 marker outline on every point series. Colors and backgrounds stay. */
 export function publicationEditor(figure:Figure,editor?:Editor):Editor{
   const source=baselineOf(figure),next=serializeEditor(editor);
-  Object.assign(next.layout!,{'paper_bgcolor':'#ffffff','plot_bgcolor':'#ffffff','font.family':'Arial','font.color':'#000000','font.size':12,'title.font.family':'Arial','title.font.color':'#000000','title.font.size':16,'legend.font.family':'Arial','legend.font.color':'#000000','legend.font.size':11,'legend.bgcolor':'#ffffff'});
-  for(const axis of ['xaxis','yaxis'])if(source.layout[axis])Object.assign(next.layout!,{[axis+'.showgrid']:false,[axis+'.showline']:true,[axis+'.linewidth']:0.75,[axis+'.color']:'#000000',[axis+'.title.font.size']:12,[axis+'.tickfont.size']:11});
-  source.data.forEach((t,index)=>{const a=publicationGroup(t.name||''),b=publicationGroup(t.legendgroup||''),color=a||b;if(!color||(a&&b&&a!==b)||!editableColor(t,'marker'))return;
-    let patch=next.traces!.find(p=>p.index===index);if(!patch){patch={index};next.traces!.push(patch);}patch.color=color;if(editableColor(t,'line'))patch.lineColor=color;if(seriesCapabilities(t).fill)patch.fillColor=color;
-  });return next;
+  Object.assign(next.layout!,{'font.family':'Arial','font.size':10,'title.font.family':'Arial','title.font.size':10,'legend.font.family':'Arial','legend.font.size':10});
+  for(const axis of ['xaxis','yaxis'])if(source.layout[axis]||source.data.some(t=>CARTESIAN.includes(t.type||'scatter')))Object.assign(next.layout!,{[axis+'.showgrid']:false,[axis+'.showline']:true,[axis+'.mirror']:true,[axis+'.linecolor']:'#000000',[axis+'.linewidth']:1,[axis+'.zeroline']:true,[axis+'.zerolinecolor']:'#000000',[axis+'.zerolinewidth']:1,[axis+'.title.font.size']:10,[axis+'.tickfont.size']:10});
+  source.data.forEach((t,index)=>{const key=sourceKey(t,source.data);if(!key||!seriesCapabilities(t).pointer||['bar','histogram'].includes(t.type))return;
+    let patch=next.traces!.find(p=>p.sourceKey===key);if(!patch){patch={index,sourceKey:key};next.traces!.push(patch);}patch.markerLineWidth=0.4;
+  });return serializeEditor(next);
 }
 /** Study conditions from layout.meta; the API's auto_unbox sends a one-level study as a bare string. */
 export function teamConditionsOf(layout:Figure['layout']):string[]|undefined{
@@ -98,6 +145,21 @@ export function nexoEditor(figure:Figure,editor?:Editor):Editor{
   next.traces=(next.traces??[]).map(t=>{const n={...t};for(const k of ['color','lineColor','fillColor','fillOpacity'] as const)delete n[k];return n;});
   return next;
 }
+/** What a preset button gives. Every setting a preset makes that the editor still holds goes back to the figure's own
+ *  (what Reset presentation gives) before the chosen preset applies, so the last preset chosen wins. The user's own
+ *  edits stay, made before or after a preset, as Team's Publication (plot_editor.js, on its current state) keeps them. */
+export function presetEditor(preset:Preset,figure:Figure,editor?:Editor):Editor{
+  if(preset==='team')return {};
+  const next=serializeEditor(editor),layout=next.layout as Record<string,unknown>;
+  for(const made of [nexoEditor(figure,{}),publicationEditor(figure,{})]){
+    for(const [key,value] of Object.entries(made.layout??{}))if(layout[key]===value)delete layout[key];
+    if(made.palette&&next.palette===made.palette)delete next.palette;
+    if(made.greyHealthy&&next.greyHealthy===made.greyHealthy)delete next.greyHealthy;
+    for(const t of made.traces??[]){const p=next.traces?.find(x=>x.sourceKey===t.sourceKey);if(p&&p.markerLineWidth===t.markerLineWidth)delete p.markerLineWidth;}
+  }
+  next.traces=next.traces?.filter(t=>Object.keys(t).some(k=>k!=='index'&&k!=='sourceKey'));
+  return preset==='nexo'?nexoEditor(figure,next):publicationEditor(figure,next);
+}
 /** Which preset the editor currently sits on: Team original when nothing is changed, Nexo or Publication when applying
  * that preset again would change nothing. Custom tweaks on top of a preset report no preset. */
 export function presetOf(figure:Figure,editor?:Editor):Preset|undefined{
@@ -106,6 +168,9 @@ export function presetOf(figure:Figure,editor?:Editor):Preset|undefined{
   if(current===JSON.stringify(nexoEditor(figure,editor)))return 'nexo';
   if(current===JSON.stringify(publicationEditor(figure,editor)))return 'publication';
 }
+/** Default text of every Plotly figure a card draws: Arial 10, as Team's newPlot/react wrapper (01dd860d). Applied to the
+ *  figure as drawn, before the editor, so the editor's own font settings still override it and Reset returns to it. */
+export const withTeamFont=(f:Figure):Figure=>({...f,layout:{...f.layout,font:{...f.layout?.font,family:'Arial, Helvetica, sans-serif',size:10}}});
 /** Pure figure transform. Outputs carry private weak provenance for repeat application/reset.
  * After serialization, apply to a retained baselineOf(original), not the rendered JSON.
  */
@@ -133,17 +198,26 @@ export function applyEditor(figure:Figure,editor:Editor|undefined,options:{publi
     p={...p,...patches.get(index)};
     if(p.name!==undefined)t.name=safeText(p.name);
     if(hidden.has(index))t.visible=false;
-    if(p.color&&editableColor(source,'marker'))writePath(t,'marker.color',p.color);
+    // A point trace takes one marker color even over per-point colors (Team 006468be); Reset presentation restores them.
+    if(p.color&&(editableColor(source,'marker')||caps.pointer))writePath(t,'marker.color',p.color);
+    if(p.markerSymbol&&caps.pointer&&symbolChoices(source).includes(p.markerSymbol))writePath(t,'marker.symbol',p.markerSymbol);
+    if(caps.pointer&&!['bar','histogram'].includes(source.type)){if(p.markerLineWidth!==undefined)writePath(t,'marker.line.width',p.markerLineWidth);if(p.markerLineColor)writePath(t,'marker.line.color',p.markerLineColor);}
     if(p.lineColor&&editableColor(source,border))writePath(t,border+'.color',p.lineColor);
     if(p.lineWidth!==undefined)writePath(t,border+'.width',p.lineWidth);
     if(caps.fill&&(fill!=='marker.color'||editableColor(source,'marker'))&&p.fillColor)writePath(t,fill,rgba(p.fillColor,p.fillOpacity??alpha(readPath(source,fill))));
     if(p.markerSize!==undefined&&!Array.isArray(source.marker?.size))writePath(t,'marker.size',p.markerSize);
+    // Per-point sizes (Team ba774a0e): scaled proportionally from the series' own sizes, so their mean becomes markerSize.
+    else if(p.markerSize!==undefined&&caps.pointer){const base:unknown[]=source.marker.size,mean=base.reduce((a:number,b)=>a+(Number(b)||0),0)/base.length||1;writePath(t,'marker.size',base.map(v=>Math.max(1,(Number(v)||0)*p.markerSize!/mean)));}
     if(p.opacity!==undefined)t.opacity=p.opacity;
     if(source.type==='violin'){if(p.points!==undefined)t.points=p.points?'all':false;if(p.innerBox!==undefined)writePath(t,'box.visible',p.innerBox);
-      // Team tints the inner box from its own colour; follow the palette so the box never keeps a previous hue.
-      if(p.fillColor&&isHex(p.fillColor)&&typeof source.box?.fillcolor==='string'){writePath(t,'box.fillcolor',darker(p.fillColor,.15));if(typeof source.box?.line?.color==='string')writePath(t,'box.line.color',darker(p.fillColor,.60));}}
+      // The box inside a violin follows the violin's fill: the same color two shades darker (two 15% steps), with a darker outline (Team bb410e93).
+      if(isHex(p.fillColor)){writePath(t,'box.fillcolor',darker(p.fillColor,.30));writePath(t,'box.line.color',darker(p.fillColor,.60));}}
     if(supportsHeatScale(source)&&p.scaleLow&&p.scaleMid&&p.scaleHigh){t.colorscale=[[0,p.scaleLow],[0.5,p.scaleMid],[1,p.scaleHigh]];t.autocolorscale=false;}
   });
+  if(s.groupEllipses===true)groupOutlines(out,original);
+  // A round legend proxy (meta.teamLegendProxy, Team 01dd860d) takes the marker color of the series in its legend group.
+  for(const proxy of out.data.filter(t=>t.meta?.teamLegendProxy)){const series=out.data.find(t=>t!==proxy&&!t.meta?.teamLegendProxy&&t.legendgroup&&t.legendgroup===proxy.legendgroup);
+    const c=Array.isArray(series?.marker?.color)?series.marker.color[0]:series?.marker?.color;if(typeof c==='string')writePath(proxy,'marker.color',c);}
   for(const [k,v] of Object.entries(s.layout??{}))writePath(out.layout,k,k.endsWith('title.text')&&typeof v==='string'?safeText(v):v);
   // A 3D scene ignores plot_bgcolor: "Plot background" (the area behind the data) is the scene's bgcolor there.
   const bg=s.layout?.plot_bgcolor;

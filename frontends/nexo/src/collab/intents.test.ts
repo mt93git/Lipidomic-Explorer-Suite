@@ -48,7 +48,7 @@ it('a refused intent on a card reloads that card\'s form', async () => {
   } finally { vi.unstubAllGlobals(); }
 });
 
-// "Undo mine" (product owner, 2026-11-10, UX review 2 question 3): after my own settled inputs intent, Undo sends a new inputs
+// "Undo mine" (Gerardo, 2026-11-10, UX review 2 question 3): after my own settled inputs intent, Undo sends a new inputs
 // intent with my previous values for exactly the fields I changed, only if the board still holds my values for them.
 function board(provider: ReturnType<typeof fakeProvider>, inputs: Record<string, unknown>) {
   provider.document.getMap('nodes').set('n1', new Y.Map([['instance', new Y.Map([['inputs', new Y.Map(Object.entries(inputs))]])]]));

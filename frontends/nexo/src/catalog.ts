@@ -25,3 +25,6 @@ export function renderKindFor(nodeId: string, catalog: CatalogEntry[] | Catalog)
   const outputs = Array.isArray(catalog) ? catalog : catalog.outputs;
   return outputs.find(e => e.id === nodeId || nodeId.endsWith(`-${e.output}`))?.render ?? 'plotly';
 }
+/** The size a new card opens at. A Composition overview opens 560 px tall, as Team's (www/team/js/canvas.js newCardSize,
+ *  compact shell); saved cards keep their saved size. */
+export const newCardSize = (entry: CatalogEntry) => entry.id === 'results_dashboard-plot_comp' ? { ...entry.defaultSize, height: 560 } : entry.defaultSize;

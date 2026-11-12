@@ -152,7 +152,7 @@ api_pool_worker_held <- function() tryCatch({
 }, error = function(e) character())
 api_pool_worker_error <- function(e) {
   kinds <- c("api_bad_request", "api_not_found", "api_conflict", "api_unprocessable", "api_unavailable", "session_lost")
-  list(ok = FALSE, class = intersect(class(e), kinds)[1L], message = conditionMessage(e))
+  list(ok = FALSE, class = intersect(class(e), kinds)[1L], message = conditionMessage(e), note = isTRUE(e$note))
 }
 api_pool_worker_rss <- function() tryCatch(as.numeric(gsub("[^0-9]", "", grep("^VmRSS:", readLines("/proc/self/status"), value = TRUE)[[1L]])) / 1024,
   error = function(e) NA_real_)
@@ -479,7 +479,7 @@ api_pool_finish <- function(job, out, render_here) {
   if (!isTRUE(out$ok)) {
     # The module's own refusal (req()/validate()) is the same in any process: forward it. Any other
     # worker error (its session lost, a 400 from its card) is the worker's: draw here (H9 review P1).
-    if (identical(out$class, "api_unprocessable")) api_abort(out$class, out$message)
+    if (identical(out$class, "api_unprocessable")) api_abort(out$class, out$message, note = out$note)
     return(render_here())
   }
   result <- out$value

@@ -26,7 +26,7 @@ const richNodes: Node[] = [
 const richTabs = tabsModel.initial(richNodes.map(n => n.id));
 tabsModel.addTab(richTabs, 'Figures'); tabsModel.moveNode(richTabs, richNodes[2].id, richTabs.active); richTabs.active = richTabs.tabs[0].id;
 richTabs.figure = {deselected:[richNodes[1].id], order:[richNodes[2].id,richNodes[0].id]};
-const nexo: Nexo = {version:1, nodes:{[nodes[0].id]:{style:{titleWeight:'bold', series:[{index:0,markerSymbol:'diamond'}]}, inputs:{selectedDetails:'GP_PC | Total Carbons', upload:{name:'synthetic.csv',content:'x,y\n1,2'}}, actions:['runAnalysis','updateSpecies']}}, design:{unit:'Animal',type:'independent'}};
+const nexo: Nexo = {version:1, nodes:{[nodes[0].id]:{style:{titleWeight:'bold', series:[{index:0,lineDash:'dash'}]}, inputs:{selectedDetails:'GP_PC | Total Carbons', upload:{name:'synthetic.csv',content:'x,y\n1,2'}}, actions:['runAnalysis','updateSpecies']}}, design:{unit:'Animal',type:'independent'}};
 const cases = [
  {name:'three nodes with inputs and tabs', state:{version:'1', libraryHidden:false, nodes, document:null}, tabs:other},
  {name:'default tabs and PNG finished snapshot', state:{version:'1',libraryHidden:false,nodes:[{...nodes[0],finished:{url:png,createdAt:'2026-01-01T00:00:00Z',stale:false}}],document:null}, tabs:tabsModel.initial([nodes[0].id])},

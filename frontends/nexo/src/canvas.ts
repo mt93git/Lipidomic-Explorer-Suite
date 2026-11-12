@@ -7,16 +7,17 @@ import { align, distribute } from './canvas/align';
 import {dataUrl,list as illustrationAssets} from './illustrations/assets';
 import type {Visual} from './state/document';
 import {setAppearance} from './state/visualCommands';
-import { availability, availabilityReasons, groupCatalog, renderKindFor } from './catalog';
+import { availability, availabilityReasons, groupCatalog, renderKindFor, newCardSize } from './catalog';
 import { clickSourceFor } from './plotlyClick';
 import { place } from './place';
 import { Card } from './cards';
+import { autoRunStep, claimAutoRun } from './runNeeds';
 import { getCatalog, createCard, confirmDesign, updateCard, updatePalette, replayActions, violinStatistics, parkCards, figureIntent, type CatalogEntry, type Node, type Session } from './api';
 import { setSessionPalette, type WithPalette } from './palette/sessionPalette';
 import { forgetPaletteRedraw } from './palette/paletteRedraw';
 import {applyNexoStyle} from './editor/applyNexoStyle';
 import {applyEditor} from './editor/applyEditor';
-import {validateNexo,setNexoStyle,setNexoInputs,withSavedDesign} from './state/nexo';
+import {validateNexo,migrateMarkerSymbols,setNexoStyle,setNexoInputs,withSavedDesign} from './state/nexo';
 import {setNexoComputed,computedResends,carryComputed,validateComputed} from './state/computed';
 import {actionReplays,recordAction,recordedActions,replayFailures,replayRecorded,setReplayFailures} from './state/actions';
 import {setNexoActions} from './state/nexo';
@@ -26,7 +27,7 @@ import {designerActions} from './timecourse/designer';
 const hasTeamInstance = (n: { instance?: unknown } | undefined) => { const i = n?.instance as { id?: unknown; instanceId?: unknown } | null | undefined; return !!(i?.id || i?.instanceId); };
 import { createStore } from './state/store';
 import { createHistory } from './state/history';
-import { cardHeightFor, heightInputCommands, plotHeightOf, reopenPlotHeight, PLOT_HEIGHT } from './canvas/plotHeight';
+import { cardHeightFor, heightInputCommands, plotHeightOf, PLOT_HEIGHT } from './canvas/plotHeight';
 import { setFinished, addNode, moveNodes, resizeNode, removeNodes, setGeometry, setNodeInputs, styleNodes } from './state/commands';
 import { settle } from './canvas/settle';
 import { clampSize, positionCommands, sizeCommands } from './ui/Inspector/cardSize';
@@ -80,7 +81,9 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     const copy=structuredClone(value);
     return {kind:'setStatistics',apply(doc){return {...doc,nodes:doc.nodes.map(n=>n.id===id?{...n,statistics:structuredClone(copy)}:n)};},invert(doc){return statisticsCommand(id,(doc.nodes.find(n=>n.id===id) as Node)?.statistics??null);}};
   }
-  const store = createStore({...structuredClone(session.canvas),nexo:validateNexo(session.nexo,session.canvas.nodes.map(n=>n.id))});
+  // NEXO-P3: a saved Nexo marker symbol moves to Team's markerSymbol before validateNexo drops it.
+  const canvas = structuredClone(session.canvas);
+  const store = createStore({...canvas,nodes:migrateMarkerSymbols(canvas.nodes,session.nexo),nexo:validateNexo(session.nexo,canvas.nodes.map(n=>n.id))});
   const teamView=new Set<string>();
   let history: Pick<ReturnType<typeof createHistory>, 'dispatch' | 'undo' | 'redo' | 'canUndo' | 'canRedo' | 'cursor'> & { origin?: { kind: string } } = createHistory(store);
   const perf = { lastDrawMs: NaN, draws: 0 };
@@ -165,6 +168,17 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   const sentComputed = new Map<string, string>();
   // Pilot F1: the session palette last sent to the API (the document's sessionPalette), so undo/redo re-send only real changes.
   let sentPalette: string | undefined;
+  /** NEXO-P2 (Team card_status.js autoRun): Remodeling shifts and Species press their structural steps themselves once the
+   *  comparison is ready, once per card and step, through the card run action (updateCard), recorded as a manual press. */
+  function autoRun(c: Card, n: Node) {
+    const instance = n.instance?.instanceId ?? n.instance?.id;
+    if (isReadOnly() || !instance || n.finished) return;
+    const step = autoRunStep(n.instance?.source ?? n.id, !needsStudyDesign(n, catalog, session.design), recordedActions(store.get().nexo.nodes[n.id]?.actions), c.inputs);
+    if (!step || !claimAutoRun(`${session.sessionId}/${instance}|${step}`)) return;
+    void updateCard(session.sessionId, instance, {}, [step]).then(result => {
+      Object.assign(c.inputs, result.inputs); store.set(doc => recordAction(n.id, step).apply(doc)); c.reload(); autoRun(c, n);
+    }, () => undefined);
+  }
   function add(node: Node) {
     const c = new Card(node, session, inspect, renderKindFor(node.id, catalog), restoringIds.has(node.id));
     const fixedInputs = hasTeamInstance(node) ? undefined : store.get().nexo.nodes[node.id]?.inputs;
@@ -253,7 +267,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       const restored = n.kind === 'plot' && !!target && JSON.stringify(previous) !== JSON.stringify(target) && JSON.stringify(c.inputs) !== JSON.stringify(target);
       c.fixedInputs = fixedInputs && structuredClone(fixedInputs);
       Object.assign(c.node, structuredClone(n));
-      c.plotBody = !!heightInputFor(n);
+      c.plotInput = heightInputFor(n);
       // Undo removes an appearance field the node never had (visualCommands): the card's copy drops it too.
       for (const k of ['color', 'visual'] as const) if (!(k in n)) delete (c.node as Partial<typeof c.node>)[k];
       if (restored && quiet()) { Object.assign(c.inputs, structuredClone(target)); c.reload(); }
@@ -266,6 +280,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       c.el.style.background = (n.visual as Visual | undefined)?.background ?? '';
       if(nexoChanged || edited || statisticsChanged || comparisonChanged) void c.refreshEditor(); geometry(c, n);
       c.setDesignRequired(needsStudyDesign(n, catalog, session.design));
+      autoRun(c, n);
       c.updateTitle(); c.el.setAttribute('aria-label', n.label);
       if (resized && c.current === 'live') { c.setTier('frozen'); c.setTier('live'); }
     }
@@ -684,7 +699,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
       if (isReadOnly()) throw new Error('View only on this device.');
       if (signal?.aborted) return;
       const instanceId = 'tcinstance_' + Array.from(crypto.getRandomValues(new Uint8Array(6)), n => n.toString(16).padStart(2,'0')).join('');
-      const {width,height} = entry.defaultSize;
+      const {width,height} = newCardSize(entry);
       const free = freeView();
       const wanted = {x:((free.left + vp.clientWidth) / 2 - camera.x) / camera.scale - width / 2, y:(vp.clientHeight / 2 - camera.y) / camera.scale - height / 2, width,height};
       // The slot is taken at once by a placeholder (and brought into view), so the user sees where the plot
@@ -746,19 +761,9 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   }
   search.oninput = renderLibrary;
   const catalogReady = getCatalog().then(value => { catalog = value.outputs; renderLibrary(); }).finally(() => { catalogKnown = true; });
-  if (!joined) void catalogReady.catch(error => { status.textContent = String(error); }).then(() => { reconcile(); reconciled = true; syncPlotHeights(); requestAnimationFrame(() => draw()); resendComputed(); resendActions(); });
+  if (!joined) void catalogReady.catch(error => { status.textContent = String(error); }).then(() => { reconcile(); reconciled = true; requestAnimationFrame(() => draw()); resendComputed(); resendActions(); });
   // Collaboration: only the first opener (who seeded the document) runs the reopen chain; a joiner never sends it again.
-  else void catalogReady.catch(error => { status.textContent = String(error); }).then(() => joined).then(shared => { reconcile(); reconciled = true; if (shared?.seeded) syncPlotHeights(); requestAnimationFrame(() => draw()); if (shared?.seeded) { resendComputed(); resendActions(); } });
-  // Chart audit b05 F5, reopen: a plot-height card whose stored geometry disagrees with its height input keeps the
-  // geometry (what the user last saw and placed) and writes it back to the input; reconcile sends it to the instance.
-  function syncPlotHeights() {
-    for (const n of store.get().nodes) {
-      const input = heightInputFor(n); if (!input) continue;
-      const c = cards.find(c => c.node.id === n.id), inputs = (n.instance as { inputs?: Record<string, unknown> } | undefined)?.inputs, plot = reopenPlotHeight(input, inputs, n.height);
-      if (plot === undefined) continue;
-      store.set(doc => setNodeInputs(n.id, { ...(c?.inputs ?? {}), ...(inputs ?? {}), [input]: plot }).apply(doc));
-    }
-  }
+  else void catalogReady.catch(error => { status.textContent = String(error); }).then(() => joined).then(shared => { reconcile(); reconciled = true; requestAnimationFrame(() => draw()); if (shared?.seeded) { resendComputed(); resendActions(); } });
   // Chart audit b07 F3, reopen: the API replays a restored card's recorded presses itself (cards.R api_card_restore);
   // this request confirms it idempotently (nothing is pressed twice), reports failures and redraws a card it pressed.
   function resendActions() {
@@ -790,7 +795,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   vp.addEventListener('dragover', e => {
     if (isReadOnly() || figureMode || !e.dataTransfer?.types.includes('application/nexo-plot')) return;
     e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
-    const point = dropPoint(e), size = draggingPlot?.defaultSize ?? { width: 440, height: 330 };
+    const point = dropPoint(e), size = draggingPlot ? newCardSize(draggingPlot) : { width: 440, height: 330 };
     if (!dropGhost) {
       dropGhost = addGhost({ ...point, ...size }, draggingPlot?.label ?? s.addPlot, false);
       dropGhost.el.classList.add('plot-drop-ghost'); dropGhost.el.querySelector('span')!.textContent = s.dropPlotHere;

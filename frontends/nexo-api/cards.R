@@ -366,7 +366,7 @@ api_bqc_placeholder <- function(s, card) {
   output <- sub("^qc_pca_tab-", "", card$source)
   if (!startsWith(card$source, "qc_pca_tab-") || !output %in% names(api_bqc_placeholders)) return(invisible())
   chosen <- api_read(s, s$mock$input[[sub("[^-]+$", "bqcSamples", card$nodeId)]])
-  if (length(chosen) < 2L) api_abort("api_unprocessable", api_bqc_placeholders[[output]])
+  if (length(chosen) < 2L) api_abort("api_unprocessable", api_bqc_placeholders[[output]], note = TRUE)
 }
 api_card_render <- function(s, instanceId, width = 800, height = 600,
                             format = c("auto", "plotly", "png", "svg"), dpr = 1L, res = NULL) {
@@ -434,9 +434,11 @@ api_card_render <- function(s, instanceId, width = 800, height = 600,
     if (!nzchar(message)) message <- "The plot inputs are unavailable for this session."
     api_abort("api_unprocessable", message)
   }
+  # NEXO-P6 item 2: Team shows a validate(need()) message as a small grey note on an up-to-date card.
+  noted <- function(e) if (nzchar(conditionMessage(e))) api_abort("api_unprocessable", conditionMessage(e), note = TRUE) else unavailable(e)
   api_debug("getOutput ", card$nodeId)
   value <- tryCatch(api_read(s, s$mock$getOutput(card$nodeId)),
-    shiny.silent.error = unavailable, validation = unavailable, error = api_render_module_error)
+    validation = noted, shiny.silent.error = unavailable, error = api_render_module_error)
   api_bqc_placeholder(s, card)
   api_timing_add("output", started); started <- Sys.time()
   figure <- NULL; png <- NULL

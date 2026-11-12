@@ -1,9 +1,10 @@
 import type {Command} from './commands';
+import {MARKER_SYMBOLS} from '../editor/editorState';
 export interface AxisStyle {min?:number;max?:number;type?:'linear'|'log';tickformat?:string;dtick?:number;nticks?:number}
 export const markerSymbols=['circle','square','diamond','cross','x','triangle-up','triangle-down','star','circle-open','square-open','diamond-open'] as const;
 export const lineDashes=['solid','dot','dash','longdash','dashdot','longdashdot'] as const;
 export const legendOrders=['normal','reversed','grouped','grouped+reversed'] as const;
-export interface NexoSeries {index:number;sourceKey?:string;markerSymbol?:typeof markerSymbols[number];lineDash?:typeof lineDashes[number]}
+export interface NexoSeries {index:number;sourceKey?:string;lineDash?:typeof lineDashes[number]}
 export interface NexoShape {type:'line'|'rect';x0:number;x1:number;y0:number;y1:number;color?:string;width?:number;opacity?:number}
 export interface NexoAnnotation {text:string;x:number;y:number;ax?:number;ay?:number;color?:string;size?:number}
 export interface NexoStyle {series?:NexoSeries[];legendOrder?:typeof legendOrders[number];shapes?:NexoShape[];annotations?:NexoAnnotation[];xaxis?:AxisStyle;yaxis?:AxisStyle;titleWeight?:'normal'|'bold';axisWeight?:'normal'|'bold';legendWeight?:'normal'|'bold';margin?:Partial<Record<'l'|'r'|'t'|'b'|'pad',number>>;
@@ -46,12 +47,27 @@ export function validateNexoStyle(value:unknown):NexoStyle {
  const color=(v:unknown):v is string=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
  if(legendOrders.includes(v.legendOrder as typeof legendOrders[number]))out.legendOrder=v.legendOrder as typeof legendOrders[number];
  if(Array.isArray(v.series)){const series:NexoSeries[]=[];const seen=new Set<number>();for(const raw of v.series.slice(0,100)){const t=object(raw);if(!number(t.index,0,999)||!Number.isInteger(t.index)||seen.has(t.index))continue;const patch:NexoSeries={index:t.index};if(typeof t.sourceKey==='string'&&t.sourceKey.length<=500)patch.sourceKey=t.sourceKey;
- if(markerSymbols.includes(t.markerSymbol as typeof markerSymbols[number]))patch.markerSymbol=t.markerSymbol as typeof markerSymbols[number];
  if(lineDashes.includes(t.lineDash as typeof lineDashes[number]))patch.lineDash=t.lineDash as typeof lineDashes[number];
- if(patch.markerSymbol||patch.lineDash){series.push(patch);seen.add(t.index);}}if(series.length)out.series=series;}
+ if(patch.lineDash){series.push(patch);seen.add(t.index);}}if(series.length)out.series=series;}
  if(Array.isArray(v.shapes)){const shapes:NexoShape[]=[];for(const raw of v.shapes.slice(0,50)){const t=object(raw);if(t.type!=='line'&&t.type!=='rect'||!['x0','x1','y0','y1'].every(k=>number(t[k],-1e15,1e15)))continue;const shape:NexoShape={type:t.type,x0:t.x0 as number,x1:t.x1 as number,y0:t.y0 as number,y1:t.y1 as number};if(color(t.color))shape.color=t.color;if(number(t.width,0,20))shape.width=t.width;if(number(t.opacity,0,1))shape.opacity=t.opacity;shapes.push(shape);}if(shapes.length)out.shapes=shapes;}
  if(Array.isArray(v.annotations)){const annotations:NexoAnnotation[]=[];for(const raw of v.annotations.slice(0,30)){const t=object(raw);if(typeof t.text!=='string'||t.text.length>500||!number(t.x,-1e15,1e15)||!number(t.y,-1e15,1e15))continue;const a:NexoAnnotation={text:t.text,x:t.x,y:t.y};if(color(t.color))a.color=t.color;if(number(t.size,6,72))a.size=t.size;for(const k of ['ax','ay'] as const)if(number(t[k],-200,200))a[k]=t[k];annotations.push(a);}if(annotations.length)out.annotations=annotations;}
  return out;
+}
+/** NEXO-P3: one marker shape, Team's saved markerSymbol (visual.editor.traces). A saved Nexo "Series style → Marker
+ *  symbol" (nexo series markerSymbol, read before validateNexo drops it) moves there on load when Team offers the shape
+ *  and the series has no Team shape yet; other shapes are dropped. Returns the nodes, changed ones copied. */
+export function migrateMarkerSymbols<T extends {id:string;visual?:unknown}>(nodes:T[],nexo:unknown):T[] {
+ const saved=object(object(nexo).nodes);
+ return nodes.map(node=>{
+  const series=(Array.isArray(object(object(saved[node.id]).style).series)?object(object(saved[node.id]).style).series as unknown[]:[]).map(object)
+   .filter(s=>Number.isInteger(s.index)&&(MARKER_SYMBOLS as readonly unknown[]).includes(s.markerSymbol));
+  if(!series.length)return node;
+  const visual=structuredClone(object(node.visual)),editor=visual.editor=object(visual.editor),traces=editor.traces=Array.isArray(editor.traces)?editor.traces:[];
+  for(const s of series){const key=typeof s.sourceKey==='string'?s.sourceKey:undefined;
+   const patch=traces.find((t:Record<string,unknown>)=>key?t.sourceKey===key:t.index===s.index);
+   if(!patch)traces.push({index:s.index,...(key?{sourceKey:key}:{}),markerSymbol:s.markerSymbol});else if(!patch.markerSymbol)patch.markerSymbol=s.markerSymbol;}
+  return {...node,visual};
+ });
 }
 export function validateNexo(value:unknown,ids?:readonly string[]):Nexo {
  const out:Nexo={version:1,nodes:{}};try{if(new TextEncoder().encode(JSON.stringify(value)).length>2*1024**2)return out;}catch{return out;}

@@ -1,6 +1,8 @@
 // Chart audit b07 F3: module action presses survive Duplicate and Save->reopen. The mock models an action-gated card
 // (structural_tab-summaryPlot draws Team's placeholder until "Initiate Structural Analysis" is pressed on that
 // session's card, src/api.ts mockPressed) and the replay route (POST .../replay, cards.R api_card_replay).
+// NEXO-P2: the card presses that button itself once the comparison is ready (Team card_status.js autoRun) and records
+// the press like a manual one; the Structure figures are Plotly charts.
 // Mock build, Chromium and WebKit, 1440x900. node tests/dual-ui/test_nexo_actions_replay.cjs
 'use strict';
 const { spawn, spawnSync } = require('node:child_process');
@@ -31,11 +33,12 @@ const plots = async page => (await nodes(page)).filter(n => n.instance?.source =
 const instanceOf = n => n.instance.instanceId ?? n.instance.id;
 const member = (page, id) => page.evaluate(id => window.__nexo.store.get().nexo.nodes[id]?.actions ?? null, id);
 const card = (page, id) => page.locator(`.card[data-id="${id}"]`);
-// The last image the mock drew for this instance: Team's placeholder or the plot.
+// The last figure the mock drew for this instance: Team's placeholder or the plot.
 async function drawn(page, n, want, what) {
   const instance = instanceOf(n);
-  await page.waitForFunction(([instance, id]) => { const label = window.__nexoMock.labels[instance]; const img = document.querySelector(`.card[data-id="${id}"] img`);
-    return typeof label === 'string' && !!img && img.complete && img.naturalWidth > 0; }, [instance, n.id], { timeout: 15000 })
+  await page.waitForFunction(([instance, id]) => { const label = window.__nexoMock.labels[instance];
+    const img = document.querySelector(`.card[data-id="${id}"] img`); // at 40 % a Plotly card shows its picture
+    return typeof label === 'string' && (!!document.querySelector(`.card[data-id="${id}"] .js-plotly-plot`) || (!!img && img.complete && img.naturalWidth > 0)); }, [instance, n.id], { timeout: 15000 })
     .catch(async () => { throw new Error(`${what}: no image (${await page.evaluate(i => window.__nexoMock.labels[i], instance)})`); });
   await page.waitForFunction(([instance, placeholder, want]) => (window.__nexoMock.labels[instance] === placeholder) === (want === 'placeholder'), [instance, PLACEHOLDER, want], { timeout: 15000 })
     .catch(async () => { throw new Error(`${what}: want ${want}, drew ${await page.evaluate(i => window.__nexoMock.labels[i], instance)}`); });
@@ -81,13 +84,11 @@ async function browserTests(pw, name, base) {
     if (!(await plots(page)).length) await page.evaluate(source => window.__nexo.handle.addCard(source), SOURCE);
     await page.waitForFunction(source => window.__nexo.store.get().nodes.some(n => n.instance?.source === source), SOURCE, { timeout: 10000 });
     const original = (await plots(page))[0];
-    await drawn(page, original, 'placeholder', 'before Initiate');
-    await dataTab(page, original.id);
-    await page.getByRole('button', { name: BUTTON, exact: true }).click();
-    await drawn(page, original, 'plot', 'after Initiate');
+    await drawn(page, original, 'plot', 'pressed by itself');
+    assert.deepEqual(await page.evaluate(i => window.__nexoMock.cardPatches.filter(p => p.instance === i).map(p => p.body.actions), instanceOf(original)), [['runAnalysis']], 'one press, by the card');
     assert.deepEqual(await member(page, original.id), ['runAnalysis'], "the press is recorded in Nexo's member");
     assert.equal(original.instance.inputs.runAnalysis, undefined, 'never an instance input');
-    console.log(`PASS F3 ${name} press-records-in-nexo-member`);
+    console.log(`PASS F3 ${name} card-presses-itself-and-records-in-nexo-member`);
     // 2. Duplicate: the copy is replayed before it is drawn, and records the press too.
     await page.evaluate(id => window.__nexo.handle.duplicate(id), original.id);
     await page.waitForFunction(source => window.__nexo.store.get().nodes.filter(n => n.instance?.source === source).length === 2, SOURCE, { timeout: 10000 });

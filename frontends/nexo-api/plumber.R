@@ -19,7 +19,10 @@ api_handle <- function(res, expr) {
       api_unprocessable = 422L, api_too_large = 413L, api_unavailable = 503L,
       api_method_not_allowed = 405L, session_lost = 409L, api_forbidden_scope = 403L, api_staff_only = 403L)
     kind <- intersect(class(e), names(codes))[[1L]]
-    api_error(res, codes[[kind]], sub("^api_", "", kind), conditionMessage(e))
+    body <- api_error(res, codes[[kind]], sub("^api_", "", kind), conditionMessage(e))
+    # NEXO-P6 item 2: Team's validation message, shown as a note (cards.R api_card_render).
+    if (isTRUE(e$note)) body$note <- TRUE
+    body
   }
   tryCatch(expr, api_capacity = function(e) {
     res$status <- 503L; res$setHeader("Retry-After", "60")
@@ -446,6 +449,10 @@ function(id, instanceId, req, res) api_exclusive(res, id = id, {
 #* Current Team violin inference policy
 #* @get /api/v1/sessions/<id>/statistics/violin/policy
 function(id, req, res) api_exclusive(res, id = id, api_violin_policy(api_session_get(id, api_session_caller(req))))
+
+#* Team's PCA score analysis of a dashboard PCA card (statistics.R api_pca_score), as its module rendered it
+#* @get /api/v1/sessions/<id>/cards/<instanceId>/pca-score
+function(id, instanceId, req, res) api_exclusive(res, id = id, api_pca_score(api_session_get(id, api_session_caller(req)), instanceId))
 
 #* Confirm the reference group for this card
 #* @parser json list(simplifyVector = FALSE)

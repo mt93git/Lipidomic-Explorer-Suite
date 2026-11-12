@@ -1,5 +1,5 @@
 // Scene 4 · Quality check (docs/integration/nexo-entry-proposal): Team's quality answers (C3) as one verdict and three
-// checks. It warns, strongly, and never blocks (product owner): an undecided flagged sample gets an amber warning that names
+// checks. It warns, strongly, and never blocks (Gerardo): an undecided flagged sample gets an amber warning that names
 // it; Keep or Exclude (Exclude prepares again with Team's sample decision outlierTreatments {sample: "remove"}, through the
 // same open path, as a later board decision does, ENTRY-8); "Open the Canvas" always works.
 import { useEffect, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react';

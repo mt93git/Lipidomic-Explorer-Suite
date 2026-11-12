@@ -35,3 +35,7 @@
 .plot-editor .pro-style-list li[aria-current=true] > span { color:var(--accent); font-weight:700; }
 .plot-editor .pro-ok { color:var(--ink); border-inline-start:4px solid #1e7a3c; padding-inline-start:var(--space-2); }
 .plot-editor .pro-warn { color:var(--ink); border-inline-start:4px solid #a86400; padding-inline-start:var(--space-2); }
+
+/* Team presentation port: Group outlines beside Show all series; Reset beside a changed chart color. */
+.plot-editor-series-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); margin-block-end:var(--space-2); }
+.plot-editor .plot-editor-reset-color { display:block; margin-inline-start:auto; margin-block-end:var(--space-2); font-size:var(--font-small); }

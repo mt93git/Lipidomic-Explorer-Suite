@@ -1,6 +1,7 @@
 import type { CardSchema, SchemaControl } from '../api/types';
 import catalog from './catalog.json';
 import { isLongitudinal, mockTimecourseControls, mockTimecourseLabel } from './timecourse';
+import { mockPcaScoreControls } from './pcaScore';
 // Synthetic long lipid choices shared by the catalog and API mock. Snapshot at load: the mock API later
 // rewrites catalog.outputs[].inputs without options, so reading the catalog lazily would lose the choices.
 const lipidControls = Object.fromEntries(['results_dashboard-plot_violin','results_dashboard-plot_heat'].map(id => [id, structuredClone(catalog.outputs.find(e => e.id === id)?.inputs?.[0])]));
@@ -72,7 +73,7 @@ export function schemaFor(source: string, instance?: string, values: Record<stri
     {id:'violin_zoom_pct',type:'range',label:'Plot Height (px):',min:300,max:5000,step:50,default:2340}
   ] : source.includes('violin') ? [lipidControl('results_dashboard-plot_violin')] : source === 'logratio_tab-logratioPlot' ? [
     {id:'primary_grouping',type:'multiselect',label:'Primary Grouping (Order matters)',selectize:{plugins:['drag_drop']},options:['Condition','Time','Sex','Treatment_arm_by_dose_and_week','Sampling_batch_and_extraction_day'].map(v=>({value:v,label:v})),default:['Condition','Time']}
-  ] : source === 'qc_pca_tab-pca2dPlot' ? pcaCustomColours(values) : source === 'volcano_tab-volcanoPlot' ? [
+  ] : source === 'results_dashboard-plot_pca' ? mockPcaScoreControls() : source === 'qc_pca_tab-pca2dPlot' ? pcaCustomColours(values) : source === 'volcano_tab-volcanoPlot' ? [
     // Team sliderInputs as the real API serves them (schema.R: type range with min/max/step; label and help in one string).
     {id:'volcano_alpha',type:'range',label:'Alpha:',min:0,max:1,step:0.05,default:0.7},
     {id:'volcano_weight_logp',type:'range',label:'Weight -Log10PControls how heavily the significance term counts when ranking labelled points.',min:0,max:5,step:0.1,default:1}
@@ -86,7 +87,9 @@ export function schemaFor(source: string, instance?: string, values: Record<stri
   ] : [],...(source.startsWith('pathway_tab-') ? {uploads:[{id:'upload_config',label:'Upload Layout JSON (.json):',accept:'.json'}]} : {}),...(source.startsWith('qc_pca_tab-') ? {actions:['show_stats_detail'],actionControls:[{id:'show_stats_detail',label:'Show Statistic Detail',tab:null}]} :
     // Chart audit b07 F3: the structural summary draws only after its module button (Team's placeholder before it).
     isLongitudinal(source) ? {actions:['submit_longitudinal_btn','btn_add_case'],actionControls:[{id:'submit_longitudinal_btn',label:'Generate Analysis',tab:null},{id:'btn_add_case',label:'Add Timecourse',tab:null}]} :
-    source === 'structural_tab-summaryPlot' ? {actions:['runAnalysis'],actionControls:[{id:'runAnalysis',label:'Initiate Structural Analysis',tab:null}]} : {actions:[]}),tabs:{},
+    source === 'structural_tab-summaryPlot' ? {actions:['runAnalysis'],actionControls:[{id:'runAnalysis',label:'Initiate Structural Analysis',tab:null}]} :
+    // NEXO-P5: Team's PCA score analysis sits in the dashboard module; its Run button is the PCA card's module action.
+    source === 'results_dashboard-plot_pca' ? {actions:['pcs_run'],actionControls:[{id:'pcs_run',label:'Run PCA score analysis',tab:'PCA score analysis'}]} : {actions:[]}),tabs:{},
     ...(sessionPaletteFamily(source) ? {sessionPalette:true} : {})};
 }
 // saveFault: a test sets it to make the next checkpoint saves fail with that message (journey review 8.1).

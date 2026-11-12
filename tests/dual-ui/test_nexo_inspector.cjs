@@ -232,11 +232,13 @@ async function browserTests(pw, name, base) {
     console.log('PASS F13 '+name+' nexo-log-range-badge-team-view-save-reopen');
     await inspector.getByText('Color palette',{exact:true}).first().click();
     const renderCount = await page.evaluate(()=>window.__nexoMock.renders);
-    const oldColor = await violin.locator('.js-plotly-plot').evaluate(el=>el.data[0].marker?.color);
+    // A palette recolours the violin's fill; its sample points stay black, as Team draws them (R/results_dashboard.R:420)
+    // and as Team's palette leaves them (www/team/js/plot_editor.js:181).
+    const oldColor = await violin.locator('.js-plotly-plot').evaluate(el=>el.data[0].fillcolor);
     await inspector.getByRole('group',{name:'Color palette',exact:true}).getByRole('button',{name:'Okabe–Ito',exact:true}).click();
     // Pilot simulation step 5: choosing a palette applies it; there is no separate Apply button.
     assert.equal(await inspector.getByRole('button',{name:'Apply palette',exact:true}).count(),0);
-    await page.waitForFunction(old=>document.querySelector('.card[data-id="results_dashboard-plot_violin"] .js-plotly-plot')?.data[0].marker?.color!==old,oldColor);
+    await page.waitForFunction(old=>document.querySelector('.card[data-id="results_dashboard-plot_violin"] .js-plotly-plot')?.data[0].fillcolor!==old,oldColor);
     assert.equal(await page.evaluate(()=>window.__nexoMock.renders),renderCount);
     await inspector.getByLabel('Background',{exact:true}).fill('#123456');
     assert.equal(await violin.evaluate(el=>el.style.background),'rgb(18, 52, 86)');

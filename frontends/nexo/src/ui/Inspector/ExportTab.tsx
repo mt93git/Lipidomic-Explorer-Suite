@@ -12,12 +12,12 @@ const mm = (px: number) => Math.min(250, Math.max(40, Math.round(px / 96 * 25.4)
 /** What the card body shows now: its status and, for a placeholder or validate() message, that message. */
 function useCardBody(id: string) {
   const read = () => { const el = Array.from(document.querySelectorAll<HTMLElement>('.card')).find(c => c.dataset.id === id), body = el?.querySelector<HTMLElement>('.body');
-    return { status: el?.querySelector<HTMLElement>('.card-status')?.dataset.state as BodyStatus | undefined, message: body?.querySelector('p')?.textContent?.trim() ?? '' }; };
+    return { status: el?.querySelector<HTMLElement>('.card-status')?.dataset.state as BodyStatus | undefined, message: body?.querySelector('p')?.textContent?.trim() ?? '', note: !!body?.querySelector('.validation-note') }; };
   const [state, setState] = useState(read);
   useEffect(() => {
     const el = Array.from(document.querySelectorAll<HTMLElement>('.card')).find(c => c.dataset.id === id);
     setState(read()); if (!el) return;
-    const observer = new MutationObserver(() => setState(v => { const next = read(); return next.status === v.status && next.message === v.message ? v : next; }));
+    const observer = new MutationObserver(() => setState(v => { const next = read(); return next.status === v.status && next.message === v.message && next.note === v.note ? v : next; }));
     observer.observe(el, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-state'] });
     return () => observer.disconnect();
   }, [id]);

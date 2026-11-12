@@ -1,7 +1,7 @@
 # Nexo entry: build contracts (2026-11-10)
 
 What every NEXO-ENTRY task builds against. The design is `docs/integration/nexo-entry-proposal/` (prototype.html,
-nexo-entry-proposal.md; the product owner's answers are in its section 7). Tasks run in parallel against these shapes; do not
+nexo-entry-proposal.md; Gerardo's answers are in its section 7). Tasks run in parallel against these shapes; do not
 change a shape without saying so in your report. KEEP IT SIMPLE: the smallest code that makes the prototype real.
 Science stays Team's: every count, flag and preparation is computed by Team's R code, the client only draws.
 
@@ -14,7 +14,7 @@ One screen at a time before the board: `signin` → `start` → `prepare` → `c
   settings") while it loads. A `?project=` link likewise.
 - A dataset with no project: `prepare`, then `check`, then the project is created (sidecar `POST /collab/projects`)
   when the person presses "Open the Canvas", with the settings and the outlier decisions.
-- The quality check WARNS and never blocks (product owner): an undecided flagged sample shows a strong amber warning on the
+- The quality check WARNS and never blocks (Gerardo): an undecided flagged sample shows a strong amber warning on the
   check and a banner on the board until someone keeps or excludes it.
 
 ## C1 · Admin sign-in for Nexo (Admin app, same origin)

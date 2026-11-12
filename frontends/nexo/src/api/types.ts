@@ -52,6 +52,10 @@ export interface ViolinReply {
  describe?:{groups:import('../state/document').StatisticsResult['groups']; normalization?:string; imputation?:string; participantIds?:string; [key:string]:unknown};
  settings?:import('../statistics/settings').Settings; result?:import('../state/document').StatisticsResult; reason?:string; policy:ViolinPolicy;
 }
+/** NEXO-P5: Team's PCA score analysis of a dashboard PCA card as its module rendered it (statistics.R api_pca_score):
+ * Team's status sentence before Run, a validate() refusal as message, the boxplot (Plotly), the group table, the report lines. */
+export interface PcaScoreReply { status: string | null; message: string | null; figure: { data: unknown[]; layout: Record<string, unknown>; config?: Record<string, unknown> } | null;
+  table: { columns: string[]; rows: { color: string; cells: string[] }[] } | null; report: { text: string; note: boolean }[] }
 export interface GroupComparisonReply {requiresConfirmation?:boolean; confirmationToken?:string; [key:string]:unknown}
 export type { ExportPresets, ExportRequest } from '../export/presets';
 export interface FileDownload { blob: Blob; filename: string }

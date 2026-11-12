@@ -435,7 +435,7 @@ shown to a client account before Phases 1–3 are accepted; lab staff on staging
 **Goal.** Turn section 2 into test skeletons, prove the paths that are expensive to be wrong about on the real stack, and
 keep the two-card demo. **What the user sees:** nothing shipped; two browsers move one card on the mock (scene 1, cards only).
 
-**Depends on.** Admin token route (exists); Node runtime on the server (pinned, section 6); the product owner's decisions D7, D11, D14.
+**Depends on.** Admin token route (exists); Node runtime on the server (pinned, section 6); Gerardo's decisions D7, D11, D14.
 
 **Deliverables.**
 
@@ -533,7 +533,7 @@ asks first and loses nothing; a token expiry during the session shows no Signed 
 vitest unchanged with the flag off. **Risks.** `linkedom` parity with browser parsers (the vector file is the gate); the
 bridge touches every write path, so the inventory test per row is the safety net.
 
-**Phase 2 as cut (product owner, 2026-11-09: keep it simple, lab staff only in this phase).** Build the table above minus:
+**Phase 2 as cut (Gerardo, 2026-11-09: keep it simple, lab staff only in this phase).** Build the table above minus:
 - *Admission:* no shared HTML validator, no `linkedom`, no vector file. The sidecar refuses updates that touch protected
   paths (2.1) or exceed the size limits, and the role rule (Viewer refused) holds; deeper content validation is reconsidered
   in Phase 5, when clients join.
@@ -625,7 +625,7 @@ default role, lab-only Finish and Confirm, Manage people in Admin).
 | Item | Where | Size |
 |---|---|---|
 | Roles table, share dialog, role matrix and protected paths per role (2.1), owner-only share and restore, lab-only toggles | sidecar `src/roles.ts`; new `ui/Dialogs/Share.tsx`, `collab/roles.ts`; `ui/TopBar.tsx`; `canEdit()` at `ui/Rail.tsx:32-36`, `ui/Toolbar.tsx:37-59`, `ui/TabsBar.tsx:18`, `ui/Inspector/Inspector.tsx:21-28,73` | L |
-| Admin migration 0012: `client_member.display_name` (nullable), `admin.nexo_people(p_client_id)`; `displayName` for members in the session-token answer, null → `Member · <client>` label | Admin (needs the product owner's OK before staging, like 0010/0011) | L |
+| Admin migration 0012: `client_member.display_name` (nullable), `admin.nexo_people(p_client_id)`; `displayName` for members in the session-token answer, null → `Member · <client>` label | Admin (needs Gerardo's OK before staging, like 0010/0011) | L |
 | `NEXT_PUBLIC_NEXO_CLIENT_ACCESS=1` in production after the staging E2E | Admin env and README | S |
 | Raw-protocol and PGlite tests | `frontends/nexo-collab/test/roles.test.mjs`; `db/admin/test/nexo_people.test.js` | M |
 
@@ -686,7 +686,7 @@ Viewer role shows avatars, can follow, cannot edit or comment; the same device w
 **Acceptance.** No edit lost in ten offline/online cycles; the phone suite passes in Chromium and WebKit. **Risks.** IndexedDB
 quotas and private mode (fall back to memory and say so).
 
-**Phases 3–7 as cut (product owner, 2026-11-09: keep it simple, TDD, provable E2E).** Each phase builds the smallest version of
+**Phases 3–7 as cut (Gerardo, 2026-11-09: keep it simple, TDD, provable E2E).** Each phase builds the smallest version of
 its table above:
 - *Intent contract (Phase 3, shared by client and sidecar).* Client → sidecar stateless message
   `{type:'intent', intentId, kind, target:{nodeId?}, payload, baseRevision}`; sidecar → that client
@@ -710,8 +710,8 @@ its table above:
   Undo = intent `restore {versionId: meta.restoredFrom.beforeRestoreId}` (never "the newest before-restore row"); after any
   version is written, `meta.savedAt` (ms).
 - *Phase 5 cuts:* roles Owner (creator), Editor, Commenter, Viewer in the sidecar (one table, one matrix); share dialog lists
-  `admin.nexo_people` (migration 0012, applied to staging only with the product owner's OK); lab-only rules are fixed (no toggles);
-  production client access only with the product owner's OK.
+  `admin.nexo_people` (migration 0012, applied to staging only with Gerardo's OK); lab-only rules are fixed (no toggles);
+  production client access only with Gerardo's OK.
   Wire shapes: migration `004_members.sql` (project, user_id, role owner|editor|commenter|viewer); effective role =
   the row, else `owner` for `projects.created_by`, else lab staff `editor`, else client member `commenter` (D8). Matrix:
   Owner = Editor + share + restore; Editor = board and intents (not restore); Commenter = `comments` only + awareness;
@@ -723,7 +723,7 @@ its table above:
   `PUT /collab/projects/<id>/members/<userId> {role}` (Owner or lab staff; `DELETE` to remove). Client: role viewer or
   commenter puts the board in the existing read-only mode (`state/readonly.ts`, new reason `role`); a role push that changes
   editability reloads the page; Share dialog (Owner/staff) lists people and roles.
-  *Who restores (product owner, 2026-11-10): the project's Owner and lab staff; a client Editor is refused `owner_only`.*
+  *Who restores (Gerardo, 2026-11-10): the project's Owner and lab staff; a client Editor is refused `owner_only`.*
 - *Phase 6 cuts:* comments (pin, thread, resolve) in a `comments` map, Viewer refused; no mentions, no votes; follow = adopt
   another person's `view` from awareness (camera and tab), Stop following; summon = a stateless "follow me" that staff and
   Editors may send.
@@ -731,7 +731,7 @@ its table above:
   converge after `setOffline` cycles (tested); phones get the read-only layout with avatars, and edit only with `?mode=edit` when
   the role allows.
 - *Proof:* every phase ends with its Playwright journey green against the **real path** on the RTX (R API + sidecar + fake
-  Admin PostgREST + built client, `tests/dual-ui/collab-real.cjs`), plus its unit suites, and a recorded video for the product owner.
+  Admin PostgREST + built client, `tests/dual-ui/collab-real.cjs`), plus its unit suites, and a recorded video for Gerardo.
 
 ### Totals and order
 
@@ -848,7 +848,7 @@ Each is a defect of today's single-user Nexo, independent of any sidecar, and la
   120 s engine deadline (`session.R:192`) and the 150 s worker timeout (`pool.R:42`); a long render surfaces as an error. Fix:
   honour the header with backoff to a 180 s deadline. Test: `api/open.test.ts` with a stubbed 503 sequence.
 
-## 10. Decisions for the product owner
+## 10. Decisions for Gerardo
 
 Numbered once and used in the prototype's notes and roadmap. Each with a recommendation.
 
@@ -857,7 +857,7 @@ Numbered once and used in the prototype's notes and roadmap. Each with a recomme
   enforced at the intent.
 - **D3 · What is a project?** One live project per `(workspace, origin)`; origin = checkpoint id, or dataset id plus
   preparation settings; Open in Nexo lands in the caller's scope; **fork ("Save as…") deferred**, the record shape allows it;
-  undo belongs to one editing session (device), not to the account. *Product owner, 2026-11-10:* a shared project of a client's
+  undo belongs to one editing session (device), not to the account. *Gerardo, 2026-11-10:* a shared project of a client's
   dataset lives in that client's workspace also when lab staff open it (R answers `projectWorkspace`); a lab person's
   single-user session stays in the lab workspace.
 - **D4 · Retention of automatic versions.** Per project: autosave last 5; auto 48 h then one per day; named, opened and

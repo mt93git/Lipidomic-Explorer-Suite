@@ -11,5 +11,6 @@ const read: Record<string, string[]> = {
 };
 export function dashboardSchema(source: string, schema: CardSchema): CardSchema {
   const keys = read[/^results_dashboard-plot_(\w+)$/.exec(source)?.[1] ?? ''];
-  return keys ? { ...schema, controls: schema.controls.filter(c => keys.includes(c.id)) } : schema;
+  // NEXO-P5: the module's only button (Team's PCA score analysis Run) belongs to Statistics, as in Team's inspector.
+  return keys ? { ...schema, controls: schema.controls.filter(c => keys.includes(c.id)), actionControls: [] } : schema;
 }

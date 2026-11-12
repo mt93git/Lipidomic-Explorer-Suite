@@ -1,7 +1,7 @@
 # Nexo entry flow: UX review 3 (2026-11-11)
 
 This review compares the built entry flow and the board's quality-check notice, scene by scene, against
-`nexo-entry-proposal/prototype.html` and section 7 of `nexo-entry-proposal.md`. It is the gate the product owner asked for before
+`nexo-entry-proposal/prototype.html` and section 7 of `nexo-entry-proposal.md`. It is the gate Gerardo asked for before
 production. Build reviewed: this ref (nexo/collab tip `0a6748c8`). This is a review only: no product code changed.
 
 **How it was run.** The real path came from `tests/dual-ui/collab-real.cjs`: R API, sidecar, fake Admin PostgREST and the
@@ -100,7 +100,7 @@ The "should" items below are accessibility and orientation gaps. Fix them before
 | Three checks: status icon and word, charts, legend, "Show as table" | yes | All three cards. Chart points take keyboard focus and announce their values. | — | — |
 | "Ready for the Canvas" (none flagged) | yes | Real path and mock (`check-clear-*`, `check-real-A-1440`). | — | — |
 | Bottom bar never disabled | yes | "Open the Canvas" always works; the undecided flag travels to the board. | — | — |
-| Phone: view-only (decision) | different | At 390 the check offers **Keep Treated_3 / Exclude…**, and Open the Canvas creates the project from a phone. | should | `CheckScreen.tsx` (with Start's Prepare): hide the decision when `isReadOnly()`, as the board does, or ask the product owner whether preparing from a phone is wanted. |
+| Phone: view-only (decision) | different | At 390 the check offers **Keep Treated_3 / Exclude…**, and Open the Canvas creates the project from a phone. | should | `CheckScreen.tsx` (with Start's Prepare): hide the decision when `isReadOnly()`, as the board does, or ask Gerardo whether preparing from a phone is wanted. |
 | Hand-off card "Opening your board" | partial | A one-line status, then the board (`handoff-real-A-1440`). The joiner gets the join card. | nice | `main.tsx`: reuse `JoinCard` ("Data prepared with Team ✓ · Loading the board…") for the preparer. |
 
 ## Scene 5 · The board as A (lab staff)
@@ -156,7 +156,7 @@ The "should" items below are accessibility and orientation gaps. Fix them before
 **C · Name the dataset and the person** (`main.tsx`, `ui/entry/EntryBar.tsx`, `ui/entry/PrepareScreen.tsx`, `ui/entry/CheckScreen.tsx`, `ui/entry/strings.ts`): should.
 1. Title Prepare and Check with "ORD041 · v1" (passed from Start or from the dataset link).
 2. Add a dataset chip, Help and the account (name, role pill, Sign out through `<base>/api/sign-out`) to `EntryBar`.
-3. On a view-only device, hide Keep / Exclude on Check, as on the board (or confirm with the product owner).
+3. On a view-only device, hide Keep / Exclude on Check, as on the board (or confirm with Gerardo).
 4. Name the board in `signedOutFrom`.
 
 **D · Start polish** (`ui/entry/StartScreen.tsx`, `StartScreen.css`): should for counts and the phone Prepare, nice for the rest.
@@ -197,10 +197,10 @@ banner wrap or shorten to "⚠ Treated_3 undecided · Review" under 600 px.
 - **Phones.** The prototype draws Prepare and the check, with Keep / Exclude, at 390 px. The decision says phones and
   `?mode=view` are view-only. The board follows the decision; Start's Prepare and the check's Keep / Exclude on a phone
   still follow the prototype (group C/D).
-- **Two-step code.** The prototype shows the code step for every account. The product owner's answer 1 asks for the code only when
+- **Two-step code.** The prototype shows the code step for every account. Gerardo's answer 1 asks for the code only when
   two-step is on. Built: the step shows on `code_required`.
 
-## Screenshots (in <tmp>/ux-review-3/, not committed)
+## Screenshots (in /tmp/ux-review-3/, not committed)
 
 Mock path (Chromium 1440 and 390; WebKit 1440 where marked w):
 - Sign-in:

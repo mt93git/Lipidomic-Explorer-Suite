@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_CHROME } from '../cards';
-import { cardHeightFor, plotHeightForCard, plotHeightOf, heightInputCommands, reopenPlotHeight } from './plotHeight';
+import { cardHeightFor, plotHeightForCard, plotHeightOf, heightInputCommands, imageHeightFor } from './plotHeight';
 import { createHistory } from '../state/history';
 import { createStore } from '../state/store';
 import type { CanvasState } from '../state/types';
@@ -48,10 +48,16 @@ describe('violin card height follows the module plot height', () => {
     history.undo();
     expect(store.get().nodes).toEqual(before);
   });
-  it('reopen keeps the stored geometry and writes it back to the input when they disagree', () => {
-    expect(reopenPlotHeight('violin_zoom_pct', { violin_zoom_pct: 2340 }, 2340 + CARD_CHROME)).toBeUndefined();
-    expect(reopenPlotHeight('violin_zoom_pct', { violin_zoom_pct: 5000 }, 4000)).toBeUndefined();
-    expect(reopenPlotHeight('violin_zoom_pct', { violin_zoom_pct: 2340 }, 1200 + CARD_CHROME)).toBe(1200);
-    expect(reopenPlotHeight('violin_zoom_pct', {}, 720)).toBe(700);
+  // NEXO-P6 item 5: Team draws the module's plot at its own height (plotOutput height = violin_zoom_pct) and scales the
+  // image into the card, whatever the card's size. A many-facet plot drawn at a shorter card's height lost its top.
+  it('a plot-height card asks for its image at the module\'s plot height; the card contains it', () => {
+    expect(imageHeightFor(720, 'violin_zoom_pct', { violin_zoom_pct: 2340 })).toBe(2340);
+    expect(imageHeightFor(2340 + CARD_CHROME, 'violin_zoom_pct', { violin_zoom_pct: 2340 })).toBe(2340);
+    expect(imageHeightFor(720, 'violin_zoom_pct', {})).toBe(720 - CARD_CHROME);
+    expect(imageHeightFor(720, undefined, { violin_zoom_pct: 2340 })).toBe(720);
+  });
+  it('reopen keeps Team\'s plot height: a card\'s stored geometry is not written back to the input', async () => {
+    const module = await import('./plotHeight') as Record<string, unknown>;
+    expect(module.reopenPlotHeight).toBeUndefined();
   });
 });

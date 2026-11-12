@@ -182,7 +182,7 @@ check("service opens released Admin dataset without person token", admin_open$st
 check("lab collab open of a client dataset is in the client's workspace", admin_open$status == 200L &&
   identical(api_sessions[[admin_open$body$sessionId]]$workspace, workspace))
 for (id in ls(api_sessions)) api_session_close(api_sessions[[id]])
-# Product owner, 2026-11-10 (plan D3): a shared project of a client's dataset lives in that client's workspace, also when lab
+# Gerardo, 2026-11-10 (plan D3): a shared project of a client's dataset lives in that client's workspace, also when lab
 # staff open it; a lab person's single-user session stays in the lab workspace.
 person_open <- function(token) route("POST", "/api/v1/datasets/sessions", "application/json",
   charToRaw(jsonlite::toJSON(list(adminDatasetId = admin_id, settings = settings), auto_unbox = TRUE)), admin_token = token)

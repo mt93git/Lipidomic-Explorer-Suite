@@ -145,7 +145,7 @@ it('read-only: no Save version and no Restore', async () => {
   for (const r of rows(tree)) expect(buttons(r)).toEqual(['Download']);
 });
 
-// Who restores (product owner, 2026-11-10, UX review 2 question 2): the project's Owner and lab staff, as the sidecar allows.
+// Who restores (Gerardo, 2026-11-10, UX review 2 question 2): the project's Owner and lab staff, as the sidecar allows.
 it('a client Editor sees no Restore', async () => {
   fake.view = 'client'; fake.role = { role: 'editor', canShare: false };
   const tree = await mount();

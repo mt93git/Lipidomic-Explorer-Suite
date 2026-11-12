@@ -2,7 +2,7 @@
 
 Role: designer. Scope: a proposal only (one HTML prototype, screenshots, this document); no file under `frontends/`, `R/`, `www/`, `db/` or `tests/` is changed. Companion prototype: `docs/integration/nexo-entry-proposal/prototype.html` (open it in a browser; the yellow bar on top switches the four scenes and their states), PNGs of every scene in the same folder.
 
-Requirement (product owner, 2026-11-10): "Analyse how Team does it today and, with the same illustrations I liked, redesign the interface a little with cosmetic fixes so it is better, simpler, fast and functional. Make me a visual proposal of how the sign-in and the data preparation before the Canvas could look."
+Requirement (Gerardo, 2026-11-10): "Analyse how Team does it today and, with the same illustrations I liked, redesign the interface a little with cosmetic fixes so it is better, simpler, fast and functional. Make me a visual proposal of how the sign-in and the data preparation before the Canvas could look."
 
 ## The proposal in one table
 
@@ -15,7 +15,7 @@ Requirement (product owner, 2026-11-10): "Analyse how Team does it today and, wi
 | Continue existing work | 1 click ("Open latest") for the first project by name, which arrives selected; 2 clicks for any other. | 1 click on a checkpoint row. | 1 click for any project: "Continue" on the latest, "Open" on the others. |
 | Second person on a shared board | No shared board: Team shares projects (owner, editor or read-only), and each person resumes a checkpoint in a session of their own. | Joins with the stored settings, no dialog (FIX-G12). | 1 click from Start, none from Admin's link; a card says who prepared the data and with which settings while the board loads. |
 
-What stays exactly as it is: Team's science (every preparation rule and default, the outlier rule and its 2.5 limit), Admin's identity (accounts, roles, the authenticator code), Nexo's Canvas, and the illustrations the product owner likes, used where Team uses them: the spectrum behind the sign-in, the data matrix behind the start screen, the step backdrop behind the preparation steps, each behind white cards. Every screen has one primary button.
+What stays exactly as it is: Team's science (every preparation rule and default, the outlier rule and its 2.5 limit), Admin's identity (accounts, roles, the authenticator code), Nexo's Canvas, and the illustrations Gerardo likes, used where Team uses them: the spectrum behind the sign-in, the data matrix behind the start screen, the step backdrop behind the preparation steps, each behind white cards. Every screen has one primary button.
 
 ## 1. How to open the prototype
 
@@ -302,7 +302,7 @@ Nothing here is built. The list follows the code on this ref; "new" means a file
 4. **The Start lists** (6.3, first point; 6.4, first point).
 5. **Sign-in** (6.4, second point), once question 1 is answered.
 
-## 7. Questions for the product owner
+## 7. Questions for Gerardo
 
 1. **Who serves the sign-in page?** Nexo has none today: it sends people to Admin's page and comes back (`/admin/sign-in?next=…`). Admin owns the accounts, the cookie (scoped to `/admin`) and the authenticator code (`docs/integration/admin-identity.md:3`, `:12-19`). Either (a) Admin keeps serving the one sign-in page and takes this look, or (b) Nexo hosts this page and talks to Admin's GoTrue itself. The proposal recommends (a): one sign-in for both apps, and nothing about passwords or codes moves into Nexo. Either way: do activation, password reset and authenticator set-up stay in Admin, and does every account enter a code at each sign-in, as the prototype draws it?
 2. **Which defaults are Team's?** The published workspace starts with "exclude never-detected lipids" on and "replace remaining missing values with zero" off. Nexo's API reports the opposite pair as Team's defaults (section 3). The prototype fills in the published workspace's. Which pair should Nexo prefill? And should the two zero rules ("For each file, set entirely missing lipids to zero", "Replace remaining missing values with zero") be shown at all? Team's workspace keeps them out of reach, at their defaults; Nexo's dialog asks them today.
@@ -310,10 +310,10 @@ Nothing here is built. The list follows the code on this ref; "new" means a file
 4. **Where do new data come from?** The proposal assumes every new dataset is released in Admin (plus the checkpoint import for lab staff). Team's matrix upload and label mapping are then not rebuilt in Nexo, and "Data" and "Review" in Nexo's bar become these screens instead of links to Team. Is that right?
 5. **May a client member prepare a dataset?** The API has no staff check on preparation today (only uploads are for lab staff, `frontends/nexo-api/datasets.R:389-392`), and the prototype's Start for a client member shows "Prepare" on a released dataset that nobody has prepared. Or does only lab staff prepare, and a client member always joins?
 
-### The product owner's answers (2026-11-10)
+### Gerardo's answers (2026-11-10)
 
 1. **Sign-in: Nexo is a separate app on Admin's accounts.** Nexo has its own sign-in page (this design), with the same accounts and passwords as Admin: one password works in both. Signed in to Admin, opening Nexo signs you in directly (today's `GET /admin/api/session-token` already does this). Simplest build: Nexo's page sends email, password and code to a new same-origin Admin route that runs Admin's existing sign-in and sets Admin's cookie, so signing in to Nexo also signs you in to Admin and Nexo never stores or checks a password. Password reset and invitation activation stay on Admin's pages (they start from Admin's emails) and come back to Nexo. The code step shows only for accounts with two-step verification on, as Admin does today.
-2. **Defaults: Team's published workspace** (product owner: "what you recommend"). Checked in Team's source: the guided workspace prefills "exclude entirely undetected lipids" on, "for each file, set entirely missing lipids to zero" on, "replace remaining missing values with zero" off (`R/guided_preparation_controls.R:5`, `:23-24`), and Team's preparation policy sets the first one on (`R/utils_preparation.R:8`). Nexo's API copied the Classic widget's values (`R/modules/2_qc_boxplot_module.R:73`, `:81`). Nexo prefills Team's pair; the two zero rules stay folded under "More settings", as Team folds them under "Advanced".
+2. **Defaults: Team's published workspace** (Gerardo: "what you recommend"). Checked in Team's source: the guided workspace prefills "exclude entirely undetected lipids" on, "for each file, set entirely missing lipids to zero" on, "replace remaining missing values with zero" off (`R/guided_preparation_controls.R:5`, `:23-24`), and Team's preparation policy sets the first one on (`R/utils_preparation.R:8`). Nexo's API copied the Classic widget's values (`R/modules/2_qc_boxplot_module.R:73`, `:81`). Nexo prefills Team's pair; the two zero rules stay folded under "More settings", as Team folds them under "Advanced".
 3. **The quality check warns, strongly, and never blocks.** A flagged sample gets a clear warning on the check and on the Canvas until someone keeps or excludes it; "Open the Canvas" always works.
 4. **Data: Admin's datasets first, plus an Excel upload as Team has it today.** Start lists the datasets released in Admin; an extra dataset can still be uploaded from an Excel workbook the way Team does it (Team's formats and checks, Team's code).
 5. **Who prepares: configurable per client, lab only by default.** Admin gets a per-client switch; when it is on, that client's members may prepare a released dataset and upload their own Excel. Off (the default), a client member only joins boards the lab prepared.

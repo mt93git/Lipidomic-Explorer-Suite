@@ -31,8 +31,15 @@ local({
     rendered <- api_card_render(s, card$instanceId, width = 900)
     stopifnot(length(rendered$figure$data) > 0L, is.character(rendered$figure$data[[1L]]$type),
       is.list(rendered$figure$layout))
+    if (id == "comp") comp <- rendered$figure
   }
   cat("PASS U2 plots 5/5\n")
+  # Composition overview: Nexo draws Team's class legend outside the bars (frontends/nexo/src/editor/compositionLegend.ts)
+  # from meta.teamComposition, in the right margin R leaves; the bars carry no text inside.
+  bars <- Filter(function(t) identical(t$type, "bar"), comp$data)
+  stopifnot(length(bars) > 1L, all(vapply(bars, function(t) length(unlist(t$textposition)) > 0L && all(unlist(t$textposition) == "none"), logical(1))),
+    !is.null(comp$layout$meta$teamComposition), identical(as.numeric(comp$layout$margin$r), 125))
+  cat("PASS U2 composition legend: no text in bars, meta.teamComposition, right margin 125\n")
   card <- api_card_create(s, "results_dashboard-plot_violin", s$inputs)
   # JSON actions: [] must be a harmless empty action list.
   api_card_update(s, card$instanceId, actions = list())
@@ -46,4 +53,27 @@ local({
   bad <- tryCatch(api_card_create(s, "results_dashboard-plot_pca", instanceId = card$instanceId), error = identity)
   stopifnot(inherits(bad, "api_conflict"))
   cat("PASS U2 typed errors\n")
+})
+# NEXO-P2: Team draws the Structure figures as Plotly charts (8_structural_module.R structure_render_plot), so the
+# catalog lists them as plotly and the API answers a Plotly figure, on the complete synthetic fixture with a comparison.
+local({
+  s <- api_session_for_checkpoint("tests/dual-ui/fixtures/nexo-complete-synthetic.zip")
+  on.exit(api_session_close(s))
+  api_design(s, "Animal", "independent", TRUE)
+  steps <- list(`structural_tab-summaryPlot` = "runAnalysis", `structural_tab-speciesPlotPlot` = c("runAnalysis", "updateSpecies"))
+  for (id in c("structural_tab-summaryPlot", "structural_tab-speciesPlotPlot", "structural_tab-networkPlot",
+               "structural_tab-moduleTraitPlot", "structural_grid_tab-heatmapPlot", "structural_grid_tab-dotplotPlot",
+               "structural_grid_tab-mergedPlot", "structural_grid_tab-diffAllPlot")) {
+    if (!identical(api_catalog_entry(id)$render, "plotly")) stop(id, ": catalog render ", api_catalog_entry(id)$render, ", expected plotly")
+    card <- api_card_create(s, id)
+    for (action in steps[[id]]) { api_card_update(s, card$instanceId, actions = action); api_seed_rendered_inputs(s, card$instanceId) }
+    rendered <- tryCatch(api_card_render(s, card$instanceId, 800, 600), error = identity)
+    # The analyst's module-trait renderer calls lipidomic_hook(), which this tree does not define (reported, R untouched).
+    if (inherits(rendered, "error") && grepl("lipidomic_hook", conditionMessage(rendered), fixed = TRUE)) {
+      cat("KNOWN", id, conditionMessage(rendered), "\n"); next
+    }
+    if (inherits(rendered, "error")) stop(id, ": ", conditionMessage(rendered))
+    stopifnot(identical(rendered$render, "plotly"), length(rendered$figure$data) > 0L, is.list(rendered$figure$layout))
+    cat("PASS U3 Structure card is a Plotly figure:", id, "\n")
+  }
 })

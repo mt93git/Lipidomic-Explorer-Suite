@@ -7,6 +7,11 @@ describe('download disabled reasons', () => {
     const long = downloadBlockedReason({ status: 'error', message: 'word '.repeat(40) })!;
     expect(long.length).toBeLessThanOrEqual(90); expect(long.endsWith('…')).toBe(true);
   });
+  // NEXO-P6 item 2: Team's sentence is now a quiet note on an up-to-date card; it still blocks the module's downloads.
+  it('a card showing Team\'s validation note blocks its module downloads too', () => {
+    expect(downloadBlockedReason({ status: 'current', note: true, message: 'Please configure at least 2 BQC replicate samples to view plot.' }))
+      .toBe('Please configure at least 2 BQC replicate samples to view plot.');
+  });
   it('a drawn, updating or empty card does not block', () => {
     expect(downloadBlockedReason({ status: 'current', message: '' })).toBeNull();
     expect(downloadBlockedReason({ status: 'updating', message: 'Loading figure…' })).toBeNull();

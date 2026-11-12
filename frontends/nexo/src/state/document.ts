@@ -39,9 +39,9 @@ type Axis = 'xaxis' | 'yaxis';
 type FontFamily = 'Arial' | 'Helvetica' | 'Verdana' | 'Georgia' | 'Times New Roman' | 'Courier New' | 'system-ui' | 'sans-serif';
 // Layout keys are dotted JSON keys, not nested Plotly layout objects (R:257–270).
 export type EditorLayout = Partial<
-  Record<'title.text' | `${Axis}.title.text` | 'paper_bgcolor' | 'plot_bgcolor' | 'font.color' | 'title.font.color' | 'legend.font.color' | 'legend.bgcolor' | `${Axis}.${'color' | 'gridcolor' | 'zerolinecolor'}`, string> &
+  Record<'title.text' | `${Axis}.title.text` | 'paper_bgcolor' | 'plot_bgcolor' | 'font.color' | 'title.font.color' | 'legend.font.color' | 'legend.bgcolor' | `${Axis}.${'color' | 'gridcolor' | 'linecolor' | 'zerolinecolor'}`, string> &
   Record<'font.size' | 'title.font.size' | 'legend.font.size' | `${Axis}.${'title.font.size' | 'tickfont.size' | 'gridwidth' | 'zerolinewidth' | 'linewidth' | 'tickangle'}` | 'title.x' | 'title.y' | 'legend.x' | 'legend.y', number> &
-  Record<'showlegend' | `${Axis}.${'showgrid' | 'zeroline' | 'showline' | 'showticklabels'}`, boolean> &
+  Record<'showlegend' | `${Axis}.${'showgrid' | 'zeroline' | 'showline' | 'mirror' | 'showticklabels'}`, boolean> &
   Record<'font.family' | 'title.font.family' | 'legend.font.family', FontFamily> &
   Record<'title.xanchor' | 'legend.xanchor', 'left' | 'center' | 'right' | 'auto'> &
   Record<'title.yanchor' | 'legend.yanchor', 'top' | 'middle' | 'bottom' | 'auto'> &
@@ -49,13 +49,14 @@ export type EditorLayout = Partial<
 >;
 export type EditorTrace = {
   index: number; sourceKey?: string; name?: string; hidden?: boolean; points?: boolean; innerBox?: boolean;
-  color?: string; fillColor?: string; fillOpacity?: number; lineColor?: string; lineWidth?: number; markerSize?: number; opacity?: number;
+  color?: string; fillColor?: string; fillOpacity?: number; lineColor?: string; markerLineColor?: string; markerLineWidth?: number; lineWidth?: number; markerSize?: number;
+  markerSymbol?: 'circle' | 'square' | 'triangle-up' | 'star' | 'diamond'; opacity?: number;
 } & ({ scaleLow: string; scaleMid: string; scaleHigh: string } | { scaleLow?: never; scaleMid?: never; scaleHigh?: never });
 export interface Editor {
   layout?: EditorLayout | null; traces?: EditorTrace[] | null;
   annotations?: { text: string; x: number; y: number; xref: 'paper'; yref: 'paper'; showarrow: false; font: { size: number; color: string } }[] | null;
   categoryLabels?: { axis: Axis; sourceKeys: string[]; values: string[]; labels: string[] }[] | null;
-  swapAxes?: boolean | null; greyHealthy?: boolean | null;
+  swapAxes?: boolean | null; greyHealthy?: boolean | null; groupEllipses?: boolean | null;
   palette?: 'Pastel' | 'Gelato Days' | 'Lab' | 'Okabe–Ito' | 'Nature (NPG)' | 'Viridis' | null;
 }
 export interface GroupComparison {

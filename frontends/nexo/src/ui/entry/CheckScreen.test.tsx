@@ -1,4 +1,4 @@
-// ENTRY-4, scene 4: the quality check warns strongly and never blocks (product owner); the decisions travel to onOpenCanvas (C3).
+// ENTRY-4, scene 4: the quality check warns strongly and never blocks (Gerardo); the decisions travel to onOpenCanvas (C3).
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 import { boardSettings, checkModel, excluding, groupPalette, outlierDecisions, rerun, CheckView, type CheckViewProps, type Decisions } from './CheckScreen';

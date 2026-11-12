@@ -113,7 +113,7 @@ Checked today by the person running the release; facts only.
 
 ## 6. Rollback and operations
 
-The deploy kit is not part of this pull request; it lives on the Nexo deploy branch, in `OS/Linux/`: `deploy-nexo.sh` (run from the deploy checkout with `NEXO_RSCRIPT` set; builds the
+The deploy kit is in `OS/Linux/`: `deploy-nexo.sh` (run from the deploy checkout with `NEXO_RSCRIPT` set; builds the
 client, installs the API unit, and with `NEXO_COLLAB=1` the sidecar and backup units, restarts the sidecar; checks
 health, the nginx `/collab` WebSocket block and the public statuses), `lipidomic-api.service`, `nexo-collab.service`,
 `nexo-collab-backup.service`, `nexo-collab-backup.timer`, `nexo-collab.env.example` and `nginx-nexo-locations.conf`.

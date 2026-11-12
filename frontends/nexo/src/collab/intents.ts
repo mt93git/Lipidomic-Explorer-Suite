@@ -28,7 +28,7 @@ const values = (doc: Y.Doc, nodeId: string, fields: string[]) => Object.fromEntr
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Sends intents on `provider` and settles each on the sidecar's answer that names it. `undo()` takes back this page's
- *  last settled inputs intent ("Undo mine", the product owner 2026-11-10); `changed` is told whether there is one to take back. */
+ *  last settled inputs intent ("Undo mine", Gerardo 2026-11-10); `changed` is told whether there is one to take back. */
 export function intentChannel(provider: Channel, toast: (text: string) => void, changed: (canUndo: boolean) => void = () => {}) {
   const pending = new Map<string, { resolve(result: IntentResult): void; reject(error: Error): void; form?: string }>();
   const doc = provider.document, meta = doc.getMap('meta');

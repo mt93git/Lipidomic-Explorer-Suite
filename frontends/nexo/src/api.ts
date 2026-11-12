@@ -13,6 +13,7 @@ import { checkUploadFile, parseLayoutJson, refusal } from './state/layoutUpload'
 import { mockTimecourseUpdate, mockTimecourseGenerated, isLongitudinal } from './mock/timecourse';
 import { clearRunNeedIfPressed, markNewCardRunNeed, runNeedKey, UNAVAILABLE_INPUTS } from './runNeeds';
 import mockCatalog from './mock/catalog.json';
+import { mockStructureFigure } from './mock/structure';
 import { withTimePoints } from './catalog';
 import { cardInstanceId } from './api/instance';
 import { withSession, liveSession } from './api/session';
@@ -20,6 +21,7 @@ import { collab } from './collab/mode';
 import type { IntentKind } from './collab/intents';
 import { mockPng } from './mock/png';
 import { confirmedMessage, unconfirmedMessage } from './groupComparison/fixture';
+import { mockPcaScore } from './mock/pcaScore';
 import type { Catalog, CardResult, CardUpdate, CardRender, DatasetOpen, DatasetSession, DatasetSettings, Design, Inputs, Node, Session, PlotResult } from './api/types';
 import { interpretDatasetResponse } from './api/datasetSession';
 import { mockDatasetRecord, mockDatasetChoices, mockPreparedCounts, mockDatasetCounters } from './mock/dataset';
@@ -49,7 +51,8 @@ export function inputsFor(s: Session): Record<string, unknown> {
 // dashboard plots and the cohort read (shared, up to 1 + the session's render workers)
 // may be in flight together; any other request runs alone once they have settled.
 // The API's error: its message, plus status and error code (a lost session is 409 session_lost or 404 Unknown session).
-const apiError = (status: number, value: {error?: unknown}, message: string) => Object.assign(new Error(message), {status, code: typeof value.error === 'string' ? value.error : undefined});
+// NEXO-P6 item 2: note = Team's validation message (validate(need()), the BQC sentence), shown as a quiet note.
+const apiError = (status: number, value: {error?: unknown; note?: unknown}, message: string) => Object.assign(new Error(message), {status, code: typeof value.error === 'string' ? value.error : undefined, ...(value.note === true ? {note: true} : {})});
 // The store per client (docs/integration/nexo-store-scope.md): the API refuses a checkpoint call without a valid Admin token.
 function adminRefused(status: number, value: {error?: unknown}) {
   if (status !== 401 || value.error !== 'admin_auth_required') return;
@@ -241,9 +244,10 @@ export const openDatasetSession = (adminDatasetId: string, settings?: DatasetSet
   useRenderWorkers(value); return { status: 'ready', session: value };
 }) : enqueue(() => { signal?.throwIfAborted(); return sendDataset(settings ? { adminDatasetId, settings } : { adminDatasetId }, signal); })
   .then((result): DatasetOpen => result.status === 'ready' ? { status: 'ready', session: opened(result.session) } : result);
-export const confirmDesign = (id: string, unit: string, type: string): Promise<Design> => collab()
+// NEXO-P6 item 3: the design gates Team's statistics (FLA significance brackets, p-values): every card redraws, as on an analysis change.
+export const confirmDesign = (id: string, unit: string, type: string): Promise<Design> => (collab()
   ? viaIntent('design', {}, {unit, type}, () => sessionRoute('joinDesign', (id: string) => mock ? enqueue(async () => structuredClone(mockSession(id).design!)) : request<Session>(`${path(id)}/join`).then(value => value.design!))(id))
-  : confirmDesignRoute(id, unit, type);
+  : confirmDesignRoute(id, unit, type)).then(design => { invalidateAnalysis(id); return design; });
 const confirmDesignRoute = sessionRoute('confirmDesign', (id: string, unit: string, type: string): Promise<Design> => mock ? enqueue(async () => {
   const design: Design = {allowed:type === 'independent', unit, type, confirmed:true, ...(prefetchMock.timePoints ? {timePointsReady:true} : {})}; mockSession(id).design = design; return design;
 }) : request<Design & {deState?: unknown}>(`${path(id)}/design`, {unit, type, confirm:true}).then(value => withTimePoints(value, value.deState)));
@@ -346,12 +350,14 @@ const renderCardRoute = sessionRoute('renderCard', (id: string, instance: string
   // As the server (frontends/nexo-api/cards.R): a card renders natively; "json" means its native JSON.
   if (format !== 'auto' && format !== 'json' && format !== card.render) throw new Error(`This card supports native ${card.render} rendering; requested ${format}`);
   // Team's BQC views with fewer than 2 BQC samples: the API answers Team's sentence (422, cards.R api_bqc_placeholder).
-  const bqc = MOCK_BQC_PLACEHOLDERS[card.source]; if (bqc && mockBqcPlaceholder(card.inputs)) throw new Error(bqc);
+  const bqc = MOCK_BQC_PLACEHOLDERS[card.source]; if (bqc && mockBqcPlaceholder(card.inputs)) throw Object.assign(new Error(bqc), {status:422, note:true});
   // Team's heatmap with Significant only while the inference guard says no answers 422 with Team's message.
   if (card.source === 'results_dashboard-plot_heat' && card.inputs.heat_significance === 'significant' && !mockHeatAllowed(id)) throw new Error(MOCK_HEAT_RENDER_UNAVAILABLE);
   if (isLongitudinal(card.source) && !mockTimecourseGenerated(instance)) { mockCounters.refusals = (mockCounters.refusals ?? 0) + 1; throw new Error(UNAVAILABLE_INPUTS); }
   if (/VectorPlot$/.test(card.source)) throw new Error('Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view.');
-  if (card.render === 'png') { const shown = card.source === 'structural_tab-summaryPlot' && !mockPressed.get(`${id}/${instance}`)?.has('runAnalysis') ? {label:MOCK_STRUCTURAL_PLACEHOLDER, fill:undefined} : mockComputedLabel(card.source, entry.label, card.inputs, instance, sessionPaletteFamily(card.source) ? mockPaletteOverride(id, 'Control') : undefined); mockCounters.labels[instance] = shown.label; (mockCounters.pngRenders ??= []).push({instance,width,height,dpr}); return {blob:await mockPng(shown.label,width,height,shown.fill,dpr), revision:'1'}; }
+  // NEXO-P2: Team draws the Structure figures as Plotly charts; Remodeling shifts shows Team's hint until its analysis runs.
+  if (/^structural_(grid_)?tab-/.test(card.source)) { const shown = card.source === 'structural_tab-summaryPlot' && !mockPressed.get(`${id}/${instance}`)?.has('runAnalysis') ? {label:MOCK_STRUCTURAL_PLACEHOLDER} : mockComputedLabel(card.source, entry.label, card.inputs, instance); mockCounters.labels[instance] = shown.label; return {render:card.render, figure:mockStructureFigure(card.source, shown.label), provenance:{mock:true}}; }
+  if (card.render === 'png') { const shown = mockComputedLabel(card.source, entry.label, card.inputs, instance, sessionPaletteFamily(card.source) ? mockPaletteOverride(id, 'Control') : undefined); mockCounters.labels[instance] = shown.label; (mockCounters.pngRenders ??= []).push({instance,width,height,dpr}); return {blob:await mockPng(shown.label,width,height,shown.fill,dpr), revision:'1'}; }
   if (/3dPlot$/.test(card.source)) return {render:card.render, figure:mockScene3d(entry.label), provenance:{mock:true}};
   if (entry.clickSource) return {render:card.render, figure:mockClickFigure(instance, entry, card.inputs), provenance:{mock:true}};
   const dashboard = card.source.match(/^results_dashboard-plot_(pca|violin|dist|comp|heat)$/)?.[1] as PlotId | undefined;
@@ -429,6 +435,8 @@ export const violinStatistics = (id:string, instance:string, body:import('./api/
   : violinRoute(id, instance, body);
 const violinRoute = sessionRoute('violinStatistics', (id:string, instance:string, body:import('./api/types').ViolinRequest):Promise<import('./api/types').ViolinReply> => mock ? enqueue(()=>(mockViolinCard(id,instance),mockViolinStatistics(instance,body,mockDataFingerprint(id,instance)))) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/statistics/violin`,body));
 export const violinPolicy = sessionRoute('violinPolicy', (id:string):Promise<import('./api/types').ViolinPolicy> => mock ? enqueue(async()=>({...mockViolinPolicy})) : request(`${path(id)}/statistics/violin/policy`));
+/** NEXO-P5: Team's PCA score analysis of a dashboard PCA card (GET .../pca-score). */
+export const pcaScore = sessionRoute('pcaScore', (id:string,instance:string):Promise<import('./api/types').PcaScoreReply> => mock ? enqueue(async()=>{const card=cards.get(`${id}/${instance}`),node=card?undefined:mockSession(id).canvas.nodes.find(n=>cardInstanceId(n)===instance);if(!card&&!node)throw new Error('Unknown card');return mockPcaScore(card?.source??node!.instance?.source??node!.id,card?.inputs??node?.instance?.inputs??mockSession(id).inputs,!!mockPressed.get(`${id}/${instance}`)?.has('pcs_run'));}) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/pca-score`));
 export const groupComparison = sessionRoute('groupComparison', (id:string,instance:string):Promise<import('./api/types').GroupComparisonReply> => mock ? enqueue(async()=>(mockCard(id,instance),mockComparison(id,instance))) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/group-comparison`));
 export const confirmGroupComparison = (id:string, instance:string, token:string):Promise<import('./api/types').GroupComparisonReply> => collab()
   ? viaIntent('confirmBaseline', {instance}, {instanceId: instance, confirmationToken: token}, () => groupComparison(id, instance))

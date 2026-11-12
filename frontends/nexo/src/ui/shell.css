@@ -278,6 +278,12 @@ details[open]>summary::before{transform:rotate(45deg)}
 #inspector table[aria-label="Group comparison results"] :is(th,td):nth-child(4){width:18%}
 #inspector table[aria-label="Results for the displayed lipid"]{table-layout:auto;display:block;overflow-x:auto}
 #inspector table[aria-label="Results for the displayed lipid"] :is(th,td){max-width:140px}
+/* NEXO-P5: Team's PCA score analysis under Statistics (Team's 340 px boxplot, group swatches as in Team's table). */
+#inspector .pca-score{padding:var(--space-2)}
+#inspector .pca-score-plot{width:100%;height:340px;margin:0 0 var(--space-3)}
+#inspector table.pca-score-table{table-layout:auto}
+#inspector .pca-score-line{margin:0 0 var(--space-1);font-size:var(--font-small)}
+#inspector .pca-score-swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.25);vertical-align:baseline}
 #inspector pre{font-size:var(--font-label);color:var(--ink);background:var(--canvas);padding:var(--space-2);border-radius:var(--radius-sm)}
 #inspector details>summary{font-size:var(--font-small);color:var(--muted)}
 .inspector-tab{border-radius:var(--radius-sm) 0 0 var(--radius-sm);border-right:0;color:var(--muted);font-size:var(--font-small)}
@@ -608,6 +614,9 @@ dialog.analysis-sheet { position:fixed; inset:0 0 0 auto; margin:0; width:380px;
 .card .body.message p{margin:0;max-width:40ch;overflow-wrap:anywhere}
 .card[data-tone=red] .body.message{color:var(--red-fg)}
 .card[data-tone=amber] .body.message{color:var(--amber-fg)}
+/* NEXO-P6 item 2: Team's validation message (Shiny .shiny-output-error-validation: #888), small and centred; the card stays up to date. */
+.card .body.message:has(> .validation-note){place-items:center;align-content:center;justify-content:center;text-align:center}
+.card .body.message p.validation-note{color:#888;font-size:var(--font-small)}
 
 /* Row 16 tooltips: [data-tip] supplements the accessible name (and prints the key); shown on hover and keyboard focus, never on a touch-only pointer. */
 [data-tip]{position:relative}

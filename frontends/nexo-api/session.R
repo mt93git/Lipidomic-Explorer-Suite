@@ -1,7 +1,7 @@
 # Long-lived headless Team sessions. No testServer or harness render counters.
 api_debug <- function(...) if (nzchar(Sys.getenv("NEXO_API_DEBUG"))) message(format(Sys.time(), "%H:%M:%OS3"), " api: ", ...)
-api_abort <- function(class, message) {
-  stop(structure(list(message = message, call = NULL), class = c(class, "error", "condition")))
+api_abort <- function(class, message, note = FALSE) {
+  stop(structure(list(message = message, call = NULL, note = isTRUE(note)), class = c(class, "error", "condition")))
 }
 api_alive <- function(s) {
   if (isTRUE(s$broken) || isTRUE(s$closed))
@@ -335,6 +335,15 @@ api_output_want <- function(s, name) {
 api_read <- function(s, expr) api_guard(s, api_with_loop(s, shiny::isolate(expr)))
 api_require <- function(ok, reason) if (!isTRUE(ok)) api_abort("api_unprocessable", reason)
 
+# Team's QC module also hands shared data its PCA settings (R/modules/2_qc_boxplot_module.R settings_out, through
+# R/server.R qc_settings_bridge) from its restored inputs; the shared preparation state does not record them. Same
+# rule as the module, only for the inputs the checkpoint saved: none saved keeps shared data's own defaults (omics).
+api_qc_pca_settings <- function(inputs) {
+  value <- function(id) { v <- inputs[[paste0("qc_pca_tab-", id)]]; if (is.list(v)) unlist(v, use.names = FALSE) else v }
+  out <- list(pcaMode = value("pcaMode"), maxPCs = value("maxPCs"), dropMisc = value("dropMisc"))
+  if (!is.null(value("mergeReplicatesMode"))) out$mergeReplicates <- identical(value("mergeReplicatesMode"), "merged")
+  Filter(Negate(is.null), out)
+}
 api_session_open <- function(zip) {
   zip <- normalizePath(zip, mustWork = TRUE)
   archive <- read_session_archive(zip, include_team_canvas = TRUE,
@@ -353,7 +362,7 @@ api_session_open <- function(zip) {
   if (is.null(saved$spec$settings) || is.null(saved$spec$selected))
     api_abort("api_unprocessable", paste("This checkpoint predates Team's shared preparation state;",
       "open it in Team and save it once, then reopen it in Nexo."))
-  settings <- shiny::reactiveVal(saved$spec$settings)
+  settings <- shiny::reactiveVal(utils::modifyList(saved$spec$settings, api_qc_pca_settings(archive$state$inputs)))
   shared <- NULL
   shiny::withReactiveDomain(domain, {
     shared <- shared_data_server("data_hub", external_settings = shiny::reactive(settings()),

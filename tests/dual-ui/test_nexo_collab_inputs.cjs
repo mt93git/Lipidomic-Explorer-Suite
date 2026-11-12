@@ -61,7 +61,7 @@ h.eachBrowser('Phase 3 inputs (real path)', async (browser, name) => {
     assert.equal(await page.locator('.card').filter({ hasText: 'still behind' }).count(), 0, `${who} has a card that says "still behind"`);
   console.log(`PASS ${name} after A's change both people's violin cards are drawn and no card says "still behind"`);
 
-  // "Undo mine" (product owner, 2026-11-10, UX review 2 question 3): A's Undo, the toolbar's and then Ctrl/Cmd+Z, sends A's
+  // "Undo mine" (Gerardo, 2026-11-10, UX review 2 question 3): A's Undo, the toolbar's and then Ctrl/Cmd+Z, sends A's
   // previous lipid as a new intent and both boards show it.
   const lipidOnB = b.page.locator('#inspector').getByRole('listbox', { name: 'Choose a lipid', exact: true });
   await lipidOnB.getByRole('option', { name: choice, exact: true, selected: true }).waitFor({ timeout: 10_000 });

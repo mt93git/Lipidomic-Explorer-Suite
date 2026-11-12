@@ -1,11 +1,12 @@
 export type BodyStatus = 'updating' | 'current' | 'waiting' | 'error';
 /** A plot card's status from what its body shows (cards.ts syncStatus). */
-export function bodyStatus(b: { rendering: number; text: string; drawn: boolean; confirming: boolean; restoringText: string }): BodyStatus | undefined {
+export function bodyStatus(b: { rendering: number; text: string; drawn: boolean; confirming: boolean; noted: boolean; restoringText: string }): BodyStatus | undefined {
   // A render still in flight is not up to date yet, even once the plot is on screen.
   if (b.rendering > 0) return 'updating';
   // Waiting for its first image (queued behind other cards, or restoring) is not a failure.
   if (b.text === 'Loading figure…' || (b.restoringText !== '' && b.text === b.restoringText)) return 'updating';
-  if (b.drawn) return 'current';
+  // NEXO-P6 item 2: Team's validation note (a grey sentence, the card up to date) is not a failure.
+  if (b.drawn || b.noted) return 'current';
   if (b.confirming) return 'waiting';
   if (b.text && b.text !== 'Snapshot unavailable') return 'error';
   return undefined;

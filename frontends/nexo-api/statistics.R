@@ -92,3 +92,36 @@ api_group_comparison <- function(s, instanceId, confirmationToken = NULL) {
   if (length(messages)) tail(messages, 1L)[[1L]] else list(id = instanceId, requiresConfirmation = TRUE)
   })())
 }
+
+# NEXO-P5: Team's PCA score analysis of a dashboard PCA card (R/results_dashboard.R rd_pca_score_ui; Team's inspector
+# shows it under Statistics). Its controls are the card's own inputs (pcs_pc, pcs_groups, pcs_test, pcs_corr) and its
+# module button pcs_run (PATCH .../cards/<id>). This reads what Team's module rendered: the status sentence, the boxplot
+# (Plotly, as Team draws it), the group table and the report lines; a validate() refusal comes back as `message`.
+api_pca_score_text <- function(node) { x <- trimws(gsub("\\s+", " ", xml2::xml_text(node))); if (is.na(x)) "" else x }
+api_pca_score <- function(s, instanceId) {
+  card <- tryCatch(api_card_get(s, instanceId), api_not_found = function(e)
+    api_abort("api_unprocessable", "PCA score analysis is available for dashboard PCA cards only"))
+  api_require(identical(card$source, "results_dashboard-plot_pca"), "PCA score analysis is available for dashboard PCA cards only")
+  name <- function(output) paste0(instanceId, "-", output)
+  api_output_want(s, name("pcs_plot")); api_size(s, name("pcs_plot"), 360, 340)
+  api_flush(s)
+  message <- NULL
+  read <- function(output) tryCatch(api_read(s, s$mock$getOutput(name(output))),
+    validation = function(e) { message <<- conditionMessage(e); NULL }, error = function(e) NULL)
+  html <- function(output) { v <- read(output); if (is.list(v) && is.character(v$html) && nzchar(v$html)) xml2::read_html(v$html) else NULL }
+  status <- html("pcs_status")
+  out <- list(status = if (!is.null(status)) api_pca_score_text(status) else NULL, message = NULL, figure = NULL, table = NULL, report = list())
+  plot <- read("pcs_plot")
+  if (is.character(plot) && length(plot) == 1L) out$figure <- jsonlite::fromJSON(plot, simplifyVector = FALSE)$x[c("data", "layout", "config")]
+  table <- html("pcs_table")
+  if (!is.null(table)) out$table <- list(
+    columns = lapply(xml2::xml_find_all(table, "//thead//th"), api_pca_score_text),
+    rows = lapply(xml2::xml_find_all(table, "//tbody/tr"), function(tr) list(
+      color = sub("^background:\\s*", "", xml2::xml_attr(xml2::xml_find_first(tr, ".//span[@style]"), "style")),
+      cells = lapply(xml2::xml_find_all(tr, "./td"), api_pca_score_text))))
+  report <- html("pcs_report")
+  if (!is.null(report)) out$report <- lapply(xml2::xml_find_all(report, "//body/div/p | //body/p"), function(p)
+    list(text = api_pca_score_text(p), note = identical(xml2::xml_attr(p, "class"), "rd-card-note")))
+  out$message <- message
+  out
+}

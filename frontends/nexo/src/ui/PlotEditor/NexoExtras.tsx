@@ -1,6 +1,6 @@
 import type {Figure} from '../../editor/applyEditor';
 import {baselineOf,sourceKey} from '../../editor/applyEditor';
-import {markerSymbols,lineDashes,legendOrders,type NexoStyle,type NexoShape,type NexoAnnotation,type NexoSeries} from '../../state/nexo';
+import {lineDashes,legendOrders,type NexoStyle,type NexoShape,type NexoAnnotation,type NexoSeries} from '../../state/nexo';
 import {strings as s} from '../strings';
 import {NexoField as Field} from './NexoField';
 type Props={figure:Figure;style:NexoStyle;onChange:(style:NexoStyle)=>void};
@@ -14,9 +14,8 @@ export default function NexoExtras({figure,style,onChange}:Props){
  return <>
  <details><summary>{s.nexoSeries} · {style.series?.length??0} · {[s.nexoNormal,s.nexoReversed,s.nexoGrouped,s.nexoGroupedReversed][legendOrders.indexOf(style.legendOrder??'normal')]}</summary>
  <label>{s.nexoLegendOrder}<select aria-label={s.nexoLegendOrder} value={[s.nexoNormal,s.nexoReversed,s.nexoGrouped,s.nexoGroupedReversed][legendOrders.indexOf(style.legendOrder??'normal')]} onChange={e=>onChange({...style,legendOrder:e.target.value as NexoStyle['legendOrder']})}>{legendOrders.map((v,i)=><option key={v} value={v}>{[s.nexoNormal,s.nexoReversed,s.nexoGrouped,s.nexoGroupedReversed][i]}</option>)}</select></label>
- {figure.data.map((trace,index)=>{const patch=style.series?.find(t=>t.index===index),markers=['scatter','scattergl','box','violin'].includes(trace.type??'scatter'),lines=['scatter','scattergl'].includes(trace.type??'scatter');return markers||lines?<fieldset key={index}><legend>{trace.name??`${s.nexoSeries} ${index+1}`}</legend>
- {markers&&<label>{s.nexoSymbol}<select aria-label={`${s.nexoSymbol} ${index+1}`} value={patch?.markerSymbol??''} onChange={e=>series(index,{markerSymbol:(e.target.value||undefined) as NexoSeries['markerSymbol']})}><option value="">{s.nexoAuto}</option>{markerSymbols.map((v,i)=><option key={v} value={v}>{[s.nexoCircle,s.nexoSquare,s.nexoDiamond,s.nexoCross,s.nexoSymbolX,s.nexoTriangleUp,s.nexoTriangleDown,s.nexoStar,s.nexoCircleOpen,s.nexoSquareOpen,s.nexoDiamondOpen][i]}</option>)}</select></label>}
- {lines&&<label>{s.nexoDash}<select aria-label={`${s.nexoDash} ${index+1}`} value={patch?.lineDash??''} onChange={e=>series(index,{lineDash:(e.target.value||undefined) as NexoSeries['lineDash']})}><option value="">{s.nexoAuto}</option>{lineDashes.map((v,i)=><option key={v} value={v}>{[s.nexoSolid,s.nexoDotted,s.nexoDashed,s.nexoLongDash,s.nexoDashDot,s.nexoLongDashDot][i]}</option>)}</select></label>}</fieldset>:null;})}
+ {figure.data.map((trace,index)=>{const patch=style.series?.find(t=>t.index===index),lines=['scatter','scattergl'].includes(trace.type??'scatter');return lines?<fieldset key={index}><legend>{trace.name??`${s.nexoSeries} ${index+1}`}</legend>
+ <label>{s.nexoDash}<select aria-label={`${s.nexoDash} ${index+1}`} value={patch?.lineDash??''} onChange={e=>series(index,{lineDash:(e.target.value||undefined) as NexoSeries['lineDash']})}><option value="">{s.nexoAuto}</option>{lineDashes.map((v,i)=><option key={v} value={v}>{[s.nexoSolid,s.nexoDotted,s.nexoDashed,s.nexoLongDash,s.nexoDashDot,s.nexoLongDashDot][i]}</option>)}</select></label></fieldset>:null;})}
  </details>
  <details><summary>{s.nexoReferences} · {style.shapes?.length??0}</summary><p>{s.nexoDataCoordinates}</p>
  {(style.shapes??[]).map((v,i)=><fieldset key={i}><legend>{v.type==='line'?s.nexoReferenceLine:s.nexoBand} {i+1}</legend>

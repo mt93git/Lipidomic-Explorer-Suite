@@ -21,6 +21,8 @@ source("frontends/nexo-api/requirements.R"); api_skip_unless_team_ready("test_ap
 Sys.setenv(LIPIDOMIC_API_RENDER_DISK_CACHE = "0")
 source("frontends/nexo-api/engine.R")
 is_png <- function(x) is.raw(x) && length(x) > 24L && identical(x[2:4], charToRaw("PNG"))
+# NEXO-P2: Team now draws summaryPlot as a Plotly chart (8_structural_module.R structure_render_plot); either form is a drawing.
+drawn <- function(r) is_png(r$png) || (identical(r$render, "plotly") && length(r$figure$data) > 0L)
 attempt <- function(expr) tryCatch(list(ok = TRUE, value = expr),
   error = function(e) list(ok = FALSE, class = class(e), message = conditionMessage(e)))
 module_prefix <- "Team's module could not draw this plot:"
@@ -32,7 +34,7 @@ card <- api_card_create(s, "structural_tab-summaryPlot")
 id <- card$instanceId
 invisible(api_card_update(s, id, list(), "runAnalysis"))
 first <- api_card_render(s, id, 620, 720)
-if (!is_png(first$png)) stop("FAIL summaryPlot does not draw at 620x720 after Initiate Structural Analysis")
+if (!drawn(first)) stop("FAIL summaryPlot does not draw at 620x720 after Initiate Structural Analysis")
 cat("PASS step 1: summaryPlot draws at 620x720 after runAnalysis\n")
 
 refused <- attempt(api_card_update(s, id, list(textSize = 5)))
@@ -43,7 +45,7 @@ cat("PASS step 2: textSize 5 refused (400), textSize 14 applied\n")
 
 small <- attempt(api_card_render(s, id, 390, 520))
 if (small$ok) {
-  if (!is_png(small$value$png)) stop("FAIL the 390x520 render returned no PNG")
+  if (!drawn(small$value)) stop("FAIL the 390x520 render returned no PNG")
   cat("NOTE step 3: textSize 14 at 390x520 draws on this build (b07 F2 not reproduced here); no module error to check\n")
 } else {
   if (!"api_unprocessable" %in% small$class)
@@ -80,9 +82,9 @@ if (small$ok) {
 cat("PASS step 3 (HTTP): the render route answers", http$status, "(not 500)\n")
 
 back <- attempt(api_card_render(s, id, 620, 720))
-if (!back$ok || !is_png(back$value$png)) stop("FAIL step 4: textSize 14 at 620x720 does not draw: ", back$message %||% "no PNG")
+if (!back$ok || !drawn(back$value)) stop("FAIL step 4: textSize 14 at 620x720 does not draw: ", back$message %||% "no PNG")
 invisible(api_card_update(s, id, list(textSize = 10)))
 again <- attempt(api_card_render(s, id, 390, 520))
-if (!again$ok || !is_png(again$value$png)) stop("FAIL step 4: textSize 10 at 390x520 does not draw: ", again$message %||% "no PNG")
+if (!again$ok || !drawn(again$value)) stop("FAIL step 4: textSize 10 at 390x520 does not draw: ", again$message %||% "no PNG")
 cat("PASS step 4: the card recovers at 620x720 (textSize 14) and at 390x520 with textSize 10\n")
 cat("PASS test_api_summary_textsize\n")

@@ -27,6 +27,9 @@ export function formatP(v: number | null | undefined): string {
     return formatted;
 }
 export function stars(v: number | null | undefined) { return v == null || !Number.isFinite(v) ? 'n/a' : v < .001 ? '***' : v < .01 ? '**' : v < .05 ? '*' : 'ns'; }
+/** NEXO-P6 item 4: Team attaches violin statistics (describe, n labels) only to an instance copy of the dashboard violin
+ *  (www/team/js/canvas.js: r.instance && TeamCanvasStatistics.supports(r.instance.source)); a fixed view gets none. */
+export const describesGroups = (node: { id: string; instance?: { source?: string } | null }) => node.instance?.source === 'results_dashboard-plot_violin';
 export function nLabel(g: Result['groups'][number] | undefined, mode: Presentation['nDisplay']) {
     if (!g || mode === 'hidden')
         return '';

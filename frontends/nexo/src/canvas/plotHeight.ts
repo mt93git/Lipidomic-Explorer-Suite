@@ -26,9 +26,10 @@ export function heightInputCommands(nodes: readonly Box[], id: string, input: st
   const commands = node.width === size.width && node.height === cardHeightFor(plot) ? [] : sizeCommands(nodes as Box[], id, { width: size.width, height: cardHeightFor(plot) }, key);
   return current[input] === plot ? commands : [...commands, setNodeInputs(id, { ...current, [input]: plot })];
 }
-/** Reopen: the plot height to write back when the stored card height disagrees with the input, else undefined.
- *  Agreeing includes Team's off-step defaults (n_rows * 260, e.g. 2340) and values above the 4000 px canvas cap. */
-export function reopenPlotHeight(input: string, inputs: Record<string, unknown> | undefined, cardHeight: number): number | undefined {
-  const current = plotHeightOf(input, inputs);
-  return current !== undefined && cardHeightFor(current) === cardHeight ? undefined : plotHeightForCard(cardHeight);
-}
+/** NEXO-P6 item 5: the image height a card asks for. Team draws the module's plot at its own height (plotOutput height =
+ *  the height input) and scales the image into the card (object-fit: contain), whatever the card's size; a shorter
+ *  device cut a many-facet plot. Without a plot height: the body of a plot-height card, else the whole card (as before). */
+export const imageHeightFor = (cardHeight: number, input: string | undefined, inputs?: Record<string, unknown>): number => {
+  const plot = plotHeightOf(input, inputs);
+  return plot !== undefined ? Math.round(plot) : Math.round(cardHeight) - (input ? CARD_CHROME : 0);
+};

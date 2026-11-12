@@ -2,7 +2,7 @@
 // Admin PostgREST and a built client (tests/dual-ui/collab-real.cjs). Two lab staff open the fixture checkpoint: the
 // first open creates the project, the second joins its link; both render the cards on the sidecar's session, a rename
 // reaches the other page and R holds one leased collab session.
-// Then a shared project with a client (product owner, 2026-11-10: it lives in the client's workspace; UX review 2 group 6): lab
+// Then a shared project with a client (Gerardo, 2026-11-10: it lives in the client's workspace; UX review 2 group 6): lab
 // staff A open the client's dataset, the project lands in that client's workspace and the client member joins the same
 // board from Admin's bare dataset link (FIX-G12) and from the project link (FIX-G10), without being asked to prepare
 // the dataset again; A's Share names the project, marks A's own row "(you)" and lists the client member; a role change

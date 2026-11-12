@@ -23,7 +23,7 @@ export function VersionHistory({ onClose }: { onClose: () => void }) {
   const [versions, setVersions] = useState<Version[]>([]), [loaded, setLoaded] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [naming, setNaming] = useState(false), [name, setName] = useState(''), [, rerender] = useState(0);
   const meta = getProvider()?.document.getMap('meta') as Y.Map<unknown> | undefined, readOnly = isReadOnly();
-  // Who restores (product owner, 2026-11-10): the project's Owner and lab staff, as the sidecar allows (commits.mjs permit).
+  // Who restores (Gerardo, 2026-11-10): the project's Owner and lab staff, as the sidecar allows (commits.mjs permit).
   const canRestore = !readOnly && (currentRole()?.role === 'owner' || knownAdminView() === 'staff');
   const refresh = async () => { setVersions(await listVersions(collab()!)); setLoaded(true); };
   async function run(fn: () => Promise<unknown>) { setBusy(true); setError(''); try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }

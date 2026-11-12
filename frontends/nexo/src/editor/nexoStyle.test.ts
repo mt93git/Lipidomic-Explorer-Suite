@@ -1,4 +1,7 @@
 import {expect,it} from 'vitest';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import NexoExtras from '../ui/PlotEditor/NexoExtras';
 import {validateNexo,validateNexoStyle,setNexoStyle} from '../state/nexo';
 import {sourceKey} from './applyEditor';
 import {applyNexoStyle} from './applyNexoStyle';
@@ -32,11 +35,11 @@ it('rejects log bars extending to zero and negative error bounds',()=>{
  expect(()=>applyNexoStyle({data:[{y:[2],error_y:{visible:true,array:[3]}}],layout:{}},{yaxis:{type:'log'}})).toThrow(/positive/);
 });
 
-it('applies series symbols/dashes by stable identity and legend order without changing science',()=>{
+it('applies series dashes by stable identity and legend order without changing science',()=>{
  const figure={data:[{type:'scatter',name:'A',x:[1,2],y:[2,4],mode:'lines+markers',marker:{color:['red','blue']},line:{width:2}}],layout:{}};
- const out=applyNexoStyle(figure,{series:[{index:0,sourceKey:sourceKey(figure.data[0],figure.data),markerSymbol:'diamond',lineDash:'dash'}],legendOrder:'reversed'});
- expect(out.data[0].marker).toEqual({color:['red','blue'],symbol:'diamond'});expect(out.data[0].line).toEqual({width:2,dash:'dash'});expect(out.layout.legend.traceorder).toBe('reversed');expect(out.data[0].y).toEqual([2,4]);expect(applyNexoStyle(out,{series:[{index:0,markerSymbol:'diamond',lineDash:'dash'}],legendOrder:'reversed'})).toEqual(out);
- expect(applyNexoStyle({...figure,data:[{type:'scatter',name:'Other',x:[1],y:[1]}]},{series:[{index:0,sourceKey:sourceKey(figure.data[0],figure.data),markerSymbol:'diamond'}]}).data[0].marker).toBeUndefined();
+ const out=applyNexoStyle(figure,{series:[{index:0,sourceKey:sourceKey(figure.data[0],figure.data),lineDash:'dash'}],legendOrder:'reversed'});
+ expect(out.data[0].marker).toEqual({color:['red','blue']});expect(out.data[0].line).toEqual({width:2,dash:'dash'});expect(out.layout.legend.traceorder).toBe('reversed');expect(out.data[0].y).toEqual([2,4]);expect(applyNexoStyle(out,{series:[{index:0,lineDash:'dash'}],legendOrder:'reversed'})).toEqual(out);
+ expect(applyNexoStyle({...figure,data:[{type:'scatter',name:'Other',x:[1],y:[1]}]},{series:[{index:0,sourceKey:sourceKey(figure.data[0],figure.data),lineDash:'dash'}]}).data[0].line).toBeUndefined();
 });
 it('preserves existing shapes and annotations, adding data anchors idempotently',()=>{
  const figure={data:[{y:[1,2]}],layout:{shapes:[{type:'line',xref:'paper',x0:0,x1:1,y0:1,y1:1}],annotations:[{text:'original',xref:'paper',yref:'paper',x:0,y:0}]}};
@@ -59,4 +62,10 @@ it('keeps existing data-anchored group labels in place when the scale changes',(
  const f={data:[{y:[1,100]}],layout:{annotations:[{xref:'paper',yref:'paper',x:.5,y:.9,text:'Title'},{xref:'x',yref:'y',x:0,y:10,text:'Group label'}]}};
  const out=applyNexoStyle(f,{yaxis:{type:'log'}});expect(out.layout.annotations[0]).toEqual(f.layout.annotations[0]);expect(out.layout.annotations[1].y).toBe(1);
  expect(applyNexoStyle({data:[{y:[1,100]}],layout:{yaxis:{type:'log'},annotations:[{xref:'x',yref:'y',x:0,y:1,text:'Group label'}]}},{yaxis:{type:'linear'}}).layout.annotations[0].y).toBe(10);
+});
+
+it('Series style offers no second marker shape control beside Team\'s Marker shape (NEXO-P3)',()=>{
+ const figure={data:[{type:'scatter',name:'A',x:[1,2],y:[2,4],mode:'lines+markers'},{type:'box',name:'B',y:[1,2]}],layout:{}};
+ const html=renderToStaticMarkup(createElement(NexoExtras,{figure,style:{},onChange:()=>{}}));
+ expect(html).toContain('Line dash 1');expect(html).not.toContain('Marker symbol');
 });

@@ -85,7 +85,11 @@ api_catalog_render_kind <- function(output, family_file, team_dir = "R/frontends
     hit <- regmatches(text, regexec(pattern, text, perl = TRUE))[[1L]]
     if (length(hit) >= 2L) hit[[2L]]
   })))
-  found <- renderers(paste(readLines(family_file, warn = FALSE), collapse = "\n"))
+  family_text <- paste(readLines(family_file, warn = FALSE), collapse = "\n")
+  found <- renderers(family_text)
+  # Team draws the Structure figures as Plotly charts: their module rebinds renderPlot to structure_render_plot
+  # (8_structural_module.R), which returns renderPlotly under the Team interface the API runs.
+  if (identical(found, "renderPlot") && grepl("renderPlot <- structure_render_plot", family_text, fixed = TRUE)) found <- "renderPlotly"
   if (!length(found)) found <- renderers(api_catalog_team_texts(team_dir))
   if (length(found) != 1L) return(NULL)
   unname(api_catalog_render_kinds[[found]])

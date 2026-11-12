@@ -231,7 +231,7 @@ api_dataset_session <- function(path, settings, name = basename(path), admin = N
 }
 
 # The POST /api/v1/sessions body, plus the dataset receipt. projectWorkspace: where a shared (collab) project of this
-# open lives, the dataset's client workspace whoever opened it (product owner, 2026-11-10, plan D3); `workspace` stays the
+# open lives, the dataset's client workspace whoever opened it (Gerardo, 2026-11-10, plan D3); `workspace` stays the
 # single-user session's.
 api_dataset_session_response <- function(s) list(sessionId = s$sessionId, workspace = s$workspace,
   projectWorkspace = if (is.null(s$dataset$openedBy$clientId)) s$workspace else api_client_workspace(s$dataset$openedBy$clientId),

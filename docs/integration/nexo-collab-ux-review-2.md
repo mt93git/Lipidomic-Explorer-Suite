@@ -28,7 +28,7 @@ build and a demo with two people:
      workspace and no client member can join it (question 1).
   2. *Everything after the first input change.* Captures taken after a change, other than those named
      `…-as-built…`, were made with the harness proxy passing on a single `X-Nexo-Engine-Revision` value (group 1).
-- Columns. **Built?** is yes, partial, missing, different or in flight. "In flight" is one of the ten cuts the product owner
+- Columns. **Built?** is yes, partial, missing, different or in flight. "In flight" is one of the ten cuts Gerardo
   lifted: one line, no severity, not re-designed. Paths in the fix column are under `frontends/nexo/src/` unless
   they start with `frontends/` or `tests/`. "Group n" and "question n" point to the lists after the tables.
 
@@ -250,7 +250,7 @@ Seen while reviewing, for the tasks in flight (their files, not re-designed here
 | Scene 4: default role on the link ("new members can comment / edit") | D8 and the effective-role rule: a client member is a Commenter until a row says otherwise. |
 | Scenes 4 and 6: "versions are saved into this client's workspace" | D3: a project lands in the caller's scope, so a lab-opened project is in the lab workspace (question 1). |
 | Scene 9: "owner-only share/restore" | Phase 5 as cut: Owner or lab staff share. Restore is question 2. |
-| Scene 3: votes on a comment (its own scene 9 says "D5 votes: drop") | D5 dropped votes; the product owner has lifted that cut: in flight. |
+| Scene 3: votes on a comment (its own scene 9 says "D5 votes: drop") | D5 dropped votes; Gerardo has lifted that cut: in flight. |
 | Scene 6: rows "Auto · hh:mm" and "Opened from Admin" | Phase 4 as cut: kinds named, autosave, before-restore; an autosave every 5 minutes only when the revision changed; the last 20. |
 | Scene 7: "Your edits are kept on this device" | Phase 2 as cut: no IndexedDB. Lifted and in flight; untrue until it lands. |
 | Scene 7 phone card sheet; scene 9 "Phone sheet wired to the role's permissions" | Phase 7 as cut: the read-only layout with avatars. |
@@ -261,7 +261,7 @@ Seen while reviewing, for the tasks in flight (their files, not re-designed here
 | Scene 8 step 9: `renderState.<card>` | As cut: `meta.lastChange`. Built so. |
 | Scenes 1 and 5: click an avatar to jump, double-click to follow | Phase 6 as cut: follow adopts the view. Built: one click follows. |
 
-## Questions for the product owner
+## Questions for Gerardo
 
 1. **Where does a shared project live?** By D3 a project that lab staff open is in the lab workspace: client members
    get "forbidden_scope", and Share lists nobody. Either keep D3 and let the client member open the dataset first
@@ -278,7 +278,7 @@ intent carries only the changed fields and the later one wins, as designed.
 
 ## Screenshots
 
-On the review host, in `<tmp>/ux-review-2/` (not committed). A, B, C and X are the people above; the number is the
+On the review host, in `/tmp/ux-review-2/` (not committed). A, B, C and X are the people above; the number is the
 viewport width.
 
 - Scene 1: `scene-1-A-1440.png`, `scene-1-B-1440.png`, `scene-1-C-1440.png`, `scene-1-A-1440-zoom100.png`,

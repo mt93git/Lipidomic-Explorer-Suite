@@ -17,7 +17,8 @@ Sys.setenv(LIPIDOMIC_STORAGE_DIR = root, LIPIDOMIC_API_WORKSPACE = "actions-repl
 on.exit(unlink(root, recursive = TRUE), add = TRUE)
 if (!exists("api_card_replay", mode = "function")) stop("FAIL api_card_replay is not defined (the API cannot replay recorded presses)")
 source <- "structural_tab-summaryPlot"
-placeholder <- "Initiate Structural Analysis"
+# Team's hint before the first press: its Team wording (8_structural_module.R structural_run_hint) or the classic one.
+placeholder <- "Run structural analysis|Initiate Structural Analysis"
 # summaryPlot renders as PNG: Team's placeholder is told apart by its bytes (the placeholder image drawn before the
 # first press, same size) and, for plotly/JSON renders, by its text; the press itself by the instance's action counter.
 render_bytes <- function(s, id, what) {
@@ -25,7 +26,7 @@ render_bytes <- function(s, id, what) {
   if (inherits(out, "error")) stop("FAIL ", what, ": render failed: ", conditionMessage(out))
   if (!is.null(out$png)) return(out$png)
   text <- as.character(jsonlite::toJSON(out$figure, auto_unbox = TRUE))
-  if (grepl(placeholder, text, fixed = TRUE)) return(placeholder_bytes)
+  if (grepl(placeholder, text)) return(placeholder_bytes)
   charToRaw(text)
 }
 pressed_count <- function(s, id) {

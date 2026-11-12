@@ -152,7 +152,7 @@ test('an unknown kind is refused', async t => {
   assert.deepEqual(answer, { type: 'refused', intentId: 'i-1', reason: 'unknown_kind' });
 });
 
-// Who restores (product owner, 2026-11-10, UX review 2 question 2): the project's Owner and lab staff. Without versions.mjs
+// Who restores (Gerardo, 2026-11-10, UX review 2 question 2): the project's Owner and lab staff. Without versions.mjs
 // a restore that passes the role check is refused as not_here; one that does not, as owner_only.
 for (const [who, identity, reason] of [
   ['an Owner client member', { userId: 'cy', displayName: 'Member', kind: 'client', role: 'owner' }, 'not_here'],
