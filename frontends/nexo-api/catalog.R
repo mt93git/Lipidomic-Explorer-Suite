@@ -3,6 +3,7 @@
 api_catalog_copy <- list(
   "results_dashboard-plot_pca" = list(label = "Principal components", description = "Compare sample structure across the prepared data.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_violin" = list(label = "Feature distributions", description = "Review the distribution of selected features.", group = "Dashboard", needs = NULL),
+  "results_dashboard-plot_pcascore" = list(label = "PCA score analysis", description = "Compare the scores of one principal component between groups, with the tests and group medians.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_dist" = list(label = "Signal distribution", description = "Inspect the distribution of measured signal.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_comp" = list(label = "Composition overview", description = "Compare signal shares across groups.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_heat" = list(label = "Abundance heatmap", description = "Compare lipid patterns across groups.", group = "Dashboard", needs = NULL),
@@ -35,6 +36,7 @@ api_catalog_copy <- list(
   "heatmap_barchart_tab-violin_plot_render" = list(label = "Selected-feature distributions", description = "Review selected features on a log2 or linear prepared-abundance scale.", group = "Heatmaps", needs = NULL),
   "structural_tab-summaryPlot" = list(label = "Structural remodeling shifts", description = "Per class, the difference in chain length, double bonds or positions between comparison- and reference-enriched lipid species.", group = "Structure", needs = "de"),
   "structural_tab-speciesPlotPlot" = list(label = "Species structural features", description = "For one class, a structural feature of each lipid species (each point is a species), split by enrichment direction.", group = "Structure", needs = "de"),
+  "structural_tab-moduleTraitPlot" = list(label = "Module-trait relationships", description = "Groups of correlated lipid classes from the network (modules) and how each one tracks the sample traits.", group = "Structure", needs = "de"),
   "structural_tab-networkPlot" = list(label = "Correlation network", description = "Classes, chain lengths, double bonds or species joined by strong abundance correlations across samples.", group = "Structure", needs = "de"),
   "structural_tab-propPlotPlot" = list(label = "Acyl chain proportions", description = "Compare acyl-chain composition by class.", group = "Structure", needs = NULL),
   "structural_grid_tab-heatmapPlot" = list(label = "Structural grid · selected class heatmap", description = "Map differential lipid changes across carbon length and unsaturation.", group = "Structure", needs = "de"),

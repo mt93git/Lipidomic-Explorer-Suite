@@ -37,12 +37,12 @@ const {chromium} = require('../browser/ci/node_modules/playwright');
 
     const catalog = await page.evaluate(() => TeamCanvasCatalog.list);
     const expectedIds = `
-      results_dashboard-plot_pca results_dashboard-plot_violin results_dashboard-plot_dist results_dashboard-plot_comp results_dashboard-plot_heat
+      results_dashboard-plot_pca results_dashboard-plot_violin results_dashboard-plot_dist results_dashboard-plot_comp results_dashboard-plot_heat results_dashboard-plot_pcascore
       qc_pca_tab-boxplotAfterNorm qc_pca_tab-outlierPlot qc_pca_tab-pca2dPlot qc_pca_tab-pca2dVectorPlot qc_pca_tab-pca3dPlot qc_pca_tab-load2dPlot qc_pca_tab-load2dVectorPlot qc_pca_tab-load3dPlot qc_pca_tab-sampleCorrPlot qc_pca_tab-bqcPlot qc_pca_tab-bqcDeviationPlot qc_pca_tab-bqcAbundancePlot qc_pca_tab-outlierPcaPlot qc_pca_tab-guided_qc_plot
       barchart-barPlotUnfiltered barchart-barPlotFiltered barchart-donutPlotUnfiltered barchart-donutPlotFiltered
       volcano_tab-volcanoPlot lsea_tab-lseaPlot fla_tab-plotVolcano structural_tab-diffAcylPlot
       heatmap_barchart_tab-heatmapPlot heatmap_barchart_tab-heatmapSDPlot heatmap_barchart_tab-filteredHeatmapPlot heatmap_barchart_tab-filteredHeatmapSDPlot heatmap_barchart_tab-violin_plot_render
-      structural_tab-summaryPlot structural_tab-speciesPlotPlot structural_tab-networkPlot structural_tab-propPlotPlot structural_grid_tab-heatmapPlot structural_grid_tab-dotplotPlot structural_grid_tab-mergedPlot structural_grid_tab-diffAllPlot
+      structural_tab-summaryPlot structural_tab-speciesPlotPlot structural_tab-networkPlot structural_tab-moduleTraitPlot structural_tab-propPlotPlot structural_grid_tab-heatmapPlot structural_grid_tab-dotplotPlot structural_grid_tab-mergedPlot structural_grid_tab-diffAllPlot
       group_comparison_tab-comparisonPlot logratio_tab-logratioPlot fla_tab-logratioPlot fla_tab-plotCircos
       longitudinal_tab-macroclass_plot longitudinal_tab-subclass_plot longitudinal_tab-index_plot longitudinal_tab-struct_plot longitudinal_tab-allmetrics_plot
       pathway_tab-pathwayPlot pathway_tab-pathwayVisNetwork cellular_org_tab-stressPlot cellular_org_tab-cpiPlot cellular_org_tab-polarPlot

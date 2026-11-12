@@ -72,6 +72,7 @@
     tell('The saved figure workspace did not fully restore. Autosave is paused. Retry the saved workspace.');
   }
   function restoreStatus(value) {
+    dbg('restore-status',{value:value,pendingNodes:typeof restorePending!=='undefined'?Array.from(restorePending.keys()).slice(0,20):null});
     if (!restoreReceipt) return;
     if (value === 'failed') { restoreFailed = true; showRestoreRetry(); }
     if (value === 'pending' && restoreRetryButton) { restoreRetryButton.hidden = true; restoreRetryButton.disabled = false; }
@@ -342,13 +343,14 @@
     function deadline(){
       if(instanceRequests.get(id)!==request)return;
       if(!shinyBusy && !document.documentElement.classList.contains('shiny-busy')) remaining-=250;
-      if(remaining<=0 || Date.now()>=wallDeadline){instanceRequests.delete(id);if(!dropUndoRequest(request)&&request.saved)restoreStatus('failed');failPlaceholder(request);parkInstance(id);tell('The independent plot did not load in time. Check its analysis data and try again.');return;}
+      if(remaining<=0 || Date.now()>=wallDeadline){dbg('deadline',{id:id,source:source,saved:!!saved,remaining:remaining,wallExpired:Date.now()>=wallDeadline});instanceRequests.delete(id);if(!dropUndoRequest(request)&&request.saved)restoreStatus('failed');failPlaceholder(request);parkInstance(id);tell('The independent plot did not load in time. Check its analysis data and try again.');return;}
       request.timer=setTimeout(deadline,250);
     }
     dropStaleHost(id);
     // A restored copy's Plotly output binds only once its card nears the view (lazyMount).
     if(saved&&lazyEnabled())lazyPending.add(id+'-'+suffix);
     instanceRequests.set(id,request);
+    dbg('instance-request',{id:id,source:source,saved:!!saved,inputKeys:Object.keys(instance.inputs||{}).length});
     // A new copy is an edit at once (autosave keeps it while it is Generating; see pendingCopyNodes).
     if(!saved){request.placeholder=showPlaceholder(request,placeholder);changed();}
     request.timer=setTimeout(deadline,250);
@@ -453,10 +455,20 @@
   function pasteRecord() { return instanceClipboard?requestInstance(instanceClipboard.source,JSON.parse(JSON.stringify(instanceClipboard))):false; }
   function failInstance(request, error) {
     if(instanceRequests.get(request.instance.id)!==request)return;
+    dbg('fail-instance',{id:request.instance.id,source:request.source,saved:!!request.saved,error:String(error&&error.message||error)});
     if(!dropUndoRequest(request)&&request.saved)restoreStatus('failed');
     clearTimeout(request.timer);instanceRequests.delete(request.instance.id);failPlaceholder(request);parkInstance(request.instance.id);
     if(error && window.console)console.error('Independent plot could not be initialized:',error);
     tell('The independent plot could not be initialized. Try duplicating it again.');
+  }
+  // Opt-in diagnostics for creating and restoring independent copies. Off by default; add ?canvasdebug=1 to the
+  // address (or set window.TeamCanvasDebug = true before restoring) to log every step to the console and to
+  // window.__teamCanvasLog, so a copy that never appears can be traced to the step where it stops.
+  var canvasLog=window.__teamCanvasLog=window.__teamCanvasLog||[];
+  function dbg(tag,data){
+    if(!(window.TeamCanvasDebug===true||/[?&]canvasdebug=1(?:&|$)/.test(String(window.location&&window.location.search))))return;
+    canvasLog.push({t:Math.round(performance.now()),tag:tag,data:data});if(canvasLog.length>500)canvasLog.shift();
+    if(window.console&&console.info)console.info('[TeamCanvas]',tag,data);
   }
   function waitInstanceInputs(request,done){
     var stable=0,host=document.getElementById(request.instance.id+'_host'), lastMismatch='', retries=0, nextRetry=0;
@@ -481,10 +493,11 @@
       // Count observed checks, not wall time: a blocked event loop supplies no
       // evidence that a control remained unsettled during that interval.
       if(matching){stable++;}else{stable=0;}
-      if(stable>=7){done();return;}
+      if(stable>=7){dbg('inputs-settled',{id:request.instance.id,source:request.source});done();return;}
       if(!matching){
         var signature=mismatched.slice().sort().join('|');
-        if(signature!==lastMismatch){lastMismatch=signature;retries=0;nextRetry=0;}
+        if(signature!==lastMismatch){lastMismatch=signature;retries=0;nextRetry=0;
+          dbg('inputs-waiting',{id:request.instance.id,source:request.source,saved:!!request.saved,missing:mismatched.slice(0,25).map(function(k){return k+(document.getElementById(request.instance.id+'-'+k)?' (control exists, value differs)':' (no control on the page)');})});}
         if(retries<6 && Date.now()>=nextRetry){setInstanceInputs(request.instance,mismatched);nextRetry=Date.now()+Math.min(16000,1000*Math.pow(2,retries));retries++;}
       }
       setTimeout(check,100);
@@ -502,6 +515,7 @@
   }
   function instanceReady(message, attempt, bound) {
     var request=bound||replyRequest(message);if(!request||instanceRequests.get(message.id)!==request)return;
+    if(!attempt)dbg('instance-ready',{id:message.id,source:request.source,saved:!!request.saved,serverInputKeys:Object.keys(message.inputs||{}),allowed:(message.allowedInputs||[]).length});
     try { initializeInstance(message,attempt,request); } catch(error) { failInstance(request,error); }
   }
   // The server's error for a copy: a failed creation request, or (no request in
@@ -510,6 +524,7 @@
   // cancelled request for this id) leaves the request and the mounted card alone.
   function instanceError(message) {
     if(!message)return;
+    dbg('instance-error',{id:message.id,message:String(message.message||'').slice(0,300)});
     var request=instanceRequests.get(message.id);
     if(request&&request.token&&message.request!==request.token)return;
     if(request){if(!dropUndoRequest(request)&&request.saved)restoreStatus('failed');clearTimeout(request.timer);failPlaceholder(request);parkInstance(message.id);instanceRequests.delete(message.id);}
@@ -1646,10 +1661,13 @@
     // Multi-panel stress violins (three panels per row) were designed for an
     // 840px plot; a 620px card squeezed their panel titles into each other.
     var widePanels=source==='cellular_org_tab-stressPlot';
+    // Raster figures with many labels (network, acyl chain proportions) open larger so their text stays legible.
+    var bigRaster=/^structural_tab-(networkPlot|moduleTraitPlot|propPlotPlot)$/.test(source);
     // Shell cards show only title, plot and footer (card_frame.js): a composition card opens compact,
     // at RC4's 380 px maximum so the figure keeps as much height as the card allows.
     var compactCard=document.body.classList.contains('ts-shell-app')&&/^(results_dashboard-plot_(comp|dist)|barchart-(bar|donut)Plot(Unf|F)iltered)$/.test(source);
-    return {width:roomyHeatmap ? 1000 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : compactCard ? 380 : 720, fixed:roomyHeatmap || widePanels || compactCard};
+    if(source==='results_dashboard-plot_pcascore')return {width:620,height:700,fixed:true};
+    return {width:roomyHeatmap ? 1000 : bigRaster ? 900 : widePanels ? 900 : 620, height:roomyHeatmap ? 1100 : bigRaster ? 860 : compactCard ? (source==='results_dashboard-plot_comp' ? 560 : 380) : 720, fixed:roomyHeatmap || widePanels || compactCard || bigRaster};
   }
   // The first free place in the two-column grid, clear of every visible card and skeleton card.
   function freeSpot(width, height) {
@@ -3372,6 +3390,8 @@
       catalogSource:function(id){var r=records.get(id);return r?sourceKey(r):null;},
       deReady:deReady,designReady:function(){return designReady;},inferenceGate:function(){return inferenceGate;},timePointsReady:function(){return timePointsReady;},
       insightSupported:function(id){var r=records.get(id);return !!(r&&r.instance&&(r.instance.source.indexOf('results_dashboard-')===0||/^cell_(lipid|profile|class|comparison)_plot$/.test(r.instance.source)));},
+      // PCA card -> Statistics tab: "Plot on canvas" adds the PCA score figure as its own card with the tab's settings.
+      addPcaScore:function(id){editDuringHydration();var copied=copyData(records.get(id));if(!copied||copied.source!=='results_dashboard-plot_pca')return false;var pcs={};Object.keys(copied.inputs||{}).forEach(function(k){if(/^pcs_/.test(k))pcs[k]=copied.inputs[k];});var inputs=JSON.parse(JSON.stringify(copied.inputs||{}));copied.source='results_dashboard-plot_pcascore';copied.inputs=inputs;copied.visual={};copied.statistics=null;copied.width=620;copied.height=700;copied.label='PCA score analysis · '+(pcs.pcs_pc||'PC1');return requestInstance(copied.source,copied);},
       copyPlot:function(id){return copyRecord(records.get(id));},
       // Canvas tabs: an independent copy that leaves the Copy/Paste clipboard alone; returns its instance id.
       copyPlotAsInstance:function(id){editDuringHydration();var copied=copyData(records.get(id));if(!copied)return false;lastInstanceRequest=null;return requestInstance(copied.source,copied)&&lastInstanceRequest?lastInstanceRequest:false;},

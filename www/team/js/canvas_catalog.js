@@ -8,7 +8,8 @@
       ['results_dashboard-plot_violin','Feature distributions','Review the distribution of selected features.','Violin Plots',null,'violin'],
       ['results_dashboard-plot_dist','Signal distribution','Inspect the distribution of measured signal.','Composition',null,'density'],
       ['results_dashboard-plot_comp','Composition overview','Compare signal shares across groups.','Composition',null,'bars'],
-      ['results_dashboard-plot_heat','Abundance heatmap','Compare lipid patterns across groups.','Heatmap',null,'heat']
+      ['results_dashboard-plot_heat','Abundance heatmap','Compare lipid patterns across groups.','Heatmap',null,'heat'],
+      ['results_dashboard-plot_pcascore','PCA score analysis','Compare the scores of one principal component between groups, with the tests and group medians.','Quality Check',null,'bars']
     ]},
     {category:'Quality check', icon:'pulse', entries:[
       ['qc_pca_tab-boxplotAfterNorm','Normalized signal boxplots','Compare sample distributions after normalization.','Quality Check'],
@@ -49,6 +50,7 @@
       ['structural_tab-summaryPlot','Structural remodeling shifts','Per class, the difference in chain length, double bonds or positions between comparison- and reference-enriched lipid species.','Structural'],
       ['structural_tab-speciesPlotPlot','Species structural features','For one class, a structural feature of each lipid species (each point is a species), split by enrichment direction.','Structural'],
       ['structural_tab-networkPlot','Correlation network','Classes, chain lengths, double bonds or species joined by strong abundance correlations across samples.','Structural'],
+      ['structural_tab-moduleTraitPlot','Module-trait relationships','Groups of correlated lipid classes from the network (modules) and how each one tracks the sample traits.','Structural'],
       ['structural_tab-propPlotPlot','Acyl chain proportions','Compare acyl-chain composition by class.','Main Class & Acyl Chain Proportions'],
       ['structural_grid_tab-heatmapPlot','Structural grid · selected class heatmap','Map differential lipid changes across carbon length and unsaturation.','Structural Grid'],
       ['structural_grid_tab-dotplotPlot','Structural grid · selected class dotplot','Compare differential lipid measurements across structural coordinates.','Structural Grid'],
@@ -122,7 +124,7 @@
     'barchart-barPlotFiltered':{kind:'de-empty', when:/No lipids passed filters/, status:'No significant lipids', reason:'The comparison ran, but no lipid passes the current significance and |log2 fold change| thresholds, so the filtered view is empty. The thresholds are in the Differential settings of the Data step.'},
     'barchart-donutPlotFiltered':{kind:'de-empty', when:/No lipids passed filters/, status:'No significant lipids', reason:'The comparison ran, but no lipid passes the current significance and |log2 fold change| thresholds, so the filtered view is empty. The thresholds are in the Differential settings of the Data step.'},
     'structural_tab-summaryPlot':{kind:'run', button:'runAnalysis', action:'Run structural analysis', empty:/No structural shifts detected/, emptyStatus:'No structural shifts found', emptyReason:'The structural analysis ran for this card but found no shifts for the current comparison and thresholds (or too few species to compare). This is a result, not a missing setting.', status:'Needs structural analysis', reason:'Structural shifts are computed only on request. Choose “Run structural analysis” on this card (the module’s “Initiate Structural Analysis”, also in Data & settings). Team has no left sidebar.'},
-    'structural_tab-speciesPlotPlot':{kind:'run', button:'runAnalysis', action:'Run structural analysis', empty:/No structural shifts detected/, emptyStatus:'No structural shifts found', emptyReason:'The structural analysis ran for this card but found no shifts for the current comparison and thresholds (or too few species to compare). This is a result, not a missing setting.', status:'Needs structural analysis', reason:'Structural shifts are computed only on request. Choose “Run structural analysis” on this card (the module’s “Initiate Structural Analysis”, also in Data & settings). Team has no left sidebar.'},
+    'structural_tab-speciesPlotPlot':{kind:'run', button:'runAnalysis', then:{button:'updateSpecies', action:'Load species plot', status:'Choose shifts, then load the plot', reason:'The structural analysis is done. In Data & settings, check the list Select Shifts to Visualize (the first four are preselected), then choose Load species plot on this card to draw the species.'}, action:'Run structural analysis', empty:/No structural shifts detected/, emptyStatus:'No structural shifts found', emptyReason:'The structural analysis ran for this card but found no shifts for the current comparison and thresholds (or too few species to compare). This is a result, not a missing setting.', status:'Needs structural analysis', reason:'Structural shifts are computed only on request. Choose “Run structural analysis” on this card (the module’s “Initiate Structural Analysis”, also in Data & settings). Team has no left sidebar.'},
     'structural_grid_tab-heatmapPlot':{kind:'grid-empty', status:'Nothing to place on the grid', reason:'The grid uses species of the selected lipid class whose chains are resolved (carbons and double bonds per chain). The current class and chain position give none. Choose another class or Position in Data & settings. There is no “Generate Grid Plots” button; the grid updates on its own.'},
     'structural_grid_tab-dotplotPlot':{kind:'grid-empty', status:'Nothing to place on the grid', reason:'The grid uses species of the selected lipid class whose chains are resolved (carbons and double bonds per chain). The current class and chain position give none. Choose another class or Position in Data & settings. There is no “Generate Grid Plots” button; the grid updates on its own.'}
   };
@@ -157,6 +159,8 @@
       var runs = shinyValue(String(plotId || id).split('-')[0] + '-' + after.button); if (!runs) return Object.assign({}, after);
       var drawn = plotId && document.getElementById(plotId);
       if (after.empty && drawn && after.empty.test(drawn.textContent || '')) return {kind:'de-empty', status:after.emptyStatus, reason:after.emptyReason};
+      // A second manual step (Species): the analysis ran, but the plot is drawn only after "Load species plot".
+      if (after.then && !shinyValue(String(plotId || id).split('-')[0] + '-' + after.then.button)) return Object.assign({kind:'run'}, after.then);
       return null;
     }
     return Object.assign({}, after);
