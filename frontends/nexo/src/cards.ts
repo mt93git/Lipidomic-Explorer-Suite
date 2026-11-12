@@ -97,7 +97,7 @@ export class Card {
   /** Chart audit b05 F5: the card is sized from its module's plot height; the image is drawn at the body height. */
   /** The input holding Team's plot height for this card (catalog heightInput), set by canvas.ts. */
   plotInput?: string;
-  private renderHeight() { return imageHeightFor(this.node.height, this.plotInput, this.inputs); }
+  private renderHeight() { return imageHeightFor(this.node.height, this.plotInput); }
   private capturing = false;
   private rendering = 0;
   private pendingStatus?: CardStatus;

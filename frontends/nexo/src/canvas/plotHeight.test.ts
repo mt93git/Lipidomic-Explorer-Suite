@@ -48,13 +48,13 @@ describe('violin card height follows the module plot height', () => {
     history.undo();
     expect(store.get().nodes).toEqual(before);
   });
-  // NEXO-P6 item 5: Team draws the module's plot at its own height (plotOutput height = violin_zoom_pct) and scales the
-  // image into the card, whatever the card's size. A many-facet plot drawn at a shorter card's height lost its top.
-  it('a plot-height card asks for its image at the module\'s plot height; the card contains it', () => {
-    expect(imageHeightFor(720, 'violin_zoom_pct', { violin_zoom_pct: 2340 })).toBe(2340);
-    expect(imageHeightFor(2340 + CARD_CHROME, 'violin_zoom_pct', { violin_zoom_pct: 2340 })).toBe(2340);
-    expect(imageHeightFor(720, 'violin_zoom_pct', {})).toBe(720 - CARD_CHROME);
-    expect(imageHeightFor(720, undefined, { violin_zoom_pct: 2340 })).toBe(720);
+  // Team's canvas resize() sets a card's plot output to the card body (www/team/js/canvas.js resize), so Shiny draws the
+  // violin at the body size whatever violin_zoom_pct says; 3000 is the module tab's height, not the card's. A saved
+  // violin_zoom_pct of 3000 in a 720 card asked for a 620x3000 PNG and shrank it to a strip (final comparison card 05).
+  it('a plot-height card asks for its image at its body height, not the saved plot height', () => {
+    expect(imageHeightFor(720, 'violin_zoom_pct')).toBe(720 - CARD_CHROME);
+    expect(imageHeightFor(2340 + CARD_CHROME, 'violin_zoom_pct')).toBe(2340);
+    expect(imageHeightFor(720, undefined)).toBe(720);
   });
   it('reopen keeps Team\'s plot height: a card\'s stored geometry is not written back to the input', async () => {
     const module = await import('./plotHeight') as Record<string, unknown>;
