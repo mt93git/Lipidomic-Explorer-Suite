@@ -15,12 +15,15 @@ export function runNames(runId) {
   return {
     clientName: `Northwind Lipid Lab (synthetic) ${runId}`,
     orderTitle: `Northwind lipid screen (synthetic) ${runId}`,
+    // Made by the spec on Instruments & panels and Storage, archived/removed by the teardown (names carry the run id).
+    instrumentName: `Journey LC-MS (synthetic) ${runId}`,
+    panelName: `Journey panel (synthetic) ${runId}`,
+    boxName: `JNY-${runId}`,
     dana: { name: "Dana Reyes (simulated)", email: `dana.sim+${runId}@admin-staging.test` },
     lee: { name: "Lee Park (simulated)", email: `lee.sim+${runId}@admin-staging.test` },
   };
 }
 
-export const PANEL = "Pilot Simulation Panel (synthetic)";
 export const REASON = "E2E golden journey finished";
 // Written by Paula on Shipping instructions only when the lab has none; the teardown clears it again only if it is
 // still this exact text.

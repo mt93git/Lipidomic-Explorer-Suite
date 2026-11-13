@@ -1,17 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type Cookie, type Locator, type Page } from "@playwright/test";
-import { evidenceDir, RUN_ID, SHIPPING_TEXT } from "./journey-run.mjs";
+import { addPcaPlot, datasetHref, expectBoard, expectNoNexoErrors, expectPrepareScreen, expectQualityCheck, expectSharedBoard, NEXO_PATH, NOT_AVAILABLE, nexoSlow, openCanvas, prepareAndCheck, routeNexoCollab, settleNexo, watchNexo } from "./journey-nexo";
+import { evidenceDir, RUN_ID, runNames, SHIPPING_TEXT } from "./journey-run.mjs";
 import { resultsForBatch } from "./pilot-results.mjs";
 import { totp, totpStep } from "./totp.mjs";
 
 // The golden journey (docs/admin/admin-golden-journey.md): one fictional client lab, all synthetic, walks the lab
 // platform's whole cycle through the screens: Request access, the lab's approval, the invitation, a colleague, an order
-// request and its acceptance, receipt, samples, batch, results, dataset v1, two signatures, the client reading the
+// request and its acceptance (on the run's own instrument and panel), receipt, samples, batch, storage placement, results, QC review, dataset v1, two signatures, the notification log, the client reading the
 // release. Every step ends on a clean screen and is captured at 1440x900 and 390x844 (journey-evidence/desktop|mobile),
 // with steps.json for the help manual; Playwright records a video per test. Skipped unless ADMIN_E2E_JOURNEY=1; then
 // playwright.config.ts runs only this spec against ADMIN_PILOT_BASE_URL. Run e2e/live/journey-seed.mjs first.
-//   ADMIN_E2E_JOURNEY=1 ADMIN_PILOT_BASE_URL=https://… ADMIN_JOURNEY_BASE_PATH=/admin-staging \
+//   ADMIN_E2E_JOURNEY=1 ADMIN_PILOT_BASE_URL=https://… ADMIN_JOURNEY_BASE_PATH=/admin-staging [ADMIN_JOURNEY_NEXO_PATH=/nexo-staging] \
 //     ADMIN_JOURNEY_CREDENTIALS=e2e/live/.journey-credentials.local.json npx playwright test
 // The run's client lab, people and order are made here by the screens, never by the seed. The app sends no email for
 // invitations or access requests: the links are read from the page. The global teardown archives what the run made.
@@ -27,19 +28,21 @@ const onPath = (path: string) => new RegExp(`${escape(BASE_PATH)}${path}`);
 const word = (text: string) => new RegExp(`\\b${escape(text)}\\b`);
 
 type Persona = { email: string; password: string; name: string; totpSecret?: string; totpStep?: number };
-type JourneyRun = { runId: string; steph: Persona; paula: Persona; dana: Persona; lee: Persona; clientName: string; panelName: string; orderTitle: string };
+type JourneyRun = { runId: string; steph: Persona; paula: Persona; dana: Persona; lee: Persona; clientName: string; panelName: string; instrumentName: string; boxName: string; orderTitle: string };
 function journeyRun(): JourneyRun {
   if (!env.ADMIN_PILOT_BASE_URL) throw new Error("Set ADMIN_PILOT_BASE_URL to the origin that serves Admin");
   const file = env.ADMIN_JOURNEY_CREDENTIALS;
   if (!file || !existsSync(file)) throw new Error(`Run node e2e/live/journey-seed.mjs first with ADMIN_JOURNEY_CREDENTIALS set (no ${file ?? "file named"})`);
   const run = JSON.parse(readFileSync(file, "utf8")) as JourneyRun;
   for (const persona of [run.steph, run.paula]) {
-    if (!persona?.totpSecret) throw new Error(`Run node e2e/live/journey-seed.mjs again: ${persona?.email ?? "a persona"} has no TOTP secret`);
+    if (!persona?.password) throw new Error(`Run node e2e/live/journey-seed.mjs again: ${persona?.email ?? "a persona"} has no password`);
   }
   if (!RUN_ID.test(run.runId ?? "") || !run.clientName || !run.dana?.password || !run.lee?.password) {
     throw new Error("Run node e2e/live/journey-seed.mjs again: the file names no run, or an archived run");
   }
-  return run;
+  // The instrument, the panel and the storage box are made by the spec; their names come from the run id.
+  const { instrumentName, panelName, boxName } = runNames(run.runId);
+  return { ...run, instrumentName, panelName, boxName };
 }
 
 const slow = { timeout: 60_000 };
@@ -59,13 +62,17 @@ type StepInfo = { title: string; actor: string; area: Area };
 const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 const recorded: { n: number; slug: string; title: string; actor: string; area: Area; url_path: string }[] = [];
-// Invitation links, passwords and two-step codes are never in a screenshot: Playwright paints these boxes over them.
+// Invitation links, passwords and two-step codes are never in a screenshot: Playwright paints these boxes over them,
+// in a neutral grey (not Playwright's magenta).
+const MASK_COLOR = "#c9ced6";
 const secrets = (page: Page) => [page.locator('input[type="password"], input[name="code"], input[autocomplete="one-time-code"], input[readonly][id$="-link"]')];
 
 // The screen is finished: nothing pending, no error banner, fonts and requests settled. Next's route announcer is the
 // one role=alert that is always there.
+// Nexo pages (under NEXO_PATH) use settleNexo: visible, non-empty alerts only, and only inside an open modal.
 async function settle(page: Page) {
-  await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0);
+  if (new URL(page.url()).pathname.startsWith(`${NEXO_PATH}/`) || new URL(page.url()).pathname === NEXO_PATH) return settleNexo(page);
+  await expect.poll(() => page.locator('[role="alert"]:not(#__next-route-announcer__)').allInnerTexts(), { message: "role=alert on the screen" }).toEqual([]);
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   await page.evaluate(() => document.fonts.ready);
@@ -88,7 +95,7 @@ async function shot(page: Page, slug: string, info: StepInfo, extraMask: Locator
     await page.waitForTimeout(400); // the layout answers the new width
     await page.evaluate(() => document.fonts.ready);
     mkdirSync(join(evidenceDir, folder), { recursive: true });
-    await page.screenshot({ path: join(evidenceDir, folder, name), fullPage: true, mask });
+    await page.screenshot({ path: join(evidenceDir, folder, name), fullPage: true, mask, maskColor: MASK_COLOR });
   }
   await page.setViewportSize(DESKTOP);
   recorded.push({ n, slug, ...info, url_path: appPath(page) });
@@ -133,7 +140,7 @@ async function signIn(page: Page, persona: Persona, landing: Landing, options: {
   if (!options.here) await page.goto(at("/sign-in"));
   await page.getByLabel("Email").fill(persona.email);
   await page.getByLabel("Password").fill(persona.password);
-  if (persona.totpSecret) {
+  if (persona.totpSecret && await page.getByLabel("Two-step code").count()) {
     const used = usedStep.get(persona.email) ?? persona.totpStep ?? -1;
     while (totpStep() <= used) await page.waitForTimeout(1_000);
     const now = Date.now();
@@ -295,11 +302,41 @@ test("6 · Dana requests an order", async ({ page }) => {
   await shot(page, "request-sent", client("The request is sent: it shows as waiting for the lab"));
 });
 
-test("7 · Paula sets the shipping instructions if the lab has none, then reviews and accepts the request", async ({ page }) => {
-  test.setTimeout(240_000);
-  const { paula, panelName } = journeyRun();
+test("7 · Paula adds the run's instrument and panel, sets the shipping instructions if the lab has none, then reviews and accepts the request on that panel", async ({ page }) => {
+  test.setTimeout(300_000);
+  const { paula, panelName, instrumentName, runId } = journeyRun();
   const code = runOrder();
   await signIn(page, paula, "staff");
+
+  await page.goto(at("/instruments-panels"));
+  await expect(page.getByRole("heading", { level: 1, name: "Instruments & panels" })).toBeVisible(slow);
+  await shot(page, "instruments-panels", lab("Instruments & panels: the lab's instruments and the panels New order and Batch builder offer"));
+  // Each locator is scoped to one section or table: the "New instrument" and "New panel" forms, and a row found by its
+  // exact "Edit <name>" link (a substring hasText would also match any other instrument or panel named like it).
+  const instrumentForm = page.getByRole("region", { name: "New instrument", exact: true });
+  await instrumentForm.getByLabel("Instrument name", { exact: true }).fill(instrumentName);
+  await instrumentForm.getByLabel("Model", { exact: true }).fill("Synthetic QTRAP (golden journey)");
+  await instrumentForm.getByLabel("Serial number", { exact: true }).fill(`SYN-${runId}`);
+  await instrumentForm.getByRole("button", { name: "Add instrument" }).click();
+  await expect(page).toHaveURL(onPath("/instruments-panels\\?done=instrument-created$"), slow);
+  await expect(page.getByRole("status")).toContainText("Instrument added.");
+  const instrumentRow = page.getByRole("table", { name: "Instruments", exact: true }).getByRole("row")
+    .filter({ has: page.getByRole("link", { name: `Edit ${instrumentName}`, exact: true }) });
+  await expect(instrumentRow).toHaveCount(1);
+  const panelForm = page.getByRole("region", { name: "New panel", exact: true });
+  await panelForm.getByLabel("Panel name", { exact: true }).fill(panelName);
+  await panelForm.getByLabel("Instrument", { exact: true }).selectOption({ label: instrumentName });
+  await panelForm.getByLabel("LC method", { exact: true }).fill("Synthetic LC method (golden journey)");
+  await panelForm.getByLabel("ISTD kits", { exact: true }).fill("Synthetic ISTD kit");
+  await panelForm.getByLabel("Dataset type", { exact: true }).selectOption("global");
+  await panelForm.getByRole("button", { name: "Add panel" }).click();
+  await expect(page).toHaveURL(onPath("/instruments-panels\\?done=panel-created$"), slow);
+  await expect(page.getByRole("status")).toContainText("Panel added.");
+  const panelRow = page.getByRole("table", { name: "Panels", exact: true }).getByRole("row")
+    .filter({ has: page.getByRole("link", { name: `Edit ${panelName}`, exact: true }) });
+  await expect(panelRow).toHaveCount(1);
+  await expect(panelRow.getByRole("cell", { name: instrumentName, exact: true })).toBeVisible();
+  await shot(page, "panel-created", lab("The run's instrument and panel are added: New order and Batch builder offer the panel now"));
 
   await page.goto(at("/shipping-instructions"));
   await expect(page.getByRole("heading", { level: 1, name: "Shipping instructions" })).toBeVisible(slow);
@@ -346,7 +383,7 @@ test("8 · Dana sees the accepted order with the shipping instructions", async (
 
 test("9 · Paula receives the shipment, registers the samples, plans and runs the batch, accepts the results and builds dataset v1", async ({ page }) => {
   test.setTimeout(600_000);
-  const { paula, panelName } = journeyRun();
+  const { paula, panelName, boxName } = journeyRun();
   const code = runOrder();
   await signIn(page, paula, "staff");
   const status = (text: string) => page.getByRole("status").filter({ hasText: text });
@@ -371,8 +408,6 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
     for (const n of ["001", "002", "003"]) await expect(registered.getByText(`${code}-S${n}`, { exact: true })).toBeVisible(slow);
     await shot(page, "sample-registry", analysis("The three samples are registered with their codes"));
   });
-
-  // PHASE B: Storage placement goes here (after the samples are registered, before the batch is planned).
 
   const codes = ["001", "002", "003"].map(n => `${code}-S${n}`);
   await test.step("Batch builder: this order's samples, preview, save", async () => {
@@ -402,9 +437,57 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
     await shot(page, "batch-saved", analysis("The batch is saved as planned"));
   });
 
+  // The aliquots exist once the batch is saved: Paula places each in a box named after the run (a box is created by its
+  // first placement; the screen has no separate "new box" form).
+  await test.step("Storage: place the order's aliquots in the run's box", async () => {
+    // Every Storage locator is scoped to one container: the search table (this order's aliquots only), the open
+    // aliquot's form, or the run's box. The page also lists the same Place links under "Waiting for a box" (every
+    // aliquot of the lab in no box, up to 500), so a page-wide link is ambiguous and the run's may not even be listed
+    // there. The search is a contains match on the aliquot code: "<code>-S" finds this order's and no longer code's.
+    const search = `${code}-S`;
+    const openSearch = async () => {
+      await page.goto(at(`/storage?q=${encodeURIComponent(search)}`));
+      await expect(page.getByRole("heading", { level: 1, name: "Storage" })).toBeVisible(slow);
+      const table = page.getByRole("table", { name: `Aliquots matching ${search}`, exact: true });
+      await expect(table).toBeVisible(slow);
+      return table;
+    };
+    const found = await openSearch();
+    await expect(found.getByRole("row")).toHaveCount(samples.length + 1); // header + one aliquot per sample
+    const aliquots = await found.getByRole("link", { name: /^Place / }).evaluateAll(links => links.map(link => (link.getAttribute("aria-label") ?? "").replace(/^Place /, "")));
+    expect(aliquots).toHaveLength(samples.length);
+    const aliquotRow = (table: typeof found, aliquot: string) => table.getByRole("row").filter({ has: page.getByRole("cell", { name: aliquot, exact: true }) });
+    for (const [index, aliquot] of aliquots.entries()) {
+      expect(aliquot).toMatch(new RegExp(`^${code}-S00${index + 1}-A\\d+$`));
+      await expect(aliquotRow(found, aliquot).getByRole("cell", { name: "Not in a box", exact: true })).toBeVisible();
+    }
+    await shot(page, "storage", lab("Storage: the order's aliquots are waiting for a box"));
+    for (const [index, aliquot] of aliquots.entries()) {
+      const table = await openSearch();
+      await aliquotRow(table, aliquot).getByRole("link", { name: `Place ${aliquot}`, exact: true }).click();
+      const form = page.getByRole("form", { name: `Place ${aliquot}`, exact: true });
+      await expect(form).toBeVisible(slow);
+      await form.getByLabel("Box", { exact: true }).fill(boxName);
+      await form.getByLabel("Position", { exact: true }).fill(`A${index + 1}`);
+      await form.getByRole("button", { name: "Place", exact: true }).click();
+      await expect(page).toHaveURL(onPath(`/storage\\?box=${escape(encodeURIComponent(boxName))}&done=placed&aliquot=${aliquot}$`), slow);
+      await expect(status(`${aliquot} placed in box ${boxName}, position A${index + 1}.`)).toBeVisible();
+    }
+    const slots = page.getByRole("table", { name: `Positions in box ${boxName}`, exact: true });
+    for (const [index, aliquot] of aliquots.entries()) {
+      const slot = aliquotRow(slots, aliquot);
+      await expect(slot).toHaveCount(1);
+      await expect(slot.getByRole("cell", { name: `A${index + 1}`, exact: true })).toBeVisible();
+    }
+    await shot(page, "storage-placed", lab("The aliquots are placed: the run's box lists each with its position"));
+  });
+
   let sequence = "";
   let benchSheet = "";
   await test.step("Batch run: export the CSVs, mark exported, mark acquired", async () => {
+    // Storage left the batch's page: reopen it.
+    await page.goto(at(`/batch-run/${batchName}`));
+    await expect(page.getByRole("heading", { level: 1, name: `Batch ${batchName}`, exact: true })).toBeVisible(slow);
     const download = async (name: string) => {
       const [file] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name, exact: true }).click()]);
       const text = readFileSync((await file.path())!, "utf8");
@@ -449,7 +532,23 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
     await shot(page, "ingest-accepted", analysis("The results are accepted: the order is Processed"));
   });
 
-  // PHASE B: QC review goes here (after the results are ingested, before the dataset is built).
+  // QC review is optional and records decisions only; the journey excludes no sample and marks the order reviewed.
+  await test.step("QC review: look at the batch's order, mark it QC reviewed (no exclusions)", async () => {
+    await page.goto(at(`/qc-review?order=${code}`));
+    await expect(page.getByRole("heading", { level: 1, name: `QC review · ${code}` })).toBeVisible(slow);
+    const decisions = page.getByRole("table", { name: `Samples of ${code}`, exact: true });
+    await expect(decisions.getByRole("row")).toHaveCount(samples.length + 1);
+    await expect(decisions.getByText("Included", { exact: true })).toHaveCount(samples.length);
+    await expect(page.getByRole("heading", { level: 2, name: `${samples.length} samples · 0 excluded` })).toBeVisible();
+    await shot(page, "qc-review", analysis("QC review: the processed order's samples, all included, and the optional Mark QC reviewed"));
+    // The optional step's own section: its disclosure ("Mark QC reviewed") and the confirm button inside it.
+    const reviewed = page.getByRole("region", { name: "QC reviewed", exact: true });
+    await reviewed.getByText("Mark QC reviewed", { exact: true }).click();
+    await reviewed.getByRole("button", { name: "Yes, mark QC reviewed", exact: true }).click();
+    await expect(page).toHaveURL(onPath(`/qc-review\\?order=${code}&reviewed=1$`), slow);
+    await expect(status(`${code} is QC reviewed.`)).toBeVisible();
+    await shot(page, "qc-reviewed", analysis("The order is QC reviewed; Release builds its dataset next"));
+  });
 
   await test.step("Release: build dataset v1", async () => {
     await page.goto(at("/release"));
@@ -542,6 +641,38 @@ test("13 · Paula adds a file for the client and shows it", async ({ page }) => 
   await shot(page, "deliverable-added", lab("The file is added and shown to the client"));
 });
 
+// Staging sends nothing real: ADMIN_NOTIFY_ALLOW lets only libreros-lab.invalid through, so every row for the run's
+// synthetic people is logged as skipped. Never changes a notification switch.
+test("13b · Paula reads the Notifications log: the run's events are logged as skipped, nothing sent", async ({ page }) => {
+  test.setTimeout(180_000);
+  const { paula, dana, lee } = journeyRun();
+  const code = runOrder();
+  expect(reference, "the access request reference from test 1").not.toBe("");
+  await signIn(page, paula, "staff");
+  await page.goto(at("/notifications"));
+  await expect(page.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible(slow);
+  const log = page.getByRole("table", { name: "Recent sends", exact: true });
+  await expect(log).toBeVisible(slow);
+  // kind label, the reference under it (the access request's, or the order code), the recipient. The reference and the
+  // recipient are matched whole (a substring would also take a longer order code's rows, or another address).
+  const events: [string, string, string][] = [
+    ["Someone requests access", reference, paula.email],
+    ["A client requests an order", code, paula.email],
+    ["My order request is answered", code, dana.email],
+    ["A dataset is released", code, dana.email],
+    ["A dataset is released", code, lee.email],
+  ];
+  for (const [kind, ref, email] of events) {
+    const row = log.getByRole("row").filter({ hasText: kind })
+      .filter({ has: page.getByText(ref, { exact: true }) })
+      .filter({ has: page.getByRole("cell", { name: email, exact: true }) });
+    await expect(row, `${kind} · ${ref} · ${email}`).toHaveCount(1);
+    await expect(row.getByText("Skipped", { exact: true })).toBeVisible();
+    await expect(row).toContainText("Not on ADMIN_NOTIFY_ALLOW");
+  }
+  await shot(page, "notifications", lab("Notifications → Recent sends: the run's events, one row per recipient, all skipped (staging sends nothing)"));
+});
+
 // ================================================================ 9 · the client sees the dataset
 
 test("14 · Dana signs in and sees the released order, its dataset and its files", async ({ page }) => {
@@ -560,4 +691,73 @@ test("14 · Dana signs in and sees the released order, its dataset and its files
   await shot(page, "client-order-released", client("The released order: dataset v1 and the files to download"));
 });
 
-// PHASE C: the lab turns Nexo on for the client (Clients → the client's Nexo switch), then Dana opens the dataset in Nexo.
+// ================================================================ 10 · Nexo (Nexo's own screens: journey-nexo.ts)
+
+test("15 · Paula turns Nexo on for the client (members prepare stays off)", async ({ page }) => {
+  test.setTimeout(180_000);
+  const { paula, clientName } = journeyRun();
+  await signIn(page, paula, "staff");
+  await page.goto(at("/clients"));
+  await page.getByRole("link", { name: clientName, exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: clientName })).toBeVisible(slow);
+  const section = page.getByRole("region", { name: "Nexo access" });
+  await expect(section.getByTestId("nexo-state")).toHaveText("Off");
+  await section.getByRole("button", { name: "Turn Nexo access on" }).click();
+  await expect(page).toHaveURL(onPath("/clients/[^?]+\\?nexo=on$"), slow);
+  await expect(page.getByRole("status").filter({ hasText: `Nexo access turned on for ${clientName}.` })).toBeVisible();
+  await expect(section.getByTestId("nexo-state")).toHaveText("On");
+  await expect(section.getByTestId("prepare-state")).toHaveText("Off"); // the default: the lab prepares
+  await shot(page, "nexo-switch-on", analysis("Clients → the client: Nexo access is on; members prepare stays off, the lab prepares"));
+});
+
+test("16 · Paula opens the dataset in Nexo, prepares it as the first opener and adds a PCA plot", async ({ page }) => {
+  test.setTimeout(600_000);
+  const { paula } = journeyRun();
+  const code = runOrder();
+  await routeNexoCollab(page.context());
+  const watch = await watchNexo(page);
+  await signIn(page, paula, "staff");
+  await page.goto(at(`/datasets?order=${code}`));
+  const link = page.getByRole("table", { name: "Dataset versions" }).getByRole("row", { name: word(code) }).getByRole("link", { name: "Open in Nexo" });
+  await expect(link).toHaveAttribute("href", datasetHref(datasetId), slow);
+  const opened = page.waitForEvent("popup");
+  await link.click();
+  const nexo = await opened;
+  await expect(nexo).toHaveURL(new RegExp(`${escape(NEXO_PATH)}/\\?dataset=${datasetId}`), nexoSlow);
+
+  // Admin's link opens Nexo's Prepare screen directly for the first opener (no Start screen on a ?dataset= link).
+  await expectPrepareScreen(nexo, samples);
+  await shot(nexo, "nexo-prepare", analysis("Nexo's Prepare screen for the first opener: every sample kept, Team's defaults and Team's preview"));
+  await prepareAndCheck(nexo);
+  await expectQualityCheck(nexo, samples.length);
+  await shot(nexo, "nexo-quality-check", analysis("Quality check: Team's three checks on the prepared data, ready for the Canvas"));
+  await openCanvas(nexo);
+  await expectBoard(nexo, code, samples.length);
+  await shot(nexo, "nexo-board", analysis("The Canvas board of the dataset: its lipids and samples, who prepared it, from Admin"));
+  await addPcaPlot(nexo);
+  await shot(nexo, "nexo-plot", analysis("PCA scores · 2D added from Add plot and drawn"));
+  await expectNoNexoErrors(nexo, watch);
+});
+
+test("17 · Dana opens the released dataset in Nexo from the portal: the shared board, no preparation screens", async ({ page }) => {
+  test.setTimeout(420_000);
+  const { dana } = journeyRun();
+  const code = runOrder();
+  await routeNexoCollab(page.context());
+  const watch = await watchNexo(page);
+  await signIn(page, dana, "client");
+  await expect(page.getByRole("heading", { level: 1, name: "Your orders" })).toBeVisible(slow);
+  const datasets = page.getByRole("region", { name: "Datasets" });
+  await expect(datasets.getByText(code, { exact: true })).toBeVisible(slow);
+  const link = datasets.getByRole("link", { name: "Open in Nexo" });
+  await expect(link).toHaveAttribute("href", datasetHref(datasetId), slow);
+  await shot(page, "client-open-in-nexo", client("Dana's home: her released dataset has Open in Nexo"));
+  const opened = page.waitForEvent("popup");
+  await link.click();
+  const nexo = await opened;
+
+  await expectSharedBoard(nexo, code, samples.length, watch);
+  await expect(nexo.getByText(NOT_AVAILABLE)).toHaveCount(0);
+  await shot(nexo, "client-nexo-board", client("Dana's Nexo: the shared board as the lab prepared it, with its PCA plot; she can comment"));
+  await expectNoNexoErrors(nexo, watch);
+});

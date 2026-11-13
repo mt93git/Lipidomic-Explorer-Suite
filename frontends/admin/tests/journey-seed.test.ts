@@ -47,7 +47,7 @@ function seed(file: string) {
 }
 
 describe("journey seed", () => {
-  it("creates only the staff personas and the panel, writes a mode-600 file with the run, and prints no secret", async () => {
+  it("creates only the staff personas with no TOTP factor (no panel: the spec adds the run's on Instruments & panels), writes a mode-600 file with the run, and prints no secret", async () => {
     const file = join(dir, "credentials.json");
     const { code, out } = await seed(file);
     expect(code, out).toBe(0);
@@ -55,14 +55,18 @@ describe("journey seed", () => {
     const run = JSON.parse(readFileSync(file, "utf8"));
     expect(run.runId).toMatch(RUN_ID);
     expect(run.clientName).toBe(`Northwind Lipid Lab (synthetic) ${run.runId}`);
-    expect(run.steph).toMatchObject({ email: "steph.sim@admin-staging.test", totpSecret: "JBSWY3DPEHPK3PXP" });
+    expect(run.steph).toMatchObject({ email: "steph.sim@admin-staging.test" });
+    // Two-step sign-in is off: no persona gets a TOTP factor.
+    expect(run.steph.totpSecret).toBeUndefined();
+    expect(requests.filter(request => request === "POST /auth/v1/factors")).toEqual([]);
     expect(run.paula).toMatchObject({ email: "paula.sim@admin-staging.test" });
     expect(run.dana.email).toBe(`dana.sim+${run.runId}@admin-staging.test`);
     expect(run.lee.email).toBe(`lee.sim+${run.runId}@admin-staging.test`);
-    for (const secret of [run.steph.password, run.paula.password, run.dana.password, run.lee.password, run.steph.totpSecret, "service-key-secret", "anon-key"]) expect(out).not.toContain(secret);
+    for (const secret of [run.steph.password, run.paula.password, run.dana.password, run.lee.password, "service-key-secret", "anon-key"]) expect(out).not.toContain(secret);
     // The client lab, its people and the order are left to the screens.
     expect(requests.filter(request => /\/(client|order|client_member|invitation|access_request)$/.test(request))).toEqual([]);
-    expect(requests).toContain("POST /rest/v1/panel");
+    expect(run.panelName).toBeUndefined();
+    expect(requests.filter(request => /\/(panel|instrument)$/.test(request))).toEqual([]);
   });
 
   it("refuses to reseed over a run whose cleanup has not succeeded, and reseeds once the marker is gone", async () => {

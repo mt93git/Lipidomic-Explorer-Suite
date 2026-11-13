@@ -1,10 +1,11 @@
 // Global teardown of the golden journey; it also runs after a failed run. Everything the run created through the
 // screens is archived, never deleted, with Stephania's token (an Owner), never the service key:
 //   the client's orders (the released dataset withdrawn first, then its batch, versions and injections, the aliquots,
-//   last the order: the same walk as pilot-teardown.mjs), the client lab's memberships (archive_member) and pending
-//   invitations (revoke_invitation), the client (archive_client), the shipping text if the run wrote it, and the release
-//   policy put back as it was recorded by journey-setup.mjs.
-// The access request stays as approved history; Dana's and Lee's sign-in accounts stay (their memberships are archived,
+//   last the order: the same walk as pilot-teardown.mjs; first the run's storage placements, removed with admin.remove_aliquot,
+//   which keeps them in the history), the run's panel and instrument (archive_panel, archive_instrument), the client lab's memberships (archive_member) and pending
+//   invitations (revoke_invitation), the client's Nexo switch turned off (set_client_nexo_access, refused once archived), the client (archive_client), the shipping text if the run wrote it, and the release
+//   policy put back as it was recorded by journey-setup.mjs (only its signers who are still lab staff; see the part).
+// A still-pending access request of the run is declined; an approved one stays as history; Dana's and Lee's sign-in accounts stay (their memberships are archived,
 // so they see nothing). The run id in the credential file is the retry marker: it is removed only when every part
 // succeeded, so a re-run finds the rest again (each lookup tolerates already-archived rows).
 //   ADMIN_E2E_JOURNEY=1 ADMIN_JOURNEY_RUN_ID=<runId from the file> node -e 'import("./e2e/live/journey-teardown.mjs").then(m => m.default())'
@@ -18,6 +19,7 @@ async function call(url, init) {
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
+const DECLINE_REASON = "E2E journey run finished";
 const list = ids => `in.(${ids.join(",")})`;
 const unique = values => [...new Set(values.filter(Boolean))];
 const sameSet = (a, b) => a.length === b.length && [...a].sort().every((value, index) => value === [...b].sort()[index]);
@@ -30,7 +32,7 @@ export default async function teardown() {
   const runId = RUN_ID.test(env.ADMIN_JOURNEY_RUN_ID ?? "") ? env.ADMIN_JOURNEY_RUN_ID : null;
   if (!runId) return;
   const run = JSON.parse(readFileSync(file, "utf8"));
-  const { clientName } = runNames(runId);
+  const { clientName, panelName, instrumentName } = runNames(runId);
   const base = env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/+$/, "");
   const auth = (env.ADMIN_E2E_AUTH_URL || `${base}/auth/v1`).replace(/\/+$/, "");
   const rest = (env.ADMIN_E2E_REST_URL || `${base}/rest/v1`).replace(/\/+$/, "");
@@ -52,7 +54,7 @@ export default async function teardown() {
     try { return await work(); } catch (error) { failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`); return undefined; }
   };
 
-  const clients = await part("client lookup", () => api(`client?select=id,archived_at&name=eq.${encodeURIComponent(clientName)}`));
+  const clients = await part("client lookup", () => api(`client?select=id,archived_at,nexo_access&name=eq.${encodeURIComponent(clientName)}`));
   const client = Array.isArray(clients) ? clients[0] : undefined;
   if (client) {
     // The client's orders, as pilot-teardown.mjs archives its order: dataset withdrawn, batch, aliquots, then the order.
@@ -80,7 +82,14 @@ export default async function teardown() {
         await archive(`batch_version?batch_id=${list(batchIds)}`);
         await archive(`batch?id=${list(batchIds)}`);
       }
-      if (aliquotIds.length) await archive(`aliquot?id=${list(aliquotIds)}`);
+      if (aliquotIds.length) {
+        // Storage: the run's live placements are removed (admin.remove_aliquot archives the placement with a reason and keeps
+        // it in the history) before the aliquots are archived; never deleted.
+        for (const placement of await api(`box_position?select=aliquot_id&aliquot_id=${list(aliquotIds)}&archived_at=is.null`)) {
+          await rpc("remove_aliquot", { p_aliquot_id: placement.aliquot_id, p_reason: REASON });
+        }
+        await archive(`aliquot?id=${list(aliquotIds)}`);
+      }
       const archived = await archive(`order?id=${list(orderIds)}`);
       if (!Array.isArray(archived) || !orderIds.every(id => archived.some(row => row.id === id && row.archived_at))) throw new Error("order archive not confirmed");
       console.log(`journey teardown: archived ${orders.map(order => order.code).join(", ")} with ${batchIds.length} batch(es) and ${aliquotIds.length} aliquot(s)`);
@@ -96,12 +105,40 @@ export default async function teardown() {
         await rpc("revoke_invitation", { p_invitation_id: invitation.id });
       }
     });
+    // set_client_nexo_access refuses an archived client (0021), so the switch goes off first, whatever the run left.
+    if (client.nexo_access && !client.archived_at) await part("nexo switch", () => rpc("set_client_nexo_access", { p_client_id: client.id, p_enabled: false }));
     // archive_client refuses while an open order is left: only after the orders are archived.
     if (ordersDone && !client.archived_at) await part("client", () => rpc("archive_client", { p_client_id: client.id, p_reason: REASON }));
     else if (!ordersDone) failures.push("client: not archived because its orders are not");
   } else if (Array.isArray(clients)) {
     console.log("journey teardown: the run created no client lab; nothing to archive there");
   }
+
+  // Instruments & panels: the run's panel, then its instrument (archive_instrument refuses while an active panel uses it).
+  // Found by the names that carry the run id; a name that is already archived is not found again (a retry).
+  await part("panel", async () => {
+    for (const panel of await api(`panel?select=id&name=eq.${encodeURIComponent(panelName)}&archived_at=is.null`)) {
+      await rpc("archive_panel", { p_id: panel.id, p_reason: REASON });
+    }
+  });
+  if (!failures.some(failure => failure.startsWith("panel:"))) {
+    await part("instrument", async () => {
+      for (const instrument of await api(`instrument?select=id&name=eq.${encodeURIComponent(instrumentName)}&archived_at=is.null`)) {
+        await rpc("archive_instrument", { p_id: instrument.id, p_reason: REASON });
+      }
+    });
+  } else failures.push("instrument: not archived because its panel is not");
+
+  // A request the run sent but nobody approved (it stopped after test 1) would wait into the next run's People
+  // screenshots: decline it, as the People screen does (0020 list_access_requests, decline_access_request). The run id
+  // is in Dana's and Lee's addresses and in the organisation; approved requests stay as history.
+  await part("access requests", async () => {
+    const requests = await rpc("list_access_requests", {});
+    if (!Array.isArray(requests)) throw new Error("access request list not confirmed");
+    const mine = requests.filter(row => row.status === "pending" && [row.email, row.organisation].some(text => typeof text === "string" && text.includes(runId)));
+    for (const request of mine) await rpc("decline_access_request", { p_request_id: request.id, p_reason: DECLINE_REASON });
+    if (mine.length) console.log(`journey teardown: declined ${mine.length} pending access request(s) of the run`);
+  });
 
   // The shipping text, only if it is still the one this run wrote.
   await part("shipping instructions", async () => {
@@ -120,7 +157,27 @@ export default async function teardown() {
     // No policy row before means any Owner or Admin signs, 2 signatures: an empty signer list says the same.
     const before = run.previousPolicy ?? { eligible_signers: [], required_signatures: 2 };
     if (sameSet(before.eligible_signers, current.eligible_signers) && before.required_signatures === current.required_signatures) return;
-    await rpc("set_release_policy", { p_eligible_signers: before.eligible_signers, p_required_signatures: before.required_signatures });
+    // Staging is shared: another run may have archived a recorded signer meanwhile, and set_release_policy refuses a
+    // signer who is not lab staff (owner, admin, operator, not archived: admin.is_lab_staff). Only live staff are kept,
+    // and the count is capped to them; below 2 (the least a policy may ask) the journey's policy stays, and that is done.
+    let signers = before.eligible_signers;
+    let required = before.required_signatures;
+    if (signers.length) {
+      const staff = await api(`lab_staff?select=user_id&user_id=${list(signers)}&role=in.(owner,admin,operator)&archived_at=is.null`);
+      if (!Array.isArray(staff)) throw new Error("lab staff selection not confirmed");
+      const live = new Set(staff.map(row => row.user_id));
+      signers = signers.filter(id => live.has(id));
+      required = Math.min(required, signers.length);
+      if (required < 2) {
+        console.log("journey teardown: the previous policy's signers are no longer lab staff; left the journey's policy (Paula and Stephania, 2)");
+        return;
+      }
+      if (signers.length < before.eligible_signers.length) {
+        console.log(`journey teardown: ${before.eligible_signers.length - signers.length} of the previous policy's signers are no longer lab staff; restored it with ${signers.length} signer(s), ${required} signature(s)`);
+      }
+      if (sameSet(signers, current.eligible_signers) && required === current.required_signatures) return;
+    }
+    await rpc("set_release_policy", { p_eligible_signers: signers, p_required_signatures: required });
   });
 
   if (failures.length) throw new Error(`journey teardown: ${failures.join("; ")}; retry marker kept`);
