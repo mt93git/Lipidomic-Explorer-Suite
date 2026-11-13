@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,12 +8,12 @@ import { toSequenceCsv } from "../src/lib/batch/csv";
 import { datasetPaths as appDatasetPaths, matchSamples as appMatchSamples } from "../src/lib/release";
 import {
   BOX_COLUMNS, BOX_ROWS, CLIENTS, ORDERS, POINTS, STAFF, archivedClientName, batchInjections, datasetPaths, deliverablePath, demoDeliverable,
-  demoSamples, isDemoName, matchSamples, matchesOrder, nextSteps, orderRequest, policyChange, sequenceCsv, slotName, slotOffsets,
+  demoSamples, formatPlan, isDemoName, matchSamples, matchesOrder, nextSteps, orderRequest, policyChange, sequenceCsv, slotName, slotOffsets,
   stepsFor, syntheticResults,
 } from "../e2e/live/demo-plan.mjs";
 
 // The showcase seed's plan (e2e/live/demo-plan.mjs): names, where each order is parked, the steps that take it there,
-// what an existing order still needs (idempotency) and the synthetic files.
+// what an existing order still needs (idempotency) and the synthetic files. The seed itself runs only --dry-run here.
 const root = join(__dirname, "..");
 const fixture = readFileSync(join(root, "e2e/fixtures/sciex-synthetic.txt"), "utf8");
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -205,5 +206,39 @@ describe("reset", () => {
     const name = archivedClientName("Harbor Lipid Lab (demo)", new Date("2026-11-13T09:05:00Z"));
     expect(name).toBe("Harbor Lipid Lab (demo, archived 20261113-0905)");
     expect(isDemoName(name)).toBe(false);
+  });
+});
+
+describe("the seed script", () => {
+  const run = (args: string[], env: Record<string, string> = {}) => new Promise<{ code: number | null; out: string }>(done => {
+    const child = spawn(process.execPath, ["e2e/live/demo-seed.mjs", ...args], { cwd: root, env: { NODE_ENV: "test", PATH: process.env.PATH ?? "", ...env } });
+    let out = "";
+    child.stdout.on("data", chunk => { out += chunk; });
+    child.stderr.on("data", chunk => { out += chunk; });
+    child.on("close", code => done({ code, out }));
+  });
+
+  it("--dry-run prints the plan with no environment and touches nothing", async () => {
+    const { code, out } = await run(["--dry-run"]);
+    expect(code).toBe(0);
+    expect(out).toBe(`${formatPlan()}\n`);
+    for (const order of ORDERS) expect(out).toContain(order.title);
+    expect(out).toContain("asked: extracted");
+    expect(out).not.toMatch(/password|token|key/i);
+  });
+
+  it("--dry-run --reset prints what a reset archives", async () => {
+    const { code, out } = await run(["--dry-run", "--reset"]);
+    expect(code).toBe(0);
+    expect(out).toContain("Nothing is deleted");
+  });
+
+  it("refuses to run without its environment or with an unknown argument", async () => {
+    const missing = await run([]);
+    expect(missing.code).toBe(2);
+    expect(missing.out).toContain("missing environment: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ADMIN_DEMO_CREDENTIALS");
+    const bogus = await run(["--force"]);
+    expect(bogus.code).toBe(2);
+    expect(bogus.out).toContain("unknown argument --force");
   });
 });
