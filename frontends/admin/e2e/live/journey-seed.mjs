@@ -9,8 +9,8 @@
 // It does NOT create the client lab, Dana, Lee or the order: the spec makes them through the screens (Request access,
 // People, Request an order). It chooses this run's id (<UTC yyyymmdd-hhmm>-<4 hex>), the names derived from it
 // (journey-run.mjs) and a password for Dana and Lee, whose accounts the accept-invitation screen creates.
-// Each run gives Paula and Stephania a new generated password and a fresh verified TOTP factor (lab staff must pass
-// two-step sign-in). Everything goes to ADMIN_JOURNEY_CREDENTIALS (mode 600, git-ignored: e2e/live/.journey-credentials
+// Each run gives Paula and Stephania a new generated password and removes any old TOTP factor (two-step sign-in is
+// off since 2026-11-11). Everything goes to ADMIN_JOURNEY_CREDENTIALS (mode 600, git-ignored: e2e/live/.journey-credentials
 // *.json). Prints no password, secret or key. The run id in that file is the teardown's retry marker: while it is
 // there (a run whose cleanup failed), this seed refuses to run, since new passwords would lock the teardown out.
 //
@@ -52,7 +52,9 @@ for (const [key, persona] of Object.entries(personas)) {
   const secret = kit.password();
   const userId = await kit.ensureUser(persona, secret);
   await kit.ensureStaff(userId, persona);
-  credentials[key] = { email: persona.email, password: secret, name: persona.name, userId, ...await kit.enrollTotp(userId, persona.email, secret) };
+  credentials[key] = { email: persona.email, password: secret, name: persona.name, userId };
+  // Two-step sign-in is off (Admin 8070cbbe): remove any old TOTP factor, enroll none.
+  for (const factor of (await kit.auth(`/admin/users/${userId}/factors`)) ?? []) await kit.auth(`/admin/users/${userId}/factors/${factor.id}`, { method: "DELETE" });
 }
 await kit.ensurePanel(PANEL);
 
@@ -62,5 +64,5 @@ writeFileSync(file, `${JSON.stringify({
 }, null, 2)}\n`, { mode: 0o600 });
 chmodSync(file, 0o600);
 
-console.log(`journey-seed: ${Object.values(personas).map(p => `${p.name} <${p.email}> (${p.role})`).join(", ")} ready, TOTP factors verified; panel "${PANEL}" ready`);
+console.log(`journey-seed: ${Object.values(personas).map(p => `${p.name} <${p.email}> (${p.role})`).join(", ")} ready, no TOTP factors; panel "${PANEL}" ready`);
 console.log(`journey-seed: run ${runId}: the client lab, Dana, Lee and the order are made by the spec through the screens; credentials written to ${file} (mode 600)`);

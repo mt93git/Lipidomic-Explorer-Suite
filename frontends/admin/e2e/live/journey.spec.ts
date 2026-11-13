@@ -34,7 +34,7 @@ function journeyRun(): JourneyRun {
   if (!file || !existsSync(file)) throw new Error(`Run node e2e/live/journey-seed.mjs first with ADMIN_JOURNEY_CREDENTIALS set (no ${file ?? "file named"})`);
   const run = JSON.parse(readFileSync(file, "utf8")) as JourneyRun;
   for (const persona of [run.steph, run.paula]) {
-    if (!persona?.totpSecret) throw new Error(`Run node e2e/live/journey-seed.mjs again: ${persona?.email ?? "a persona"} has no TOTP secret`);
+    if (!persona?.password) throw new Error(`Run node e2e/live/journey-seed.mjs again: ${persona?.email ?? "a persona"} has no password`);
   }
   if (!RUN_ID.test(run.runId ?? "") || !run.clientName || !run.dana?.password || !run.lee?.password) {
     throw new Error("Run node e2e/live/journey-seed.mjs again: the file names no run, or an archived run");
@@ -133,7 +133,7 @@ async function signIn(page: Page, persona: Persona, landing: Landing, options: {
   if (!options.here) await page.goto(at("/sign-in"));
   await page.getByLabel("Email").fill(persona.email);
   await page.getByLabel("Password").fill(persona.password);
-  if (persona.totpSecret) {
+  if (persona.totpSecret && await page.getByLabel("Two-step code").count()) {
     const used = usedStep.get(persona.email) ?? persona.totpStep ?? -1;
     while (totpStep() <= used) await page.waitForTimeout(1_000);
     const now = Date.now();
