@@ -119,7 +119,7 @@ One look for all four scenes: Nexo's navy bar and tokens (`frontends/nexo/src/to
 
 ### Scene 1 · Sign in
 
-Screenshots: `scene-1-1440.png`, `scene-1-390.png` (email and password); `scene-1-code-1440.png`, `scene-1-code-390.png` (the 6-digit step); `scene-1-wrong-code-1440.png`, `scene-1-wrong-code-390.png`; `scene-1-signed-out-1440.png`, `scene-1-signed-out-390.png`; `scene-1-forgot-1440.png`, `scene-1-forgot-390.png`; `scene-1-activate-1440.png`, `scene-1-activate-390.png`.
+Screenshots: `scene-1-1440.png`, `scene-1-390.png` (email and password); `scene-1-code-1440.png`, `scene-1-code-390.png` (the 6-digit step, three digits typed); `scene-1-wrong-code-1440.png`, `scene-1-wrong-code-390.png`; `scene-1-signed-out-1440.png`, `scene-1-signed-out-390.png`; `scene-1-forgot-1440.png`, `scene-1-forgot-390.png`; `scene-1-activate-1440.png`, `scene-1-activate-390.png`.
 
 What a person sees: the spectrum illustration over the whole screen and one white card, 400 px wide. "Your analysis starts here", "Sign in to open your private projects.", Email, Password (with "Show"), the button "Continue", and two links: "Forgot password?" and "Activate your invitation". Then "Step 2 of 2 · Enter your 6-digit code": one field that submits itself at the sixth digit. A wrong code says so under the field: "That code did not match. Codes change every 30 seconds: enter the newest one." Signed out in the middle of work: "You were signed out. Sign in to go back to ORD041 · v1.", and after the code the person is back on that board, not on Start.
 
@@ -217,7 +217,7 @@ Every fix, named. Team's numbers were measured on its sign-in page (section 2.1)
 | # | Fix | Team today | Nexo today | Proposal |
 |---|---|---|---|---|
 | 1 | Type scale | The sign-in card mixes 30, 15, 14 and 13 px in two families (the heading is Cormorant Garamond). | One family, Nunito Sans; tokens 18 / 14 / 13 / 12 / 11 px (`frontends/nexo/src/tokens.css:34-52`). | Nexo's family and tokens plus one 24 px page title: 24 / 18 / 14 / 13 / 12 px. 11 px only in charts, on the role pill in the bar ("Lab", "Client") and on avatar initials (10 px where avatars stack). Two display sizes: the 40 px count in the preview and the 20 px code field. |
-| 2 | Heading on a phone | Wraps to two lines at 390 px. | No sign-in page. | One line: the 24 px title scales down to 21.8 px at 390 px. |
+| 2 | Heading on a phone | Wraps to two lines at 390 px. | No sign-in page. | One line: the sign-in title scales from 24 px to 21.8 px at 390 px. The other page titles stay 24 px, also on one line. |
 | 3 | Card width | Card 620 px, fields 538 px. | Start card and Prepare dialog 560 px (`frontends/nexo/src/styles.css:1`, `frontends/nexo/src/ui/shell.css:627`). | Sign-in card 400 px with 32 px padding (24 px on a phone), join card 520 px; lists and forms on one white sheet with 32 px padding. |
 | 4 | Text contrast | Sub-line 6.1:1, link 6.7:1, labels 7.6:1. | The tokens the proposal uses. | Ink 17.3:1, muted 8.2:1, accent 8.3:1 on white. Every text run is at least 4.5:1, and all but three dimmed labels are at least 7:1 (5.3). |
 | 5 | Field borders | 1 px `rgb(203,213,225)`: 1.5:1 against white. | 1 px `--line-strong` (`#cfd6de`): 1.5:1 (`frontends/nexo/src/ui/shell.css:116`). | 1 px `#7d8a99`: 3.5:1. It is the only colour the proposal adds to Nexo's tokens. |
@@ -244,7 +244,7 @@ Every fix, named. Team's numbers were measured on its sign-in page (section 2.1)
 
 All 16 states at both widths: 1401 distinct text runs at 1440 px and 1314 at 390 px, in one font family.
 
-- **Sizes found:** 10, 11, 12, 13, 14, 18, 24 and 40 px, and the 21.8 px title at 390 px. Text typed into a field is 14 px with a mouse and 16 px on touch; the six digits of the code are 20 px on both.
+- **Sizes found:** 10, 11, 12, 13, 14, 18, 24 and 40 px, and the 21.8 px sign-in title at 390 px. Text typed into a field is 14 px with a mouse and 16 px on touch; the six digits of the code are 20 px on both.
 - **Contrast of text in the product area:** at least 7:1, with one exception. The labels "Tidy up", "Undo" and "Redo" in the drawing of the Canvas are 4.6:1 while the board loads, dimmed because they cannot be used yet. White initials on a person's colour are 7.1:1 or more.
 - **Chart marks against white:** blue 4.4:1, orange 3.2:1, amber ring 5.0:1. The gray of left-out lipids is 2.5:1 on purpose: the legend and the table say the same.
 - **Control heights with a mouse:** fields and buttons 40 px; small buttons, segments and chips 32 px; slider and switch 24 px.
