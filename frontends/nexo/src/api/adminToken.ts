@@ -75,3 +75,5 @@ export const adminDisplayName = (): string | null => lastName ?? (lastView === '
 export const knownClientNames = (): string[] => lastClients;
 /** The signed-in person's Admin userId with the last token (collab comments: Mentions and own 👍); null when not known. */
 export const adminUserId = (): string | null => lastUserId;
+/** Admin answered the token request (a token, signed out, or none): before that, adminUserId is null for everyone. */
+export const adminAnswered = (): boolean => cached !== null || noToken !== null;

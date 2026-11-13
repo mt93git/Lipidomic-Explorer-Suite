@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdminSignInRequired, adminDisplayName, adminSignInUrl, adminToken, adminHeaders, adminTokenUrl, adminUserId, forgetAdminToken, knownClientNames } from './adminToken';
+import { AdminSignInRequired, adminAnswered, adminDisplayName, adminSignInUrl, adminToken, adminHeaders, adminTokenUrl, adminUserId, forgetAdminToken, knownClientNames } from './adminToken';
 import { datasetStrings as d } from '../ui/strings';
 afterEach(() => { forgetAdminToken(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -17,6 +17,21 @@ describe('adminToken', () => {
     expect(adminUserId()).toBe('00000000-0000-4000-8000-0000000000aa');
     forgetAdminToken();
     expect(adminUserId()).toBeNull();
+  });
+  // The companion waits for this before it decides the first-visit entrance: until Admin answered, nobody is known.
+  it('says Admin answered once it gave a token, said signed out, or could not be reached', async () => {
+    at(now);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(issued('t1')).mockResolvedValueOnce(json(401, { error: 'signed_out' })).mockRejectedValueOnce(new TypeError('offline')));
+    expect(adminAnswered()).toBe(false);
+    await adminToken();
+    expect(adminAnswered()).toBe(true);
+    forgetAdminToken();
+    expect(adminAnswered()).toBe(false);
+    await expect(adminToken()).rejects.toBeInstanceOf(AdminSignInRequired);
+    expect(adminAnswered()).toBe(true);
+    forgetAdminToken();
+    expect(await adminToken()).toBeNull();
+    expect(adminAnswered()).toBe(true);
   });
   // FIX-PROD-B 2: Start's empty state names a client member's group before anything is released to it.
   it("keeps the client names Admin gives a client member, forgotten with the token", async () => {

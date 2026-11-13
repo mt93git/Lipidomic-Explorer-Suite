@@ -14,6 +14,7 @@ import { PrepareScreen } from './ui/entry/PrepareScreen';
 import { CheckScreen, boardSettings } from './ui/entry/CheckScreen';
 import { BoardNotice, decideSettings, noticeStrings } from './ui/entry/BoardNotice';
 import { JoinCard } from './ui/entry/JoinCard';
+import { mountUpdateBar } from './ui/UpdateBar';
 import { fromCanvasV1 } from './state/serialize';
 import { initReadOnly, isReadOnly } from './state/readonly';
 import { collab, initCollab } from './collab/mode';
@@ -213,4 +214,5 @@ function Boot() {
   }</div>;
 }
 initReadOnly(); initCollab(); document.documentElement.classList.toggle('read-only', isReadOnly());
+mountUpdateBar();
 createRoot(document.getElementById('app')!).render(<Boot/>);

@@ -17,6 +17,8 @@ const pairs: [string, string][] = [
   ['amber-fg', 'amber-bg'], ['blue-fg', 'blue-bg'], ['red-fg', 'red-bg'], ['paper', 'toast-error'], ['paper', 'danger'], ['paper', 'green-strong'],
   // Row 14: the save pill's text in every state sits on the navy bar.
   ['pill-fg', 'navy'], ['pill-dirty', 'navy'], ['pill-saving', 'navy'], ['pill-error', 'navy'],
+  // The new-version bar (ui/UpdateBar): its own yellow, the same on any theme.
+  ['update-fg', 'update-bg'],
 ];
 describe('colour tokens', () => {
   it.each(pairs)('%s on %s is at least 7:1', (fg, bg) => { expect(ratio(fg, bg)).toBeGreaterThanOrEqual(7); });
