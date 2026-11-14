@@ -37,7 +37,7 @@ export function personLabel(member: { name?: string | null; email?: string | nul
 
 const DAY = 24 * 60 * 60 * 1000;
 const labDate = new Intl.DateTimeFormat("en-CA", { timeZone: LAB_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
-const longDay = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric", timeZone: LAB_TIME_ZONE });
+const longDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: LAB_TIME_ZONE });
 // Last sign-in in lab days: "today", "1 d" … "59 d", then the date; "never" when the person has not signed in.
 export function lastActive(iso: string | null | undefined, now: Date = new Date()): string {
   if (!iso) return "never";
@@ -48,5 +48,12 @@ export function lastActive(iso: string | null | undefined, now: Date = new Date(
   return days < 60 ? `${days} d` : longDay.format(at);
 }
 
-// "Hematology group" → its billing as the header reads it ("billing by charge code").
-export const lowerFirst = (text: string) => text ? text.charAt(0).toLowerCase() + text.slice(1) : text;
+// "Charge code" → "charge code", as the lists and the header read it; "QC reviewed" keeps its acronym.
+export const lowerFirst = (text: string) => !text || /^[A-Z]{2}/.test(text) ? text : text.charAt(0).toLowerCase() + text.slice(1);
+
+const shortDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: LAB_TIME_ZONE });
+// "28 Oct": the day a version was released, in the lab's zone.
+export function releasedDay(iso: string): string {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? "" : shortDay.format(at);
+}

@@ -63,11 +63,10 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
           ? <div className={`${directory.inset} ${directory.scroll}`}><table className={directory.table} aria-label="Client orders">
             <thead><tr><th scope="col">Order</th><th scope="col">Panel</th><th scope="col" className={directory.num}>Samples</th><th scope="col">Stage</th></tr></thead>
             <tbody>{client.orders.map(order => <tr key={order.code}>
-              <td className={directory.mono}>{order.archivedAt ? order.code : <Link href={`/orders/${encodeURIComponent(order.code)}`}>{order.code}</Link>}
-                {order.title && <span className={directory.sub}>{order.title}</span>}</td>
+              <td className={directory.mono}>{order.archivedAt ? order.code : <Link href={`/orders/${encodeURIComponent(order.code)}`} title={order.title || undefined}>{order.code}</Link>}</td>
               <td>{order.panel ?? <span className={directory.dash}>—</span>}</td>
               <td className={directory.num}>{order.samples ?? <span className={directory.dash}>—</span>}</td>
-              <td><span className={directory.pill} data-tone={order.archivedAt ? "superseded" : stageTone(order.stage)}>{order.stage}{order.archivedAt ? " · archived" : ""}</span></td>
+              <td><span className={directory.pill} data-tone={order.archivedAt ? "superseded" : stageTone(order.stage)}>{lowerFirst(order.stage)}{order.archivedAt ? " · archived" : ""}</span></td>
             </tr>)}</tbody>
           </table></div>
           : <p className={`${directory.boxBody} muted`}>No orders for this client yet.</p>}

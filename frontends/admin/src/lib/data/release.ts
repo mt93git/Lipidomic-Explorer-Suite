@@ -401,7 +401,7 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
     });
     if (datasetId !== null) {
       // 0037: how many samples and lipids this version holds, for the Datasets list. The build stands if this fails.
-      await db.rpc("record_dataset_counts", { p_dataset_id: datasetId, p_samples: built.counts.samples, p_lipids: built.counts.lipids }).then(() => undefined, () => undefined);
+      try { await db.rpc("record_dataset_counts", { p_dataset_id: datasetId, p_samples: built.counts.samples, p_lipids: built.counts.lipids }); } catch { /* the list shows a dash */ }
       return { datasetId, version };
     }
     if (attempt >= BUILD_ATTEMPTS) throw new DataError(`Other builds of ${row.code} kept taking the next version; nothing was recorded. Try again.`);

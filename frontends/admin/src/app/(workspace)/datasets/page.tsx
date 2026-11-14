@@ -3,8 +3,8 @@ import Link from "@/components/app-link";
 import styles from "@/components/directory.module.css";
 import { listClients, listOrders } from "@/lib/data/orders";
 import { getReleasePolicy, listDatasets, type DatasetRecord } from "@/lib/data/release";
-import { datasetPill, type DatasetPill } from "@/lib/directory";
-import { formatLabDay, formatLabInstant } from "@/lib/lab-time";
+import { datasetPill, releasedDay, type DatasetPill } from "@/lib/directory";
+import { formatLabInstant } from "@/lib/lab-time";
 import type { Client, Order } from "@/lib/models";
 import { mayOpenInNexo, nexoDatasetLink, signerRoleLabels } from "@/lib/release";
 import { stageFromDb } from "@/lib/samples";
@@ -81,7 +81,7 @@ export default async function DatasetsPage({ searchParams }: { searchParams: Pro
             <td className={styles.num}>{count(row.lipids)}</td>
             <td><span className={styles.pill} data-tone={row.pill.tone}>{row.pill.label}</span>
               {dataset && dataset.signatures.length > 0 && <span className={styles.sub}>{dataset.signatures.map(signature => `${signature.name} · ${signerRoleLabels[signature.role]}`).join(", ")}</span>}</td>
-            <td><span className={styles.mono}>{row.released ? formatLabDay(row.released) : <span className={styles.dash}>—</span>}</span>
+            <td><span className={styles.mono}>{row.released ? releasedDay(row.released) : <span className={styles.dash}>—</span>}</span>
               {href && <span className={styles.sub}><a href={href} target="_blank" rel="noreferrer">Open in Nexo</a></span>}</td>
           </tr>;
         })}</tbody>
