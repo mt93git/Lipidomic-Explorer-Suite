@@ -38,6 +38,8 @@ export function MatrixRow({ row, editable }: { row: NotificationRule; editable: 
   const allows = ruleAllows(row.kind);
   const event = eventLabel(row.kind, row.days);
   const lab = labCell(row);
+  // A saved row remounts its editors, so they close once the change is in.
+  const version = JSON.stringify(row);
   const toggle = (cell: "clientAdmin" | "requester", audience: string) => {
     const on = row[cell];
     if (!allows.client) return <td className={styles.na}><span aria-hidden="true">—</span><span className="sr-only">Not for this event</span></td>;
@@ -53,7 +55,7 @@ export function MatrixRow({ row, editable }: { row: NotificationRule; editable: 
   return <tr data-kind={row.kind}>
     <th scope="row">
       {allows.days && editable
-        ? <>No results TXT <details className={styles.inline}>
+        ? <>No results TXT <details key={version} className={styles.inline}>
             <summary className={styles.days} aria-label={`${row.days} days: change the delay`} data-testid="results_missing-days">{row.days}</summary>
             <RuleForm className={styles.editor} label="Days after acquisition">
               <RowFields row={row} skip={["days"]} />
@@ -65,7 +67,7 @@ export function MatrixRow({ row, editable }: { row: NotificationRule; editable: 
     </th>
     <td className={lab === "—" ? styles.off : undefined}>
       {editable
-        ? <details className={styles.inline}>
+        ? <details key={version} className={styles.inline}>
             <summary className={styles.lab} data-testid={`${row.kind}-lab`}>{lab}<span className="sr-only">: change which lab staff get {event}</span></summary>
             <RuleForm className={styles.editor} label={`Lab staff: ${event}`}>
               <RowFields row={row} skip={["labRoles", "stepOwner"]} />
