@@ -17,7 +17,7 @@ test("walk the four steps, save a draft, resume it, place the order and see it o
   await enter(page);
   await page.getByRole("link", { name: "+ New order" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "New order" })).toBeVisible(slow);
-  await expect(page.getByText("Step 1 of 4. Orders can be placed by lab staff or by the client's Requester.")).toBeVisible();
+  await expect(page.getByText("Step 1 of 4. Orders are placed here by lab staff; a client's Requester uses Request an order.")).toBeVisible();
 
   await page.getByRole("combobox", { name: "Client", exact: true }).selectOption({ label: "Example Harbor" });
   await page.getByLabel("Order title").fill("Synthetic sterol series · E2E");

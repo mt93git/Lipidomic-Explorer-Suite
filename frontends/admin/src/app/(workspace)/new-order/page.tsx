@@ -43,7 +43,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   </>;
 
   if (!clients.length || !panels.length) return <>
-    <div className="page-heading"><div><h1>New order</h1><p>Orders can be placed by lab staff or by the client&apos;s Requester.</p></div></div>
+    <div className="page-heading"><div><h1>New order</h1><p>Orders are placed here by lab staff; a client&apos;s Requester uses Request an order.</p></div></div>
     {notices}
     <p className="empty-state">{clients.length ? "No active panel exists yet." : "No active client exists yet."} An order needs both.</p>
   </>;
