@@ -16,6 +16,10 @@ Pure TypeScript planning and CSV export. No UI, database, I/O, or added dependen
 - `plateLayout`: `{ plate: "Plate 1", order: "column-major" | "row-major" }`.
 - `minutesPerInjection`: a finite positive number, including fractions.
 
+`countControls(samples, rules)` returns how many injections of each kind those rules
+add (blanks at start, between samples, after QC, pooled QCs) without placing them or
+capping at one plate; `buildBatch` uses it, and so does New order's estimate.
+
 The result contains `injections`, `estimatedRunTimeMinutes`, and
 `validationMessages` (`{ code, message }` errors). Invalid inputs return no
 injections and zero minutes; there is no partial or truncated export. Empty

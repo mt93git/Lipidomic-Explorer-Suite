@@ -181,6 +181,20 @@ describe("page and wizard", () => {
     expect(screen.getByRole("button", { name: "Next: sample list" })).toBeInTheDocument();
   });
 
+  it("the page estimates with the active profile's rules: blanks at start, between samples and pooled QC (demo: 4, 5 after every 4, none)", async () => {
+    render(await page({ client: "example-atlas" }));
+    fireEvent.change(screen.getByLabelText("Order title"), { target: { value: "Synthetic" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next: service" }));
+    const service = screen.getByRole("region", { name: "Service" });
+    fireEvent.change(within(service).getByLabelText("Panel"), { target: { value: PANEL_A } });
+    fireEvent.change(within(service).getByLabelText("Number of samples"), { target: { value: "67" } });
+    const estimate = screen.getByRole("region", { name: "Estimate" });
+    // 67 samples + 4 at start + 16 × 5 between + 1 QC at the end = 152 injections.
+    expect(estimate).toHaveTextContent("4 blanks at start, 80 between samples and 1 pooled QC, by the active profile's rules");
+    expect(estimate).toHaveTextContent("152 injections × 12 min");
+    expect(estimate).toHaveTextContent("≈ 30.5 h");
+  });
+
   it("prices from the rate sheet, reads a pasted list, and Save draft keeps the draft", async () => {
     await catalog.setPanelRate({ panelId: PANEL_A, ratePerSample: 70, currency: "USD", minutesPerInjection: 33, actorId: owner });
     const panels = await drafts.listWizardPanels();

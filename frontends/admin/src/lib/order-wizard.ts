@@ -5,6 +5,7 @@
 // The estimate never invents money: a panel without a rate on the rate sheet shows "not set". Run time follows the
 // batch builder's rules (builderDefaults: blanks at start, a pooled QC every N samples, a QC at the end) at the panel's
 // minutes per injection from the rate sheet, or the batch builder's default minutes when the sheet has none (said so).
+import { countControls } from "./batch";
 import { builderDefaults } from "./batch-builder";
 import type { OrderInput } from "./new-order";
 import { columns, DataError, parsePaste, validateSamples, type RowIssue, type SampleDraft } from "./samples";
@@ -119,31 +120,39 @@ export type PanelRate = { panelId: string; ratePerSample: number | null; currenc
 // A panel as the wizard offers it: its instrument names the run time line.
 export type WizardPanel = { id: string; name: string; instrumentName: string | null; rate: PanelRate | null };
 
-export type InjectionRules = Pick<typeof builderDefaults, "blanksAtStart" | "pooledQcEvery" | "blankAfterQc" | "qcAtEnd">;
+export type InjectionRules = Pick<typeof builderDefaults, "blanksAtStart" | "pooledQcEvery" | "blanksBetween" | "blanksBetweenEvery" | "blankAfterQc" | "qcAtEnd">;
+export type InjectionCount = { injections: number; blanks: number; blanksAtStart: number; blanksBetween: number; blanksAfterQc: number; qcs: number };
 
-// The batch builder's placement contract (src/lib/batch/README.md), counted rather than placed: blanks at the start,
-// a pooled QC after each `pooledQcEvery` samples, a QC at the end unless an interval QC is already there, and a blank
-// after every QC when asked. Not capped at one plate: an order may need more than one batch.
-export function countInjections(samples: number, rules: InjectionRules = builderDefaults): { injections: number; blanks: number; qcs: number } {
-  if (!Number.isInteger(samples) || samples <= 0) return { injections: 0, blanks: 0, qcs: 0 };
-  const interval = rules.pooledQcEvery > 0 ? Math.floor(samples / rules.pooledQcEvery) : 0;
-  const endAlreadyQc = rules.pooledQcEvery > 0 && samples % rules.pooledQcEvery === 0;
-  const qcs = interval + (rules.qcAtEnd && !endAlreadyQc ? 1 : 0);
-  const blanks = rules.blanksAtStart + (rules.blankAfterQc ? qcs : 0);
-  return { injections: samples + qcs + blanks, blanks, qcs };
+// The batch engine's own count (countControls, src/lib/batch/): blanks at the start, blanks between samples, pooled QC
+// and a blank after every QC when asked. Not capped at one plate: an order may need more than one batch.
+export function countInjections(samples: number, rules: InjectionRules = builderDefaults): InjectionCount {
+  if (!Number.isInteger(samples) || samples <= 0) return { injections: 0, blanks: 0, blanksAtStart: 0, blanksBetween: 0, blanksAfterQc: 0, qcs: 0 };
+  const { injections, blanksAtStart, blanksBetween, blanksAfterQc, qcs } = countControls(samples, rules);
+  return { injections, blanks: blanksAtStart + blanksBetween + blanksAfterQc, blanksAtStart, blanksBetween, blanksAfterQc, qcs };
+}
+
+// The grey line under "Blanks and QC": "1 blank at start, 30 between samples and 12 pooled QCs, by the active profile's rules".
+export function controlsText(count: Pick<InjectionCount, "blanksAtStart" | "blanksBetween" | "blanksAfterQc" | "qcs">, fromProfile: boolean): string {
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const parts = [`${plural(count.blanksAtStart, "blank")} at start`];
+  if (count.blanksBetween) parts.push(`${count.blanksBetween} between samples`);
+  if (count.blanksAfterQc) parts.push(`${count.blanksAfterQc} after QC`);
+  return `${parts.join(", ")} and ${plural(count.qcs, "pooled QC")}, by the ${fromProfile ? "active profile's" : "batch builder's"} rules`;
 }
 
 export const PLATE_WELLS = 96;
-export type Estimate = {
+export type Estimate = InjectionCount & {
   samples: number | null;
   amount: number | null; currency: string | null; ratePerSample: number | null;
-  injections: number; blanks: number; qcs: number; plates: number;
+  plates: number;
   minutes: number | null; minutesPerInjection: number; minutesFromRateSheet: boolean;
 };
 
-export function estimateOrder(samples: number | null, rate: PanelRate | null): Estimate {
+// rules: the active instrument profile's (activeBuilderDefaults), as Batch builder starts from them.
+export function estimateOrder(samples: number | null, rate: PanelRate | null, rules: InjectionRules = builderDefaults): Estimate {
   const count = samples ?? 0;
-  const { injections, blanks, qcs } = countInjections(count);
+  const counted = countInjections(count, rules);
+  const { injections } = counted;
   const fromSheet = rate?.minutesPerInjection != null && rate.minutesPerInjection > 0;
   const minutesPerInjection = fromSheet ? rate!.minutesPerInjection! : builderDefaults.minutesPerInjection;
   const priced = rate?.ratePerSample != null && !!rate.currency && samples !== null;
@@ -151,7 +160,7 @@ export function estimateOrder(samples: number | null, rate: PanelRate | null): E
     samples,
     amount: priced ? Math.round(rate!.ratePerSample! * count * 100) / 100 : null,
     currency: rate?.ratePerSample != null ? rate.currency : null, ratePerSample: rate?.ratePerSample ?? null,
-    injections, blanks, qcs, plates: Math.ceil(injections / PLATE_WELLS),
+    ...counted, plates: Math.ceil(injections / PLATE_WELLS),
     minutes: samples ? injections * minutesPerInjection : null, minutesPerInjection, minutesFromRateSheet: fromSheet,
   };
 }

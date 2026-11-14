@@ -4,9 +4,9 @@ import { useMemo, useState, useTransition, type ChangeEvent, type ReactNode } fr
 import Link from "@/components/app-link";
 import type { Client } from "@/lib/models";
 import {
-  approxRunTime, billingMethods, checkSampleList, estimateOrder, formatMoney, matrices, metadataColumns, nextLabel, sampleCount,
+  approxRunTime, billingMethods, checkSampleList, controlsText, estimateOrder, formatMoney, matrices, metadataColumns, nextLabel, sampleCount,
   stepErrors, studyDesigns, templateFileName, templateHref, wizardSteps,
-  type Estimate, type WizardData, type WizardErrors, type WizardField, type WizardPanel, type WizardStep,
+  type Estimate, type InjectionRules, type WizardData, type WizardErrors, type WizardField, type WizardPanel, type WizardStep,
 } from "@/lib/order-wizard";
 import { plural } from "@/lib/samples";
 import { placeOrderAction, saveDraftAction } from "./actions";
@@ -14,6 +14,8 @@ import styles from "./new-order.module.css";
 
 type Props = {
   clients: Client[]; panels: WizardPanel[]; placedBy: string;
+  // The active instrument profile's blank and QC rules (fromProfile false: Batch builder's own defaults).
+  rules?: { values: InjectionRules; fromProfile: boolean };
   initial: { draftId: string | null; step: WizardStep; data: WizardData }; children?: ReactNode;
 };
 type Status = { tone: "success" | "error"; text: string } | null;
@@ -26,7 +28,7 @@ const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-dig
 
 // New order as four steps. Everything typed lives here until Save draft (save_order_draft) or Place order
 // (place_order_draft / create_order); Next checks only the step being left, and the server checks every step again.
-export function OrderWizard({ clients, panels, placedBy, initial, children }: Props) {
+export function OrderWizard({ clients, panels, placedBy, initial, children, rules }: Props) {
   const [data, setData] = useState<WizardData>(initial.data);
   const [step, setStep] = useState<WizardStep>(initial.step);
   const [draftId, setDraftId] = useState<string | null>(initial.draftId);
@@ -47,7 +49,7 @@ export function OrderWizard({ clients, panels, placedBy, initial, children }: Pr
   const panel = panels.find(item => item.id === data.panelId) ?? null;
   const client = clients.find(item => item.id === data.clientId) ?? null;
   const count = sampleCount(data);
-  const estimate = estimateOrder(count, panel?.rate ?? null);
+  const estimate = estimateOrder(count, panel?.rate ?? null, rules?.values);
   const list = useMemo(() => data.sampleList.trim() ? checkSampleList(data.sampleList) : null, [data.sampleList]);
 
   const set = (field: WizardField) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -247,7 +249,7 @@ export function OrderWizard({ clients, panels, placedBy, initial, children }: Pr
     </section>}
 
     <div className={styles.pair}>
-      <EstimatePanel estimate={estimate} panel={panel} />
+      <EstimatePanel estimate={estimate} panel={panel} fromProfile={rules?.fromProfile ?? false} />
       <section className={styles.card} aria-labelledby="client-next-title">
         <h2 id="client-next-title" className={styles.cardHead}>What the client sees next</h2>
         <div className={styles.cardBody}>
@@ -293,8 +295,9 @@ function SampleListPreview({ list, typed, onUse }: { list: ReturnType<typeof che
 }
 
 // The estimate: panel rate × samples from the rate sheet (or "not set"), blanks and QC included, and the run time as
-// injections × minutes per injection under the batch builder's rules.
-function EstimatePanel({ estimate, panel }: { estimate: Estimate; panel: WizardPanel | null }) {
+// injections × minutes per injection under the active instrument profile's blank and QC rules (Batch builder's own
+// defaults when no profile is active).
+function EstimatePanel({ estimate, panel, fromProfile }: { estimate: Estimate; panel: WizardPanel | null; fromProfile: boolean }) {
   const samples = estimate.samples;
   const money = !panel ? <span className="muted">choose a panel</span>
     : samples === null ? <span className="muted">enter the samples</span>
@@ -307,7 +310,7 @@ function EstimatePanel({ estimate, panel }: { estimate: Estimate; panel: WizardP
         <tbody>
           <tr><th scope="row">{panel?.name ?? "Panel"}, {samples === null ? "samples not set" : plural(samples, "sample")}</th><td>{money}</td></tr>
           <tr>
-            <th scope="row">Blanks and QC (added by the lab){samples ? <small>{plural(estimate.blanks, "blank")} and {plural(estimate.qcs, "pooled QC")}, by the batch builder&apos;s rules</small> : null}</th>
+            <th scope="row">Blanks and QC (added by the lab){samples ? <small>{controlsText(estimate, fromProfile)}</small> : null}</th>
             <td>included</td>
           </tr>
           <tr>
