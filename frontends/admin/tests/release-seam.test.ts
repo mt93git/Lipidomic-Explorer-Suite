@@ -8,7 +8,7 @@ import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
 import { listOrders } from "@/lib/data/orders";
 import {
-  DataError, buildDataset, getDataset, getReleasePolicy, listDatasets, listReleaseOrders, releaseDataset, setReleasePolicy, signDataset, supersedeDataset, withdrawDataset,
+  DataError, buildDataset, getDataset, getReleasePolicy, listDatasets, listReleaseOrders, readDatasetWorkbook, releaseDataset, setReleasePolicy, signDataset, supersedeDataset, withdrawDataset,
 } from "@/lib/data/release";
 import { demoDefaultPolicy } from "@/lib/release-demo";
 import { fakePostgrest } from "./helpers/fake-postgrest";
@@ -84,6 +84,15 @@ describe("demo seam: the whole release flow in memory, per browser", () => {
     expect(await getDataset(built.datasetId)).toBeNull();
     expect(await listDatasets()).toEqual([]);
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+  it("keeps the built workbook's bytes so the release page can preview and download exactly the stored file", async () => {
+    const built = await buildDataset({ orderId: "ORD048" });
+    const { dataset } = (await getDataset(built.datasetId))!;
+    const stored = await readDatasetWorkbook(dataset);
+    expect(sha(stored.bytes)).toBe(dataset.full.sha256);
+    expect(stored.bytes.byteLength).toBe(dataset.full.sizeBytes);
+    expect(stored.fileName).toBe("ORD048_dataset_v1.xlsx");
+    await expect(readDatasetWorkbook({ ...dataset, full: { ...dataset.full, sha256: "0".repeat(64) } })).rejects.toThrow(/not available/);
   });
   it("supersedes version 1 by a released version 2", async () => {
     const v1 = await buildDataset({ orderId: "ORD053" });
@@ -388,6 +397,17 @@ describe("live seam: the release contract through rpc and storage", () => {
     const recorded = tables.dataset.flatMap(row => [row.storage_path, `client-uuid/ORD048/datasets/${row.analysis_sha256}/analysis.xlsx`, `client-uuid/ORD048/datasets/${row.companion_sha256}/companion.xlsx`]);
     for (const path of removes.flatMap(r => r.paths)) expect(recorded).not.toContain(path);
     for (const path of recorded) expect(buckets["admin-files"].has(path as string), String(path)).toBe(true);
+  });
+  it("reads the stored workbook from admin-files and refuses bytes that do not match the recorded digest", async () => {
+    rpc.mockImplementation(databaseBuild);
+    await buildDataset({ orderId: "order-uuid" });
+    const { dataset } = (await getDataset("ds-v1"))!;
+    const stored = await readDatasetWorkbook(dataset);
+    expect(stored.bytes.equals(uploads[0].bytes)).toBe(true);
+    expect(stored.fileName).toBe("ORD048_dataset_v1.xlsx");
+    buckets["admin-files"].set(dataset.full.path!, Buffer.from("other bytes"));
+    await expect(readDatasetWorkbook(dataset)).rejects.toThrow(/does not match the digest recorded/);
+    await expect(readDatasetWorkbook({ ...dataset, full: { ...dataset.full, path: null } })).rejects.toThrow(/no stored workbook/);
   });
   it("fails closed without an authenticated client", async () => {
     vi.mocked(createAdminClient).mockResolvedValue(null);
