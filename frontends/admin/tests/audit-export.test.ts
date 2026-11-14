@@ -101,5 +101,6 @@ describe("export link and file name", () => {
     const now = new Date("2026-11-14T03:00:00Z"); // 13 Nov in the lab
     expect(auditExportFilename({ entity: null, order: null, before: null }, now)).toBe("audit-log-2026-11-13.csv");
     expect(auditExportFilename({ entity: "dataset", order: "ORD080", before: null }, now)).toBe("audit-log-2026-11-13-ORD080-dataset.csv");
+    expect(auditExportFilename({ entity: null, order: 'ORD"1\r\nX-A: b', before: null }, now)).toBe("audit-log-2026-11-13-ORD1X-Ab.csv");
   });
 });

@@ -290,6 +290,9 @@ export function auditCsv(rows: readonly AuditCsvRow[], options: { truncated?: bo
 export function auditExportHref(filters: AuditFilters): string {
   return auditHref({ ...filters, before: null }).replace("/audit-log", "/audit-log/export");
 }
+// The order code is free text from the URL: only letters, digits, _ and - reach the Content-Disposition header (a quote
+// or a line break there would break the header, and a line break makes the response throw).
 export function auditExportFilename(filters: AuditFilters, now = new Date()): string {
-  return `${["audit-log", labDate.format(now), filters.order, filters.entity].filter(Boolean).join("-")}.csv`;
+  const order = filters.order?.replace(/[^A-Za-z0-9_-]/g, "") || null;
+  return `${["audit-log", labDate.format(now), order, filters.entity].filter(Boolean).join("-")}.csv`;
 }
