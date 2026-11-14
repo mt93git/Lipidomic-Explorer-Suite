@@ -126,7 +126,7 @@ export async function getShipmentCheckin(orderCode: string, shipmentId?: string 
   return order ? demoView(order, state, shipmentId) : null;
 }
 
-export type AwaitingCheckin = { orderCode: string; description: string; clientName: string; receivedAt: string };
+export type AwaitingCheckin = { orderCode: string; shipmentId: string; description: string; clientName: string; receivedAt: string };
 
 // Received shipments whose receipt is not confirmed yet: what Receive shipment lists for the tube check-in.
 export async function listAwaitingCheckin(): Promise<AwaitingCheckin[]> {
@@ -137,13 +137,13 @@ export async function listAwaitingCheckin(): Promise<AwaitingCheckin[]> {
     if (error) throw refusal(error);
     return ((data ?? []) as unknown as WaitingRow[]).flatMap(row => {
       const order = one(row.order);
-      return order && !order.archived_at ? [{ orderCode: order.code, description: order.title ?? "", clientName: one(order.client)?.name ?? "Client", receivedAt: row.received_at }] : [];
+      return order && !order.archived_at ? [{ orderCode: order.code, shipmentId: row.id, description: order.title ?? "", clientName: one(order.client)?.name ?? "Client", receivedAt: row.received_at }] : [];
     });
   }
   const state = await readDemoState();
   return applyDemoState(demoOrders, state).flatMap(order => {
     const view = order.stage >= 1 && !order.released ? demoView(order, state) : null;
-    return view && !view.shipment.receipt ? [{ orderCode: order.code, description: order.description, clientName: view.clientName, receivedAt: view.shipment.receivedAt }] : [];
+    return view && !view.shipment.receipt ? [{ orderCode: order.code, shipmentId: view.shipment.id, description: order.description, clientName: view.clientName, receivedAt: view.shipment.receivedAt }] : [];
   }).sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
 }
 

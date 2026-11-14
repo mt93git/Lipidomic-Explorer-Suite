@@ -64,7 +64,7 @@ export default async function ReceiveShipmentPage({ searchParams }: { searchPara
           <div className="eyebrow">Arrived · check tubes in</div>
           <h2 id="checkin-list-title">{plural(awaiting.length, "shipment")} to check in</h2>
           <ul className="order-list compact" aria-label="Shipments waiting for the tube check-in">
-            {awaiting.map(item => <li key={`${item.orderCode}-${item.receivedAt}`}><Link className="order-choice" href={`/receive-shipment?order=${item.orderCode}`}>
+            {awaiting.map(item => <li key={item.shipmentId}><Link className="order-choice" href={`/receive-shipment?order=${item.orderCode}&shipment=${encodeURIComponent(item.shipmentId)}`}>
               <span className="order-code">{item.orderCode}</span>{item.description}<small>{item.clientName} · arrived {formatLabInstant(item.receivedAt)}</small>
             </Link></li>)}
           </ul>
