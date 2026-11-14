@@ -392,7 +392,8 @@ describe('role-based writes', () => {
   // Since 0015 nobody signed in writes memberships directly: invitations and the People functions do (people.test.js).
   test('clients are managed by owner/admin; lab staff and client members are never written directly', async () => {
     await as(db, U.operator);
-    await expect(db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')")).rejects.toThrow(/row-level security/);
+    // Since 0042 the code default (next_client_code) refuses an Operator before RLS does.
+    await expect(db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')")).rejects.toThrow(/row-level security|Lab Owner or Admin access is required to give a client code/);
     await expect(db.query("INSERT INTO admin.lab_staff(user_id, role) VALUES ($1, 'operator')", [U.aView])).rejects.toThrow(/permission denied/);
     await as(db, U.admin);
     await db.query("INSERT INTO admin.client(name, kind) VALUES ('Synthetic Group Gamma', 'internal_group')");

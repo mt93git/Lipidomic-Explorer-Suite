@@ -5,10 +5,10 @@
 --    client, actor = the person exporting) with the filter used and how many rows the file holds. The Audit log
 --    shows it like other events ("Audit log exported: 12 rows, entity order, ORD080").
 -- 2. admin.next_client_code() (0037) was executable by every authenticated user, clients included, and each call
---    spent a code. Now no app role may call it: EXECUTE is revoked from authenticated, and the function itself
---    refuses a signed-in caller who is not a lab Owner or Admin. New client still gets its code: create_client and
---    approve_access_request are SECURITY DEFINER, so the column default runs as the owner (and their caller is a lab
---    Owner or Admin). Seeds and migrations run as the owner, without a JWT, and keep working.
+--    spent a code. Now the function refuses a signed-in caller who is not a lab Owner or Admin (the only people who
+--    may create clients). EXECUTE stays granted to authenticated because it is admin.client.code's default: a lab
+--    Owner or Admin's insert (RLS client_write) evaluates it as that user. create_client and approve_access_request
+--    (SECURITY DEFINER) run it as the owner; seeds and migrations run as the owner without a JWT and keep working.
 
 CREATE FUNCTION admin.record_audit_export(p_entity text, p_order text, p_rows integer, p_truncated boolean) RETURNS void
   LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, admin AS $$
@@ -38,5 +38,6 @@ BEGIN
 END $$;
 
 REVOKE EXECUTE ON FUNCTION admin.next_client_code() FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION admin.next_client_code() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

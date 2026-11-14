@@ -1,5 +1,5 @@
 // 0042_minor_permissions.sql: the audit log's CSV export is itself audited (admin.record_audit_export), and
-// admin.next_client_code() is no longer callable by app users (only through create_client). Synthetic data only.
+// admin.next_client_code() gives codes to lab Owners and Admins only (it refuses everyone else signed in). Synthetic data only.
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { as, C, freshDb, U } from './helpers.js';
 
@@ -62,7 +62,7 @@ describe('0042: admin.next_client_code', () => {
     db = await freshDb();
     for (const user of [U.aAdmin, U.aReq, U.aView, U.bReq, U.operator, U.member]) {
       await as(db, user);
-      await expect(db.query('SELECT admin.next_client_code()')).rejects.toThrow(/permission denied|Lab Owner or Admin/);
+      await expect(db.query('SELECT admin.next_client_code()')).rejects.toThrow(/Lab Owner or Admin access is required to give a client code/);
     }
     await as(db, U.owner);
     const created = (await db.query("SELECT admin.create_client('Synthetic Gamma', 'pi_lab', NULL, NULL) AS id")).rows[0].id;
@@ -83,12 +83,16 @@ describe('0042: admin.next_client_code', () => {
     expect((await db.query('SELECT code FROM admin.client WHERE id = $1', [C.A])).rows[0].code).toMatch(/^CL-\d{3}$/);
   });
 
-  test('grants: no app role may execute it; the migration owner (seeds, defaults) still can', async () => {
+  test('grants: authenticated only (anon cannot); a lab Owner or Admin calling it gets a code; the migration owner still can', async () => {
     db = await freshDb();
     await as(db, null);
     const grant = (await db.query(`SELECT has_function_privilege('anon', 'admin.next_client_code()', 'EXECUTE') AS anon,
       has_function_privilege('authenticated', 'admin.next_client_code()', 'EXECUTE') AS app`)).rows[0];
-    expect(grant).toEqual({ anon: false, app: false });
-    expect((await db.query('SELECT admin.next_client_code() AS code')).rows[0].code).toMatch(/^CL-\d{3}$/);
+    expect(grant).toEqual({ anon: false, app: true });
+    expect((await db.query('SELECT admin.next_client_code() AS code')).rows[0].code).toBe('CL-003');
+    await as(db, U.owner);
+    expect((await db.query('SELECT admin.next_client_code() AS code')).rows[0].code).toBe('CL-004');
+    await as(db, U.admin);
+    expect((await db.query('SELECT admin.next_client_code() AS code')).rows[0].code).toBe('CL-005');
   });
 });
