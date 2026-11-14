@@ -20,9 +20,14 @@
 .list th { text-align: left; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--ink); padding: 6px 8px; }
 .list td { border-bottom: 1px solid var(--line); padding: 5px 8px; }
 @media print {
-  :global(.topbar), :global(.sidebar), :global(.skip-link), :global(.update-notice), .toolbar { display: none !important; }
-  :global(.workspace) { display: block !important; }
-  :global(main) { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  /* Only on the print page; each selector names a local class, as CSS Modules (webpack) require. */
+  :global(body):has(.sheet) :global(.topbar),
+  :global(body):has(.sheet) :global(.sidebar),
+  :global(body):has(.sheet) :global(.skip-link),
+  :global(body):has(.sheet) :global(.update-notice),
+  .toolbar { display: none !important; }
+  :global(body):has(.sheet) :global(.workspace) { display: block !important; }
+  :global(body):has(.sheet) :global(main) { padding: 0 !important; margin: 0 !important; max-width: none !important; }
   .sheet { max-width: none; }
   .list tr { break-inside: avoid; }
   @page { size: A4 portrait; margin: 12mm; }
