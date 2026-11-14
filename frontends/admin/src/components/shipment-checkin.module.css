@@ -20,6 +20,7 @@
 .condition input { margin: 0; }
 .slot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .slot input { width: 72px; padding: 4px 8px; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); }
+.slot input[name="box"] { width: calc(12ch + 18px); } /* a full box code such as F1-R1-B01 */
 .otherNote input { width: 220px; font-family: inherit; }
 .message { margin: 8px 0 0; font-size: var(--text-sm); padding: 7px 10px; border-left: 3px solid; }
 .bad { border-color: var(--danger); background: var(--danger-tint); color: var(--ink); }
