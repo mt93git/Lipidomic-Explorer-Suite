@@ -155,7 +155,7 @@ test("2 · Paula (Admin) creates the order, receives and registers it, plans and
 
     await page.getByLabel("Paste from Excel").fill(metadataSheet);
     await page.getByRole("button", { name: "Add rows" }).click();
-    await page.getByRole("button", { name: "Register 3 samples" }).click();
+    await page.getByRole("button", { name: "Save 3 valid rows" }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/sample-registry\\?order=${orderCode}&saved=3$`), slow);
     const registered = page.getByRole("table", { name: "Registered samples" });
     for (const n of ["001", "002", "003"]) await expect(registered.getByText(`${orderCode}-S${n}`, { exact: true })).toBeVisible(slow);
