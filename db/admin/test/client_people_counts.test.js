@@ -1,8 +1,9 @@
 // 0037_client_people_counts.sql: client codes, admin.client_people (lab staff read a client's members by name, email
 // and last sign-in) and the sample/lipid counts recorded once per dataset version. Synthetic data only.
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { as, C, count, freshDb, id, U } from './helpers.js';
 
+vi.setConfig({ testTimeout: 30_000 }); // a fresh PGlite per test is slow when the whole suite runs in parallel
 let db;
 afterEach(async () => { await db?.close(); db = undefined; });
 

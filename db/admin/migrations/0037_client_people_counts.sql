@@ -13,10 +13,16 @@
 -- Needs Supabase's auth.users (email, last_sign_in_at).
 
 CREATE SEQUENCE admin.client_code_seq;
+-- The default runs as the owner, so a caller needs no right on the sequence (a direct insert is still refused by the
+-- client policies, as before).
+CREATE FUNCTION admin.next_client_code() RETURNS text
+  LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, admin
+  AS $$ SELECT 'CL-' || lpad(nextval('admin.client_code_seq')::text, 3, '0') $$;
+REVOKE EXECUTE ON FUNCTION admin.next_client_code() FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION admin.next_client_code() TO authenticated;
 -- A volatile default on ADD COLUMN fills every existing row (no row trigger runs), then serves each new client.
-ALTER TABLE admin.client ADD COLUMN code text NOT NULL DEFAULT ('CL-' || lpad(nextval('admin.client_code_seq')::text, 3, '0'));
+ALTER TABLE admin.client ADD COLUMN code text NOT NULL DEFAULT admin.next_client_code();
 ALTER TABLE admin.client ADD CONSTRAINT client_code_key UNIQUE (code);
-ALTER SEQUENCE admin.client_code_seq OWNED BY admin.client.code;
 
 CREATE FUNCTION admin.client_people(p_client_id uuid)
   RETURNS TABLE (user_id uuid, display_name text, email text, role text, last_sign_in_at timestamptz)
