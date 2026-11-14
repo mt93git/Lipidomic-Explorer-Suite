@@ -98,7 +98,7 @@ async function livePeople(manager: boolean): Promise<Omit<PeopleView, "canInvite
   const fallback = (userId: string) => emailOf(userId) ?? `User ${userId.slice(0, 8)}`;
   const account = (kind: PersonKind, userId: string) => {
     const known = facts.get(userId);
-    return { twoStep: known ? known.twoStep : null, activation: known ? activationOf(kind, known) : null };
+    return { twoStep: known ? known.twoStep : null, activation: known ? activationOf(kind, known) : null, lastSignedInAt: known?.signedInAt ?? null };
   };
   const now = Date.now();
   const people: Person[] = [
@@ -128,7 +128,7 @@ export async function listPeople(): Promise<PeopleView> {
     return {
       people: state.people.filter(person => !person.archivedAt).map((person): Person => {
         const { kind, id, userId, name, email, role, clientId, clientName, twoStep } = person;
-        return { kind, id, userId, name, email, role, clientId, clientName, twoStep, activation: activationOf(kind, demoAccountFacts(person, lastSent(userId))) };
+        return { kind, id, userId, name, email, role, clientId, clientName, twoStep, activation: activationOf(kind, demoAccountFacts(person, lastSent(userId))), lastSignedInAt: person.signedInAt ?? null };
       }).sort(byPerson),
       invitations: pendingInvitations(state, new Date()), clients: demoClients.map(({ id, name }) => ({ id, name })),
       canInviteLab: true, canInviteClient: true, demoActors: demoLabStaff,

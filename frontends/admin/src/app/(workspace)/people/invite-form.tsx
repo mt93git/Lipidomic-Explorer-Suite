@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { FormAlert } from "@/components/error-summary";
 import type { LabPerson } from "@/lib/release";
+import { INVITATION_DAYS } from "@/lib/people";
 import { clientRoleNames, clientRoles, labRoleNames, labRoles } from "@/lib/roles";
 import { inviteAction } from "./actions";
 import { DemoActor } from "./demo-actor";
@@ -15,6 +16,7 @@ export function InviteForm({ clients, canInviteLab, actors, defaultClientId }: {
   const [state, action, pending] = useActionState(inviteAction, {});
   const [target, setTarget] = useState("client:requester");
   const [copied, setCopied] = useState(false);
+  const lab = target.startsWith("lab:");
   const link = state.link ? new URL(state.link, window.location.origin).toString() : null;
   async function copy() {
     if (!link) return;
@@ -31,19 +33,26 @@ export function InviteForm({ clients, canInviteLab, actors, defaultClientId }: {
         <button type="button" className="button secondary" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
       </div>
     </div>}
-    <form action={action} className={styles.form} aria-busy={pending} onSubmit={() => setCopied(false)}>
-      <label className="field"><span className="field-label">Email</span><input name="email" type="email" autoComplete="off" required /></label>
-      <div className="field"><label className="field-label" htmlFor="invite-target">Role</label>
-        <select id="invite-target" name="target" value={target} onChange={event => setTarget(event.target.value)}>
-          <optgroup label="Client roles">{clientRoles.map(role => <option key={role} value={`client:${role}`}>{clientRoleNames[role]}</option>)}</optgroup>
-          {canInviteLab && <optgroup label="Lab roles (Owner only)">{labRoles.map(role => <option key={role} value={`lab:${role}`}>Lab {labRoleNames[role]}</option>)}</optgroup>}
-        </select>
+    <form action={action} className={styles.inviteForm} aria-busy={pending} onSubmit={() => setCopied(false)}>
+      <div className={styles.inviteFields}>
+        <label className="field"><span className="field-label">Email</span><input name="email" type="email" autoComplete="off" placeholder="name@institution.edu" required /></label>
+        <div className="field"><label className="field-label" htmlFor="invite-client">Client</label>
+          {lab
+            ? <select id="invite-client" disabled defaultValue=""><option value="">Lab (no client)</option></select>
+            : <select id="invite-client" name="clientId" required defaultValue={defaultClientId}>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</select>}
+        </div>
+        <div className="field"><label className="field-label" htmlFor="invite-target">Role</label>
+          <select id="invite-target" name="target" value={target} onChange={event => setTarget(event.target.value)}>
+            <optgroup label="Client roles">{clientRoles.map(role => <option key={role} value={`client:${role}`}>{clientRoleNames[role]}</option>)}</optgroup>
+            {canInviteLab && <optgroup label="Lab roles (Owner only)">{labRoles.map(role => <option key={role} value={`lab:${role}`}>Lab {labRoleNames[role]}</option>)}</optgroup>}
+          </select>
+        </div>
       </div>
-      {target.startsWith("client:") && <div className="field"><label className="field-label" htmlFor="invite-client">Client</label>
-        <select id="invite-client" name="clientId" required defaultValue={defaultClientId}>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
-      </div>}
       <DemoActor actors={actors} id="invite-actor" hint="Lab roles need the demo Owner; client roles an Owner or Admin." />
-      <button className="button" disabled={pending}>{pending ? "Creating link…" : "Create invitation link"}</button>
+      <div className={styles.inviteSubmit}>
+        <button className="button" disabled={pending}>{pending ? "Sending…" : "Send invitation"}</button>
+        <p className="muted">The invitation is valid for {INVITATION_DAYS} days. It is emailed, and its link is shown here once to copy. Lab roles are given by the Owner only.</p>
+      </div>
       {state.error && <FormAlert>{state.error}</FormAlert>}
     </form>
   </>;
