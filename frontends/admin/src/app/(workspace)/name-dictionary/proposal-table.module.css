@@ -6,7 +6,7 @@
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: white; box-shadow: var(--shadow); overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th { text-align: left; font-family: var(--font-mono), monospace; font-size: var(--text-xs); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--subtle); padding: 12px 14px; border-bottom: 1px solid var(--line); }
-.table td { padding: 14px 14px 22px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink); }
+.table td { padding: 14px 14px 18px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink); }
 .table tr[data-chemist] td { padding-bottom: 12px; }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table td:nth-child(1), .table td:nth-child(2) { font-size: var(--text-sm); overflow-wrap: anywhere; }

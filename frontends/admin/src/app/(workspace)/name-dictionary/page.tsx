@@ -17,7 +17,10 @@ export default async function NameDictionaryPage() {
   const { entries, analytes } = await getNameDictionary();
   const missing = unmappedAnalytes(analytes, entries);
   const summary = proposeCleanNames(missing);
-  const proposals = summary.proposals.map(p => ({ exportName: p.exportName, proposed: p.proposed, rule: ruleLabel(p.rules), needsChemist: p.needsChemist }));
+  // Names a rule changed first, then those for a chemist, then names that are already clean (approve them in bulk).
+  const rank = (p: (typeof summary.proposals)[number]) => p.needsChemist ? 1 : p.rules[0] === "already clean" ? 2 : 0;
+  const proposals = summary.proposals.map((p, index) => ({ p, index })).sort((a, b) => rank(a.p) - rank(b.p) || a.index - b.index)
+    .map(({ p }) => ({ exportName: p.exportName, proposed: p.proposed, rule: ruleLabel(p.rules), needsChemist: p.needsChemist }));
   const mapped = analytes.length ? new Set(analytes).size - missing.length : entries.length;
   return <>
     <ProposalTable proposals={proposals} mapped={mapped} classesRenamed={summary.classesRenamed} hasFile={analytes.length > 0} />

@@ -121,3 +121,13 @@ describe("proposal table", () => {
     expect(screen.getByRole("button", { name: "Approve 120" })).toBeEnabled();
   });
 });
+
+describe("proposal order", () => {
+  it("lists names a rule changed first, then names for a chemist, then names that are already clean", async () => {
+    const { getNameDictionary } = await import("@/lib/data/results");
+    vi.mocked(getNameDictionary).mockResolvedValueOnce({ entries: [], analytes: ["PC(34:1)+H", "ACar 4:0", "CE 24:4 +NH4"] });
+    render(await NameDictionaryPage());
+    const names = within(screen.getByRole("table", { name: "Proposed clean names" })).getAllByRole("row").slice(1).map(row => row.firstElementChild!.textContent);
+    expect(names).toEqual(["CE 24:4 +NH4", "ACar 4:0", "PC(34:1)+H"]);
+  });
+});
