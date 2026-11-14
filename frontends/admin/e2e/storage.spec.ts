@@ -23,7 +23,8 @@ test("the lab places, moves and removes an aliquot, and finds one by its sample 
   await page.getByRole("navigation", { name: "Admin navigation" }).getByRole("link", { name: "Storage" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Storage" })).toBeVisible(slow);
   const boxes = page.getByRole("list", { name: "Boxes" });
-  await expect(boxes.getByRole("link")).toHaveText(["F1-R1-B014 positions taken", "F1-R1-B023 positions taken"]);
+  // The example box F1-R1-B01 sits in Freezer F1 · Rack 1 (0041); F1-R1-B02 has no place yet.
+  await expect(boxes.getByRole("link")).toHaveText(["F1-R1-B01Freezer F1 · Rack 14 positions taken", "F1-R1-B023 positions taken"]);
 
   // Place: the position is taken first, then a free one.
   const waiting = page.getByRole("table", { name: "Aliquots waiting for a box" });
@@ -43,7 +44,7 @@ test("the lab places, moves and removes an aliquot, and finds one by its sample 
   await submit(page, "Move ORD044-S004-A1", { "New box": "F1-R1-B03", Position: "A1" }, "Move");
   await expect(page.getByRole("status")).toHaveText("ORD044-S004-A1 moved to box F1-R1-B03, position A1. Its old position is kept in the history.", slow);
   await expect(page.getByRole("table", { name: "Positions in box F1-R1-B03" }).getByRole("row")).toHaveCount(2);
-  await expect(boxes.getByRole("link")).toHaveText(["F1-R1-B014 positions taken", "F1-R1-B023 positions taken", "F1-R1-B031 position taken"]);
+  await expect(boxes.getByRole("link")).toHaveText(["F1-R1-B01Freezer F1 · Rack 14 positions taken", "F1-R1-B023 positions taken", "F1-R1-B031 position taken"]);
 
   // Remove with a reason: it waits for a box again.
   await page.getByRole("table", { name: "Positions in box F1-R1-B03" }).getByRole("link", { name: "Remove ORD044-S004-A1", exact: true }).click();
