@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildBatch } from "@/lib/batch";
 import { builderDefaults } from "@/lib/batch-builder";
 import {
-  approxRunTime, checkSampleList, countInjections, emptyWizard, estimateOrder, formatMoney, metadataColumns, nextLabel,
+  approxRunTime, checkSampleList, controlsText, countInjections, emptyWizard, estimateOrder, formatMoney, metadataColumns, nextLabel,
   normalizeWizard, sampleCount, sampleTemplateCsv, stepErrors, toOrderInput, type WizardData,
 } from "@/lib/order-wizard";
 
@@ -10,7 +10,8 @@ const wizard = (fields: Partial<WizardData>): WizardData => ({ ...emptyWizard(),
 
 describe("order wizard: run time follows the batch builder's rules", () => {
   it("counts the same injections as the batch engine for every one-plate order", () => {
-    for (const rules of [builderDefaults, { ...builderDefaults, blankAfterQc: true }, { ...builderDefaults, pooledQcEvery: 0 }, { ...builderDefaults, qcAtEnd: false, blanksAtStart: 2 }]) {
+    for (const rules of [builderDefaults, { ...builderDefaults, blankAfterQc: true }, { ...builderDefaults, pooledQcEvery: 0 }, { ...builderDefaults, qcAtEnd: false, blanksAtStart: 2 },
+      { ...builderDefaults, blanksBetween: 2, blanksBetweenEvery: 4 }, { ...builderDefaults, blanksBetween: 1, blanksBetweenEvery: 1, blankAfterQc: true, pooledQcEvery: 3 }]) {
       for (let n = 1; n <= 70; n += 1) {
         const samples = Array.from({ length: n }, (_, i) => ({ code: `ORD900-S${String(i + 1).padStart(3, "0")}`, FullName: `S${i + 1}`, client_id: "c", aliquot_id: `a${i}` }));
         const engine = buildBatch({ samples, rules: { ...rules, randomize: false, seed: "" }, plateLayout: { plate: "Plate 1", order: "column-major" }, minutesPerInjection: 12 });
@@ -21,11 +22,22 @@ describe("order wizard: run time follows the batch builder's rules", () => {
   });
 
   it("67 samples: 1 blank, 12 QCs, 80 injections, 16 h at the builder's 12 min", () => {
-    expect(countInjections(67)).toEqual({ injections: 80, blanks: 1, qcs: 12 });
+    expect(countInjections(67)).toEqual({ injections: 80, blanks: 1, blanksAtStart: 1, blanksBetween: 0, blanksAfterQc: 0, qcs: 12 });
     const estimate = estimateOrder(67, null);
     expect(estimate.minutes).toBe(960);
     expect(estimate.minutesFromRateSheet).toBe(false);
     expect(approxRunTime(estimate.minutes!)).toBe("≈ 16 h");
+  });
+
+  it("counts the active profile's blanks between samples, and the run time from every injection", () => {
+    const rules = { ...builderDefaults, blanksBetween: 2, blanksBetweenEvery: 4 };
+    expect(countInjections(67, rules)).toEqual({ injections: 112, blanks: 33, blanksAtStart: 1, blanksBetween: 32, blanksAfterQc: 0, qcs: 12 });
+    const estimate = estimateOrder(67, null, rules);
+    expect(estimate).toMatchObject({ injections: 112, blanksAtStart: 1, blanksBetween: 32, qcs: 12, minutes: 112 * 12, plates: 2 });
+    expect(controlsText(estimate, true)).toBe("1 blank at start, 32 between samples and 12 pooled QCs, by the active profile's rules");
+    expect(controlsText(estimateOrder(67, null), false)).toBe("1 blank at start and 12 pooled QCs, by the batch builder's rules");
+    expect(controlsText(estimateOrder(5, null, { ...rules, blanksAtStart: 4, blankAfterQc: true }), true))
+      .toBe("4 blanks at start, 2 between samples, 1 after QC and 1 pooled QC, by the active profile's rules");
   });
 
   it("uses the panel's minutes per injection from the rate sheet when set", () => {

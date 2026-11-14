@@ -12,6 +12,9 @@ export interface BatchRules {
   blanksAtStart: number;
   /** Number of Unknowns between pooled QCs; zero disables periodic QCs. */
   pooledQcEvery: number;
+  /** N blanks after every `blanksBetweenEvery` Unknowns, between samples only; both 0 (or absent) disables it. */
+  blanksBetween?: number;
+  blanksBetweenEvery?: number;
   blankAfterQc: boolean;
   qcAtEnd: boolean;
   randomize: boolean;
@@ -68,6 +71,27 @@ function seededRandom(seed: string): () => number {
   };
 }
 
+export type CountRules = Pick<BatchRules, "blanksAtStart" | "pooledQcEvery" | "blanksBetween" | "blanksBetweenEvery" | "blankAfterQc" | "qcAtEnd">;
+export interface ControlCounts {
+  injections: number; blanksAtStart: number; blanksBetween: number; blanksAfterQc: number; qcs: number; needsEndQc: boolean;
+}
+
+/**
+ * How many injections `samples` Unknowns take under these rules, by kind, without placing them or checking the plate:
+ * the counts buildBatch places, and what New order's estimate shows (an order may need more than one plate).
+ * Expects valid rules (non-negative integers, blanks between as a pair).
+ */
+export function countControls(samples: number, rules: CountRules): ControlCounts {
+  const between = rules.blanksBetween ?? 0;
+  const betweenEvery = rules.blanksBetweenEvery ?? 0;
+  const periodicQcCount = rules.pooledQcEvery > 0 ? Math.floor(samples / rules.pooledQcEvery) : 0;
+  const needsEndQc = rules.qcAtEnd && (rules.pooledQcEvery === 0 || samples % rules.pooledQcEvery !== 0);
+  const qcs = periodicQcCount + Number(needsEndQc);
+  const blanksBetween = betweenEvery > 0 && samples > 0 ? Math.floor((samples - 1) / betweenEvery) * between : 0;
+  const blanksAfterQc = rules.blankAfterQc ? qcs : 0;
+  return { injections: samples + rules.blanksAtStart + blanksBetween + qcs + blanksAfterQc, blanksAtStart: rules.blanksAtStart, blanksBetween, blanksAfterQc, qcs, needsEndQc };
+}
+
 /** Plan a single 96-well plate; every injection occupies one distinct well. */
 export function buildBatch({ samples, rules, plateLayout, minutesPerInjection }: BatchInput): BatchResult {
   const validationMessages: ValidationMessage[] = [];
@@ -77,6 +101,13 @@ export function buildBatch({ samples, rules, plateLayout, minutesPerInjection }:
   }
   if (![rules.blanksAtStart, rules.pooledQcEvery].every(value => Number.isSafeInteger(value) && value >= 0)) {
     validationMessages.push({ code: "invalid_rules", message: "blanksAtStart and pooledQcEvery must be non-negative safe integers; zero disables the rule." });
+  }
+  const between = rules.blanksBetween ?? 0;
+  const betweenEvery = rules.blanksBetweenEvery ?? 0;
+  if (![between, betweenEvery].every(value => Number.isSafeInteger(value) && value >= 0)) {
+    validationMessages.push({ code: "invalid_rules", message: "blanksBetween and blanksBetweenEvery must be non-negative safe integers; zero disables the rule." });
+  } else if ((between === 0) !== (betweenEvery === 0)) {
+    validationMessages.push({ code: "invalid_rules", message: "Blanks between samples needs both numbers (blanks, and after every how many samples), or 0 for both." });
   }
   if (rules.randomize && (typeof rules.seed !== "string" || !rules.seed.trim())) {
     validationMessages.push({ code: "invalid_rules", message: "Randomization requires a nonempty string seed." });
@@ -104,10 +135,7 @@ export function buildBatch({ samples, rules, plateLayout, minutesPerInjection }:
   }
   if (validationMessages.length) return invalid();
 
-  const periodicQcCount = rules.pooledQcEvery > 0 ? Math.floor(samples.length / rules.pooledQcEvery) : 0;
-  const needsEndQc = rules.qcAtEnd && (rules.pooledQcEvery === 0 || samples.length % rules.pooledQcEvery !== 0);
-  const qcCount = periodicQcCount + Number(needsEndQc);
-  const injectionCount = samples.length + rules.blanksAtStart + qcCount * (rules.blankAfterQc ? 2 : 1);
+  const { injections: injectionCount, needsEndQc } = countControls(samples.length, rules);
   if (injectionCount > 96) {
     validationMessages.push({ code: "plate_overflow", message: `Batch requires ${injectionCount} positions, including controls; the plate has 96.` });
     return invalid();
@@ -160,6 +188,9 @@ export function buildBatch({ samples, rules, plateLayout, minutesPerInjection }:
   orderedSamples.forEach((sample, i) => {
     append("Unknown", sample.code, sample);
     if (rules.pooledQcEvery > 0 && (i + 1) % rules.pooledQcEvery === 0) appendQc();
+    if (betweenEvery > 0 && (i + 1) % betweenEvery === 0 && i + 1 < orderedSamples.length) {
+      for (let k = 0; k < between; k++) appendControl("Blank");
+    }
   });
   if (needsEndQc) appendQc();
 

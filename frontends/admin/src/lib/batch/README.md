@@ -9,10 +9,16 @@ Pure TypeScript planning and CSV export. No UI, database, I/O, or added dependen
   sample code becomes the Unknown injection name; client-written FullName stays
   separate for the bench sheet. IDs are opaque nonempty strings; callers supply
   the registry/aliquot relationship and lab-generated codes.
-- `rules`: `{ blanksAtStart, pooledQcEvery, blankAfterQc, qcAtEnd, randomize, seed }`.
+- `rules`: `{ blanksAtStart, pooledQcEvery, blanksBetween?, blanksBetweenEvery?, blankAfterQc, qcAtEnd, randomize, seed }`.
   Counts are non-negative safe integers; `pooledQcEvery: 0` disables interval QCs.
+  `blanksBetween` / `blanksBetweenEvery` are a pair (both 0 or absent disables them; one
+  without the other is `invalid_rules`).
 - `plateLayout`: `{ plate: "Plate 1", order: "column-major" | "row-major" }`.
 - `minutesPerInjection`: a finite positive number, including fractions.
+
+`countControls(samples, rules)` returns how many injections of each kind those rules
+add (blanks at start, between samples, after QC, pooled QCs) without placing them or
+capping at one plate; `buildBatch` uses it, and so does New order's estimate.
 
 The result contains `injections`, `estimatedRunTimeMinutes`, and
 `validationMessages` (`{ code, message }` errors). Invalid inputs return no
@@ -28,22 +34,25 @@ seeds). Invalid durations, including run-time overflow, return `invalid_duration
 1. Shuffle only the Unknown samples when enabled, then prepend `blanksAtStart` blanks.
 2. Insert a pooled QC after each `pooledQcEvery` Unknowns. Controls do not count
    toward that interval. An incomplete last interval produces no periodic QC.
-3. `qcAtEnd` adds a QC after the last Unknown unless an interval QC already goes
+3. `blanksBetween` blanks follow every `blanksBetweenEvery` Unknowns, after that slot's
+   interval QC (and its blank) if any, and only between samples: never after the last
+   Unknown. Controls do not count toward the interval.
+4. `qcAtEnd` adds a QC after the last Unknown unless an interval QC already goes
    there. `blankAfterQc` adds a blank after **every** QC, including the end QC;
    in that case the last injection is a blank.
-4. Assign one distinct well per injection, including every blank and QC. Capacity
+5. Assign one distinct well per injection, including every blank and QC. Capacity
    is 96 total injections on one plate; control-vial reuse and additional plates
    are not supported. Column-major is A1, B1, …, H1, A2, …, H12; row-major is
    A1, A2, …, A12, B1, …, H12. Wells have no zero padding. Assignment follows
    final injection order, so the bench sheet describes how to load the plate.
-5. `seq` starts at 1. Each Unknown's `sample_name` is its trimmed sample code
+6. `seq` starts at 1. Each Unknown's `sample_name` is its trimmed sample code
    (e.g. `ORD041-S037`), compatible with `release.ts`'s `matchSamples` code match.
    Sample and injection names never incorporate client-written text, following the
    coordinator's wave 1 decision. Each injection also has a separate `FullName`
    field, trimmed consistently with registry saves. Duplicate code comparison is
    case-sensitive across the whole batch, including clients. Different codes may
    share a FullName; order-level FullName uniqueness remains the registry's concern.
-6. Controls use `Blank_001`, `Blank_002`, … and `QC_001`, `QC_002`, …, skipping names
+7. Controls use `Blank_001`, `Blank_002`, … and `QC_001`, `QC_002`, …, skipping names
    already used by any Unknown or control. Their `FullName`, `client_id` and
    `aliquot_id` are null. Unknown IDs and FullName stay attached during shuffling.
 

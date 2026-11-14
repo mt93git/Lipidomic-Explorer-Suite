@@ -74,5 +74,6 @@ export function rulesText(rules: ProfileRules) {
 export type BuilderDefaults = typeof builderDefaults;
 export function builderDefaultsFrom(profile: Pick<InstrumentProfile, "rules"> | null): BuilderDefaults {
   if (!profile) return builderDefaults;
-  return { ...builderDefaults, blanksAtStart: profile.rules.blanksAtStart, pooledQcEvery: profile.rules.pooledQcEvery };
+  const { blanksAtStart, pooledQcEvery, blanksBetween, blanksBetweenEvery } = profile.rules;
+  return { ...builderDefaults, blanksAtStart, pooledQcEvery, blanksBetween, blanksBetweenEvery };
 }

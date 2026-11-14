@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { builderDefaults } from "@/lib/batch-builder";
+import { activeBuilderDefaults } from "@/lib/data/instrument-profiles";
 import { getOpenDraft, listOpenDrafts, listWizardPanels } from "@/lib/data/order-drafts";
 import { listClients } from "@/lib/data/orders";
 import { emptyWizard, wizardSteps } from "@/lib/order-wizard";
@@ -21,9 +23,11 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   const session = await requireWorkspace("staff");
   const query = await searchParams;
   const code = query.created && /^ORD\d{3,}$/.test(query.created) ? query.created : null;
-  const [clients, panels, drafts, resumed] = await Promise.all([
-    listClients(), listWizardPanels(), listOpenDrafts(), query.draft ? getOpenDraft(query.draft) : Promise.resolve(null),
+  const [clients, panels, drafts, resumed, defaults] = await Promise.all([
+    listClients(), listWizardPanels(), listOpenDrafts(), query.draft ? getOpenDraft(query.draft) : Promise.resolve(null), activeBuilderDefaults(),
   ]);
+  // activeBuilderDefaults hands back Batch builder's own defaults object itself when no profile is active.
+  const rules = { values: defaults, fromProfile: defaults !== builderDefaults };
   const clientName = (id: string | null) => clients.find(client => client.id === id)?.name ?? null;
   const others = drafts.filter(draft => draft.id !== resumed?.id);
 
@@ -45,7 +49,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   </>;
 
   return <>
-    <OrderWizard key={code ?? "wizard"} clients={clients} panels={panels} placedBy={session.displayName}
+    <OrderWizard key={code ?? "wizard"} clients={clients} panels={panels} placedBy={session.displayName} rules={rules}
       initial={resumed ? { draftId: resumed.id, step: resumed.step, data: resumed.data } : { draftId: null, step: 1, data: { ...emptyWizard(), clientId: !code && clients.some(item => item.id === query.client) ? query.client! : "" } }}>
       {notices}
     </OrderWizard>

@@ -1,7 +1,7 @@
 // Batches (0016_batches.sql): admin.create_batch, admin.mark_batch_exported, admin.mark_batch_acquired.
 // Synthetic data only. The seed has two clients; sample 103/104 (order 101, client A) and 203/204 (order 201, client B).
 // Aliquot 105 (sample 103) and 205 (sample 203) exist and sit in the seeded batches B2026-001 / B2026-002, which these
-// tests first mark acquired so their samples are free to batch (one test puts B2026-001 back to planned).
+// tests first archive so their samples are free to batch (0039: a live batch of any status holds its samples).
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { freshDb, as, count, id, U, C } from './helpers.js';
 
@@ -13,7 +13,7 @@ beforeEach(async () => {
   // Seeded orders sit at Request; samples exist, so the lab has registered them.
   await as(db, null);
   await db.query("UPDATE admin.\"order\" SET stage = 'registered'");
-  await db.query("UPDATE admin.batch SET status = 'acquired'");
+  await db.query("UPDATE admin.batch SET archived_at = now(), archived_reason = 'synthetic' WHERE archived_at IS NULL");
 });
 afterEach(async () => { await db?.close(); });
 
@@ -65,9 +65,9 @@ describe('admin.create_batch', () => {
       expect(inj[1]).toMatchObject({ client_id: C.A, aliquot_id: id(105) }); // the sample's live aliquot is reused
       expect(inj[4].client_id).toBe(C.B);
       expect(await count(db, "SELECT 1 FROM admin.audit_event WHERE entity = 'batch' AND entity_id = $1 AND action = 'INSERT' AND actor = $2", [bid, u])).toBe(1);
-      // Reset for the next staff role: the injections' samples may be batched once per planned batch.
+      // Reset for the next staff role: a live batch holds its samples, an archived one frees them.
       await as(db, null);
-      await db.query("UPDATE admin.batch SET status = 'acquired' WHERE id = $1", [bid]);
+      await db.query("UPDATE admin.batch SET archived_at = now(), archived_reason = 'synthetic' WHERE id = $1", [bid]);
     }
   });
 
@@ -87,7 +87,7 @@ describe('admin.create_batch', () => {
     const first = (await owner('SELECT name FROM admin.batch WHERE id = $1', [await create()]))[0].name;
     expect(first).toBe(y === '2026' ? 'B2026-003' : `B${y}-001`);
     await as(db, null);
-    await db.query("UPDATE admin.batch SET status = 'acquired'");
+    await db.query("UPDATE admin.batch SET archived_at = now(), archived_reason = 'synthetic' WHERE archived_at IS NULL");
     await as(db, U.operator);
     const named = await create('B2027-041', PANEL, rules, [unknown(1, S.a1)]);
     expect((await owner('SELECT name FROM admin.batch WHERE id = $1', [named]))[0].name).toBe('B2027-041');
@@ -139,11 +139,33 @@ describe('admin.create_batch', () => {
     await expect(create(null, PANEL, rules, [unknown(1, S.a2)])).rejects.toThrow(/not found or archived/);
   });
 
-  test('refuses a sample already in another planned batch, and orders that are not registered yet or already processed', async () => {
+  test('refuses a sample held by a live batch of any status (planned, exported, acquired); archiving the batch frees it', async () => {
+    for (const status of ['planned', 'sequence_exported', 'acquired']) {
+      await as(db, null);
+      await db.query("UPDATE admin.batch SET status = $1, archived_at = NULL, archived_reason = NULL WHERE name = 'B2026-001'", [status]);
+      await as(db, U.operator);
+      await expect(create(null, PANEL, rules, [unknown(1, S.b1)]), status).rejects.toThrow(/already in (a planned )?batch \(?B2026-001/);
+    }
+    // An archived version does not hold its samples either.
     await as(db, null);
-    await db.query("UPDATE admin.batch SET status = 'planned' WHERE name = 'B2026-001'");
+    await db.query("UPDATE admin.batch_version SET archived_at = now(), archived_reason = 'synthetic' WHERE batch_id = $1", [id(400)]);
     await as(db, U.operator);
-    await expect(create(null, PANEL, rules, [unknown(1, S.b1)])).rejects.toThrow(/already in a planned batch \(B2026-001/);
+    await create(null, PANEL, rules, [unknown(1, S.b1)]);
+    // Archived batch: free again (the new batch above is archived too, so S.b1 is free).
+    await as(db, null);
+    await db.query("UPDATE admin.batch SET archived_at = now(), archived_reason = 'synthetic' WHERE archived_at IS NULL");
+    await db.query("UPDATE admin.batch_version SET archived_at = NULL, archived_reason = NULL WHERE batch_id = $1", [id(400)]);
+    await as(db, U.operator);
+    await create(null, PANEL, rules, [unknown(1, S.b1)]);
+  });
+
+  test('accepts a sample that was never batched', async () => {
+    await as(db, U.operator);
+    const bid = await create(null, PANEL, rules, [unknown(1, S.b2)]);
+    expect((await owner('SELECT status FROM admin.batch WHERE id = $1', [bid]))[0].status).toBe('planned');
+  });
+
+  test('refuses orders that are not registered yet or already processed', async () => {
     await as(db, null);
     await db.query("UPDATE admin.\"order\" SET stage = 'request' WHERE id = $1", [id(101)]);
     await as(db, U.operator);

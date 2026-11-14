@@ -87,10 +87,11 @@ export async function activeBuilderDefaults(): Promise<BuilderDefaults> {
   try {
     await requireWorkspace("staff");
     if (!live()) return builderDefaultsFrom((await demoStored()).find(profile => profile.isActive) ?? null);
-    const { data, error } = await (await admin()).from("instrument_profile").select("blanks_at_start, pooled_qc_every").eq("is_active", true).maybeSingle();
+    const { data, error } = await (await admin()).from("instrument_profile").select("blanks_at_start, pooled_qc_every, blanks_between, blanks_between_every").eq("is_active", true).maybeSingle();
     if (error || !data) return builderDefaults;
-    const row = data as { blanks_at_start: number; pooled_qc_every: number };
-    return builderDefaultsFrom({ rules: { ...defaultRules, blanksAtStart: row.blanks_at_start, pooledQcEvery: row.pooled_qc_every } });
+    const row = data as { blanks_at_start: number; pooled_qc_every: number; blanks_between: number; blanks_between_every: number };
+    return builderDefaultsFrom({ rules: { ...defaultRules, blanksAtStart: row.blanks_at_start, pooledQcEvery: row.pooled_qc_every,
+      blanksBetween: row.blanks_between, blanksBetweenEvery: row.blanks_between_every } });
   } catch (error) {
     if (error instanceof DataError) return builderDefaults;
     throw error;

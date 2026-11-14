@@ -34,6 +34,9 @@ test("walk the four steps, save a draft, resume it, place the order and see it o
   await expect(estimate).toContainText("Panel C · sterols & CE, 16 samples");
   await expect(estimate).toContainText("not set");
   await expect(estimate).toContainText("included");
+  // The active profile's rules (demo: 4 blanks at start, 5 after every 4 samples, QC at the end): 16 + 4 + 15 + 1.
+  await expect(estimate).toContainText("4 blanks at start, 15 between samples and 1 pooled QC, by the active profile's rules");
+  await expect(estimate).toContainText("36 injections × 12 min");
 
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Draft saved at" })).toBeVisible(slow);
