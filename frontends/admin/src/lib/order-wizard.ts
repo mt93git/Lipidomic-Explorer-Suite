@@ -176,6 +176,8 @@ export function sampleTemplateCsv(): string {
   return `${columns.map(column => column.label).join(",")}\r\n`;
 }
 export const metadataColumns = columns.slice(0, 6).map(column => column.label);
+// A link that downloads the template without a request (staff and client screens alike).
+export const templateHref = () => `data:text/csv;charset=utf-8,${encodeURIComponent(sampleTemplateCsv())}`;
 
 // ---------------------------------------------------------------- drafts
 
