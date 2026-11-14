@@ -42,6 +42,9 @@ export const POINTS = {
   excel_built: { stage: "excel_built", review: "accepted", label: "Dataset built, 1 of 2 signatures" },
   released: { stage: "released", review: "accepted", label: "Released, with a deliverable" },
   declined: { stage: "request", review: "declined", label: "Declined" },
+  // Two orders of two clients in one batch, exported and half acquired: the plate shows both colours and the run
+  // monitor shows acquired, failed and waiting injections (record_injection_status, 0031).
+  running: { stage: "sequence_exported", review: "accepted", label: "Running on the instrument: one batch, two clients, half acquired" },
 };
 
 // The steps, in the order an order takes them. Each is one real admin.* RPC (plus, for results, build and deliverable,
@@ -64,7 +67,8 @@ export const STEPS = {
   deliverable: { who: "staff", rpc: "add_deliverable" },
 };
 const PATH = ["request", "accept", "receive", "register", "batch", "store", "export", "acquire", "results", "build", "sign_prepared", "sign_approved", "release", "deliverable"];
-const LAST = { pending: "request", accepted: "accept", received: "receive", registered: "register", in_batch: "store", acquired: "acquire", excel_built: "sign_prepared", released: "deliverable" };
+// "running" orders take their own steps up to Registered; the shared batch is made for both together (runningPlan).
+const LAST = { running: "register", pending: "request", accepted: "accept", received: "receive", registered: "register", in_batch: "store", acquired: "acquire", excel_built: "sign_prepared", released: "deliverable" };
 
 /** The steps that take a new order to a parking point. */
 export function stepsFor(point) {
@@ -89,6 +93,8 @@ export const ORDERS = [
   { key: "released", client: "atlas", point: "released", title: "Liver tissue knockout comparison (demo)", matrix: "Liver tissue", samples: 8, groups: ["Wild type", "Knockout"] },
   { key: "declined", client: "harbor", point: "declined", title: "Plasma oxylipin screen (demo)", matrix: "Plasma", samples: 4, groups: ["Control", "Treated"],
     declineReason: "The oxylipin panel is not offered yet; please ask again next quarter (demo)." },
+  { key: "running_harbor", client: "harbor", point: "running", title: "Plasma sphingolipid profile (demo)", matrix: "Plasma", samples: 10, groups: ["Lean", "Obese"] },
+  { key: "running_cedar", client: "cedar", point: "running", title: "Serum bile acid panel (demo)", matrix: "Serum", samples: 8, groups: ["Healthy", "NAFLD"] },
 ];
 
 export const clientOf = order => CLIENTS.find(client => client.key === order.client);
@@ -161,7 +167,7 @@ export function matchesOrder(order, clientId, row) {
 
 // ---------------------------------------------------------------- storage slots
 
-const STORED = new Set(["in_batch", "acquired", "excel_built", "released"]);
+const STORED = new Set(["in_batch", "acquired", "excel_built", "released", "running"]);
 /**
  * First slot (0-based) of each batched order's aliquots in BOX, in plan order: fixed, so a rerun picks the same slots.
  * @returns {Record<string, number>}
@@ -187,6 +193,41 @@ export function batchInjections(samples) {
   if (list.length > 96) throw new Error("demo plan: a batch holds one 96-well plate");
   return list.map((row, i) => ({ seq: i + 1, ...row, plate: PLATE, vial: `${"ABCDEFGH"[Math.floor(i / 12)]}${(i % 12) + 1}` }));
 }
+/**
+ * The shared batch of the "running" orders: a blank, the orders' samples interleaved (one of each in turn), a pooled QC
+ * after every 6 samples and at the end. Wells down the columns (A1, B1 … H1, A2 …), as the batch builder's default.
+ * @param {{ id: string, sample_code: string }[][]} groups each order's samples in sample-number order
+ */
+export function sharedBatchInjections(groups) {
+  const samples = [];
+  for (let i = 0; i < Math.max(...groups.map(group => group.length)); i++) for (const group of groups) if (group[i]) samples.push(group[i]);
+  const list = [{ sample_type: "Blank", sample_name: "Blank_001" }];
+  let qc = 0;
+  samples.forEach((sample, i) => {
+    list.push({ sample_type: "Unknown", sample_name: sample.sample_code, sample_id: sample.id });
+    if ((i + 1) % 6 === 0 && i + 1 < samples.length) list.push({ sample_type: "Quality Control", sample_name: `QC_${pad(++qc, 3)}` });
+  });
+  list.push({ sample_type: "Quality Control", sample_name: `QC_${pad(++qc, 3)}` });
+  if (list.length > 96) throw new Error("demo plan: a batch holds one 96-well plate");
+  return list.map((row, i) => ({ seq: i + 1, ...row, plate: PLATE, vial: `${"ABCDEFGH"[i % 8]}${Math.floor(i / 8) + 1}` }));
+}
+export const sharedBatchRules = codes => ({
+  rules: { blanksAtStart: 1, pooledQcEvery: 6, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: `demo-${codes.join("-")}` },
+  plateLayout: { plate: PLATE, order: "column-major" }, minutesPerInjection: 15,
+});
+/**
+ * Half a run, as the operator would paste it from SCIEX OS: the first 55 % of injections acquired, except one sample
+ * in the middle of them that failed; the rest still waiting (planned, so not sent).
+ * @param {{ seq: number, sample_type: string, sample_name: string }[]} injections
+ */
+export function runningStatuses(injections) {
+  const ordered = [...injections].sort((a, b) => a.seq - b.seq);
+  const done = ordered.slice(0, Math.floor(ordered.length * 0.55));
+  const unknowns = done.filter(row => row.sample_type === "Unknown");
+  const failed = unknowns[Math.floor(unknowns.length / 2)]?.sample_name;
+  return done.map(row => ({ sample_name: row.sample_name, status: row.sample_name === failed ? "failed" : "acquired" }));
+}
+
 export const batchRules = code => ({
   rules: { blanksAtStart: 1, pooledQcEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: `demo-${code}` },
   plateLayout: { plate: PLATE, order: "row-major" }, minutesPerInjection: 20,
@@ -330,6 +371,8 @@ export function formatPlan({ reset = false } = {}) {
   const offsets = slotOffsets();
   const stored = ORDERS.filter(order => order.key in offsets);
   lines.push(`  storage: ${stored.reduce((sum, order) => sum + order.samples, 0)} aliquots of ${stored.length} batched orders in "${BOX}", slots ${slotName(0)}…`);
+  const running = ORDERS.filter(order => order.point === "running");
+  if (running.length) lines.push(`  shared batch: ${running.map(order => `"${order.title}"`).join(" + ")} in one batch (create_batch → place_aliquot → mark_batch_exported → record_injection_status: about half acquired, one failed)`);
   lines.push("  release policy: unchanged when both demo signers may already sign; otherwise widened for the run and put back.");
   return lines.join("\n");
 }

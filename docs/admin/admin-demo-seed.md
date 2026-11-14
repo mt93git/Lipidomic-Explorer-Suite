@@ -28,8 +28,14 @@ with its plan (names, samples, which order stops where, the synthetic files) in 
 | 8 | Serum lipoprotein fractions (demo) | Dataset built, 1 of 2 signatures | + upload, `accept_result_file`, uploads, `build_dataset`, `sign_dataset` (Demo Staff) |
 | 9 | Liver tissue knockout comparison (demo) | Released, CSV deliverable visible to the client | + `sign_dataset` (Demo Approver), `release_dataset`, upload, `add_deliverable` |
 | 10 | Plasma oxylipin screen (demo) | Declined | `request_order`, `decline_order` |
+| 11 | Plasma sphingolipid profile (demo), Harbor | Running: shared batch, half acquired | up to `register_samples`, then the shared batch |
+| 12 | Serum bile acid panel (demo), Cedar | Running: shared batch, half acquired | up to `register_samples`, then the shared batch |
 
-Storage: the 32 aliquots of orders 6 to 9 sit in `Demo freezer box 1 (demo)`, fixed slots from A1. The results file is
+Orders 11 and 12 share one batch (two clients on one plate): `create_batch` with their samples interleaved and a pooled
+QC every 6, `place_aliquot`, `mark_batch_exported`, then `record_injection_status` (0031) marks about half the run
+acquired and one sample failed, so the batch page shows both colours and the run monitor.
+
+Storage: the 50 aliquots of orders 6 to 9, 11 and 12 sit in `Demo freezer box 1 (demo)`, fixed slots from A1. The results file is
 `frontends/admin/e2e/fixtures/sciex-synthetic.txt` renamed to the batch (one column per injection, Unknowns by sample
 code); the dataset is built with `@lipidomic/admin-ingest` exactly as `src/lib/release-build.ts` builds it, so
 `packages/admin-ingest` must be built first (`npm ci && npm run build` there, `npm ci` in `frontends/admin`).

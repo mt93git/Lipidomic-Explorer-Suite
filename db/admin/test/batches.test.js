@@ -338,3 +338,45 @@ describe('batch functions: definer, search_path, grants', () => {
     expect(await can('anon')).toBe(false);
   });
 });
+
+// 0031_injection_status.sql: the run monitor records how each injection of an exported batch went.
+describe('admin.record_injection_status', () => {
+  const record = async (bid, rows, u = U.operator) => { await as(db, u); return db.query('SELECT admin.record_injection_status($1, $2::jsonb) AS n', [bid, JSON.stringify(rows)]).then((x) => x.rows[0].n); };
+  const statuses = async (bid) => Object.fromEntries((await owner(`SELECT i.sample_name, i.status FROM admin.injection i
+    JOIN admin.batch_version v ON v.id = i.batch_version_id WHERE v.batch_id = $1 AND i.archived_at IS NULL`, [bid])).map((r) => [r.sample_name, r.status]));
+
+  test('a lab writer records acquired, failed and skipped by injection name; the batch and orders stay where they are', async () => {
+    await as(db, U.operator);
+    const bid = await create();
+    await exportAs(U.operator, bid);
+    expect(await record(bid, [{ sample_name: 'Blank_001', status: 'acquired' }, { sample_name: CODE[S.a1], status: 'Failed' }, { sample_name: 'QC_001', status: 'skipped' }])).toBe(3);
+    const s = await statuses(bid);
+    expect(s).toMatchObject({ Blank_001: 'acquired', [CODE[S.a1]]: 'failed', QC_001: 'skipped', [CODE[S.a2]]: 'planned' });
+    expect((await owner('SELECT status FROM admin.batch WHERE id = $1', [bid]))[0].status).toBe('sequence_exported');
+    expect(await stage(id(101))).toBe('sequence_exported');
+    // The same status again changes nothing; Mark acquired then leaves the failed and skipped ones as they are.
+    expect(await record(bid, [{ sample_name: 'Blank_001', status: 'acquired' }])).toBe(0);
+    await as(db, U.operator);
+    await db.query('SELECT admin.mark_batch_acquired($1)', [bid]);
+    expect(await statuses(bid)).toMatchObject({ [CODE[S.a1]]: 'failed', QC_001: 'skipped', [CODE[S.a2]]: 'acquired' });
+    // After acquisition a failure noticed late may still be recorded.
+    expect(await record(bid, [{ sample_name: CODE[S.a2], status: 'failed' }])).toBe(1);
+    expect(await count(db, "SELECT 1 FROM admin.audit_event WHERE entity = 'injection' AND action = 'UPDATE' AND actor = $1", [U.operator])).toBeGreaterThanOrEqual(3);
+  });
+
+  test('refuses a planned batch, an unknown name or status, an empty list and anyone who is not a lab writer', async () => {
+    await as(db, U.operator);
+    const bid = await create();
+    await expect(record(bid, [{ sample_name: 'Blank_001', status: 'acquired' }])).rejects.toThrow(/is planned; injection status is recorded once/);
+    await exportAs(U.operator, bid);
+    await expect(record(bid, [{ sample_name: 'Nope_001', status: 'acquired' }])).rejects.toThrow(/has no injection named Nope_001/);
+    await expect(record(bid, [{ sample_name: 'Blank_001', status: 'running' }])).rejects.toThrow(/not one of planned, acquired, failed, skipped/);
+    await expect(record(bid, [])).rejects.toThrow(/at least one injection/);
+    // One bad row refuses the whole call.
+    await expect(record(bid, [{ sample_name: 'Blank_001', status: 'failed' }, { sample_name: 'Nope_001', status: 'failed' }])).rejects.toThrow(/Nope_001/);
+    expect((await statuses(bid)).Blank_001).toBe('planned');
+    for (const u of [U.member, U.aAdmin, U.aReq, U.aView]) {
+      await expect(record(bid, [{ sample_name: 'Blank_001', status: 'acquired' }], u), u).rejects.toThrow(/only lab staff/);
+    }
+  });
+});

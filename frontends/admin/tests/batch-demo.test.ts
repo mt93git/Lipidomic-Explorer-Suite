@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { demoBuilderSamples, recordAcquired, recordBatch, recordExported } from "@/lib/batch-demo";
+import { demoBuilderSamples, recordAcquired, recordBatch, recordExported, recordInjectionStatus } from "@/lib/batch-demo";
 import { planBatch, rulesRecord, saveInjections, type BuilderValues } from "@/lib/batch-builder";
 import { demoClients, demoOrders } from "@/lib/demo";
 import { applyDemoState, emptyDemoState, type DemoSample, type DemoState } from "@/lib/samples-demo";
@@ -84,5 +84,32 @@ describe("demo export and acquisition", () => {
   it("never lowers an order: one already Processed by a results file stays Processed", () => {
     const processed: DemoState = { ...planned(), results: [{ id: "r", orderCode: "ORD041", sha256: "b".repeat(64), acceptedAt: now.toISOString(), acceptedBy: "x" }] };
     expect(orders(processed).find(order => order.code === "ORD041")?.stage).toBe(7);
+  });
+});
+
+describe("demo run monitor", () => {
+  const sha = "a".repeat(64);
+  const exported = () => recordExported(save(withSamples(), ["s-ORD041-1", "s-ORD041-2"]).state, "B2026-033", sha, "Demo Operator", now);
+
+  it("records per-injection status on an exported batch, by name, as the database does", () => {
+    const state = exported();
+    const [first, second] = state.batches![0].injections;
+    const { state: next, changed } = recordInjectionStatus(state, "B2026-033", [{ sample_name: first.sample_name, status: "acquired" }, { sample_name: second.sample_name, status: "failed" }]);
+    expect(changed).toBe(2);
+    expect(next.batches![0].injections.slice(0, 2).map(row => row.status)).toEqual(["acquired", "failed"]);
+    expect(recordInjectionStatus(next, "B2026-033", [{ sample_name: first.sample_name, status: "acquired" }]).changed).toBe(0);
+    // Mark acquired afterwards turns only the planned ones acquired; the failed one stays failed (as 0016 does).
+    const acquired = recordAcquired(next, "B2026-033", now).batches![0];
+    expect(acquired.status).toBe("acquired");
+    expect(acquired.injections[1].status).toBe("failed");
+    expect(acquired.injections.slice(2).every(row => row.status === "acquired")).toBe(true);
+  });
+
+  it("refuses a planned batch, an unknown name or status and an empty list", () => {
+    const planned = save(withSamples(), ["s-ORD041-1"]).state;
+    expect(() => recordInjectionStatus(planned, "B2026-033", [{ sample_name: "x", status: "failed" }])).toThrow(/injection status is recorded once/);
+    expect(() => recordInjectionStatus(exported(), "B2026-033", [{ sample_name: "Nope", status: "failed" }])).toThrow(/no injection named Nope/);
+    expect(() => recordInjectionStatus(exported(), "B2026-033", [{ sample_name: "Blank_001", status: "running" }])).toThrow(/not one of/);
+    expect(() => recordInjectionStatus(exported(), "B2026-033", [])).toThrow(/at least one/);
   });
 });

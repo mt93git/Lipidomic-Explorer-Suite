@@ -89,7 +89,7 @@ export function recordAcquired(state: DemoState, name: string, now: Date): DemoS
   const batch = find(state, name);
   if (batch.status === "planned") throw new DataError(`Batch ${name} is planned; export its sequence first.`);
   if (batch.status !== "sequence_exported") throw new DataError(`Batch ${name} is already ${batchStatusLabel(batch.status)}; only an exported sequence can be marked acquired.`);
-  return replace(state, { ...batch, status: "acquired", acquiredAt: now.toISOString(), injections: batch.injections.map(row => ({ ...row, status: "acquired" })) });
+  return replace(state, { ...batch, status: "acquired", acquiredAt: now.toISOString(), injections: batch.injections.map(row => row.status === "planned" ? { ...row, status: "acquired" } : row) });
 }
 
 export function toBatchDetail(batch: DemoBatch): BatchDetail {
@@ -126,4 +126,27 @@ export function applyBatchState(orders: Order[], state: DemoState): Order[] {
     const events = mine.flatMap(eventsFor).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
     return { ...order, stage, batch: mine.at(-1)!.name, gates: stage < PROCESSED ? gatesFor(furthest) : order.gates, history: [...events, ...order.history] };
   });
+}
+
+// record_injection_status (0031): per-injection status on an exported or acquired batch, matched by injection name.
+export function recordInjectionStatus(state: DemoState, name: string, rows: readonly { sample_name: string; status: string }[]): { state: DemoState; changed: number } {
+  const batch = find(state, name);
+  if (batch.status !== "sequence_exported" && batch.status !== "acquired") {
+    throw new DataError(`Batch ${name} is ${batchStatusLabel(batch.status)}; injection status is recorded once its sequence is exported and until results are accepted.`);
+  }
+  if (!rows.length) throw new DataError("Send at least one injection and its status.");
+  const wanted = new Map<string, string>();
+  for (const row of rows) {
+    if (!["planned", "acquired", "failed", "skipped"].includes(row.status)) throw new DataError(`Status "${row.status}" for ${row.sample_name} is not one of planned, acquired, failed, skipped.`);
+    if (!batch.injections.some(item => item.sample_name === row.sample_name)) throw new DataError(`Batch ${name} has no injection named ${row.sample_name}.`);
+    wanted.set(row.sample_name, row.status);
+  }
+  let changed = 0;
+  const injections = batch.injections.map(item => {
+    const status = wanted.get(item.sample_name);
+    if (!status || status === item.status) return item;
+    changed += 1;
+    return { ...item, status };
+  });
+  return { state: replace(state, { ...batch, injections }), changed };
 }
