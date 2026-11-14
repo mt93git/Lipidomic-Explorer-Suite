@@ -11,7 +11,7 @@
 .table tbody th { font-weight: 400; color: var(--ink); }
 .table td { overflow-wrap: break-word; }
 .table td:first-child { min-width: 9em; }
-.settings tbody th { width: 7.5em; }
+.settings tbody th { width: 8.2em; }
 .pattern { font-variant-ligatures: none; }
 /* The name is the way into Edit: 24 px tall to tap, in the row's own padding. */
 .table td:first-child a { display: inline-block; padding: 4px 0; margin: -4px 0; }
@@ -22,9 +22,11 @@
 
 /* The prototype's cards: a tinted header row with the title (and the active pill), then the body. */
 .top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
-.top > :global(.panel) { margin-top: 0; }
 .card { padding: 0; overflow: hidden; }
 .top + .card, .card + :global(.panel), .top + :global(.panel) { margin-top: 18px; }
+/* After the rule above (same specificity): the two cards of the top row start level. */
+.top > .card, .top > :global(.panel) { margin-top: 0; }
+.card .table { font-size: 14px; }
 .cardHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 18px; background: #f8fafb; border-bottom: 1px solid var(--line); min-height: 52px; }
 .cardHead h2 { margin: 0; font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0; }
 .cardActions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; font-size: var(--text-sm); }
@@ -44,18 +46,22 @@
 .ruleGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0; }
 .rule { min-width: 0; margin: 0; padding: 0; border: 0; }
 .rule legend, .rule dt { padding: 0; margin-bottom: 7px; font-size: var(--text-sm); font-weight: 700; }
-.ruleBox { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-height: 40px; margin: 0; padding: 6px 12px; border: 1px solid #bfcbd5; border-radius: 5px; background: white; font-size: 14px; }
+.ruleBox { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; min-height: 40px; margin: 0; padding: 6px 12px; border: 1px solid #bfcbd5; border-radius: 5px; background: white; font-size: 14px; }
 .ruleBox:focus-within { border-color: var(--blue); box-shadow: 0 0 0 2px var(--tint); }
 .ruleBox input { border: 0; padding: 2px 0; background: transparent; color: var(--ink); font: inherit; min-width: 0; }
 .ruleBox input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; border-radius: 2px; }
-.count { width: 3.2ch; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+/* Each input as wide as what it holds, so the box reads as one sentence: "4 blanks (1:1 IPA:ACN)". */
+.count { width: 2.6ch; field-sizing: content; min-width: 1.2ch; text-align: right; -moz-appearance: textfield; appearance: textfield; }
 .count::-webkit-outer-spin-button, .count::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.note { flex: 1 1 6em; width: 6em; }
+.note { flex: 0 1 auto; width: 9em; field-sizing: content; min-width: 3ch; max-width: 100%; }
+/* "(1:1 IPA:ACN)": the brackets hug the note. */
+.inParens { margin: 0 -5px; }
+.wide { flex: 1 1 auto; width: 100%; }
 .rulesForm { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 16px; }
 .rulesForm > .ruleGrid, .rulesForm > p, .rulesForm > :global(.field-alert), .rulesForm > [role="alert"] { flex: 1 1 100%; }
 .rulesForm > :global(.field) { margin: 10px 0 0; flex: 0 1 280px; }
 .rulesForm > button { margin-top: 10px; }
-.rulesHint, .rulesNote { margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
+.rulesNote { margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
 
 @media (max-width: 1000px) {
   .top { grid-template-columns: minmax(0, 1fr); }
@@ -63,3 +69,4 @@
   .formGrid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) { .ruleGrid { grid-template-columns: minmax(0, 1fr); } }
+@supports (field-sizing: content) { .count, .note { width: auto; } }

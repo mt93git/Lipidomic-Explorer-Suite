@@ -135,7 +135,7 @@ function RulesCard({ profile, canEdit, actors }: { profile: InstrumentProfile; c
   const { rules } = profile;
   const editable = canEdit && !profile.archivedAt;
   const text = rulesText(rules);
-  const note = <p className={styles.rulesNote}>Batch builder starts every new batch from the active profile&apos;s blanks at the start and pooled QC; they can still be changed per batch. Blanks between samples and the QC thresholds are kept here for the bench and QC review; Batch builder does not place blanks between samples.</p>;
+  const note = <p className={styles.rulesNote}>0 means none. Batch builder pre-fills blanks at the start and pooled QC from the active profile (they can still be changed per batch); it does not place blanks between samples, and the QC thresholds are for QC review.</p>;
   return <section className={`panel ${styles.card} ${styles.rules}`} aria-labelledby="rules-title">
     <div className={styles.cardHead}><h2 id="rules-title">Blank and QC rules</h2></div>
     <div className={styles.cardBody}>
@@ -145,7 +145,7 @@ function RulesCard({ profile, canEdit, actors }: { profile: InstrumentProfile; c
           <fieldset className={styles.rule}><legend>Start of run</legend>
             <div className={styles.ruleBox}>
               <input name="blanksAtStart" type="number" min={0} max={96} step={1} inputMode="numeric" required defaultValue={rules.blanksAtStart} aria-label="Blanks at the start" className={styles.count} />
-              <span>blanks (</span><input name="startBlankNote" defaultValue={rules.startBlankNote ?? ""} aria-label="Blank solvent" placeholder="solvent" className={styles.note} /><span>)</span>
+              <span>blanks</span><span aria-hidden="true">(</span><input name="startBlankNote" defaultValue={rules.startBlankNote ?? ""} aria-label="Blank solvent" placeholder="solvent" className={`${styles.note} ${styles.inParens}`} /><span aria-hidden="true">)</span>
             </div>
           </fieldset>
           <fieldset className={styles.rule}><legend>Between samples</legend>
@@ -165,11 +165,10 @@ function RulesCard({ profile, canEdit, actors }: { profile: InstrumentProfile; c
           </fieldset>
           <fieldset className={styles.rule}><legend>QC thresholds</legend>
             <div className={styles.ruleBox}>
-              <input name="qcThresholds" defaultValue={rules.qcThresholds ?? ""} aria-label="QC thresholds" placeholder="CV · ISTD · S/N" className={styles.note} />
+              <input name="qcThresholds" defaultValue={rules.qcThresholds ?? ""} aria-label="QC thresholds" placeholder="CV · ISTD · S/N" className={styles.wide} />
             </div>
           </fieldset>
         </div>
-        <p className={styles.rulesHint}>0 means none: 0 blanks between samples, or a pooled QC every 0 samples.</p>
         {note}
         <DemoActor actors={actors} id="rules-actor" hint={HINT} />
       </ActionForm> : <>
