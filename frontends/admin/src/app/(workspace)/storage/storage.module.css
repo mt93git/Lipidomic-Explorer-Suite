@@ -43,3 +43,21 @@
 .boxes { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
 .list { margin-top: 18px; }
 .list summary { cursor: pointer; color: var(--blue); font-size: var(--text-sm); font-weight: 700; padding: 6px 0; }
+/* Freezers & racks (0041): the catalog card, a box's place under its heading and in the box list. */
+.place { display: block; color: var(--muted); font-size: var(--text-xs); }
+.boxPlace { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: flex-end; justify-content: space-between; margin: 4px 0 12px; }
+.boxPlace p { margin: 0 0 10px; }
+.freezers { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.freezers > li { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.freezers p { margin: 4px 0; }
+.freezerHead { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.racks { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; font-size: var(--text-sm); }
+.racks > li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.archive { margin-left: auto; font-size: var(--text-sm); }
+.archive summary { cursor: pointer; color: var(--muted); }
+.inlineForm { display: flex; flex-wrap: wrap; gap: 0 10px; align-items: flex-end; }
+.inlineForm :global(.field) { margin: 6px 0 8px; flex: 1 1 160px; max-width: 260px; }
+.inlineForm :global(.button) { margin-bottom: 8px; }
+.freezerForm { display: grid; grid-template-columns: repeat(3, minmax(0, 220px)); gap: 0 14px; align-items: end; }
+.freezerForm :global(.field) { margin: 10px 0 14px; }
+@media (max-width: 760px) { .freezerForm { grid-template-columns: minmax(0, 1fr); } }

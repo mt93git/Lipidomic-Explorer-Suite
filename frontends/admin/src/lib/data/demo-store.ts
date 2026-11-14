@@ -97,6 +97,17 @@ export async function writeDemoPlacements(placements: import("../storage").DemoP
   await writeDemoState(state);
 }
 
+// ---------------------------------------------------------------- Freezers & racks (0041)
+// Same pattern: this browser's freezer list and box places, undefined until the first change (initialDemoFreezers).
+type FreezerDemoState = DemoState & { freezers?: import("../freezers").DemoFreezerState };
+export async function readDemoFreezers() {
+  return (await readDemoState() as FreezerDemoState).freezers;
+}
+export async function writeDemoFreezers(freezers: import("../freezers").DemoFreezerState) {
+  const state: FreezerDemoState = { ...await readDemoState(), freezers };
+  await writeDemoState(state);
+}
+
 // ---------------------------------------------------------------- Notifications (0028)
 // Same pattern: each demo person's turned-off kinds and the demo send log (the demo never sends: every row is skipped).
 export type DemoNotificationLog = import("../notifications").LogEntry & { id: string; at: string };
