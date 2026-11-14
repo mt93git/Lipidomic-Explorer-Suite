@@ -1,36 +1,59 @@
 import type { Metadata } from "next";
-import { mayReadNotificationLog, myNotificationSwitches, recentNotificationLog, LOG_ROWS } from "@/lib/data/notifications";
+import { mayEditNotificationRules, mayReadNotificationLog, myNotificationSwitches, notificationMatrix, recentNotificationLog, LOG_ROWS } from "@/lib/data/notifications";
 import { formatLabInstant } from "@/lib/lab-time";
-import { isNotificationKind, kindInfo, logKindLabels, notifyConfig } from "@/lib/notifications";
+import { eventLabel, isNotificationKind, kindInfo, logKindLabels, notifyConfig, type NotificationRule } from "@/lib/notifications";
 import { requireWorkspace } from "@/lib/session";
 import styles from "./notifications.module.css";
+import { MatrixRow } from "./matrix-row";
 import { SwitchForm } from "./switch-form";
 
 export const metadata: Metadata = { title: "Notifications" };
 const statusPill = { sent: "ok", failed: "fail", skipped: "pending" } as const;
 const statusLabel = { sent: "Sent", failed: "Failed", skipped: "Skipped" } as const;
 
-// Everyone's own email switches for the kinds that apply to them (0028: no row = on); lab Owner and Admin also read the
-// last sends. The example workspace shows its lab view the demo log, where every row is skipped.
-export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+// Lab staff: the event x audience matrix (0036), which a lab Owner or Admin edits; then their own switches and, for
+// Owner and Admin, the last sends. A client's people: their own switches. The example workspace lets its lab view edit
+// the matrix in this browser and shows it the demo log, where every row is skipped.
+export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ saved?: string; rule?: string }> }) {
   const session = await requireWorkspace("all");
-  const { saved } = await searchParams;
+  const { saved, rule } = await searchParams;
   const staff = session.view === "staff";
   const showLog = mayReadNotificationLog(session);
-  const [switches, log] = await Promise.all([myNotificationSwitches(session), showLog ? recentNotificationLog() : Promise.resolve([])]);
+  const editable = mayEditNotificationRules(session);
+  const [switches, log, matrix] = await Promise.all([
+    myNotificationSwitches(session), showLog ? recentNotificationLog() : Promise.resolve([]), staff ? notificationMatrix() : Promise.resolve([] as NotificationRule[]),
+  ]);
   const savedKind = saved?.replace(/-(on|off)$/, "");
   const savedOn = saved?.endsWith("-on");
+  const savedRule = rule && isNotificationKind(rule) ? matrix.find(row => row.kind === rule) : undefined;
   const config = notifyConfig();
   return <>
     <div className="page-heading">
       <div>
-        <div className="eyebrow">{staff ? "Organization / Notifications" : "Client portal / Notifications"}</div>
+        {!staff && <div className="eyebrow">Client portal / Notifications</div>}
         <h1>Notifications</h1>
-        <p>The emails {staff ? "Lipidomics Admin" : "the lab"} sends you, from {"“"}Lipidomics · Libreros Lab{"”"}. Each one is on until you turn it off.
-          {!staff && session.clients.length > 1 && ` Your choice applies to every client you belong to${session.selectedClient ? `, not only ${session.selectedClient.name}` : ""}.`}</p>
+        {staff
+          ? <p>Who hears about what, by email.</p>
+          : <p>The emails the lab sends you, from {"“"}Lipidomics · Libreros Lab{"”"}. Each one is on until you turn it off.
+            {session.clients.length > 1 && ` Your choice applies to every client you belong to${session.selectedClient ? `, not only ${session.selectedClient.name}` : ""}.`}</p>}
       </div>
     </div>
+    {savedRule && <p className="notice success" role="status"><strong>{eventLabel(savedRule.kind, savedRule.days)}: saved.</strong> The next email for this event goes to these audiences.</p>}
     {savedKind && isNotificationKind(savedKind) && <p className="notice success" role="status"><strong>{kindInfo[savedKind].label}: {savedOn ? "on" : "off"}.</strong> {savedOn ? "You get these emails again." : "You no longer get these emails."}</p>}
+    {staff && <>
+      <div className={styles.matrixBox} role="region" aria-label="Who hears about what" tabIndex={0}>
+        <table className={styles.matrix} aria-label="Who hears about what, by email">
+          <thead><tr><th scope="col">Event</th><th scope="col">Lab staff</th><th scope="col">Client admin</th><th scope="col">Requester</th></tr></thead>
+          <tbody>{matrix.map(row => <MatrixRow key={row.kind} row={row} editable={editable} />)}</tbody>
+        </table>
+      </div>
+      <p className={styles.footnote}>Emails go out only for these events; nothing is sent without one.</p>
+      <p className={`muted ${styles.legend}`}>{editable ? "Click a mark or a name to change who gets the email. " : "A lab Owner or Admin changes who gets each email. "}
+        Lab staff are chosen by role; the owner of the step is who recorded it. Requester: the client member who asked for the order.
+        The results check runs when lab staff open the Pipeline, at most every 10 minutes, and emails once per order.
+        {" "}Each person can still turn an email off for themselves below.</p>
+      <hr className={styles.rule} />
+    </>}
     <section className="panel" aria-labelledby="mine-title">
       <div className="eyebrow">Your emails</div>
       <h2 id="mine-title">{staff ? "Lab work" : "Your orders and datasets"}</h2>

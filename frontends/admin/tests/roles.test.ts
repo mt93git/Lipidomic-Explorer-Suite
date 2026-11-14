@@ -19,7 +19,7 @@ function rolesOf(helper: string): string[] {
 
 test("every matrix row tied to a role helper lists exactly the roles that helper admits", () => {
   const tied = permissions.filter(row => bodies.has(row.rule));
-  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
+  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
   for (const row of tied) expect([...row.roles].sort(), row.key).toEqual(rolesOf(row.rule));
 });
 
@@ -50,7 +50,7 @@ const guards: Record<string, RegExp> = {
 
 test("each action row names the functions the app calls for it, and the row's rule is what guards them", () => {
   const withRpcs = permissions.filter(row => row.rpcs?.length);
-  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "instruments_panels", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "notification_prefs", "qc_review", "release_policy", "request_order", "run_lab", "shipping_instructions", "storage", "submit"]);
+  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "instruments_panels", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "notification_prefs", "notification_rules", "qc_review", "release_policy", "request_order", "run_lab", "shipping_instructions", "storage", "submit"]);
   for (const row of withRpcs) {
     for (const fn of row.rpcs ?? []) expect(guardedBody(fn), `${row.key}: ${fn}`).toMatch(guards[row.rule]);
   }

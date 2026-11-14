@@ -1,53 +1,137 @@
-// Email notifications (decision of 2026-11-10, migration 0028): after four events the Admin app server emails the
-// people concerned through Resend's HTTP API. Pure and injectable: the audience, the log and the transport are passed
-// in, so tests never reach Resend (the server wiring is data/notifications.ts).
+// Email notifications (decision of 2026-11-10, migration 0028; the event x audience matrix of 2026-11-13, migration
+// 0036): after each event below the Admin app server emails the people its matrix row names, through Resend's HTTP API.
+// Pure and injectable: the rule, the audience, the log and the transport are passed in, so tests never reach Resend
+// (the server wiring is data/notifications.ts).
 //
-// To a client: request_answered (their order request was accepted or declined; to the person who asked) and
-// dataset_released (to every active member of the client). To the lab: order_requested and access_requested (to lab
-// Owner, Admin and Operator). Everyone may turn each kind off for themselves (no row in admin.notification_pref = on).
-// Sending happens only with ADMIN_NOTIFY_ENABLED=true; ADMIN_NOTIFY_ALLOW (comma-separated email domains) limits who
-// receives mail, on staging say; every recipient gets one log row: sent, failed or skipped, with why.
+// The matrix (admin.notification_rule, edited by a lab Owner or Admin on the Notifications page): one row per event,
+// one cell per audience. Lab staff by lab role (Owner, Admin, Operator); the owner of the step (a failed gate: who
+// recorded the step); the client's admins; the requester (the client member who asked for the order). Everyone may still
+// turn a kind off for themselves (no row in admin.notification_pref = on). Sending happens only with
+// ADMIN_NOTIFY_ENABLED=true; ADMIN_NOTIFY_ALLOW (comma-separated email domains) limits who receives mail, on staging say;
+// every recipient gets one log row: sent, failed or skipped, with why.
 import { BASE_PATH } from "./base-path";
 import type { View } from "./models";
 
-export const notificationKinds = ["request_answered", "dataset_released", "order_requested", "access_requested"] as const;
+// In the order the matrix shows them: the five pipeline events, then the 0028 requests.
+export const notificationKinds = [
+  "shipment_received", "gate_failed", "batch_acquired", "results_missing", "dataset_released", "order_requested", "request_answered", "access_requested",
+] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 export const isNotificationKind = (value: unknown): value is NotificationKind => notificationKinds.includes(value as NotificationKind);
 
-// audience: whose switch it is. A client's people see the client kinds; lab staff the lab kinds.
-export const kindInfo: Record<NotificationKind, { label: string; description: string; audience: View }> = {
-  request_answered: { label: "My order request is answered", description: "When the lab accepts or declines an order you asked for. A decline gives the lab's reason; an accept links to the shipping instructions.", audience: "client" },
-  dataset_released: { label: "A dataset is released", description: "When the lab releases a dataset to your client.", audience: "client" },
-  order_requested: { label: "A client requests an order", description: "When a client asks for a new order. You accept or decline it on the order.", audience: "staff" },
-  access_requested: { label: "Someone requests access", description: "When someone asks for access on the public Request access page. A lab Owner or Admin answers it in People.", audience: "staff" },
+// label: the person's own switch; event: the matrix row; views: who may have a switch for it (a client's people or lab
+// staff), depending on the matrix's audiences.
+export const kindInfo: Record<NotificationKind, { label: string; event: string; description: string; views: View[] }> = {
+  shipment_received: { label: "A shipment is received", event: "Shipment received", description: "When the lab records the arrival of samples for an order.", views: ["staff", "client"] },
+  gate_failed: { label: "A gate fails", event: "Gate failed", description: "When a step's check turns red: a shipment arrived not intact, or injections were recorded Failed in the run monitor.", views: ["staff", "client"] },
+  batch_acquired: { label: "A batch is acquired", event: "Batch acquired", description: "When a batch with an order's samples is marked acquired on the instrument.", views: ["staff", "client"] },
+  results_missing: { label: "Results are late", event: "No results TXT N days after acquisition", description: "When an order is still waiting for its results TXT some days after it was acquired.", views: ["staff", "client"] },
+  dataset_released: { label: "A dataset is released", event: "Dataset released", description: "When the lab releases a dataset to a client.", views: ["staff", "client"] },
+  order_requested: { label: "A client requests an order", event: "Order requested", description: "When a client asks for a new order. You accept or decline it on the order.", views: ["staff", "client"] },
+  request_answered: { label: "My order request is answered", event: "Order request answered", description: "When the lab accepts or declines an order you asked for. A decline gives the lab's reason; an accept links to the shipping instructions.", views: ["staff", "client"] },
+  access_requested: { label: "Someone requests access", event: "Access requested", description: "When someone asks for access on the public Request access page. A lab Owner or Admin answers it in People.", views: ["staff"] },
 };
-export const kindsFor = (view: View): NotificationKind[] => notificationKinds.filter(kind => kindInfo[kind].audience === view);
-// Switches as the screen shows them: a kind is on unless the person turned it off.
+// The matrix's event label; the results check names its delay ("No results TXT 3 days after acquisition").
+export const eventLabel = (kind: NotificationKind, days: number | null = null) =>
+  kind === "results_missing" ? `No results TXT ${days ?? 3} ${(days ?? 3) === 1 ? "day" : "days"} after acquisition` : kindInfo[kind].event;
+
+// ---------------------------------------------------------------- the matrix (admin.notification_rule)
+
+export const ruleLabRoles = ["operator", "admin", "owner"] as const;
+export type RuleLabRole = (typeof ruleLabRoles)[number];
+export const ruleLabRoleNames: Record<RuleLabRole, string> = { operator: "Operator", admin: "Admin", owner: "Owner" };
+export type NotificationRule = { kind: NotificationKind; labRoles: RuleLabRole[]; stepOwner: boolean; clientAdmin: boolean; requester: boolean; days: number | null };
+export const DEFAULT_RESULTS_DAYS = 3;
+const rule = (kind: NotificationKind, labRoles: RuleLabRole[], stepOwner: boolean, clientAdmin: boolean, requester: boolean, days: number | null = null): NotificationRule =>
+  ({ kind, labRoles, stepOwner, clientAdmin, requester, days });
+// The defaults of 0036 (the prototype's "Analyst" is the lab's Operator role).
+export const defaultRules: Record<NotificationKind, NotificationRule> = {
+  shipment_received: rule("shipment_received", ["admin"], false, true, true),
+  gate_failed: rule("gate_failed", [], true, false, false),
+  batch_acquired: rule("batch_acquired", ["operator"], false, false, true),
+  results_missing: rule("results_missing", ["operator", "admin"], false, false, false, DEFAULT_RESULTS_DAYS),
+  dataset_released: rule("dataset_released", ["operator"], false, true, true),
+  order_requested: rule("order_requested", ["operator", "admin", "owner"], false, false, false),
+  request_answered: rule("request_answered", [], false, false, true),
+  access_requested: rule("access_requested", ["operator", "admin", "owner"], false, false, false),
+};
+// Which cells a row may have: only a failed gate has a step owner; an access request has no client yet.
+export const ruleAllows = (kind: NotificationKind) => ({ stepOwner: kind === "gate_failed", client: kind !== "access_requested", days: kind === "results_missing" });
+
+// The lab staff cell as the matrix writes it: "Operator, Admin", "owner of the step", or "—" when nobody.
+export function labCell(value: NotificationRule): string {
+  const names = ruleLabRoles.filter(role => value.labRoles.includes(role)).map(role => ruleLabRoleNames[role]);
+  if (value.stepOwner) names.unshift(names.length ? "Owner of the step" : "owner of the step");
+  return names.length ? names.join(", ") : "—";
+}
+// Every row of the matrix, the stored ones over the defaults, in display order.
+export const matrixRows = (stored: readonly NotificationRule[]) =>
+  notificationKinds.map(kind => stored.find(item => item.kind === kind) ?? defaultRules[kind]);
+
+// A row as the database or the form gives it, checked like admin.set_notification_rule; null when it is not valid.
+export function normalizeRule(input: { kind: unknown; labRoles: unknown; stepOwner: unknown; clientAdmin: unknown; requester: unknown; days: unknown }): NotificationRule | null {
+  if (!isNotificationKind(input.kind)) return null;
+  const kind = input.kind;
+  const allows = ruleAllows(kind);
+  const roles = Array.isArray(input.labRoles) ? input.labRoles.map(String) : [];
+  if (roles.some(role => !ruleLabRoles.includes(role as RuleLabRole))) return null;
+  const labRoles = ruleLabRoles.filter(role => roles.includes(role));
+  const stepOwner = input.stepOwner === true, clientAdmin = input.clientAdmin === true, requester = input.requester === true;
+  if (stepOwner && !allows.stepOwner) return null;
+  if (!allows.client && (clientAdmin || requester)) return null;
+  const days = input.days === null || input.days === undefined || input.days === "" ? null : Number(input.days);
+  if (allows.days !== (days !== null)) return null;
+  if (days !== null && (!Number.isInteger(days) || days < 1 || days > 60)) return null;
+  return { kind, labRoles, stepOwner, clientAdmin, requester, days };
+}
+
+// The person's own switches, for their view: lab staff get a switch for every kind; a client's people for the kinds
+// their client may hear about. A kind is on unless the person turned it off.
+export const kindsFor = (view: View): NotificationKind[] => notificationKinds.filter(kind => kindInfo[kind].views.includes(view));
 export const switchesFor = (view: View, off: readonly string[]) => kindsFor(view).map(kind => ({ kind, ...kindInfo[kind], enabled: !off.includes(kind) }));
 
-export type NotificationEvent =
-  | { kind: "request_answered"; orderId: string; code: string; title: string | null; clientId: string; clientName: string; requestedBy: string | null; accepted: boolean; reason: string | null }
-  | { kind: "dataset_released"; datasetId: string; orderId: string; code: string; version: number; clientId: string; clientName: string }
-  | { kind: "order_requested"; orderId: string; code: string; title: string | null; clientId: string; clientName: string }
-  | { kind: "access_requested"; reference: string; fullName: string; organisation: string };
+// ---------------------------------------------------------------- events
 
-// The client whose members may be recipients (admin.notification_audience's argument); none for an access request.
+// The order an event is about. requestedBy: admin.order.requested_by (the client member who asked; for an order the
+// lab opened, the lab person, who is then no requester).
+type OrderFacts = { orderId: string; code: string; clientId: string; clientName: string; requestedBy?: string | null };
+// scope: an event about many orders (a batch) is sent once to the lab ("lab") and once per order to its client
+// ("client"), so no client reads another client's order; an event about one order reaches both (no scope).
+export type Scope = "lab" | "client";
+export type NotificationEvent =
+  | ({ kind: "request_answered"; title: string | null; accepted: boolean; reason: string | null } & OrderFacts & { requestedBy: string | null })
+  | ({ kind: "dataset_released"; datasetId: string; version: number } & OrderFacts)
+  | ({ kind: "order_requested"; title: string | null } & OrderFacts)
+  | { kind: "access_requested"; reference: string; fullName: string; organisation: string }
+  | ({ kind: "shipment_received"; title: string | null; boxes: number | null; condition: string | null } & OrderFacts)
+  | ({ kind: "gate_failed"; gate: string; stepOwner: string | null; scope?: Scope } & (OrderFacts | { orderId: null; code: string; clientId: null; clientName: null; requestedBy?: null }))
+  | ({ kind: "batch_acquired"; batch: string; scope: Scope } & (OrderFacts | { orderId: null; code: string; clientId: null; clientName: null; requestedBy?: null; orders: string[] }))
+  | ({ kind: "results_missing"; title: string | null; days: number; acquiredAt: string } & OrderFacts);
+
+// The client whose members may be recipients (admin.notification_audience's argument); none for an access request or
+// for the lab's copy of a batch event.
 export const eventClientId = (event: NotificationEvent): string | null => event.kind === "access_requested" ? null : event.clientId;
 
 // A row of admin.notification_audience: active lab staff (labRole) and active members of the event's client
 // (clientRole), with the kinds they turned off.
 export type AudiencePerson = { userId: string; email: string; labRole: string | null; clientRole: string | null; off: readonly string[] };
 export type Recipient = { userId: string; email: string; enabled: boolean };
-const LAB_RECIPIENTS = ["owner", "admin", "operator"];
 
-// Who gets an email for the event, once each, with whether their switch for this kind is on.
-export function selectRecipients(event: NotificationEvent, people: readonly AudiencePerson[]): Recipient[] {
+// Who gets an email for the event under its matrix row, once each, with whether their own switch for it is on.
+export function selectRecipients(event: NotificationEvent, people: readonly AudiencePerson[], row: NotificationRule = defaultRules[event.kind]): Recipient[] {
+  const scope = "scope" in event ? event.scope : undefined;
+  const requestedBy = event.kind === "access_requested" ? null : event.requestedBy ?? null;
+  const stepOwner = event.kind === "gate_failed" ? event.stepOwner : null;
   const picked = (person: AudiencePerson) => {
-    switch (event.kind) {
-      case "request_answered": return !!person.clientRole && !!event.requestedBy && person.userId === event.requestedBy;
-      case "dataset_released": return !!person.clientRole;
-      default: return !!person.labRole && LAB_RECIPIENTS.includes(person.labRole);
+    if (person.labRole && scope !== "client") {
+      if (row.labRoles.includes(person.labRole as RuleLabRole)) return true;
+      if (row.stepOwner && stepOwner && person.userId === stepOwner && person.labRole !== "member") return true;
     }
+    if (person.clientRole && scope !== "lab" && event.kind !== "access_requested") {
+      if (row.clientAdmin && person.clientRole === "client_admin") return true;
+      if (row.requester && requestedBy && person.userId === requestedBy) return true;
+    }
+    return false;
   };
   const out = new Map<string, Recipient>();
   for (const person of people) {
@@ -132,6 +216,29 @@ export function buildMessage(event: NotificationEvent, origin: string | null, ba
       body = [[`${event.clientName} asked for a new order: ${withTitle(event.code, event.title)}.`],
         [origin ? "Accept or decline it on the order:" : "Accept or decline it on the order in Lipidomics Admin."], link(`/orders/${encodeURIComponent(event.code)}`)];
       break;
+    case "shipment_received":
+      subject = `Shipment received for ${event.code}`;
+      body = [[`The lab received the samples for order ${withTitle(event.code, event.title)} of ${event.clientName}${event.boxes ? ` (${event.boxes} ${event.boxes === 1 ? "box" : "boxes"})` : ""}${event.condition ? `, ${event.condition}` : ""}.`],
+        [origin ? "Follow the order in Lipidomics Admin:" : "Follow the order in Lipidomics Admin."], link(`/orders/${encodeURIComponent(event.code)}`)];
+      break;
+    case "gate_failed":
+      subject = `Gate failed: ${event.code}`;
+      body = [[event.clientName ? `A check failed on order ${event.code} of ${event.clientName}: ${oneLine(event.gate)}.` : `A check failed on ${event.code}: ${oneLine(event.gate)}.`],
+        [origin ? "See what needs review:" : "See what needs review in Lipidomics Admin."], link(event.orderId ? `/orders/${encodeURIComponent(event.code)}` : `/batch-run/${encodeURIComponent(event.code)}#monitor`)];
+      break;
+    case "batch_acquired":
+      subject = event.orderId ? `Samples of ${event.code} acquired` : `Batch acquired: ${event.batch}`;
+      body = event.orderId
+        ? [[`The samples of order ${event.code} for ${event.clientName} were acquired on the instrument (batch ${event.batch}). Processing the results comes next.`],
+          [origin ? "Follow the order in Lipidomics Admin:" : "Follow the order in Lipidomics Admin."], link(`/orders/${encodeURIComponent(event.code)}`)]
+        : [[`Batch ${event.batch} was marked acquired${"orders" in event && event.orders.length ? `, with orders ${event.orders.join(", ")}` : ""}. Its results TXT is next.`],
+          [origin ? "Open the batch:" : "Open the batch in Lipidomics Admin."], link(`/batch-run/${encodeURIComponent(event.batch)}`)];
+      break;
+    case "results_missing":
+      subject = `No results TXT for ${event.code} after ${event.days} ${event.days === 1 ? "day" : "days"}`;
+      body = [[`Order ${withTitle(event.code, event.title)} of ${event.clientName} was acquired ${event.days} or more ${event.days === 1 ? "day" : "days"} ago and has no accepted results TXT yet.`],
+        [origin ? "Ingest the results:" : "Ingest the results in Lipidomics Admin."], link("/ingest-results")];
+      break;
     case "access_requested":
       subject = `New access request ${event.reference}`;
       body = [[`${oneLine(event.fullName)} (${oneLine(event.organisation)}) asked for access to Lipidomics Admin. Reference ${event.reference}.`],
@@ -196,7 +303,7 @@ const related = (event: NotificationEvent) => ({
   clientId: event.kind === "access_requested" ? null : event.clientId,
   orderId: event.kind === "access_requested" ? null : event.orderId,
   datasetId: event.kind === "dataset_released" ? event.datasetId : null,
-  reference: event.kind === "access_requested" ? event.reference : event.code,
+  reference: (event.kind === "access_requested" ? event.reference : event.code).slice(0, 40),
 });
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
@@ -238,6 +345,8 @@ export async function deliver(event: NotificationEvent, recipients: readonly Rec
 }
 
 export type NotifyDeps = {
+  // The event's matrix row (admin.notification_rule); without it, the 0036 defaults.
+  rule?: (kind: NotificationKind) => Promise<NotificationRule>;
   audience: (clientId: string | null) => Promise<AudiencePerson[]>;
   log: (entries: LogEntry[]) => Promise<void>;
   config: NotifyConfig;
@@ -251,7 +360,8 @@ export type NotifyDeps = {
 export async function runNotification(event: NotificationEvent, deps: NotifyDeps): Promise<LogEntry[]> {
   const report = deps.report ?? (message => console.error(message));
   try {
-    const recipients = selectRecipients(event, await deps.audience(eventClientId(event)));
+    const row = deps.rule ? await deps.rule(event.kind) : defaultRules[event.kind];
+    const recipients = selectRecipients(event, await deps.audience(eventClientId(event)), row);
     if (!recipients.length) return [];
     const entries = await deliver(event, recipients, deps);
     try {

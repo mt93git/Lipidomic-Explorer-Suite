@@ -4,9 +4,9 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { cookies } from "next/headers";
 import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
-import { batchFile, createBatch, getBatch, listBatches, listBuilderSamples, markBatchAcquired, markBatchExported } from "@/lib/data/batches";
+import { batchFile, createBatch, getBatch, listBatches, listBuilderSamples, markBatchAcquired, markBatchExported, recordInjectionStatuses } from "@/lib/data/batches";
 import { listOrders } from "@/lib/data/orders";
-import { readDemoState, writeDemoState } from "@/lib/data/demo-store";
+import { readDemoNotifications, readDemoState, writeDemoNotifications, writeDemoState } from "@/lib/data/demo-store";
 import { planBatch, rulesRecord, saveInjections, type BuilderValues } from "@/lib/batch-builder";
 import type { DemoSample } from "@/lib/samples-demo";
 
@@ -64,6 +64,20 @@ test("demo: save, download, mark exported, mark acquired; the order follows and 
   expect((await listOrders()).find(order => order.code === "ORD041")?.stage).toBe(6);
   expect((await readDemoState()).samples).toHaveLength(2);
   expect(createAdminClient).not.toHaveBeenCalled();
+});
+
+test("demo: an injection recorded Failed announces Gate failed once; pasting the same export again does not repeat it", async () => {
+  await writeDemoState({ ...await readDemoState(), samples: [sample(1), sample(2)] });
+  await writeDemoNotifications({ off: {}, log: [], rules: { gate_failed: { kind: "gate_failed", labRoles: ["operator"], stepOwner: false, clientAdmin: false, requester: false, days: null } } });
+  const { name } = await createBatch(await plan(["s-1", "s-2"]));
+  await markBatchExported(name);
+  const gateRows = async () => (await readDemoNotifications()).log.filter(row => row.kind === "gate_failed");
+  expect(await recordInjectionStatuses(name, [{ sample_name: "ORD041-S001", status: "failed" }])).toBe(1);
+  const first = (await gateRows()).length;
+  expect(first).toBeGreaterThan(0);
+  // The same export with one more row changed: S001 was already Failed, so nothing new failed.
+  expect(await recordInjectionStatuses(name, [{ sample_name: "ORD041-S001", status: "failed" }, { sample_name: "ORD041-S002", status: "acquired" }])).toBe(1);
+  expect(await gateRows()).toHaveLength(first);
 });
 
 test("demo: an unknown panel, a second plan of the same samples and another browser's batch are refused or hidden", async () => {

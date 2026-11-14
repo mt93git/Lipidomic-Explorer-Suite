@@ -18,7 +18,7 @@ import { applyDemoState, demoOrderSamples, type DemoState } from "../samples-dem
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, readDemoWorkbook, storeDemoWorkbook, writeDemoState } from "./demo-store";
-import { notify } from "./notifications";
+import { notify, requesterOf } from "./notifications";
 
 export { DataError };
 
@@ -480,7 +480,7 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
     }), input.actorId);
     if (dataset) {
       const { id, orderCode, version, clientId } = dataset;
-      await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client" });
+      await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client", requestedBy: await requesterOf(orderCode, "code") });
     }
     return;
   }
@@ -496,11 +496,12 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
   const code = (order.data as unknown as OrderRow | null)?.code;
   if (!code) throw new DataError("The order of this dataset was not found.");
   await rpc("release_dataset", { p_dataset_id: dataset.id, p_companion_path: filePaths(dataset, code).companion });
-  // Every active member of the client is told (0028), after the response.
+  // Who is told is the Notifications matrix's row (0036: lab Operators, the client's admins and the requester), after
+  // the response.
   const owner = await db.from("client").select("name").eq("id", dataset.client_id).maybeSingle();
   await notify({
     kind: "dataset_released", datasetId: dataset.id, orderId: dataset.order_id, code, version: dataset.version, clientId: dataset.client_id,
-    clientName: (owner.data as { name: string } | null)?.name ?? "your client",
+    clientName: (owner.data as { name: string } | null)?.name ?? "your client", requestedBy: await requesterOf(dataset.order_id, "id"),
   });
 }
 
