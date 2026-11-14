@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   datasetPaths, defaultPolicy, isEligibleSigner, matchSamples, nexoDatasetLink, ownSamplesProblem,
-  policyProblem, releaseProgress, type LabPerson,
+  pendingSigners, policyProblem, releaseButtonLabel, releaseDestination, releaseProgress, signersRule, type LabPerson,
 } from "@/lib/release";
 
 const owner: LabPerson = { userId: "u-owner", name: "Owner", role: "owner" };
@@ -110,5 +110,37 @@ describe("matching SCIEX sample names to the registry", () => {
     const many = matchSamples(Array.from({ length: 7 }, (_, i) => `X${i}`), registry);
     expect(ownSamplesProblem("ORD048", many)).toMatch(/^7 Unknown injections are not registered samples of ORD048: X0, X1, X2, X3, X4 and 2 more\./);
     expect(ownSamplesProblem("ORD048", matchSamples(["ORD048-S001", "Trt_1"], registry))).toBeNull();
+  });
+});
+
+describe("release page wording", () => {
+  const progress = (counted: number, required: number) => ({ counted, required, missing: Math.max(0, required - counted), met: counted >= required });
+  it("the Release button says what is still missing", () => {
+    expect(releaseButtonLabel(progress(1, 2), "none")).toBe("Release (needs 2nd signature)");
+    expect(releaseButtonLabel(progress(0, 2), "sign")).toBe("Release (needs 2 signatures)");
+    expect(releaseButtonLabel(progress(1, 3), "none")).toBe("Release (needs 2 more signatures)");
+    expect(releaseButtonLabel(progress(2, 3), "none")).toBe("Release (needs 3rd signature)");
+    expect(releaseButtonLabel(progress(0, 1), "sign")).toBe("Release (needs 1 signature)");
+    expect(releaseButtonLabel(progress(2, 2), "none")).toBe("Release (needs an eligible signer)");
+    expect(releaseButtonLabel(progress(2, 2), "release")).toBe("Release dataset");
+  });
+  it("says where the version goes: the client's Nexo project", () => {
+    const base = { clientName: "Example Client", orderCode: "ORD900", orderTitle: "Synthetic pilot", projectName: null, status: "built" as const };
+    expect(releaseDestination(base)).toBe('Goes to Example Client\'s Nexo project "ORD900 Synthetic pilot"');
+    expect(releaseDestination({ ...base, orderTitle: " " })).toBe('Goes to Example Client\'s Nexo project "ORD900"');
+    expect(releaseDestination({ ...base, status: "released", projectName: "ORD900 Pilot" })).toBe('Released to Example Client\'s Nexo project "ORD900 Pilot"');
+    expect(releaseDestination({ ...base, status: "withdrawn" })).toBe('Withdrawn from Example Client\'s Nexo project "ORD900 Synthetic pilot"');
+    expect(releaseDestination({ ...base, status: "superseded" })).toBe('Superseded in Example Client\'s Nexo project "ORD900 Synthetic pilot"');
+  });
+  it("lists who can still sign: eligible people who have not signed", () => {
+    expect(pendingSigners(defaultPolicy, [{ userId: owner.userId }], staff)).toEqual([admin]);
+    expect(pendingSigners(listed, [], staff)).toEqual([admin, operator]);
+    expect(pendingSigners(listed, [{ userId: admin.userId }, { userId: operator.userId }], staff)).toEqual([]);
+  });
+  it("explains the rule: different signers, releasing locks the version, a change is a new version", () => {
+    expect(signersRule(2, 1)).toBe("The two signers must be different people. Releasing locks v1; any change becomes v2 and v1 stays downloadable.");
+    expect(signersRule(3, 4)).toBe("The three signers must be different people. Releasing locks v4; any change becomes v5 and v4 stays downloadable.");
+    expect(signersRule(1, 2)).toBe("One signature is needed. Releasing locks v2; any change becomes v3 and v2 stays downloadable.");
+    expect(signersRule(12, 1)).toMatch(/^The 12 signers must be different people\./);
   });
 });
