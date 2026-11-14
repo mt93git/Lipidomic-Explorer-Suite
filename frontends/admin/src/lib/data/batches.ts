@@ -10,6 +10,7 @@ import { DataError } from "../samples";
 import { applyDemoState } from "../samples-demo";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { notifyBatch } from "./notifications";
 import { listClients, listPanels } from "./orders";
 
 export { DataError };
@@ -207,10 +208,12 @@ export async function markBatchAcquired(name: string): Promise<void> {
   if (!batch) throw new DataError(`Batch ${name} was not found.`);
   if (!live()) {
     await writeDemoState(recordAcquired(await readDemoState(), name, new Date()));
-    return;
+  } else {
+    const { error } = await (await admin()).rpc("mark_batch_acquired", { p_batch_id: batch.id });
+    if (error) throw refusal(error);
   }
-  const { error } = await (await admin()).rpc("mark_batch_acquired", { p_batch_id: batch.id });
-  if (error) throw refusal(error);
+  // Who is told is the Notifications matrix's row (0036): the lab once, each order's client for its own order.
+  await notifyBatch("batch_acquired", name, batch.orderCodes);
 }
 
 
@@ -219,12 +222,27 @@ export async function markBatchAcquired(name: string): Promise<void> {
 export async function recordInjectionStatuses(name: string, rows: { sample_name: string; status: string }[]): Promise<number> {
   const batch = await getBatch(name);
   if (!batch) throw new DataError(`Batch ${name} was not found.`);
+  let changed: number;
+  let exporter: string | null = null;
   if (!live()) {
     const result = recordInjectionStatus(await readDemoState(), name, rows);
     await writeDemoState(result.state);
-    return result.changed;
+    changed = result.changed;
+    exporter = demoSession.userId;
+  } else {
+    const db = await admin();
+    const { data, error } = await db.rpc("record_injection_status", { p_batch_id: batch.id, p_rows: rows });
+    if (error) throw refusal(error);
+    changed = Number(data ?? 0);
+    const version = await db.from("batch_version").select("exported_by").eq("batch_id", batch.id).is("archived_at", null).order("version", { ascending: false }).limit(1).maybeSingle();
+    exporter = (version.data as { exported_by: string | null } | null)?.exported_by ?? null;
   }
-  const { data, error } = await (await admin()).rpc("record_injection_status", { p_batch_id: batch.id, p_rows: rows });
-  if (error) throw refusal(error);
-  return Number(data ?? 0);
+  // Injections recorded Failed turn the run's gate red (0036 "Gate failed"); the owner of the step is who exported
+  // the sequence and ran the batch.
+  const failed = new Set(rows.filter(row => row.status.trim().toLowerCase() === "failed").map(row => row.sample_name.trim()));
+  if (changed > 0 && failed.size) {
+    const codes = [...new Set(batch.injections.filter(item => failed.has(item.sample_name) && item.orderCode).map(item => item.orderCode as string))].sort();
+    await notifyBatch("gate_failed", name, codes, { gate: `${failed.size} ${failed.size === 1 ? "injection" : "injections"} recorded Failed`, stepOwner: exporter });
+  }
+  return changed;
 }

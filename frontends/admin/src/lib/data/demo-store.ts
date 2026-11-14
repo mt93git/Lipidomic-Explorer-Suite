@@ -100,7 +100,8 @@ export async function writeDemoPlacements(placements: import("../storage").DemoP
 // ---------------------------------------------------------------- Notifications (0028)
 // Same pattern: each demo person's turned-off kinds and the demo send log (the demo never sends: every row is skipped).
 export type DemoNotificationLog = import("../notifications").LogEntry & { id: string; at: string };
-export type DemoNotifications = { off: Record<string, string[]>; log: DemoNotificationLog[] };
+// rules (0036): the matrix rows the demo's lab Owner or Admin changed; a row not here is at its default.
+export type DemoNotifications = { off: Record<string, string[]>; log: DemoNotificationLog[]; rules?: Partial<Record<string, import("../notifications").NotificationRule>> };
 type NotificationDemoState = DemoState & { notifications?: DemoNotifications };
 export async function readDemoNotifications(): Promise<DemoNotifications> {
   return (await readDemoState() as NotificationDemoState).notifications ?? { off: {}, log: [] };

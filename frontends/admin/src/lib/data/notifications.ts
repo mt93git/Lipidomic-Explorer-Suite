@@ -1,18 +1,19 @@
 import "server-only";
 import { after } from "next/server";
-import { demoClientSession } from "../demo";
+import { demoClients, demoClientSession, demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
 import type { AppSession } from "../models";
 import {
-  DEMO_OFF_REASON, notifyConfig, resendTransport, runNotification, switchesFor, type AudiencePerson, type LogEntry, type LogKind, type NotificationEvent,
-  type NotificationKind, type NotifyConfig, type NotifyDeps, type Transport,
+  DEMO_OFF_REASON, defaultRules, matrixRows, normalizeRule, notifyConfig, resendTransport, runNotification, switchesFor, type AudiencePerson, type LogEntry,
+  type LogKind, type NotificationEvent, type NotificationKind, type NotificationRule, type NotifyConfig, type NotifyDeps, type Transport,
 } from "../notifications";
 import { demoPeopleSeed } from "../people";
 import { clientRoleNames } from "../roles";
-import { DataError } from "../samples";
+import { conditionLabels, DataError, type Condition } from "../samples";
 import { createAdminClient } from "../supabase/server";
 import { createServiceClient } from "../supabase/service";
-import { readDemoNotifications, readDemoPeople, writeDemoNotifications } from "./demo-store";
+import { applyDemoState } from "../samples-demo";
+import { readDemoNotifications, readDemoPeople, readDemoState, writeDemoNotifications } from "./demo-store";
 
 // The server side of email notifications (0028). notify() is called by the data functions right after the event's
 // RPC succeeded. Live, the whole step (audience, Resend, log) runs in after(), once the person's response is sent, with
@@ -54,11 +55,21 @@ export function mailDeps(): { config: NotifyConfig; transport: Transport; log: (
   };
 }
 
+type RuleRow = { kind: string; lab_roles: string[] | null; step_owner: boolean; client_admin: boolean; requester: boolean; days: number | null };
+const fromRow = (row: RuleRow) => normalizeRule({ kind: row.kind, labRoles: row.lab_roles ?? [], stepOwner: row.step_owner, clientAdmin: row.client_admin, requester: row.requester, days: row.days });
+const RULE_COLUMNS = "kind, lab_roles, step_owner, client_admin, requester, days";
+
 function liveDeps(): NotifyDeps {
   const service = createServiceClient();
   const need = () => { if (!service) throw new Error("this server has no service key"); return service; };
   return {
     ...mailDeps(),
+    // The event's row of the matrix (0036); a read failure sends nothing rather than guess who wanted the email.
+    rule: async kind => {
+      const { data, error } = await need().from("notification_rule").select(RULE_COLUMNS).eq("kind", kind).maybeSingle();
+      if (error) throw new Error(`notification_rule failed (${error.code ?? "no code"})`);
+      return (data && fromRow(data as RuleRow)) || defaultRules[kind];
+    },
     audience: async clientId => {
       const { data, error } = await need().rpc("notification_audience", { p_client_id: clientId });
       if (error) throw new Error(`notification_audience failed (${error.code ?? "no code"})`);
@@ -92,9 +103,12 @@ export async function demoRequesterId(requestedBy: string | null | undefined): P
   return people.find(person => person.kind === "client_member" && (person.name === requestedBy || person.email === requestedBy))?.userId ?? null;
 }
 
+async function demoRule(kind: NotificationKind): Promise<NotificationRule> {
+  return (await readDemoNotifications()).rules?.[kind] ?? defaultRules[kind];
+}
 async function demoNotify(event: NotificationEvent) {
   const { log, ...deps } = mailDeps();
-  await log(await runNotification(event, { ...deps, audience: demoAudience, log: async () => undefined }));
+  await log(await runNotification(event, { ...deps, rule: demoRule, audience: demoAudience, log: async () => undefined }));
 }
 async function demoLog(entries: LogEntry[]) {
   if (!entries.length) return;
@@ -145,4 +159,141 @@ export async function recentNotificationLog(): Promise<NotificationLogRow[]> {
   if (error) throw new Error(`The send log could not be read: ${error.message}`);
   return ((data ?? []) as { id: string; created_at: string; kind: LogKind; email: string; subject: string; status: LogEntry["status"]; error: string | null; reference: string | null }[])
     .map(row => ({ id: row.id, at: row.created_at, kind: row.kind, email: row.email, subject: row.subject, status: row.status, error: row.error, reference: row.reference }));
+}
+
+// ---------------------------------------------------------------- the matrix (0036)
+
+// Lab Owner and Admin change the matrix (admin.set_notification_rule: is_lab_manager); the example workspace lets its
+// lab view try it, in this browser only.
+export const mayEditNotificationRules = (session: AppSession) => session.view === "staff" && (session.mock || session.role === "Owner" || session.role === "Admin");
+
+// Every row of the matrix in display order (lab staff read admin.notification_rule; a missing row is at its default).
+export async function notificationMatrix(): Promise<NotificationRule[]> {
+  if (!live()) return matrixRows(Object.values((await readDemoNotifications()).rules ?? {}).filter((row): row is NotificationRule => !!row));
+  const { data, error } = await (await admin()).from("notification_rule").select(RULE_COLUMNS);
+  if (error) throw new Error(`Who gets which email could not be read: ${error.message}`);
+  return matrixRows(((data ?? []) as RuleRow[]).map(fromRow).filter((row): row is NotificationRule => !!row));
+}
+
+// admin.set_notification_rule: one whole row (Owner or Admin; the database checks it again).
+export async function setNotificationRule(row: NotificationRule): Promise<void> {
+  if (!live()) {
+    const state = await readDemoNotifications();
+    await writeDemoNotifications({ ...state, rules: { ...state.rules, [row.kind]: row } });
+    return;
+  }
+  const { error } = await (await admin()).rpc("set_notification_rule", {
+    p_kind: row.kind, p_lab_roles: row.labRoles, p_step_owner: row.stepOwner, p_client_admin: row.clientAdmin, p_requester: row.requester, p_days: row.days,
+  });
+  if (error) throw new DataError(error.code === "42501" ? "Only a lab Owner or Admin changes who gets which email." : "This row could not be saved. Try again.");
+}
+
+// ---------------------------------------------------------------- the orders an event is about
+
+export type OrderFact = { orderId: string; code: string; title: string | null; clientId: string; clientName: string; requestedBy: string | null };
+type OrderFactRow = { id: string; code: string; title: string | null; client_id: string; requested_by: string | null; client: { name: string } | { name: string }[] | null };
+
+// The orders by code, with what an email needs (lab staff read every order). Demo: the example orders, and the
+// requester as the demo records them.
+// by "id": admin.order's uuid live (the demo's order id is its code).
+export async function orderFacts(codes: readonly string[], by: "code" | "id" = "code"): Promise<OrderFact[]> {
+  if (!codes.length) return [];
+  if (!live()) {
+    const orders = applyDemoState(demoOrders, await readDemoState()).filter(order => codes.includes(order.code));
+    return Promise.all(orders.map(async order => ({
+      orderId: order.code, code: order.code, title: order.description || null, clientId: order.clientId,
+      clientName: demoClients.find(client => client.id === order.clientId)?.name ?? "the client", requestedBy: await demoRequesterId(order.request?.requestedBy),
+    })));
+  }
+  const { data, error } = await (await admin()).from("order").select("id, code, title, client_id, requested_by, client:client(name)").in(by, [...codes]);
+  if (error) throw new Error(`The orders could not be read: ${error.message}`);
+  return ((data ?? []) as OrderFactRow[]).map(row => ({
+    orderId: row.id, code: row.code, title: row.title, clientId: row.client_id, requestedBy: row.requested_by,
+    clientName: (Array.isArray(row.client) ? row.client[0]?.name : row.client?.name) ?? "the client",
+  }));
+}
+
+// A batch event: once to the lab (scope "lab", the batch and its order codes) and once per order to its client (scope
+// "client"), so a client's email never names another client's order. Never throws (notify reports).
+export async function notifyBatch(kind: "batch_acquired", batch: string, codes: readonly string[]): Promise<void>;
+export async function notifyBatch(kind: "gate_failed", batch: string, codes: readonly string[], extra: { gate: string; stepOwner: string | null }): Promise<void>;
+export async function notifyBatch(kind: "batch_acquired" | "gate_failed", batch: string, codes: readonly string[], extra?: { gate: string; stepOwner: string | null }): Promise<void> {
+  let facts: OrderFact[] = [];
+  try {
+    facts = await orderFacts(codes);
+  } catch (error) {
+    console.error(`[notifications] ${kind}: the batch's orders could not be read (${error instanceof Error ? error.message : error})`);
+  }
+  if (kind === "batch_acquired") {
+    await notify({ kind, scope: "lab", batch, orderId: null, code: batch, clientId: null, clientName: null, orders: [...codes] });
+    for (const fact of facts) await notify({ kind, scope: "client", batch, ...fact });
+    return;
+  }
+  const { gate, stepOwner } = extra!;
+  await notify({ kind, scope: "lab", gate: `${gate} (batch ${batch})`, stepOwner, orderId: null, code: batch, clientId: null, clientName: null });
+  for (const fact of facts) await notify({ kind, scope: "client", gate: `${gate} (batch ${batch})`, stepOwner, ...fact });
+}
+
+// ---------------------------------------------------------------- the scheduled check: no results TXT N days after acquisition
+
+// Runs when lab staff open the Pipeline (checkResultsMissing is called by its page), at most once every 10 minutes per
+// server process; admin.claim_results_missing (service role) hands out each due order once, even to two servers at
+// the same time, and records it in admin.notification_event. Live only: the example workspace has no acquisition
+// dates, so it never runs there. Nothing it does can fail or slow the page (after()).
+export const RESULTS_CHECK_EVERY_MS = 10 * 60 * 1000;
+let lastResultsCheck = 0;
+type ClaimRow = { order_id: string; code: string; title: string | null; client_id: string; client_name: string | null; requested_by: string | null; acquired_at: string; days: number };
+
+export function checkResultsMissing(now = Date.now()): boolean {
+  if (!live() || now - lastResultsCheck < RESULTS_CHECK_EVERY_MS) return false;
+  lastResultsCheck = now;
+  try {
+    const deps = liveDeps();
+    const service = createServiceClient();
+    after(async () => {
+      try {
+        if (!service) throw new Error("this server has no service key");
+        const { data, error } = await service.rpc("claim_results_missing");
+        if (error) throw new Error(`claim_results_missing failed (${error.code ?? "no code"})`);
+        for (const row of (data ?? []) as ClaimRow[]) {
+          await runNotification({
+            kind: "results_missing", orderId: row.order_id, code: row.code, title: row.title, clientId: row.client_id, clientName: row.client_name ?? "the client",
+            requestedBy: row.requested_by, days: row.days, acquiredAt: row.acquired_at,
+          }, deps);
+        }
+      } catch (error) {
+        console.error(`[notifications] results_missing: check failed (${error instanceof Error ? error.message : error})`);
+      }
+    });
+  } catch (error) {
+    console.error(`[notifications] results_missing: not scheduled (${error instanceof Error ? error.message : error})`);
+  }
+  return true;
+}
+// Tests start each case with a fresh throttle.
+export const resetResultsCheck = () => { lastResultsCheck = 0; };
+
+// A recorded shipment (receive_shipment): "Shipment received" for the order, and "Gate failed" when it did not arrive
+// intact (the arrival gate turns red; the owner of the step is who recorded it). Never throws.
+export async function notifyShipment(orderId: string, shipment: { boxCount: number | null; condition: Condition }, stepOwner: string | null): Promise<void> {
+  try {
+    const [fact] = await orderFacts([orderId], "id");
+    if (!fact) return;
+    const { title, ...order } = fact;
+    await notify({ kind: "shipment_received", ...order, title, boxes: shipment.boxCount, condition: conditionLabels[shipment.condition].toLowerCase() });
+    if (shipment.condition !== "ok") {
+      await notify({ kind: "gate_failed", ...order, gate: `arrived ${conditionLabels[shipment.condition].toLowerCase()}, condition review`, stepOwner });
+    }
+  } catch (error) {
+    console.error(`[notifications] shipment_received: not scheduled (${error instanceof Error ? error.message : error})`);
+  }
+}
+
+// The order's requester for an event that did not read it (a released dataset); null when it cannot be read.
+export async function requesterOf(order: string, by: "code" | "id"): Promise<string | null> {
+  try {
+    return (await orderFacts([order], by))[0]?.requestedBy ?? null;
+  } catch {
+    return null;
+  }
 }

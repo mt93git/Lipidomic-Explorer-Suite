@@ -7,10 +7,11 @@ import {
 } from "../samples";
 import { sampleHistory, type SampleAliquot, type SampleDetail, type SampleInjection } from "../sample-detail";
 import { applyDemoState, recordSamples, recordShipment, type DemoSample, type DemoShipment } from "../samples-demo";
-import { requireWorkspace } from "../session";
+import { getAppSession, requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { demoEvents, liveContext } from "./audit";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { notifyShipment } from "./notifications";
 
 export { DataError };
 
@@ -228,11 +229,14 @@ export async function receiveShipment(input: ShipmentInput): Promise<{ shipmentI
       p_order_id: input.orderId, p_carrier: input.carrier, p_tracking_number: input.trackingNumber, p_condition: input.condition, p_box_count: input.boxCount, p_notes: input.notes,
     });
     if (error) throw refusal(error);
+    // Who is told is the Notifications matrix's row (0036), after the response.
+    await notifyShipment(input.orderId, { boxCount: input.boxCount, condition: input.condition }, (await getAppSession())?.userId ?? null);
     return { shipmentId: String(data) };
   }
   const { state, order } = await demoOrder(input.orderId);
   const result = recordShipment(state, { order, shipment: input, actor: demoActor, now: new Date(), id: crypto.randomUUID() });
   await writeDemoState(result.state);
+  await notifyShipment(input.orderId, { boxCount: input.boxCount, condition: input.condition }, demoSession.userId);
   return { shipmentId: result.shipment.id };
 }
 
