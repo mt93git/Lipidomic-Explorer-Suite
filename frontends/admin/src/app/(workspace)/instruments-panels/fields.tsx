@@ -1,4 +1,5 @@
 import { datasetTypeLabels, datasetTypes, type Instrument, type PanelRecord } from "@/lib/data/instruments-panels";
+import type { PanelRate } from "@/lib/order-wizard";
 import type { LabPerson } from "@/lib/release";
 import { DemoActor } from "../people/demo-actor";
 
@@ -42,5 +43,22 @@ export function PanelFields({ panel, instruments, actors }: { panel?: PanelRecor
       <small id={`${key}-type-hint`}>{fixed ? "Fixed: orders or batches already use this panel. For another type, create a new panel." : "How the panel's results are read. It cannot change once an order or a batch uses the panel."}</small>
     </div>
     <DemoActor actors={actors} id={`${key}-actor`} hint={HINT} />
+  </>;
+}
+
+// One panel's line on the rate sheet. Blank clears a part; a rate needs its currency (set_panel_rate refuses otherwise).
+export function RateFields({ panel, rate, actors }: { panel: PanelRecord; rate: PanelRate | null; actors: LabPerson[] | null }) {
+  return <>
+    <input type="hidden" name="panelId" value={panel.id} />
+    <div className="field"><label className="field-label" htmlFor="rate-amount">Rate per sample</label>
+      <input id="rate-amount" name="ratePerSample" inputMode="decimal" autoFocus defaultValue={rate?.ratePerSample ?? ""} aria-describedby="rate-amount-hint" />
+      <small id="rate-amount-hint">Blank: not set. New order then shows the estimate as not set.</small></div>
+    <div className="field"><label className="field-label" htmlFor="rate-currency">Currency</label>
+      <input id="rate-currency" name="currency" maxLength={3} autoCapitalize="characters" defaultValue={rate?.currency ?? ""} aria-describedby="rate-currency-hint" />
+      <small id="rate-currency-hint">Three-letter code, such as USD, EUR or GBP.</small></div>
+    <div className="field"><label className="field-label" htmlFor="rate-minutes">Minutes per injection</label>
+      <input id="rate-minutes" name="minutesPerInjection" inputMode="decimal" defaultValue={rate?.minutesPerInjection ?? ""} aria-describedby="rate-minutes-hint" />
+      <small id="rate-minutes-hint">The method&apos;s run time per injection, for the run time estimate. Blank: the batch builder&apos;s default.</small></div>
+    <DemoActor actors={actors} id="rate-actor" hint={HINT} />
   </>;
 }

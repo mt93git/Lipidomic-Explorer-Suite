@@ -120,3 +120,14 @@ export function storeDemoWorkbook(sha256: string, bytes: Buffer): void {
   workbooks.set(sha256, Buffer.from(bytes));
 }
 export const readDemoWorkbook = (sha256: string): Buffer | undefined => workbooks.get(sha256);
+
+// ---------------------------------------------------------------- New order drafts (0033)
+// Same pattern: this browser's order drafts (open, placed and discarded), undefined until the first Save draft.
+type DraftDemoState = DemoState & { orderDrafts?: import("../order-wizard").DemoOrderDraft[] };
+export async function readDemoOrderDrafts() {
+  return (await readDemoState() as DraftDemoState).orderDrafts ?? [];
+}
+export async function writeDemoOrderDrafts(orderDrafts: import("../order-wizard").DemoOrderDraft[], base?: DemoState) {
+  const state: DraftDemoState = { ...(base ?? await readDemoState()), orderDrafts };
+  await writeDemoState(state);
+}

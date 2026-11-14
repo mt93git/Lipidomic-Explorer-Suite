@@ -1,6 +1,7 @@
 import Link from "@/components/app-link";
 import { clientDay, clientSteps, declined, stepOf, type ClientOrder } from "@/lib/client-portal";
 import { clientMayOpenNexo, type ClientDeliverable } from "@/lib/deliverables";
+import { metadataColumns, templateFileName, templateHref } from "@/lib/order-wizard";
 import { mayOpenInNexo, nexoDatasetLink } from "@/lib/release";
 import { ClientDeliverables } from "./deliverables";
 import { LabContact } from "./lab-contact";
@@ -104,6 +105,10 @@ function NowPanel({ order, step, shipping, nexoAccess, fileCount, contact }: {
     {step === 2 && shipping && <div className={styles.shipping} role="note" aria-label="Shipping instructions">
       <div className="eyebrow">Shipping instructions from the lab</div><p>{shipping}</p>
     </div>}
+    {step <= 2 && <p className={styles.template}>
+      <a className="button secondary" href={templateHref()} download={templateFileName}>Download the sample list template</a>
+      <small className="muted">The six metadata columns Nexo reads ({metadataColumns.join(", ")}), one row per sample.</small>
+    </p>}
     {step === 1 && <LabContact text={contact} quote={order.code} />}
     {step === 6 && !release?.retired && nexo && <div className="heading-actions"><a className="button" href={nexo} target="_blank" rel="noreferrer">Open in Nexo</a></div>}
   </section>;

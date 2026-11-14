@@ -126,20 +126,24 @@ test("2 · Paula (Admin) creates the order, receives and registers it, plans and
   await test.step("New order: the order of this run, at Request", async () => {
     await page.goto("/admin/new-order");
     await expect(page.getByRole("heading", { level: 1, name: "New order" })).toBeVisible(slow);
-    await page.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
+    // The four-step wizard (0033): Client, Service, Sample list (optional, skipped here), Review & quote.
+    await page.getByRole("combobox", { name: "Client", exact: true }).selectOption({ label: clientName });
+    await page.getByLabel("Order title", { exact: true }).fill(orderTitle);
+    await page.getByRole("button", { name: "Next: service" }).click();
     await page.getByLabel("Panel", { exact: true }).selectOption({ label: panelName });
-    await page.getByLabel("Title", { exact: true }).fill(orderTitle);
-    await page.getByLabel("Matrix", { exact: true }).fill("Plasma");
-    await page.getByLabel("Expected samples", { exact: true }).fill(String(samples.length));
+    await page.getByLabel("Sample matrix", { exact: true }).selectOption("Plasma");
+    await page.getByLabel("Number of samples", { exact: true }).fill(String(samples.length));
     await page.getByLabel("Billing reference", { exact: true }).fill("PILOT-SYN-0001");
-    await page.getByLabel("Notes", { exact: true }).fill("Synthetic order of the Admin pilot simulation.");
-    await page.getByRole("button", { name: "Create order" }).click();
+    await page.getByLabel("Notes for the lab", { exact: true }).fill("Synthetic order of the Admin pilot simulation.");
+    await page.getByRole("button", { name: "Next: sample list" }).click();
+    await page.getByRole("button", { name: "Next: review & quote" }).click();
+    await page.getByRole("button", { name: "Place order" }).click();
     await expect(page).toHaveURL(/\/admin\/new-order\?created=ORD\d{3,}$/, slow);
     orderCode = new URL(page.url()).searchParams.get("created")!;
     test.info().annotations.push({ type: "order", description: orderCode });
-    await expect(status(`Order ${orderCode} created.`)).toBeVisible(slow);
+    await expect(status(`Order ${orderCode} placed.`)).toBeVisible(slow);
     await shot(page, "02-new-order.png");
-    await status(`Order ${orderCode} created.`).getByRole("link", { name: "Receive shipment →" }).click();
+    await status(`Order ${orderCode} placed.`).getByRole("link", { name: "Receive shipment →" }).click();
   });
 
   await test.step("Receive shipment and Sample registry: codes ORDnnn-S001…003", async () => {
