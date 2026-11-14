@@ -1,0 +1,69 @@
+/* Receive shipment, tube by tube (prototype a06): two cards with a grey title bar, the scan line, the manifest table
+   with condition pills, and the discrepancy note. */
+.layout { display: grid; grid-template-columns: minmax(0, 1.95fr) minmax(280px, 1fr); gap: 18px; align-items: start; }
+.card { background: white; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
+.cardHead { margin: 0; padding: 14px 18px; background: var(--subtle); border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0;
+  font-family: inherit; font-size: var(--text-sm); font-weight: 700; letter-spacing: 0; line-height: 1.4; color: var(--ink); }
+.cardBody { padding: 18px; }
+
+/* the scan line */
+.scan { margin: 6px 0 0; }
+.scanLabel { display: block; font-size: var(--text-sm); font-weight: 700; margin-bottom: 6px; }
+.scanRow { display: flex; gap: 8px; }
+.scanInput { flex: 1 1 auto; min-width: 0; font-size: 15px; padding: 10px 12px; border: 1px solid #b9c6d1; border-radius: 5px; }
+.scanInput:focus { border-color: var(--blue); }
+.options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 10px 0 4px; font-size: var(--text-sm); }
+.conditions { display: inline-flex; border: 0; margin: 0; padding: 0; gap: 4px; flex-wrap: wrap; }
+.condition { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 6px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); color: var(--muted); }
+.condition:has(input:checked) { border-color: var(--blue); background: var(--tint); color: var(--ink); }
+.condition input { margin: 0; }
+.slot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.slot input { width: 72px; padding: 4px 8px; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); }
+.otherNote input { width: 220px; font-family: inherit; }
+.message { margin: 8px 0 0; font-size: var(--text-sm); padding: 7px 10px; border-left: 3px solid; }
+.bad { border-color: var(--danger); background: var(--danger-tint); color: var(--ink); }
+.good { border-color: var(--ok); background: var(--ok-tint); color: var(--ink); }
+
+/* the manifest */
+.tableScroll { margin-top: 14px; max-height: 300px; overflow: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.table th { position: sticky; top: 0; background: var(--subtle); text-align: left; padding: 11px 14px; font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: var(--text-xs); font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+.table td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.table td:global(.mono) { font-size: var(--text-xs); }
+.table tr.current td { background: var(--tint); }
+.pill { display: inline-flex; padding: 2px 10px; border-radius: 999px; border: 1px solid transparent; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); }
+.intact { background: var(--ok-tint); color: var(--ok); border-color: #b9dcc9; }
+.hemolyzed { background: var(--warning-tint); color: var(--warning); border-color: #e2c98e; }
+.thawed { background: var(--tint); color: var(--blue); border-color: #b6cbe0; }
+.other { background: var(--subtle); color: var(--ink); border-color: var(--line); }
+.missing { background: var(--danger-tint); color: var(--danger); border-color: #e9b8bb; }
+.tick { color: var(--ink); font-size: 15px; }
+
+/* the note */
+.explain { display: block; font-size: var(--text-sm); line-height: 1.55; margin: 6px 0 12px; color: var(--ink); font-weight: 400; }
+.card textarea { width: 100%; min-height: 104px; resize: vertical; }
+.savedNote { white-space: pre-line; overflow-wrap: anywhere; border-left: 3px solid var(--warning); background: var(--warning-tint); padding: 10px 14px; margin: 0; }
+.confirmedPill { margin-top: 0; align-self: center; }
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Print labels (window.print): only the labels, no shell. */
+.labels { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; padding: 0; list-style: none; }
+.label { border: 1px dashed #9aa8b5; border-radius: 4px; padding: 10px 12px; break-inside: avoid; background: white; }
+.label strong { display: block; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: 15px; letter-spacing: .02em; }
+.label span { display: block; font-size: var(--text-xs); color: var(--muted); margin-top: 3px; }
+@media print {
+  /* Only on a page that shows the labels; each selector names a local class, as CSS Modules (webpack) require. */
+  :global(body):has(.labels) :global(.topbar),
+  :global(body):has(.labels) :global(.sidebar),
+  :global(body):has(.labels) :global(.example-banner),
+  :global(body):has(.labels) :global(.skip-link),
+  .noPrint { display: none !important; }
+  :global(body):has(.labels) :global(.workspace), :global(body):has(.labels) :global(.main) { display: block; padding: 0; margin: 0; }
+  .labels { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .label { border-style: solid; border-color: #000; color: #000; }
+}

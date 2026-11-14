@@ -23,14 +23,14 @@ export const CLIENT_TABLES = {
   client: 'id', client_member: 'client_id', order: 'client_id', shipment: 'client_id',
   sample: 'client_id', aliquot: 'client_id', box_position: 'client_id', exclusion: 'client_id',
   injection: 'client_id', name_map: 'client_id', dataset: 'client_id', signature: 'client_id',
-  job: 'client_id', audit_event: 'client_id', deliverable: 'client_id',
+  job: 'client_id', audit_event: 'client_id', deliverable: 'client_id', shipment_tube: 'client_id',
 };
 
 export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
   'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
-  'client_contact', 'notification_pref', 'notification_log',
+  'client_contact', 'notification_pref', 'notification_log', 'shipment_tube',
 ];
 // Append-only records with their own refusal triggers and no zz_audit (audit_event since 0003, notification_log 0028).
 export const APPEND_ONLY = ['audit_event', 'notification_log'];
@@ -86,6 +86,8 @@ async function seedAll(db) {
     await q("INSERT INTO admin.exclusion(id, client_id, sample_id, reason) VALUES ($1, $2, $3, 'haemolysed')", [id(b + 7), c, id(b + 4)]);
     await q("INSERT INTO admin.name_map(id, client_id, export_name, clean_name) VALUES ($1, $2, 'PC(14:0_16:0)+AcO', 'PC 14:0_16:0')", [id(b + 8), c]);
     await q("INSERT INTO admin.job(id, client_id, kind) VALUES ($1, $2, 'build_dataset')", [id(b + 11), c]);
+    // 0032: the first sample's tube checked in, intact, in box RCV-k A1 (id k14).
+    await q("INSERT INTO admin.shipment_tube(id, client_id, shipment_id, sample_id, condition, box, position) VALUES ($1, $2, $3, $4, 'intact', $5, 'A1')", [id(b + 14), c, id(b + 2), id(b + 3), `RCV-${k}`]);
   }
   await q("INSERT INTO admin.name_map(id, export_name, clean_name) VALUES ($1, 'CE 24:4 +NH4', 'CE 24:4')", [id(300)]);
   await q("INSERT INTO admin.job(id, kind) VALUES ($1, 'parse_results')", [id(301)]);

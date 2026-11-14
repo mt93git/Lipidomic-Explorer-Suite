@@ -52,6 +52,9 @@ export type ClientOrder = {
   // ISO instants (or a YYYY-MM-DD lab day in demo mode).
   requestedAt: string;
   receivedAt: string | null;
+  // The lab's confirmed receipt of the newest checked-in shipment (0032): tubes missing or damaged on arrival and the
+  // lab's discrepancy note. Absent or null until the lab confirms a receipt tube by tube.
+  receipt?: { confirmedAt: string; note: string | null; missing: number; damaged: number } | null;
   // The released version, or the last one if it was withdrawn or superseded and no version is current.
   release: {
     version: number;
