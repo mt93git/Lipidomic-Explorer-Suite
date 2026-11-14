@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
 import { ReceiveShipmentForm } from "@/components/receive-shipment-form";
+import { ShipmentCheckin } from "@/components/shipment-checkin";
+import { getShipmentCheckin, listAwaitingCheckin } from "@/lib/data/shipment-checkin";
 import { getRegistryOrder, listReceivableOrders } from "@/lib/data/samples";
 import { formatLabInstant } from "@/lib/lab-time";
 import { stages } from "@/lib/models";
@@ -9,12 +11,16 @@ import { requireWorkspace } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Receive shipment" };
 
-// ?order=ORD042 preselects an order; the form mirrors its choice back into the URL so the facts follow.
-export default async function ReceiveShipmentPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
+// ?order=ORD042 preselects an order; the form mirrors its choice back into the URL so the facts follow. An order that
+// already arrived opens its tube check-in instead (?shipment= picks one of several shipments; the newest by default).
+export default async function ReceiveShipmentPage({ searchParams }: { searchParams: Promise<{ order?: string; shipment?: string; confirmed?: string }> }) {
   await requireWorkspace("staff");
-  const { order: code } = await searchParams;
+  const { order: code, shipment, confirmed } = await searchParams;
   const orders = await listReceivableOrders();
   const selected = code ? orders.find(order => order.code === code) ?? null : null;
+  const checkin = code && !selected ? await getShipmentCheckin(code, shipment) : null;
+  if (checkin) return <ShipmentCheckin view={checkin} confirmed={confirmed === "1"} />;
+  const awaiting = code ? [] : await listAwaitingCheckin();
   // Asked for an order that is no longer waiting: say where it is instead of showing a form that cannot apply.
   const elsewhere = code && !selected ? await getRegistryOrder(code) : null;
   return <>
@@ -54,6 +60,15 @@ export default async function ReceiveShipmentPage({ searchParams }: { searchPara
               {!orders.length && <li className="muted">Nothing is waiting.</li>}
             </ul>}
         </section>
+        {awaiting.length > 0 && <section className="panel" aria-labelledby="checkin-list-title">
+          <div className="eyebrow">Arrived · check tubes in</div>
+          <h2 id="checkin-list-title">{plural(awaiting.length, "shipment")} to check in</h2>
+          <ul className="order-list compact" aria-label="Shipments waiting for the tube check-in">
+            {awaiting.map(item => <li key={`${item.orderCode}-${item.receivedAt}`}><Link className="order-choice" href={`/receive-shipment?order=${item.orderCode}`}>
+              <span className="order-code">{item.orderCode}</span>{item.description}<small>{item.clientName} · arrived {formatLabInstant(item.receivedAt)}</small>
+            </Link></li>)}
+          </ul>
+        </section>}
         <section className="panel" aria-labelledby="next-title">
           <div className="eyebrow">Then</div>
           <h2 id="next-title">Register the samples</h2>

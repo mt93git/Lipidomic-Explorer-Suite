@@ -20,7 +20,7 @@ export type ClientOrderRow = {
   client_id: string; created_at: string; review?: string; reviewed_at?: string | null; archived_reason?: string | null; panel: One<{ name: string }>;
   requested_by?: string | null; notes?: string | null;
   sample: { archived_at: string | null }[] | null;
-  shipment: { received_at: string | null; archived_at: string | null }[] | null;
+  shipment: { received_at: string | null; archived_at: string | null; receipt_confirmed_at?: string | null; receipt_note?: string | null; receipt_missing?: number | null; receipt_damaged?: number | null }[] | null;
   dataset: DatasetRow[] | null;
 };
 
@@ -28,7 +28,7 @@ const select = [
   "code, title, stage, matrix, expected_samples, billing_ref, client_id, created_at, review, reviewed_at, archived_reason, requested_by, notes",
   "panel:panel(name)",
   "sample(archived_at)",
-  "shipment(received_at, archived_at)",
+  "shipment(received_at, archived_at, receipt_confirmed_at, receipt_note, receipt_missing, receipt_damaged)",
   "dataset(id, version, status, released_at, archived_at, archived_reason)",
 ].join(", ");
 
@@ -42,6 +42,9 @@ const isRequest = (row: Pick<ClientOrderRow, "review" | "reviewed_at">) => (row.
 export function clientOrderFromRow(row: ClientOrderRow, names: Map<string, string> = new Map()): ClientOrder {
   if (!isStage(row.stage)) throw new DataError(`Order ${row.code} has an unknown stage.`);
   const received = (row.shipment ?? []).filter(item => !item.archived_at && item.received_at).map(item => item.received_at!).sort();
+  // The newest confirmed receipt (0032): the lab's discrepancy note and counts, which the client is shown.
+  const receipt = (row.shipment ?? []).filter(item => !item.archived_at && item.receipt_confirmed_at)
+    .sort((a, b) => b.receipt_confirmed_at!.localeCompare(a.receipt_confirmed_at!))[0];
   const datasets = row.dataset ?? [];
   const current = datasets.find(item => item.status === "released" && !item.archived_at);
   const retired = datasets.filter(item => retiredStatus(item.status)).sort((a, b) => b.version - a.version)[0];
@@ -57,6 +60,7 @@ export function clientOrderFromRow(row: ClientOrderRow, names: Map<string, strin
     notes: isRequest(row) ? row.notes ?? null : null,
     registeredSamples: (row.sample ?? []).filter(item => !item.archived_at).length,
     requestedAt: row.created_at, receivedAt: received[0] ?? null,
+    receipt: receipt ? { confirmedAt: receipt.receipt_confirmed_at!, note: receipt.receipt_note ?? null, missing: receipt.receipt_missing ?? 0, damaged: receipt.receipt_damaged ?? 0 } : null,
     release: shown ? {
       version: shown.version, releasedAt: shown.released_at, datasetId: current ? current.id : null,
       ...(!current && retiredStatus(shown.status) ? { retired: { status: shown.status, reason: shown.archived_reason ?? "", at: shown.archived_at ?? "" } } : {}),
@@ -80,6 +84,7 @@ function fromDemo(order: Order): ClientOrder {
     requestedBy: request?.requestedBy ?? null, notes: request?.notes ?? null,
     registeredSamples: order.stage >= 2 || order.released ? order.sampleCount : 0,
     requestedAt, receivedAt: reached ? order.received || null : null,
+    receipt: order.receipt ?? null,
     release: order.released ? {
       version: order.retired?.version ?? 1, releasedAt: order.releasedAt ?? null, datasetId: order.retired ? null : order.currentDatasetId ?? null,
       ...(order.retired ? { retired: { status: order.retired.status, reason: order.retired.reason, at: order.retired.at } } : {}),

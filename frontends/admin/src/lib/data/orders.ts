@@ -2,11 +2,12 @@ import "server-only";
 import { demoClients, demoOrders, demoSession } from "../demo";
 import { getEnvironment } from "../environment";
 import { LAB_TIME_ZONE } from "../lab-time";
-import type { Client, Gate, HistoryEvent, Order, Retirement } from "../models";
+import type { Client, Gate, HistoryEvent, Order, Retirement, ShipmentReceipt } from "../models";
 import { recordOrder, type OrderInput, type Panel } from "../new-order";
 import { pendingGates } from "../order-request";
 import { conditionLabels, DataError, plural, stageFromDb, type Condition } from "../samples";
 import { applyDemoState } from "../samples-demo";
+import { receiptTitle } from "../shipment-checkin";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
 import { demoActivePanels } from "./instruments-panels";
@@ -20,7 +21,11 @@ const live = () => !getEnvironment().mock;
 // ---------------------------------------------------------------- live rows
 
 type One<T> = T | T[] | null;
-type ShipmentRow = { received_at: string | null; received_by: string | null; carrier: string | null; tracking_number: string | null; box_count: number | null; condition: string | null; archived_at: string | null };
+type ShipmentRow = {
+  received_at: string | null; received_by: string | null; carrier: string | null; tracking_number: string | null; box_count: number | null; condition: string | null; archived_at: string | null;
+  // The tube check-in's receipt (0032).
+  receipt_confirmed_at?: string | null; receipt_confirmed_by?: string | null; receipt_note?: string | null; receipt_missing?: number | null; receipt_damaged?: number | null;
+};
 type SampleRow = { created_at: string; archived_at: string | null };
 type ResultRow = { sha256: string; status: string; accepted_at: string | null; accepted_by: string | null; archived_at: string | null; batch: One<{ name: string }> };
 type SignatureRow = { user_id: string; signed_at: string; archived_at: string | null };
@@ -38,7 +43,7 @@ const orderSelect = [
   "id, code, title, stage, matrix, expected_samples, client_id, created_at, requested_by, review, reviewed_at, notes, billing_ref, panel_id",
   "panel:panel(name)",
   "sample(created_at, archived_at)",
-  "shipment(received_at, received_by, carrier, tracking_number, box_count, condition, archived_at)",
+  "shipment(received_at, received_by, carrier, tracking_number, box_count, condition, archived_at, receipt_confirmed_at, receipt_confirmed_by, receipt_note, receipt_missing, receipt_damaged)",
   "result_file(sha256, status, accepted_at, accepted_by, archived_at, batch:batch(name))",
   "dataset(id, version, status, created_at, released_at, archived_at, archived_reason, signature(user_id, signed_at, archived_at))",
 ].join(", ");
@@ -67,6 +72,13 @@ function arrivalTitle(shipment: ShipmentRow): string {
   if (shipment.box_count !== null) parts.push(plural(shipment.box_count, "box", "boxes"));
   if (shipment.condition) parts.push(conditionLabels[shipment.condition as Condition]?.toLowerCase() ?? shipment.condition);
   return parts.join(" · ");
+}
+
+// The confirmed receipt of a shipment (tube check-in, 0032), or undefined while it is not confirmed.
+function receiptOf(shipment: Pick<ShipmentRow, "receipt_confirmed_at" | "receipt_note" | "receipt_missing" | "receipt_damaged">): ShipmentReceipt | undefined {
+  return shipment.receipt_confirmed_at
+    ? { confirmedAt: shipment.receipt_confirmed_at, note: shipment.receipt_note ?? null, missing: shipment.receipt_missing ?? 0, damaged: shipment.receipt_damaged ?? 0 }
+    : undefined;
 }
 
 function arrivalGates(arrival: ShipmentRow | undefined, samples: number): Gate[] {
@@ -111,6 +123,9 @@ function historyFor(row: OrderRow, arrivals: ShipmentRow[], samples: SampleRow[]
   const events: HistoryEvent[] = [{ date: row.created_at, title: requested ? "Requested by the client" : "Order created", actor: who(row.requested_by, "Client") }];
   if (row.reviewed_at && row.review === "accepted") events.push({ date: row.reviewed_at, title: "Request accepted", actor: "Lab staff" });
   for (const shipment of arrivals) events.push({ date: shipment.received_at!, title: arrivalTitle(shipment), actor: who(shipment.received_by, "Lab staff") });
+  for (const shipment of arrivals) {
+    if (shipment.receipt_confirmed_at) events.push({ date: shipment.receipt_confirmed_at, title: receiptTitle(receiptOf(shipment)!), actor: who(shipment.receipt_confirmed_by ?? null, "Lab staff") });
+  }
   const batches = new Map<string, number>();
   for (const sample of samples) batches.set(sample.created_at, (batches.get(sample.created_at) ?? 0) + 1);
   for (const [date, count] of batches) events.push({ date, title: `${plural(count, "sample")} registered`, actor: "Lab staff" });
@@ -155,6 +170,7 @@ export function toOrder(row: OrderRow, names: Names): Order {
   const dataset = releasedDataset ?? [...datasets].filter(item => item.status === "built").sort((a, b) => b.version - a.version)[0] ?? lastRetired;
   const sampleCount = Math.max(row.expected_samples ?? 0, samples.length);
   const request = requestOf(row, names);
+  const receipt = newest(arrivals.map(receiptOf).filter((item): item is ShipmentReceipt => Boolean(item)), item => item.confirmedAt);
   return {
     code: row.code, clientId: row.client_id, description: row.title ?? "", stage, released,
     sampleCount, completedSamples: released ? sampleCount : Math.min(sampleCount, samples.length),
@@ -169,6 +185,7 @@ export function toOrder(row: OrderRow, names: Names): Order {
     ...(released && releasedDataset ? { currentDatasetId: releasedDataset.id } : {}),
     ...(retired ? { retired } : {}),
     ...(request ? { request } : {}),
+    ...(receipt ? { receipt } : {}),
   };
 }
 

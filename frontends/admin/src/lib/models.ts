@@ -40,7 +40,11 @@ export type Order = {
   currentDatasetId?: string;
   // A client's order request (0019) and the lab's answer. Absent for an order the lab opened: accepted from the start.
   request?: OrderRequest;
+  // The newest confirmed receipt of a shipment (tube check-in, 0032): missing and damaged tubes and the lab's
+  // discrepancy note, which the client reads on their order. Absent until a receipt is confirmed.
+  receipt?: ShipmentReceipt;
 };
+export type ShipmentReceipt = { confirmedAt: string; note: string | null; missing: number; damaged: number };
 // pending: the client asked and the lab has not answered (no shipment can be received); declined: archived with the
 // lab's reason, which the client reads. panelId: the panel as the client chose it (null: "let the lab advise").
 export type OrderRequest = {
