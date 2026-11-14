@@ -201,21 +201,17 @@ describe("the new events (0036)", () => {
     ]);
   });
 
-  it("a failed gate in a shared batch tells each client only its own order's count", async () => {
+  it("a failed gate in a shared batch is lab-only (0040): one email to the lab with the batch's total, no client copy", async () => {
     for (const [name, value] of [["ADMIN_NOTIFY_ENABLED", "true"], ["RESEND_API_KEY", "re_test"], ["ADMIN_MAIL_FROM", "lab@example.test"]]) vi.stubEnv(name, value);
     fetchSpy.mockResolvedValue(new Response("{}", { status: 200 }));
-    rules.gate_failed = { kind: "gate_failed", lab_roles: [], step_owner: false, client_admin: false, requester: true, days: null };
-    const audienceFor = vi.fn(async (_fn: string, args: { p_client_id: string | null }) => ({
-      data: args.p_client_id === "c-2" ? [{ user_id: "u-ash", email: "ash@larch.example.test", lab_role: null, client_role: "requester", off: [] }] : audienceRows, error: null,
-    }));
+    rules.gate_failed = { kind: "gate_failed", lab_roles: ["owner"], step_owner: false, client_admin: false, requester: false, client_members: false, days: null };
+    const audienceFor = vi.fn(async (_fn: string, _args: { p_client_id: string | null }) => ({ data: audienceRows, error: null }));
     vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: audienceFor } as never);
-    const count = (n: number) => `${n} injections recorded Failed`;
-    await notifyBatch("gate_failed", "B2026-031", ["ORD059", "ORD061"], { gate: count(5), orderGate: code => count(code === "ORD059" ? 3 : 2), stepOwner: null });
+    await notifyBatch("gate_failed", "B2026-031", ["ORD059", "ORD061"], { gate: "5 injections recorded Failed", stepOwner: null });
     await runScheduled();
+    expect(audienceFor.mock.calls.map(([, args]) => args.p_client_id)).toEqual([null]);
     const bodies = fetchSpy.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)) as { to: string[]; text: string });
-    expect(bodies.map(body => [body.to[0], body.text.match(/\d+ injections recorded Failed/)?.[0]])).toEqual([
-      ["rowan@cedar.example.test", "3 injections recorded Failed"], ["ash@larch.example.test", "2 injections recorded Failed"],
-    ]);
+    expect(bodies.map(body => [body.to[0], body.text.match(/\d+ injections recorded Failed/)?.[0]])).toEqual([["owner@lab.example.test", "5 injections recorded Failed"]]);
   });
 });
 
@@ -228,7 +224,7 @@ describe("the scheduled results check (0036)", () => {
     expect(checkResultsMissing(1_000_000)).toBe(true);
     expect(calls).not.toHaveBeenCalled();
     await runScheduled();
-    expect(calls.mock.calls.map(([fn]) => fn)).toEqual(["claim_results_missing", "notification_audience"]);
+    expect(calls.mock.calls.map(([fn]) => fn)).toEqual(["claim_results_missing", "notification_audience", "mark_results_missing_sent"]);
     expect(logged[0].map(row => [row.kind, row.user_id, row.subject, row.reference])).toEqual([["results_missing", "u-operator", "No results TXT for ORD059 after 3 days", "ORD059"]]);
     expect(checkResultsMissing(1_000_000 + 9 * 60_000)).toBe(false);
     expect(checkResultsMissing(1_000_000 + 10 * 60_000)).toBe(true);
