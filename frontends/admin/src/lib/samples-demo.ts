@@ -7,6 +7,7 @@ import { applyReleaseState, demoPolicy, type DemoDataset } from "./release-demo"
 import type { RegistryEntry, ReleasePolicy } from "./release";
 import { applyBatchState, type DemoBatch } from "./batch-demo";
 import { applyQcState, type DemoQcState } from "./qc-review";
+import type { ResultCounts } from "./ingest-review";
 
 export type DemoShipment = {
   id: string; orderCode: string; carrier: string; trackingNumber: string | null; condition: ShipmentInput["condition"];
@@ -14,7 +15,7 @@ export type DemoShipment = {
 };
 export type DemoSample = SampleInput & { id: string; orderCode: string; shipmentId: string | null; sampleNumber: number; code: string; createdAt: string; registeredBy: string };
 // An accepted SCIEX OS results file (accept_result_file): the order then reads Processed.
-export type DemoResult = { id: string; orderCode: string; sha256: string; acceptedAt: string; acceptedBy: string };
+export type DemoResult = { id: string; orderCode: string; sha256: string; acceptedAt: string; acceptedBy: string; counts?: ResultCounts };
 // One record set per browser, shared by every demo screen (receive, registry, results, release, pipeline, detail).
 // Datasets, their signatures and releases, and the release policy are the release side's records (release-demo.ts).
 // Orders created with New order (create_order) join the example orders in applyDemoState, so every screen sees them.
@@ -80,12 +81,12 @@ export function recordSamples(state: DemoState, { order, shipmentId, samples, ac
   return { state: { ...state, samples: [...state.samples, ...created] }, samples: created };
 }
 
-type ResultArgs = { order: Pick<Order, "code" | "stage" | "released">; id: string; sha256: string; actor: string; now: Date };
+type ResultArgs = { order: Pick<Order, "code" | "stage" | "released">; id: string; sha256: string; actor: string; now: Date; counts?: ResultCounts };
 
 // accept_result_file: a results file is accepted for a Registered or Acquired order; the order reads Processed.
-export function recordResultFile(state: DemoState, { order, id, sha256, actor, now }: ResultArgs): DemoState {
+export function recordResultFile(state: DemoState, { order, id, sha256, actor, now, counts }: ResultArgs): DemoState {
   if (order.released || (order.stage !== REGISTERED && order.stage !== ACQUIRED)) throw new DataError("The order is no longer acquired or registered.");
-  return { ...state, results: [...(state.results ?? []), { id, orderCode: order.code, sha256, acceptedAt: now.toISOString(), acceptedBy: actor }] };
+  return { ...state, results: [...(state.results ?? []), { id, orderCode: order.code, sha256, acceptedAt: now.toISOString(), acceptedBy: actor, ...(counts ? { counts } : {}) }] };
 }
 
 function shipmentTitle(shipment: DemoShipment): string {
