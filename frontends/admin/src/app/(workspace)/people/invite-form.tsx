@@ -10,7 +10,8 @@ import styles from "./people.module.css";
 
 // The Owner (lab roles) or an Admin (client roles) creates a 7-day link; the app server emails it to the person
 // (activation.ts) and the link is shown here once as a fallback: only its digest is stored, so it cannot be shown again.
-export function InviteForm({ clients, canInviteLab, actors }: { clients: { id: string; name: string }[]; canInviteLab: boolean; actors: LabPerson[] | null }) {
+// defaultClientId: the client chosen before the form opens (Client detail's Invite user).
+export function InviteForm({ clients, canInviteLab, actors, defaultClientId }: { clients: { id: string; name: string }[]; canInviteLab: boolean; actors: LabPerson[] | null; defaultClientId?: string }) {
   const [state, action, pending] = useActionState(inviteAction, {});
   const [target, setTarget] = useState("client:requester");
   const [copied, setCopied] = useState(false);
@@ -39,7 +40,7 @@ export function InviteForm({ clients, canInviteLab, actors }: { clients: { id: s
         </select>
       </div>
       {target.startsWith("client:") && <div className="field"><label className="field-label" htmlFor="invite-client">Client</label>
-        <select id="invite-client" name="clientId" required>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
+        <select id="invite-client" name="clientId" required defaultValue={defaultClientId}>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</select>
       </div>}
       <DemoActor actors={actors} id="invite-actor" hint="Lab roles need the demo Owner; client roles an Owner or Admin." />
       <button className="button" disabled={pending}>{pending ? "Creating link…" : "Create invitation link"}</button>

@@ -7,9 +7,9 @@ import { NewOrderForm } from "./new-order-form";
 export const metadata: Metadata = { title: "New order" };
 
 // ?created=ORD055 after a successful create: the code and the next steps, above a fresh form for another order.
-export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
+export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ created?: string; client?: string }> }) {
   await requireWorkspace("staff");
-  const { created } = await searchParams;
+  const { created, client } = await searchParams;
   const code = created && /^ORD\d{3,}$/.test(created) ? created : null;
   const [clients, panels] = await Promise.all([listClients(), listPanels()]);
   return <>
@@ -30,7 +30,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
       <div className="eyebrow">Order record</div>
       <h2 id="order-form-title">{code ? "Another order" : "What is requested"}</h2>
       {clients.length && panels.length
-        ? <NewOrderForm key={code ?? "new"} clients={clients} panels={panels} />
+        ? <NewOrderForm key={code ?? "new"} clients={clients} panels={panels} defaultClientId={clients.some(item => item.id === client) ? client : undefined} />
         : <p className="empty-state">{clients.length ? "No active panel exists yet." : "No active client exists yet."} An order needs both.</p>}
     </section>
   </>;

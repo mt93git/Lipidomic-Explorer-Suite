@@ -131,6 +131,26 @@ export async function countClientDeliverables(clientId: string): Promise<Map<str
   return counts;
 }
 
+// Client detail's Documents card (lab staff): the client's current deliverables across its orders, newest first; retired
+// ones stay out. visibleToClient says whether the client can read each one yet.
+export type ClientDocument = { id: string; orderCode: string; title: string; kind: DeliverableKind; visibleToClient: boolean; addedAt: string };
+export async function listClientDocuments(clientId: string): Promise<ClientDocument[]> {
+  await requireWorkspace("staff");
+  if (!live()) {
+    return ((await readDemoDeliverables()) ?? []).filter(item => item.clientId === clientId && !item.retiredAt)
+      .map(item => ({ id: item.id, orderCode: item.orderCode, title: item.title, kind: item.kind, visibleToClient: item.visibleToClient, addedAt: item.addedAt }))
+      .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+  }
+  const { data, error } = await (await db()).schema("admin").from("deliverable").select("id, title, kind, visible_to_client, added_at, order:order(code)")
+    .eq("client_id", clientId).is("archived_at", null).order("added_at", { ascending: false });
+  if (error) throw new DataError(`Documents could not be read: ${error.message}`);
+  type DocumentRow = { id: string; title: string; kind: DeliverableKind; visible_to_client: boolean; added_at: string; order: { code: string } | { code: string }[] | null };
+  return ((data ?? []) as unknown as DocumentRow[]).map(row => {
+    const order = Array.isArray(row.order) ? row.order[0] : row.order;
+    return { id: row.id, orderCode: order?.code ?? "", title: row.title, kind: row.kind, visibleToClient: row.visible_to_client, addedAt: row.added_at };
+  });
+}
+
 // ---------------------------------------------------------------- writes (lab writers)
 
 export type AddResult = "added" | "added-visible" | "duplicate" | "closed" | "failed" | "not-found" | "demo-size";

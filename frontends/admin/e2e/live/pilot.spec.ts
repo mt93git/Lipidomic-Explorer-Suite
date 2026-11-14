@@ -400,7 +400,7 @@ test("6 · Datasets lists v1 as Released with both signers", async ({ page }) =>
   const row = page.getByRole("table", { name: "Dataset versions" }).getByRole("row", { name: word(orderCode) });
   await expect(row).toHaveCount(1, slow);
   await expect(row).toContainText("v1");
-  await expect(row).toContainText("Released");
+  await expect(row).toContainText("released");
   await expect(row).toContainText(`${paula.name} · Prepared`);
   await expect(row).toContainText(`${steph.name} · Approved`);
   await expect(row.getByRole("link", { name: "Open in Nexo" })).toHaveAttribute("href", new RegExp(`/\\?dataset=${datasetId}$`));

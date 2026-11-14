@@ -48,6 +48,8 @@ export type DatasetRecord = {
   // The QC review's exclusions in force when this version was built: recorded decisions, not removed from the data.
   exclusions: RecordedExclusion[];
   archivedAt: string | null; archivedReason: string | null;
+  // How many samples and lipids the version holds (0037), recorded at build; null for a version built before that.
+  samples?: number | null; lipids?: number | null;
 };
 // demoActors: the demo lab people a form may act as (null in live mode, where the signed-in user acts).
 export type ReleaseView = { dataset: DatasetRecord; policy: ReleasePolicy; people: LabPerson[]; me: LabPerson | null; versions: VersionSummary[]; demoActors: LabPerson[] | null };
@@ -94,6 +96,7 @@ function fromDemo(dataset: DemoDataset, state: DemoState): DatasetRecord {
     signatures: dataset.signatures.map(signature => ({ ...signature })),
     exclusions: exclusionsAt((state.exclusions ?? []).filter(item => item.orderCode === dataset.orderCode), dataset.builtAt),
     archivedAt: dataset.archivedAt, archivedReason: dataset.archivedReason,
+    samples: dataset.samples ?? null, lipids: dataset.lipids ?? null,
   };
 }
 const byOrderAndVersion = (a: { orderCode: string; version: number }, b: { orderCode: string; version: number }) => a.orderCode.localeCompare(b.orderCode) || a.version - b.version;
@@ -121,6 +124,7 @@ type DatasetRow = {
   id: string; order_id: string; client_id: string; result_file_id: string | null; version: number; status: DatasetStatus; storage_path: string; sha256: string;
   analysis_sha256: string | null; analysis_size_bytes: number | string | null; companion_sha256: string | null; companion_size_bytes: number | string | null;
   project_id: string | null; companion_path: string | null; released_at: string | null; archived_at: string | null; archived_reason: string | null; created_at: string;
+  sample_count?: number | null; lipid_count?: number | null;
 };
 type SignatureRow = { id: string; dataset_id: string; user_id: string; role: SignerRole; note: string | null; signed_at: string };
 type ExclusionRow = { id: string; sample_id: string; reason: string; decided_by: string | null; created_at: string; archived_at: string | null; archived_reason: string | null;
@@ -128,7 +132,7 @@ type ExclusionRow = { id: string; sample_id: string; reason: string; decided_by:
 type StaffRow = { user_id: string; display_name: string | null; role: LabRole };
 type PolicyRow = { eligible_signers: string[] | null; required_signatures: number; set_by: string | null; created_at: string };
 const orderSelect = "id, code, title, stage, client_id";
-const datasetSelect = "id, order_id, client_id, result_file_id, version, status, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes, project_id, companion_path, released_at, archived_at, archived_reason, created_at";
+const datasetSelect = "id, order_id, client_id, result_file_id, version, status, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes, project_id, companion_path, released_at, archived_at, archived_reason, created_at, sample_count, lipid_count";
 const BUILD_STAGES = ["processed", "qc_checked", "excel_built", "released"];
 const BUILD_ATTEMPTS = 3;
 class StaleVersion extends Error {} // build_dataset's PT409: another build took the version; build again
@@ -220,6 +224,7 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
       })),
       exclusions: exclusionsAt(decisions.filter(item => item.orderId === row.order_id), row.created_at),
       archivedAt: row.archived_at, archivedReason: row.archived_reason,
+      samples: row.sample_count ?? null, lipids: row.lipid_count ?? null,
     };
   });
 }
@@ -395,7 +400,11 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
       if (error instanceof StaleVersion) return null;
       throw error;
     });
-    if (datasetId !== null) return { datasetId, version };
+    if (datasetId !== null) {
+      // 0037: how many samples and lipids this version holds, for the Datasets list. The build stands if this fails.
+      try { await db.rpc("record_dataset_counts", { p_dataset_id: datasetId, p_samples: built.counts.samples, p_lipids: built.counts.lipids }); } catch { /* the list shows a dash */ }
+      return { datasetId, version };
+    }
     if (attempt >= BUILD_ATTEMPTS) throw new DataError(`Other builds of ${row.code} kept taking the next version; nothing was recorded. Try again.`);
   }
 }

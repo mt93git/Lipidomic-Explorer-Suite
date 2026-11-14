@@ -242,11 +242,17 @@ describe("live seam: the release contract through rpc and storage", () => {
     const folder = "client-uuid/ORD048/datasets";
     expect(uploads.map(u => u.path)).toEqual([`${folder}/${sha(full.bytes)}/dataset-v1.xlsx`, `${folder}/${sha(analysis.bytes)}/analysis.xlsx`, `${folder}/${sha(companion.bytes)}/companion.xlsx`]);
     for (const upload of uploads) expect(upload.options).toMatchObject({ upsert: false, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    expect(rpc).toHaveBeenCalledExactlyOnceWith("build_dataset", {
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenNthCalledWith(1, "build_dataset", {
       p_order_id: "order-uuid", p_result_file_id: "rf-uuid", p_expected_version: 1, p_storage_path: `${folder}/${sha(full.bytes)}/dataset-v1.xlsx`, p_sha256: sha(full.bytes),
       p_analysis_sha256: sha(analysis.bytes), p_analysis_size_bytes: analysis.bytes.byteLength,
       p_companion_sha256: sha(companion.bytes), p_companion_size_bytes: companion.bytes.byteLength,
     });
+    // 0037: then the version's sample and lipid counts, for the Datasets list (the build stands if this fails).
+    expect(rpc).toHaveBeenNthCalledWith(2, "record_dataset_counts", { p_dataset_id: "ds-uuid", p_samples: expect.any(Number), p_lipids: expect.any(Number) });
+    const counted = rpc.mock.calls[1][1] as { p_samples: number; p_lipids: number };
+    expect(counted.p_samples).toBeGreaterThan(0);
+    expect(counted.p_lipids).toBeGreaterThan(0);
     // The TXT on record is checked against its accepted digest before anything is built.
     tables.result_file[0].sha256 = "0".repeat(64);
     await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow(/does not match/);
