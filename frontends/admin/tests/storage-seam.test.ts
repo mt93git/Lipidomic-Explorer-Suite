@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { cookies } from "next/headers";
 import { moveAliquotAction, placeAliquotAction, removeAliquotAction } from "@/app/(workspace)/storage/actions";
 import { getEnvironment } from "@/lib/environment";
-import { listBox, listBoxes, listUnplaced, moveAliquot, placeAliquot, removeAliquot, searchAliquots } from "@/lib/data/storage";
+import { aliquotPlans, listBox, listBoxes, listUnplaced, moveAliquot, placeAliquot, removeAliquot, searchAliquots } from "@/lib/data/storage";
+import { writeDemoState } from "@/lib/data/demo-store";
+import { emptyDemoState } from "@/lib/samples-demo";
 import { createAdminClient } from "@/lib/supabase/server";
 import { byPosition, demoAliquots, demoMove, demoPlace, demoRemove, initialDemoPlacements, parseReason, parseSlot, type StoredAliquot } from "@/lib/storage";
 
@@ -163,3 +165,52 @@ describe("live mode: the admin functions", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 });
+
+// a09: the selected position's Volume and Next batch.
+describe("aliquot plans", () => {
+  const stored: StoredAliquot = { id: "a-uuid", code: "ORD041-S001-A1", sampleCode: "ORD041-S001", clientName: "Example Cedar", orderCode: "ORD041", archivedReason: null, location: null };
+
+  test("live: the aliquot's volume and its next planned batch, read with the signed-in token", async () => {
+    vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
+    const calls: Record<string, unknown[][]> = {};
+    const answers: Record<string, unknown> = {
+      aliquot: { data: { volume_ul: "200" }, error: null },
+      injection: { data: [
+        { status: "acquired", batch_version: { archived_at: null, batch: { name: "B2026-020", status: "acquired", archived_at: null } } },
+        { status: "planned", batch_version: { archived_at: null, batch: { name: "B2026-032", status: "sequence_exported", archived_at: null } } },
+      ], error: null },
+    };
+    const from = (table: string) => {
+      const chain: Record<string, unknown> = {};
+      calls[table] = [];
+      for (const method of ["select", "eq", "is", "maybeSingle"]) chain[method] = (...args: unknown[]) => { calls[table].push([method, ...args]); return chain; };
+      chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve(answers[table]).then(resolve);
+      return chain;
+    };
+    vi.mocked(createAdminClient).mockResolvedValue({ schema: () => ({ from }) } as never);
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: 200, nextBatch: "B2026-032" });
+    expect(calls.aliquot).toEqual([["select", "volume_ul"], ["eq", "id", "a-uuid"], ["maybeSingle"]]);
+    expect(calls.injection).toEqual([["select", "status, batch_version!inner(archived_at, batch!inner(name, status, archived_at))"], ["eq", "aliquot_id", "a-uuid"], ["is", "archived_at", null]]);
+
+    answers.aliquot = { data: null, error: { code: "42501", message: "permission denied" } };
+    answers.injection = { data: null, error: { code: "42501", message: "permission denied" } };
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: null });
+    quiet.mockRestore();
+  });
+
+  test("demo: the demo batches' planned injections of the same sample; no volume is recorded", async () => {
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: null });
+    const injection = { seq: 1, sample_type: "Unknown", sample_name: "B2026-034_001_ORD041-S001", sampleCode: "ORD041-S001", orderCode: "ORD041", status: "planned" };
+    await writeDemoState({ ...emptyDemoState(), batches: [
+      { id: "b1", name: "B2026-034", panel: "Example panel", status: "planned", createdAt: "2026-11-10T15:00:00Z", createdBy: "Demo Operator", rules: {} as never, injections: [injection as never], orderCodes: ["ORD041"] },
+    ] });
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: "B2026-034" });
+  });
+
+  test("a client session reads nothing", async () => {
+    session = { ...staff!, view: "client" };
+    await expect(aliquotPlans(stored)).rejects.toThrow("redirect /client/home");
+  });
+});
+

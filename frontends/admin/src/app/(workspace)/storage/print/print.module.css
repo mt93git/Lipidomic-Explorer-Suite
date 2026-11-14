@@ -1,0 +1,29 @@
+/* a09 Print box map: the box on a sheet. Cells keep their client colour on paper (print-color-adjust), the app's
+   chrome and the toolbar are hidden when printed. */
+.sheet { max-width: 960px; }
+.toolbar { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 18px; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 14px; }
+.eyebrow { color: var(--muted); font-size: var(--text-xs); letter-spacing: .08em; text-transform: uppercase; }
+.title { margin: 2px 0 2px; }
+.meta, .printed { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.printed { white-space: nowrap; }
+.grid { border-spacing: 4px; }
+.cell { width: 84px; height: 54px; border-radius: 6px; padding: 4px 5px; vertical-align: top; background: var(--fill); border: 1px solid var(--ring); color: var(--text);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.free { background: white; border: 1px dashed #c4ced8; color: var(--muted); }
+.cell[aria-current="true"] { box-shadow: 0 0 0 2px var(--ink); }
+.position { display: block; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); font-weight: 700; }
+.code { display: block; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: 9px; line-height: 1.2; overflow-wrap: anywhere; margin-top: 2px; }
+.legend { margin-top: 12px; }
+.legend :global(*) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.list { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: var(--text-sm); }
+.list th { text-align: left; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--ink); padding: 6px 8px; }
+.list td { border-bottom: 1px solid var(--line); padding: 5px 8px; }
+@media print {
+  :global(.topbar), :global(.sidebar), :global(.skip-link), :global(.update-notice), .toolbar { display: none !important; }
+  :global(.workspace) { display: block !important; }
+  :global(main) { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  .sheet { max-width: none; }
+  .list tr { break-inside: avoid; }
+  @page { size: A4 portrait; margin: 12mm; }
+}
