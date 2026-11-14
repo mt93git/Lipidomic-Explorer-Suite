@@ -57,8 +57,13 @@
 .label strong { display: block; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: 15px; letter-spacing: .02em; }
 .label span { display: block; font-size: var(--text-xs); color: var(--muted); margin-top: 3px; }
 @media print {
-  :global(.topbar), :global(.sidebar), :global(.example-banner), :global(.skip-link), .noPrint { display: none !important; }
-  :global(.workspace), :global(.main) { display: block; padding: 0; margin: 0; }
+  /* Only on a page that shows the labels; each selector names a local class, as CSS Modules (webpack) require. */
+  :global(body):has(.labels) :global(.topbar),
+  :global(body):has(.labels) :global(.sidebar),
+  :global(body):has(.labels) :global(.example-banner),
+  :global(body):has(.labels) :global(.skip-link),
+  .noPrint { display: none !important; }
+  :global(body):has(.labels) :global(.workspace), :global(body):has(.labels) :global(.main) { display: block; padding: 0; margin: 0; }
   .labels { grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .label { border-style: solid; border-color: #000; color: #000; }
 }
