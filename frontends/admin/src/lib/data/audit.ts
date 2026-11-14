@@ -1,9 +1,9 @@
 import "server-only";
 import {
-  AUDIT_PAGE_SIZE, auditActor, auditChanges, auditSummary, entityLabel,
-  type AuditChange, type AuditContext, type AuditEvent, type AuditFilters, type AuditRecord,
+  AUDIT_EXPORT_MAX, AUDIT_PAGE_SIZE, auditActor, auditChanges, auditClientIds, auditClientTags, auditSummary, entityLabel,
+  type AuditChange, type AuditClientTag, type AuditContext, type AuditEvent, type AuditFilters, type AuditRecord,
 } from "../audit";
-import { demoOrders } from "../demo";
+import { demoClients, demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
 import { demoLabStaff, demoPolicy, type DemoDataset } from "../release-demo";
 import { DataError } from "../samples";
@@ -16,7 +16,9 @@ import { readDemoState } from "./demo-store";
 // lab staff only, audit_event_read in 0004), newest first, keyset on id. Demo mode derives a few events of the same
 // shape from the browser's demo records, so the screen and its filters work without Supabase.
 
-export type AuditRow = { id: number; at: string; who: string; entity: string; summary: string; changes: AuditChange[] };
+export type AuditRow = {
+  id: number; at: string; who: string; clients: AuditClientTag[]; entity: string; action: AuditEvent["action"]; summary: string; changes: AuditChange[];
+};
 // order: the order code filter and whether such an order exists (null when not filtering by order).
 export type AuditPage = { rows: AuditRow[]; older: number | null; order: { code: string; found: boolean } | null };
 
@@ -24,8 +26,8 @@ export type AuditPage = { rows: AuditRow[]; older: number | null; order: { code:
 const ORDER_CHILDREN = ["shipment", "sample", "result_file", "dataset"];
 
 const toRow = (event: AuditEvent, ctx: AuditContext): AuditRow => ({
-  id: event.id, at: event.createdAt, who: auditActor(event.actor, ctx), entity: entityLabel(event.entity),
-  summary: auditSummary(event, ctx), changes: auditChanges(event, ctx),
+  id: event.id, at: event.createdAt, who: auditActor(event.actor, ctx), clients: auditClientTags(auditClientIds(event, ctx), ctx),
+  entity: entityLabel(event.entity), action: event.action, summary: auditSummary(event, ctx), changes: auditChanges(event, ctx),
 });
 function page(events: AuditEvent[], ctx: AuditContext, order: AuditPage["order"]): AuditPage {
   const shown = events.slice(0, AUDIT_PAGE_SIZE);
@@ -39,11 +41,25 @@ export async function listAuditEvents(filters: AuditFilters): Promise<AuditPage>
   return getEnvironment().mock ? demoPage(filters) : livePage(filters, session);
 }
 
+// Export CSV (a21): every event of the filter (the page cursor is ignored), newest first, up to AUDIT_EXPORT_MAX;
+// truncated when there were more. Lab staff only, like the screen.
+export type AuditExport = { rows: AuditRow[]; truncated: boolean };
+export async function exportAuditEvents(filters: AuditFilters): Promise<AuditExport> {
+  const session = await requireWorkspace("staff");
+  const all = { ...filters, before: null };
+  return getEnvironment().mock ? demoExport(all) : liveExport(all, session);
+}
+
 // ---------------------------------------------------------------- live
 
 type DbError = { message: string };
-type EventRow = { id: number; created_at: string; actor: string | null; entity: string; entity_id: string | null; action: "INSERT" | "UPDATE"; before: AuditRecord | null; after: AuditRecord | null };
-const COLUMNS = "id, created_at, actor, entity, entity_id, action, before, after";
+type EventRow = {
+  id: number; created_at: string; actor: string | null; client_id?: string | null; entity: string; entity_id: string | null;
+  action: "INSERT" | "UPDATE"; before: AuditRecord | null; after: AuditRecord | null;
+};
+const COLUMNS = "id, created_at, actor, client_id, entity, entity_id, action, before, after";
+// Requests per export batch: PostgREST's usual row cap.
+const EXPORT_BATCH = 1000;
 
 function refusal(error: DbError): DataError {
   if (/permission denied|row-level security/i.test(error.message)) return new DataError("You do not have permission to do this.");
@@ -61,29 +77,54 @@ async function read<T>(query: PromiseLike<{ data: unknown; error: DbError | null
   return data as T;
 }
 
-async function livePage(filters: AuditFilters, session: { userId: string; displayName: string }): Promise<AuditPage> {
-  const admin = await db();
-  let scope: string | null = null;
-  let order: AuditPage["order"] = null;
-  if (filters.order) {
-    const found = await read<{ id: string; code: string } | null>(admin.from("order").select("id, code").eq("code", filters.order).maybeSingle());
-    order = { code: filters.order, found: !!found };
-    if (!found) return { rows: [], older: null, order };
-    const datasets = await read<{ id: string }[] | null>(admin.from("dataset").select("id, order_id, version").eq("order_id", found.id));
-    // Ids come from the database (uuids), never from the URL: the code was matched with eq above.
-    const clauses = [`and(entity.eq.order,entity_id.eq.${found.id})`, `and(entity.in.(${ORDER_CHILDREN.join(",")}),after->>order_id.eq.${found.id})`];
-    if (datasets?.length) clauses.push(`and(entity.eq.signature,after->>dataset_id.in.(${datasets.map(row => row.id).join(",")}))`);
-    scope = clauses.join(",");
-  }
+// The order filter as a PostgREST or() clause; null scope = no order filter; missing = the order code matches nothing.
+async function liveScope(admin: Db, filters: AuditFilters): Promise<{ scope: string | null; order: AuditPage["order"]; missing: boolean }> {
+  if (!filters.order) return { scope: null, order: null, missing: false };
+  const found = await read<{ id: string; code: string } | null>(admin.from("order").select("id, code").eq("code", filters.order).maybeSingle());
+  const order = { code: filters.order, found: !!found };
+  if (!found) return { scope: null, order, missing: true };
+  const datasets = await read<{ id: string }[] | null>(admin.from("dataset").select("id, order_id, version").eq("order_id", found.id));
+  // Ids come from the database (uuids), never from the URL: the code was matched with eq above.
+  const clauses = [`and(entity.eq.order,entity_id.eq.${found.id})`, `and(entity.in.(${ORDER_CHILDREN.join(",")}),after->>order_id.eq.${found.id})`];
+  if (datasets?.length) clauses.push(`and(entity.eq.signature,after->>dataset_id.in.(${datasets.map(row => row.id).join(",")}))`);
+  return { scope: clauses.join(","), order, missing: false };
+}
+
+async function liveEvents(admin: Db, filters: AuditFilters, scope: string | null, limit: number): Promise<AuditEvent[]> {
   let query = admin.from("audit_event").select(COLUMNS);
   if (filters.entity) query = query.eq("entity", filters.entity);
   if (filters.before) query = query.lt("id", filters.before);
   if (scope) query = query.or(scope);
-  const rows = (await read<EventRow[] | null>(query.order("id", { ascending: false }).limit(AUDIT_PAGE_SIZE + 1))) ?? [];
-  const events: AuditEvent[] = rows.map(row => ({
-    id: Number(row.id), createdAt: row.created_at, actor: row.actor, entity: row.entity, entityId: row.entity_id, action: row.action, before: row.before, after: row.after,
+  const rows = (await read<EventRow[] | null>(query.order("id", { ascending: false }).limit(limit))) ?? [];
+  return rows.map(row => ({
+    id: Number(row.id), createdAt: row.created_at, actor: row.actor, clientId: row.client_id ?? null, entity: row.entity, entityId: row.entity_id,
+    action: row.action, before: row.before, after: row.after,
   }));
+}
+
+async function livePage(filters: AuditFilters, session: { userId: string; displayName: string }): Promise<AuditPage> {
+  const admin = await db();
+  const { scope, order, missing } = await liveScope(admin, filters);
+  if (missing) return { rows: [], older: null, order };
+  const events = await liveEvents(admin, filters, scope, AUDIT_PAGE_SIZE + 1);
   return page(events, await liveContext(admin, events.slice(0, AUDIT_PAGE_SIZE), session), order);
+}
+
+async function liveExport(filters: AuditFilters, session: { userId: string; displayName: string }): Promise<AuditExport> {
+  const admin = await db();
+  const { scope, missing } = await liveScope(admin, filters);
+  if (missing) return { rows: [], truncated: false };
+  const events: AuditEvent[] = [];
+  let before: number | null = null;
+  for (;;) {
+    const batch = await liveEvents(admin, { ...filters, before }, scope, EXPORT_BATCH);
+    events.push(...batch);
+    if (batch.length < EXPORT_BATCH || events.length > AUDIT_EXPORT_MAX) break;
+    before = batch.at(-1)!.id;
+  }
+  const shown = events.slice(0, AUDIT_EXPORT_MAX);
+  const ctx = await liveContext(admin, shown, session);
+  return { rows: shown.map(event => toRow(event, ctx)), truncated: events.length > AUDIT_EXPORT_MAX };
 }
 
 // The names the shown events need: every lab person (archived too: a signer who left still signed), and the
@@ -95,7 +136,23 @@ export async function liveContext(admin: Db, events: AuditEvent[], session: { us
     datasetIds.length ? read<{ id: string; order_id: string; version: number }[] | null>(admin.from("dataset").select("id, order_id, version").in("id", datasetIds)) : Promise.resolve([]),
   ]);
   const orderIds = unique([...events.flatMap(event => [event.entity === "order" ? event.entityId : null, text(event.after?.order_id)]), ...(datasets ?? []).map(row => row.order_id)]);
-  const orders = orderIds.length ? await read<{ id: string; code: string }[] | null>(admin.from("order").select("id, code").in("id", orderIds)) : [];
+  // The Client column: every client's name (a handful; colours are assigned over all of them), and for batch events,
+  // which carry no client, the clients with an injection in the batch (RLS: staff read every injection).
+  const batchIds = unique(events.filter(event => !event.clientId).map(event => event.entity === "batch" ? event.entityId : text(event.after?.batch_id)));
+  const [orders, clients, injections] = await Promise.all([
+    orderIds.length ? read<{ id: string; code: string }[] | null>(admin.from("order").select("id, code").in("id", orderIds)) : Promise.resolve([]),
+    read<{ id: string; name: string }[] | null>(admin.from("client").select("id, name")),
+    batchIds.length
+      ? read<{ client_id: string; batch_version: { batch_id: string } | null }[] | null>(admin.from("injection").select("client_id, batch_version!inner(batch_id)").in("batch_version.batch_id", batchIds).not("client_id", "is", null))
+      : Promise.resolve([]),
+  ]);
+  const batchClients: Record<string, string[]> = {};
+  for (const row of injections ?? []) {
+    const batch = row.batch_version?.batch_id;
+    if (!batch) continue;
+    const list = batchClients[batch] ??= [];
+    if (!list.includes(row.client_id)) list.push(row.client_id);
+  }
   const people: Record<string, string> = {};
   for (const row of staff ?? []) if (row.display_name?.trim()) people[row.user_id] = row.display_name.trim();
   // The signed-in user's own name or email (session.displayName is display_name, else the account email).
@@ -104,6 +161,8 @@ export async function liveContext(admin: Db, events: AuditEvent[], session: { us
     people,
     orders: Object.fromEntries((orders ?? []).map(row => [row.id, row.code])),
     datasets: Object.fromEntries((datasets ?? []).map(row => [row.id, { orderId: row.order_id, version: row.version }])),
+    clients: Object.fromEntries((clients ?? []).map(row => [row.id, row.name])),
+    batchClients,
   };
 }
 
@@ -148,14 +207,17 @@ export function demoEvents(state: DemoState): { events: AuditEvent[]; ctx: Audit
     .map((draft, index) => ({ draft, index }))
     .sort((a, b) => a.draft.createdAt.localeCompare(b.draft.createdAt) || a.index - b.index)
     .map(({ draft }, index) => ({ ...draft, id: index + 1 }));
-  const codes = applyDemoState(demoOrders, state).map(order => order.code);
+  const orders = applyDemoState(demoOrders, state);
   return {
     events,
-    ctx: { people, orders: Object.fromEntries(codes.map(code => [code, code])), datasets: Object.fromEntries((state.datasets ?? []).map(d => [d.id, { orderId: d.orderCode, version: d.version }])) },
+    ctx: {
+      people, orders: Object.fromEntries(orders.map(order => [order.code, order.code])), datasets: Object.fromEntries((state.datasets ?? []).map(d => [d.id, { orderId: d.orderCode, version: d.version }])),
+      clients: Object.fromEntries(demoClients.map(client => [client.id, client.name])), orderClients: Object.fromEntries(orders.map(order => [order.code, order.clientId])),
+    },
   };
 }
 
-async function demoPage(filters: AuditFilters): Promise<AuditPage> {
+async function demoMatching(filters: AuditFilters) {
   const { events, ctx } = demoEvents(await readDemoState());
   const code = filters.order;
   const ofOrder = (event: AuditEvent) => event.entity === "order" ? event.entityId === code
@@ -165,5 +227,13 @@ async function demoPage(filters: AuditFilters): Promise<AuditPage> {
   const matching = events
     .filter(event => (!filters.entity || event.entity === filters.entity) && (!filters.before || event.id < filters.before) && (!code || ofOrder(event)))
     .reverse();
+  return { matching, ctx, order };
+}
+async function demoPage(filters: AuditFilters): Promise<AuditPage> {
+  const { matching, ctx, order } = await demoMatching(filters);
   return page(matching.slice(0, AUDIT_PAGE_SIZE + 1), ctx, order);
+}
+async function demoExport(filters: AuditFilters): Promise<AuditExport> {
+  const { matching, ctx } = await demoMatching(filters);
+  return { rows: matching.slice(0, AUDIT_EXPORT_MAX).map(event => toRow(event, ctx)), truncated: matching.length > AUDIT_EXPORT_MAX };
 }

@@ -2,14 +2,25 @@ import type { Metadata } from "next";
 import { requireWorkspace } from "@/lib/session";
 import Link from "@/components/app-link";
 import { redirect } from "next/navigation";
-import { auditEntities, auditHref, parseAuditFilters } from "@/lib/audit";
+import { auditEntities, auditExportHref, auditHref, formatAuditWhen, parseAuditFilters, type AuditClientTag } from "@/lib/audit";
 import { listAuditEvents } from "@/lib/data/audit";
+import { withBasePath } from "@/lib/base-path";
 import { formatLabInstant } from "@/lib/lab-time";
+import map from "@/components/visual-map.module.css";
 import styles from "./audit.module.css";
 
 export const metadata: Metadata = { title: "Audit log" };
 
 type Params = Record<string, string | string[] | undefined>;
+
+// a21's Client cell: one client with its colour square; several (a batch) as their squares and "N clients"; none "—".
+function Clients({ clients }: { clients: AuditClientTag[] }) {
+  if (!clients.length) return <span className={styles.none}>—</span>;
+  const squares = clients.slice(0, 4).map(client => <span key={client.name} className={`${map.swatch} ${map[`c${client.slot}`]}`} aria-hidden="true" />);
+  if (clients.length === 1) return <span className={styles.client}>{squares}{clients[0].name}</span>;
+  const names = clients.map(client => client.name).join(", ");
+  return <span className={styles.client} title={names}><span className={styles.squares}>{squares}</span>{clients.length} clients<span className="sr-only">: {names}</span></span>;
+}
 
 // admin.audit_event, newest first, 50 per page: who changed what, in words, with the changed fields on demand.
 // Lab staff only (listAuditEvents asks for the staff workspace, like every staff screen). Filters live in the URL.
@@ -24,18 +35,23 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
 
   const { rows, older, order } = await listAuditEvents(filters);
   const filtered = !!(filters.entity || filters.order);
+  const now = new Date();
   return <>
     <div className="page-heading">
       <div>
         <div className="eyebrow">Organization / Audit log</div>
         <h1>Audit log</h1>
-        <p>The append-only record of changes to the lab&apos;s records: who did what, and when (lab time). Nothing here can be edited or deleted.</p>
+        <p>Append-only. Nothing in Admin is hard-deleted. Who did what, and when (lab time).</p>
+      </div>
+      <div className="heading-actions">
+        <button className="button secondary" type="submit" form="audit-filters">Filter</button>
+        <a className="button secondary" href={withBasePath(auditExportHref(filters))} download>Export CSV</a>
       </div>
     </div>
     {order && !order.found && <p className="notice" role="status">There is no order {order.code}.</p>}
     {order?.found && <p className="notice" role="status">Showing {order.code} and its shipments, samples, results files, datasets and signatures · <Link href={auditHref({ ...filters, order: null, before: null })}>all orders</Link></p>}
     <section className="panel" aria-labelledby="audit-title">
-      <form method="get" className={styles.filters} aria-label="Filter events">
+      <form method="get" id="audit-filters" className={styles.filters} aria-label="Filter events">
         <label>Entity
           <select name="entity" defaultValue={filters.entity ?? ""}>
             <option value="">All entities</option>
@@ -45,16 +61,16 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
         <label>Order code
           <input name="order" defaultValue={filters.order ?? ""} placeholder="ORD080" autoComplete="off" spellCheck={false} />
         </label>
-        <button className="button" type="submit">Filter</button>
         {filtered && <Link href="/audit-log">Clear</Link>}
       </form>
       <h2 id="audit-title" className="sr-only">Events</h2>
       {rows.length
         ? <div className={styles.scroll}><table className={styles.events} aria-label="Audit events">
-          <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
+          <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Client</th><th scope="col">What</th></tr></thead>
           <tbody>{rows.map(row => <tr key={row.id}>
-            <td><time dateTime={row.at}>{formatLabInstant(row.at)}</time></td>
+            <td><time dateTime={row.at} title={formatLabInstant(row.at)}>{formatAuditWhen(row.at, now)}</time></td>
             <td>{row.who}</td>
+            <td><Clients clients={row.clients} /></td>
             <td>{row.changes.length
               ? <details>
                 <summary>{row.summary}</summary>
