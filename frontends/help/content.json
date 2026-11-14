@@ -145,7 +145,7 @@
       {
         "title": "Receive the shipment",
         "side": "lab",
-        "text": "The boxes arrive. The lab records the carrier, the condition on arrival and the number of boxes.",
+        "text": "The boxes arrive. The lab records the carrier, the condition on arrival and the number of boxes, then checks each tube in against the registered samples and confirms the receipt.",
         "clientSees": "Samples received",
         "links": [
           "lab/receive-shipment"
@@ -154,7 +154,7 @@
       {
         "title": "Register the samples",
         "side": "lab",
-        "text": "The lab pastes the client’s sample list. Each sample gets a lab code.",
+        "text": "The lab pastes the client’s sample list, or reviews the one pasted with the order. Each sample gets a lab code.",
         "clientSees": "Samples received",
         "links": [
           "lab/register-samples"
@@ -254,8 +254,8 @@
       "notes": [
         "**Signing in.** Enter your **Email** and **Password**, then press **Sign in**.",
         "**The menu** has three groups: **Lab work**, **Clients** and **Organization**. The pages of this part follow the order of the work, not the order of the menu.",
-        "**Audit log**, under **Organization**, records every change: who did what, and when. Filter it by **Entity** or **Order code**. Nothing in it can be edited.",
-        "**Forgot your password?** Press **Forgot your password?** on the sign-in page, enter your **Email** and press **Send reset link**. When password-reset email is configured, the app emails you a link to choose a new password. It works once, for one hour."
+        "**Forgot your password?** Press **Forgot your password?** on the sign-in page, enter your **Email** and press **Send reset link**. When password-reset email is configured, the app emails you a link to choose a new password. It works once, for one hour.",
+        "**Audit log**, under **Organization**, records every change: see [Read the audit log](#lab/audit-log)."
       ],
       "steps": [
         {
@@ -307,7 +307,7 @@
             "account",
             "role"
           ],
-          "what": "The **People** page lists lab staff and client members with their roles and whether their account is active. Here you invite someone directly, change a role, or end someone’s access.",
+          "what": "The **People** page lists lab staff and client users with their roles and when each one was last active. Here you invite someone directly, change a role, or end someone’s access.",
           "who": [
             "lab-owner",
             "lab-admin"
@@ -315,23 +315,23 @@
           "whoNote": "Lab Owners and Admins manage client invitations and memberships. Only a Lab owner invites lab staff, changes lab roles or archives lab memberships.",
           "when": "When a colleague joins the lab, or a client asks you to add another person.",
           "steps": [
-            "Open **People** and find the **Invite** form (on the right on desktop, below the lists on a phone).",
+            "Open **People** and press **Invite person**, or scroll down to the **Invite** form below the list.",
             "Type the person’s **Email**.",
-            "Choose the **Role**. For a client role, also choose the **Client**.",
-            "Press **Create invitation link**. The app emails the invitation to the person, from “Lipidomics · Libreros Lab”.",
+            "Choose the **Role**. For a client role, also choose the **Client**; lab roles are listed only for the Owner.",
+            "Press **Send invitation**. The app emails the invitation to the person, from “Lipidomics · Libreros Lab”.",
             "Read the notice above the form: **Emailed to …**, or **Not emailed: …** with the reason. If it was not emailed, press **Copy link** and send the link to the person yourself."
           ],
           "notes": [
             "The link works once, for 7 days, and is shown only once. If it was lost, press **Revoke** under **Pending invitations** and invite the person again; the new invitation is emailed too.",
             "To change a role, press **Change** next to the person, choose the **Role** and press **Save role**. To end their membership, open **Change**, enter a **Reason**, then press **Archive membership**.",
             "The lab always keeps at least one active Owner.",
-            "Someone with an account who has never signed in reads **Not activated yet** under **Account**: see [Send an activation email](#lab/activation-email)."
+            "Someone with an account who has never signed in reads **never** under **Last active**: see [Send an activation email](#lab/activation-email)."
           ],
           "shots": [
             {
-              "file": "invite-lee",
-              "caption": "A second person at the same client. Not emailed on this test server, so the link is shown to copy (masked); the invitation waits under **Pending invitations**.",
-              "alt": "The People page: the Invite form with a green notice for the new invitation that reads Not emailed, because the address’s domain is not on this server’s allowlist, the link (masked grey) and a Copy link button; the People table with roles, clients, the Account column (every person Active) and Change links; and Pending invitations listing a Requester invitation with its expiry and a Revoke button."
+              "file": "invite-sent",
+              "caption": "An invitation for a new client person. Not emailed on this test server, so the link is shown to copy (masked).",
+              "alt": "The Invite section of the People page: a green notice, Invitation link for the new address, Not emailed because the address’s domain is not on this server’s allowlist, Copy it now and send it yourself, with the Invitation link (masked grey) and a Copy link button; below it the Email, Client and Role fields and the Send invitation button. On a desktop the People table with its Last active column is shown above."
             }
           ]
         },
@@ -344,32 +344,34 @@
             "resend",
             "welcome",
             "first sign-in",
-            "not activated"
+            "remind",
+            "never signed in",
+            "last active"
           ],
-          "what": "The **Account** column of **People** says whether each person has signed in: **Active** or **Not activated yet**. For someone who has an account but has never signed in, **Send activation email** emails a link to choose a password, so they need no **Forgot your password?** to get in.",
+          "what": "The **Last active** column of **People** says when each person last signed in: **today**, **yesterday**, a number of days, a date, or **never**. For someone who has an account but has never signed in, **Remind** emails a link to choose a password, so they need no **Forgot your password?** to get in.",
           "who": [
             "lab-owner",
             "lab-admin"
           ],
-          "whoNote": "Lab Owners and Admins, for lab staff and client members alike.",
-          "when": "When a person’s **Account** reads **Not activated yet** and they have not managed to get in.",
+          "whoNote": "Lab Owners and Admins, for lab staff and client members alike. Other lab staff see **—** under **Last active**.",
+          "when": "When a person’s **Last active** reads **never** and they have not managed to get in.",
           "steps": [
-            "Open **People** and find the person in the **People** table.",
-            "Under **Account**, press **Send activation email** below **Not activated yet**.",
-            "Read the note under the button: **Emailed to …**, or **Not emailed: …** with the reason. Once an email has gone, the row says “Activation email sent …” with the time, and the button reads **Resend**."
+            "Open **People** and find the person in the table.",
+            "Press **Remind** in their row.",
+            "Read the note under the button: **Emailed to …**, or **Not emailed: …** with the reason. Once an email has gone, the row says “Reminded …” with the time and the next possible time."
           ],
           "notes": [
+            "One reminder per account every 24 hours. Until then **Remind** cannot be pressed, and the row shows when the next one is possible.",
             "The person gets “Welcome to Lipidomics · Choose your password”. Its link opens a page with the same title: they type a **Password**, type it again under **Repeat password** and press **Choose password**, then sign in.",
             "Someone who already has a password gets “Welcome to Lipidomics · Sign in to Admin” instead: their password already works, and the link still lets them choose a new one.",
             "The link works once, for one hour, and a newer email replaces it. An expired link reads “This activation link no longer works.”: send a new email, or the person presses **Ask for a reset link**.",
-            "One email per person every 10 minutes.",
-            "**Active** means the person has signed in once."
+            "**Remind** appears only for someone who has never signed in."
           ],
           "shots": [
             {
-              "file": "invite-lee",
-              "caption": "The **Account** column: here everyone has signed in and reads **Active**. Someone who has not reads **Not activated yet**, with **Send activation email**.",
-              "alt": "The People page: in the People table, the Account column reads Active for every person, lab staff and client members; above it Access requests, with none waiting, and beside it the Invite form."
+              "file": "people",
+              "caption": "A client person who has never signed in: **never** under **Last active**, and **Remind**. Here the reminder was not emailed (a test address).",
+              "alt": "The People page: the People table with the columns Person, Lab role, Clients and project roles and Last active. Most people read today, yesterday or a number of days; one client Viewer reads never, with a Remind button and the note Not emailed, because the address’s domain is not on this server’s allowlist. On a phone the picture shows the top of the page: the heading, the Roles & permissions and Invite person buttons and the table’s column names."
             }
           ]
         },
@@ -379,9 +381,14 @@
           "keywords": [
             "assay",
             "method",
-            "LC"
+            "LC",
+            "instrument profile",
+            "rate",
+            "price",
+            "blank",
+            "QC rules"
           ],
-          "what": "**Instruments & panels** holds the lab’s instruments and the assay panels that **New order** and **Batch builder** offer. A panel’s dataset type decides how its results are read.",
+          "what": "**Instruments & panels** holds everything instrument-specific: the instrument profile (its settings and its blank and QC rules), the assay panels that **New order** and **Batch builder** offer, the rate sheet that prices an order, and the instruments themselves.",
           "who": [
             "lab-owner",
             "lab-admin"
@@ -390,27 +397,25 @@
           "when": "When the lab gets an instrument or starts to offer a new panel, before the first order that uses it.",
           "steps": [
             "Open **Instruments & panels**, under **Organization** in the menu.",
-            "To add an instrument, enter **Instrument name** under **New instrument**. Add **Model** and **Serial number** if known, then press **Add instrument**.",
-            "Under **New panel**, enter **Panel name** and choose **Dataset type**. Choose an **Instrument** if needed, and add **LC method** and **ISTD kits** (separated by commas) if known. Press **Add panel**.",
-            "To change one, press its name in the table, edit it and press **Save instrument** or **Save panel**.",
-            "To stop using one, open it, write a **Reason** and press **Archive instrument** or **Archive panel**."
+            "To add an instrument, press **Add instrument** under **Instruments**, enter **Instrument name**, add **Model** and **Serial number** if known, and press **Add instrument**.",
+            "To add a profile, press **Add profile**, enter **Profile name**, choose the **Instrument**, fill in its settings (**Software**, **Batch file**, **Bench sheet**, **Plates**, **Sample name**, **Results parser**) and press **Add profile**. The first profile becomes the active one.",
+            "Under **Blank and QC rules**, set the blanks at the start of the run, the blanks after every so many samples, how often a pooled QC runs, and the QC thresholds. Press **Save rules**.",
+            "To add a panel, press **Add panel**, enter **Panel name**, choose the **Instrument** and **Dataset type**, add **LC method** and **ISTD kits** (separated by commas) if known, and press **Add panel**.",
+            "Under **Rate sheet**, press a panel’s name, enter **Rate per sample**, **Currency** and **Minutes per injection**, and press **Save rate**."
           ],
           "notes": [
-            "A new panel is offered in **New order** and **Batch builder** straight away.",
+            "**Batch builder** pre-fills its blanks and pooled QC from the active profile, and **New order**’s estimate counts them too. To switch profiles, open the other one and press **Make active**.",
+            "A rate left blank shows as “not set” in **New order**, never as a guess. Without **Minutes per injection**, the estimate uses the batch builder’s default.",
+            "To change a record, press its name (or **Edit** on the profile), edit it and press **Save instrument**, **Save panel** or **Save profile**. To stop using it, open it, write a **Reason** and press **Archive instrument**, **Archive panel** or **Archive profile**.",
+            "An instrument cannot be archived while an active panel or a live profile uses it, and the active profile cannot be archived: archive or move those first.",
             "A panel’s **Dataset type** cannot change once an order or a batch uses the panel. For another type, add a new panel.",
-            "Before archiving an instrument, archive its active panels or move them to another instrument. The app blocks archiving while an active panel still uses it.",
-            "Archived records are kept, and the orders and batches that used them keep them. Press **Show archived** to see them."
+            "Archived records are kept. Press **Show archived** to see them."
           ],
           "shots": [
             {
               "file": "instruments-panels",
-              "caption": "The **Instruments** list beside **New instrument**, followed by **Panels** beside **New panel**; the forms stack below their lists on a phone.",
-              "alt": "The Instruments & panels page: no active instruments, a Show archived button, the New instrument form, and below them the active Panels table and New panel form with Dataset type."
-            },
-            {
-              "file": "panel-created",
-              "caption": "After **Add panel**: “Panel added. New order and Batch builder offer it now.”",
-              "alt": "The Instruments & panels page with a green Panel added notice, one instrument in the Instruments table and the new panel listed in the Panels table with its instrument, LC method, ISTD kit and dataset type Global lipidome."
+              "caption": "The active profile with its settings, its panel, the **Blank and QC rules**, the **Rate sheet** and the **Instruments**.",
+              "alt": "The Instruments & panels page: the profile Demo LC-MS profile (demo) marked active, with its Setting and Value table and its instrument; the Panels card with one panel and its LC method, ISTD and Nexo dataset; the Blank and QC rules with Start of run 2 blanks, Between samples 1 blank after every 10 samples, Pooled QC every 6 and QC thresholds, and a Save rules button; the Rate sheet with USD 85.00 and 14 min for the demo panel and Not set for another; and the Instruments table."
             }
           ]
         },
@@ -466,7 +471,7 @@
             "After you accept, the client sees **Accepted**, reads your [shipping instructions](#lab/shipping-instructions) and ships with the order code, for example `ORD654`, on every box. Press **Receive shipment →** when the boxes arrive.",
             "To say no, write the reason under **Or decline, with a reason** and press **Decline request**. The client reads this reason on the order. A declined order is archived, never deleted, and leaves the pipeline.",
             "The person who asked gets the “My order request is answered” email, if it is on for them.",
-            "For an order agreed outside the portal, press **+ New order** on **Pipeline**, fill in the form and press **Create order**."
+            "For an order agreed outside the portal, press **+ New order** on **Pipeline**: see [Place an order](#lab/place-order)."
           ],
           "shots": [
             {
@@ -482,37 +487,96 @@
           ]
         },
         {
-          "slug": "receive-shipment",
-          "title": "Receive a shipment",
+          "slug": "place-order",
+          "title": "Place an order",
           "keywords": [
-            "courier",
-            "arrival"
+            "new order",
+            "create order",
+            "quote",
+            "estimate",
+            "draft",
+            "wizard"
           ],
-          "what": "You record how an order’s samples arrived: carrier, tracking, condition and boxes. This opens the order’s sample registry.",
+          "what": "**New order** is for orders placed by lab staff, for example one agreed by email. It has four steps: **Client**, **Service**, **Sample list** and **Review & quote**, with an estimate from the rate sheet. A client’s Requester uses **Request an order** in the portal instead.",
           "who": [
             "lab-owner",
             "lab-admin",
             "operator"
           ],
-          "when": "When a client’s boxes arrive at the lab.",
+          "when": "When the lab enters an order itself, instead of waiting for a client’s request.",
           "steps": [
-            "Open **Receive shipment** from the menu, or press **Receive shipment →** on the order.",
-            "Choose the **Order**. Only orders waiting to arrive are listed.",
-            "Type the **Carrier** and, if you have it, the **Tracking number**.",
-            "Choose the **Condition on arrival**: **Intact and cold**, **Thawed**, **Damaged** or **Partial · items missing**.",
-            "Type the number of **Boxes** and any **Notes**.",
-            "Press **Record arrival**."
+            "Open **New order** from the menu, or press **+ New order** on **Pipeline**.",
+            "Under **Client**, choose the **Client** and type an **Order title**. Press **Next: service**.",
+            "Under **Service**, choose the **Panel**. Add the **Sample matrix**, **Number of samples**, **Study design**, **Billing**, **Billing reference** and **Notes for the lab** if you have them. Check the **Estimate**. Press **Next: sample list**.",
+            "Under **Sample list**, paste the client’s sample list if you have it (optional). It is read and checked straight away. Press **Next: review & quote**.",
+            "Under **Review & quote**, check every line; **Edit** goes back to that step. Press **Place order**."
           ],
           "notes": [
-            "The order moves from Request to Received. The client sees **Samples received**.",
-            "**Thawed**, **Damaged** and **Partial · items missing** flag the order for a condition review.",
-            "An order request that has not been accepted yet is not in the list. Accept it first."
+            "The order starts at Request and the client sees it in their orders. The notice gives the new code, with **Receive shipment →** and **Open order →**.",
+            "The **Estimate** is the panel’s rate times the samples. **Blanks and QC (added by the lab)** are included, counted by the active instrument profile’s rules, and the run time uses the panel’s minutes per injection. A rate not set reads “not set”: set it under [Instruments & panels](#lab/instruments-panels).",
+            "**Save draft** keeps what you typed. Anyone in the lab can resume it from **New order**, under **Saved drafts**, with **Resume**; **Discard** removes it.",
+            "**Download template** on **Sample list** gives the client a CSV with the six Metadata columns. A list pasted here opens pre-filled in the [Sample registry](#lab/register-samples) once the shipment has arrived."
+          ],
+          "shots": [
+            {
+              "file": "new-order-service",
+              "caption": "Step 2, **Service**, with the **Estimate**: 12 samples on the demo panel, blanks and QC by the active profile’s rules.",
+              "alt": "New order, step 2 of 4: the four steps Client, Service, Sample list and Review & quote; the Service card with Client, Panel, Sample matrix Plasma, Number of samples 12, Study design Groups, Billing Purchase order, Billing reference and Notes for the lab; the Estimate card with USD 1,020.00 from the rate sheet at USD 85.00 per sample, Blanks and QC included (2 blanks at start, 1 between samples and 2 pooled QCs, by the active profile’s rules) and a run time of about 4 h, 17 injections × 14 min; and What the client sees next. Save draft and Next: sample list buttons at the top."
+            },
+            {
+              "file": "new-order-review",
+              "caption": "Step 4, **Review & quote**: every line with **Edit**, then **Place order**.",
+              "alt": "New order, step 4 of 4: the Review & quote card listing Client, Order title, Panel, Sample matrix, Number of samples, Study design, Billing, Sample list 12 rows and Notes for the lab, each with an Edit link; the Estimate card; and the Save draft and Place order buttons at the top."
+            }
+          ]
+        },
+        {
+          "slug": "receive-shipment",
+          "title": "Receive a shipment",
+          "keywords": [
+            "courier",
+            "arrival",
+            "check-in",
+            "tube",
+            "scan",
+            "hemolyzed",
+            "missing",
+            "labels",
+            "discrepancy"
+          ],
+          "what": "Receiving has two parts. First you record how the boxes arrived: carrier, tracking, condition and boxes; this opens the order’s sample registry. Once the samples are registered, you check the tubes in one by one against that list and confirm the receipt.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When a client’s boxes arrive at the lab; the tube check-in after you [register the samples](#lab/register-samples).",
+          "steps": [
+            "Open **Receive shipment** from the menu, or press **Receive shipment →** on the order.",
+            "Choose the **Order**; only orders waiting to arrive are listed. Type the **Carrier** and, if you have it, the **Tracking number**. Choose the **Condition on arrival**, type the number of **Boxes** and any **Notes**, and press **Record arrival**. The sample registry opens: [register the samples](#lab/register-samples).",
+            "Back on **Receive shipment**, open the order under **Arrived · check tubes in**. The page lists every tube on the manifest.",
+            "Under **Scan or type the tube label**, scan the tube or type its code or the client’s tube ID. Choose its condition: **intact**, **hemolyzed**, **thawed** or **other** (then **Describe** it). Type the **Box** and **Position**, and press **Check in**. The box stays and the next position is filled in for the next tube.",
+            "When every tube that arrived is checked in, write the **Discrepancy note** if a tube is missing or not intact; it is required then.",
+            "Press **Confirm receipt**."
+          ],
+          "notes": [
+            "Recording the arrival moves the order from Request to Received. The client sees **Samples received**.",
+            "A tube not checked in counts as missing. When tubes are missing or not intact, confirming emails the client, who also reads the note on their order.",
+            "After **Confirm receipt** the tubes of that shipment can no longer change.",
+            "**Print labels** opens tube labels for the manifest (sample code, client tube ID and order), ready to print.",
+            "One box position holds one thing: a position held by a checked-in tube cannot take a stored aliquot, and the other way round.",
+            "**Thawed**, **Damaged** and **Partial · items missing** on arrival flag the order for a condition review. An order request that has not been accepted yet is not listed: accept it first."
           ],
           "shots": [
             {
               "file": "receive-shipment",
-              "caption": "The arrival record for order ORD654.",
-              "alt": "The Receive shipment form: Order, Carrier, Tracking number, the four Condition on arrival choices with Intact and cold selected, Boxes, Notes and the Record arrival button, beside the order at a glance."
+              "caption": "The arrival record for order ORD703, before **Record arrival**.",
+              "alt": "The Receive shipment form: Order ORD703, Carrier World Courier, a Tracking number, the four Condition on arrival choices with Intact and cold selected, Boxes 1, Notes and the Record arrival button, beside the order at a glance and the shipments waiting for the tube check-in."
+            },
+            {
+              "file": "shipment-checkin",
+              "caption": "The tube check-in: 10 of 12 tubes checked in, one hemolyzed, and the **Discrepancy note** written before **Confirm receipt**.",
+              "alt": "Receive shipment · ORD703: tiles for 12 tubes expected, 10 checked in, 1 hemolyzed and −80 °C stored in the demo intake box; the Check-in card with the tube label field, the Check in button, the condition choices intact, hemolyzed, thawed and other, Box and Position, and the manifest table with each tube’s client ID, condition and box position; the Discrepancy note card saying 2 tubes were not in the box and 1 was hemolyzed, with the note typed; and the Print labels and Confirm receipt buttons."
             }
           ]
         },
@@ -524,7 +588,7 @@
             "metadata",
             "manifest"
           ],
-          "what": "In the **Sample registry** you enter an order’s samples with their Metadata columns. The lab gives each sample its own code.",
+          "what": "In the **Sample registry** you enter an order’s samples with their Metadata columns. Admin checks every row before saving, and the lab gives each sample its own code.",
           "who": [
             "lab-owner",
             "lab-admin",
@@ -532,22 +596,28 @@
           ],
           "when": "After you record the arrival, when you have the client’s sample list.",
           "steps": [
-            "Open **Sample registry** and choose the order under **Choose an order**.",
-            "Copy the rows from the client’s Excel sheet and paste them under **Paste from Excel**: one sample per row. A header row with the Metadata column names is recognised.",
-            "Pasting tab-separated rows adds them to the grid immediately. If text is still in **Paste from Excel**, press **Add rows**. To type a sample by hand, press **Add empty row**.",
-            "If a row needs attention, read the problem written under the cell and correct it.",
-            "Press **Register N samples** (the button shows the number)."
+            "Open **Sample registry** and choose the order under **Choose an order**. Recording the arrival opens it for you.",
+            "If a sample list was pasted in **New order**, it is already in **Paste from Excel**, marked “From the order’s sample list — review and register”. Otherwise copy the rows from the client’s Excel sheet and paste them there: one sample per row. A header row is matched to the Metadata columns by name.",
+            "Press **Add rows**. Pasting tab-separated rows adds them straight away. To type a sample by hand, press **Add empty row**.",
+            "Check the pills (**valid**, **errors**, **warnings**) and the cells marked in the grid. Under **Fix before saving**, correct what is listed, or press the fix button offered for a row. **Map columns** changes how a pasted column was matched.",
+            "Press **Save N valid rows** (the button shows the number)."
           ],
           "notes": [
-            "**FullName** is required. The other Metadata columns are **Group1Term**, **Group2Term**, **ReplicateTerm**, **PatientTerm** and **TimePointTerm**; you can also record **Client sample ID**, **Matrix** and **Volume (µL)**. **Which columns?** lists them all.",
-            "Codes such as `ORD654-S001` are assigned when you save. They never contain a client name.",
-            "The order moves from Received to Registered."
+            "**FullName** is required and must be unique in the order. The other Metadata columns are **Group1Term**, **Group2Term**, **ReplicateTerm**, **PatientTerm** and **TimePointTerm**; you can also record **Client sample ID**, **Matrix** and **Volume (µL)**. **Which columns?** lists them all.",
+            "To check the client’s tube IDs, open **Add the client’s manifest** and paste them, one per line. It is used for the check only.",
+            "Codes such as `ORD703-S001` are assigned when you save. They never contain a client name.",
+            "The order moves from Received to Registered. Its tubes can now be checked in on [Receive shipment](#lab/receive-shipment)."
           ],
           "shots": [
             {
+              "file": "sample-registry-prefill",
+              "caption": "Just after **Record arrival**: the list pasted in **New order** waits in **Paste from Excel**, to review and register.",
+              "alt": "Register samples · ORD703: a green notice that the shipment was recorded, the order facts (stage Received, 12 samples expected, 0 registered), and the Paste from Excel box filled with the 12-row sample list under the note From the order’s sample list — review and register, with the Add rows and Add empty row buttons. Map columns and Save 0 valid rows at the top."
+            },
+            {
               "file": "sample-registry",
-              "caption": "Three samples registered, with their codes. **More samples** adds others later.",
-              "alt": "The Sample registry for ORD654: a green notice that 3 samples are registered with codes ORD654-S001 to ORD654-S003, the table of registered samples with their Metadata columns, and the More samples area with Paste from Excel, Add rows, Add empty row and Register samples."
+              "caption": "After **Add rows**: 12 valid rows, nothing to fix, ready for **Save 12 valid rows**.",
+              "alt": "Register samples · ORD703 after adding the rows: pills for 12 valid, 0 errors and 0 warnings; the grid with the Sample ID each row will get (ORD703-S001 to S012), client ID, FullName, the group, replicate, patient and time point terms, matrix and volume; Fix before saving with Nothing to fix; Checks Admin runs on every paste; and the Map columns and Save 12 valid rows buttons."
             }
           ]
         },
@@ -560,7 +630,7 @@
             "run order",
             "worklist"
           ],
-          "what": "In **Batch builder** you pick registered samples, set the blanks and pooled QC, and preview the run order and the plate map. Saving plans the batch.",
+          "what": "In **Batch builder** you pick registered samples, set the blanks and pooled QC, and preview the run order and the plate map. The rules start from the active instrument profile. Saving plans the batch.",
           "who": [
             "lab-owner",
             "lab-admin",
@@ -569,14 +639,16 @@
           "when": "When registered samples are ready to go on the instrument.",
           "steps": [
             "Open **Batch builder**.",
-            "Under **Choose the samples**, tick the samples, or press **Select all**.",
+            "Under **Choose the samples**, tick the samples, or press **Select all** (or **Select all of** an order).",
             "Choose the **Panel** and the **Plate order**.",
-            "Set **Blanks at start** and **Pooled QC every**, and tick **Pooled QC at the end** or **Blank after every QC** if you want them.",
+            "Check the rules, pre-filled from the active instrument profile: **Blanks at start**, **Pooled QC every**, **Blanks between samples** and **After every (samples)**. Tick **Pooled QC at the end** or **Blank after every QC** if you want them.",
             "Decide on **Randomize the sample order**, and check the **Seed** and the **Minutes per injection**.",
             "Press **Preview sequence**. Check the plate map and the sequence: the preview says “Not saved yet”.",
             "Press **Save planned batch**."
           ],
           "notes": [
+            "Only samples not already in a live batch are offered. A sample comes back when its batch is archived.",
+            "The rules can be changed for one batch; the profile keeps its own. Set the profile’s rules under [Instruments & panels](#lab/instruments-panels).",
             "The same samples and seed always give the same order. The seed is saved with the batch.",
             "Saving creates any missing sample aliquots and moves the batch’s orders to **In batch**. The client sees **In analysis**. You can now [place the aliquots in Storage](#lab/storage).",
             "The sequence is exported on the batch page: see [Run the batch](#lab/batch-run)."
@@ -584,8 +656,8 @@
           "shots": [
             {
               "file": "batch-preview",
-              "caption": "The preview: one blank, three samples in random order, one pooled QC.",
-              "alt": "The Batch builder: three samples of ORD654 ticked, the rules Panel, Plate order, Blanks at start, Pooled QC every, Seed and Minutes per injection, and the preview 5 injections · 1 h with its plate map, sequence table and the Save planned batch button."
+              "caption": "The preview for 12 samples: 2 blanks at the start, 1 blank after 10 samples and 2 pooled QCs, as the active profile sets.",
+              "alt": "The Batch builder: the 12 samples of ORD703 ticked among other registered orders; the rules Panel, Plate order, Blanks at start 2, Pooled QC every 6, Blanks between samples 1, After every (samples) 10, Seed and Minutes per injection; and the preview 17 injections · 3 h 24 min with tiles for injections, samples, pooled QC, blanks, run time and end time, the plate map, the sequence table and the Save planned batch button."
             }
           ]
         },
@@ -594,11 +666,15 @@
           "title": "Store the aliquots",
           "keywords": [
             "freezer",
+            "rack",
             "box",
             "position",
-            "location"
+            "location",
+            "box map",
+            "print",
+            "re-extraction"
           ],
-          "what": "**Storage** records which box and position holds each aliquot. You place aliquots, move them between boxes, and remove them when they leave.",
+          "what": "**Storage** records which box and position holds each aliquot, and which freezer and rack each box is in. You place aliquots, move them between boxes, remove them when they leave, and print a box map.",
           "who": [
             "lab-owner",
             "lab-admin",
@@ -609,26 +685,27 @@
             "Open **Storage**, after **Batch builder** under **Lab work** in the menu.",
             "Under **Waiting for a box**, press **Place** next to an aliquot.",
             "Type the **Box**, for example `F1-R1-B02`, and the **Position**, for example `A5`. Press **Place**.",
-            "To move an aliquot, press **Move**, type the **New box** and the **Position**, and press **Move**.",
-            "When an aliquot leaves storage, press **Remove**, write the **Reason** and press **Remove**.",
+            "Press a box under **Boxes** to open its map. Choose its **Freezer and rack** and press **Save**.",
+            "Press a cell of the map to see the aliquot there (code, **Type**, sample, client, order, since when, next batch). Press **Move aliquot** or **Remove** if needed: type the **New box** and **Position**, or write the **Reason**.",
             "To find an aliquot, enter a sample or aliquot code in **Sample or aliquot code** under **Find an aliquot**, then press **Search**."
           ],
           "notes": [
-            "An aliquot code is the sample code plus a number, for example `ORD654-S001-A1`.",
-            "Press a box under **Boxes** to see every position in it and when each aliquot was placed.",
+            "An aliquot code is the sample code plus a number, for example `ORD703-S001-A1`. Its **Type** is **Original** for the first aliquot and **Re-extraction** for a later one.",
+            "**Print box map** opens the open box on one page, with its freezer and rack, ready to print.",
+            "**Freezers & racks** lists the lab’s freezers with their temperature and racks. Lab Owners and Admins add them (**Add a freezer**, **Add rack**) and archive them with a reason (**Archive…**); a freezer or rack that still holds a box cannot be archived.",
             "A move keeps the old position in the history. Removing needs a reason, and the placement stays in the history.",
-            "Each box position holds one aliquot. If no aliquot is found for a registered sample, save its batch in **Batch builder** first."
+            "Each box position holds one aliquot, and not a position a checked-in tube holds. If no aliquot is found for a registered sample, save its batch in **Batch builder** first."
           ],
           "shots": [
             {
               "file": "storage",
-              "caption": "The order’s three aliquots wait for a box, each with **Place**.",
-              "alt": "The Storage page: Find an aliquot with a search for ORD654-S listing three aliquots that are not in a box, an empty Boxes list, and Waiting for a box · 3 with a Place link on each aliquot."
+              "caption": "After saving the batch: the order’s 12 aliquots wait for a box, each with **Place**.",
+              "alt": "The Storage page: Find an aliquot, the Boxes list, Waiting for a box · 12 with the aliquots ORD703-S001-A1 to S012-A1 and a Place link on each, and Freezers & racks with the demo freezer at −80 °C and its rack."
             },
             {
               "file": "storage-placed",
-              "caption": "All three placed: the box lists each aliquot with its position.",
-              "alt": "The Storage page after placing: a green notice that ORD654-S003-A1 is placed in a box at position A3, the box listed under Boxes with 3 positions taken, the box table with positions A1 to A3, and Waiting for a box now empty."
+              "caption": "A box in a freezer and rack, with three aliquots; position A2 selected.",
+              "alt": "The Storage page with box Demo box F1-R1-B03 (demo) open: the place Demo freezer F1 (demo) · Rack 1 (demo) · −80 °C with the Freezer and rack field and Save; the 9 × 9 box map with A1 to A3 taken and A2 ringed; the Selected · A2 panel with Aliquot ORD703-S002-A1, Type Original, Sample, Client, Order, Since and Next batch, and the Move aliquot and Remove buttons; Waiting for a box · 9; Freezers & racks with Archive… links and the New rack field; and Print box map at the top."
             }
           ]
         },
@@ -908,7 +985,7 @@
             "notification",
             "alert"
           ],
-          "what": "When sending is enabled, the app emails the people concerned after four events. **Notifications** lets each person turn their own emails on or off; Lab Owners and Admins also see the send log.",
+          "what": "When sending is enabled, the app emails people after the events listed on **Notifications**. For lab staff the page starts with who hears about what; below it each person turns their own emails on or off, and Lab Owners and Admins also see the send log.",
           "who": [
             "lab-owner",
             "lab-admin",
@@ -920,24 +997,64 @@
           "when": "Once, to choose your emails; later, to check what was sent.",
           "steps": [
             "Open **Notifications** under **Organization** in the lab menu, or directly in the client portal menu.",
-            "Under **Your emails**, lab staff see **A client requests an order** and **Someone requests access**. Clients see **My order request is answered** and **A dataset is released**.",
-            "Press **Turn off** on one you do not want. **Turn on** brings it back.",
+            "Lab staff: read the table at the top. For each **Event** it shows who gets the email: **Lab staff** (by role, or the owner of the step), **Client admin**, **Requester** and **Client members**.",
+            "Lab Owners and Admins: press a ✓ or — to switch that audience on or off, or press the names under **Lab staff** to choose the roles and press **Save**. For **No results TXT … days after acquisition**, press the number to change the days.",
+            "Under **Your emails**, press **Turn off** on one you do not want. **Turn on** brings it back.",
             "Lab Owners and Admins: under **Recent sends**, read up to 50 recent entries, one per recipient. **Status** is **Sent**, **Failed** or **Skipped**; **Detail** explains a failure or skip."
           ],
           "notes": [
-            "Each notification is on until you turn it off. A client member’s choice applies to every client they belong to.",
-            "Clients get their own two: **My order request is answered**, to the person who asked, and **A dataset is released**, to every member of the client. They switch them under **Notifications** in the portal.",
-            "Emails go out only where sending is turned on for the server. In the picture, a test server, every row reads Skipped.",
-            "Invitations and activation emails also come from “Lipidomics · Libreros Lab” and are listed in **Recent sends** as **Invitation** and **Activation email**. They have no switch."
+            "**Gate failed**, **Order requested**, **Access requested** and the results check are for lab staff only.",
+            "The owner of the step is the person who recorded it. Requester is the client member who asked for the order; Client members are everyone in the order’s client, viewers too.",
+            "The results check runs every hour on the server and when lab staff open **Pipeline**, and emails once per order.",
+            "Each switch under **Your emails** is on until you turn it off. A client member’s choice applies to every client they belong to.",
+            "Emails go out only where sending is turned on for the server.",
+            "Invitations and activation emails also come from “Lipidomics · Libreros Lab” and are listed in **Recent sends**. They have no switch."
           ],
           "shots": [
             {
               "file": "notifications",
-              "caption": "Your two lab emails, both on, and the start of **Recent sends**.",
-              "alt": "The Notifications page: Your emails · Lab work with A client requests an order and Someone requests access, both On with a Turn off button, followed by the start of Recent sends, the last 50 emails, one row per recipient. Its columns are When, Kind, Recipient, Status and Detail; the visible rows are A dataset is released, My order request is answered, A client requests an order, Invitation and Someone requests access, every one Skipped, with the detail Not on ADMIN_NOTIFY_ALLOW."
+              "caption": "Who hears about what, and your own emails, all on.",
+              "alt": "The Notifications page for lab staff: the table Event, Lab staff, Client admin, Requester and Client members, with rows Shipment received, Gate failed, Batch acquired, No results TXT 3 days after acquisition, Dataset released, Order requested, Order request answered and Access requested, ticks and dashes in the client columns; the explanation below it; and Your emails · Lab work with eight emails, each On with a Turn off button."
             }
           ],
-          "whoNote": "Everyone changes only their own email preferences. Only Lab Owners and Admins can read **Recent sends**."
+          "whoNote": "Everyone changes only their own email preferences. Only Lab Owners and Admins change the table and read **Recent sends**."
+        },
+        {
+          "slug": "audit-log",
+          "title": "Read the audit log",
+          "keywords": [
+            "history",
+            "who changed",
+            "audit trail",
+            "export",
+            "CSV",
+            "compliance"
+          ],
+          "what": "The **Audit log** records every change in Admin: who did what, and when (lab time). Nothing in it can be edited, and nothing in Admin is hard-deleted.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When you need to know who changed something, or to hand over a record of an order.",
+          "steps": [
+            "Open **Audit log**, under **Organization** in the menu.",
+            "Choose an **Entity**, for example **Order** or **Sample**, or type an **Order code**, for example `ORD703`. Press **Filter**.",
+            "Read **When**, **Who**, **Client** and **What**. Press a line under **What** to see the fields that changed, before → after.",
+            "Press **Older** for earlier events, and **Newest** to come back. **Clear** removes the filters.",
+            "To keep a copy, press **Export CSV**. The file holds every page of the current filter."
+          ],
+          "notes": [
+            "Filtering by order code also shows that order’s shipments, samples, results files, datasets and signatures.",
+            "Each export is itself recorded in the audit log, as **Audit log export**, with who exported and the filter."
+          ],
+          "shots": [
+            {
+              "file": "audit-log",
+              "caption": "The audit log filtered to order ORD703: from **Order ORD703 created** to **moved to In batch**.",
+              "alt": "The Audit log page: the Filter and Export CSV buttons, a note Showing ORD703 and its shipments, samples, results files, datasets and signatures, the Entity and Order code filters with ORD703 and Clear, and the events table with When, Who, Client and What, from Order ORD703 created, Shipment received and moved to Received, through Sample ORD703-S001 to S012 registered, to moved to Registered and moved to In batch."
+            }
+          ]
         }
       ]
     },
