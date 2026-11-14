@@ -21,7 +21,8 @@ export function previewSheetName(query: string | string[] | undefined): PreviewS
 }
 
 export type PreviewCell = { text: string; kind: "number" | "text" | "empty" };
-export type SheetPreview = { name: PreviewSheetName; header: string[]; rows: PreviewCell[][]; totalRows: number; totalColumns: number };
+// numeric: per column, whether every shown value is a number (or empty / NA); such columns align right.
+export type SheetPreview = { name: PreviewSheetName; header: string[]; rows: PreviewCell[][]; numeric: boolean[]; totalRows: number; totalColumns: number };
 
 function cell(value: ExcelJS.CellValue): PreviewCell {
   if (value === null || value === undefined || value === "") return { text: "NA", kind: "empty" };
@@ -45,10 +46,11 @@ export async function previewSheet(bytes: Buffer, name: PreviewSheetName, rows =
   const width = Math.min(columns, sheet.columnCount);
   const read = (number: number) => Array.from({ length: width }, (_, index) => cell(sheet.getRow(number).getCell(index + 1).value));
   const last = Math.min(sheet.rowCount, rows + 1);
+  const header = read(1).map(item => item.kind === "empty" ? "" : item.text);
+  const body = Array.from({ length: Math.max(0, last - 1) }, (_, index) => read(index + 2));
+  const numeric = header.map((_, c) => body.some(row => row[c].kind === "number") && body.every(row => row[c].kind !== "text" || row[c].text === "NA"));
   return {
-    name,
-    header: read(1).map(item => item.kind === "empty" ? "" : item.text),
-    rows: Array.from({ length: Math.max(0, last - 1) }, (_, index) => read(index + 2)),
+    name, header, rows: body, numeric,
     totalRows: Math.max(0, sheet.rowCount - 1),
     totalColumns: sheet.columnCount,
   };

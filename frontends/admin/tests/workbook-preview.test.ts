@@ -55,6 +55,12 @@ describe("workbook preview", () => {
     book.addWorksheet("Abundance").addRow(["Lipid"]);
     await expect(previewSheet(Buffer.from(await book.xlsx.writeBuffer()), "Provenance")).rejects.toThrow("The stored workbook has no Provenance sheet.");
   });
+  it("aligns a column right only when every value in it is a number (Provenance's Value column stays left)", async () => {
+    const bytes = await workbook();
+    expect((await previewSheet(bytes, "Abundance")).numeric).toEqual([false, true, true, true, true, true, true, true]);
+    expect((await previewSheet(bytes, "Provenance")).numeric).toEqual([false, false]);
+    expect((await previewSheet(bytes, "Metadata")).numeric).toEqual([false, false, false]);
+  });
   it("never changes the bytes it reads", async () => {
     const bytes = await workbook();
     const copy = Buffer.from(bytes);

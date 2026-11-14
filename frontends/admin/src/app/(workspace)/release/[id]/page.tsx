@@ -69,9 +69,9 @@ function ExcelPreview({ id, selected, preview, sha256 }: { id: string; selected:
     <div className={styles.cardBody}>
       {!preview || "problem" in preview ? <p className="notice error" role="status">{preview && "problem" in preview ? preview.problem : "The stored workbook could not be read."}</p> : <>
         <div className={styles.scroll}><table className={styles.preview} aria-label={`${selected} sheet, first rows`}>
-          <thead><tr>{preview.sheet.header.map((name, index) => <th key={index} scope="col">{name}</th>)}</tr></thead>
+          <thead><tr>{preview.sheet.header.map((name, index) => <th key={index} scope="col" data-numeric={preview.sheet.numeric[index] || undefined}>{name}</th>)}</tr></thead>
           <tbody>{preview.sheet.rows.map((row, r) => <tr key={r}>{row.map((cell, c) =>
-            <td key={c} data-kind={cell.kind} title={cell.kind === "empty" ? "Empty cell" : undefined}>{cell.text}</td>)}</tr>)}</tbody>
+            <td key={c} data-kind={cell.kind} data-numeric={preview.sheet.numeric[c] || undefined} title={cell.kind === "empty" ? "Empty cell" : cell.text.length > 40 ? cell.text : undefined}>{cell.text}</td>)}</tr>)}</tbody>
         </table></div>
         <p className={styles.previewNote}>
           {preview.sheet.rows.length} of {preview.sheet.totalRows} rows · {preview.sheet.header.length} of {preview.sheet.totalColumns} columns · read only, from the stored workbook (SHA-256 <span className="mono">{sha256.slice(0, 12)}…</span>). Values as stored; an empty cell reads NA.
