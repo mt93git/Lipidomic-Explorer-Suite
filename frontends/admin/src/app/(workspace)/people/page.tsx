@@ -48,7 +48,7 @@ function Change({ person, actors }: { person: Person; actors: LabPerson[] | null
   </details>;
 }
 
-export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {
+export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ done?: string; client?: string }> }) {
   await requireWorkspace("staff");
   const [view, access, query] = await Promise.all([listPeople(), listAccessRequests(), searchParams]);
   const canChange = (person: Person) => person.kind === "lab_staff" ? view.canInviteLab : view.canInviteClient;
@@ -87,7 +87,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
         </section>
       </div>
       <section className="panel" aria-labelledby="invite-title"><h2 id="invite-title">Invite</h2>
-        {view.canInviteClient ? <InviteForm clients={view.clients} canInviteLab={view.canInviteLab} actors={view.demoActors} />
+        {view.canInviteClient ? <InviteForm clients={view.clients} canInviteLab={view.canInviteLab} actors={view.demoActors} defaultClientId={view.clients.some(item => item.id === query.client) ? query.client : undefined} />
           : <p className="notice">Only a lab Owner or Admin can invite people. Ask them for an invitation link.</p>}
       </section>
     </div>

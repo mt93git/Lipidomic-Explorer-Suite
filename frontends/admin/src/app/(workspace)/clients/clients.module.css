@@ -14,3 +14,4 @@
 .switch { display: flex; gap: 12px 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .switch p { flex: 1 1 280px; margin: 0; }
 .switch .pill { margin-top: 0; }
+.narrow { max-width: 640px; }

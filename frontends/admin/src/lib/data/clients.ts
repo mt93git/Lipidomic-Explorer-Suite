@@ -83,8 +83,11 @@ function fromRow(row: ClientRow): ClientRecord {
     openOrders: orders.filter(order => !order.archivedAt && order.stage !== "Released").length, members, orders };
 }
 // Colour, released count, and each order's panel and samples, from the pipeline's own reads (live and demo alike).
+// Presentation only: when the pipeline cannot be read, the records stay as they are (grey square, no panel).
 async function withPipeline(records: ClientRecord[]): Promise<ClientRecord[]> {
-  const [colors, orders] = await Promise.all([listClients(), listOrders()]);
+  const read = await Promise.all([listClients(), listOrders()]).catch(() => null);
+  if (!read) return records.map(record => ({ ...record, color: "shared", released: record.orders.filter(order => !order.archivedAt && order.stage === "Released").length }));
+  const [colors, orders] = read;
   const byCode = new Map(orders.map(order => [order.code, order]));
   return records.map(record => ({
     ...record,
@@ -102,9 +105,13 @@ type PeopleRow = { user_id: string; display_name: string | null; email: string |
 // 0037's admin.client_people: names, emails and last sign-in of the client's active members (lab staff only). When it
 // cannot be read, the members keep the names the client row gave them.
 async function liveMembers(clientId: string, fallback: ClientMember[]): Promise<ClientMember[]> {
-  const { data, error } = await (await admin()).rpc("client_people", { p_client_id: clientId });
-  if (error || !Array.isArray(data)) return fallback;
-  return (data as PeopleRow[]).map(row => ({ userId: row.user_id, role: row.role, name: row.display_name?.trim() || null, email: row.email, lastSignInAt: row.last_sign_in_at }));
+  let rows: PeopleRow[];
+  try {
+    const { data, error } = await (await admin()).rpc("client_people", { p_client_id: clientId });
+    if (error || !Array.isArray(data)) return fallback;
+    rows = data as PeopleRow[];
+  } catch { return fallback; }
+  return rows.map(row => ({ userId: row.user_id, role: row.role, name: row.display_name?.trim() || null, email: row.email, lastSignInAt: row.last_sign_in_at }));
 }
 async function demoRecords(): Promise<ClientRecord[]> {
   const stored = await readDemoClients();

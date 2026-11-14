@@ -1,55 +1,91 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
-import { listDatasets } from "@/lib/data/release";
-import { formatLabInstant } from "@/lib/lab-time";
-import { datasetStatusLabels, mayOpenInNexo, nexoDatasetLink, signerRoleLabels } from "@/lib/release";
+import styles from "@/components/directory.module.css";
+import { listClients, listOrders } from "@/lib/data/orders";
+import { getReleasePolicy, listDatasets, type DatasetRecord } from "@/lib/data/release";
+import { datasetPill, type DatasetPill } from "@/lib/directory";
+import { formatLabDay, formatLabInstant } from "@/lib/lab-time";
+import type { Client, Order } from "@/lib/models";
+import { mayOpenInNexo, nexoDatasetLink, signerRoleLabels } from "@/lib/release";
+import { stageFromDb } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
-import styles from "../release/release.module.css";
 
 export const metadata: Metadata = { title: "Datasets" };
 
-const NexoLink = ({ href }: { href: string | null }) => href ? <><br /><a href={href} target="_blank" rel="noreferrer">Open in Nexo</a></> : null;
+// Orders whose results were accepted and whose Excel is not built yet: listed as "processing" with the version to come.
+const PROCESSING = [stageFromDb("processed"), stageFromDb("qc_checked")];
+type Row = { key: string; client: Client; orderCode: string; name: string; href: string | null; panel: string; samples: number | null; lipids: number | null;
+  pill: DatasetPill; released: string | null; dataset: DatasetRecord | null };
+const count = (value: number | null) => value === null ? <span className={styles.dash}>—</span> : value.toLocaleString("en-US");
+const datasetName = (title: string, code: string, version: number) => `${title.trim() || code} v${version}`;
 
-// Every frozen dataset version, by order: status, who signed, where it came from, when it was released.
-export default async function DatasetsPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
+// Every dataset version Admin has built, by client and version, with a client filter (?client=) and the order filter
+// other screens link to (?order=). A version never changes once signed; a correction is a new version.
+export default async function DatasetsPage({ searchParams }: { searchParams: Promise<{ order?: string; client?: string }> }) {
   const session = await requireWorkspace("staff");
-  const nexo = (dataset: Parameters<typeof nexoDatasetLink>[1]) => nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, dataset, mayOpenInNexo(session.view));
-  const { order: filter } = await searchParams;
-  const all = await listDatasets();
-  const datasets = filter ? all.filter(dataset => dataset.orderCode === filter) : all;
+  const nexo = (dataset: DatasetRecord) => nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, dataset, mayOpenInNexo(session.view));
+  const { order: orderFilter, client: clientFilter } = await searchParams;
+  const [all, orders, clients, policy] = await Promise.all([listDatasets(), listOrders(), listClients(), getReleasePolicy()]);
+  const orderByCode = new Map(orders.map(order => [order.code, order]));
+  const clientOf = (id: string, name: string): Client => clients.find(client => client.id === id) ?? { id, name, color: "shared" };
+  const built: Row[] = all.map(dataset => {
+    const order = orderByCode.get(dataset.orderCode);
+    return {
+      key: dataset.id, client: clientOf(dataset.clientId, dataset.clientName), orderCode: dataset.orderCode, name: datasetName(dataset.orderTitle, dataset.orderCode, dataset.version),
+      href: `/release/${dataset.id}`, panel: order?.panel ?? "—", samples: dataset.samples ?? order?.sampleCount ?? null, lipids: dataset.lipids ?? null,
+      pill: datasetPill({ status: dataset.status, signatures: dataset.signatures.length }, policy.policy.requiredSignatures), released: dataset.releasedAt, dataset,
+    };
+  });
+  const processing: Row[] = orders.filter((order: Order) => !order.released && PROCESSING.includes(order.stage) && !all.some(dataset => dataset.orderCode === order.code))
+    .map(order => ({ key: `processing-${order.code}`, client: clientOf(order.clientId, "Client"), orderCode: order.code, name: datasetName(order.description, order.code, 1),
+      href: null, panel: order.panel || "—", samples: order.sampleCount, lipids: null, pill: datasetPill("processing", 0), released: null, dataset: null }));
+  const rows = [...built, ...processing]
+    .filter(row => (!orderFilter || row.orderCode === orderFilter) && (!clientFilter || row.client.id === clientFilter))
+    .sort((a, b) => a.client.name.localeCompare(b.client.name) || b.orderCode.localeCompare(a.orderCode) || b.name.localeCompare(a.name));
+  const chosen = clientFilter ? clients.find(client => client.id === clientFilter) : undefined;
+  const filterHref = (id?: string) => `/datasets${id ? `?client=${encodeURIComponent(id)}` : ""}`;
   return <>
-    <div className="page-heading">
+    <div className={styles.heading}>
       <div>
-        <div className="eyebrow"><Link href="/pipeline">Lab work / Pipeline</Link> / Datasets</div>
         <h1>Datasets</h1>
-        <p>Frozen dataset versions with their status and provenance. A version never changes once signed; a correction is a new version.</p>
+        <p>Every Excel Admin has built, by client and version.</p>
       </div>
-      <div className="heading-actions"><Link className="button" href="/release">Release</Link></div>
+      <div className={styles.actions}>
+        <details className={styles.filter}>
+          <summary aria-label="Filter by client">Filter: {chosen ? chosen.name : "all clients"}</summary>
+          <nav className={styles.filterList} aria-label="Clients">
+            <a href={filterHref()} aria-current={!clientFilter}>All clients</a>
+            {clients.map(client => <a key={client.id} href={filterHref(client.id)} aria-current={client.id === clientFilter}>
+              <span className="color-square" data-color={client.color} aria-hidden="true" />{client.name}</a>)}
+          </nav>
+        </details>
+      </div>
     </div>
-    {filter && <p className="notice" role="status">Showing {filter} only · <Link href="/datasets">all orders</Link></p>}
-    <section className="panel" aria-labelledby="datasets-title">
-      <div className="eyebrow">{datasets.length} version{datasets.length === 1 ? "" : "s"}</div>
-      <h2 id="datasets-title">Versions by order</h2>
-      {datasets.length
-        ? <div className={styles.scroll}><table className={styles.orders} aria-label="Dataset versions">
-          <thead><tr><th scope="col">Order</th><th scope="col">Version</th><th scope="col">Status</th><th scope="col">Built</th><th scope="col">Signed by</th><th scope="col">Provenance</th><th scope="col">Released</th></tr></thead>
-          <tbody>{datasets.map(dataset => <tr key={dataset.id}>
-            <td><Link href={`/orders/${dataset.orderCode}`} className="order-code">{dataset.orderCode}</Link><br /><small>{dataset.clientName}</small></td>
-            <td><Link href={`/release/${dataset.id}`}>v{dataset.version}</Link></td>
-            <td><span className={styles.state} data-status={dataset.status}>{datasetStatusLabels[dataset.status]}</span>{dataset.archivedReason && <><br /><small className="muted">{dataset.archivedReason}</small></>}</td>
-            <td>{formatLabInstant(dataset.builtAt)}{dataset.builtBy && <><br /><small className="muted">{dataset.builtBy}</small></>}</td>
-            <td>{dataset.signatures.length ? dataset.signatures.map(signature => <span key={signature.id}>{signature.name} · {signerRoleLabels[signature.role]}<br /></span>) : <span className="muted">Nobody yet</span>}</td>
-            <td><small className={styles.digest}>TXT {dataset.provenance.sourceSha256 ? `${dataset.provenance.sourceSha256.slice(0, 12)}…` : "not recorded"}</small><br />
-              <small className="muted">{dataset.provenance.sciexOsVersion ? `SCIEX OS ${dataset.provenance.sciexOsVersion}` : "SCIEX OS version not provided"}{dataset.provenance.processingMethod ? ` · ${dataset.provenance.processingMethod}` : ""}</small><br />
-              <small className={styles.digest}>analysis {dataset.analysis.sha256 ? `${dataset.analysis.sha256.slice(0, 12)}…` : "not recorded"}</small>
-              {dataset.exclusions.length > 0 && <ul className={styles.exclusions} aria-label={`Sample exclusions recorded for ${dataset.orderCode} v${dataset.version}`}>
-                {dataset.exclusions.map(item => <li key={item.sampleCode}><small><span className="mono">{item.sampleCode}</span> excluded · {item.reason} · {item.decidedBy ?? "Lab staff"} · {formatLabInstant(item.decidedAt)}</small></li>)}
+    {orderFilter && <p className="notice" role="status">Showing {orderFilter} only · <Link href="/datasets">all orders</Link></p>}
+    {rows.length
+      ? <div className={styles.card}><div className={styles.scroll}><table className={styles.table} aria-label="Dataset versions">
+        <thead><tr><th scope="col">Client</th><th scope="col">Order</th><th scope="col">Dataset</th><th scope="col">Panel</th>
+          <th scope="col" className={styles.num}>Samples</th><th scope="col" className={styles.num}>Lipids</th><th scope="col">Status</th><th scope="col">Released</th></tr></thead>
+        <tbody>{rows.map(row => {
+          const dataset = row.dataset;
+          const href = dataset ? nexo(dataset) : null;
+          return <tr key={row.key}>
+            <td><span className={styles.client}><span className="color-square" data-color={row.client.color} aria-hidden="true" />{row.client.name}</span></td>
+            <td><Link href={`/orders/${row.orderCode}`}>{row.orderCode}</Link></td>
+            <td>{row.href ? <Link href={row.href}>{row.name}</Link> : row.name}
+              {dataset && dataset.exclusions.length > 0 && <ul className={styles.sub} aria-label={`Sample exclusions recorded for ${dataset.orderCode} v${dataset.version}`}>
+                {dataset.exclusions.map(item => <li key={item.sampleCode}><span className="mono">{item.sampleCode}</span> excluded · {item.reason} · {item.decidedBy ?? "Lab staff"} · {formatLabInstant(item.decidedAt)}</li>)}
               </ul>}</td>
-            <td>{dataset.releasedAt ? <small className="muted">released {formatLabInstant(dataset.releasedAt)}</small> : <span className="muted">Not released</span>}
-              <NexoLink href={nexo(dataset)} /></td>
-          </tr>)}</tbody>
-        </table></div>
-        : <p className="empty-state">No dataset has been built yet. <Link href="/release">Build one from Release</Link>.</p>}
-    </section>
+            <td>{row.panel}</td>
+            <td className={styles.num}>{count(row.samples)}</td>
+            <td className={styles.num}>{count(row.lipids)}</td>
+            <td><span className={styles.pill} data-tone={row.pill.tone}>{row.pill.label}</span>
+              {dataset && dataset.signatures.length > 0 && <span className={styles.sub}>{dataset.signatures.map(signature => `${signature.name} · ${signerRoleLabels[signature.role]}`).join(", ")}</span>}</td>
+            <td><span className={styles.mono}>{row.released ? formatLabDay(row.released) : <span className={styles.dash}>—</span>}</span>
+              {href && <span className={styles.sub}><a href={href} target="_blank" rel="noreferrer">Open in Nexo</a></span>}</td>
+          </tr>;
+        })}</tbody>
+      </table></div></div>
+      : <p className="empty-state">{all.length || processing.length ? "No dataset matches this filter." : <>No dataset has been built yet. <Link href="/release">Build one from Release</Link>.</>}</p>}
   </>;
 }

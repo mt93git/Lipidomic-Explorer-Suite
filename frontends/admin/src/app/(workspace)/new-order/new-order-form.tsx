@@ -12,7 +12,8 @@ const fieldLabels: [OrderField, string][] = [["clientId", "Client"], ["panelId",
 
 // The order record: who it is for, what is measured, how many samples to expect and how it is billed. noValidate:
 // the server action checks it, so the error summary names every problem; samples are added later in the registry.
-export function NewOrderForm({ clients, panels }: { clients: Client[]; panels: Panel[] }) {
+// defaultClientId: the client chosen before the form opens (Client detail's New order).
+export function NewOrderForm({ clients, panels, defaultClientId }: { clients: Client[]; panels: Panel[]; defaultClientId?: string }) {
   const [state, action, pending] = useActionState<NewOrderState, FormData>(createOrderAction, {});
   const values = state.values;
   const error = (field: OrderField) => state.errors?.[field];
@@ -25,7 +26,7 @@ export function NewOrderForm({ clients, panels }: { clients: Client[]; panels: P
     <div className="form-row">
       <div className="field">
         <label className="field-label" htmlFor="order-clientId">Client</label>
-        <select id="order-clientId" name="clientId" required defaultValue={values?.clientId ?? ""} {...describe("clientId")}>
+        <select id="order-clientId" name="clientId" required defaultValue={values?.clientId ?? defaultClientId ?? ""} {...describe("clientId")}>
           <option value="">Choose a client…</option>
           {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
