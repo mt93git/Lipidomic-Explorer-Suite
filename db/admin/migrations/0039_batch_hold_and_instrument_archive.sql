@@ -163,6 +163,32 @@ BEGIN
   RETURN bid;
 END $$;
 
+CREATE OR REPLACE FUNCTION admin.archive_instrument(p_id uuid, p_reason text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, admin AS $$
+DECLARE i admin.instrument; v_panels text; v_profiles text;
+BEGIN
+  PERFORM admin.require_lab_manager_for_catalog();
+  IF nullif(btrim(p_reason), '') IS NULL THEN
+    RAISE EXCEPTION 'Archiving an instrument needs a reason' USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO i FROM admin.instrument WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Instrument not found' USING ERRCODE = 'P0002'; END IF;
+  IF i.archived_at IS NOT NULL THEN RAISE EXCEPTION 'Instrument is already archived' USING ERRCODE = '55000'; END IF;
+  SELECT string_agg(format('"%s"', name), ', ' ORDER BY name) INTO v_panels
+    FROM admin.panel WHERE instrument_id = p_id AND archived_at IS NULL;
+  IF v_panels IS NOT NULL THEN
+    RAISE EXCEPTION 'Instrument "%" is used by the active panel(s) %; archive them or move them to another instrument first', i.name, v_panels
+      USING ERRCODE = '55000';
+  END IF;
+  SELECT string_agg(format('"%s"', name), ', ' ORDER BY name) INTO v_profiles
+    FROM admin.instrument_profile WHERE instrument_id = p_id AND archived_at IS NULL;
+  IF v_profiles IS NOT NULL THEN
+    RAISE EXCEPTION 'Instrument "%" is used by profile %; archive or move the profile first', i.name, v_profiles
+      USING ERRCODE = '55000';
+  END IF;
+  UPDATE admin.instrument SET archived_at = now(), archived_reason = btrim(p_reason) WHERE id = p_id;
+END $$;
+
 REVOKE ALL ON FUNCTION admin.create_batch(text, uuid, jsonb, jsonb), admin.archive_instrument(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION admin.create_batch(text, uuid, jsonb, jsonb), admin.archive_instrument(uuid, text) TO authenticated;
 

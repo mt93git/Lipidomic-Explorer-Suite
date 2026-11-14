@@ -32,7 +32,7 @@ const profiles = await import("@/lib/data/instrument-profiles");
 const { builderDefaults } = await import("@/lib/batch-builder");
 const { builderDefaultsFrom, parseRulesForm, rulesText, defaultRules } = await import("@/lib/instrument-profiles");
 const { listPanels } = await import("@/lib/data/orders");
-const { writeDemoState, readDemoState } = await import("@/lib/data/demo-store");
+const { writeDemoState, readDemoState, writeDemoProfiles } = await import("@/lib/data/demo-store");
 const actions = await import("@/app/(workspace)/instruments-panels/actions");
 const { default: Page } = await import("@/app/(workspace)/instruments-panels/page");
 
@@ -115,6 +115,17 @@ describe("data seam (demo)", () => {
     await expect(catalog.createPanel({ name: "On archived", instrumentId: "demo-instrument-qtof", lcMethod: null, istdKits: [], datasetType: "global", actorId: owner }))
       .rejects.toThrow('Instrument "Demo QTOF 1" is archived; choose an active instrument.');
     await expect(catalog.createInstrument({ name: "Demo QTOF 1", model: null, serialNumber: null, actorId: owner })).rejects.toThrow(/archived instrument is already named "Demo QTOF 1"/);
+  });
+
+  it("0039: an instrument a live profile uses cannot be archived; archiving the profile frees it", async () => {
+    const iid = await catalog.createInstrument({ name: "Demo QTOF 2", model: null, serialNumber: null, actorId: owner });
+    const pid = await profiles.createProfile({ name: "Demo QTOF 2 profile", instrumentId: iid, settings: {}, actorId: owner });
+    const message = 'Instrument "Demo QTOF 2" is used by profile "Demo QTOF 2 profile"; archive or move the profile first.';
+    await expect(catalog.archiveInstrument({ id: iid, reason: "Synthetic", actorId: owner })).rejects.toThrow(message);
+    expect(await actions.archiveInstrumentAction({}, form({ id: iid, reason: "Synthetic", actor: owner }))).toEqual({ error: message });
+    await profiles.archiveProfile({ id: pid, reason: "Synthetic", actorId: owner });
+    await catalog.archiveInstrument({ id: iid, reason: "Synthetic", actorId: owner });
+    expect((await catalog.getCatalog()).instruments.find(item => item.id === iid)?.archivedAt).toEqual(expect.any(String));
   });
 
   it("keeps the catalog alongside the other demo records of this browser", async () => {
@@ -418,13 +429,14 @@ describe("page", () => {
   });
 
   it("with every record archived, says how many are archived instead of \"none yet\"", async () => {
+    await writeDemoProfiles([]); // a live profile keeps its instrument (0039); a lab with no profile at all can archive every instrument
     const before = await catalog.getCatalog();
     for (const panel of before.panels) await catalog.archivePanel({ id: panel.id, reason: "Synthetic: closed", actorId: owner });
     for (const instrument of before.instruments) await catalog.archiveInstrument({ id: instrument.id, reason: "Synthetic: closed", actorId: owner });
     render(await page());
     expect(screen.getByText(`No active instruments. Show archived to see the ${before.instruments.length} archived.`)).toBeInTheDocument();
-    // The Panels card counts the profile instrument's panels (the fourth is on the other instrument).
-    expect(screen.getByText("No active panels. Show archived to see the 3 archived.")).toBeInTheDocument();
+    // With no profile the Panels card counts every panel (with one, only its instrument's).
+    expect(screen.getByText("No active panels. Show archived to see the 4 archived.")).toBeInTheDocument();
     expect(screen.queryByText(/yet\./)).toBeNull();
   });
 
@@ -448,6 +460,15 @@ describe("page", () => {
     // The reason says what to do; no disabled form under it.
     expect(within(section).queryByRole("button", { name: "Archive instrument" })).toBeNull();
     expect(within(section).queryByLabelText("Reason")).toBeNull();
+  });
+
+  it("0039: an instrument a live profile uses says so on its edit form instead of offering Archive", async () => {
+    const iid = await catalog.createInstrument({ name: "Demo QTOF 2", model: null, serialNumber: null, actorId: owner });
+    await profiles.createProfile({ name: "Demo QTOF 2 profile", instrumentId: iid, settings: {}, actorId: owner });
+    render(await page({ instrument: iid }));
+    const section = screen.getByRole("region", { name: "Edit Demo QTOF 2" });
+    expect(within(section).getByText('Profile "Demo QTOF 2 profile" uses this instrument. Archive or move the profile first.')).toBeInTheDocument();
+    expect(within(section).queryByRole("button", { name: "Archive instrument" })).toBeNull();
   });
 
   it("an Operator (live) reads the profile, its rules as text and the tables, and gets no form, no edit link, whatever the URL asks", async () => {

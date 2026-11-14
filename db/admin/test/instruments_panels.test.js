@@ -122,6 +122,10 @@ describe('0026: instruments', () => {
     for (const reason of ['', '  ', null]) await expect(archiveInstrument(INSTRUMENT, reason)).rejects.toThrow('Archiving an instrument needs a reason');
     await expect(archiveInstrument(INSTRUMENT)).rejects.toThrow('Instrument "QQQ-1" is used by the active panel(s) "Global panel"');
     await archivePanel(PANEL);
+    // 0039: the seed's active profile "QQQ-1 profile" (id 502) still points at QQQ-1; move it to another instrument first.
+    await expect(archiveInstrument(INSTRUMENT)).rejects.toThrow('Instrument "QQQ-1" is used by profile "QQQ-1 profile"; archive or move the profile first');
+    const spare = await createInstrument('Synthetic spare');
+    await db.query('SELECT admin.update_instrument_profile($1, $2, $3, null, null, null, null, null, null)', [id(502), spare, 'QQQ-1 profile']);
     await archiveInstrument(INSTRUMENT, '  Synthetic decommission  ');
     expect(await row('instrument', INSTRUMENT)).toMatchObject({ archived_at: expect.any(Date), archived_reason: 'Synthetic decommission' });
     await expect(archiveInstrument(INSTRUMENT)).rejects.toThrow('Instrument is already archived');
@@ -130,6 +134,17 @@ describe('0026: instruments', () => {
     // History: the batches and the orders keep their instrument and panel.
     expect(await count(db, 'SELECT 1 FROM admin.batch WHERE instrument_id = $1 AND panel_id = $2', [INSTRUMENT, PANEL])).toBe(2);
     expect(await count(db, 'SELECT 1 FROM admin."order" WHERE panel_id = $1', [PANEL])).toBe(2);
+  });
+
+  test('0039: a live profile (active or not) blocks archiving its instrument; an archived profile does not', async () => {
+    await as(db, U.owner);
+    const iid = await createInstrument('Synthetic QTOF');
+    const pid = (await one("SELECT admin.create_instrument_profile($1, 'Synthetic QTOF profile', null, null, null, null, null, null) AS id", [iid])).id;
+    await expect(archiveInstrument(iid)).rejects.toThrow('Instrument "Synthetic QTOF" is used by profile "Synthetic QTOF profile"; archive or move the profile first');
+    expect((await row('instrument', iid)).archived_at).toBe(null);
+    await db.query("SELECT admin.archive_instrument_profile($1, 'Synthetic retirement')", [pid]);
+    await archiveInstrument(iid);
+    expect((await row('instrument', iid)).archived_at).toEqual(expect.any(Date));
   });
 
   test('a panel cannot be put on an archived or unknown instrument', async () => {

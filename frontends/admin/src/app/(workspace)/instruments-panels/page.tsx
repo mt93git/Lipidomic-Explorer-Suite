@@ -41,6 +41,12 @@ const href = (query: Href, anchor?: string) => {
   return `${PATH}${search ? `?${search}` : ""}${anchor ? `#${anchor}` : ""}`;
 };
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+// 0039: a live profile on the instrument blocks archiving it, like an active panel.
+function instrumentProfiles(profiles: InstrumentProfile[], instrumentId: string): string | null {
+  const names = profiles.filter(item => item.instrumentId === instrumentId && !item.archivedAt).map(item => `"${item.name}"`).sort();
+  if (!names.length) return null;
+  return `${names.length === 1 ? "Profile" : "Profiles"} ${names.join(", ")} use${names.length === 1 ? "s" : ""} this instrument. Archive or move the profile first.`;
+}
 type Actors = Parameters<typeof DemoActor>[0]["actors"];
 
 function NameCell({ name, archivedAt, archivedReason, edit }: { name: string; archivedAt: string | null; archivedReason: string | null; edit: string | null }) {
@@ -312,7 +318,8 @@ export default async function InstrumentsPanelsPage({ searchParams }: { searchPa
           <InstrumentFields instrument={instrument} actors={demoActors} />
         </ActionForm>
         <ArchiveForm kind="instrument" id={instrument.id} actors={demoActors} action={archiveInstrumentAction}
-          blocked={instrument.activePanels ? `${plural(instrument.activePanels, "active panel")} use${instrument.activePanels === 1 ? "s" : ""} this instrument. Archive them or move them to another instrument first.` : null} />
+          blocked={instrument.activePanels ? `${plural(instrument.activePanels, "active panel")} use${instrument.activePanels === 1 ? "s" : ""} this instrument. Archive them or move them to another instrument first.`
+            : instrumentProfiles(profiles, instrument.id)} />
       </>}
       <Link className={styles.cancel} href={back}>Cancel</Link>
     </section>}

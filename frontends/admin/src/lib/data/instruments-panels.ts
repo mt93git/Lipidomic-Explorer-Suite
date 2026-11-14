@@ -7,7 +7,7 @@ import { DataError } from "../samples";
 import { applyDemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
-import { readDemoCatalog, readDemoState, writeDemoCatalog } from "./demo-store";
+import { readDemoCatalog, readDemoProfiles, readDemoState, writeDemoCatalog } from "./demo-store";
 
 // Instruments & panels (0026): lab Owner or Admin create, edit and archive them through the admin functions; other lab
 // staff read them. Live reads go through the signed-in user's token (RLS: instruments lab staff only, panels everyone);
@@ -216,6 +216,10 @@ export async function archiveInstrument(input: { id: string; reason: string; act
   if (instrument.archivedAt) throw new DataError("Instrument is already archived.");
   const using = catalog.panels.filter(panel => panel.instrumentId === input.id && !panel.archivedAt).map(panel => `"${panel.name}"`).sort();
   if (using.length) throw new DataError(`Instrument "${instrument.name}" is used by the active panel(s) ${using.join(", ")}; archive them or move them to another instrument first.`);
+  // 0039: nor while a live profile points at it (instrument-profiles imports this module, hence the late import).
+  const profiles = (await readDemoProfiles()) ?? (await import("./instrument-profiles")).seedDemoProfiles();
+  const profileNames = profiles.filter(profile => profile.instrumentId === input.id && !profile.archivedAt).map(profile => `"${profile.name}"`).sort();
+  if (profileNames.length) throw new DataError(`Instrument "${instrument.name}" is used by profile ${profileNames.join(", ")}; archive or move the profile first.`);
   await writeDemoCatalog({ ...catalog, instruments: catalog.instruments.map(item => item.id === input.id ? { ...item, archivedAt: now(), archivedReason: reason } : item) });
 }
 
