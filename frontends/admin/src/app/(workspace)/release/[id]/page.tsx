@@ -89,9 +89,9 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
   const { dataset, policy, people, me, versions, demoActors } = view;
   const progress = releaseProgress(policy, dataset.signatures, people);
   const eligible = (person: LabPerson | null | undefined) => isEligibleSigner(policy, person);
-  const signedBy = new Set(dataset.signatures.map(signature => signature.userId));
-  // Demo: whom the Release button acts as, the first eligible demo person who signed.
-  const demoReleaser = demoActors?.find(person => eligible(person) && signedBy.has(person.userId)) ?? demoActors?.find(eligible) ?? demoActors?.[0];
+  // Demo: whom the Release button acts as, the last eligible demo person who signed (the countersigner).
+  const lastSigner = [...dataset.signatures].reverse().map(item => demoActors?.find(person => person.userId === item.userId)).find(eligible);
+  const demoReleaser = lastSigner ?? demoActors?.find(eligible) ?? demoActors?.[0];
   // Whose turn: the signed-in person; in the demo, the demo releaser once the count is met, else any pending demo signer.
   const pending = dataset.status === "built" && !progress.met ? pendingSigners(policy, dataset.signatures, people) : [];
   const demoPending = demoActors ? pendingSigners(policy, dataset.signatures, demoActors) : [];
@@ -149,7 +149,7 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
         <section className={styles.card} aria-labelledby="signatures-title">
           <div className={styles.cardHead}><h2 id="signatures-title">Signatures</h2><span className={styles.count}>{progress.counted} of {progress.required}</span></div>
           <div className={styles.cardBody}>
-            <ul className={styles.signers}>
+            <ul className={styles.signers} aria-label="Signatures">
               {dataset.signatures.map(item => {
                 const person = personOf(item.userId);
                 return <li key={item.id} aria-label={`${item.name}, signed`}>

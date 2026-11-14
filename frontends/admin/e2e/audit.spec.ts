@@ -22,12 +22,12 @@ test("the audit log shows a release by its signer, filtered by entity and order,
   await page.getByRole("row", { name: /ORD048/ }).getByRole("button", { name: "Build dataset v1" }).click();
   await expect(page).toHaveURL(/\/admin\/release\/[0-9a-f-]{36}\?built=1$/, slow);
   for (const [person, role] of [["Demo Reviewer A", "reviewed"], ["Demo Reviewer B", "approved"]]) {
-    await page.getByRole("combobox", { name: /^Sign as/ }).selectOption({ label: `${person} · Admin` });
-    await page.getByRole("combobox", { name: "Role", exact: true }).selectOption(role);
-    await page.getByRole("button", { name: "Sign", exact: true }).click();
-    await expect(page.getByRole("list", { name: "Signatures" })).toContainText(person, slow);
+    const pending = page.getByRole("region", { name: "Signatures" }).getByRole("listitem", { name: new RegExp(`^${person}`) });
+    await pending.getByText("Role and note").click();
+    await pending.getByRole("combobox", { name: "Role", exact: true }).selectOption(role);
+    await pending.getByRole("button", { name: "Sign", exact: true }).click();
+    await expect(page.getByRole("list", { name: "Signatures" })).toContainText(`${person} · Admin`, slow);
   }
-  await page.getByRole("combobox", { name: /^Release as/ }).selectOption({ label: "Demo Reviewer B · Admin" });
   await page.getByRole("button", { name: "Release dataset" }).click();
   await expect(page).toHaveURL(/\?released=1$/, slow);
 
