@@ -38,7 +38,7 @@ function recorder(respond: (table: string, calls: Call[]) => Answer) {
     const calls: Call[] = [];
     queries.push({ table, calls });
     const chain: Record<string, unknown> = {};
-    for (const method of ["select", "eq", "in", "is", "not", "lt", "or", "order", "limit", "maybeSingle"]) chain[method] = (...args: unknown[]) => { calls.push([method, ...args]); return chain; };
+    for (const method of ["select", "eq", "in", "is", "not", "lt", "or", "order", "limit", "range", "maybeSingle"]) chain[method] = (...args: unknown[]) => { calls.push([method, ...args]); return chain; };
     chain.then = (resolve: (value: Answer) => unknown, reject: (reason: unknown) => unknown) => Promise.resolve(respond(table, calls)).then(resolve, reject);
     return chain;
   };
@@ -87,7 +87,7 @@ describe("live seam: admin.audit_event through the signed-in user's token", () =
     expect(page.rows[0].changes).toEqual([{ field: "Status", before: "built", after: "released" }]);
     // Names: every lab person, archived or not (a signer who left still signed); datasets and orders the page mentions.
     expect(of(db.queries, "lab_staff")).toEqual([[["select", "user_id, display_name"]]]);
-    expect(of(db.queries, "order")).toEqual([[["select", "id, code"], ["in", "id", [ORDER]]]]);
+    expect(of(db.queries, "order")).toEqual([[["select", "id, code"], ["in", "id", [ORDER]], ["order", "id"], ["range", 0, 999]]]);
   });
 
   it("filters by entity and continues below the cursor; the last page has no Older", async () => {
@@ -159,7 +159,30 @@ describe("live seam: admin.audit_event through the signed-in user's token", () =
       [],
     ]);
     expect(of(db.queries, "client")).toEqual([[["select", "id, name"]]]);
-    expect(of(db.queries, "injection")).toEqual([[["select", "client_id, batch_version!inner(batch_id)"], ["in", "batch_version.batch_id", [BATCH]], ["not", "client_id", "is", null]]]);
+    expect(of(db.queries, "injection")).toEqual([[["select", "client_id, batch_version!inner(batch_id)"], ["in", "batch_version.batch_id", [BATCH]], ["not", "client_id", "is", null], ["order", "id"], ["range", 0, 999]]]);
+  });
+
+  it("context reads stay whole past PostgREST's row cap and short in the URL: 100 ids per request, 1000 rows per page", async () => {
+    const LIB = "c1000000-0000-4000-8000-000000000002";
+    const HEME = "c1000000-0000-4000-8000-000000000001";
+    const batches = Array.from({ length: 150 }, (_, index) => `ba000000-0000-4000-8000-${String(index).padStart(12, "0")}`);
+    const audit = batches.map((batch, index) => auditRow(1000 - index, { client_id: null, entity: "batch", entity_id: batch, before: null, action: "INSERT", after: { name: `B2026-${String(index).padStart(3, "0")}`, status: "planned" } }));
+    // The first chunk's batches hold 1200 injections: LIB in the first 1000 rows, HEME only in the next page.
+    const db = recorder((table, calls) => {
+      if (table === "client") return { data: [{ id: LIB, name: "Libreros lab" }, { id: HEME, name: "Hematology group" }], error: null };
+      if (table !== "injection") return { data: table === "audit_event" ? audit : [], error: null };
+      const chunk = calls.find(call => call[0] === "in")?.[2] as string[];
+      const [, from] = calls.find(call => call[0] === "range") as [string, number, number];
+      if (chunk[0] !== batches[0]) return { data: [], error: null };
+      const rows = Array.from({ length: 1200 }, (_, index) => ({ client_id: index < 1000 ? LIB : HEME, batch_version: { batch_id: batches[49] } }));
+      return { data: rows.slice(from, from + 1000), error: null };
+    });
+    vi.mocked(createAdminClient).mockResolvedValue(db.client as never);
+    const file = await exportAuditEvents(none);
+    expect(file.rows.find(row => row.id === 1000 - 49)?.clients.map(client => client.name)).toEqual(["Hematology group", "Libreros lab"]);
+    const injections = of(db.queries, "injection");
+    expect(injections.map(calls => (calls.find(call => call[0] === "in")?.[2] as string[]).length)).toEqual([100, 100, 50]);
+    expect(injections.map(calls => calls.find(call => call[0] === "range"))).toEqual([["range", 0, 999], ["range", 1000, 1999], ["range", 0, 999]]);
   });
 
   it("export: every event of the filter, 1000 per request on the same keyset, up to the cap; the page cursor is ignored", async () => {

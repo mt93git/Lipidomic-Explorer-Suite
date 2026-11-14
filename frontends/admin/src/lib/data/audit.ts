@@ -77,6 +77,24 @@ async function read<T>(query: PromiseLike<{ data: unknown; error: DbError | null
   return data as T;
 }
 
+// An in() read over many ids (an export's thousands of events): 100 ids per request, so the request URL stays short,
+// and each request paged by RANGE_PAGE rows, so PostgREST's row cap (1000 by default) does not cut the answer.
+const IN_CHUNK = 100;
+const RANGE_PAGE = 1000;
+type Ranged = { range: (from: number, to: number) => PromiseLike<{ data: unknown; error: DbError | null }> };
+async function readIn<T>(ids: string[], query: (chunk: string[]) => Ranged): Promise<T[]> {
+  const out: T[] = [];
+  for (let start = 0; start < ids.length; start += IN_CHUNK) {
+    const chunk = ids.slice(start, start + IN_CHUNK);
+    for (let from = 0; ; from += RANGE_PAGE) {
+      const rows = (await read<T[] | null>(query(chunk).range(from, from + RANGE_PAGE - 1))) ?? [];
+      out.push(...rows);
+      if (rows.length < RANGE_PAGE) break;
+    }
+  }
+  return out;
+}
+
 // The order filter as a PostgREST or() clause; null scope = no order filter; missing = the order code matches nothing.
 async function liveScope(admin: Db, filters: AuditFilters): Promise<{ scope: string | null; order: AuditPage["order"]; missing: boolean }> {
   if (!filters.order) return { scope: null, order: null, missing: false };
@@ -133,18 +151,17 @@ export async function liveContext(admin: Db, events: AuditEvent[], session: { us
   const datasetIds = unique(events.flatMap(event => [event.entity === "dataset" ? event.entityId : null, event.entity === "signature" ? text(event.after?.dataset_id) : null]));
   const [staff, datasets] = await Promise.all([
     read<{ user_id: string; display_name: string | null }[] | null>(admin.from("lab_staff").select("user_id, display_name")),
-    datasetIds.length ? read<{ id: string; order_id: string; version: number }[] | null>(admin.from("dataset").select("id, order_id, version").in("id", datasetIds)) : Promise.resolve([]),
+    readIn<{ id: string; order_id: string; version: number }>(datasetIds, chunk => admin.from("dataset").select("id, order_id, version").in("id", chunk).order("id")),
   ]);
   const orderIds = unique([...events.flatMap(event => [event.entity === "order" ? event.entityId : null, text(event.after?.order_id)]), ...(datasets ?? []).map(row => row.order_id)]);
   // The Client column: every client's name (a handful; colours are assigned over all of them), and for batch events,
   // which carry no client, the clients with an injection in the batch (RLS: staff read every injection).
   const batchIds = unique(events.filter(event => !event.clientId).map(event => event.entity === "batch" ? event.entityId : text(event.after?.batch_id)));
   const [orders, clients, injections] = await Promise.all([
-    orderIds.length ? read<{ id: string; code: string }[] | null>(admin.from("order").select("id, code").in("id", orderIds)) : Promise.resolve([]),
+    readIn<{ id: string; code: string }>(orderIds, chunk => admin.from("order").select("id, code").in("id", chunk).order("id")),
     read<{ id: string; name: string }[] | null>(admin.from("client").select("id, name")),
-    batchIds.length
-      ? read<{ client_id: string; batch_version: { batch_id: string } | null }[] | null>(admin.from("injection").select("client_id, batch_version!inner(batch_id)").in("batch_version.batch_id", batchIds).not("client_id", "is", null))
-      : Promise.resolve([]),
+    // One row per injection (a batch holds ~100 per version), so this read is the one the row cap would cut.
+    readIn<{ client_id: string; batch_version: { batch_id: string } | null }>(batchIds, chunk => admin.from("injection").select("client_id, batch_version!inner(batch_id)").in("batch_version.batch_id", chunk).not("client_id", "is", null).order("id")),
   ]);
   const batchClients: Record<string, string[]> = {};
   for (const row of injections ?? []) {
