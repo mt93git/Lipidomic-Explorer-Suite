@@ -6,7 +6,7 @@ import { placeLabel, placeOf, placeValue, type Freezer, type FreezerCatalog } fr
 import { formatLabInstant } from "@/lib/lab-time";
 import { plural } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
-import { ALIQUOT_CODE, describeLocation, normalizeSearch, type AliquotPlans, type StoredAliquot } from "@/lib/storage";
+import { ALIQUOT_CODE, aliquotKindLabels, describeLocation, normalizeSearch, type AliquotPlans, type StoredAliquot } from "@/lib/storage";
 import { AliquotForm, type AliquotAction } from "./aliquot-form";
 import { AddFreezerForm, AddRackForm, ArchiveForm, BoxPlaceForm } from "./freezer-forms";
 import styles from "./storage.module.css";
@@ -107,6 +107,7 @@ function BoxMap({ box, slots, params, canWrite, plans }: { box: string; slots: S
         : selected ? <>
           <dl>
             <div><dt>Aliquot</dt><dd className="mono">{selected.code}</dd></div>
+            {plans?.kind && <div><dt>Type</dt><dd>{aliquotKindLabels[plans.kind]}</dd></div>}
             <div><dt>Sample</dt><dd className="mono">{selected.sampleCode}</dd></div>
             <div><dt>Client</dt><dd>{selected.clientName}</dd></div>
             <div><dt>Order</dt><dd><Link className="mono" href={`/orders/${selected.orderCode}`}>{selected.orderCode}</Link></dd></div>

@@ -174,7 +174,7 @@ describe("aliquot plans", () => {
     vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
     const calls: Record<string, unknown[][]> = {};
     const answers: Record<string, unknown> = {
-      aliquot: { data: { volume_ul: "200" }, error: null },
+      aliquot: { data: { volume_ul: "200", kind: "re_extraction" }, error: null },
       injection: { data: [
         { status: "acquired", batch_version: { archived_at: null, batch: { name: "B2026-020", status: "acquired", archived_at: null } } },
         { status: "planned", batch_version: { archived_at: null, batch: { name: "B2026-032", status: "sequence_exported", archived_at: null } } },
@@ -188,24 +188,25 @@ describe("aliquot plans", () => {
       return chain;
     };
     vi.mocked(createAdminClient).mockResolvedValue({ schema: () => ({ from }) } as never);
-    expect(await aliquotPlans(stored)).toEqual({ volumeUl: 200, nextBatch: "B2026-032" });
-    expect(calls.aliquot).toEqual([["select", "volume_ul"], ["eq", "id", "a-uuid"], ["maybeSingle"]]);
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: 200, nextBatch: "B2026-032", kind: "re_extraction" });
+    expect(calls.aliquot).toEqual([["select", "volume_ul, kind"], ["eq", "id", "a-uuid"], ["maybeSingle"]]);
     expect(calls.injection).toEqual([["select", "status, batch_version!inner(archived_at, batch!inner(name, status, archived_at))"], ["eq", "aliquot_id", "a-uuid"], ["is", "archived_at", null]]);
 
     answers.aliquot = { data: null, error: { code: "42501", message: "permission denied" } };
     answers.injection = { data: null, error: { code: "42501", message: "permission denied" } };
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: null });
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: null, kind: null });
     quiet.mockRestore();
   });
 
-  test("demo: the demo batches' planned injections of the same sample; no volume is recorded", async () => {
-    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: null });
+  test("demo: the demo batches' planned injections of the same sample; no volume is recorded; an -A1 aliquot is the original", async () => {
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: null, kind: "original" });
+    expect(await aliquotPlans({ ...stored, code: "ORD041-S001-A2" })).toMatchObject({ kind: "re_extraction" });
     const injection = { seq: 1, sample_type: "Unknown", sample_name: "B2026-034_001_ORD041-S001", sampleCode: "ORD041-S001", orderCode: "ORD041", status: "planned" };
     await writeDemoState({ ...emptyDemoState(), batches: [
       { id: "b1", name: "B2026-034", panel: "Example panel", status: "planned", createdAt: "2026-11-10T15:00:00Z", createdBy: "Demo Operator", rules: {} as never, injections: [injection as never], orderCodes: ["ORD041"] },
     ] });
-    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: "B2026-034" });
+    expect(await aliquotPlans(stored)).toEqual({ volumeUl: null, nextBatch: "B2026-034", kind: "original" });
   });
 
   test("a client session reads nothing", async () => {

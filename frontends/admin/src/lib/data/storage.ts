@@ -6,7 +6,7 @@ import { applyDemoState } from "../samples-demo";
 import { DataError } from "../samples";
 import { requireWorkspace } from "../session";
 import {
-  byBox, byPosition, demoMove, demoPlace, demoRemove, demoStorageRows, initialDemoPlacements, nextBatchOf,
+  byBox, byPosition, demoMove, isAliquotKind, kindFromCode, demoPlace, demoRemove, demoStorageRows, initialDemoPlacements, nextBatchOf,
   type AliquotPlans, type BoxSummary, type DemoPlacement, type StoredAliquot,
 } from "../storage";
 import { createAdminClient } from "../supabase/server";
@@ -99,7 +99,7 @@ export async function listUnplaced(): Promise<StoredAliquot[]> {
   return (await demoRows()).filter(row => !row.location && !row.archivedReason && row.orderStage >= 1).map(strip);
 }
 
-// The selected position's extra lines (a09): the aliquot's recorded volume and the batch it is planned in next. Live:
+// The selected position's extra lines (a09): the aliquot's kind (0041), recorded volume and the batch it is planned in next. Live:
 // admin.aliquot and admin.injection → batch_version → batch with the signed-in token (RLS: lab staff read them). A
 // failed read leaves the lines out instead of failing the screen. Demo: the demo batches' Unknowns by sample code
 // (the demo's aliquots record no volume).
@@ -109,6 +109,7 @@ export async function aliquotPlans(item: StoredAliquot): Promise<AliquotPlans> {
     const state = await readDemoState();
     return {
       volumeUl: null,
+      kind: kindFromCode(item.code),
       nextBatch: nextBatchOf((state.batches ?? []).flatMap(batch => batch.injections
         .filter(row => row.sampleCode === item.sampleCode)
         .map(row => ({ batch: batch.name, batchStatus: batch.status, batchArchived: false, versionArchived: false, injectionStatus: row.status })))),
@@ -117,16 +118,20 @@ export async function aliquotPlans(item: StoredAliquot): Promise<AliquotPlans> {
   const db = await admin();
   type PlanRow = { status: string; batch_version: { archived_at: string | null; batch: { name: string; status: string; archived_at: string | null } | null } | null };
   const [aliquot, injections] = await Promise.all([
-    db.from("aliquot").select("volume_ul").eq("id", item.id).maybeSingle(),
+    db.from("aliquot").select("volume_ul, kind").eq("id", item.id).maybeSingle(),
     db.from("injection").select("status, batch_version!inner(archived_at, batch!inner(name, status, archived_at))").eq("aliquot_id", item.id).is("archived_at", null),
   ]);
   if (aliquot.error || injections.error) console.error("[storage] aliquot plans failed", { code: (aliquot.error ?? injections.error)?.code });
-  const volume = (aliquot.data as { volume_ul: number | string | null } | null)?.volume_ul;
+  const row = aliquot.data as { volume_ul: number | string | null; kind?: string | null } | null;
+  const volume = row?.volume_ul;
   const rows = ((injections.error ? [] : injections.data ?? []) as unknown as PlanRow[]).flatMap(row => row.batch_version?.batch ? [{
     batch: row.batch_version.batch.name, batchStatus: row.batch_version.batch.status, batchArchived: !!row.batch_version.batch.archived_at,
     versionArchived: !!row.batch_version.archived_at, injectionStatus: row.status,
   }] : []);
-  return { volumeUl: volume === null || volume === undefined || Number.isNaN(Number(volume)) ? null : Number(volume), nextBatch: nextBatchOf(rows) };
+  return {
+    volumeUl: volume === null || volume === undefined || Number.isNaN(Number(volume)) ? null : Number(volume), nextBatch: nextBatchOf(rows),
+    kind: isAliquotKind(row?.kind) ? row.kind : null,
+  };
 }
 
 function strip(row: StoredAliquot & { orderStage?: number }): StoredAliquot {

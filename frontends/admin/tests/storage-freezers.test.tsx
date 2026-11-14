@@ -33,7 +33,7 @@ beforeEach(() => {
   vi.mocked(listBox).mockResolvedValue([item("ORD046-S001-A1", "A1"), item("ORD046-S002-A1", "A2")]);
   vi.mocked(listUnplaced).mockResolvedValue([]);
   vi.mocked(searchAliquots).mockResolvedValue([]);
-  vi.mocked(aliquotPlans).mockResolvedValue({ volumeUl: null, nextBatch: null });
+  vi.mocked(aliquotPlans).mockResolvedValue({ volumeUl: null, nextBatch: null, kind: "original" });
   vi.mocked(freezerCatalog).mockResolvedValue({ ...catalogView(initialDemoFreezers()), canManage: true });
 });
 

@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.mocked(listBox).mockResolvedValue(box);
   vi.mocked(listUnplaced).mockResolvedValue([]);
   vi.mocked(searchAliquots).mockResolvedValue([]);
-  vi.mocked(aliquotPlans).mockResolvedValue({ volumeUl: null, nextBatch: null });
+  vi.mocked(aliquotPlans).mockResolvedValue({ volumeUl: null, nextBatch: null, kind: null });
 });
 
 describe("nextBatchOf: the batch an aliquot will be injected in next", () => {
@@ -60,12 +60,14 @@ describe("storage page: Print box map and the selected panel", () => {
   });
 
   it("shows Volume and Next batch for the selected aliquot when they are known", async () => {
-    vi.mocked(aliquotPlans).mockResolvedValue({ volumeUl: 200, nextBatch: "B2026-032" });
+    vi.mocked(aliquotPlans).mockResolvedValue({ volumeUl: 200, nextBatch: "B2026-032", kind: "re_extraction" });
     await page({ box: "F1-R1-B02", slot: "C4" });
     expect(aliquotPlans).toHaveBeenCalledWith(box[0]);
     const panel = screen.getByRole("complementary", { name: "Selected · C4" });
     const terms = within(panel).getAllByRole("term").map(term => term.textContent);
-    expect(terms).toEqual(["Aliquot", "Sample", "Client", "Order", "Volume", "Since", "Next"]);
+    expect(terms).toEqual(["Aliquot", "Type", "Sample", "Client", "Order", "Volume", "Since", "Next"]);
+    // a09's Type row (0041): original or re-extraction.
+    expect(within(panel).getByText("Re-extraction")).toBeVisible();
     expect(within(panel).getByText("200 µL")).toBeVisible();
     expect(within(panel).getByRole("link", { name: "Batch B2026-032" })).toHaveAttribute("href", "/batch-run/B2026-032");
   });

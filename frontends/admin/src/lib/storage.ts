@@ -25,9 +25,13 @@ export const byBox = (a: BoxSummary, b: BoxSummary) => natural.compare(a.box, b.
 export const describeLocation = (location: StorageLocation) => `box ${location.box}, position ${location.position}`;
 
 // a09's selected position: what is known about the aliquot beyond where it is. volumeUl: admin.aliquot.volume_ul when
-// recorded. nextBatch: the batch it will be injected in next. (The prototype's "Type", original or re-extraction, is
-// not recorded anywhere, so it is not shown.)
-export type AliquotPlans = { volumeUl: number | null; nextBatch: string | null };
+// recorded. nextBatch: the batch it will be injected in next. kind: admin.aliquot.kind (0041), the prototype's "Type".
+export type AliquotKind = "original" | "re_extraction";
+export const aliquotKindLabels: Record<AliquotKind, string> = { original: "Original", re_extraction: "Re-extraction" };
+export const isAliquotKind = (value: unknown): value is AliquotKind => value === "original" || value === "re_extraction";
+// The demo's rule, as assign_aliquot_code's: a sample's first aliquot (-A1) is the original, a later one a re-extraction.
+export const kindFromCode = (code: string): AliquotKind => /-A1$/.test(code) ? "original" : "re_extraction";
+export type AliquotPlans = { volumeUl: number | null; nextBatch: string | null; kind: AliquotKind | null };
 export type PlannedInjection = { batch: string; batchStatus: string; batchArchived: boolean; versionArchived: boolean; injectionStatus: string };
 // The first (in name order) live batch, planned or with its sequence exported, in which the aliquot's injection is
 // still planned. Acquired and later batches, archived batches or versions and done injections do not count.
