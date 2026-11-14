@@ -39,10 +39,14 @@ type RackRow = { id: string; freezer_id: string; name: string };
 type LocationRow = { box: string; freezer_id: string | null; rack_id: string | null };
 const natural = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
+// Owner or Admin. The demo's example catalog is editable by the demo person (an Operator), as the demo's instruments
+// and panels are, so the screen can be tried; live, the database checks the role again.
+const manages = (role: string | null | undefined) => !live() || allows("freezers", labRoleKey(role));
+
 // The live freezers with their live racks, every box's place, and whether the signed-in person manages the list.
 export async function freezerCatalog(): Promise<FreezerCatalog & { canManage: boolean }> {
   const session = await requireWorkspace("staff");
-  const canManage = allows("freezers", labRoleKey(session.role));
+  const canManage = manages(session.role);
   if (!live()) return { ...catalogView(await demoState()), canManage };
   const db = await admin();
   const [freezers, racks, boxes] = await Promise.all([
@@ -72,7 +76,7 @@ export async function freezerCatalog(): Promise<FreezerCatalog & { canManage: bo
 
 async function requireManager() {
   const session = await requireWorkspace("staff");
-  if (!allows("freezers", labRoleKey(session.role))) throw new DataError("Only a lab Owner or Admin may change the freezer list.");
+  if (!manages(session.role)) throw new DataError("Only a lab Owner or Admin may change the freezer list.");
 }
 async function demoWrite(change: (state: DemoFreezerState) => DemoFreezerState) {
   await writeDemoFreezers(change(await demoState()));
