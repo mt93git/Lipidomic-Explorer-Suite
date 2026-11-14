@@ -13,7 +13,9 @@ type Source = { headers: string[] | null; cells: string[][]; mapping: Mapping; e
 
 // The grid's columns in the prototype's order; the lab's code comes first and is never typed.
 const gridFields: SampleField[] = ["client_sample_id", "full_name", "group1_term", "group2_term", "replicate_term", "patient_term", "time_point_term", "matrix", "volume_ul"];
-const shortLabels: Partial<Record<SampleField, string>> = { client_sample_id: "Client ID", replicate_term: "Replicate", patient_term: "Patient", time_point_term: "TimePoint", volume_ul: "Volume µL" };
+const shortLabels: Partial<Record<SampleField, ReactNode>> = { client_sample_id: "Client ID", replicate_term: "Replicate", patient_term: "Patient", time_point_term: "TimePoint", volume_ul: <>Volume <span className="unit">µL</span></> };
+// Wide enough for the usual labels ("Apoptotic cells") without scrolling inside a cell.
+const gridWidths: Record<SampleField, number> = { client_sample_id: 112, full_name: 140, group1_term: 168, group2_term: 120, replicate_term: 84, patient_term: 84, time_point_term: 96, matrix: 96, volume_ul: 80 };
 const columnOf = (field: SampleField) => columns.find(column => column.field === field) ?? columns[0];
 const monoFields = new Set<SampleField>(gridFields);
 const fixLabel = (count: number) => count === 1 ? "Fix it" : count === 2 ? "Fix both" : `Fix all ${count}`;
@@ -110,7 +112,7 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
       </div>
     </div>
 
-    {children}
+    {rows.length === 0 && children}
 
     {mapOpen && source && <section id={`${idBase}-map`} className="check-card map-columns" aria-labelledby={`${idBase}-map-title`}>
       <h2 id={`${idBase}-map-title`} className="check-card-title">Map columns</h2>
@@ -160,7 +162,7 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
               return <td key={field} className={`cell${tone ? ` ${tone}` : ""}`}>
                 <input value={row.draft[field]} aria-label={`Row ${index + 1} ${column.label}`} aria-invalid={tone === "invalid" ? true : undefined} aria-describedby={own.length ? messageId : undefined}
                   className={monoFields.has(field) ? "mono" : undefined} inputMode={field === "volume_ul" ? "decimal" : undefined} placeholder={tone ? "—" : undefined}
-                  autoComplete="off" spellCheck={false} style={{ width: column.width }} onChange={event => update(index, field, event.target.value)} />
+                  autoComplete="off" spellCheck={false} style={{ width: gridWidths[field] }} onChange={event => update(index, field, event.target.value)} />
                 {own.length > 0 && <span id={messageId} className="sr-only">{own.map(issue => issue.message).join(" ")}</span>}
               </td>;
             })}
@@ -205,6 +207,8 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
         </section>
       </div>
     </>}
+
+    {rows.length > 0 && children}
 
     {rows.length ? <details className="paste-more"><summary>Paste more rows</summary>{pasteBox}</details> : pasteBox}
 
