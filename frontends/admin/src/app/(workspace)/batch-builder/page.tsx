@@ -21,6 +21,7 @@ type Params = Record<string, string | string[] | undefined>;
 
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: LAB_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const labels: [keyof BuilderErrors, string, string][] = [["panelId", "Panel", "batch-panelId"], ["samples", "Samples", "batch-samples"], ["blanksAtStart", "Blanks at start", "batch-blanksAtStart"],
+  ["blanksBetween", "Blanks between samples", "batch-blanksBetween"], ["blanksBetweenEvery", "After every (samples)", "batch-blanksBetweenEvery"],
   ["pooledQcEvery", "Pooled QC every", "batch-pooledQcEvery"], ["minutesPerInjection", "Minutes per injection", "batch-minutesPerInjection"]];
 
 function searchOf(params: Params): URLSearchParams {
@@ -32,6 +33,7 @@ function searchOf(params: Params): URLSearchParams {
 // The same fields again, as hidden inputs, for the save form: the action reads them like the preview did.
 function Carried({ values }: { values: BuilderValues }) {
   const fields: [string, string | number | boolean][] = [["panelId", values.panelId], ["blanksAtStart", values.blanksAtStart], ["pooledQcEvery", values.pooledQcEvery],
+    ["blanksBetween", values.blanksBetween], ["blanksBetweenEvery", values.blanksBetweenEvery],
     ["minutesPerInjection", values.minutesPerInjection], ["seed", values.seed], ["plateOrder", values.plateOrder]];
   return <>
     {values.sampleIds.map(id => <input key={id} type="hidden" name="sample" value={id} />)}
@@ -131,6 +133,20 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
             <input id="batch-pooledQcEvery" name="pooledQcEvery" type="number" min={0} step={1} inputMode="numeric" defaultValue={value("pooledQcEvery")} {...describe("pooledQcEvery")} />
             <small className="field-hint">Samples between QC injections; 0 means none.</small>
             {problem("pooledQcEvery")}
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="field">
+            <label className="field-label" htmlFor="batch-blanksBetween">Blanks between samples</label>
+            <input id="batch-blanksBetween" name="blanksBetween" type="number" min={0} step={1} inputMode="numeric" defaultValue={value("blanksBetween")} {...describe("blanksBetween")} />
+            <small className="field-hint">Blanks placed after every group of samples below; 0 means none.</small>
+            {problem("blanksBetween")}
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="batch-blanksBetweenEvery">After every (samples)</label>
+            <input id="batch-blanksBetweenEvery" name="blanksBetweenEvery" type="number" min={0} step={1} inputMode="numeric" defaultValue={value("blanksBetweenEvery")} {...describe("blanksBetweenEvery")} />
+            <small className="field-hint">Only between samples, never after the last one; 0 with 0 blanks.</small>
+            {problem("blanksBetweenEvery")}
           </div>
         </div>
         <div className={styles.checks}>

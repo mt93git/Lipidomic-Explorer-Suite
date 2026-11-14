@@ -12,25 +12,25 @@ export type PlateOrder = "column-major" | "row-major";
 
 export type BuilderValues = {
   panelId: string; sampleIds: string[];
-  blanksAtStart: number; pooledQcEvery: number; blankAfterQc: boolean; qcAtEnd: boolean; randomize: boolean; seed: string;
+  blanksAtStart: number; pooledQcEvery: number; blanksBetween: number; blanksBetweenEvery: number; blankAfterQc: boolean; qcAtEnd: boolean; randomize: boolean; seed: string;
   minutesPerInjection: number; plateOrder: PlateOrder;
 };
-// Batch builder's own defaults; the active instrument profile's blank and QC rules replace blanksAtStart and
-// pooledQcEvery (instrument-profiles.ts builderDefaultsFrom).
+// Batch builder's own defaults; the active instrument profile's blank and QC rules replace blanksAtStart,
+// blanksBetween / blanksBetweenEvery and pooledQcEvery (instrument-profiles.ts builderDefaultsFrom).
 export const builderDefaults = {
-  blanksAtStart: 1, pooledQcEvery: 6, blankAfterQc: false, qcAtEnd: true, randomize: true, seed: "",
+  blanksAtStart: 1, pooledQcEvery: 6, blanksBetween: 0, blanksBetweenEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: true, seed: "",
   minutesPerInjection: 12, plateOrder: "column-major" as PlateOrder,
 };
 export const PLATE = "Plate 1";
 
-export type BuilderField = "panelId" | "samples" | "blanksAtStart" | "pooledQcEvery" | "minutesPerInjection";
+export type BuilderField = "panelId" | "samples" | "blanksAtStart" | "pooledQcEvery" | "blanksBetween" | "blanksBetweenEvery" | "minutesPerInjection";
 export type BuilderErrors = Partial<Record<BuilderField, string>>;
 type Source = { get(name: string): FormDataEntryValue | null; getAll(name: string): FormDataEntryValue[] };
 
 const text = (source: Source, name: string) => String(source.get(name) ?? "").trim();
 
 // "" (or a missing field) keeps the default; anything else must be a whole number, 0 or more.
-function count(source: Source, name: "blanksAtStart" | "pooledQcEvery", errors: BuilderErrors, defaults: typeof builderDefaults): number {
+function count(source: Source, name: "blanksAtStart" | "pooledQcEvery" | "blanksBetween" | "blanksBetweenEvery", errors: BuilderErrors, defaults: typeof builderDefaults): number {
   const raw = text(source, name);
   if (!raw) return defaults[name];
   const value = Number(raw);
@@ -51,6 +51,11 @@ export function parseBuilderForm(source: Source, available: readonly BuilderSamp
   else if (!sampleIds.length) errors.samples = "The selected samples are no longer available; choose again";
   const blanksAtStart = count(source, "blanksAtStart", errors, defaults);
   const pooledQcEvery = count(source, "pooledQcEvery", errors, defaults);
+  const blanksBetween = count(source, "blanksBetween", errors, defaults);
+  const blanksBetweenEvery = count(source, "blanksBetweenEvery", errors, defaults);
+  if (!errors.blanksBetween && !errors.blanksBetweenEvery && (blanksBetween === 0) !== (blanksBetweenEvery === 0)) {
+    errors.blanksBetweenEvery = "Enter both numbers (blanks, and after every how many samples), or 0 for both";
+  }
   const minutesRaw = text(source, "minutesPerInjection");
   const minutesPerInjection = minutesRaw ? Number(minutesRaw) : builderDefaults.minutesPerInjection;
   if (!Number.isFinite(minutesPerInjection) || minutesPerInjection <= 0) errors.minutesPerInjection = "Enter minutes greater than 0";
@@ -58,7 +63,7 @@ export function parseBuilderForm(source: Source, available: readonly BuilderSamp
   return {
     ok: true,
     value: {
-      panelId, sampleIds, blanksAtStart, pooledQcEvery, minutesPerInjection,
+      panelId, sampleIds, blanksAtStart, pooledQcEvery, blanksBetween, blanksBetweenEvery, minutesPerInjection,
       blankAfterQc: source.get("blankAfterQc") !== null, qcAtEnd: source.get("qcAtEnd") !== null, randomize: source.get("randomize") !== null,
       seed: String(source.get("seed") ?? ""), plateOrder: text(source, "plateOrder") === "row-major" ? "row-major" : "column-major",
     },
@@ -74,8 +79,8 @@ export function planBatch(values: BuilderValues, available: readonly BuilderSamp
   const result = buildBatch({
     samples: available.filter(item => chosen.has(item.id)).map(item => ({ code: item.code, FullName: item.fullName, client_id: item.clientId, aliquot_id: item.id })),
     rules: {
-      blanksAtStart: values.blanksAtStart, pooledQcEvery: values.pooledQcEvery, blankAfterQc: values.blankAfterQc,
-      qcAtEnd: values.qcAtEnd, randomize: values.randomize, seed: values.seed,
+      blanksAtStart: values.blanksAtStart, pooledQcEvery: values.pooledQcEvery, blanksBetween: values.blanksBetween,
+      blanksBetweenEvery: values.blanksBetweenEvery, blankAfterQc: values.blankAfterQc, qcAtEnd: values.qcAtEnd, randomize: values.randomize, seed: values.seed,
     },
     plateLayout: { plate: PLATE, order: values.plateOrder },
     minutesPerInjection: values.minutesPerInjection,
@@ -123,14 +128,14 @@ export function previewMismatch(source: Source, plan: Pick<Plan, "injections">):
 
 // admin.create_batch p_rules, stored on batch_version.rules: everything needed to explain or repeat the plan.
 export type StoredRules = {
-  rules: { blanksAtStart: number; pooledQcEvery: number; blankAfterQc: boolean; qcAtEnd: boolean; randomize: boolean; seed: string };
+  rules: { blanksAtStart: number; pooledQcEvery: number; blanksBetween: number; blanksBetweenEvery: number; blankAfterQc: boolean; qcAtEnd: boolean; randomize: boolean; seed: string };
   plateLayout: { plate: string; order: PlateOrder }; minutesPerInjection: number;
 };
 export function rulesRecord(values: BuilderValues): StoredRules {
   return {
     rules: {
-      blanksAtStart: values.blanksAtStart, pooledQcEvery: values.pooledQcEvery, blankAfterQc: values.blankAfterQc,
-      qcAtEnd: values.qcAtEnd, randomize: values.randomize, seed: values.seed,
+      blanksAtStart: values.blanksAtStart, pooledQcEvery: values.pooledQcEvery, blanksBetween: values.blanksBetween,
+      blanksBetweenEvery: values.blanksBetweenEvery, blankAfterQc: values.blankAfterQc, qcAtEnd: values.qcAtEnd, randomize: values.randomize, seed: values.seed,
     },
     plateLayout: { plate: PLATE, order: values.plateOrder }, minutesPerInjection: values.minutesPerInjection,
   };

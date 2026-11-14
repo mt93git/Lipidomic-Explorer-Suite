@@ -25,7 +25,7 @@ const sample = (n: number, full_name = `Synthetic_${n}`): DemoSample => ({
   full_name, client_sample_id: null, group1_term: null, group2_term: null, replicate_term: null, patient_term: null, time_point_term: null, matrix: null, volume_ul: null,
 });
 const values = (ids: string[]): BuilderValues => ({
-  panelId: "Panel A · broad lipidome", sampleIds: ids, blanksAtStart: 1, pooledQcEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: "", minutesPerInjection: 12, plateOrder: "column-major",
+  panelId: "Panel A · broad lipidome", sampleIds: ids, blanksAtStart: 1, pooledQcEvery: 0, blanksBetween: 0, blanksBetweenEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: "", minutesPerInjection: 12, plateOrder: "column-major",
 });
 const plan = async (ids: string[]) => {
   const samples = await listBuilderSamples();

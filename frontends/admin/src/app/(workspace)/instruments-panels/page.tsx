@@ -141,7 +141,7 @@ function RulesCard({ profile, canEdit, actors }: { profile: InstrumentProfile; c
   const { rules } = profile;
   const editable = canEdit && !profile.archivedAt;
   const text = rulesText(rules);
-  const note = <p className={styles.rulesNote}>0 means none. Batch builder pre-fills blanks at the start and pooled QC from the active profile (they can still be changed per batch); it does not place blanks between samples, and the QC thresholds are for QC review.</p>;
+  const note = <p className={styles.rulesNote}>0 means none. Batch builder pre-fills blanks at the start, blanks between samples and pooled QC from the active profile (they can still be changed per batch); the QC thresholds are for QC review.</p>;
   return <section className={`panel ${styles.card} ${styles.rules}`} aria-labelledby="rules-title">
     <div className={styles.cardHead}><h2 id="rules-title">Blank and QC rules</h2></div>
     <div className={styles.cardBody}>

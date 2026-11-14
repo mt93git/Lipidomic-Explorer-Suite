@@ -14,7 +14,7 @@ const sample = (orderCode: string, n: number): DemoSample => ({
 const withSamples = (): DemoState => ({ ...emptyDemoState(), samples: [sample("ORD041", 1), sample("ORD041", 2), sample("ORD048", 1)] });
 const orders = (state: DemoState) => applyDemoState(demoOrders, state);
 const values = (ids: string[]): BuilderValues => ({
-  panelId: "Panel A · broad lipidome", sampleIds: ids, blanksAtStart: 1, pooledQcEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: "", minutesPerInjection: 12, plateOrder: "column-major",
+  panelId: "Panel A · broad lipidome", sampleIds: ids, blanksAtStart: 1, pooledQcEvery: 0, blanksBetween: 0, blanksBetweenEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: "", minutesPerInjection: 12, plateOrder: "column-major",
 });
 const injectionsFor = (state: DemoState, ids: string[]) => {
   const list = demoBuilderSamples(state, orders(state), demoClients);

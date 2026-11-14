@@ -226,9 +226,10 @@ describe("instrument profiles: rules and Batch builder defaults", () => {
       .toMatchObject({ start: "1 blank", between: "1 blank after every 1 sample", pooledQc: "every 1 sample" });
   });
 
-  it("Batch builder takes blanks at the start and pooled QC from the active profile and keeps the rest of its own defaults", () => {
+  it("Batch builder takes blanks at the start, blanks between samples and pooled QC from the active profile and keeps the rest of its own defaults", () => {
     expect(builderDefaultsFrom(null)).toBe(builderDefaults);
-    expect(builderDefaultsFrom({ rules: { ...defaultRules, blanksAtStart: 4, pooledQcEvery: 0 } })).toEqual({ ...builderDefaults, blanksAtStart: 4, pooledQcEvery: 0 });
+    expect(builderDefaultsFrom({ rules: { ...defaultRules, blanksAtStart: 4, pooledQcEvery: 0, blanksBetween: 5, blanksBetweenEvery: 4 } }))
+      .toEqual({ ...builderDefaults, blanksAtStart: 4, pooledQcEvery: 0, blanksBetween: 5, blanksBetweenEvery: 4 });
   });
 });
 
@@ -236,7 +237,7 @@ describe("instrument profiles: data seam (demo)", () => {
   it("seeds one active example profile on the demo triple quadrupole; Batch builder starts from its rules", async () => {
     const list = await profiles.getProfiles();
     expect(list.map(item => [item.name, item.instrumentName, item.isActive])).toEqual([[PROFILE_NAME, "Demo QQQ 1", true]]);
-    expect(await profiles.activeBuilderDefaults()).toEqual({ ...builderDefaults, blanksAtStart: 4, pooledQcEvery: 0 });
+    expect(await profiles.activeBuilderDefaults()).toEqual({ ...builderDefaults, blanksAtStart: 4, pooledQcEvery: 0, blanksBetween: 5, blanksBetweenEvery: 4 });
   });
 
   it("an Owner or Admin adds, edits, sets rules and activates; an Operator is refused; names are unique", async () => {
@@ -273,7 +274,7 @@ describe("instrument profiles: data seam (demo)", () => {
 });
 
 describe("instrument profiles: data seam (live)", () => {
-  const live = (role: string, active: { data: unknown; error: unknown } = { data: { blanks_at_start: 2, pooled_qc_every: 8 }, error: null }) => {
+  const live = (role: string, active: { data: unknown; error: unknown } = { data: { blanks_at_start: 2, pooled_qc_every: 8, blanks_between: 1, blanks_between_every: 6 }, error: null }) => {
     state.mock = false;
     state.session = staff(role, false);
     const rpc = vi.fn(async () => ({ data: "new-id", error: null }));
@@ -291,7 +292,7 @@ describe("instrument profiles: data seam (live)", () => {
       rules: { blanksAtStart: 2, startBlankNote: "Synthetic solvent", blanksBetween: 0, blanksBetweenEvery: 0, pooledQcEvery: 8, pooledQcNote: null, qcThresholds: null },
     }]);
     expect(from).toHaveBeenCalledWith("instrument_profile");
-    expect(await profiles.activeBuilderDefaults()).toEqual({ ...builderDefaults, blanksAtStart: 2, pooledQcEvery: 8 });
+    expect(await profiles.activeBuilderDefaults()).toEqual({ ...builderDefaults, blanksAtStart: 2, pooledQcEvery: 8, blanksBetween: 1, blanksBetweenEvery: 6 });
     expect(eq).toHaveBeenCalledWith("is_active", true);
   });
 
@@ -373,6 +374,8 @@ describe("page", () => {
     expect(within(rules).getByLabelText("Pooled QC note")).toHaveValue("recommended every 8");
     expect(within(rules).getByLabelText("QC thresholds")).toHaveValue("CV 20 % · ISTD ±30 % · S/N ≥ 10");
     expect(within(rules).getByRole("button", { name: "Save rules" })).toBeInTheDocument();
+    expect(rules).toHaveTextContent("Batch builder pre-fills blanks at the start, blanks between samples and pooled QC from the active profile");
+    expect(rules).not.toHaveTextContent(/does not place blanks between samples/);
     const instruments = screen.getByRole("table", { name: "Instruments" });
     expect(within(instruments).getAllByRole("columnheader").map(cell => cell.textContent)).toEqual(["Instrument", "Model", "Serial number", "Active panels"]);
     expect(screen.getByRole("link", { name: "Add panel" })).toHaveAttribute("href", "/instruments-panels?panel=new#panel-form");

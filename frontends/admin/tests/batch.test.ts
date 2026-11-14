@@ -122,6 +122,37 @@ describe("batch engine", () => {
     });
   });
 
+  it("places N blanks after every M samples, between samples only (none after the last), named on from the start blanks", () => {
+    const value = input(9, { blanksAtStart: 1, blanksBetween: 2, blanksBetweenEvery: 4 });
+    const result = buildBatch(value);
+    expect(result.validationMessages).toEqual([]);
+    expect(types(value)).toEqual([
+      "Blank", "Unknown", "Unknown", "Unknown", "Unknown", "Blank", "Blank", "Unknown", "Unknown", "Unknown", "Unknown", "Blank", "Blank", "Unknown",
+    ]);
+    expect(result.injections.filter(row => row.sample_type === "Blank").map(row => [row.seq, row.sample_name, row.vial]))
+      .toEqual([[1, "Blank_001", "A1"], [6, "Blank_002", "F1"], [7, "Blank_003", "G1"], [12, "Blank_004", "D2"], [13, "Blank_005", "E2"]]);
+    expect(types(input(8, { blanksBetween: 1, blanksBetweenEvery: 4 }))).toEqual([
+      "Unknown", "Unknown", "Unknown", "Unknown", "Blank", "Unknown", "Unknown", "Unknown", "Unknown",
+    ]);
+    expect(result.estimatedRunTimeMinutes).toBe(14 * 2.5);
+  });
+
+  it("puts the interval QC (and its blank) first, then the blanks between samples; 0 turns the rule off", () => {
+    expect(types(input(8, { pooledQcEvery: 4, qcAtEnd: true, blanksBetween: 1, blanksBetweenEvery: 4 }))).toEqual([
+      "Unknown", "Unknown", "Unknown", "Unknown", "Quality Control", "Blank", "Unknown", "Unknown", "Unknown", "Unknown", "Quality Control",
+    ]);
+    expect(types(input(4, { blanksBetween: 0, blanksBetweenEvery: 0 }))).toEqual(["Unknown", "Unknown", "Unknown", "Unknown"]);
+    expect(types(input(4, { blanksBetween: 1, blanksBetweenEvery: 1 }))).toEqual(["Unknown", "Blank", "Unknown", "Blank", "Unknown", "Blank", "Unknown"]);
+  });
+
+  it("counts the blanks between samples toward the 96 wells, and needs both numbers or neither", () => {
+    expect(buildBatch(input(90, { blanksBetween: 1, blanksBetweenEvery: 10 })).validationMessages)
+      .toEqual([{ code: "plate_overflow", message: expect.stringContaining("98") }]);
+    for (const rules of [{ blanksBetween: 1, blanksBetweenEvery: 0 }, { blanksBetween: 0, blanksBetweenEvery: 3 }, { blanksBetween: -1, blanksBetweenEvery: 2 }]) {
+      expect(buildBatch(input(4, rules)).validationMessages.map(message => message.code)).toEqual(["invalid_rules"]);
+    }
+  });
+
   it("estimates minutes from every injection including controls", () => {
     expect(buildBatch(input(3, { blanksAtStart: 1, pooledQcEvery: 2, blankAfterQc: true, qcAtEnd: true })).estimatedRunTimeMinutes).toBe(20);
   });
