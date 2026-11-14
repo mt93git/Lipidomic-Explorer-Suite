@@ -37,7 +37,8 @@ export const cleanKits = (kits: string[]) => [...new Set(kits.map(kit => kit.tri
 export const parseKits = (text: string) => cleanKits(text.split(/[,\n]/));
 const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
 
-async function manager(actorId?: string) {
+// Owner or Admin (the demo acts as the chosen demo person); instrument profiles (0035) use the same check.
+export async function manager(actorId?: string) {
   const session = await requireWorkspace("staff");
   let role = session.role.toLowerCase();
   if (!live() && actorId) {

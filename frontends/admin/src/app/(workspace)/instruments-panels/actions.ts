@@ -5,6 +5,8 @@ import { redirectAfterAction } from "@/lib/action-redirect";
 import {
   archiveInstrument, archivePanel, createInstrument, createPanel, DataError, parseKits, setPanelRate, updateInstrument, updatePanel,
 } from "@/lib/data/instruments-panels";
+import { activateProfile, archiveProfile, createProfile, setProfileRules, updateProfile } from "@/lib/data/instrument-profiles";
+import { parseRulesForm, settingKeys } from "@/lib/instrument-profiles";
 import { getAppSession } from "@/lib/session";
 
 // Each action re-checks the session, calls the seam (which checks Owner or Admin; the database functions check again)
@@ -65,4 +67,28 @@ export async function setRateAction(_previous: CatalogActionState, form: FormDat
     panelId: value(form, "panelId"), ratePerSample: amount(form, "ratePerSample", "Rate per sample"), currency: value(form, "currency") || null,
     minutesPerInjection: amount(form, "minutesPerInjection", "Minutes per injection"), actorId: actor(form),
   }), "rate-saved");
+}
+
+// ---------------------------------------------------------------- instrument profiles (0035)
+const profile = (form: FormData) => ({
+  name: value(form, "name"), instrumentId: value(form, "instrumentId"), actorId: actor(form),
+  settings: Object.fromEntries(settingKeys.map(key => [key, value(form, key)])),
+});
+export async function createProfileAction(_previous: CatalogActionState, form: FormData) {
+  return run(() => createProfile(profile(form)), "profile-created");
+}
+export async function updateProfileAction(_previous: CatalogActionState, form: FormData) {
+  return run(() => updateProfile({ ...profile(form), id: value(form, "id") }), "profile-saved");
+}
+// The rules form's own checks come back as its message, like a database refusal.
+export async function saveRulesAction(_previous: CatalogActionState, form: FormData) {
+  const parsed = parseRulesForm(form);
+  if (!parsed.ok) { await authorize(); return { error: parsed.error }; }
+  return run(() => setProfileRules({ id: value(form, "id"), rules: parsed.value, actorId: actor(form) }), "rules-saved");
+}
+export async function activateProfileAction(_previous: CatalogActionState, form: FormData) {
+  return run(() => activateProfile({ id: value(form, "id"), actorId: actor(form) }), "profile-activated");
+}
+export async function archiveProfileAction(_previous: CatalogActionState, form: FormData) {
+  return run(() => archiveProfile({ id: value(form, "id"), reason: value(form, "reason"), actorId: actor(form) }), "profile-archived");
 }

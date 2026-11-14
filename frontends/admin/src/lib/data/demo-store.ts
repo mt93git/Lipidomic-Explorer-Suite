@@ -76,7 +76,7 @@ export async function writeDemoDeliverables(deliverables: DemoDeliverable[]) {
 }
 
 // ---------------------------------------------------------------- Instruments & panels (0026)
-// Same pattern; undefined until the first write, when the example catalog (seedDemoCatalog) is used.
+// Kept in the demo state like notifications; undefined until the first write, when the example catalog (seedDemoCatalog) is used.
 type CatalogDemoState = DemoState & { catalog?: import("./instruments-panels").DemoCatalog };
 export async function readDemoCatalog() {
   return (await readDemoState() as CatalogDemoState).catalog;
@@ -129,5 +129,16 @@ export async function readDemoOrderDrafts() {
 }
 export async function writeDemoOrderDrafts(orderDrafts: import("../order-wizard").DemoOrderDraft[], base?: DemoState) {
   const state: DraftDemoState = { ...(base ?? await readDemoState()), orderDrafts };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Instrument profiles (0035)
+// Kept in the demo state like notifications; undefined until the first write, when the example profile (seedDemoProfiles) is used.
+type ProfileDemoState = DemoState & { profiles?: import("./instrument-profiles").DemoProfile[] };
+export async function readDemoProfiles() {
+  return (await readDemoState() as ProfileDemoState).profiles;
+}
+export async function writeDemoProfiles(profiles: import("./instrument-profiles").DemoProfile[]) {
+  const state: ProfileDemoState = { ...await readDemoState(), profiles };
   await writeDemoState(state);
 }

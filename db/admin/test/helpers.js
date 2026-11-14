@@ -30,7 +30,7 @@ export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
   'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
-  'client_contact', 'notification_pref', 'notification_log', 'shipment_tube', 'panel_rate', 'order_draft',
+  'client_contact', 'notification_pref', 'notification_log', 'shipment_tube', 'panel_rate', 'order_draft', 'instrument_profile',
 ];
 // Append-only records with their own refusal triggers and no zz_audit (audit_event since 0003, notification_log 0028).
 export const APPEND_ONLY = ['audit_event', 'notification_log'];
@@ -68,6 +68,8 @@ async function seedAll(db) {
   }
   await q("INSERT INTO admin.instrument(id, name, model) VALUES ($1, 'QQQ-1', 'Triple quad')", [id(500)]);
   await q("INSERT INTO admin.panel(id, instrument_id, name, dataset_type) VALUES ($1, $2, 'Global panel', 'global')", [id(501), id(500)]);
+  // 0035: the active instrument profile of QQQ-1 (id 502), with its blank and QC rules.
+  await q("INSERT INTO admin.instrument_profile(id, instrument_id, name, is_active, software, blanks_at_start, pooled_qc_every) VALUES ($1, $2, 'QQQ-1 profile', true, 'Synthetic acquisition software', 2, 8)", [id(502), id(500)]);
 
   await q("INSERT INTO admin.client(id, name, kind) VALUES ($1, 'Synthetic Lab Alpha', 'pi_lab'), ($2, 'Synthetic Company Beta', 'company')", [C.A, C.B]);
   for (const [c, u, r] of [[C.A, U.aAdmin, 'client_admin'], [C.A, U.aReq, 'requester'], [C.A, U.aView, 'viewer'],

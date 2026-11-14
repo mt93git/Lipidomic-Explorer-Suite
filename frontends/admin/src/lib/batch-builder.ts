@@ -15,6 +15,8 @@ export type BuilderValues = {
   blanksAtStart: number; pooledQcEvery: number; blankAfterQc: boolean; qcAtEnd: boolean; randomize: boolean; seed: string;
   minutesPerInjection: number; plateOrder: PlateOrder;
 };
+// Batch builder's own defaults; the active instrument profile's blank and QC rules replace blanksAtStart and
+// pooledQcEvery (instrument-profiles.ts builderDefaultsFrom).
 export const builderDefaults = {
   blanksAtStart: 1, pooledQcEvery: 6, blankAfterQc: false, qcAtEnd: true, randomize: true, seed: "",
   minutesPerInjection: 12, plateOrder: "column-major" as PlateOrder,
@@ -28,17 +30,18 @@ type Source = { get(name: string): FormDataEntryValue | null; getAll(name: strin
 const text = (source: Source, name: string) => String(source.get(name) ?? "").trim();
 
 // "" (or a missing field) keeps the default; anything else must be a whole number, 0 or more.
-function count(source: Source, name: "blanksAtStart" | "pooledQcEvery", errors: BuilderErrors): number {
+function count(source: Source, name: "blanksAtStart" | "pooledQcEvery", errors: BuilderErrors, defaults: typeof builderDefaults): number {
   const raw = text(source, name);
-  if (!raw) return builderDefaults[name];
+  if (!raw) return defaults[name];
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0) { errors[name] = "Enter a whole number, 0 or more"; return builderDefaults[name]; }
+  if (!Number.isInteger(value) || value < 0) { errors[name] = "Enter a whole number, 0 or more"; return defaults[name]; }
   return value;
 }
 
 // Works on FormData (the save action) and URLSearchParams (the preview is a GET, so its URL holds the whole plan).
 // A checkbox is true when present. The sample ids come back in the registry's order, without ids that are gone.
-export function parseBuilderForm(source: Source, available: readonly BuilderSample[]): { ok: true; value: BuilderValues } | { ok: false; errors: BuilderErrors } {
+// defaults: what an empty count means; the page passes the active instrument profile's rules (0035).
+export function parseBuilderForm(source: Source, available: readonly BuilderSample[], defaults: typeof builderDefaults = builderDefaults): { ok: true; value: BuilderValues } | { ok: false; errors: BuilderErrors } {
   const errors: BuilderErrors = {};
   const panelId = text(source, "panelId");
   if (!panelId) errors.panelId = "Choose a panel";
@@ -46,8 +49,8 @@ export function parseBuilderForm(source: Source, available: readonly BuilderSamp
   const sampleIds = available.filter(item => picked.has(item.id)).map(item => item.id);
   if (!picked.size) errors.samples = "Select at least one sample";
   else if (!sampleIds.length) errors.samples = "The selected samples are no longer available; choose again";
-  const blanksAtStart = count(source, "blanksAtStart", errors);
-  const pooledQcEvery = count(source, "pooledQcEvery", errors);
+  const blanksAtStart = count(source, "blanksAtStart", errors, defaults);
+  const pooledQcEvery = count(source, "pooledQcEvery", errors, defaults);
   const minutesRaw = text(source, "minutesPerInjection");
   const minutesPerInjection = minutesRaw ? Number(minutesRaw) : builderDefaults.minutesPerInjection;
   if (!Number.isFinite(minutesPerInjection) || minutesPerInjection <= 0) errors.minutesPerInjection = "Enter minutes greater than 0";
