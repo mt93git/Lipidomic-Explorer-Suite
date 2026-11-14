@@ -3,6 +3,8 @@ Description=Lab auto-deploy of Nexo and Admin (%i)
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash %h/lab-deploy/autodeploy.sh %i
+# sg: the user manager keeps the groups it started with, so a docker group added later is missing
+# and the migration step (docker exec into the Admin database) is refused. sg docker restores it.
+ExecStart=/usr/bin/sg docker -c "/bin/bash %h/lab-deploy/autodeploy.sh %i"
 Nice=10
 TimeoutStartSec=2400
