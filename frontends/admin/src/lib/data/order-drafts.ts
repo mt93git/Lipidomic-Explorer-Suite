@@ -2,7 +2,7 @@ import "server-only";
 import { demoSession } from "../demo";
 import { getEnvironment } from "../environment";
 import {
-  closeDemoDraft, demoDraftSummaries, isWizardStep, normalizeWizard, saveDemoDraft, toOrderInput,
+  closeDemoDraft, demoDraftSummaries, isWizardStep, normalizeWizard, placedSampleList, saveDemoDraft, toOrderInput,
   type OrderDraft, type OrderDraftSummary, type WizardData, type WizardPanel, type WizardStep,
 } from "../order-wizard";
 import { DataError } from "../samples";
@@ -90,6 +90,21 @@ export async function getOpenDraft(id: string): Promise<OrderDraft | null> {
   if (!data) return null;
   const row = data as DraftRow;
   return { id: row.id, step: step(row.step), data: normalizeWizard(row.data) };
+}
+
+// The sample list pasted in the New order wizard for this order (its placed draft), or null: the Sample registry
+// offers it prefilled while the order has no samples. Live: admin.order_draft by order_id (RLS: lab staff). A failed
+// read offers nothing instead of failing the registry.
+export async function getPlacedSampleList(order: { id: string; code: string }): Promise<string | null> {
+  await requireWorkspace("staff");
+  if (!live()) return placedSampleList(await readDemoOrderDrafts(), order.code);
+  if (!/^[0-9a-f-]{36}$/i.test(order.id)) return null;
+  const { data, error } = await (await admin()).from("order_draft").select("data").eq("order_id", order.id).maybeSingle();
+  if (error) {
+    console.error("[sample-registry] order draft read failed", { code: error.code });
+    return null;
+  }
+  return data ? normalizeWizard((data as { data: unknown }).data).sampleList.trim() || null : null;
 }
 
 export async function saveOrderDraft(input: { id: string | null; step: WizardStep; data: WizardData }): Promise<string> {

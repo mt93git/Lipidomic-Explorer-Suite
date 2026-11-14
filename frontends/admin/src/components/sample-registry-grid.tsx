@@ -6,7 +6,8 @@ import { applyFixes, checkSamples, columnMatches, draftFromCells, readPaste, sum
 import { columns, emptyDraft, plural, toSampleInput, type OrderSummary, type SampleDraft, type SampleField } from "@/lib/samples";
 import { sampleCode } from "@/lib/samples-demo";
 
-type Props = { order: OrderSummary; shipmentId: string | null; existingNames: string[]; nextSampleNumber?: number; eyebrow?: ReactNode; children?: ReactNode };
+// prefill: the sample list pasted in the New order wizard, offered in the paste box (the lab reviews and adds it).
+type Props = { order: OrderSummary; shipmentId: string | null; existingNames: string[]; nextSampleNumber?: number; prefill?: string | null; eyebrow?: ReactNode; children?: ReactNode };
 // One grid row: the draft, and where it came from in the last paste (re-read when Map columns changes a match).
 type Row = { key: number; draft: SampleDraft; origin: number | null };
 type Source = { headers: string[] | null; cells: string[][]; mapping: Mapping; edited: boolean };
@@ -23,12 +24,12 @@ let nextKey = 0;
 
 // The registration screen: paste the client's Excel, see which columns were matched, fix what the checks flag
 // (errors block saving, warnings may carry a fix), then save the valid rows. Codes are assigned by the database.
-export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampleNumber = 1, eyebrow, children }: Props) {
+export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampleNumber = 1, prefill = null, eyebrow, children }: Props) {
   const idBase = useId();
   const [rows, setRows] = useState<Row[]>([]);
   const [source, setSource] = useState<Source | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
-  const [pasteText, setPasteText] = useState("");
+  const [pasteText, setPasteText] = useState(prefill ?? "");
   const [pasteNote, setPasteNote] = useState<{ text: string; empty: boolean } | null>(null);
   const [manifestText, setManifestText] = useState("");
   const [state, submit, pending] = useActionState<RegisterSamplesState, RegisterSamplesPayload>(registerSamplesAction, {});
@@ -86,9 +87,11 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
         ? <>: {matches.map((match, index) => <span key={match.from}>{index ? ", " : ""}&quot;{match.from}&quot; <span aria-label="matched to">→</span> {columnOf(match.to).label}</span>)}.</>
         : " by name."}{unused.length ? <> Not used: {unused.map(header => `"${header}"`).join(", ")}.</> : null}</>;
 
+  const prefilled = Boolean(prefill) && pasteText === prefill;
   const pasteBox = <div className="field paste-box">
     <label className="field-label" htmlFor={`${idBase}-paste`}>Paste from Excel</label>
-    <textarea id={`${idBase}-paste`} rows={4} value={pasteText} onChange={event => setPasteText(event.target.value)} onPaste={onPaste} spellCheck={false}
+    {prefilled && <p id={`${idBase}-prefill`} className="notice"><strong>From the order&apos;s sample list — review and register</strong> <small>The list pasted in New order. Add rows to check it, fix what is flagged, then save.</small></p>}
+    <textarea id={`${idBase}-paste`} rows={prefilled ? 8 : 4} value={pasteText} aria-describedby={prefilled ? `${idBase}-prefill` : undefined} onChange={event => setPasteText(event.target.value)} onPaste={onPaste} spellCheck={false}
       placeholder={"Client ID\tFullName\tGroup 1\tGroup2Term\tReplicate\tPatient\tTime\tMatrix\nTUBE-01\tCtrl_0h_R1\tControl\tWT\t1\tNA\t0h\tcells"} />
     <small className="field-hint">Tab-separated, one sample per row. A header row is matched to the Metadata columns by name (&quot;Group 1&quot; → Group1Term, &quot;Time&quot; → TimePointTerm); without one, columns are read in the order FullName, Group1Term, Group2Term, ReplicateTerm, PatientTerm, TimePointTerm, Client ID, Matrix, Volume.</small>
     <details className="column-help-toggle">

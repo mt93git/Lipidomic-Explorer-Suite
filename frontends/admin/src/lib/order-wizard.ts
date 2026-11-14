@@ -228,6 +228,12 @@ export function closeDemoDraft(drafts: DemoOrderDraft[], id: string, close: { or
     : { ...draft, step: 4, data: close.data, orderCode: close.orderCode, updatedAt: at, updatedBy: actor });
 }
 
+// The sample list pasted in the wizard, on the draft placed as this order (the Sample registry offers it), or null.
+export function placedSampleList(drafts: readonly DemoOrderDraft[], orderCode: string): string | null {
+  const draft = drafts.find(item => item.orderCode === orderCode);
+  return draft?.data.sampleList?.trim() || null;
+}
+
 export const demoDraftSummaries = (drafts: DemoOrderDraft[]): OrderDraftSummary[] => drafts
   .filter(draft => !draft.orderCode && !draft.discardedAt)
   .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))

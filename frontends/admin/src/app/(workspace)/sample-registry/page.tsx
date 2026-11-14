@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
 import { SampleRegistryGrid } from "@/components/sample-registry-grid";
+import { getPlacedSampleList } from "@/lib/data/order-drafts";
 import { getRegistryOrder, listRegistryOrders } from "@/lib/data/samples";
 import { formatLabInstant } from "@/lib/lab-time";
 import { stages } from "@/lib/models";
@@ -41,6 +42,8 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
   const detail = code ? await getRegistryOrder(code) : null;
   const savedCount = Number(saved);
   const open = detail !== null && detail.order.stage >= 1 && detail.order.stage <= 2;
+  // No sample yet: offer the list pasted in the New order wizard, to review and register (never saved by itself).
+  const prefill = open && detail.samples.length === 0 ? await getPlacedSampleList(detail.order) : null;
   const changeOrder = detail && candidates.length > 1 && <details className="menu" data-align="end">
     <summary>Change order <span aria-hidden="true">▾</span></summary>
     <div className="menu-list">{candidates.map(order => <Link key={order.id} className="menu-option" href={`/sample-registry?order=${order.code}`} aria-current={order.code === detail.order.code ? "true" : undefined}>
@@ -90,7 +93,7 @@ export default async function SampleRegistryPage({ searchParams }: { searchParam
   // An open registry is the registration screen itself: its heading carries the column matches and the save button.
   if (detail && open) return <>
     <section className="registry-screen" aria-label="Samples to register">
-      <SampleRegistryGrid key={`${detail.order.code}-${detail.samples.length}`} order={detail.order} shipmentId={detail.shipment?.id ?? null}
+      <SampleRegistryGrid key={`${detail.order.code}-${detail.samples.length}`} order={detail.order} shipmentId={detail.shipment?.id ?? null} prefill={prefill}
         existingNames={detail.samples.map(sample => sample.full_name)} nextSampleNumber={Math.max(0, ...detail.samples.map(sample => sample.sampleNumber)) + 1}
         eyebrow={<div className="eyebrow registry-eyebrow"><span><Link href="/pipeline">Lab work / Pipeline</Link> / Sample registry</span>{changeOrder}</div>}>
         {banners}
