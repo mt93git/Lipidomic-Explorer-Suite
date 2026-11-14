@@ -108,10 +108,10 @@ export function ShipmentCheckin({ view, confirmed = false }: { view: CheckinView
             }}>
               <input type="hidden" name="orderCode" value={ids.orderCode} />
               <input type="hidden" name="shipmentId" value={ids.shipmentId} />
-              <label className={styles.explain} htmlFor="receipt-note">{discrepancySummary(t)}</label>
+              <p className={styles.explain} id="receipt-explain">{discrepancySummary(t)}</p>
               <textarea id="receipt-note" ref={noteBox} name="note" rows={4} maxLength={2000} value={note} onChange={event => { setNote(event.target.value); setNoteError(null); }}
                 placeholder={needsNote ? "What is missing or damaged, and what was done about it." : "Optional"} aria-invalid={noteError ? true : undefined}
-                aria-describedby={noteError ? "receipt-note-error" : undefined} required={needsNote} />
+                aria-labelledby="note-title" aria-describedby={noteError ? "receipt-explain receipt-note-error" : "receipt-explain"} required={needsNote} />
               {noteError && <p className={`${styles.message} ${styles.bad}`} id="receipt-note-error" role="alert">{noteError}</p>}
             </form>}
         </div>
