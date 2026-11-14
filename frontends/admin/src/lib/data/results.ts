@@ -14,7 +14,7 @@ import { applyDemoState, recordResultFile } from "@/lib/samples-demo";
 import { readDemoState, writeDemoState } from "./demo-store";
 
 export type ResultOrder = { id: string; code: string; client_id: string; stage: string };
-type Review = { id: string; order: ResultOrder; bytes: Uint8Array; sha256: string; summary: ResultsSummary; sciexOsVersion: string; processingMethod: string; accepted?: boolean; accepting?: boolean };
+type Review = { id: string; order: ResultOrder; bytes: Uint8Array; sha256: string; summary: ResultsSummary; sciexOsVersion: string; processingMethod: string; accepted?: boolean; accepting?: boolean; resultId?: string };
 // Per browser and user: the dictionary (demo) and the file under review. Order progress is not kept here: in
 // demo mode it lives in the shared demo store (receive, registry, pipeline and results read the same record).
 type State = { userId: string; entries: NameEntry[]; review?: Review; touched: number };
@@ -77,9 +77,11 @@ export async function compareWithPreviousFile(reviewId: string): Promise<{ curre
     return { current, orderCode: review.order.code, previous: last?.counts ? { acceptedAt: last.acceptedAt, counts: last.counts } : null };
   }
   const client = (await createAdminClient())!;
-  const { data, error } = await client.schema("admin").from("result_file").select("summary, accepted_at")
-    .eq("order_id", review.order.id).in("status", ["accepted", "superseded"]).is("archived_at", null)
-    .order("accepted_at", { ascending: false }).limit(1);
+  // Once this file is accepted it is the latest row for the order: leave it out, as the demo branch does.
+  let query = client.schema("admin").from("result_file").select("summary, accepted_at")
+    .eq("order_id", review.order.id).in("status", ["accepted", "superseded"]).is("archived_at", null);
+  if (review.resultId) query = query.neq("id", review.resultId);
+  const { data, error } = await query.order("accepted_at", { ascending: false }).limit(1);
   if (error) throw new Error(error.message);
   const row = data?.[0] as { summary: Partial<ResultsSummary> | null; accepted_at: string } | undefined;
   return { current, orderCode: review.order.code, previous: row?.summary ? { acceptedAt: row.accepted_at, counts: resultCounts(row.summary) } : null };
@@ -120,6 +122,7 @@ export async function acceptResultFile(reviewId: string, reason: string) {
       });
     }
     review.accepted = true;
+    review.resultId = resultId;
     return { id: resultId, code: review.order.code, stage: "Processed" };
   } finally { review.accepting = false; }
 }
