@@ -3,11 +3,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/(workspace)/release/[id]/workbook/route";
 import { DataError, getDataset, readDatasetWorkbook, type ReleaseView } from "@/lib/data/release";
+import { getAppSession } from "@/lib/session";
 
 vi.mock("@/lib/data/release", async () => {
   class DataError extends Error {}
   return { DataError, getDataset: vi.fn(), readDatasetWorkbook: vi.fn() };
 });
+vi.mock("@/lib/session", () => ({ getAppSession: vi.fn(async () => ({ view: "staff" })) }));
 
 const view = { dataset: { id: "d-1", orderCode: "ORD900", version: 2, full: { label: "Dataset v1 workbook", sheets: [], sha256: "a".repeat(64), sizeBytes: 5, path: "x" } } } as unknown as ReleaseView;
 const call = (id = "d-1") => GET(new Request(`http://localhost/release/${id}/workbook`), { params: Promise.resolve({ id }) });
@@ -32,5 +34,14 @@ describe("GET /release/<id>/workbook", () => {
     const response = await call();
     expect(response.status).toBe(502);
     expect(await response.text()).toMatch(/does not match the digest/);
+  });
+  it("answers 401 without a session, 403 to a client user, 404 for a malformed id, before reading anything", async () => {
+    vi.mocked(getDataset).mockClear();
+    vi.mocked(getAppSession).mockResolvedValueOnce(null);
+    expect((await call()).status).toBe(401);
+    vi.mocked(getAppSession).mockResolvedValueOnce({ view: "client" } as Awaited<ReturnType<typeof getAppSession>>);
+    expect((await call()).status).toBe(403);
+    expect((await call("../other")).status).toBe(404);
+    expect(getDataset).not.toHaveBeenCalled();
   });
 });
