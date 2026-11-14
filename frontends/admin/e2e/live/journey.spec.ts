@@ -256,7 +256,7 @@ test("4 · Paula invites Lee, Dana's colleague, as a Requester", async ({ page }
   await invite.getByLabel("Email", { exact: true }).fill(lee.email);
   await invite.getByLabel("Role", { exact: true }).selectOption("client:requester");
   await invite.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
-  await invite.getByRole("button", { name: "Create invitation link" }).click();
+  await invite.getByRole("button", { name: "Send invitation" }).click();
   leeInvite = await readLink(page, "#invite-link");
   await expect(page.getByRole("table", { name: "Pending invitations" }).getByRole("row").filter({ hasText: lee.email })).toBeVisible(slow);
   await shot(page, "invite-lee", lab("Paula invites Lee: the link is shown once (masked) and listed under Pending invitations"));

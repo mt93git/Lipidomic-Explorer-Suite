@@ -24,6 +24,19 @@ export const byBox = (a: BoxSummary, b: BoxSummary) => natural.compare(a.box, b.
 
 export const describeLocation = (location: StorageLocation) => `box ${location.box}, position ${location.position}`;
 
+// a09's selected position: what is known about the aliquot beyond where it is. volumeUl: admin.aliquot.volume_ul when
+// recorded. nextBatch: the batch it will be injected in next. (The prototype's "Type", original or re-extraction, is
+// not recorded anywhere, so it is not shown.)
+export type AliquotPlans = { volumeUl: number | null; nextBatch: string | null };
+export type PlannedInjection = { batch: string; batchStatus: string; batchArchived: boolean; versionArchived: boolean; injectionStatus: string };
+// The first (in name order) live batch, planned or with its sequence exported, in which the aliquot's injection is
+// still planned. Acquired and later batches, archived batches or versions and done injections do not count.
+export function nextBatchOf(rows: readonly PlannedInjection[]): string | null {
+  const open = rows.filter(row => !row.batchArchived && !row.versionArchived && row.injectionStatus === "planned"
+    && (row.batchStatus === "planned" || row.batchStatus === "sequence_exported"));
+  return open.map(row => row.batch).sort(natural.compare)[0] ?? null;
+}
+
 // The form's box and position, trimmed; blank refused (the database checks again).
 export function parseSlot(form: FormData): { ok: true; box: string; position: string } | { ok: false; error: string } {
   const box = String(form.get("box") ?? "").trim();

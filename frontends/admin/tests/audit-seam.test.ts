@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/session";
-import { listAuditEvents } from "@/lib/data/audit";
+import { exportAuditEvents, listAuditEvents } from "@/lib/data/audit";
 import { writeDemoState } from "@/lib/data/demo-store";
 import { emptyDemoState, type DemoState } from "@/lib/samples-demo";
 import type { DemoDataset } from "@/lib/release-demo";
@@ -38,7 +38,7 @@ function recorder(respond: (table: string, calls: Call[]) => Answer) {
     const calls: Call[] = [];
     queries.push({ table, calls });
     const chain: Record<string, unknown> = {};
-    for (const method of ["select", "eq", "in", "is", "lt", "or", "order", "limit", "maybeSingle"]) chain[method] = (...args: unknown[]) => { calls.push([method, ...args]); return chain; };
+    for (const method of ["select", "eq", "in", "is", "not", "lt", "or", "order", "limit", "range", "maybeSingle"]) chain[method] = (...args: unknown[]) => { calls.push([method, ...args]); return chain; };
     chain.then = (resolve: (value: Answer) => unknown, reject: (reason: unknown) => unknown) => Promise.resolve(respond(table, calls)).then(resolve, reject);
     return chain;
   };
@@ -51,7 +51,7 @@ const ME = "5e5e5e5e-0000-4000-8000-0000000000aa";
 const ORDER = "0d0d0d0d-0000-4000-8000-000000000080";
 const D1 = "da7a0000-0000-4000-8000-000000000001";
 const D2 = "da7a0000-0000-4000-8000-000000000002";
-const COLUMNS = "id, created_at, actor, entity, entity_id, action, before, after";
+const COLUMNS = "id, created_at, actor, client_id, entity, entity_id, action, before, after";
 const auditRow = (id: number, patch: Record<string, unknown> = {}) => ({
   id, created_at: "2026-11-08T15:00:00Z", actor: STEPH, entity: "dataset", entity_id: D1, action: "UPDATE",
   before: { id: D1, order_id: ORDER, version: 1, status: "built" }, after: { id: D1, order_id: ORDER, version: 1, status: "released" }, ...patch,
@@ -87,7 +87,7 @@ describe("live seam: admin.audit_event through the signed-in user's token", () =
     expect(page.rows[0].changes).toEqual([{ field: "Status", before: "built", after: "released" }]);
     // Names: every lab person, archived or not (a signer who left still signed); datasets and orders the page mentions.
     expect(of(db.queries, "lab_staff")).toEqual([[["select", "user_id, display_name"]]]);
-    expect(of(db.queries, "order")).toEqual([[["select", "id, code"], ["in", "id", [ORDER]]]]);
+    expect(of(db.queries, "order")).toEqual([[["select", "id, code"], ["in", "id", [ORDER]], ["order", "id"], ["range", 0, 999]]]);
   });
 
   it("filters by entity and continues below the cursor; the last page has no Older", async () => {
@@ -137,6 +137,71 @@ describe("live seam: admin.audit_event through the signed-in user's token", () =
     const db = liveDb([], { audit_event: { data: null, error: { message: "permission denied for table audit_event" } } });
     vi.mocked(createAdminClient).mockResolvedValue(db.client as never);
     await expect(listAuditEvents(none)).rejects.toThrow("You do not have permission to do this.");
+  });
+
+  it("a21 Client column: the event's client by name and colour; a batch names every client with an injection in it", async () => {
+    const HEME = "c1000000-0000-4000-8000-000000000001";
+    const LIB = "c1000000-0000-4000-8000-000000000002";
+    const BATCH = "ba000000-0000-4000-8000-000000000031";
+    const db = liveDb([
+      auditRow(3, { client_id: HEME }),
+      auditRow(2, { client_id: null, entity: "batch", entity_id: BATCH, action: "UPDATE", before: { name: "B2026-031", status: "planned" }, after: { name: "B2026-031", status: "sequence_exported" } }),
+      auditRow(1, { client_id: null, entity: "release_policy", entity_id: null, action: "INSERT", before: null, after: { required_signatures: 2, eligible_signers: [] } }),
+    ], {
+      client: { data: [{ id: LIB, name: "Libreros lab" }, { id: HEME, name: "Hematology group" }], error: null },
+      injection: { data: [{ client_id: LIB, batch_version: { batch_id: BATCH } }, { client_id: HEME, batch_version: { batch_id: BATCH } }, { client_id: LIB, batch_version: { batch_id: BATCH } }], error: null },
+    });
+    vi.mocked(createAdminClient).mockResolvedValue(db.client as never);
+    const page = await listAuditEvents(none);
+    expect(page.rows.map(row => row.clients)).toEqual([
+      [{ name: "Hematology group", slot: 0 }],
+      [{ name: "Hematology group", slot: 0 }, { name: "Libreros lab", slot: 1 }],
+      [],
+    ]);
+    expect(of(db.queries, "client")).toEqual([[["select", "id, name"]]]);
+    expect(of(db.queries, "injection")).toEqual([[["select", "client_id, batch_version!inner(batch_id)"], ["in", "batch_version.batch_id", [BATCH]], ["not", "client_id", "is", null], ["order", "id"], ["range", 0, 999]]]);
+  });
+
+  it("context reads stay whole past PostgREST's row cap and short in the URL: 100 ids per request, 1000 rows per page", async () => {
+    const LIB = "c1000000-0000-4000-8000-000000000002";
+    const HEME = "c1000000-0000-4000-8000-000000000001";
+    const batches = Array.from({ length: 150 }, (_, index) => `ba000000-0000-4000-8000-${String(index).padStart(12, "0")}`);
+    const audit = batches.map((batch, index) => auditRow(1000 - index, { client_id: null, entity: "batch", entity_id: batch, before: null, action: "INSERT", after: { name: `B2026-${String(index).padStart(3, "0")}`, status: "planned" } }));
+    // The first chunk's batches hold 1200 injections: LIB in the first 1000 rows, HEME only in the next page.
+    const db = recorder((table, calls) => {
+      if (table === "client") return { data: [{ id: LIB, name: "Libreros lab" }, { id: HEME, name: "Hematology group" }], error: null };
+      if (table !== "injection") return { data: table === "audit_event" ? audit : [], error: null };
+      const chunk = calls.find(call => call[0] === "in")?.[2] as string[];
+      const [, from] = calls.find(call => call[0] === "range") as [string, number, number];
+      if (chunk[0] !== batches[0]) return { data: [], error: null };
+      const rows = Array.from({ length: 1200 }, (_, index) => ({ client_id: index < 1000 ? LIB : HEME, batch_version: { batch_id: batches[49] } }));
+      return { data: rows.slice(from, from + 1000), error: null };
+    });
+    vi.mocked(createAdminClient).mockResolvedValue(db.client as never);
+    const file = await exportAuditEvents(none);
+    expect(file.rows.find(row => row.id === 1000 - 49)?.clients.map(client => client.name)).toEqual(["Hematology group", "Libreros lab"]);
+    const injections = of(db.queries, "injection");
+    expect(injections.map(calls => (calls.find(call => call[0] === "in")?.[2] as string[]).length)).toEqual([100, 100, 50]);
+    expect(injections.map(calls => calls.find(call => call[0] === "range"))).toEqual([["range", 0, 999], ["range", 1000, 1999], ["range", 0, 999]]);
+  });
+
+  it("export: every event of the filter, 1000 per request on the same keyset, up to the cap; the page cursor is ignored", async () => {
+    const all = Array.from({ length: 1500 }, (_, index) => auditRow(1500 - index));
+    const db = recorder((table, calls) => {
+      if (table !== "audit_event") return { data: [], error: null };
+      const below = calls.find(call => call[0] === "lt")?.[2] as number | undefined;
+      return { data: all.filter(row => below === undefined || row.id < below).slice(0, 1000), error: null };
+    });
+    vi.mocked(createAdminClient).mockResolvedValue(db.client as never);
+    const file = await exportAuditEvents({ entity: "dataset", order: null, before: 700 });
+    expect(requireWorkspace).toHaveBeenCalledWith("staff");
+    expect(file.rows).toHaveLength(1500);
+    expect(file.truncated).toBe(false);
+    expect(file.rows[0]).toMatchObject({ id: 1500, action: "UPDATE", entity: "Dataset" });
+    expect(of(db.queries, "audit_event")).toEqual([
+      [["select", COLUMNS], ["eq", "entity", "dataset"], ["order", "id", { ascending: false }], ["limit", 1000]],
+      [["select", COLUMNS], ["eq", "entity", "dataset"], ["lt", "id", 501], ["order", "id", { ascending: false }], ["limit", 1000]],
+    ]);
   });
 });
 
@@ -195,5 +260,14 @@ describe("demo seam: the same screen over the demo store", () => {
     expect((await listAuditEvents({ entity: null, order: "ORD999", before: null })).order).toEqual({ code: "ORD999", found: false });
     expect((await listAuditEvents({ entity: "signature", order: null, before: null })).rows.map(row => row.id)).toEqual([5, 4]);
     expect((await listAuditEvents({ entity: null, order: null, before: 4 })).rows.map(row => row.id)).toEqual([3, 2, 1]);
+  });
+  it("a21 Client column in the demo: each order's client; the release policy is lab-wide", async () => {
+    await writeDemoState(demoState());
+    const all = await listAuditEvents(none);
+    expect(all.rows.map(row => row.clients.map(client => client.name))).toEqual([
+      ["Example Atlas"], ["Example Atlas"], ["Example Atlas"], ["Example Atlas"], ["Example Atlas"], [],
+    ]);
+    const file = await exportAuditEvents({ entity: "signature", order: null, before: 5 });
+    expect(file.rows.map(row => row.id)).toEqual([5, 4]);
   });
 });
