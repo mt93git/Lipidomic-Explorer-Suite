@@ -42,6 +42,7 @@ export const emptyWizard = (): WizardData => Object.fromEntries(wizardFields.map
 // The longest text a draft keeps per field (the sample list is a pasted sheet, so it may be long).
 export const DRAFT_TEXT_LIMIT = 2000;
 export const SAMPLE_LIST_LIMIT = 200_000;
+export const TITLE_LIMIT = 300;
 
 // A draft that crossed the network (or came back from the database) is untrusted: known keys only, text only.
 export function normalizeWizard(value: unknown): WizardData {
@@ -81,6 +82,8 @@ export function stepErrors(data: WizardData, step: WizardStep): WizardErrors {
   if (step === 1 || step === 4) {
     if (!data.clientId.trim()) errors.clientId = "Choose a client";
     if (!data.title.trim()) errors.title = "Enter a title";
+    // order_draft.title keeps at most 300 characters (0033): a longer title would make place_order_draft roll back.
+    else if (data.title.trim().length > TITLE_LIMIT) errors.title = `Keep the title under ${TITLE_LIMIT} characters`;
   }
   if (step === 2 || step === 4) {
     if (!data.clientId.trim()) errors.clientId = "Choose a client";

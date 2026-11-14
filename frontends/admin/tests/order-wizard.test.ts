@@ -66,6 +66,8 @@ describe("order wizard: steps and what create_order receives", () => {
     expect(stepErrors(wizard({ clientId: "c", expectedSamples: "6.5" }), 2)).toEqual({ panelId: "Choose a panel", expectedSamples: "Enter a whole number, 0 or more" });
     expect(stepErrors(wizard({ sampleList: "FullName\tGroup1Term\nS1\tA\nS1\tB" }), 3).sampleList).toBe("Row 1: FullName appears twice in this list");
     expect(stepErrors(wizard({}), 3)).toEqual({});
+    expect(stepErrors(wizard({ clientId: "c", title: "x".repeat(301) }), 1)).toEqual({ title: "Keep the title under 300 characters" });
+    expect(stepErrors(wizard({ clientId: "c", title: "x".repeat(300) }), 1)).toEqual({});
   });
 
   it("puts the study design in the notes and the billing method in the billing reference", () => {
