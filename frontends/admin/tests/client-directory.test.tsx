@@ -56,12 +56,27 @@ describe("a17 Clients", () => {
 
 describe("a18 Client detail", () => {
   it("header: colour square, name, code · kind · billing, Invite user and New order for this client", async () => {
+    state.session = staff("Owner");
     render(await ClientPage({ params: Promise.resolve({ id: "example-atlas" }), searchParams: Promise.resolve({}) }));
     const heading = screen.getByRole("heading", { level: 1, name: "Example Atlas" });
     expect(squareOf(heading)).toBe("atlas");
     expect(screen.getByText("CL-001 · PI lab · billing by charge code")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Invite user" })).toHaveAttribute("href", "/people?client=example-atlas#invite-title");
     expect(screen.getByRole("link", { name: "New order" })).toHaveAttribute("href", "/new-order?client=example-atlas");
+  });
+
+  it("Invite user is for a lab Owner or Admin only: an Operator sees no link (nor the hint to use it); New order stays", async () => {
+    for (const role of ["Owner", "Admin"]) {
+      state.session = staff(role);
+      const view = render(await ClientPage({ params: Promise.resolve({ id: "example-atlas" }), searchParams: Promise.resolve({}) }));
+      expect(screen.getByRole("link", { name: "Invite user" })).toBeInTheDocument();
+      view.unmount();
+    }
+    state.session = staff("Operator");
+    render(await ClientPage({ params: Promise.resolve({ id: "example-atlas" }), searchParams: Promise.resolve({}) }));
+    expect(screen.queryByRole("link", { name: "Invite user" })).toBeNull();
+    expect(screen.queryByText(/Invite someone with Invite user/)).toBeNull();
+    expect(screen.getByRole("link", { name: "New order" })).toBeInTheDocument();
   });
 
   it("Users: person by name, role, last active; no two-step column and no user id; Orders: order, panel, samples, stage pill", async () => {

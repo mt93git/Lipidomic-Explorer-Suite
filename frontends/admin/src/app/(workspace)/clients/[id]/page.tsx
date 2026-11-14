@@ -35,7 +35,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
         <p>{facts}</p>
       </div>
       {active && <div className={directory.actions}>
-        <Link className="button secondary" href={`/people?client=${encodeURIComponent(client.id)}#invite-title`}>Invite user</Link>
+        {permissions.canInvite && <Link className="button secondary" href={`/people?client=${encodeURIComponent(client.id)}#invite-title`}>Invite user</Link>}
         <Link className="button" href={`/new-order?client=${encodeURIComponent(client.id)}`}>New order</Link>
       </div>}
     </div>
@@ -56,7 +56,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
               <td className={directory.mono}>{member.lastSignInAt === undefined ? <span className={directory.dash}>—</span> : lastActive(member.lastSignInAt)}</td>
             </tr>)}</tbody>
           </table></div>
-          : <p className={`${directory.boxBody} muted`}>No active members. Invite someone with Invite user.</p>}
+          : <p className={`${directory.boxBody} muted`}>No active members.{permissions.canInvite && active && " Invite someone with Invite user."}</p>}
       </section>
       <section className={directory.card} aria-labelledby="orders"><h2 id="orders" className={directory.boxTitle}>Orders</h2>
         {client.orders.length
