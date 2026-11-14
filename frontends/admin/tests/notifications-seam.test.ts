@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies, headers } from "next/headers";
 import { after } from "next/server";
 import { submitAccessRequest } from "@/lib/data/access-requests";
-import { notify } from "@/lib/data/notifications";
+import { checkResultsMissing, notify, notifyBatch, resetResultsCheck } from "@/lib/data/notifications";
+import { receiveShipment } from "@/lib/data/samples";
 import { answerOrderRequest, requestOrder } from "@/lib/data/order-requests";
 import { getEnvironment } from "@/lib/environment";
 import { DataError } from "@/lib/samples";
@@ -32,6 +33,9 @@ const audienceRows = [
 let scheduled: (() => Promise<void>)[];
 let service: { rpc: ReturnType<typeof vi.fn>; from: ReturnType<typeof vi.fn>; schema?: () => unknown };
 let logged: Row[][];
+// admin.notification_rule rows the test changed (0036); a kind not here reads no row, so its default applies.
+let rules: Record<string, Row>;
+let ruleError: { code: string } | null;
 const fetchSpy = vi.fn();
 const runScheduled = async () => { for (const task of scheduled.splice(0)) await task(); };
 
@@ -47,8 +51,14 @@ beforeEach(() => {
   logged = [];
   service = {
     rpc: vi.fn(async (fn: string) => fn === "notification_audience" ? { data: audienceRows, error: null } : { data: "AR-0012", error: null }),
-    from: vi.fn((table: string) => ({ insert: async (rows: Row[]) => { if (table === "notification_log") logged.push(rows); return { error: null }; } })),
+    from: vi.fn((table: string) => ({
+      insert: async (rows: Row[]) => { if (table === "notification_log") logged.push(rows); return { error: null }; },
+      select: () => ({ eq: (_column: string, kind: string) => ({ maybeSingle: async () => ({ data: ruleError ? null : rules[kind] ?? null, error: ruleError }) }) }),
+    })),
   };
+  rules = {};
+  ruleError = null;
+  resetResultsCheck();
   // submit_access_request is called as service.schema("admin").rpc(...) (data/access-requests.ts).
   Object.assign(service, { schema: () => service });
   vi.mocked(createServiceClient).mockReturnValue(service as never);
@@ -81,15 +91,17 @@ describe("notify (live)", () => {
     vi.stubEnv("ADMIN_NOTIFY_ALLOW", "lab.example.test");
     vi.stubEnv("RESEND_API_KEY", "re_test_key");
     vi.stubEnv("ADMIN_MAIL_FROM", "lab@lab.example.test");
-    fetchSpy.mockResolvedValue(new Response(JSON.stringify({ message: "domain not verified" }), { status: 403 }));
-    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: vi.fn(async () => ({ data: [...audienceRows, { user_id: "u-sky", email: "sky@lab.example.test", lab_role: null, client_role: "viewer", off: [] }], error: null })) } as never);
-    await notify({ kind: "dataset_released", datasetId: "d-1", orderId: "o-59", code: "ORD059", version: 1, clientId: "c-1", clientName: "Example Cedar" });
+    fetchSpy.mockImplementation(async () => new Response(JSON.stringify({ message: "domain not verified" }), { status: 403 }));
+    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: vi.fn(async () => ({ data: [...audienceRows, { user_id: "u-sky", email: "sky@lab.example.test", lab_role: null, client_role: "client_admin", off: [] }], error: null })) } as never);
+    // The default row (0036): the lab's Operators, the client's admins and the requester.
+    await notify({ kind: "dataset_released", datasetId: "d-1", orderId: "o-59", code: "ORD059", version: 1, clientId: "c-1", clientName: "Example Cedar", requestedBy: "u-rowan" });
     await runScheduled();
     expect(logged[0].map(row => [row.user_id, row.status, row.error])).toEqual([
+      ["u-operator", "failed", "Resend answered 403: domain not verified"],
       ["u-rowan", "skipped", "Not on ADMIN_NOTIFY_ALLOW"],
       ["u-sky", "failed", "Resend answered 403: domain not verified"],
     ]);
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchSpy.mock.calls[0][0]).toBe("https://api.resend.com/emails");
   });
 
@@ -107,6 +119,118 @@ describe("notify (live)", () => {
       "[notifications] order_requested: nothing sent (notification_audience failed (42501))",
     ]);
     error.mockRestore();
+  });
+});
+
+describe("the matrix decides who is told (0036)", () => {
+  const event = { kind: "order_requested", orderId: "o-60", code: "ORD060", title: "Plasma", clientId: "c-1", clientName: "Example Cedar" } as const;
+
+  it("a row the Admin changed is read with the service client when the email goes out", async () => {
+    rules.order_requested = { kind: "order_requested", lab_roles: ["owner"], step_owner: false, client_admin: false, requester: false, days: null };
+    await notify(event);
+    await runScheduled();
+    expect(service.from).toHaveBeenCalledWith("notification_rule");
+    expect(logged[0].map(row => row.user_id)).toEqual(["u-owner"]);
+  });
+
+  it("every cell off: nobody is emailed and nothing is logged; a failed read of the row sends nothing", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    rules.order_requested = { kind: "order_requested", lab_roles: [], step_owner: false, client_admin: false, requester: false, days: null };
+    await notify(event);
+    await runScheduled();
+    expect(logged).toEqual([]);
+    ruleError = { code: "42501" };
+    await notify(event);
+    await runScheduled();
+    expect(logged).toEqual([]);
+    expect(error.mock.calls.map(([text]) => String(text))).toEqual(["[notifications] order_requested: nothing sent (notification_rule failed (42501))"]);
+    error.mockRestore();
+  });
+});
+
+describe("the new events (0036)", () => {
+  let tables: Record<string, Row[]>;
+  let rpc: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    tables = { order: [
+      { id: "o-59", code: "ORD059", title: "Plasma lipids", client_id: "c-1", requested_by: "u-rowan", client: { name: "Example Cedar" }, archived_at: null },
+      { id: "o-61", code: "ORD061", title: "Liver", client_id: "c-2", requested_by: "u-ash", client: { name: "Example Larch" }, archived_at: null },
+    ] };
+    rpc = vi.fn(async () => ({ data: "s-1", error: null }));
+    vi.mocked(createAdminClient).mockResolvedValue({ schema: () => ({ ...fakePostgrest(tables), rpc }), auth: { getUser: async () => ({ data: { user: null }, error: null }) } } as never);
+  });
+  const shipment = { orderId: "o-59", carrier: "Courier", trackingNumber: null, condition: "ok" as const, boxCount: 2, notes: null };
+
+  it("a recorded shipment tells the lab's Admins and the requester; a refused one schedules nothing", async () => {
+    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: vi.fn(async () => ({ data: [...audienceRows, { user_id: "u-admin", email: "admin@lab.example.test", lab_role: "admin", client_role: null, off: [] }], error: null })) } as never);
+    await receiveShipment(shipment);
+    await runScheduled();
+    expect(logged).toHaveLength(1);
+    expect(logged[0].map(row => [row.kind, row.user_id, row.subject, row.order_id])).toEqual([
+      ["shipment_received", "u-rowan", "Shipment received for ORD059", "o-59"], ["shipment_received", "u-admin", "Shipment received for ORD059", "o-59"],
+    ]);
+    rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "only lab staff" } });
+    vi.mocked(after).mockClear();
+    await expect(receiveShipment(shipment)).rejects.toBeInstanceOf(DataError);
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it("a shipment that arrived thawed also fails its gate, for the matrix's gate row", async () => {
+    rules.gate_failed = { kind: "gate_failed", lab_roles: ["owner"], step_owner: true, client_admin: false, requester: false, days: null };
+    await receiveShipment({ ...shipment, condition: "thawed" });
+    await runScheduled();
+    expect(logged.map(rows => rows.map(row => [row.kind, row.user_id, row.subject]))).toEqual([
+      [["shipment_received", "u-rowan", "Shipment received for ORD059"]],
+      [["gate_failed", "u-owner", "Gate failed: ORD059"]],
+    ]);
+  });
+
+  it("a batch event goes once to the lab, naming the batch, and once per order to its own client only", async () => {
+    rules.batch_acquired = { kind: "batch_acquired", lab_roles: ["operator"], step_owner: false, client_admin: false, requester: true, days: null };
+    const audienceFor = vi.fn(async (_fn: string, args: { p_client_id: string | null }) => ({
+      data: args.p_client_id === "c-2" ? [{ user_id: "u-ash", email: "ash@larch.example.test", lab_role: null, client_role: "requester", off: [] }, audienceRows[1]] : audienceRows, error: null,
+    }));
+    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: audienceFor } as never);
+    await notifyBatch("batch_acquired", "B2026-031", ["ORD059", "ORD061"]);
+    await runScheduled();
+    expect(audienceFor.mock.calls.map(([, args]) => args.p_client_id)).toEqual([null, "c-1", "c-2"]);
+    expect(logged.map(rows => rows.map(row => [row.user_id, row.subject, row.reference]))).toEqual([
+      [["u-operator", "Batch acquired: B2026-031", "B2026-031"]],
+      [["u-rowan", "Samples of ORD059 acquired", "ORD059"]],
+      [["u-ash", "Samples of ORD061 acquired", "ORD061"]],
+    ]);
+  });
+});
+
+describe("the scheduled results check (0036)", () => {
+  const due = [{ order_id: "o-59", code: "ORD059", title: "Plasma lipids", client_id: "c-1", client_name: "Example Cedar", requested_by: "u-rowan", acquired_at: "2026-11-09T15:00:00Z", days: 3 }];
+
+  it("claims the due orders with the service role after the response and emails Operators and Admins; runs at most every 10 minutes", async () => {
+    const calls = vi.fn(async (fn: string) => fn === "claim_results_missing" ? { data: due, error: null } : { data: audienceRows, error: null });
+    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: calls } as never);
+    expect(checkResultsMissing(1_000_000)).toBe(true);
+    expect(calls).not.toHaveBeenCalled();
+    await runScheduled();
+    expect(calls.mock.calls.map(([fn]) => fn)).toEqual(["claim_results_missing", "notification_audience"]);
+    expect(logged[0].map(row => [row.kind, row.user_id, row.subject, row.reference])).toEqual([["results_missing", "u-operator", "No results TXT for ORD059 after 3 days", "ORD059"]]);
+    expect(checkResultsMissing(1_000_000 + 9 * 60_000)).toBe(false);
+    expect(checkResultsMissing(1_000_000 + 10 * 60_000)).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("a failed claim is reported without throwing; the example workspace never runs it", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: vi.fn(async () => ({ data: null, error: { code: "42501" } })) } as never);
+    checkResultsMissing(5_000_000);
+    await expect(runScheduled()).resolves.toBeUndefined();
+    expect(logged).toEqual([]);
+    expect(error.mock.calls.map(([text]) => String(text))).toEqual(["[notifications] results_missing: check failed (claim_results_missing failed (42501))"]);
+    error.mockRestore();
+    resetResultsCheck();
+    vi.mocked(after).mockClear();
+    vi.mocked(getEnvironment).mockReturnValue({ mock: true, url: "", anonKey: "" });
+    expect(checkResultsMissing(9_000_000)).toBe(false);
+    expect(after).not.toHaveBeenCalled();
   });
 });
 

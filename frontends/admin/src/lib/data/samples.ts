@@ -230,7 +230,8 @@ export async function receiveShipment(input: ShipmentInput): Promise<{ shipmentI
     });
     if (error) throw refusal(error);
     // Who is told is the Notifications matrix's row (0036), after the response.
-    await notifyShipment(input.orderId, { boxCount: input.boxCount, condition: input.condition }, (await getAppSession())?.userId ?? null);
+    const recorder = await getAppSession().then(session => session?.userId ?? null, () => null);
+    await notifyShipment(input.orderId, { boxCount: input.boxCount, condition: input.condition }, recorder);
     return { shipmentId: String(data) };
   }
   const { state, order } = await demoOrder(input.orderId);

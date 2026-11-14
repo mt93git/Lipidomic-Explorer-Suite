@@ -3,7 +3,7 @@
 // the messages and the Resend request. Every transport here is a fake; nothing reaches Resend. Synthetic data only.
 import { describe, expect, it, vi } from "vitest";
 import {
-  OFF_REASON, allowedDomains, buildMessage, deliver, kindsFor, notifyConfig, publicOrigin, resendTransport, runNotification, selectRecipients,
+  OFF_REASON, allowedDomains, buildMessage, defaultRules, eventLabel, labCell, matrixRows, normalizeRule, deliver, kindsFor, notifyConfig, publicOrigin, resendTransport, runNotification, selectRecipients,
   senderFrom, switchesFor, type AudiencePerson, type Mail, type NotificationEvent, type NotifyConfig,
 } from "@/lib/notifications";
 
@@ -16,7 +16,9 @@ const audience: AudiencePerson[] = [
 
 const accepted: NotificationEvent = { kind: "request_answered", orderId: "o-1", code: "ORD059", title: "Plasma lipids", clientId: "c-1", clientName: "Example Cedar", requestedBy: "rowan", accepted: true, reason: null };
 const declined: NotificationEvent = { ...accepted, accepted: false, reason: "We do not run tissue <samples> this quarter." };
-const released: NotificationEvent = { kind: "dataset_released", datasetId: "d-1", orderId: "o-1", code: "ORD059", version: 2, clientId: "c-1", clientName: "Example Cedar" };
+const released: NotificationEvent = { kind: "dataset_released", datasetId: "d-1", orderId: "o-1", code: "ORD059", version: 2, clientId: "c-1", clientName: "Example Cedar", requestedBy: "rowan" };
+// Every client member of the audience, for the delivery tests (who is picked is tested under "recipient selection").
+const members = audience.filter(person => person.clientRole).map(person => ({ userId: person.userId, email: person.email, enabled: !person.off.includes("dataset_released") }));
 const requested: NotificationEvent = { kind: "order_requested", orderId: "o-2", code: "ORD060", title: null, clientId: "c-1", clientName: "Example Cedar" };
 const access: NotificationEvent = { kind: "access_requested", reference: "AR-0012", fullName: "Kai Sample", organisation: "Example Larch" };
 
@@ -32,8 +34,9 @@ describe("recipient selection", () => {
     expect(selectRecipients({ ...accepted, requestedBy: "gone" }, audience)).toEqual([]);
   });
 
-  it("a released dataset goes to every active member of the client, whatever their role", () => {
-    expect(selectRecipients(released, audience).map(r => [r.userId, r.enabled])).toEqual([["rowan", true], ["sky", false], ["quinn", true]]);
+  it("a released dataset goes, by default (0036), to the lab's Operators, the client's admins and the requester; not to a viewer", () => {
+    expect(selectRecipients(released, audience).map(r => [r.userId, r.enabled])).toEqual([["operator", true], ["rowan", true], ["sky", false]]);
+    expect(selectRecipients({ ...released, requestedBy: null }, audience).map(r => r.userId)).toEqual(["operator", "sky"]);
   });
 
   it("new order and access requests go to lab Owner, Admin and Operator, not to a lab member or a client", () => {
@@ -50,9 +53,10 @@ describe("recipient selection", () => {
 
 describe("switches", () => {
   it("each view sees its own kinds, on unless turned off", () => {
-    expect(kindsFor("client")).toEqual(["request_answered", "dataset_released"]);
-    expect(kindsFor("staff")).toEqual(["order_requested", "access_requested"]);
-    expect(switchesFor("client", ["dataset_released", "order_requested"]).map(s => [s.kind, s.enabled])).toEqual([["request_answered", true], ["dataset_released", false]]);
+    // 0036: the matrix may send any order event to a client's people or to lab staff; an access request has no client.
+    expect(kindsFor("client")).toEqual(["shipment_received", "gate_failed", "batch_acquired", "results_missing", "dataset_released", "order_requested", "request_answered"]);
+    expect(kindsFor("staff")).toEqual([...kindsFor("client"), "access_requested"]);
+    expect(switchesFor("client", ["dataset_released", "order_requested"]).filter(s => !s.enabled).map(s => s.kind)).toEqual(["dataset_released", "order_requested"]);
     expect(switchesFor("staff", []).every(s => s.enabled)).toBe(true);
   });
 });
@@ -114,7 +118,7 @@ describe("messages", () => {
 describe("delivery and the log", () => {
   it("sends one email per enabled recipient and logs each as sent, with the related ids", async () => {
     const transport = vi.fn<(mail: Mail) => Promise<void>>(async () => undefined);
-    const entries = await deliver(released, selectRecipients(released, audience), { config: on, transport, pause: noPause });
+    const entries = await deliver(released, members, { config: on, transport, pause: noPause });
     expect(transport.mock.calls.map(([mail]) => mail.to)).toEqual(["rowan@cedar.example.test", "quinn@other.example.test"]);
     expect(transport.mock.calls[0][0]).toMatchObject({ from: on.from, subject: "Dataset released: ORD059 version 2" });
     expect(entries.map(e => [e.userId, e.status, e.error])).toEqual([["rowan", "sent", null], ["sky", "skipped", "Turned off by the recipient"], ["quinn", "sent", null]]);
@@ -131,7 +135,7 @@ describe("delivery and the log", () => {
 
   it("the allowlist skips other domains; a turned-off switch is reported before the allowlist", async () => {
     const transport = vi.fn(async () => undefined);
-    const entries = await deliver(released, selectRecipients(released, audience), { config: { ...on, allow: ["cedar.example.test"] }, transport, pause: noPause });
+    const entries = await deliver(released, members, { config: { ...on, allow: ["cedar.example.test"] }, transport, pause: noPause });
     expect(entries.map(e => [e.userId, e.status, e.error])).toEqual([["rowan", "sent", null], ["sky", "skipped", "Turned off by the recipient"], ["quinn", "skipped", "Not on ADMIN_NOTIFY_ALLOW"]]);
     expect(transport).toHaveBeenCalledTimes(1);
   });
@@ -207,5 +211,80 @@ describe("the Resend transport (fake fetch)", () => {
       config: on, transport: resendTransport("re_test_key", hang as unknown as typeof fetch, 20), pause: noPause,
     });
     expect(entries[0]).toMatchObject({ status: "failed", error: "No answer from Resend within 5 s" });
+  });
+});
+
+describe("the event x audience matrix (0036)", () => {
+  const gate: NotificationEvent = { kind: "gate_failed", orderId: "o-1", code: "ORD059", clientId: "c-1", clientName: "Example Cedar", requestedBy: "rowan", gate: "arrived thawed, condition review", stepOwner: "operator" };
+  const shipment: NotificationEvent = { kind: "shipment_received", orderId: "o-1", code: "ORD059", title: "Plasma", clientId: "c-1", clientName: "Example Cedar", requestedBy: "rowan", boxes: 2, condition: "thawed" };
+  const labBatch: NotificationEvent = { kind: "batch_acquired", scope: "lab", batch: "B2026-031", orderId: null, code: "B2026-031", clientId: null, clientName: null, orders: ["ORD059", "ORD061"] };
+  const clientBatch: NotificationEvent = { kind: "batch_acquired", scope: "client", batch: "B2026-031", orderId: "o-1", code: "ORD059", clientId: "c-1", clientName: "Example Cedar", requestedBy: "rowan" };
+  const late: NotificationEvent = { kind: "results_missing", orderId: "o-1", code: "ORD059", title: null, clientId: "c-1", clientName: "Example Cedar", requestedBy: "rowan", days: 3, acquiredAt: "2026-11-09T15:00:00Z" };
+
+  it("the defaults read as the prototype: Admin; owner of the step; Operator; Operator, Admin; Operator", () => {
+    const rows = matrixRows([]);
+    expect(rows.map(row => [eventLabel(row.kind, row.days), labCell(row), row.clientAdmin, row.requester])).toEqual([
+      ["Shipment received", "Admin", true, true],
+      ["Gate failed", "owner of the step", false, false],
+      ["Batch acquired", "Operator", false, true],
+      ["No results TXT 3 days after acquisition", "Operator, Admin", false, false],
+      ["Dataset released", "Operator", true, true],
+      ["Order requested", "Operator, Admin, Owner", false, false],
+      ["Order request answered", "—", false, true],
+      ["Access requested", "Operator, Admin, Owner", false, false],
+    ]);
+    // A stored row replaces its default; the order stays the matrix's.
+    const changed = { ...defaultRules.gate_failed, labRoles: ["owner" as const] };
+    expect(matrixRows([changed])[1]).toBe(changed);
+    expect(labCell(changed)).toBe("Owner of the step, Owner");
+    expect(eventLabel("results_missing", 1)).toBe("No results TXT 1 day after acquisition");
+  });
+
+  it("normalizeRule checks a row like admin.set_notification_rule", () => {
+    const base = { kind: "batch_acquired", labRoles: ["admin", "operator", "admin"], stepOwner: false, clientAdmin: true, requester: false, days: null };
+    expect(normalizeRule(base)).toEqual({ kind: "batch_acquired", labRoles: ["operator", "admin"], stepOwner: false, clientAdmin: true, requester: false, days: null });
+    expect(normalizeRule({ ...base, kind: "invitation" })).toBeNull();
+    expect(normalizeRule({ ...base, labRoles: ["member"] })).toBeNull();
+    expect(normalizeRule({ ...base, stepOwner: true })).toBeNull();
+    expect(normalizeRule({ ...base, days: "3" })).toBeNull();
+    expect(normalizeRule({ ...base, kind: "access_requested" })).toBeNull();
+    expect(normalizeRule({ ...base, kind: "results_missing", days: "5" })?.days).toBe(5);
+    for (const days of [null, "0", "61", "2.5", "x"]) expect(normalizeRule({ ...base, kind: "results_missing", days }), String(days)).toBeNull();
+    expect(normalizeRule({ ...base, kind: "gate_failed", stepOwner: true })?.stepOwner).toBe(true);
+  });
+
+  it("each cell picks its people: lab roles, the owner of the step, the client's admins, the order's requester", () => {
+    expect(selectRecipients(shipment, audience).map(r => r.userId)).toEqual(["admin", "rowan", "sky"]);
+    expect(selectRecipients(gate, audience).map(r => r.userId)).toEqual(["operator"]);
+    // A lab Member is never the owner of a step; nobody when the step has no owner.
+    expect(selectRecipients({ ...gate, stepOwner: "member" }, audience)).toEqual([]);
+    expect(selectRecipients({ ...gate, stepOwner: null }, audience)).toEqual([]);
+    expect(selectRecipients(late, audience).map(r => r.userId)).toEqual(["admin", "operator"]);
+    // Every cell off: nobody.
+    expect(selectRecipients(shipment, audience, { ...defaultRules.shipment_received, labRoles: [], clientAdmin: false, requester: false })).toEqual([]);
+    // A lab person who opened the order is no requester.
+    expect(selectRecipients({ ...shipment, requestedBy: "owner" }, audience, { ...defaultRules.shipment_received, labRoles: [] }).map(r => r.userId)).toEqual(["sky"]);
+  });
+
+  it("a batch event's lab copy reaches only lab staff, each client copy only that client's people", () => {
+    const row = { ...defaultRules.batch_acquired, clientAdmin: true };
+    expect(selectRecipients(labBatch, audience, row).map(r => r.userId)).toEqual(["operator"]);
+    expect(selectRecipients(clientBatch, audience, row).map(r => r.userId)).toEqual(["rowan", "sky"]);
+  });
+
+  it("the new emails: short, with the order or batch and a link; a client's batch email names only its order", () => {
+    const origin = "https://lipidomics.example.test";
+    expect(buildMessage(shipment, origin, "/admin").text).toContain("The lab received the samples for order ORD059 (Plasma) of Example Cedar (2 boxes), thawed.\n\nFollow the order in Lipidomics Admin:\n\nhttps://lipidomics.example.test/admin/orders/ORD059");
+    expect(buildMessage(gate, origin, "/admin").subject).toBe("Gate failed: ORD059");
+    expect(buildMessage(gate, origin, "/admin").text).toContain("A check failed on order ORD059 of Example Cedar: arrived thawed, condition review.");
+    const labCopy = buildMessage(labBatch, origin, "/admin");
+    expect(labCopy.subject).toBe("Batch acquired: B2026-031");
+    expect(labCopy.text).toContain("with orders ORD059, ORD061");
+    expect(labCopy.text).toContain("https://lipidomics.example.test/admin/batch-run/B2026-031");
+    const clientCopy = buildMessage(clientBatch, origin, "/admin");
+    expect(clientCopy.subject).toBe("Samples of ORD059 acquired");
+    expect(clientCopy.text).not.toContain("ORD061");
+    expect(buildMessage(late, origin, "/admin").subject).toBe("No results TXT for ORD059 after 3 days");
+    expect(buildMessage(late, null).text).toContain("Ingest the results in Lipidomics Admin.");
   });
 });
