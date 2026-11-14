@@ -40,7 +40,7 @@ test("receive a shipment, register three samples by paste, see their codes and t
   const grid = page.getByRole("table", { name: "Samples to register" });
   await expect(grid.getByRole("row")).toHaveCount(4);
   await expect(page.getByLabel("Row 3 FullName")).toHaveValue("Trt_1");
-  await page.getByRole("button", { name: "Register 3 samples" }).click();
+  await page.getByRole("button", { name: "Save 3 valid rows" }).click();
 
   await expect(page).toHaveURL(/\/admin\/sample-registry\?order=ORD042&saved=3$/, slow);
   await expect(page.getByText(/3 samples registered\. ORD042 is now Registered/)).toBeVisible(slow);

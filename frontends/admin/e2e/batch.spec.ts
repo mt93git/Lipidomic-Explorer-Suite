@@ -30,7 +30,7 @@ test("pick the samples of a Registered order, preview, save, download, mark expo
   await expect(page).toHaveURL(/\/admin\/sample-registry\?order=ORD042&received=/, slow);
   await page.getByLabel("Paste from Excel").fill(metadataSheet);
   await page.getByRole("button", { name: "Add rows" }).click();
-  await page.getByRole("button", { name: "Register 3 samples" }).click();
+  await page.getByRole("button", { name: "Save 3 valid rows" }).click();
   await expect(page).toHaveURL(/\/admin\/sample-registry\?order=ORD042&saved=3$/, slow);
 
   // Builder: ORD042's samples are listed; select them all through the order link, set the rules and preview.

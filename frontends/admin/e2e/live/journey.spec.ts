@@ -365,7 +365,7 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
 
     await page.getByLabel("Paste from Excel").fill(metadataSheet);
     await page.getByRole("button", { name: "Add rows" }).click();
-    await page.getByRole("button", { name: "Register 3 samples" }).click();
+    await page.getByRole("button", { name: "Save 3 valid rows" }).click();
     await expect(page).toHaveURL(onPath(`/sample-registry\\?order=${code}&saved=3$`), slow);
     const registered = page.getByRole("table", { name: "Registered samples" });
     for (const n of ["001", "002", "003"]) await expect(registered.getByText(`${code}-S${n}`, { exact: true })).toBeVisible(slow);

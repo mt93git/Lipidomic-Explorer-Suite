@@ -35,13 +35,13 @@ export function readPaste(text: string): ReadPaste {
   return { headers: null, cells: lines, mapping: Array.from({ length: width }, (_, index) => columns[index]?.field ?? null) };
 }
 
-export function rowsFromPaste(cells: string[][], mapping: Mapping): SampleDraft[] {
-  return cells.map(line => {
-    const draft = emptyDraft();
-    line.forEach((cell, index) => { const field = mapping[index]; if (field) draft[field] = cell; });
-    return draft;
-  }).filter(draft => Object.values(draft).some(Boolean));
+export function draftFromCells(line: string[], mapping: Mapping): SampleDraft {
+  const draft = emptyDraft();
+  line.forEach((cell, index) => { const field = mapping[index]; if (field) draft[field] = cell; });
+  return draft;
 }
+
+export const rowsFromPaste = (cells: string[][], mapping: Mapping): SampleDraft[] => cells.map(line => draftFromCells(line, mapping)).filter(draft => Object.values(draft).some(Boolean));
 
 // ---------------------------------------------------------------- checks
 
