@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Notifications (0028) in demo mode, in one browser (one demo store). The lab view and the client view each turn their
+// Notifications (0028; switches for every event since 0036) in demo mode, in one browser (one demo store). The lab view and the client view each turn their
 // own email switches off and on; the four events write rows to the demo send log (the demo never sends: every row is
 // skipped, the Operator's own turned-off kind first), which the lab view reads. Both views fit a 390 px phone.
 const slow = { timeout: 60_000 };
@@ -30,7 +30,8 @@ test("the lab's switches and send log; a client's switches; every event leaves s
   await page.setViewportSize(desktop);
   await enterLab(page);
   await openNotifications(page);
-  await expect(page.getByRole("main").getByRole("form")).toHaveCount(2);
+  // 0036: a switch per event (the matrix decides who is emailed; each person may still turn one off).
+  await expect(page.getByRole("region", { name: "Lab work" }).getByRole("form")).toHaveCount(8);
   const access = switchOf(page, "Someone requests access");
   await expect(access.getByText("On", { exact: true })).toBeVisible();
   await expect(switchOf(page, "A client requests an order").getByText("On", { exact: true })).toBeVisible();
@@ -65,7 +66,8 @@ test("the lab's switches and send log; a client's switches; every event leaves s
   await page.getByRole("button", { name: /Example Cedar/ }).click();
   await expect(page).toHaveURL(/\/admin\/client\/home$/, slow);
   await openNotifications(page);
-  await expect(page.getByRole("main").getByRole("form")).toHaveCount(2);
+  await expect(page.getByRole("region", { name: "Your orders and datasets" }).getByRole("form")).toHaveCount(7);
+  await expect(page.getByRole("table", { name: "Who hears about what, by email" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Recent sends" })).toHaveCount(0);
   await switchOf(page, "A dataset is released").getByRole("button", { name: "Turn off" }).click();
   await expect(page.getByRole("status").filter({ hasText: "A dataset is released: off." })).toBeVisible(slow);
