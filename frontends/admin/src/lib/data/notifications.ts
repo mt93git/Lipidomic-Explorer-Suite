@@ -213,11 +213,13 @@ export async function orderFacts(codes: readonly string[], by: "code" | "id" = "
   }));
 }
 
+// gate: what failed, for the lab's copy; orderGate (optional): the same for one order, for its client's copy.
+type GateExtra = { gate: string; orderGate?: (code: string) => string; stepOwner: string | null };
 // A batch event: once to the lab (scope "lab", the batch and its order codes) and once per order to its client (scope
 // "client"), so a client's email never names another client's order. Never throws (notify reports).
 export async function notifyBatch(kind: "batch_acquired", batch: string, codes: readonly string[]): Promise<void>;
-export async function notifyBatch(kind: "gate_failed", batch: string, codes: readonly string[], extra: { gate: string; stepOwner: string | null }): Promise<void>;
-export async function notifyBatch(kind: "batch_acquired" | "gate_failed", batch: string, codes: readonly string[], extra?: { gate: string; stepOwner: string | null }): Promise<void> {
+export async function notifyBatch(kind: "gate_failed", batch: string, codes: readonly string[], extra: GateExtra): Promise<void>;
+export async function notifyBatch(kind: "batch_acquired" | "gate_failed", batch: string, codes: readonly string[], extra?: GateExtra): Promise<void> {
   let facts: OrderFact[] = [];
   try {
     facts = await orderFacts(codes);
@@ -229,9 +231,9 @@ export async function notifyBatch(kind: "batch_acquired" | "gate_failed", batch:
     for (const fact of facts) await notify({ kind, scope: "client", batch, ...fact });
     return;
   }
-  const { gate, stepOwner } = extra!;
+  const { gate, orderGate, stepOwner } = extra!;
   await notify({ kind, scope: "lab", gate: `${gate} (batch ${batch})`, stepOwner, orderId: null, code: batch, clientId: null, clientName: null });
-  for (const fact of facts) await notify({ kind, scope: "client", gate: `${gate} (batch ${batch})`, stepOwner, ...fact });
+  for (const fact of facts) await notify({ kind, scope: "client", gate: `${orderGate?.(fact.code) ?? gate} (batch ${batch})`, stepOwner, ...fact });
 }
 
 // ---------------------------------------------------------------- the scheduled check: no results TXT N days after acquisition

@@ -200,6 +200,23 @@ describe("the new events (0036)", () => {
       [["u-ash", "Samples of ORD061 acquired", "ORD061"]],
     ]);
   });
+
+  it("a failed gate in a shared batch tells each client only its own order's count", async () => {
+    for (const [name, value] of [["ADMIN_NOTIFY_ENABLED", "true"], ["RESEND_API_KEY", "re_test"], ["ADMIN_MAIL_FROM", "lab@example.test"]]) vi.stubEnv(name, value);
+    fetchSpy.mockResolvedValue(new Response("{}", { status: 200 }));
+    rules.gate_failed = { kind: "gate_failed", lab_roles: [], step_owner: false, client_admin: false, requester: true, days: null };
+    const audienceFor = vi.fn(async (_fn: string, args: { p_client_id: string | null }) => ({
+      data: args.p_client_id === "c-2" ? [{ user_id: "u-ash", email: "ash@larch.example.test", lab_role: null, client_role: "requester", off: [] }] : audienceRows, error: null,
+    }));
+    vi.mocked(createServiceClient).mockReturnValue({ ...service, rpc: audienceFor } as never);
+    const count = (n: number) => `${n} injections recorded Failed`;
+    await notifyBatch("gate_failed", "B2026-031", ["ORD059", "ORD061"], { gate: count(5), orderGate: code => count(code === "ORD059" ? 3 : 2), stepOwner: null });
+    await runScheduled();
+    const bodies = fetchSpy.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)) as { to: string[]; text: string });
+    expect(bodies.map(body => [body.to[0], body.text.match(/\d+ injections recorded Failed/)?.[0]])).toEqual([
+      ["rowan@cedar.example.test", "3 injections recorded Failed"], ["ash@larch.example.test", "2 injections recorded Failed"],
+    ]);
+  });
 });
 
 describe("the scheduled results check (0036)", () => {

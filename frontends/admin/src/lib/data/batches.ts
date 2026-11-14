@@ -243,8 +243,11 @@ export async function recordInjectionStatuses(name: string, rows: { sample_name:
   const wasFailed = new Set(batch.injections.filter(item => item.status.trim().toLowerCase() === "failed").map(item => item.sample_name));
   const failed = new Set(rows.filter(row => row.status.trim().toLowerCase() === "failed").map(row => row.sample_name.trim()).filter(name => !wasFailed.has(name)));
   if (changed > 0 && failed.size) {
-    const codes = [...new Set(batch.injections.filter(item => failed.has(item.sample_name) && item.orderCode).map(item => item.orderCode as string))].sort();
-    await notifyBatch("gate_failed", name, codes, { gate: `${failed.size} ${failed.size === 1 ? "injection" : "injections"} recorded Failed`, stepOwner: exporter });
+    const perOrder = new Map<string, number>();
+    for (const item of batch.injections) if (failed.has(item.sample_name) && item.orderCode) perOrder.set(item.orderCode, (perOrder.get(item.orderCode) ?? 0) + 1);
+    const count = (n: number) => `${n} ${n === 1 ? "injection" : "injections"} recorded Failed`;
+    // The lab reads the batch's total; each client only its own order's count, never other clients' or QC injections.
+    await notifyBatch("gate_failed", name, [...perOrder.keys()].sort(), { gate: count(failed.size), orderGate: code => count(perOrder.get(code) ?? 0), stepOwner: exporter });
   }
   return changed;
 }
