@@ -25,7 +25,11 @@ const summary = {
 };
 async function parse() {
   fireEvent.submit(screen.getByRole("button", { name: "Parse file" }).closest("form") as HTMLFormElement);
-  return await screen.findByRole("region", { name: "Parse summary" });
+  const region = await screen.findByRole("region", { name: "Parse summary" });
+  // The summary can show while the parse transition is still pending, and the heading buttons stay disabled until it
+  // ends: a click then does nothing. Wait for them, as a person would.
+  await waitFor(() => expect(screen.getByRole("button", { name: "Compare with previous" })).toBeEnabled());
+  return region;
 }
 beforeEach(() => {
   vi.mocked(parseUpload).mockResolvedValue({ review: { id: "review-1", summary, toMap: 12, orderCode: "ORD041", fileName: "synthetic.txt" } });
@@ -118,6 +122,7 @@ describe("ingest results form", () => {
     fireEvent.submit(screen.getByRole("button", { name: "Parse file" }).closest("form") as HTMLFormElement);
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Choose a nonempty SCIEX OS TXT up to 5 MB.");
-    expect(alert).toHaveFocus();
+    // FormAlert takes the focus in an effect that can run a tick after the alert is in the DOM.
+    await waitFor(() => expect(alert).toHaveFocus());
   });
 });
