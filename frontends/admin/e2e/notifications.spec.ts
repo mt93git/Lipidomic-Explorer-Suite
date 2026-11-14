@@ -66,7 +66,9 @@ test("the lab's switches and send log; a client's switches; every event leaves s
   await page.getByRole("button", { name: /Example Cedar/ }).click();
   await expect(page).toHaveURL(/\/admin\/client\/home$/, slow);
   await openNotifications(page);
-  await expect(page.getByRole("region", { name: "Your orders and datasets" }).getByRole("form")).toHaveCount(7);
+  // 0040: the lab-only events (order requested, gate failed, results missing, access requested) are not offered.
+  await expect(page.getByRole("region", { name: "Your orders and datasets" }).getByRole("form")).toHaveCount(4);
+  await expect(switchOf(page, "A client requests an order")).toHaveCount(0);
   await expect(page.getByRole("table", { name: "Who hears about what, by email" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Recent sends" })).toHaveCount(0);
   await switchOf(page, "A dataset is released").getByRole("button", { name: "Turn off" }).click();

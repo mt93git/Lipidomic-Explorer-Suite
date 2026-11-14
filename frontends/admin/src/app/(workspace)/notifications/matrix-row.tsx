@@ -18,6 +18,7 @@ function RowFields({ row, change = {}, skip = [] }: { row: NotificationRule; cha
     {!skip.includes("stepOwner") && <input type="hidden" name="stepOwner" value={String(next.stepOwner)} />}
     <input type="hidden" name="clientAdmin" value={String(next.clientAdmin)} />
     <input type="hidden" name="requester" value={String(next.requester)} />
+    <input type="hidden" name="clientMembers" value={String(next.clientMembers)} />
     {!skip.includes("days") && next.days !== null && <input type="hidden" name="days" value={String(next.days)} />}
   </>;
 }
@@ -33,14 +34,15 @@ function RuleForm({ children, className, label }: { children: ReactNode; classNa
 const Mark = ({ on }: { on: boolean }) => <><span aria-hidden="true">{on ? "✓" : "—"}</span><span className="sr-only">{on ? "Gets this email" : "Does not get this email"}</span></>;
 
 // One event of the matrix. An Owner or Admin edits it in place: the check marks and dashes are buttons that flip the
-// cell; the lab staff cell and the results check's delay open a small editor.
+// cell; the lab staff cell and the results check's delay open a small editor. A lab-only event shows a plain "—" in the
+// client cells (0040).
 export function MatrixRow({ row, editable }: { row: NotificationRule; editable: boolean }) {
   const allows = ruleAllows(row.kind);
   const event = eventLabel(row.kind, row.days);
   const lab = labCell(row);
   // A saved row remounts its editors, so they close once the change is in.
   const version = JSON.stringify(row);
-  const toggle = (cell: "clientAdmin" | "requester", audience: string) => {
+  const toggle = (cell: "clientAdmin" | "requester" | "clientMembers", audience: string) => {
     const on = row[cell];
     if (!allows.client) return <td className={styles.na}><span aria-hidden="true">—</span><span className="sr-only">Not for this event</span></td>;
     if (!editable) return <td className={on ? styles.on : styles.off}><Mark on={on} /></td>;
@@ -82,5 +84,6 @@ export function MatrixRow({ row, editable }: { row: NotificationRule; editable: 
     </td>
     {toggle("clientAdmin", "Client admin")}
     {toggle("requester", "Requester")}
+    {toggle("clientMembers", "Client members")}
   </tr>;
 }

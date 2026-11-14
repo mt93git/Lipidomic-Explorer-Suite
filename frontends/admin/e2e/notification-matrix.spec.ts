@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// The Notifications matrix (0036) in demo mode: who hears about what, by email. The example workspace's lab view
+// The Notifications matrix (0036, Client members and lab-only events 0040) in demo mode: who hears about what, by email. The example workspace's lab view
 // edits it (in this browser only): a check mark, the lab staff of a row, the results check's delay. A recorded
 // shipment then writes skipped rows to the demo send log for the people the row names. Fits a 390 px phone.
 // SHOT_DIR (optional): where to save the desktop capture used for the prototype side-by-side.
@@ -25,14 +25,23 @@ test("the lab edits who hears about what; a shipment emails the people its row n
   await page.goto("/admin/notifications");
   await expect(page.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible(slow);
   await expect(page.getByText("Who hears about what, by email.")).toBeVisible();
-  await expect(matrix(page).getByRole("columnheader")).toHaveText(["Event", "Lab staff", "Client admin", "Requester"]);
-  expect((await cells(page)).slice(0, 5)).toEqual([
-    ["Shipment received", "Admin", "✓", "✓"],
-    ["Gate failed", "owner of the step", "—", "—"],
-    ["Batch acquired", "Operator", "—", "✓"],
-    ["No results TXT 3 days after acquisition", "Operator, Admin", "—", "—"],
-    ["Dataset released", "Operator", "✓", "✓"],
+  await expect(matrix(page).getByRole("columnheader")).toHaveText(["Event", "Lab staff", "Client admin", "Requester", "Client members"]);
+  expect(await cells(page)).toEqual([
+    ["Shipment received", "Admin", "✓", "✓", "—"],
+    ["Gate failed", "owner of the step", "—", "—", "—"],
+    ["Batch acquired", "Operator", "—", "✓", "—"],
+    ["No results TXT 3 days after acquisition", "Operator, Admin", "—", "—", "—"],
+    ["Dataset released", "Operator", "✓", "✓", "✓"],
+    ["Order requested", "Operator, Admin, Owner", "—", "—", "—"],
+    ["Order request answered", "—", "—", "✓", "—"],
+    ["Access requested", "Operator, Admin, Owner", "—", "—", "—"],
   ]);
+  // 0040: the lab-only events have no client cell to click; Dataset released reaches every client member.
+  for (const kind of ["gate_failed", "results_missing", "order_requested", "access_requested"]) {
+    await expect(row(page, kind).locator("td:nth-child(n+3) button")).toHaveCount(0); // the client cells
+    await expect(row(page, kind).getByText("Not for this event")).toHaveCount(3);
+  }
+  await expect(row(page, "dataset_released").getByTestId("dataset_released-clientMembers")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("Emails go out only for these events; nothing is sent without one.")).toBeVisible();
   if (process.env.SHOT_DIR) {
     await page.locator(".page-heading").first().scrollIntoViewIfNeeded();
