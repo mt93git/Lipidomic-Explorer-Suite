@@ -1,19 +1,65 @@
-.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
-.layout + .layout { margin-top: 22px; }
-.layout > :global(.panel) { margin-top: 0; }
-.reading { grid-template-columns: minmax(0, 1fr); }
 .form select { width: 100%; border: 1px solid #bfcbd5; padding: 10px 12px; border-radius: 5px; background: white; color: var(--ink); font: inherit; }
 .form select:disabled { background: var(--surface, #f3f6f8); color: var(--muted); }
+/* Long forms (profile, panel) in two columns on a wide screen; the button and the messages span both. */
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 22px; align-items: start; }
+.formGrid > :global(.field) { margin: 12px 0; }
+.formGrid > :not(:global(.field)) { grid-column: 1 / -1; justify-self: start; }
 .scroll { max-width: 100%; overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm); }
-.table th { color: var(--muted); font-weight: 700; }
-.table th, .table td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; }
+.table thead th { background: #f4f7f9; color: var(--muted); font-family: var(--font-mono), monospace; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.table th, .table td { border-bottom: 1px solid var(--line); padding: 11px 14px; vertical-align: top; }
+.table tbody th { font-weight: 400; color: var(--ink); }
 .table td { overflow-wrap: break-word; }
 .table td:first-child { min-width: 9em; }
+.settings tbody th { width: 7.5em; }
+.pattern { font-variant-ligatures: none; }
 /* The name is the way into Edit: 24 px tall to tap, in the row's own padding. */
 .table td:first-child a { display: inline-block; padding: 4px 0; margin: -4px 0; }
 .archived td { color: var(--muted); }
 .reason { display: block; font-size: var(--text-xs); margin-top: 4px; }
 .archive { margin-top: 22px; padding-top: 4px; border-top: 1px solid var(--line); }
 .cancel { display: inline-block; margin-top: 6px; padding: 6px 0; }
-@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* The prototype's cards: a tinted header row with the title (and the active pill), then the body. */
+.top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.top > :global(.panel) { margin-top: 0; }
+.card { padding: 0; overflow: hidden; }
+.top + .card, .card + :global(.panel), .top + :global(.panel) { margin-top: 18px; }
+.cardHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 18px; background: #f8fafb; border-bottom: 1px solid var(--line); min-height: 52px; }
+.cardHead h2 { margin: 0; font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0; }
+.cardActions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; font-size: var(--text-sm); }
+.cardBody { padding: 14px 18px 16px; }
+.active, .inactive { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px; font-family: var(--font-mono), monospace; font-size: var(--text-sm); font-weight: 700; }
+.active { background: var(--ok-tint); color: var(--ok); border: 1px solid #b9dcc8; }
+.inactive { background: white; color: var(--muted); border: 1px solid var(--line); }
+.caption { margin: 10px 0 0; color: var(--muted); font-size: var(--text-xs); }
+.activate { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 14px; margin-top: 8px; }
+.activate > :global(.field) { margin: 8px 0 0; }
+
+.switcher { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 16px; }
+.switcher a { padding: 5px 10px; border: 1px solid var(--line); border-radius: 14px; background: white; font-size: var(--text-sm); }
+.switcher a[aria-current="page"] { background: var(--tint); border-color: #a8c2d7; font-weight: 700; }
+
+/* Blank and QC rules: four boxes in a row, each a label over one input-like box. */
+.ruleGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.rule { min-width: 0; margin: 0; padding: 0; border: 0; }
+.rule legend, .rule dt { padding: 0; margin-bottom: 7px; font-size: var(--text-sm); font-weight: 700; }
+.ruleBox { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-height: 40px; margin: 0; padding: 6px 12px; border: 1px solid #bfcbd5; border-radius: 5px; background: white; font-size: 14px; }
+.ruleBox:focus-within { border-color: var(--blue); box-shadow: 0 0 0 2px var(--tint); }
+.ruleBox input { border: 0; padding: 2px 0; background: transparent; color: var(--ink); font: inherit; min-width: 0; }
+.ruleBox input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; border-radius: 2px; }
+.count { width: 3.2ch; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+.count::-webkit-outer-spin-button, .count::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.note { flex: 1 1 6em; width: 6em; }
+.rulesForm { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 16px; }
+.rulesForm > .ruleGrid, .rulesForm > p, .rulesForm > :global(.field-alert), .rulesForm > [role="alert"] { flex: 1 1 100%; }
+.rulesForm > :global(.field) { margin: 10px 0 0; flex: 0 1 280px; }
+.rulesForm > button { margin-top: 10px; }
+.rulesHint, .rulesNote { margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
+
+@media (max-width: 1000px) {
+  .top { grid-template-columns: minmax(0, 1fr); }
+  .ruleGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .formGrid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) { .ruleGrid { grid-template-columns: minmax(0, 1fr); } }
