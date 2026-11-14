@@ -228,8 +228,11 @@ BEGIN
     RAISE EXCEPTION 'order % has no registered samples on this shipment; register them before confirming the receipt tube by tube', o.code
       USING ERRCODE = '55000';
   END IF;
+  -- Only tubes still on the manifest count: a tube whose sample was archived or moved to another shipment after its
+  -- check-in would otherwise make missing negative (and the CHECK fail).
   SELECT count(*), count(*) FILTER (WHERE t.condition <> 'intact') INTO v_checked, v_damaged
-    FROM admin.shipment_tube t WHERE t.shipment_id = s.id AND t.archived_at IS NULL;
+    FROM admin.shipment_tube t JOIN admin.shipment_manifest(s.id) m ON m.id = t.sample_id
+   WHERE t.shipment_id = s.id AND t.archived_at IS NULL;
   v_missing := v_expected - v_checked;
   IF (v_missing > 0 OR v_damaged > 0) AND v_note IS NULL THEN
     RAISE EXCEPTION '% missing and % damaged: write a discrepancy note; the client reads it on their order',

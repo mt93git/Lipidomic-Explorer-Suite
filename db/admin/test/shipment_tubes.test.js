@@ -146,6 +146,15 @@ describe('confirm receipt', () => {
     expect(await confirm(null)).toEqual({ expected: 2, checked_in: 2, missing: 0, damaged: 0 });
   });
 
+  test('a checked-in tube whose sample left the manifest is not counted', async () => {
+    await as(db, U.operator);
+    await checkIn('ORD001-S002', 'hemolyzed');
+    await as(db, null);
+    await db.query("UPDATE admin.sample SET archived_at = now(), archived_reason = 'registered twice' WHERE id = $1", [id(104)]);
+    await as(db, U.operator);
+    expect(await confirm(null)).toEqual({ expected: 1, checked_in: 1, missing: 0, damaged: 0 });
+  });
+
   test('a shipment with nothing on its manifest cannot be confirmed tube by tube', async () => {
     await as(db, U.operator);
     const shipment = (await db.query("SELECT admin.receive_shipment($1, 'courier', NULL, 'ok', 1, NULL) AS id", [id(101)])).rows[0].id;
