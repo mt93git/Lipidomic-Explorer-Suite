@@ -49,6 +49,12 @@ test("the audit log shows a release by its signer, filtered by entity and order,
   await expect(changes).toContainText("built → released");
   await expect(changes).not.toContainText("{");
 
+  // Export CSV is itself recorded (0042): who, the filter and the row count.
+  const [download] = await Promise.all([page.waitForEvent("download", slow), page.getByRole("link", { name: "Export CSV" }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^audit-log-\d{4}-\d{2}-\d{2}-ORD048-dataset\.csv$/);
+  await page.goto("/admin/audit-log");
+  await expect(events.getByRole("row").filter({ hasText: "Audit log exported: 2 rows, entity dataset, ORD048" })).toContainText("Demo Operator", slow);
+
   // Another order: nothing; the filters stay in the URL.
   await page.goto("/admin/audit-log?order=ORD041");
   await expect(page.getByText("No events match these filters.")).toBeVisible(slow);
