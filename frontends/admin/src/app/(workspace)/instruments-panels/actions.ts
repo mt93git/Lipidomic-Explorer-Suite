@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirectAfterAction } from "@/lib/action-redirect";
 import {
-  archiveInstrument, archivePanel, createInstrument, createPanel, DataError, parseKits, updateInstrument, updatePanel,
+  archiveInstrument, archivePanel, createInstrument, createPanel, DataError, parseKits, setPanelRate, updateInstrument, updatePanel,
 } from "@/lib/data/instruments-panels";
 import { getAppSession } from "@/lib/session";
 
@@ -50,4 +50,19 @@ export async function updatePanelAction(_previous: CatalogActionState, form: For
 }
 export async function archivePanelAction(_previous: CatalogActionState, form: FormData) {
   return run(() => archivePanel({ id: value(form, "id"), reason: value(form, "reason"), actorId: actor(form) }), "panel-archived");
+}
+
+// The rate sheet (0033): blank clears a part; anything else must be a number ("12,5" reads as 12.5).
+function amount(form: FormData, key: string, label: string): number | null {
+  const text = value(form, key).trim().replace(",", ".");
+  if (!text) return null;
+  const parsed = Number(text);
+  if (!Number.isFinite(parsed)) throw new DataError(`${label} must be a number.`);
+  return parsed;
+}
+export async function setRateAction(_previous: CatalogActionState, form: FormData) {
+  return run(async () => setPanelRate({
+    panelId: value(form, "panelId"), ratePerSample: amount(form, "ratePerSample", "Rate per sample"), currency: value(form, "currency") || null,
+    minutesPerInjection: amount(form, "minutesPerInjection", "Minutes per injection"), actorId: actor(form),
+  }), "rate-saved");
 }

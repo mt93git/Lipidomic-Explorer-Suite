@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
-import { catalogPermissions, datasetTypeLabels, getCatalog, type Instrument, type PanelRecord } from "@/lib/data/instruments-panels";
+import { catalogPermissions, datasetTypeLabels, getCatalog, listPanelRates, type Instrument, type PanelRecord } from "@/lib/data/instruments-panels";
+import { builderDefaults } from "@/lib/batch-builder";
+import { formatMoney, type PanelRate } from "@/lib/order-wizard";
 import { requireWorkspace } from "@/lib/session";
 import { DemoActor } from "../people/demo-actor";
 import { ActionForm } from "../release/action-form";
-import { archiveInstrumentAction, archivePanelAction, createInstrumentAction, createPanelAction, updateInstrumentAction, updatePanelAction } from "./actions";
-import { InstrumentFields, PanelFields } from "./fields";
+import { archiveInstrumentAction, archivePanelAction, createInstrumentAction, createPanelAction, setRateAction, updateInstrumentAction, updatePanelAction } from "./actions";
+import { InstrumentFields, PanelFields, RateFields } from "./fields";
 import styles from "./instruments-panels.module.css";
 
 export const metadata: Metadata = { title: "Instruments & panels" };
@@ -16,13 +18,15 @@ const done: Record<string, string> = {
   "instrument-archived": "Instrument archived. Its batches keep it; show archived to see it.",
   "panel-created": "Panel added. New order and Batch builder offer it now.", "panel-saved": "Panel saved.",
   "panel-archived": "Panel archived. Its orders and batches keep it; New order and Batch builder no longer offer it.",
+  "rate-saved": "Rate sheet saved. New order's estimate uses it now.",
 };
-type Query = { archived?: string; instrument?: string; panel?: string; done?: string };
-const href = (query: { archived?: boolean; instrument?: string; panel?: string }, anchor?: string) => {
+type Query = { archived?: string; instrument?: string; panel?: string; rate?: string; done?: string };
+const href = (query: { archived?: boolean; instrument?: string; panel?: string; rate?: string }, anchor?: string) => {
   const params = new URLSearchParams();
   if (query.archived) params.set("archived", "1");
   if (query.instrument) params.set("instrument", query.instrument);
   if (query.panel) params.set("panel", query.panel);
+  if (query.rate) params.set("rate", query.rate);
   const search = params.toString();
   return `${PATH}${search ? `?${search}` : ""}${anchor ? `#${anchor}` : ""}`;
 };
@@ -57,6 +61,22 @@ function PanelTable({ panels, hidden, edit }: { panels: PanelRecord[]; hidden: n
   </table></div>;
 }
 
+// The lab's rate sheet (0033): what New order's estimate reads. A part not set is said so; nothing is assumed.
+function RateTable({ panels, rates, edit }: { panels: PanelRecord[]; rates: PanelRate[]; edit: (id: string) => string | null }) {
+  if (!panels.length) return <p className="empty-state">No active panels to price.</p>;
+  return <div className={styles.scroll} role="region" aria-label="Rate sheet table" tabIndex={0}><table className={styles.table} aria-label="Rate sheet">
+    <thead><tr><th scope="col">Panel</th><th scope="col">Rate per sample</th><th scope="col">Minutes per injection</th></tr></thead>
+    <tbody>{panels.map(panel => {
+      const rate = rates.find(item => item.panelId === panel.id);
+      return <tr key={panel.id}>
+        <td>{edit(panel.id) ? <Link href={edit(panel.id)!} aria-label={`Set the rate for ${panel.name}`}>{panel.name}</Link> : panel.name}</td>
+        <td>{rate?.ratePerSample != null && rate.currency ? formatMoney(rate.ratePerSample, rate.currency) : "Not set"}</td>
+        <td>{rate?.minutesPerInjection != null ? `${rate.minutesPerInjection} min` : `Not set (estimate uses the batch builder's ${builderDefaults.minutesPerInjection} min)`}</td>
+      </tr>;
+    })}</tbody>
+  </table></div>;
+}
+
 function ArchiveForm({ kind, id, actors, blocked, action }: {
   kind: "instrument" | "panel"; id: string; actors: Parameters<typeof DemoActor>[0]["actors"]; blocked: string | null; action: typeof archiveInstrumentAction;
 }) {
@@ -74,7 +94,7 @@ function ArchiveForm({ kind, id, actors, blocked, action }: {
 
 export default async function InstrumentsPanelsPage({ searchParams }: { searchParams: Promise<Query> }) {
   await requireWorkspace("staff");
-  const [catalog, permissions, query] = await Promise.all([getCatalog(), catalogPermissions(), searchParams]);
+  const [catalog, permissions, query, rates] = await Promise.all([getCatalog(), catalogPermissions(), searchParams, listPanelRates()]);
   const showArchived = query.archived === "1";
   const archivedInstruments = catalog.instruments.filter(item => item.archivedAt).length;
   const archivedPanels = catalog.panels.filter(item => item.archivedAt).length;
@@ -85,7 +105,11 @@ export default async function InstrumentsPanelsPage({ searchParams }: { searchPa
   const editing = {
     instrument: canEdit ? catalog.instruments.find(item => item.id === query.instrument && !item.archivedAt) : undefined,
     panel: canEdit ? catalog.panels.find(item => item.id === query.panel && !item.archivedAt) : undefined,
+    rate: canEdit ? catalog.panels.find(item => item.id === query.rate && !item.archivedAt) : undefined,
   };
+  const editRate = (id: string) => canEdit ? href({ archived: showArchived, rate: id }, "rate-form") : null;
+  const ratePanel = editing.rate;
+  const activePanels = catalog.panels.filter(item => !item.archivedAt);
   const editInstrument = (id: string) => canEdit ? href({ archived: showArchived, instrument: id }, "instrument-form") : null;
   const editPanel = (id: string) => canEdit ? href({ archived: showArchived, panel: id }, "panel-form") : null;
   const back = href({ archived: showArchived });
@@ -141,6 +165,22 @@ export default async function InstrumentsPanelsPage({ searchParams }: { searchPa
         </> : <ActionForm action={createPanelAction} submit="Add panel" pendingLabel="Adding…" keepValues className={styles.form}>
           <PanelFields instruments={catalog.instruments} actors={demoActors} />
         </ActionForm>}
+      </section>}
+    </div>
+
+    <div className={layout} id="rate-sheet">
+      <section className="panel" aria-labelledby="rates-title"><h2 id="rates-title">Rate sheet</h2>
+        <p className="muted">The price per sample and the minutes one injection takes, per panel. New order&apos;s estimate reads them; a rate not set shows as &ldquo;not set&rdquo;, never as a guess. Lab staff only: clients receive the quote from the order.</p>
+        <RateTable panels={activePanels} rates={rates} edit={editRate} />
+      </section>
+      {canEdit && <section className="panel" id="rate-form" aria-labelledby="rate-form-title">
+        <h2 id="rate-form-title">{ratePanel ? `Rate for ${ratePanel.name}` : "Set a rate"}</h2>
+        {ratePanel ? <>
+          <ActionForm key={ratePanel.id} action={setRateAction} submit="Save rate" pendingLabel="Saving…" keepValues className={styles.form}>
+            <RateFields panel={ratePanel} rate={rates.find(item => item.panelId === ratePanel.id) ?? null} actors={demoActors} />
+          </ActionForm>
+          <Link className={styles.cancel} href={back}>Cancel</Link>
+        </> : <p className="muted">Choose a panel in the rate sheet to set its price per sample and minutes per injection.</p>}
       </section>}
     </div>
   </>;

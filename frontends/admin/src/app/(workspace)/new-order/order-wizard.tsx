@@ -127,7 +127,7 @@ export function OrderWizard({ clients, panels, placedBy, initial, children }: Pr
         {wizardSteps.map(item => <li key={item.step}>
           <button type="button" className={styles.step} onClick={() => go(item.step)}
             aria-current={item.step === step ? "step" : undefined} data-done={item.step < step ? "" : undefined}>
-            <span>{item.step}</span>{item.label}
+            <span>{item.step}</span>{" "}{item.label}
           </button>
         </li>)}
       </ol>

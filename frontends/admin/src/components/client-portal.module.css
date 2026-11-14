@@ -53,3 +53,6 @@
 .contact p { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
 /* The client's own notes on their order (Order facts): kept as typed. */
 .notes { white-space: pre-line; overflow-wrap: anywhere; }
+
+/* New order wizard (0033): the sample list template on a Requested or Accepted order. */
+.template { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0 0; }

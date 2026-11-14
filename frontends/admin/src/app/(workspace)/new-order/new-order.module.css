@@ -6,7 +6,7 @@
 .step:hover { background: var(--subtle); }
 .step[aria-current="step"] { background: var(--tint); color: var(--ink); }
 .step[data-done] { color: var(--ok); }
-.step span { margin-right: 6px; }
+.step span { margin-right: 2px; }
 
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: white; box-shadow: var(--shadow); min-width: 0; }
 .cardHead { margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--line); background: #f6f8fa; border-radius: var(--radius) var(--radius) 0 0; font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--ink); }
