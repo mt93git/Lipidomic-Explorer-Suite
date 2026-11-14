@@ -47,6 +47,9 @@ describe("demo", () => {
       ["activation", "example-requester", "requester@example.test", "Welcome to Lipidomics · Choose your password", "skipped"],
     ]);
     await expect(sendActivation({ kind: "client_member", id: "member-example-client-member", actorId: owner })).rejects.toThrow(/already signed in/);
+    // The demo sends nothing, but its reminder counts like a sent one: People shows it and the next waits 24 hours.
+    expect((await listPeople()).people.find(person => person.name === "Demo Requester")?.activation?.lastSentAt).toEqual(expect.any(String));
+    await expect(sendActivation({ kind: "client_member", id: requester!.id, actorId: owner })).rejects.toThrow(/Demo Requester was reminded .*next possible /);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(createServiceClient).not.toHaveBeenCalled();
   });
@@ -102,9 +105,9 @@ describe("live", () => {
     expect(rpc).toHaveBeenCalledWith("record_activation_email", { p_user_id: "u-op" });
   });
 
-  it("within 10 minutes of a sent one: refused, nothing made or sent", async () => {
-    const { generateLink, logged } = setUp({ activation_sent_at: new Date(Date.now() - 60_000).toISOString() });
-    await expect(sendActivation({ kind: "lab_staff", id: "s1" })).rejects.toThrow(/less than 10 minutes ago/);
+  it("within 24 hours of a sent one: refused on the server, nothing made or sent", async () => {
+    const { generateLink, logged } = setUp({ activation_sent_at: new Date(Date.now() - 23 * 3_600_000).toISOString() });
+    await expect(sendActivation({ kind: "lab_staff", id: "s1" })).rejects.toThrow(/was reminded .*One reminder per account per 24 hours: next possible /);
     expect([generateLink.mock.calls, fetchSpy.mock.calls, logged]).toEqual([[], [], []]);
   });
 

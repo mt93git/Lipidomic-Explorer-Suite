@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import PeoplePage from "@/app/(workspace)/people/page";
 import { listAccessRequests } from "@/lib/data/access-requests";
 import { listPeople } from "@/lib/data/people";
+import { formatLabInstant } from "@/lib/lab-time";
 import { groupPeople, lastActive, projectRoles, type Person } from "@/lib/people";
 
 vi.mock("@/lib/session", () => ({ requireWorkspace: vi.fn(async () => ({ view: "staff", role: "Owner" })) }));
@@ -91,6 +92,18 @@ describe("people page", () => {
     expect(within(usman).getByRole("button", { name: "Remind Usman Example" })).toBeVisible();
     expect(within(usman).getByText(/^Reminded /)).toBeVisible();
     for (const row of [gerardo, stephania, paula, postdoc]) expect(within(row).queryByRole("button", { name: /^Remind/ })).toBeNull();
+  });
+
+  it("Remind within 24 hours of the last one: the button is disabled and says when the next is possible", async () => {
+    vi.mocked(listPeople).mockResolvedValue({
+      people: people.map(item => item.id === "s-ub" ? { ...item, activation: { active: false, hasPassword: false, lastSentAt: "2026-11-13T18:00:00Z" } } : item),
+      invitations: [], clients: [], canInviteLab: true, canInviteClient: true, demoActors: null,
+    });
+    await page();
+    const usman = within(screen.getByRole("table", { name: "People" })).getAllByRole("row")[3];
+    expect(within(usman).getByRole("button", { name: /Remind Usman Example/ })).toBeDisabled();
+    expect(usman).toHaveTextContent(`Reminded ${formatLabInstant("2026-11-13T18:00:00Z")} · next possible ${formatLabInstant("2026-11-14T18:00:00.000Z")}`);
+    expect(formatLabInstant("2026-11-14T18:00:00.000Z")).toMatch(/13:00 EST/);
   });
 
   it("the Invite form: Email, Client, Role, Send invitation and the 7-day note", async () => {

@@ -8,6 +8,7 @@ import { groupPeople, INVITATION_DAYS, lastActive, projectRoles, type Person, ty
 import type { LabPerson } from "@/lib/release";
 import { clientRoleNames, clientRoles, labRoleNames, labRoles, type LabRoleKey } from "@/lib/roles";
 import { requireWorkspace } from "@/lib/session";
+import { nextReminderAt } from "@/lib/activation";
 import { ActionForm } from "../release/action-form";
 import { AccessRequests } from "./access-requests";
 import { archiveMemberAction, revokeAction, setRoleAction } from "./actions";
@@ -19,13 +20,14 @@ import styles from "./people.module.css";
 export const metadata: Metadata = { title: "People" };
 const banners: Record<string, string> = { role: "Role changed.", archived: "Membership archived. The record is kept.", revoked: "Invitation revoked. Its link no longer works." };
 // a19's Remind: for an account that has never signed in, a lab Owner or Admin resends the welcome (activation email,
-// activation.ts) from the row. Who has signed in reads as Last active instead.
+// activation.ts) from the row, once per 24 hours (the button waits until then). Who has signed in reads as Last active.
 function Remind({ row, canSend, actors }: { row: PersonRow; canSend: boolean; actors: LabPerson[] | null }) {
   const state = row.account.activation;
   if (!state || state.active || !canSend) return null;
+  const next = nextReminderAt(state.lastSentAt);
   return <div className={styles.account}>
-    <ActivationForm kind={row.account.kind} id={row.account.id} name={row.name} resend={!!state.lastSentAt} actors={actors} remind />
-    {state.lastSentAt && <small className="muted">Reminded {formatLabInstant(state.lastSentAt)}</small>}
+    <ActivationForm kind={row.account.kind} id={row.account.id} name={row.name} resend={!!state.lastSentAt} actors={actors} remind waiting={!!next} />
+    {state.lastSentAt && <small className="muted">Reminded {formatLabInstant(state.lastSentAt)}{next && ` · next possible ${formatLabInstant(next)}`}</small>}
   </div>;
 }
 
