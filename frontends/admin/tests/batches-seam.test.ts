@@ -85,7 +85,7 @@ test("demo: an unknown panel, a second plan of the same samples and another brow
   const input = await plan(["s-1"]);
   await expect(createBatch({ ...input, panelId: "No such panel" })).rejects.toThrow(/panel was not found/);
   const { name } = await createBatch(input);
-  await expect(createBatch(input)).rejects.toThrow(/already in a planned batch/);
+  await expect(createBatch(input)).rejects.toThrow(/already in batch B\d{4}-\d+ \(planned\)/);
   await expect(markBatchAcquired(name)).rejects.toThrow(/export its sequence first/);
   jar.clear();
   expect(await getBatch(name)).toBeNull();
@@ -102,8 +102,8 @@ test("live: create_batch gets p_name null and the exact injections and rules, an
   expect(await createBatch({ panelId: "panel-1", injections, rules })).toEqual({ id: "batch-id", name: "B2026-044" });
   expect(rpc).toHaveBeenCalledWith("create_batch", { p_name: null, p_panel_id: "panel-1", p_rules: rules, p_injections: injections });
   expect(eq).toHaveBeenCalledWith("id", "batch-id");
-  rpc.mockResolvedValue({ data: null, error: { message: "sample Synthetic_1 is already in a planned batch (B2026-001)" } });
-  await expect(createBatch({ panelId: "panel-1", injections, rules })).rejects.toThrow("Sample Synthetic_1 is already in a planned batch (B2026-001).");
+  rpc.mockResolvedValue({ data: null, error: { message: "sample Synthetic_1 is already in batch B2026-001 (acquired); archive that batch to batch the sample again" } });
+  await expect(createBatch({ panelId: "panel-1", injections, rules })).rejects.toThrow("Sample Synthetic_1 is already in batch B2026-001 (acquired); archive that batch to batch the sample again.");
 });
 
 test("live: mark exported sends the SHA-256 of the sequence file built from the saved injections and those injections; mark acquired sends the id", async () => {

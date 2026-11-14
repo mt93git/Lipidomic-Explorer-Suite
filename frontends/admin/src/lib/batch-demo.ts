@@ -53,15 +53,16 @@ type CreateArgs = { panel: string; injections: SaveInjection[]; rules: StoredRul
 export function recordBatch(state: DemoState, { panel, injections, rules, orders, actor, now, id }: CreateArgs): { state: DemoState; batch: DemoBatch } {
   if (!panel) throw new DataError("A panel is required to build a batch.");
   if (!injections.length) throw new DataError("Add at least one injection.");
-  const planned = batches(state).filter(batch => batch.status === "planned");
+  // Any batch holds its samples, whatever its status (0039); demo batches are never archived.
+  const held = batches(state);
   const rows: BatchInjection[] = injections.map(row => {
     if (row.sample_type === "Unknown") {
       const found = state.samples.find(item => item.id === row.sample_id);
       const order = found && orders.find(candidate => candidate.code === found.orderCode);
       if (!found || !order) throw new DataError(`Sample ${row.sample_id ?? "(none)"} was not found or is archived.`);
       if (order.released || order.stage < REGISTERED || order.stage > ACQUIRED) throw new DataError(`Order ${order.code} is at ${dbStages[order.stage] ?? "released"}; samples can be batched from Registered to Acquired.`);
-      const clash = planned.find(batch => batch.injections.some(item => item.aliquot_id === aliquotOf(found.id)));
-      if (clash) throw new DataError(`Sample ${found.full_name} is already in a planned batch (${clash.name}).`);
+      const clash = held.find(batch => batch.injections.some(item => item.aliquot_id === aliquotOf(found.id)));
+      if (clash) throw new DataError(`Sample ${found.full_name} is already in batch ${clash.name} (${batchStatusLabel(clash.status).toLowerCase()}); archive that batch to batch the sample again.`);
       return { seq: row.seq, sample_type: row.sample_type, sample_name: row.sample_name, FullName: found.full_name.trim(), client_id: order.clientId, aliquot_id: aliquotOf(found.id), plate: row.plate, vial: row.vial, sampleCode: found.code, orderCode: order.code, status: "planned" };
     }
     return { seq: row.seq, sample_type: row.sample_type, sample_name: row.sample_name, FullName: null, client_id: null, aliquot_id: null, plate: row.plate, vial: row.vial, sampleCode: null, orderCode: null, status: "planned" };

@@ -64,7 +64,17 @@ describe("demo create_batch", () => {
     expect(() => recordBatch(state, { ...args, panel: "" })).toThrow(DataError);
     expect(() => recordBatch(state, { ...args, injections: saveInjections([{ ...planInjections(["s-ORD041-1"], injectionsFor(state, []).list)[1], aliquot_id: "gone" }]) })).toThrow(/not found/);
     const { state: planned } = save(state, ["s-ORD041-1"]);
-    expect(() => recordBatch(planned, { ...args, orders: orders(planned) })).toThrow(/already in a planned batch \(B2026-033\)/);
+    expect(() => recordBatch(planned, { ...args, orders: orders(planned) })).toThrow(/already in batch B2026-033 \(planned\)/);
+  });
+
+  it("an exported or acquired batch still holds its samples (0039)", () => {
+    const state = withSamples();
+    const { injections } = injectionsFor(state, ["s-ORD041-1"]);
+    const args = { panel: "Panel A", injections, rules: rulesRecord(values([])), orders: orders(state), actor: "x", now, id: "b" };
+    const exported = recordExported(save(state, ["s-ORD041-1"]).state, "B2026-033", "a".repeat(64), "x", now);
+    expect(() => recordBatch(exported, { ...args, orders: orders(exported) })).toThrow(/already in batch B2026-033 \(sequence exported\)/);
+    const acquired = recordAcquired(exported, "B2026-033", now);
+    expect(() => recordBatch(acquired, { ...args, orders: orders(acquired) })).toThrow(/already in batch B2026-033 \(acquired\)/);
   });
 });
 
