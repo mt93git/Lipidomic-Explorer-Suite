@@ -9,6 +9,11 @@ describe("dataset status pill", () => {
     expect(datasetPill({ status: "built", signatures: 2 }, 3)).toEqual({ tone: "awaiting", label: "awaiting 3rd signature" });
     expect(datasetPill({ status: "built", signatures: 2 }, 2)).toEqual({ tone: "ready", label: "signed · ready to release" });
   });
+  it("an archived build reads archived, not awaiting or ready", () => {
+    expect(datasetPill({ status: "built", signatures: 0, archived: true }, 2)).toEqual({ tone: "superseded", label: "archived" });
+    expect(datasetPill({ status: "built", signatures: 2, archived: true }, 2)).toEqual({ tone: "superseded", label: "archived" });
+    expect(datasetPill({ status: "withdrawn", signatures: 2, archived: true }, 2)).toEqual({ tone: "withdrawn", label: "withdrawn" });
+  });
   it("released, superseded and withdrawn read as their status; an order still processing reads processing", () => {
     expect(datasetPill({ status: "released", signatures: 2 }, 2)).toEqual({ tone: "released", label: "released" });
     expect(datasetPill({ status: "superseded", signatures: 2 }, 2)).toEqual({ tone: "superseded", label: "superseded" });

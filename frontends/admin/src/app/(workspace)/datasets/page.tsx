@@ -33,7 +33,7 @@ export default async function DatasetsPage({ searchParams }: { searchParams: Pro
     return {
       key: dataset.id, client: clientOf(dataset.clientId, dataset.clientName), orderCode: dataset.orderCode, name: datasetName(dataset.orderTitle, dataset.orderCode, dataset.version),
       href: `/release/${dataset.id}`, panel: order?.panel ?? "—", samples: dataset.samples ?? order?.sampleCount ?? null, lipids: dataset.lipids ?? null,
-      pill: datasetPill({ status: dataset.status, signatures: dataset.signatures.length }, policy.policy.requiredSignatures), released: dataset.releasedAt, dataset,
+      pill: datasetPill({ status: dataset.status, signatures: dataset.signatures.length, archived: dataset.archivedAt !== null }, policy.policy.requiredSignatures), released: dataset.releasedAt, dataset,
     };
   });
   const processing: Row[] = orders.filter((order: Order) => !order.released && PROCESSING.includes(order.stage) && !all.some(dataset => dataset.orderCode === order.code))

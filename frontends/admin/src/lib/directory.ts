@@ -12,9 +12,11 @@ const ordinal = (n: number) => {
 };
 
 // A built version waits for its next signature until the policy's count is reached, then waits to be released.
-// "processing": an order whose results were accepted and whose Excel is not built yet.
-export function datasetPill(dataset: { status: DatasetStatus; signatures: number } | "processing", requiredSignatures: number): DatasetPill {
+// "processing": an order whose results were accepted and whose Excel is not built yet. An archived build waits for
+// nothing: it reads "archived" (grey), never "awaiting" or "ready".
+export function datasetPill(dataset: { status: DatasetStatus; signatures: number; archived?: boolean } | "processing", requiredSignatures: number): DatasetPill {
   if (dataset === "processing") return { tone: "processing", label: "processing" };
+  if (dataset.status === "built" && dataset.archived) return { tone: "superseded", label: "archived" };
   if (dataset.status === "built") {
     return dataset.signatures >= requiredSignatures
       ? { tone: "ready", label: "signed · ready to release" }
