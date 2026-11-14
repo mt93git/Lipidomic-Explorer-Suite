@@ -3,11 +3,13 @@ import Link from "@/components/app-link";
 import { ErrorSummary } from "@/components/error-summary";
 import { PlateMap } from "@/components/plate-map";
 import { SequenceTable } from "@/components/sequence-table";
+import { StatTiles } from "@/components/stat-tiles";
 import styles from "@/components/batch-plan.module.css";
 import { builderDefaults, formatRunTime, parseBuilderForm, planBatch, planKey, PLATE, problemText, type BuilderErrors, type BuilderSample, type BuilderValues } from "@/lib/batch-builder";
 import { listBuilderSamples } from "@/lib/data/batches";
 import { listPanels } from "@/lib/data/orders";
 import { LAB_TIME_ZONE } from "@/lib/lab-time";
+import { endsAt } from "@/lib/visual-map";
 import { plural } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../release/action-form";
@@ -161,12 +163,14 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
     {parsed?.ok && plan && plan.injections.length > 0 && counts && <section className="panel" aria-labelledby="preview-title">
       <div className="panel-heading"><div><div className="eyebrow">Preview</div><h2 id="preview-title">{plural(plan.injections.length, "injection")} · {formatRunTime(plan.minutes)}</h2></div>
         <span className="pill pending">Not saved yet</span></div>
-      <dl className={`${styles.counts} facts-inline`} aria-label="Plan summary">
-        <div><dt>Samples</dt><dd>{counts[0]}</dd></div><div><dt>Blanks</dt><dd>{counts[1]}</dd></div><div><dt>Pooled QC</dt><dd>{counts[2]}</dd></div>
-        <div><dt>Estimated run time</dt><dd>{formatRunTime(plan.minutes)}</dd></div><div><dt>Seed</dt><dd className="mono">{parsed.value.seed || "(empty)"}</dd></div>
-      </dl>
+      <StatTiles label="Plan summary" tiles={[
+        { value: plan.injections.length, label: "injections" }, { value: counts[0], label: "samples" },
+        { value: counts[2], label: "pooled QC" }, { value: counts[1], label: "blanks" },
+        { value: formatRunTime(plan.minutes), label: "run time" }, { value: endsAt(new Date(), plan.minutes), label: "ends if started now" },
+      ]} />
+      <p className="muted"><small>Seed <span className="mono">{parsed.value.seed || "(empty)"}</span> · {groupByOrder(samples.filter(sample => parsed.value.sampleIds.includes(sample.id))).length} orders from {new Set(samples.filter(sample => parsed.value.sampleIds.includes(sample.id)).map(sample => sample.clientId)).size} clients</small></p>
       <h3>Plate map</h3>
-      <PlateMap injections={plan.injections} />
+      <PlateMap injections={plan.injections} clients={new Map(samples.map(sample => [sample.orderCode, sample.clientName]))} />
       <h3>Sequence</h3>
       <SequenceTable label="Sequence preview" rows={plan.injections} detail={row => { const sample = row.aliquot_id ? byId.get(row.aliquot_id) : null; return sample ? `${sample.fullName} · ${sample.clientName}` : "—"; }} />
       <ActionForm action={saveBatchAction} submit="Save planned batch" pendingLabel="Saving…" className="form-actions">

@@ -7,15 +7,17 @@ import { requireWorkspace } from "@/lib/session";
 import { ALIQUOT_CODE, describeLocation, normalizeSearch, type StoredAliquot } from "@/lib/storage";
 import { AliquotForm, type AliquotAction } from "./aliquot-form";
 import styles from "./storage.module.css";
+import map from "@/components/visual-map.module.css";
+import { boxGrid, colourSlots, normalPosition } from "@/lib/visual-map";
 
 export const metadata: Metadata = { title: "Storage" };
-type Params = { q?: string; box?: string; act?: string; aliquot?: string; done?: string };
+type Params = { q?: string; box?: string; slot?: string; act?: string; aliquot?: string; done?: string };
 
-// The screen's URL keeps what is open: ?q= a search, ?box= one box, ?act=&aliquot= one aliquot's form, ?done= the
+// The screen's URL keeps what is open: ?q= a search, ?box= one box, ?slot= its selected position, ?act=&aliquot= one aliquot's form, ?done= the
 // confirmation after an action.
 function href(params: Params, change: Params = {}, hash = ""): string {
   const query = new URLSearchParams();
-  for (const [key, value] of Object.entries({ q: params.q, box: params.box, ...change })) if (value) query.set(key, value);
+  for (const [key, value] of Object.entries({ q: params.q, box: params.box, slot: params.slot, ...change })) if (value) query.set(key, value);
   const search = query.toString();
   return `/storage${search ? `?${search}` : ""}${hash}`;
 }
@@ -49,6 +51,61 @@ function AliquotTable({ items, label, columns, params, canWrite }: { items: Stor
   </table></div>;
 }
 
+// The open box as the freezer sees it: a grid (9 × 9 or larger), each aliquot coloured by its client, the selected
+// position ringed. Every cell is a link that selects it (?slot=); the panel beside it says what is there and offers
+// Move or Remove. Positions that are not a row letter and column number stay in the list below the map.
+function BoxMap({ box, slots, params, canWrite }: { box: string; slots: StoredAliquot[]; params: Params; canWrite: boolean }) {
+  const grid = boxGrid(slots, item => item.location?.position);
+  const clients = colourSlots(slots.map(item => item.clientName));
+  const selectedName = params.slot ? normalPosition(params.slot) : undefined;
+  const selected = selectedName ? slots.find(item => item.location && normalPosition(item.location.position) === selectedName) : undefined;
+  return <div className={map.boxLayout}>
+    <div>
+      <div className={map.scroll} role="region" aria-label={`Map of box ${box}`} tabIndex={0}>
+        <table className={map.map} aria-label={`Box ${box} map`}>
+          <thead><tr><td aria-hidden="true" />{grid.columns.map(column => <th key={column} scope="col">{column}</th>)}</tr></thead>
+          <tbody>{grid.cells.map((row, index) => <tr key={grid.rows[index]}>
+            <th scope="row">{grid.rows[index]}</th>
+            {row.map(cell => {
+              const current = cell.position === selectedName ? "true" : undefined;
+              const item = cell.item;
+              return <td key={cell.position} className={map.cell}>
+                <Link href={href(params, { slot: cell.position })} aria-current={current}
+                  className={item ? map[`c${clients.get(item.clientName) ?? 0}`] : map.empty}
+                  aria-label={item ? `${cell.position}: ${item.code}, ${item.clientName}` : `${cell.position}: free`} title={item ? `${cell.position} · ${item.code} · ${item.clientName}` : `${cell.position} · free`}>
+                  {item ? cell.position : current ? cell.position : ""}
+                </Link>
+              </td>;
+            })}
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <ul className={map.legend} aria-label="Box map legend">
+        {[...clients].map(([client, slot]) => <li key={client}><span className={`${map.swatch} ${map[`c${slot}`]}`} /> {client} <span className={map.muted}>· {slots.filter(item => item.clientName === client).length}</span></li>)}
+        <li className={map.muted}>{plural(grid.free, "position")} free</li>
+      </ul>
+    </div>
+    <aside className={map.selected} aria-labelledby="slot-title">
+      <h3 id="slot-title">{selectedName ? `Selected · ${selectedName}` : "Select a position"}</h3>
+      {!selectedName ? <p>Choose a cell of the map to see the aliquot it holds.</p>
+        : selected ? <>
+          <dl>
+            <div><dt>Aliquot</dt><dd className="mono">{selected.code}</dd></div>
+            <div><dt>Sample</dt><dd className="mono">{selected.sampleCode}</dd></div>
+            <div><dt>Client</dt><dd>{selected.clientName}</dd></div>
+            <div><dt>Order</dt><dd><Link className="mono" href={`/orders/${selected.orderCode}`}>{selected.orderCode}</Link></dd></div>
+            <div><dt>Since</dt><dd>{selected.location ? formatLabInstant(selected.location.placedAt) : ""}</dd></div>
+          </dl>
+          {canWrite && <div className={map.selectedActions}>
+            <Link className="button secondary" href={href(params, { act: "move", aliquot: selected.code }, "#act")}>Move aliquot</Link>
+            <Link className="button secondary" href={href(params, { act: "remove", aliquot: selected.code }, "#act")}>Remove</Link>
+          </div>}
+        </>
+        : <p>Position {selectedName} is free.{canWrite ? " Place an aliquot from Waiting for a box below, or move one here." : ""}</p>}
+    </aside>
+  </div>;
+}
+
 function doneText(done: string, item: StoredAliquot | undefined, code: string): string | null {
   if (done === "removed") return `${code} removed from storage. The placement is kept in the history.`;
   if (!item?.location) return null;
@@ -71,7 +128,7 @@ const actTitles: Record<AliquotAction, string> = { place: "Place", move: "Move",
 export default async function StoragePage({ searchParams }: { searchParams: Promise<Params> }) {
   await requireWorkspace("staff");
   const raw = await searchParams;
-  const params: Params = { q: normalizeSearch(raw.q) || undefined, box: raw.box?.trim() || undefined };
+  const params: Params = { q: normalizeSearch(raw.q) || undefined, box: raw.box?.trim() || undefined, slot: raw.box && raw.slot?.trim() ? raw.slot.trim().slice(0, 12) : undefined };
   const act = raw.act === "place" || raw.act === "move" || raw.act === "remove" ? raw.act : null;
   const code = raw.aliquot && ALIQUOT_CODE.test(raw.aliquot) ? raw.aliquot : null;
   const [{ canWrite }, boxes, unplaced, slots, results, found] = await Promise.all([
@@ -119,23 +176,25 @@ export default async function StoragePage({ searchParams }: { searchParams: Prom
       <p className={styles.cancel}><Link href={href(params)}>Cancel</Link></p>
     </section>}
 
-    <div className={styles.layout}>
-      <section className="panel" aria-labelledby="boxes-title">
-        <h2 id="boxes-title">Boxes</h2>
-        {boxes.length
-          ? <ul className={styles.boxes} aria-label="Boxes">{boxes.map(item => <li key={item.box}>
-            <Link href={href({}, { box: item.box })} aria-current={item.box === params.box ? "true" : undefined}>
-              <span className="mono">{item.box}</span><small>{plural(item.occupied, "position")} taken</small>
-            </Link></li>)}</ul>
-          : <p className="empty-state">No aliquot is in a box yet.</p>}
-      </section>
-      {params.box && <section className="panel" aria-labelledby="box-title">
-        <h2 id="box-title">Box <span className="mono">{params.box}</span></h2>
-        {slots.length
-          ? <AliquotTable items={slots} label={`Positions in box ${params.box}`} columns={["position", "placed"]} params={params} canWrite={canWrite} />
-          : <p className="empty-state">Box {params.box} holds no aliquot.</p>}
-      </section>}
-    </div>
+    <section className="panel" aria-labelledby="boxes-title">
+      <h2 id="boxes-title">Boxes</h2>
+      {boxes.length
+        ? <ul className={styles.boxes} aria-label="Boxes">{boxes.map(item => <li key={item.box}>
+          <Link href={href({}, { box: item.box })} aria-current={item.box === params.box ? "true" : undefined}>
+            <span className="mono">{item.box}</span><small>{plural(item.occupied, "position")} taken</small>
+          </Link></li>)}</ul>
+        : <p className="empty-state">No aliquot is in a box yet.</p>}
+    </section>
+    {params.box && <section className="panel" aria-labelledby="box-title">
+      <h2 id="box-title">Box <span className="mono">{params.box}</span></h2>
+      {slots.length ? <>
+        <BoxMap box={params.box} slots={slots} params={params} canWrite={canWrite} />
+        <details className={styles.list}>
+          <summary>All {plural(slots.length, "position")} as a list</summary>
+          <AliquotTable items={slots} label={`Positions in box ${params.box}`} columns={["position", "placed"]} params={params} canWrite={canWrite} />
+        </details>
+      </> : <p className="empty-state">Box {params.box} holds no aliquot.</p>}
+    </section>}
 
     <section className="panel" aria-labelledby="unplaced-title">
       <h2 id="unplaced-title">Waiting for a box{unplaced.length ? ` · ${unplaced.length}` : ""}</h2>

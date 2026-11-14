@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { toBenchSheetCsv, toSequenceCsv } from "../batch";
 import type { SaveInjection, StoredRules, BuilderSample } from "../batch-builder";
-import { demoBuilderSamples, recordAcquired, recordBatch, recordExported, toBatchDetail } from "../batch-demo";
+import { demoBuilderSamples, recordAcquired, recordBatch, recordExported, recordInjectionStatus, toBatchDetail } from "../batch-demo";
 import { batchFileNames, type BatchDetail, type BatchFile, type BatchInjection, type BatchStatus, type BatchSummary } from "../batch-run";
 import { demoClients, demoOrders, demoSession } from "../demo";
 import { getEnvironment } from "../environment";
@@ -77,7 +77,7 @@ export async function listBuilderSamples(): Promise<BuilderSample[]> {
 
 type InjectionRow = {
   seq: number; sample_type: BatchInjection["sample_type"]; sample_name: string; client_id: string | null; aliquot_id: string | null;
-  plate: string | null; vial: string | null; status: string; archived_at: string | null;
+  plate: string | null; vial: string | null; status: string; archived_at: string | null; client: One<{ name: string }>;
   aliquot: One<{ sample: One<{ sample_code: string; full_name: string; ord: One<{ code: string }> }> }>;
 };
 type VersionRow = {
@@ -89,7 +89,7 @@ type BatchRow = { id: string; name: string; status: BatchStatus; created_at: str
 const detailSelect = [
   "id, name, status, created_at", "panel:panel(name)",
   "batch_version(id, version, archived_at, exported_at, exported_by, sequence_sha256, rules",
-  "injection(seq, sample_type, sample_name, client_id, aliquot_id, plate, vial, status, archived_at, aliquot:aliquot(sample:sample(sample_code, full_name, ord:order(code)))))",
+  "injection(seq, sample_type, sample_name, client_id, aliquot_id, plate, vial, status, archived_at, client:client(name), aliquot:aliquot(sample:sample(sample_code, full_name, ord:order(code)))))",
 ].join(", "); // the commas matter: supabase-js strips whitespace from select
 
 function toDetail(row: BatchRow, exportedBy: string | null): BatchDetail | null {
@@ -99,7 +99,7 @@ function toDetail(row: BatchRow, exportedBy: string | null): BatchDetail | null 
     const sample = one(one(item.aliquot)?.sample ?? null);
     return {
       seq: item.seq, sample_type: item.sample_type, sample_name: item.sample_name, FullName: sample?.full_name.trim() ?? null, client_id: item.client_id, aliquot_id: item.aliquot_id,
-      plate: item.plate ?? "", vial: item.vial ?? "", sampleCode: sample?.sample_code ?? null, orderCode: one(sample?.ord ?? null)?.code ?? null, status: item.status,
+      plate: item.plate ?? "", vial: item.vial ?? "", sampleCode: sample?.sample_code ?? null, orderCode: one(sample?.ord ?? null)?.code ?? null, status: item.status, clientName: one(item.client)?.name ?? null,
     };
   });
   return {
@@ -213,3 +213,18 @@ export async function markBatchAcquired(name: string): Promise<void> {
   if (error) throw refusal(error);
 }
 
+
+// admin.record_injection_status(p_batch_id, p_rows) (0031): the run monitor's statuses, matched by injection name.
+// Returns how many injections changed.
+export async function recordInjectionStatuses(name: string, rows: { sample_name: string; status: string }[]): Promise<number> {
+  const batch = await getBatch(name);
+  if (!batch) throw new DataError(`Batch ${name} was not found.`);
+  if (!live()) {
+    const result = recordInjectionStatus(await readDemoState(), name, rows);
+    await writeDemoState(result.state);
+    return result.changed;
+  }
+  const { data, error } = await (await admin()).rpc("record_injection_status", { p_batch_id: batch.id, p_rows: rows });
+  if (error) throw refusal(error);
+  return Number(data ?? 0);
+}

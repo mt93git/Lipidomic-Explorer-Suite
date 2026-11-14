@@ -8,7 +8,7 @@ import { toSequenceCsv } from "../src/lib/batch/csv";
 import { datasetPaths as appDatasetPaths, matchSamples as appMatchSamples } from "../src/lib/release";
 import {
   BOX_COLUMNS, BOX_ROWS, CLIENTS, ORDERS, POINTS, STAFF, archivedClientName, batchInjections, datasetPaths, deliverablePath, demoDeliverable,
-  demoSamples, formatPlan, isDemoName, matchSamples, matchesOrder, nextSteps, orderRequest, policyChange, sequenceCsv, slotName, slotOffsets,
+  demoSamples, formatPlan, isDemoName, runningStatuses, sharedBatchInjections, matchSamples, matchesOrder, nextSteps, orderRequest, policyChange, sequenceCsv, slotName, slotOffsets,
   stepsFor, syntheticResults,
 } from "../e2e/live/demo-plan.mjs";
 
@@ -36,7 +36,7 @@ describe("names", () => {
   });
 
   it("titles every order with (demo), unique, 4-12 samples of plasma, serum or liver tissue", () => {
-    expect(ORDERS.length).toBe(10);
+    expect(ORDERS.length).toBe(12);
     expect(new Set(ORDERS.map(order => order.title)).size).toBe(ORDERS.length);
     for (const order of ORDERS) {
       expect(isDemoName(order.title)).toBe(true);
@@ -125,7 +125,7 @@ describe("idempotency", () => {
 describe("storage slots", () => {
   it("gives each batched order its own fixed slots in the 9 × 9 demo box", () => {
     const offsets = slotOffsets();
-    const batched = ORDERS.filter(order => ["in_batch", "acquired", "excel_built", "released"].includes(order.point));
+    const batched = ORDERS.filter(order => ["in_batch", "acquired", "excel_built", "released", "running"].includes(order.point));
     expect(Object.keys(offsets)).toEqual(batched.map(order => order.key));
     const slots = batched.flatMap(order => Array.from({ length: order.samples }, (_, i) => slotName(offsets[order.key] + i)));
     expect(new Set(slots).size).toBe(slots.length);
@@ -240,5 +240,32 @@ describe("the seed script", () => {
     const bogus = await run(["--force"]);
     expect(bogus.code).toBe(2);
     expect(bogus.out).toContain("unknown argument --force");
+  });
+});
+
+describe("shared running batch", () => {
+  const running = ORDERS.filter(order => order.point === "running");
+  const group = (order: (typeof ORDERS)[number], code: string) => demoSamples(order).map((_, i) => ({ id: uuid(100 * running.indexOf(order) + i + 1), sample_code: `${code}-S${String(i + 1).padStart(3, "0")}` }));
+
+  it("puts two clients' orders in one batch, interleaved, with a pooled QC every 6 samples and at the end", () => {
+    expect(new Set(running.map(order => order.client)).size).toBe(2);
+    expect(stepsFor("running").at(-1)).toBe("register");
+    const injections = sharedBatchInjections([group(running[0], "ORD701"), group(running[1], "ORD702")]);
+    expect(injections[0]).toMatchObject({ seq: 1, sample_type: "Blank", vial: "A1" });
+    expect(injections.slice(1, 4).map(row => row.sample_name)).toEqual(["ORD701-S001", "ORD702-S001", "ORD701-S002"]);
+    expect(injections[7]).toMatchObject({ sample_type: "Quality Control", sample_name: "QC_001" });
+    expect(injections.at(-1)).toMatchObject({ sample_type: "Quality Control" });
+    expect(injections.filter(row => row.sample_type === "Unknown")).toHaveLength(running[0].samples + running[1].samples);
+    expect(injections[8].vial).toBe("A2"); // down the columns
+    expect(new Set(injections.map(row => row.vial)).size).toBe(injections.length);
+  });
+
+  it("records about half the run: acquired, one sample failed, the rest left planned", () => {
+    const injections = sharedBatchInjections([group(running[0], "ORD701"), group(running[1], "ORD702")]);
+    const rows = runningStatuses(injections);
+    expect(rows.length).toBe(Math.floor(injections.length * 0.55));
+    expect(rows.filter(row => row.status === "failed")).toHaveLength(1);
+    expect(rows.filter(row => row.status === "acquired")).toHaveLength(rows.length - 1);
+    expect(injections.find(row => row.sample_name === rows.find(r => r.status === "failed")!.sample_name)?.sample_type).toBe("Unknown");
   });
 });

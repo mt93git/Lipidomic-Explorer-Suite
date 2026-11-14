@@ -45,7 +45,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   BOX, CLIENTS, ORDERS, PANEL, POINTS, PROCESSING_METHOD, RESET_REASON, SCIEX_OS_VERSION, STAFF, archivedClientName, batchInjections,
-  batchRules, clientOf, datasetPaths, deliverablePath, demoDeliverable, demoSamples, formatPlan, isDemoName, matchSamples, matchesOrder,
+  batchRules, sharedBatchInjections, sharedBatchRules, runningStatuses, clientOf, datasetPaths, deliverablePath, demoDeliverable, demoSamples, formatPlan, isDemoName, matchSamples, matchesOrder,
   nextSteps, orderRequest, policyChange, sequenceCsv, sha256, slotName, slotOffsets, syntheticResults,
 } from "./demo-plan.mjs";
 
@@ -491,6 +491,42 @@ async function seedDemo() {
         failed++;
         console.error(`${PREFIX}: "${plan.title}" stopped: ${error.message}`);
         results.push({ key: plan.key, code: ctx.row?.code ?? null, title: plan.title, client: client.name, error: error.message });
+      }
+    }
+    // The shared batch of the "running" orders (one batch, two clients, half acquired), once both are registered.
+    const running = ORDERS.filter(plan => plan.point === "running");
+    const ready = running.map(plan => results.find(item => item.key === plan.key));
+    if (running.length && ready.every(item => item && !item.error)) {
+      try {
+        const rows = await Promise.all(ready.map(async item => (await db(as.staff, `order?select=id,code,title,stage,review,archived_at,client_id&code=eq.${item.code}`))[0]));
+        const done = [];
+        if (rows.every(row => row.stage === "registered")) {
+          const groups = await Promise.all(rows.map(row => orderSamples(row.id)));
+          await rpc(as.staff, "create_batch", { p_name: null, p_panel_id: panelId, p_rules: sharedBatchRules(rows.map(row => row.code)), p_injections: sharedBatchInjections(groups) });
+          done.push("batch");
+        }
+        for (const [i, row] of rows.entries()) {
+          const before = (await placedAliquotIds((await orderAliquots(row.id)).map(a => a.id))).size;
+          await steps.store({ plan: running[i], row });
+          if ((await placedAliquotIds((await orderAliquots(row.id)).map(a => a.id))).size > before && !done.includes("store")) done.push("store");
+        }
+        const [first] = await db(as.staff, `order?select=stage&id=eq.${rows[0].id}`);
+        if (first.stage === "in_batch") { await steps.export({ row: rows[0] }); done.push("export"); }
+        const batch = await orderBatch(rows[0].id);
+        const [version] = await db(as.staff, `batch_version?select=id&batch_id=eq.${batch.id}&archived_at=is.null&order=version.desc&limit=1`);
+        const statuses = await db(as.staff, `injection?select=status&batch_version_id=eq.${version.id}&archived_at=is.null`);
+        if (statuses.every(row => row.status === "planned")) {
+          await rpc(as.staff, "record_injection_status", { p_batch_id: batch.id, p_rows: runningStatuses(batch.injections) });
+          done.push("status");
+        }
+        for (const [i, row] of rows.entries()) {
+          const [now] = await db(as.staff, `order?select=stage,review&id=eq.${row.id}`);
+          Object.assign(ready[i], { stage: now.stage, review: now.review, batch: batch.name });
+        }
+        log(`shared batch ${batch.name} (${rows.map(row => row.code).join(" + ")}): ${done.length ? `${done.join(" → ")} done` : "already there"}; ${POINTS.running.label}`);
+      } catch (error) {
+        failed++;
+        console.error(`${PREFIX}: the shared batch stopped: ${error.message}`);
       }
     }
   } finally {
