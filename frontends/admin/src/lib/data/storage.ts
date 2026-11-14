@@ -122,7 +122,7 @@ export async function aliquotPlans(item: StoredAliquot): Promise<AliquotPlans> {
   ]);
   if (aliquot.error || injections.error) console.error("[storage] aliquot plans failed", { code: (aliquot.error ?? injections.error)?.code });
   const volume = (aliquot.data as { volume_ul: number | string | null } | null)?.volume_ul;
-  const rows = ((injections.error ? [] : injections.data ?? []) as PlanRow[]).flatMap(row => row.batch_version?.batch ? [{
+  const rows = ((injections.error ? [] : injections.data ?? []) as unknown as PlanRow[]).flatMap(row => row.batch_version?.batch ? [{
     batch: row.batch_version.batch.name, batchStatus: row.batch_version.batch.status, batchArchived: !!row.batch_version.batch.archived_at,
     versionArchived: !!row.batch_version.archived_at, injectionStatus: row.status,
   }] : []);
