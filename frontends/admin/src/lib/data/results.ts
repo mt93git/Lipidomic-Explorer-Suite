@@ -7,12 +7,14 @@ import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
 import { demoOrders, demoSession } from "@/lib/demo";
 import { appCookieScope } from "@/lib/auth-cookies";
-import { summarizeResults, canAcceptResults, type NameEntry, type ResultsSummary } from "@/lib/results";
+import { summarizeResults, canAcceptResults, unmappedAnalytes, type NameEntry, type ResultsSummary } from "@/lib/results";
+import { proposeCleanName } from "@lipidomic/admin-ingest";
+import { parseNameList, resultCounts, type ResultCounts } from "@/lib/ingest-review";
 import { applyDemoState, recordResultFile } from "@/lib/samples-demo";
 import { readDemoState, writeDemoState } from "./demo-store";
 
 export type ResultOrder = { id: string; code: string; client_id: string; stage: string };
-type Review = { id: string; order: ResultOrder; bytes: Uint8Array; sha256: string; summary: ResultsSummary; sciexOsVersion: string; processingMethod: string; accepted?: boolean; accepting?: boolean };
+type Review = { id: string; order: ResultOrder; bytes: Uint8Array; sha256: string; summary: ResultsSummary; sciexOsVersion: string; processingMethod: string; accepted?: boolean; accepting?: boolean; resultId?: string };
 // Per browser and user: the dictionary (demo) and the file under review. Order progress is not kept here: in
 // demo mode it lives in the shared demo store (receive, registry, pipeline and results read the same record).
 type State = { userId: string; entries: NameEntry[]; review?: Review; touched: number };
@@ -56,7 +58,33 @@ export async function parseResultFile(form: FormData) {
   const summary = summarizeResults(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   state.review = { id: randomUUID(), order, bytes, sha256: createHash("sha256").update(bytes).digest("hex"), summary,
     sciexOsVersion: String(form.get("sciexOsVersion") ?? "").trim(), processingMethod: String(form.get("processingMethod") ?? "").trim() };
-  return { id: state.review.id, summary };
+  const { entries } = await dictionaryEntries(state);
+  const toMap = unmappedAnalytes(reviewNames(summary), entries).length;
+  return { id: state.review.id, summary, toMap, orderCode: order.code, fileName: file.name };
+}
+// Every row name of the file that should reach Nexo under a clean name: lipids, then internal standards.
+export function reviewNames(summary: Pick<ResultsSummary, "analytes"> & { internalStandardNames?: string[] }) {
+  return [...summary.analytes, ...(summary.internalStandardNames ?? [])];
+}
+// Counts of the file under review and of the last file accepted for the same order (null when there is none).
+export async function compareWithPreviousFile(reviewId: string): Promise<{ current: ResultCounts; previous: { acceptedAt: string; counts: ResultCounts } | null; orderCode: string }> {
+  const state = await context();
+  const review = state.review;
+  if (!review || review.id !== reviewId) throw new Error("Upload the file again; this review expired or was replaced.");
+  const current = resultCounts(review.summary);
+  if (getEnvironment().mock) {
+    const last = (await readDemoState()).results.filter(item => item.orderCode === review.order.code && item.id !== review.id && item.counts).at(-1);
+    return { current, orderCode: review.order.code, previous: last?.counts ? { acceptedAt: last.acceptedAt, counts: last.counts } : null };
+  }
+  const client = (await createAdminClient())!;
+  // Once this file is accepted it is the latest row for the order: leave it out, as the demo branch does.
+  let query = client.schema("admin").from("result_file").select("summary, accepted_at")
+    .eq("order_id", review.order.id).in("status", ["accepted", "superseded"]).is("archived_at", null);
+  if (review.resultId) query = query.neq("id", review.resultId);
+  const { data, error } = await query.order("accepted_at", { ascending: false }).limit(1);
+  if (error) throw new Error(error.message);
+  const row = data?.[0] as { summary: Partial<ResultsSummary> | null; accepted_at: string } | undefined;
+  return { current, orderCode: review.order.code, previous: row?.summary ? { acceptedAt: row.accepted_at, counts: resultCounts(row.summary) } : null };
 }
 export async function acceptResultFile(reviewId: string, reason: string) {
   const state = await context();
@@ -76,7 +104,7 @@ export async function acceptResultFile(reviewId: string, reason: string) {
       const demo = await readDemoState();
       const order = applyDemoState(demoOrders, demo).find(item => item.code === review.order.code);
       if (!order) throw new Error("The order is no longer acquired or registered.");
-      await writeDemoState(recordResultFile(demo, { order, id: resultId, sha256: review.sha256, actor: demoSession.displayName, now: new Date() }));
+      await writeDemoState(recordResultFile(demo, { order, id: resultId, sha256: review.sha256, actor: demoSession.displayName, now: new Date(), counts: resultCounts(review.summary) }));
     } else {
       const client = (await createAdminClient())!;
       const storage = client.storage.from("admin-files");
@@ -94,16 +122,65 @@ export async function acceptResultFile(reviewId: string, reason: string) {
       });
     }
     review.accepted = true;
+    review.resultId = resultId;
     return { id: resultId, code: review.order.code, stage: "Processed" };
   } finally { review.accepting = false; }
 }
+async function dictionaryEntries(state: State): Promise<{ entries: NameEntry[] }> {
+  if (getEnvironment().mock) return { entries: state.entries };
+  const client = (await createAdminClient())!;
+  const { data, error } = await client.schema("admin").from("name_map").select("id, export_name, clean_name, rule").is("archived_at", null).is("client_id", null).order("export_name");
+  if (error) throw new Error(error.message);
+  return { entries: (data ?? []) as NameEntry[] };
+}
 export async function getNameDictionary() {
   const state = await context();
-  if (getEnvironment().mock) return { entries: state.entries, analytes: state.review?.summary.analytes ?? [] };
+  const { entries } = await dictionaryEntries(state);
+  return { entries, analytes: state.review ? reviewNames(state.review.summary) : [] };
+}
+// Approve rule-based proposals. The server recomputes each proposal from the export name: only names a rule settles
+// are written (with their rule); names that need a chemist, names not in the last file and names already in the
+// dictionary are skipped. Returns how many were added.
+export async function approveNameProposals(exportNames: string[]) {
+  const state = await context(true);
+  const session = await requireWorkspace("staff");
+  const inFile = new Set(state.review ? reviewNames(state.review.summary) : []);
+  const { entries } = await dictionaryEntries(state);
+  const known = new Set(entries.map(entry => entry.export_name));
+  const rows = [...new Set(exportNames)].filter(name => inFile.has(name) && !known.has(name)).map(proposeCleanName)
+    .filter(proposal => !proposal.needsChemist)
+    .map(proposal => ({ export_name: proposal.exportName, clean_name: proposal.proposed, rule: proposal.rules.join(" · ") }));
+  if (!rows.length) return { added: 0 };
+  if (getEnvironment().mock) {
+    state.entries.push(...rows.map(row => ({ id: randomUUID(), ...row })));
+    return { added: rows.length };
+  }
   const client = (await createAdminClient())!;
-  const { data, error } = await client.schema("admin").from("name_map").select("id, export_name, clean_name").is("archived_at", null).is("client_id", null).order("export_name");
+  const { error } = await client.schema("admin").from("name_map").insert(rows.map(row => ({ ...row, approved_by: session.userId })));
+  if (error?.code === "23505") throw new Error("Some of these names were added meanwhile. Reload the page and approve again.");
   if (error) throw new Error(error.message);
-  return { entries: (data ?? []) as NameEntry[], analytes: state.review?.summary.analytes ?? [] };
+  return { added: rows.length };
+}
+// Import list: a CSV of export name → clean name. New names are added (rule "imported"); names already in the
+// dictionary are left as they are and reported.
+export async function importNameList(form: FormData) {
+  const state = await context(true);
+  const session = await requireWorkspace("staff");
+  const file = form.get("file");
+  if (!(file instanceof File) || !file.size || file.size > 2_000_000) throw new Error("Choose a nonempty CSV up to 2 MB.");
+  const { rows, errors } = parseNameList(new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer()));
+  if (!rows.length) throw new Error(errors[0] ?? "The list has no rows.");
+  const { entries } = await dictionaryEntries(state);
+  const known = new Set(entries.map(entry => entry.export_name));
+  const fresh = rows.filter(row => !known.has(row.export_name)).map(row => ({ ...row, rule: "imported" }));
+  if (getEnvironment().mock) state.entries.push(...fresh.map(row => ({ id: randomUUID(), ...row })));
+  else if (fresh.length) {
+    const client = (await createAdminClient())!;
+    const { error } = await client.schema("admin").from("name_map").insert(fresh.map(row => ({ ...row, approved_by: session.userId })));
+    if (error?.code === "23505") throw new Error("Some of these names were added meanwhile. Import the list again.");
+    if (error) throw new Error(error.message);
+  }
+  return { added: fresh.length, existing: rows.length - fresh.length, skipped: errors };
 }
 export async function saveNameEntry(form: FormData) {
   const state = await context(true);

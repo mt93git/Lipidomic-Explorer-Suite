@@ -442,9 +442,9 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
     await page.getByRole("button", { name: "Parse file" }).click();
     const summary = page.getByRole("region", { name: "Parse summary" });
     await expect(summary).toBeVisible(slow);
-    await expect(summary.getByRole("button", { name: "Accept", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Accept", exact: true })).toBeEnabled();
     await shot(page, "ingest-parsed", analysis("Ingest results: the parse summary, ready to accept"));
-    await summary.getByRole("button", { name: "Accept", exact: true }).click();
+    await page.getByRole("button", { name: "Accept", exact: true }).click();
     await expect(status(`Results accepted for ${code}. The order is now Processed`)).toBeVisible(slow);
     await shot(page, "ingest-accepted", analysis("The results are accepted: the order is Processed"));
   });
