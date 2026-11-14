@@ -87,9 +87,15 @@ async function liveDetail(code: string): Promise<RegistryDetail | null> {
   ]);
   if (shipment.error) throw refusal(shipment.error);
   if (samples.error) throw refusal(samples.error);
+  const record = shipment.data ? toShipment(shipment.data as unknown as ShipmentRow) : null;
+  // received_by is a user uuid: the banner shows the person's lab_staff name, as the sample page does.
+  if (record?.receivedBy) {
+    const staff = await db.from("lab_staff").select("display_name").eq("user_id", record.receivedBy).maybeSingle();
+    record.receivedBy = (staff.data as { display_name: string | null } | null)?.display_name?.trim() || "Lab staff";
+  }
   return {
     order: toSummary(row),
-    shipment: shipment.data ? toShipment(shipment.data as unknown as ShipmentRow) : null,
+    shipment: record,
     samples: ((samples.data ?? []) as unknown as SampleRow[]).map(toSample),
   };
 }

@@ -83,3 +83,32 @@ test("the client view never reaches Storage", async ({ page }) => {
   await page.goto("/admin/storage");
   await expect(page).toHaveURL(/\/admin\/client\/home$/, slow);
 });
+
+// A long box name in a freezer and rack with long names (as on staging since 0041) wraps inside its card: the
+// "N positions taken" count stays inside the card and never reaches the next one.
+test("a long box name and place stay inside the box card", async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await enterLab(page);
+  await page.goto("/admin/storage");
+  await page.getByRole("table", { name: "Aliquots waiting for a box" }).getByRole("link", { name: "Place ORD044-S004-A1", exact: true }).click();
+  await submit(page, "Place ORD044-S004-A1", { Box: "Demo freezer box 1 (demo)", Position: "A1" }, "Place");
+  await expect(page.getByRole("status")).toContainText("placed", slow);
+  await page.getByText("Add a freezer", { exact: true }).click();
+  await submit(page, "Add a freezer", { "Freezer name": "Demo freezer (demo)" }, "Add freezer");
+  await expect(page.getByRole("status")).toHaveText("Freezer added.", slow);
+  await submit(page, "Add a rack to Demo freezer (demo)", { "New rack": "Demo rack 1 (demo)" }, "Add rack");
+  await expect(page.getByRole("status")).toHaveText("Rack added.", slow);
+  const boxes = page.getByRole("list", { name: "Boxes" });
+  await boxes.getByRole("link", { name: /Demo freezer box 1/ }).click();
+  const place = page.getByRole("form", { name: "Freezer and rack of box Demo freezer box 1 (demo)" });
+  await place.getByRole("combobox").selectOption({ label: "Demo freezer (demo) · Demo rack 1 (demo)" });
+  await place.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Box place saved.", slow);
+  const cards = boxes.getByRole("listitem");
+  const card = (await cards.nth(0).boundingBox())!;
+  const next = (await cards.nth(1).boundingBox())!;
+  const count = (await cards.nth(0).getByText("1 position taken").boundingBox())!;
+  expect(count.x + count.width).toBeLessThanOrEqual(card.x + card.width);
+  expect(count.x + count.width).toBeLessThanOrEqual(next.x);
+});
