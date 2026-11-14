@@ -6,6 +6,13 @@ import { expect, test, type Page } from "@playwright/test";
 const slow = { timeout: 60_000 };
 const phone = { width: 390, height: 844 };
 const fits = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth);
+// New order offers the panels on its Service step (step 2 of the wizard): step 1 needs a client and a title first.
+async function openServiceStep(page: Page) {
+  await page.goto("/admin/new-order");
+  await page.getByRole("combobox", { name: "Client", exact: true }).selectOption({ index: 1 }, slow);
+  await page.getByLabel("Order title").fill("Synthetic panel check");
+  await page.getByRole("button", { name: "Next: service" }).click();
+}
 
 test("add an instrument and a panel, see it in New order, archive it with a reason", async ({ page }) => {
   await page.goto("/admin/instruments-panels");
@@ -34,7 +41,7 @@ test("add an instrument and a panel, see it in New order, archive it with a reas
   await expect(row).toContainText("Synthetic kit M, Synthetic kit N");
   await expect(row).toContainText("Lipid mediators");
 
-  await page.goto("/admin/new-order");
+  await openServiceStep(page);
   await expect(page.getByLabel("Panel", { exact: true }).locator("option", { hasText: "Synthetic oxylipins E2E" })).toHaveCount(1, slow);
 
   // A used panel keeps its dataset type.
@@ -56,7 +63,7 @@ test("add an instrument and a panel, see it in New order, archive it with a reas
   await page.getByRole("link", { name: /^Show archived/ }).click();
   await expect(page.getByRole("table", { name: "Panels" }).getByRole("row").filter({ hasText: "Synthetic oxylipins E2E" })).toContainText("Archived · Synthetic retirement", slow);
 
-  await page.goto("/admin/new-order");
+  await openServiceStep(page);
   await expect(page.getByLabel("Panel", { exact: true }).locator("option", { hasText: "Panel A · broad lipidome" })).toHaveCount(1, slow);
   await expect(page.getByLabel("Panel", { exact: true }).locator("option", { hasText: "Synthetic oxylipins E2E" })).toHaveCount(0);
 });
