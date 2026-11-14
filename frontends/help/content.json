@@ -331,7 +331,7 @@
             {
               "file": "invite-sent",
               "caption": "An invitation for a new client person. Not emailed on this test server, so the link is shown to copy (masked).",
-              "alt": "The Invite section of the People page: a green notice, Invitation link for the new address, Not emailed because the address’s domain is not on this server’s allowlist, Copy it now and send it yourself, with the Invitation link (masked grey) and a Copy link button; below it the Email, Client and Role fields and the Send invitation button. On a desktop the People table with its Last active column is shown above."
+              "alt": "The Invite section of the People page: a green notice, Invitation link for the new address, Not emailed because the address’s domain is not on this server’s allowlist, Copy it now and send it yourself, with the Invitation link (masked grey) and a Copy link button; below it the Email, Client and Role fields and the Send invitation button."
             }
           ]
         },
@@ -371,7 +371,7 @@
             {
               "file": "people",
               "caption": "A client person who has never signed in: **never** under **Last active**, and **Remind**. Here the reminder was not emailed (a test address).",
-              "alt": "The People page: the People table with the columns Person, Lab role, Clients and project roles and Last active. Most people read today, yesterday or a number of days; one client Viewer reads never, with a Remind button and the note Not emailed, because the address’s domain is not on this server’s allowlist. On a phone the picture shows the top of the page: the heading, the Roles & permissions and Invite person buttons and the table’s column names."
+              "alt": "The People table’s column names (Person, Lab role, Clients and project roles, Last active) above one row: a client Viewer at Harbor Lipid Lab (demo) whose Last active reads never, with a Remind button, the note Not emailed, because the address’s domain is not on this server’s allowlist, and a Change link. On a phone the picture shows the top of the People page: the heading, the Roles & permissions and Invite person buttons and the table’s column names."
             }
           ]
         },
@@ -571,7 +571,7 @@
             {
               "file": "receive-shipment",
               "caption": "The arrival record for order ORD703, before **Record arrival**.",
-              "alt": "The Receive shipment form: Order ORD703, Carrier World Courier, a Tracking number, the four Condition on arrival choices with Intact and cold selected, Boxes 1, Notes and the Record arrival button, beside the order at a glance and the shipments waiting for the tube check-in."
+              "alt": "The Receive shipment form: Order ORD703, Carrier World Courier, a Tracking number, the four Condition on arrival choices with Intact and cold selected, Boxes 1, Notes and the Record arrival button, beside the order at a glance."
             },
             {
               "file": "shipment-checkin",
@@ -598,7 +598,7 @@
           "steps": [
             "Open **Sample registry** and choose the order under **Choose an order**. Recording the arrival opens it for you.",
             "If a sample list was pasted in **New order**, it is already in **Paste from Excel**, marked “From the order’s sample list — review and register”. Otherwise copy the rows from the client’s Excel sheet and paste them there: one sample per row. A header row is matched to the Metadata columns by name.",
-            "Press **Add rows**. Pasting tab-separated rows adds them straight away. To type a sample by hand, press **Add empty row**.",
+            "Press **Add rows** to put the pasted list in the grid. To type a sample by hand, press **Add empty row**.",
             "Check the pills (**valid**, **errors**, **warnings**) and the cells marked in the grid. Under **Fix before saving**, correct what is listed, or press the fix button offered for a row. **Map columns** changes how a pasted column was matched.",
             "Press **Save N valid rows** (the button shows the number)."
           ],
@@ -657,7 +657,7 @@
             {
               "file": "batch-preview",
               "caption": "The preview for 12 samples: 2 blanks at the start, 1 blank after 10 samples and 2 pooled QCs, as the active profile sets.",
-              "alt": "The Batch builder: the 12 samples of ORD703 ticked among other registered orders; the rules Panel, Plate order, Blanks at start 2, Pooled QC every 6, Blanks between samples 1, After every (samples) 10, Seed and Minutes per injection; and the preview 17 injections · 3 h 24 min with tiles for injections, samples, pooled QC, blanks, run time and end time, the plate map, the sequence table and the Save planned batch button."
+              "alt": "The Batch builder preview, marked Not saved yet: 17 injections · 3 h 24 min, tiles for 17 injections, 12 samples, 2 pooled QC, 3 blanks, the run time and the end time if started now, and the plate map of plate 1 with two blanks in A1 and B1, the samples down the columns, a blank in F2 and two pooled QCs."
             }
           ]
         },
