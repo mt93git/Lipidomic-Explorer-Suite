@@ -242,9 +242,9 @@ test("2 · Paula (Admin) creates the order, receives and registers it, plans and
     await page.getByRole("button", { name: "Parse file" }).click();
     const summary = page.getByRole("region", { name: "Parse summary" });
     await expect(summary).toBeVisible(slow);
-    await expect(summary.getByRole("button", { name: "Accept", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Accept", exact: true })).toBeEnabled();
     await shot(page, "08-ingest-results.png");
-    await summary.getByRole("button", { name: "Accept", exact: true }).click();
+    await page.getByRole("button", { name: "Accept", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: `Results accepted for ${orderCode}. The order is now Processed` })).toBeVisible(slow);
   });
 
