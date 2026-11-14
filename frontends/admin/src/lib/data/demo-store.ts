@@ -109,3 +109,14 @@ export async function writeDemoNotifications(notifications: DemoNotifications) {
   const state: NotificationDemoState = { ...await readDemoState(), notifications };
   await writeDemoState(state);
 }
+
+// ---------------------------------------------------------------- Dataset workbooks (release preview)
+// The demo's stored dataset workbooks, by their SHA-256: what a real build uploads to admin-files. Kept in this
+// process's memory like the rest (content-addressed, so browsers can share them), at most 100.
+type Workbooks = Map<string, Buffer>;
+const workbooks: Workbooks = ((globalThis as unknown as { __leAdminDemoWorkbooks?: Workbooks }).__leAdminDemoWorkbooks ??= new Map());
+export function storeDemoWorkbook(sha256: string, bytes: Buffer): void {
+  if (!workbooks.has(sha256) && workbooks.size >= 100) workbooks.delete(workbooks.keys().next().value as string);
+  workbooks.set(sha256, Buffer.from(bytes));
+}
+export const readDemoWorkbook = (sha256: string): Buffer | undefined => workbooks.get(sha256);

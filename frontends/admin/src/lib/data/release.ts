@@ -17,7 +17,7 @@ import { DataError, stageFromDb } from "../samples";
 import { applyDemoState, demoOrderSamples, type DemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
-import { readDemoState, writeDemoState } from "./demo-store";
+import { readDemoState, readDemoWorkbook, storeDemoWorkbook, writeDemoState } from "./demo-store";
 import { notify } from "./notifications";
 
 export { DataError };
@@ -345,6 +345,7 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
       sourceSha256: (state.results ?? []).filter(item => item.orderCode === order.code).at(-1)?.sha256 ?? digest(Buffer.from(sourceText, "utf8")),
       headerMode: match.headerMode, matched: match.matched, samples: built.counts.samples, lipids: built.counts.lipids, sciexOsVersion, processingMethod,
     });
+    storeDemoWorkbook(built.full.sha256, built.full.bytes);
     await writeDemoState(result.state);
     return { datasetId: result.dataset.id, version: result.dataset.version };
   }
@@ -420,6 +421,22 @@ export async function getDataset(id: string): Promise<ReleaseView | null> {
   const records = await liveRecords(db, (siblings.data ?? []) as unknown as DatasetRow[], people);
   const record = records.find(item => item.id === id) ?? (await liveRecords(db, [dataset], people))[0];
   return { dataset: record, policy, people, me: liveMe(session, people), versions: records.map(liveVersion), demoActors: null };
+}
+
+// The stored dataset workbook of a version, exactly its bytes, for the release page's preview and Download Excel.
+// Read only, and only when the bytes still match the SHA-256 recorded at the build; anything else fails closed.
+export async function readDatasetWorkbook(dataset: Pick<DatasetRecord, "orderCode" | "version" | "full">): Promise<{ bytes: Buffer; fileName: string }> {
+  await staffSession();
+  const fileName = `${dataset.orderCode}_dataset_v${dataset.version}.xlsx`;
+  if (!live()) {
+    const bytes = readDemoWorkbook(dataset.full.sha256);
+    if (!bytes) throw new DataError("The example workbook of this version is not available any more (the demo server restarted). Build a new version to preview it.");
+    return { bytes: Buffer.from(bytes), fileName };
+  }
+  if (!dataset.full.path) throw new DataError("This version has no stored workbook on record.");
+  const bytes = await download("admin-files", dataset.full.path);
+  if (digest(bytes) !== dataset.full.sha256) throw new DataError("The stored workbook does not match the digest recorded when this version was built; it is not shown.");
+  return { bytes, fileName };
 }
 
 // Every dataset version the signed-in person may see, by order and version.
