@@ -29,10 +29,20 @@ const save = (state: DemoState, ids: string[], opts: { panel?: string; at?: Date
 };
 
 describe("demo batch builder samples", () => {
-  it("offers the registered samples of orders from Registered to Acquired, with their client", () => {
+  it("offers the registered samples of orders from Registered to In batch, with their client", () => {
     const list = demoBuilderSamples(withSamples(), orders(withSamples()), demoClients);
     expect(list.map(item => item.code)).toEqual(["ORD041-S001", "ORD041-S002"]);
     expect(list[0]).toMatchObject({ id: "s-ORD041-1", fullName: "Synthetic_ORD041_1", orderCode: "ORD041", clientId: "example-atlas", clientName: "Example Atlas" });
+  });
+
+  it("stops offering an order's samples once its batch is exported or acquired, as the live builder does", () => {
+    const { state: planned } = save(withSamples(), ["s-ORD041-1"]);
+    // In batch: the sample not yet batched is still offered; the batched one is not.
+    expect(demoBuilderSamples(planned, orders(planned), demoClients).map(item => item.code)).toEqual(["ORD041-S002"]);
+    const exported = recordExported(planned, "B2026-033", "a".repeat(64), "Demo Operator", now);
+    expect(demoBuilderSamples(exported, orders(exported), demoClients)).toEqual([]);
+    const acquired = recordAcquired(exported, "B2026-033", now);
+    expect(demoBuilderSamples(acquired, orders(acquired), demoClients)).toEqual([]);
   });
 });
 
