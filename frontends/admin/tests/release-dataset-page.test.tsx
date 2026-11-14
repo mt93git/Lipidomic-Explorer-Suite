@@ -132,6 +132,17 @@ describe("dataset version page (prototype a15)", () => {
     expect(screen.queryByRole("link", { name: "Download Excel" })).not.toBeInTheDocument();
     expect(screen.getByText("Download Excel")).toHaveAttribute("aria-disabled", "true");
   });
+  it("stored bytes the preview cannot parse keep the page up and Download Excel on", async () => {
+    vi.mocked(readDatasetWorkbook).mockReset();
+    const view: ReleaseView = { dataset: dataset(), policy: { ...defaultPolicy, requiredSignatures: 2 }, people: [ana, ben, op], me: ben, versions: [], demoActors: null };
+    vi.mocked(getDataset).mockResolvedValue(view);
+    vi.mocked(readDatasetWorkbook).mockResolvedValue({ bytes: Buffer.from("not a zip"), fileName: "ORD900_dataset_v1.xlsx" });
+    document.body.innerHTML = "";
+    render(await DatasetPage({ params: Promise.resolve({ id: "d-1" }), searchParams: Promise.resolve({}) }));
+    expect(preview()).toHaveTextContent("could not be read for the preview");
+    expect(within(preview()).queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download Excel" })).toBeInTheDocument();
+  });
   it("shows every digest of the manifest short with a copy button, the source TXT too", async () => {
     await show(ana);
     const manifest = screen.getByRole("region", { name: "Files of this version" });

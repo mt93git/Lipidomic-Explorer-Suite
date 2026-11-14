@@ -105,14 +105,23 @@ export default async function ReleaseDatasetPage({ params, searchParams }: { par
   const nexo = nexoDatasetLink(process.env.NEXT_PUBLIC_NEXO_URL, dataset, mayOpenInNexo(session.view));
   const sheet = previewSheetName(query.sheet);
   let preview: Preview | null = null;
+  let stored: Buffer | null = null;
   try {
-    const stored = await readDatasetWorkbook(dataset);
-    preview = { sheet: await previewSheet(stored.bytes, sheet) };
+    stored = (await readDatasetWorkbook(dataset)).bytes;
   } catch (error) {
-    if (!(error instanceof DataError) && !(error instanceof Error && /^The stored workbook has no /.test(error.message))) throw error;
+    if (!(error instanceof DataError)) throw error;
     preview = { problem: error.message };
   }
-  const readable = !!preview && "sheet" in preview;
+  // The bytes matched their digest: Download Excel serves them even when the preview cannot parse them, and a
+  // workbook exceljs cannot read (or that lacks the sheet) is reported in the preview instead of failing the page.
+  if (stored) {
+    try {
+      preview = { sheet: await previewSheet(stored, sheet) };
+    } catch (error) {
+      preview = { problem: error instanceof Error && /^The stored workbook has no /.test(error.message) ? error.message : "The stored workbook could not be read for the preview. Download Excel to open it." };
+    }
+  }
+  const readable = !!stored;
   const facts: [string, string][] = [
     ["Client", dataset.clientName], ["Order", `${dataset.orderCode}${dataset.orderTitle ? ` · ${dataset.orderTitle}` : ""}`], ["Version", `v${dataset.version} of ${versions.length}`],
     ["Built", `${formatLabInstant(dataset.builtAt)}${dataset.builtBy ? ` · ${dataset.builtBy}` : ""}`],
