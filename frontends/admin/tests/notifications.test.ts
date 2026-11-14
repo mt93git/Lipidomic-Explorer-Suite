@@ -34,9 +34,9 @@ describe("recipient selection", () => {
     expect(selectRecipients({ ...accepted, requestedBy: "gone" }, audience)).toEqual([]);
   });
 
-  it("a released dataset goes, by default (0036), to the lab's Operators, the client's admins and the requester; not to a viewer", () => {
-    expect(selectRecipients(released, audience).map(r => [r.userId, r.enabled])).toEqual([["operator", true], ["rowan", true], ["sky", false]]);
-    expect(selectRecipients({ ...released, requestedBy: null }, audience).map(r => r.userId)).toEqual(["operator", "sky"]);
+  it("a released dataset goes, by default (0040), to the lab's Operators and every member of the client, viewers too", () => {
+    expect(selectRecipients(released, audience).map(r => [r.userId, r.enabled])).toEqual([["operator", true], ["rowan", true], ["sky", false], ["quinn", true]]);
+    expect(selectRecipients({ ...released, requestedBy: null }, audience).map(r => r.userId)).toEqual(["operator", "rowan", "sky", "quinn"]);
   });
 
   it("new order and access requests go to lab Owner, Admin and Operator, not to a lab member or a client", () => {
@@ -53,10 +53,10 @@ describe("recipient selection", () => {
 
 describe("switches", () => {
   it("each view sees its own kinds, on unless turned off", () => {
-    // 0036: the matrix may send any order event to a client's people or to lab staff; an access request has no client.
-    expect(kindsFor("client")).toEqual(["shipment_received", "gate_failed", "batch_acquired", "results_missing", "dataset_released", "order_requested", "request_answered"]);
-    expect(kindsFor("staff")).toEqual([...kindsFor("client"), "access_requested"]);
-    expect(switchesFor("client", ["dataset_released", "order_requested"]).filter(s => !s.enabled).map(s => s.kind)).toEqual(["dataset_released", "order_requested"]);
+    // 0040: the lab-only events (order requested, gate failed, results missing, access requested) have no client switch.
+    expect(kindsFor("client")).toEqual(["shipment_received", "batch_acquired", "dataset_released", "request_answered"]);
+    expect(kindsFor("staff")).toEqual(["shipment_received", "gate_failed", "batch_acquired", "results_missing", "dataset_released", "order_requested", "request_answered", "access_requested"]);
+    expect(switchesFor("client", ["dataset_released", "request_answered"]).filter(s => !s.enabled).map(s => s.kind)).toEqual(["dataset_released", "request_answered"]);
     expect(switchesFor("staff", []).every(s => s.enabled)).toBe(true);
   });
 });
@@ -172,7 +172,7 @@ describe("delivery and the log", () => {
     const report = vi.fn();
     expect(await runNotification(released, { audience: async () => { throw new Error("notification_audience failed (42501)"); }, log, config: on, transport: async () => undefined, report })).toEqual([]);
     const failedLog = await runNotification(released, { audience: async () => audience, log: async () => { throw new Error("insert failed (42501)"); }, config: on, transport: async () => undefined, pause: noPause, report });
-    expect(failedLog).toHaveLength(3);
+    expect(failedLog).toHaveLength(4); // 0040: the viewer too
     expect(report.mock.calls.map(([text]) => text)).toEqual([
       "[notifications] dataset_released: nothing sent (notification_audience failed (42501))",
       "[notifications] dataset_released: the send log could not be written (insert failed (42501))",
@@ -242,15 +242,15 @@ describe("the event x audience matrix (0036)", () => {
 
   it("normalizeRule checks a row like admin.set_notification_rule", () => {
     const base = { kind: "batch_acquired", labRoles: ["admin", "operator", "admin"], stepOwner: false, clientAdmin: true, requester: false, days: null };
-    expect(normalizeRule(base)).toEqual({ kind: "batch_acquired", labRoles: ["operator", "admin"], stepOwner: false, clientAdmin: true, requester: false, days: null });
+    expect(normalizeRule(base)).toEqual({ kind: "batch_acquired", labRoles: ["operator", "admin"], stepOwner: false, clientAdmin: true, requester: false, clientMembers: false, days: null });
     expect(normalizeRule({ ...base, kind: "invitation" })).toBeNull();
     expect(normalizeRule({ ...base, labRoles: ["member"] })).toBeNull();
     expect(normalizeRule({ ...base, stepOwner: true })).toBeNull();
     expect(normalizeRule({ ...base, days: "3" })).toBeNull();
     expect(normalizeRule({ ...base, kind: "access_requested" })).toBeNull();
-    expect(normalizeRule({ ...base, kind: "results_missing", days: "5" })?.days).toBe(5);
+    expect(normalizeRule({ ...base, kind: "results_missing", clientAdmin: false, days: "5" })?.days).toBe(5);
     for (const days of [null, "0", "61", "2.5", "x"]) expect(normalizeRule({ ...base, kind: "results_missing", days }), String(days)).toBeNull();
-    expect(normalizeRule({ ...base, kind: "gate_failed", stepOwner: true })?.stepOwner).toBe(true);
+    expect(normalizeRule({ ...base, kind: "gate_failed", clientAdmin: false, stepOwner: true })?.stepOwner).toBe(true);
   });
 
   it("each cell picks its people: lab roles, the owner of the step, the client's admins, the order's requester", () => {

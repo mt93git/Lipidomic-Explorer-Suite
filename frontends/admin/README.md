@@ -69,6 +69,15 @@ enrolls a TOTP factor (QR code + key, then the six-digit code; `src/lib/two-step
 Client users keep password sign-in. Lab staff land on the global pipeline; a client user lands on the client home
 and may open only their clients' orders.
 
+## Scheduled results check
+
+The "No results TXT N days after acquisition" email runs from `POST /api/cron/results-missing`
+(`src/app/api/cron/results-missing/route.ts`), protected by `Authorization: Bearer <ADMIN_CRON_SECRET>`: without
+`ADMIN_CRON_SECRET` in the environment the route answers 404, with a wrong secret 401. An hourly systemd user timer
+that calls it is in `frontends/deploy/results-check` (example, not installed). Opening the Pipeline still runs the
+same check at most every 10 minutes. An order is marked sent only after its email went out (or nobody was to be
+emailed); a failed send is retried by a later run (0040).
+
 ## Screens and routes
 
 - `/sign-in`, `/choose-client`: password/TOTP sign-in, demo entry, and validated client selection. `next` is

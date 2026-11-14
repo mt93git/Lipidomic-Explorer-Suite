@@ -43,14 +43,15 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     {staff && <>
       <div className={styles.matrixBox} role="region" aria-label="Who hears about what" tabIndex={0}>
         <table className={styles.matrix} aria-label="Who hears about what, by email">
-          <thead><tr><th scope="col">Event</th><th scope="col">Lab staff</th><th scope="col">Client admin</th><th scope="col">Requester</th></tr></thead>
+          <thead><tr><th scope="col">Event</th><th scope="col">Lab staff</th><th scope="col">Client admin</th><th scope="col">Requester</th><th scope="col">Client members</th></tr></thead>
           <tbody>{matrix.map(row => <MatrixRow key={row.kind} row={row} editable={editable} />)}</tbody>
         </table>
       </div>
       <p className={styles.footnote}>Emails go out only for these events; nothing is sent without one.</p>
       <p className={`muted ${styles.legend}`}>{editable ? "Click a mark or a name to change who gets the email. " : "A lab Owner or Admin changes who gets each email. "}
         Lab staff are chosen by role; the owner of the step is who recorded it. Requester: the client member who asked for the order.
-        The results check runs when lab staff open the Pipeline, at most every 10 minutes, and emails once per order.
+        Client members: everyone in the order's client, viewers too. Order requested, Gate failed, the results check and Access requested are for lab staff only.
+        The results check runs every hour on the server and when lab staff open the Pipeline, and emails once per order.
         {" "}Each person can still turn an email off for themselves below.</p>
       <hr className={styles.rule} />
     </>}

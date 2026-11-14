@@ -4,8 +4,8 @@ import { demoClients, demoClientSession, demoOrders } from "../demo";
 import { getEnvironment } from "../environment";
 import type { AppSession } from "../models";
 import {
-  DEMO_OFF_REASON, defaultRules, matrixRows, normalizeRule, notifyConfig, resendTransport, runNotification, switchesFor, type AudiencePerson, type LogEntry,
-  type LogKind, type NotificationEvent, type NotificationKind, type NotificationRule, type NotifyConfig, type NotifyDeps, type Transport,
+  DEMO_OFF_REASON, defaultRules, matrixRows, normalizeRule, notifyConfig, notificationKinds, resendTransport, runNotification, runNotificationOutcome, storedRule, switchesFor,
+  type AudiencePerson, type Checkin, type LogEntry, type LogKind, type NotificationEvent, type NotificationKind, type NotificationRule, type NotifyConfig, type NotifyDeps, type Transport,
 } from "../notifications";
 import { demoPeopleSeed } from "../people";
 import { clientRoleNames } from "../roles";
@@ -55,9 +55,11 @@ export function mailDeps(): { config: NotifyConfig; transport: Transport; log: (
   };
 }
 
-type RuleRow = { kind: string; lab_roles: string[] | null; step_owner: boolean; client_admin: boolean; requester: boolean; days: number | null };
-const fromRow = (row: RuleRow) => normalizeRule({ kind: row.kind, labRoles: row.lab_roles ?? [], stepOwner: row.step_owner, clientAdmin: row.client_admin, requester: row.requester, days: row.days });
-const RULE_COLUMNS = "kind, lab_roles, step_owner, client_admin, requester, days";
+type RuleRow = { kind: string; lab_roles: string[] | null; step_owner: boolean; client_admin: boolean; requester: boolean; client_members: boolean; days: number | null };
+const fromRow = (row: RuleRow) => normalizeRule({
+  kind: row.kind, labRoles: row.lab_roles ?? [], stepOwner: row.step_owner, clientAdmin: row.client_admin, requester: row.requester, clientMembers: row.client_members, days: row.days,
+});
+const RULE_COLUMNS = "kind, lab_roles, step_owner, client_admin, requester, client_members, days";
 
 function liveDeps(): NotifyDeps {
   const service = createServiceClient();
@@ -104,7 +106,7 @@ export async function demoRequesterId(requestedBy: string | null | undefined): P
 }
 
 async function demoRule(kind: NotificationKind): Promise<NotificationRule> {
-  return (await readDemoNotifications()).rules?.[kind] ?? defaultRules[kind];
+  return storedRule(kind, (await readDemoNotifications()).rules?.[kind]);
 }
 async function demoNotify(event: NotificationEvent) {
   const { log, ...deps } = mailDeps();
@@ -169,7 +171,10 @@ export const mayEditNotificationRules = (session: AppSession) => session.view ==
 
 // Every row of the matrix in display order (lab staff read admin.notification_rule; a missing row is at its default).
 export async function notificationMatrix(): Promise<NotificationRule[]> {
-  if (!live()) return matrixRows(Object.values((await readDemoNotifications()).rules ?? {}).filter((row): row is NotificationRule => !!row));
+  if (!live()) {
+    const stored = (await readDemoNotifications()).rules ?? {};
+    return matrixRows(notificationKinds.filter(kind => stored[kind]).map(kind => storedRule(kind, stored[kind])));
+  }
   const { data, error } = await (await admin()).from("notification_rule").select(RULE_COLUMNS);
   if (error) throw new Error(`Who gets which email could not be read: ${error.message}`);
   return matrixRows(((data ?? []) as RuleRow[]).map(fromRow).filter((row): row is NotificationRule => !!row));
@@ -183,7 +188,7 @@ export async function setNotificationRule(row: NotificationRule): Promise<void> 
     return;
   }
   const { error } = await (await admin()).rpc("set_notification_rule", {
-    p_kind: row.kind, p_lab_roles: row.labRoles, p_step_owner: row.stepOwner, p_client_admin: row.clientAdmin, p_requester: row.requester, p_days: row.days,
+    p_kind: row.kind, p_lab_roles: row.labRoles, p_step_owner: row.stepOwner, p_client_admin: row.clientAdmin, p_requester: row.requester, p_client_members: row.clientMembers, p_days: row.days,
   });
   if (error) throw new DataError(error.code === "42501" ? "Only a lab Owner or Admin changes who gets which email." : "This row could not be saved. Try again.");
 }
@@ -213,56 +218,72 @@ export async function orderFacts(codes: readonly string[], by: "code" | "id" = "
   }));
 }
 
-// gate: what failed, for the lab's copy; orderGate (optional): the same for one order, for its client's copy.
-type GateExtra = { gate: string; orderGate?: (code: string) => string; stepOwner: string | null };
-// A batch event: once to the lab (scope "lab", the batch and its order codes) and once per order to its client (scope
-// "client"), so a client's email never names another client's order. Never throws (notify reports).
+// gate: what failed, for the lab's email.
+type GateExtra = { gate: string; stepOwner: string | null };
+// A batch event: once to the lab (scope "lab", the batch and its order codes) and, for an acquired batch, once per order
+// to its client (scope "client"), so a client's email never names another client's order. A failed gate is lab-only
+// (0040): the lab's email only. Never throws (notify reports).
 export async function notifyBatch(kind: "batch_acquired", batch: string, codes: readonly string[]): Promise<void>;
 export async function notifyBatch(kind: "gate_failed", batch: string, codes: readonly string[], extra: GateExtra): Promise<void>;
 export async function notifyBatch(kind: "batch_acquired" | "gate_failed", batch: string, codes: readonly string[], extra?: GateExtra): Promise<void> {
+  if (kind === "gate_failed") {
+    const { gate, stepOwner } = extra!;
+    await notify({ kind, scope: "lab", gate: `${gate} (batch ${batch})`, stepOwner, orderId: null, code: batch, clientId: null, clientName: null });
+    return;
+  }
   let facts: OrderFact[] = [];
   try {
     facts = await orderFacts(codes);
   } catch (error) {
     console.error(`[notifications] ${kind}: the batch's orders could not be read (${error instanceof Error ? error.message : error})`);
   }
-  if (kind === "batch_acquired") {
-    await notify({ kind, scope: "lab", batch, orderId: null, code: batch, clientId: null, clientName: null, orders: [...codes] });
-    for (const fact of facts) await notify({ kind, scope: "client", batch, ...fact });
-    return;
-  }
-  const { gate, orderGate, stepOwner } = extra!;
-  await notify({ kind, scope: "lab", gate: `${gate} (batch ${batch})`, stepOwner, orderId: null, code: batch, clientId: null, clientName: null });
-  for (const fact of facts) await notify({ kind, scope: "client", gate: `${orderGate?.(fact.code) ?? gate} (batch ${batch})`, stepOwner, ...fact });
+  await notify({ kind, scope: "lab", batch, orderId: null, code: batch, clientId: null, clientName: null, orders: [...codes] });
+  for (const fact of facts) await notify({ kind, scope: "client", batch, ...fact });
 }
 
 // ---------------------------------------------------------------- the scheduled check: no results TXT N days after acquisition
 
-// Runs when lab staff open the Pipeline (checkResultsMissing is called by its page), at most once every 10 minutes per
-// server process; admin.claim_results_missing (service role) hands out each due order once, even to two servers at
-// the same time, and records it in admin.notification_event. Live only: the example workspace has no acquisition
-// dates, so it never runs there. Nothing it does can fail or slow the page (after()).
+// Runs from the hourly timer (POST /api/cron/results-missing with ADMIN_CRON_SECRET, frontends/deploy/results-check) and
+// when lab staff open the Pipeline (checkResultsMissing, at most once every 10 minutes per server process, after the
+// response). admin.claim_results_missing (service role) hands out each due order to one caller at a time; the order is
+// marked sent (mark_results_missing_sent) only once its email is done with, so a failed send or a stopped server is
+// retried by a later run once the 15-minute claim runs out (0040). Live only: the example workspace has no acquisition
+// dates, so it never runs there.
 export const RESULTS_CHECK_EVERY_MS = 10 * 60 * 1000;
 let lastResultsCheck = 0;
 type ClaimRow = { order_id: string; code: string; title: string | null; client_id: string; client_name: string | null; requested_by: string | null; acquired_at: string; days: number };
+export type ResultsCheck = { claimed: number; sent: number; retry: number };
+
+// One run, awaited: claims, emails, marks. Throws when the claim itself fails.
+export async function runResultsMissingCheck(): Promise<ResultsCheck> {
+  if (!live()) return { claimed: 0, sent: 0, retry: 0 };
+  const service = createServiceClient();
+  if (!service) throw new Error("this server has no service key");
+  const deps = liveDeps();
+  const { data, error } = await service.rpc("claim_results_missing");
+  if (error) throw new Error(`claim_results_missing failed (${error.code ?? "no code"})`);
+  const rows = (data ?? []) as ClaimRow[];
+  let sent = 0;
+  for (const row of rows) {
+    const { done } = await runNotificationOutcome({
+      kind: "results_missing", orderId: row.order_id, code: row.code, title: row.title, clientId: row.client_id, clientName: row.client_name ?? "the client",
+      requestedBy: row.requested_by, days: row.days, acquiredAt: row.acquired_at,
+    }, deps);
+    if (!done) continue;
+    const marked = await service.rpc("mark_results_missing_sent", { p_order_id: row.order_id });
+    if (marked.error) console.error(`[notifications] results_missing: ${row.code} sent but not marked (${marked.error.code ?? "no code"}); it may be sent again`);
+    else sent++;
+  }
+  return { claimed: rows.length, sent, retry: rows.length - sent };
+}
 
 export function checkResultsMissing(now = Date.now()): boolean {
   if (!live() || now - lastResultsCheck < RESULTS_CHECK_EVERY_MS) return false;
   lastResultsCheck = now;
   try {
-    const deps = liveDeps();
-    const service = createServiceClient();
     after(async () => {
       try {
-        if (!service) throw new Error("this server has no service key");
-        const { data, error } = await service.rpc("claim_results_missing");
-        if (error) throw new Error(`claim_results_missing failed (${error.code ?? "no code"})`);
-        for (const row of (data ?? []) as ClaimRow[]) {
-          await runNotification({
-            kind: "results_missing", orderId: row.order_id, code: row.code, title: row.title, clientId: row.client_id, clientName: row.client_name ?? "the client",
-            requestedBy: row.requested_by, days: row.days, acquiredAt: row.acquired_at,
-          }, deps);
-        }
+        await runResultsMissingCheck();
       } catch (error) {
         console.error(`[notifications] results_missing: check failed (${error instanceof Error ? error.message : error})`);
       }
@@ -288,6 +309,19 @@ export async function notifyShipment(orderId: string, shipment: { boxCount: numb
     }
   } catch (error) {
     console.error(`[notifications] shipment_received: not scheduled (${error instanceof Error ? error.message : error})`);
+  }
+}
+
+// A receipt confirmed with tubes missing or not intact (confirm_shipment_receipt): the order's client hears about it
+// under the Shipment received row (and its lab cells), with the counts and the lab's note. Never throws.
+export async function notifyReceiptDiscrepancy(orderCode: string, checkin: Checkin): Promise<void> {
+  if (!checkin.missing && !checkin.notIntact) return;
+  try {
+    const [fact] = await orderFacts([orderCode]);
+    if (!fact) return;
+    await notify({ kind: "shipment_received", ...fact, boxes: null, condition: null, checkin });
+  } catch (error) {
+    console.error(`[notifications] shipment_received: receipt not scheduled (${error instanceof Error ? error.message : error})`);
   }
 }
 

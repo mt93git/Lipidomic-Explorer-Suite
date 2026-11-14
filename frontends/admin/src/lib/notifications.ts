@@ -5,7 +5,8 @@
 //
 // The matrix (admin.notification_rule, edited by a lab Owner or Admin on the Notifications page): one row per event,
 // one cell per audience. Lab staff by lab role (Owner, Admin, Operator); the owner of the step (a failed gate: who
-// recorded the step); the client's admins; the requester (the client member who asked for the order). Everyone may still
+// recorded the step); the client's admins; the requester (the client member who asked for the order); every member of the
+// order's client (0040, viewers too). The lab-only events never reach a client's people (0040). Everyone may still
 // turn a kind off for themselves (no row in admin.notification_pref = on). Sending happens only with
 // ADMIN_NOTIFY_ENABLED=true; ADMIN_NOTIFY_ALLOW (comma-separated email domains) limits who receives mail, on staging say;
 // every recipient gets one log row: sent, failed or skipped, with why.
@@ -19,15 +20,19 @@ export const notificationKinds = [
 export type NotificationKind = (typeof notificationKinds)[number];
 export const isNotificationKind = (value: unknown): value is NotificationKind => notificationKinds.includes(value as NotificationKind);
 
+// Written for the lab (lab wording, links to lab pages): no client cell, and no switch for a client's people (0040).
+export const labOnlyKinds: readonly NotificationKind[] = ["order_requested", "gate_failed", "results_missing", "access_requested"];
+const isLabOnly = (kind: NotificationKind) => labOnlyKinds.includes(kind);
+
 // label: the person's own switch; event: the matrix row; views: who may have a switch for it (a client's people or lab
 // staff), depending on the matrix's audiences.
 export const kindInfo: Record<NotificationKind, { label: string; event: string; description: string; views: View[] }> = {
-  shipment_received: { label: "A shipment is received", event: "Shipment received", description: "When the lab records the arrival of samples for an order.", views: ["staff", "client"] },
-  gate_failed: { label: "A gate fails", event: "Gate failed", description: "When a step's check turns red: a shipment arrived not intact, or injections were recorded Failed in the run monitor.", views: ["staff", "client"] },
+  shipment_received: { label: "A shipment is received", event: "Shipment received", description: "When the lab records the arrival of samples for an order, and when tubes are missing or not intact at the check-in.", views: ["staff", "client"] },
+  gate_failed: { label: "A gate fails", event: "Gate failed", description: "When a step's check turns red: a shipment arrived not intact, or injections were recorded Failed in the run monitor.", views: ["staff"] },
   batch_acquired: { label: "A batch is acquired", event: "Batch acquired", description: "When a batch with an order's samples is marked acquired on the instrument.", views: ["staff", "client"] },
-  results_missing: { label: "Results are late", event: "No results TXT N days after acquisition", description: "When an order is still waiting for its results TXT some days after it was acquired.", views: ["staff", "client"] },
+  results_missing: { label: "Results are late", event: "No results TXT N days after acquisition", description: "When an order is still waiting for its results TXT some days after it was acquired.", views: ["staff"] },
   dataset_released: { label: "A dataset is released", event: "Dataset released", description: "When the lab releases a dataset to a client.", views: ["staff", "client"] },
-  order_requested: { label: "A client requests an order", event: "Order requested", description: "When a client asks for a new order. You accept or decline it on the order.", views: ["staff", "client"] },
+  order_requested: { label: "A client requests an order", event: "Order requested", description: "When a client asks for a new order. You accept or decline it on the order.", views: ["staff"] },
   request_answered: { label: "My order request is answered", event: "Order request answered", description: "When the lab accepts or declines an order you asked for. A decline gives the lab's reason; an accept links to the shipping instructions.", views: ["staff", "client"] },
   access_requested: { label: "Someone requests access", event: "Access requested", description: "When someone asks for access on the public Request access page. A lab Owner or Admin answers it in People.", views: ["staff"] },
 };
@@ -40,23 +45,24 @@ export const eventLabel = (kind: NotificationKind, days: number | null = null) =
 export const ruleLabRoles = ["operator", "admin", "owner"] as const;
 export type RuleLabRole = (typeof ruleLabRoles)[number];
 export const ruleLabRoleNames: Record<RuleLabRole, string> = { operator: "Operator", admin: "Admin", owner: "Owner" };
-export type NotificationRule = { kind: NotificationKind; labRoles: RuleLabRole[]; stepOwner: boolean; clientAdmin: boolean; requester: boolean; days: number | null };
+export type NotificationRule = { kind: NotificationKind; labRoles: RuleLabRole[]; stepOwner: boolean; clientAdmin: boolean; requester: boolean; clientMembers: boolean; days: number | null };
 export const DEFAULT_RESULTS_DAYS = 3;
-const rule = (kind: NotificationKind, labRoles: RuleLabRole[], stepOwner: boolean, clientAdmin: boolean, requester: boolean, days: number | null = null): NotificationRule =>
-  ({ kind, labRoles, stepOwner, clientAdmin, requester, days });
-// The defaults of 0036 (the prototype's "Analyst" is the lab's Operator role).
+const rule = (kind: NotificationKind, labRoles: RuleLabRole[], stepOwner: boolean, clientAdmin: boolean, requester: boolean, days: number | null = null, clientMembers = false): NotificationRule =>
+  ({ kind, labRoles, stepOwner, clientAdmin, requester, clientMembers, days });
+// The defaults of 0036 (the prototype's "Analyst" is the lab's Operator role), with 0040's Client members on for a
+// released dataset (every member of the client, as before 0036).
 export const defaultRules: Record<NotificationKind, NotificationRule> = {
   shipment_received: rule("shipment_received", ["admin"], false, true, true),
   gate_failed: rule("gate_failed", [], true, false, false),
   batch_acquired: rule("batch_acquired", ["operator"], false, false, true),
   results_missing: rule("results_missing", ["operator", "admin"], false, false, false, DEFAULT_RESULTS_DAYS),
-  dataset_released: rule("dataset_released", ["operator"], false, true, true),
+  dataset_released: rule("dataset_released", ["operator"], false, true, true, null, true),
   order_requested: rule("order_requested", ["operator", "admin", "owner"], false, false, false),
   request_answered: rule("request_answered", [], false, false, true),
   access_requested: rule("access_requested", ["operator", "admin", "owner"], false, false, false),
 };
-// Which cells a row may have: only a failed gate has a step owner; an access request has no client yet.
-export const ruleAllows = (kind: NotificationKind) => ({ stepOwner: kind === "gate_failed", client: kind !== "access_requested", days: kind === "results_missing" });
+// Which cells a row may have: only a failed gate has a step owner; the lab-only events have no client cell (0040).
+export const ruleAllows = (kind: NotificationKind) => ({ stepOwner: kind === "gate_failed", client: !isLabOnly(kind), days: kind === "results_missing" });
 
 // The lab staff cell as the matrix writes it: "Operator, Admin", "owner of the step", or "—" when nobody.
 export function labCell(value: NotificationRule): string {
@@ -69,21 +75,25 @@ export const matrixRows = (stored: readonly NotificationRule[]) =>
   notificationKinds.map(kind => stored.find(item => item.kind === kind) ?? defaultRules[kind]);
 
 // A row as the database or the form gives it, checked like admin.set_notification_rule; null when it is not valid.
-export function normalizeRule(input: { kind: unknown; labRoles: unknown; stepOwner: unknown; clientAdmin: unknown; requester: unknown; days: unknown }): NotificationRule | null {
+export function normalizeRule(input: { kind: unknown; labRoles: unknown; stepOwner: unknown; clientAdmin: unknown; requester: unknown; clientMembers?: unknown; days: unknown }): NotificationRule | null {
   if (!isNotificationKind(input.kind)) return null;
   const kind = input.kind;
   const allows = ruleAllows(kind);
   const roles = Array.isArray(input.labRoles) ? input.labRoles.map(String) : [];
   if (roles.some(role => !ruleLabRoles.includes(role as RuleLabRole))) return null;
   const labRoles = ruleLabRoles.filter(role => roles.includes(role));
-  const stepOwner = input.stepOwner === true, clientAdmin = input.clientAdmin === true, requester = input.requester === true;
+  const stepOwner = input.stepOwner === true, clientAdmin = input.clientAdmin === true, requester = input.requester === true, clientMembers = input.clientMembers === true;
   if (stepOwner && !allows.stepOwner) return null;
-  if (!allows.client && (clientAdmin || requester)) return null;
+  if (!allows.client && (clientAdmin || requester || clientMembers)) return null;
   const days = input.days === null || input.days === undefined || input.days === "" ? null : Number(input.days);
   if (allows.days !== (days !== null)) return null;
   if (days !== null && (!Number.isInteger(days) || days < 1 || days > 60)) return null;
-  return { kind, labRoles, stepOwner, clientAdmin, requester, days };
+  return { kind, labRoles, stepOwner, clientAdmin, requester, clientMembers, days };
 }
+// A row the example workspace stored, checked again: one saved before 0040 takes the new column's default, and one
+// that 0040 no longer allows (a client cell on a lab-only event) falls back to the default row.
+export const storedRule = (kind: NotificationKind, stored: Partial<NotificationRule> | null | undefined): NotificationRule =>
+  (stored && normalizeRule({ ...defaultRules[kind], ...stored, kind })) || defaultRules[kind];
 
 // The person's own switches, for their view: lab staff get a switch for every kind; a client's people for the kinds
 // their client may hear about. A kind is on unless the person turned it off.
@@ -98,12 +108,14 @@ type OrderFacts = { orderId: string; code: string; clientId: string; clientName:
 // scope: an event about many orders (a batch) is sent once to the lab ("lab") and once per order to its client
 // ("client"), so no client reads another client's order; an event about one order reaches both (no scope).
 export type Scope = "lab" | "client";
+// A receipt confirmed tube by tube with a discrepancy (confirm_shipment_receipt): sent under the Shipment received row.
+export type Checkin = { expected: number; checkedIn: number; missing: number; notIntact: number; note: string | null };
 export type NotificationEvent =
   | ({ kind: "request_answered"; title: string | null; accepted: boolean; reason: string | null } & OrderFacts & { requestedBy: string | null })
   | ({ kind: "dataset_released"; datasetId: string; version: number } & OrderFacts)
   | ({ kind: "order_requested"; title: string | null } & OrderFacts)
   | { kind: "access_requested"; reference: string; fullName: string; organisation: string }
-  | ({ kind: "shipment_received"; title: string | null; boxes: number | null; condition: string | null } & OrderFacts)
+  | ({ kind: "shipment_received"; title: string | null; boxes: number | null; condition: string | null; checkin?: Checkin } & OrderFacts)
   | ({ kind: "gate_failed"; gate: string; stepOwner: string | null; scope?: Scope } & (OrderFacts | { orderId: null; code: string; clientId: null; clientName: null; requestedBy?: null }))
   | ({ kind: "batch_acquired"; batch: string; scope: Scope } & (OrderFacts | { orderId: null; code: string; clientId: null; clientName: null; requestedBy?: null; orders: string[] }))
   | ({ kind: "results_missing"; title: string | null; days: number; acquiredAt: string } & OrderFacts);
@@ -130,6 +142,7 @@ export function selectRecipients(event: NotificationEvent, people: readonly Audi
     if (person.clientRole && scope !== "lab" && event.kind !== "access_requested") {
       if (row.clientAdmin && person.clientRole === "client_admin") return true;
       if (row.requester && requestedBy && person.userId === requestedBy) return true;
+      if (row.clientMembers) return true;
     }
     return false;
   };
@@ -217,6 +230,15 @@ export function buildMessage(event: NotificationEvent, origin: string | null, ba
         [origin ? "Accept or decline it on the order:" : "Accept or decline it on the order in Lipidomics Admin."], link(`/orders/${encodeURIComponent(event.code)}`)];
       break;
     case "shipment_received":
+      if (event.checkin) {
+        const c = event.checkin;
+        subject = `Receipt of ${event.code}: ${c.missing} ${c.missing === 1 ? "tube" : "tubes"} missing, ${c.notIntact} not intact`;
+        body = [[`The lab checked in the samples of order ${withTitle(event.code, event.title)} for ${event.clientName}, tube by tube, and found a difference from your manifest.`],
+          [`Tubes expected: ${c.expected}. Checked in: ${c.checkedIn}. Missing: ${c.missing}. Not intact: ${c.notIntact}.`],
+          c.note?.trim() ? [`The lab's note: ${c.note.trim()}`] : [],
+          [origin ? "See the receipt on your order:" : "See the receipt on your order in Lipidomics Admin."], link(`/orders/${encodeURIComponent(event.code)}`)];
+        break;
+      }
       subject = `Shipment received for ${event.code}`;
       body = [[`The lab received the samples for order ${withTitle(event.code, event.title)} of ${event.clientName}${event.boxes ? ` (${event.boxes} ${event.boxes === 1 ? "box" : "boxes"})` : ""}${event.condition ? `, ${event.condition}` : ""}.`],
         [origin ? "Follow the order in Lipidomics Admin:" : "Follow the order in Lipidomics Admin."], link(`/orders/${encodeURIComponent(event.code)}`)];
@@ -358,20 +380,27 @@ export type NotifyDeps = {
 // The whole step after an event: audience → recipients → send → log. A failure anywhere is reported (without any
 // address) and never thrown, so the person's action is never failed by an email.
 export async function runNotification(event: NotificationEvent, deps: NotifyDeps): Promise<LogEntry[]> {
+  return (await runNotificationOutcome(event, deps)).entries;
+}
+
+// The same, saying whether the event is done with (0040, the results check): done unless the rule or the audience could
+// not be read, or every email that was tried failed. Skipped emails (turned off, sending off) count as done; with some
+// sent and some failed it is done too, so nobody gets the email twice.
+export async function runNotificationOutcome(event: NotificationEvent, deps: NotifyDeps): Promise<{ entries: LogEntry[]; done: boolean }> {
   const report = deps.report ?? (message => console.error(message));
   try {
     const row = deps.rule ? await deps.rule(event.kind) : defaultRules[event.kind];
     const recipients = selectRecipients(event, await deps.audience(eventClientId(event)), row);
-    if (!recipients.length) return [];
+    if (!recipients.length) return { entries: [], done: true };
     const entries = await deliver(event, recipients, deps);
     try {
       await deps.log(entries);
     } catch (error) {
       report(`[notifications] ${event.kind}: the send log could not be written (${error instanceof Error ? error.message : error})`);
     }
-    return entries;
+    return { entries, done: entries.some(entry => entry.status === "sent") || !entries.some(entry => entry.status === "failed") };
   } catch (error) {
     report(`[notifications] ${event.kind}: nothing sent (${error instanceof Error ? error.message : error})`);
-    return [];
+    return { entries: [], done: false };
   }
 }

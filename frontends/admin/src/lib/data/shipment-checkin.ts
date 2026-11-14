@@ -10,6 +10,7 @@ import {
 } from "../shipment-checkin";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { notifyReceiptDiscrepancy } from "./notifications";
 
 // Receive shipment, tube by tube. Live mode reads the order's received shipments through the signed-in user's own
 // client (RLS) and the manifest through admin.shipment_checkin (lab staff); writes go through check_in_tube and
@@ -166,15 +167,21 @@ export async function checkInTube(orderCode: string, shipmentId: string, input: 
 }
 
 // admin.confirm_shipment_receipt(p_shipment_id, p_note, p_storage_temperature) returns jsonb
+// A receipt with tubes missing or not intact emails the order's client (notifyReceiptDiscrepancy, 0040); the demo logs it.
+type ReceiptCounts = { expected: number; checked_in: number; missing: number; damaged: number };
 export async function confirmReceipt(orderCode: string, shipmentId: string, note: string): Promise<void> {
   if (live()) {
     const db = await admin();
-    const { error } = await db.rpc("confirm_shipment_receipt", { p_shipment_id: shipmentId, p_note: note, p_storage_temperature: STORAGE_TEMPERATURE });
+    const { data, error } = await db.rpc("confirm_shipment_receipt", { p_shipment_id: shipmentId, p_note: note, p_storage_temperature: STORAGE_TEMPERATURE });
     if (error) throw refusal(error);
+    const counts = data as ReceiptCounts | null;
+    if (counts) await notifyReceiptDiscrepancy(orderCode, { expected: counts.expected, checkedIn: counts.checked_in, missing: counts.missing, notIntact: counts.damaged, note: note.trim() || null });
     return;
   }
   const { state, order } = await demoOrder(orderCode);
   const view = order ? demoView(order, state, shipmentId) : null;
   if (!view) throw new DataError(`Order ${orderCode} has no received shipment to confirm.`);
-  await writeDemoState(demoConfirm(state, note, { view, actor: demoSession.displayName, now: new Date() }).state);
+  const { state: next, receipt } = demoConfirm(state, note, { view, actor: demoSession.displayName, now: new Date() });
+  await writeDemoState(next);
+  await notifyReceiptDiscrepancy(orderCode, { expected: receipt.expected, checkedIn: receipt.checkedIn, missing: receipt.missing, notIntact: receipt.damaged, note: receipt.note });
 }

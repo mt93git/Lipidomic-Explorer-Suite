@@ -108,8 +108,8 @@ async function seedAll(db) {
   // Email notifications (0028): client A's viewer turned off released-dataset emails; one skipped send to the Operator.
   await q("INSERT INTO admin.notification_pref(user_id, kind, enabled) VALUES ($1, 'dataset_released', false)", [U.aView]);
   await q("INSERT INTO admin.notification_log(id, kind, user_id, email, subject, status, error, reference) VALUES ($1, 'access_requested', $2, 'operator@example.test', 'New access request AR-0001', 'skipped', 'Sending is off', 'AR-0001')", [id(800), U.operator]);
-  // The scheduled results check (0036) already announced client B's order once.
-  await q("INSERT INTO admin.notification_event(id, kind, order_id, client_id, reference) VALUES ($1, 'results_missing', $2, $3, 'ORD002')", [id(810), id(201), C.B]);
+  // The scheduled results check (0036) already announced client B's order once (sent, 0040).
+  await q("INSERT INTO admin.notification_event(id, kind, order_id, client_id, reference, sent_at) VALUES ($1, 'results_missing', $2, $3, 'ORD002', now())", [id(810), id(201), C.B]);
 
   // New order wizard (0033): the Global panel's line on the rate sheet, and one open draft for client A.
   await q("INSERT INTO admin.panel_rate(id, panel_id, rate_per_sample, currency, minutes_per_injection, updated_by) VALUES ($1, $2, 50.00, 'USD', 20, $3)", [id(900), id(501), U.admin]);

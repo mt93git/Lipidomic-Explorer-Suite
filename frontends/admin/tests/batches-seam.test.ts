@@ -68,7 +68,7 @@ test("demo: save, download, mark exported, mark acquired; the order follows and 
 
 test("demo: an injection recorded Failed announces Gate failed once; pasting the same export again does not repeat it", async () => {
   await writeDemoState({ ...await readDemoState(), samples: [sample(1), sample(2)] });
-  await writeDemoNotifications({ off: {}, log: [], rules: { gate_failed: { kind: "gate_failed", labRoles: ["operator"], stepOwner: false, clientAdmin: false, requester: false, days: null } } });
+  await writeDemoNotifications({ off: {}, log: [], rules: { gate_failed: { kind: "gate_failed", labRoles: ["operator"], stepOwner: false, clientAdmin: false, requester: false, clientMembers: false, days: null } } });
   const { name } = await createBatch(await plan(["s-1", "s-2"]));
   await markBatchExported(name);
   const gateRows = async () => (await readDemoNotifications()).log.filter(row => row.kind === "gate_failed");

@@ -17,8 +17,9 @@ async function asRole(role) {
   await db.exec(`SET ROLE ${role}`);
 }
 const rules = () => db.query('SELECT kind, lab_roles, step_owner, client_admin, requester, days FROM admin.notification_rule ORDER BY kind').then((r) => r.rows);
+// 0040 added p_client_members (before p_days); these 0036 cases leave it off.
 const setRule = (kind, labRoles, stepOwner, clientAdmin, requester, days = null) =>
-  db.query('SELECT admin.set_notification_rule($1, $2, $3, $4, $5, $6)', [kind, labRoles, stepOwner, clientAdmin, requester, days]);
+  db.query('SELECT admin.set_notification_rule($1, $2, $3, $4, $5, false, $6)', [kind, labRoles, stepOwner, clientAdmin, requester, days]);
 const claim = () => db.query('SELECT * FROM admin.claim_results_missing()').then((r) => r.rows);
 
 // Moves client A's order to acquired as the Operator (the audit row dates the acquisition), then back-dates that
@@ -86,15 +87,15 @@ describe('0036: the matrix', () => {
     await setRule('shipment_received', ['operator', 'admin', 'operator'], false, false, true);
     await setRule('shipment_received', ['admin', 'operator'], false, false, true); // the same row: no update
     await as(db, U.owner);
-    await setRule('results_missing', ['admin'], false, true, false, 5);
+    await setRule('results_missing', ['admin'], false, false, false, 5); // lab-only since 0040
     await as(db, null);
     const changed = (await rules()).filter((r) => ['shipment_received', 'results_missing'].includes(r.kind));
     expect(changed).toEqual([
-      { kind: 'results_missing', lab_roles: ['admin'], step_owner: false, client_admin: true, requester: false, days: 5 },
+      { kind: 'results_missing', lab_roles: ['admin'], step_owner: false, client_admin: false, requester: false, days: 5 },
       { kind: 'shipment_received', lab_roles: ['admin', 'operator'], step_owner: false, client_admin: false, requester: true, days: null },
     ]);
     const audit = (await db.query(`SELECT actor, after->>'kind' AS kind, after->>'updated_by' AS by FROM admin.audit_event
-      WHERE entity = 'notification_rule' AND action = 'UPDATE' ORDER BY id`)).rows;
+      WHERE entity = 'notification_rule' AND action = 'UPDATE' AND actor IS NOT NULL ORDER BY id`)).rows; // 0040's own updates have no actor
     expect(audit).toEqual([{ actor: U.admin, kind: 'shipment_received', by: U.admin }, { actor: U.owner, kind: 'results_missing', by: U.owner }]);
   });
 
@@ -108,7 +109,7 @@ describe('0036: the matrix', () => {
     expect(await code(db.query("INSERT INTO admin.notification_rule(kind) VALUES ('gate_failed')"))).toBe('42501');
     await asRole('service_role');
     expect(await code(db.query("UPDATE admin.notification_rule SET requester = false WHERE kind = 'gate_failed'"))).toBe('42501');
-    expect(await code(db.query('SELECT admin.set_notification_rule($1, $2, false, false, false, NULL)', ['gate_failed', []]))).toBe('42501');
+    expect(await code(db.query('SELECT admin.set_notification_rule($1, $2, false, false, false, false, NULL)', ['gate_failed', []]))).toBe('42501');
   });
 
   test('refuses an unknown kind, a lab Member role, a step owner outside gate_failed, a client audience for an access request and a bad delay', async () => {

@@ -35,9 +35,9 @@ export async function setRuleAction(_previous: RuleState, form: FormData): Promi
   if (!mayEditNotificationRules(session)) return { error: "Only a lab Owner or Admin changes who gets which email." };
   const row = normalizeRule({
     kind: String(form.get("kind") ?? ""), labRoles: form.getAll("labRoles").map(String), stepOwner: form.get("stepOwner") === "true",
-    clientAdmin: form.get("clientAdmin") === "true", requester: form.get("requester") === "true", days: form.get("days") === null ? null : String(form.get("days")).trim(),
+    clientAdmin: form.get("clientAdmin") === "true", requester: form.get("requester") === "true", clientMembers: form.get("clientMembers") === "true", days: form.get("days") === null ? null : String(form.get("days")).trim(),
   });
-  if (!row) return { error: "That row is not valid. Lab staff are chosen by role; the results check waits 1 to 60 days." };
+  if (!row) return { error: "That row is not valid. Lab staff are chosen by role; lab-only events go to lab staff only; the results check waits 1 to 60 days." };
   try {
     await setNotificationRule(row);
   } catch (error) {
