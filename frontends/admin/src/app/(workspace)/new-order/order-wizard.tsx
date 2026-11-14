@@ -34,6 +34,15 @@ export function OrderWizard({ clients, panels, placedBy, initial, children }: Pr
   const [status, setStatus] = useState<Status>(null);
   const [saving, startSave] = useTransition();
   const [placing, startPlace] = useTransition();
+  // Another draft (Resume) or a fresh order (no ?draft=) starts over from what the page sent. The draft this wizard
+  // just saved does not: saving can refresh the page under ?draft=<its id>, and what is on screen must stay.
+  const [pageDraft, setPageDraft] = useState<string | null>(initial.draftId);
+  if (initial.draftId !== pageDraft) {
+    setPageDraft(initial.draftId);
+    if (initial.draftId !== draftId) {
+      setData(initial.data); setStep(initial.step); setDraftId(initial.draftId); setErrors({}); setStatus(null);
+    }
+  }
 
   const panel = panels.find(item => item.id === data.panelId) ?? null;
   const client = clients.find(item => item.id === data.clientId) ?? null;

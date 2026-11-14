@@ -45,7 +45,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
   </>;
 
   return <>
-    <OrderWizard key={resumed?.id ?? code ?? `new:${query.client ?? ""}`} clients={clients} panels={panels} placedBy={session.displayName}
+    <OrderWizard key={code ?? "wizard"} clients={clients} panels={panels} placedBy={session.displayName}
       initial={resumed ? { draftId: resumed.id, step: resumed.step, data: resumed.data } : { draftId: null, step: 1, data: { ...emptyWizard(), clientId: !code && clients.some(item => item.id === query.client) ? query.client! : "" } }}>
       {notices}
     </OrderWizard>

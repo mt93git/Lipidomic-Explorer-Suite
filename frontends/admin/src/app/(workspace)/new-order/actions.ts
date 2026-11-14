@@ -22,8 +22,9 @@ export async function saveDraftAction(input: { id: string | null; step: number; 
   await staffOnly();
   if (!isWizardStep(input.step)) return { ok: false, error: "That step does not exist." };
   try {
+    // No revalidatePath: the page is dynamic, and a refresh here would remount the wizard under ?draft= and drop the
+    // confirmation. The drafts list is read fresh on the next visit.
     const id = await saveOrderDraft({ id: draftId(input.id), step: input.step, data: normalizeWizard(input.data) });
-    revalidatePath("/new-order");
     return { ok: true, id, savedAt: new Date().toISOString() };
   } catch (error) {
     if (error instanceof DataError) return { ok: false, error: error.message };

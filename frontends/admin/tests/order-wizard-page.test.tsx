@@ -215,6 +215,23 @@ describe("page and wizard", () => {
     expect(within(list).getByRole("button", { name: "Discard" })).toBeInTheDocument();
   });
 
+  it("a refresh under the draft it just saved keeps the screen; another draft starts over", async () => {
+    const panels = await drafts.listWizardPanels();
+    const clients = [{ id: "example-atlas", name: "Example Atlas", color: "atlas" as const }];
+    const props = { clients, panels, placedBy: "Demo lab person" };
+    const view = render(<OrderWizard {...props} initial={{ draftId: null, step: 1, data: wizard({ clientId: "example-atlas", title: "Typed" }) }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/Draft saved at/));
+    const [saved] = await drafts.listOpenDrafts();
+    // Saving set the demo cookie, so Next refreshes the page under ?draft=<id>: the same draft, the screen stays.
+    view.rerender(<OrderWizard {...props} initial={{ draftId: saved.id, step: 1, data: wizard({ clientId: "example-atlas", title: "Typed" }) }} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/Draft saved at/);
+    // Resume another draft: its own fields and step.
+    view.rerender(<OrderWizard {...props} initial={{ draftId: "other", step: 2, data: wizard({ clientId: "example-atlas", title: "Other", expectedSamples: "9" }) }} />);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByLabelText("Number of samples")).toHaveValue(9);
+  });
+
   it("says so when the draft asked for is no longer open", async () => {
     render(await page({ draft: "gone" }));
     expect(screen.getByText(/That draft is no longer open/)).toBeInTheDocument();
