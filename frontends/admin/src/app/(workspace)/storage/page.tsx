@@ -189,7 +189,7 @@ export default async function StoragePage({ searchParams }: { searchParams: Prom
       <h2 id="box-title">Box <span className="mono">{params.box}</span></h2>
       {slots.length ? <>
         <BoxMap box={params.box} slots={slots} params={params} canWrite={canWrite} />
-        <details className={styles.list}>
+        <details className={styles.list} open={Boolean(raw.done || act)}>
           <summary>All {plural(slots.length, "position")} as a list</summary>
           <AliquotTable items={slots} label={`Positions in box ${params.box}`} columns={["position", "placed"]} params={params} canWrite={canWrite} />
         </details>
