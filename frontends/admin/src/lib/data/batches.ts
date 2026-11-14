@@ -39,7 +39,9 @@ function refusal(error: { message: string }): DataError {
 
 // ---------------------------------------------------------------- reads
 
-// Orders whose samples may be batched: Registered up to Acquired (the same range create_batch accepts).
+// Orders whose samples may be batched: Registered up to Acquired (the same range create_batch accepts). Not capped at
+// In batch: exporting a batch moves its whole order to Sequence exported (advance_batch_orders), so the order's samples
+// not in that batch, or released by archiving it, must still be offered. Samples already held are hidden below.
 const BATCHABLE = ["registered", "extracted", "in_batch", "sequence_exported", "acquired"];
 type SampleRow = {
   id: string; sample_code: string; full_name: string; client_id: string;
@@ -47,7 +49,9 @@ type SampleRow = {
 };
 type PlannedRow = { aliquot_id: string; batch_version: One<{ archived_at: string | null; batch: One<{ status: string; archived_at: string | null }> }> };
 
-// Registered samples that can go into a batch: not archived, order batchable, and not already in a planned batch.
+// Registered samples that can go into a batch: not archived, order batchable, and not already in a live batch of any
+// status (planned, sequence exported, acquired, ...). A batch is cancelled by archiving it or its version (there is no
+// cancelled status), so only an injection of a live version of a live batch holds its sample.
 export async function listBuilderSamples(): Promise<BuilderSample[]> {
   if (!live()) {
     const state = await readDemoState();
@@ -64,7 +68,7 @@ export async function listBuilderSamples(): Promise<BuilderSample[]> {
   const busy = new Set(((planned.data ?? []) as unknown as PlannedRow[]).filter(row => {
     const version = one(row.batch_version);
     const batch = version && one(version.batch);
-    return version && !version.archived_at && batch && !batch.archived_at && batch.status === "planned";
+    return version && !version.archived_at && batch && !batch.archived_at;
   }).map(row => row.aliquot_id));
   const names = new Map(clients.map(client => [client.id, client.name]));
   return ((samples.data ?? []) as unknown as SampleRow[]).flatMap(row => {

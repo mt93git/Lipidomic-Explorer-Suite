@@ -34,6 +34,16 @@ describe("demo batch builder samples", () => {
     expect(list.map(item => item.code)).toEqual(["ORD041-S001", "ORD041-S002"]);
     expect(list[0]).toMatchObject({ id: "s-ORD041-1", fullName: "Synthetic_ORD041_1", orderCode: "ORD041", clientId: "example-atlas", clientName: "Example Atlas" });
   });
+
+  it("stops offering a sample once it is in a batch, exported or acquired too, but keeps the order's other samples", () => {
+    const { state: planned } = save(withSamples(), ["s-ORD041-1"]);
+    expect(demoBuilderSamples(planned, orders(planned), demoClients).map(item => item.code)).toEqual(["ORD041-S002"]);
+    // Exporting moves the whole order past In batch; its sample not in the batch must still be offered.
+    const exported = recordExported(planned, "B2026-033", "a".repeat(64), "Demo Operator", now);
+    expect(demoBuilderSamples(exported, orders(exported), demoClients).map(item => item.code)).toEqual(["ORD041-S002"]);
+    const acquired = recordAcquired(exported, "B2026-033", now);
+    expect(demoBuilderSamples(acquired, orders(acquired), demoClients).map(item => item.code)).toEqual(["ORD041-S002"]);
+  });
 });
 
 describe("demo create_batch", () => {
