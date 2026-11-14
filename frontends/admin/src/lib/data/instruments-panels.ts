@@ -1,5 +1,6 @@
 import "server-only";
 import { demoOrders, demoPanels } from "../demo";
+import type { PanelRate, WizardPanel } from "../order-wizard";
 import { getEnvironment } from "../environment";
 import { demoLabStaff } from "../release-demo";
 import { DataError } from "../samples";
@@ -80,7 +81,8 @@ function panelFromRow(row: PanelRow): PanelRecord {
 }
 
 // The demo's stored catalog: instruments and panels without their counts (those come from the demo's orders and batches).
-export type DemoCatalog = { instruments: Omit<Instrument, "activePanels">[]; panels: Omit<PanelRecord, "instrumentName" | "orderCount" | "batchCount">[] };
+// rates (0033): the rate sheet; undefined (or a panel missing from it) means nothing is set: the demo invents no money.
+export type DemoCatalog = { instruments: Omit<Instrument, "activePanels">[]; panels: Omit<PanelRecord, "instrumentName" | "orderCount" | "batchCount">[]; rates?: PanelRate[] };
 // Seed: the panels New order has always offered in the demo (their id is their name, as before), on synthetic instruments.
 export function seedDemoCatalog(): DemoCatalog {
   const instruments = [
@@ -134,6 +136,15 @@ export async function getCatalog(): Promise<Catalog> {
 // the order they were added: the example panels first, as before.
 export async function demoActivePanels(): Promise<{ id: string; name: string }[]> {
   return (await demoStored()).panels.filter(panel => !panel.archivedAt).map(panel => ({ id: panel.id, name: panel.name }));
+}
+
+// The demo's New order wizard: the active panels with their instrument and their line on this browser's rate sheet.
+export async function demoWizardPanels(): Promise<WizardPanel[]> {
+  const stored = await demoStored();
+  return stored.panels.filter(panel => !panel.archivedAt).map(panel => ({
+    id: panel.id, name: panel.name, instrumentName: stored.instruments.find(instrument => instrument.id === panel.instrumentId)?.name ?? null,
+    rate: stored.rates?.find(rate => rate.panelId === panel.id) ?? null,
+  }));
 }
 
 // ---------------------------------------------------------------- writes
@@ -245,4 +256,49 @@ export async function archivePanel(input: { id: string; reason: string; actorId?
   if (!panel) throw new DataError("Panel not found.");
   if (panel.archivedAt) throw new DataError("Panel is already archived.");
   await writeDemoCatalog({ ...catalog, panels: catalog.panels.map(item => item.id === input.id ? { ...item, archivedAt: now(), archivedReason: reason } : item) });
+}
+
+// ---------------------------------------------------------------- rate sheet (0033)
+
+// The lab's rate sheet: one line per panel (price per sample and currency, minutes per injection), each part null when
+// not set. Lab staff read it (live: admin.panel_rate, RLS lab staff only); lab Owner or Admin set it (set_panel_rate).
+export type RateInput = { panelId: string; ratePerSample: number | null; currency: string | null; minutesPerInjection: number | null; actorId?: string };
+type RateRow = { panel_id: string; rate_per_sample: number | string | null; currency: string | null; minutes_per_injection: number | string | null };
+const numberOrNull = (value: number | string | null) => value === null || value === "" ? null : Number(value);
+export const rateFromRow = (row: RateRow): PanelRate => ({
+  panelId: row.panel_id, ratePerSample: numberOrNull(row.rate_per_sample), currency: row.currency, minutesPerInjection: numberOrNull(row.minutes_per_injection),
+});
+
+export async function listPanelRates(): Promise<PanelRate[]> {
+  await requireWorkspace("staff");
+  if (!live()) return (await demoStored()).rates ?? [];
+  const { data, error } = await (await admin()).from("panel_rate").select("panel_id, rate_per_sample, currency, minutes_per_injection");
+  if (error) throw new DataError(`The rate sheet could not be read: ${error.message}`);
+  return ((data ?? []) as RateRow[]).map(rateFromRow);
+}
+
+// The same checks as set_panel_rate, so the demo refuses what the database would.
+export function cleanRate(input: RateInput): RateInput {
+  const currency = input.currency?.trim().toUpperCase() || null;
+  const { ratePerSample, minutesPerInjection } = input;
+  if (ratePerSample !== null && (!Number.isFinite(ratePerSample) || ratePerSample < 0)) throw new DataError("A rate per sample is 0 or more.");
+  if ((ratePerSample === null) !== (currency === null)) throw new DataError("A rate needs its currency, and a currency needs a rate.");
+  if (currency && !/^[A-Z]{3}$/.test(currency)) throw new DataError("Write the currency as its three-letter code (USD, EUR, GBP…).");
+  if (minutesPerInjection !== null && (!Number.isFinite(minutesPerInjection) || minutesPerInjection <= 0 || minutesPerInjection > 600)) throw new DataError("Minutes per injection are more than 0 and at most 600.");
+  return { ...input, currency, ratePerSample: ratePerSample === null ? null : Math.round(ratePerSample * 100) / 100, minutesPerInjection: minutesPerInjection === null ? null : Math.round(minutesPerInjection * 100) / 100 };
+}
+
+export async function setPanelRate(input: RateInput): Promise<void> {
+  await manager(input.actorId);
+  const clean = cleanRate(input);
+  if (live()) {
+    await rpc("set_panel_rate", { p_panel_id: clean.panelId, p_rate_per_sample: clean.ratePerSample, p_currency: clean.currency, p_minutes_per_injection: clean.minutesPerInjection });
+    return;
+  }
+  const catalog = await demoStored();
+  const panel = catalog.panels.find(item => item.id === clean.panelId);
+  if (!panel) throw new DataError("Panel not found.");
+  if (panel.archivedAt) throw new DataError(`Panel "${panel.name}" is archived; its rate cannot change.`);
+  const line: PanelRate = { panelId: clean.panelId, ratePerSample: clean.ratePerSample, currency: clean.currency, minutesPerInjection: clean.minutesPerInjection };
+  await writeDemoCatalog({ ...catalog, rates: [...(catalog.rates ?? []).filter(rate => rate.panelId !== clean.panelId), line] });
 }

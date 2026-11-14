@@ -7,7 +7,7 @@
 // minutes per injection from the rate sheet, or the batch builder's default minutes when the sheet has none (said so).
 import { builderDefaults } from "./batch-builder";
 import type { OrderInput } from "./new-order";
-import { columns, parsePaste, validateSamples, type RowIssue, type SampleDraft } from "./samples";
+import { columns, DataError, parsePaste, validateSamples, type RowIssue, type SampleDraft } from "./samples";
 
 export const wizardSteps = [
   { step: 1, label: "Client" },
@@ -176,3 +176,45 @@ export function sampleTemplateCsv(): string {
   return `${columns.map(column => column.label).join(",")}\r\n`;
 }
 export const metadataColumns = columns.slice(0, 6).map(column => column.label);
+
+// ---------------------------------------------------------------- drafts
+
+// An open draft as the New order page lists it.
+export type OrderDraftSummary = { id: string; step: WizardStep; clientId: string | null; title: string | null; updatedAt: string; updatedBy: string };
+export type OrderDraft = { id: string; step: WizardStep; data: WizardData };
+
+// The demo's draft (live: admin.order_draft). Closed when placed (orderCode) or discarded; a closed draft never changes.
+export type DemoOrderDraft = OrderDraft & { createdAt: string; createdBy: string; updatedAt: string; updatedBy: string; orderCode: string | null; discardedAt: string | null };
+type DraftArgs = { id: string | null; step: WizardStep; data: WizardData; actor: string; now: Date; newId: () => string };
+
+const openDraft = (drafts: DemoOrderDraft[], id: string): DemoOrderDraft => {
+  const found = drafts.find(draft => draft.id === id);
+  if (!found) throw new DataError("Draft not found.");
+  if (found.orderCode) throw new DataError(`This draft was already placed as order ${found.orderCode}.`);
+  if (found.discardedAt) throw new DataError("This draft was discarded.");
+  return found;
+};
+
+// save_order_draft in the demo: a new draft when id is null, else the same open one.
+export function saveDemoDraft(drafts: DemoOrderDraft[], { id, step, data, actor, now, newId }: DraftArgs): { drafts: DemoOrderDraft[]; id: string } {
+  const at = now.toISOString();
+  if (!id) {
+    const created: DemoOrderDraft = { id: newId(), step, data, createdAt: at, createdBy: actor, updatedAt: at, updatedBy: actor, orderCode: null, discardedAt: null };
+    return { drafts: [...drafts, created], id: created.id };
+  }
+  openDraft(drafts, id);
+  return { drafts: drafts.map(draft => draft.id === id ? { ...draft, step, data, updatedAt: at, updatedBy: actor } : draft), id };
+}
+
+export function closeDemoDraft(drafts: DemoOrderDraft[], id: string, close: { orderCode: string; data: WizardData } | { discard: true }, actor: string, now: Date): DemoOrderDraft[] {
+  openDraft(drafts, id);
+  const at = now.toISOString();
+  return drafts.map(draft => draft.id !== id ? draft : "discard" in close
+    ? { ...draft, discardedAt: at, updatedAt: at, updatedBy: actor }
+    : { ...draft, step: 4, data: close.data, orderCode: close.orderCode, updatedAt: at, updatedBy: actor });
+}
+
+export const demoDraftSummaries = (drafts: DemoOrderDraft[]): OrderDraftSummary[] => drafts
+  .filter(draft => !draft.orderCode && !draft.discardedAt)
+  .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  .map(draft => ({ id: draft.id, step: draft.step, clientId: draft.data.clientId || null, title: draft.data.title.trim() || null, updatedAt: draft.updatedAt, updatedBy: draft.updatedBy }));
