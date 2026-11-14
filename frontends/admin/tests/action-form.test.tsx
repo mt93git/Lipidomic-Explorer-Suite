@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ActionForm } from "@/app/(workspace)/release/action-form";
 import { PolicyForm } from "@/app/(workspace)/release-policy/policy-form";
@@ -13,7 +13,8 @@ describe("release action forms", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Not an eligible signer.");
-    expect(alert).toHaveFocus();
+    // FormAlert takes the focus in an effect that can run a tick after the alert is in the DOM.
+    await waitFor(() => expect(alert).toHaveFocus());
   });
   it("with keepValues, puts back what was typed when the action refuses it (React empties the fields otherwise)", async () => {
     const action = vi.fn().mockResolvedValue({ error: "A panel with that name already exists." });
