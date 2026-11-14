@@ -39,6 +39,9 @@ test("pick the samples of a Registered order, preview, save, download, mark expo
   await page.getByRole("link", { name: "Select all of ORD042" }).click();
   for (const name of ["Ctrl_1", "Ctrl_2", "Trt_1"]) await expect(page.getByRole("checkbox", { name: new RegExp(`^${name}\\b`) })).toBeChecked();
   await page.getByLabel("Panel", { exact: true }).selectOption({ label: "Panel B · sphingolipids" });
+  // The rules start from the active instrument profile (0035: the example profile's 4 blanks, no interval QC).
+  await expect(page.getByLabel("Blanks at start")).toHaveValue("4");
+  await expect(page.getByLabel("Pooled QC every")).toHaveValue("0");
   await page.getByLabel("Blanks at start").fill("1");
   await page.getByLabel("Pooled QC every").fill("0");
   await page.getByLabel("Seed").fill("e2e-seed");
