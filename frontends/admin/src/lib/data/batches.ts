@@ -39,9 +39,10 @@ function refusal(error: { message: string }): DataError {
 
 // ---------------------------------------------------------------- reads
 
-// Orders whose samples the builder offers: Registered up to In batch. create_batch (0016) still accepts up to Acquired,
-// but once an order's sequence is exported its samples are on the instrument, so a new batch must not offer them.
-const BATCHABLE = ["registered", "extracted", "in_batch"];
+// Orders whose samples may be batched: Registered up to Acquired (the same range create_batch accepts). Not capped at
+// In batch: exporting a batch moves its whole order to Sequence exported (advance_batch_orders), so the order's samples
+// not in that batch, or released by archiving it, must still be offered. Samples already held are hidden below.
+const BATCHABLE = ["registered", "extracted", "in_batch", "sequence_exported", "acquired"];
 type SampleRow = {
   id: string; sample_code: string; full_name: string; client_id: string;
   ord: One<{ code: string; stage: string; archived_at: string | null }>; aliquot: { id: string; archived_at: string | null }[] | null;

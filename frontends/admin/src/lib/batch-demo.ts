@@ -34,14 +34,14 @@ const find = (state: DemoState, name: string): DemoBatch => {
 };
 const replace = (state: DemoState, next: DemoBatch): DemoState => ({ ...state, batches: batches(state).map(item => item.id === next.id ? next : item) });
 
-// The registered samples a batch may take: orders from Registered to In batch, and not already in a batch of any status
+// The registered samples a batch may take: orders from Registered to Acquired, and not already in a batch of any status
 // (the demo cannot cancel a batch), as the live builder (data/batches.ts listBuilderSamples) offers them.
 export function demoBuilderSamples(state: DemoState, orders: Order[], clients: Client[]): BuilderSample[] {
   const taken = new Set(batches(state).flatMap(batch => batch.injections.map(row => row.aliquot_id)));
   return state.samples.flatMap(item => {
     const order = orders.find(candidate => candidate.code === item.orderCode);
     const client = order && clients.find(candidate => candidate.id === order.clientId);
-    if (!order || !client || order.released || order.stage < REGISTERED || order.stage > IN_BATCH || taken.has(aliquotOf(item.id))) return [];
+    if (!order || !client || order.released || order.stage < REGISTERED || order.stage > ACQUIRED || taken.has(aliquotOf(item.id))) return [];
     return [{ id: item.id, code: item.code, fullName: item.full_name, orderCode: order.code, clientId: client.id, clientName: client.name }];
   }).sort((a, b) => a.code.localeCompare(b.code));
 }

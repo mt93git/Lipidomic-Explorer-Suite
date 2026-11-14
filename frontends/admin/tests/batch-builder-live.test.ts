@@ -2,6 +2,7 @@
 // The batch builder's live sample list (listBuilderSamples): which registered samples a new batch may take.
 // Found on staging after the showcase seed: an Acquired order (all 12 samples in an acquired batch) and two orders
 // whose batch was sequence-exported were still offered, because only a *planned* batch counted as taking a sample.
+// The order's stage does not decide it: exporting a batch moves its whole order on, and the order's other samples stay batchable.
 import { beforeEach, expect, test, vi } from "vitest";
 import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -30,7 +31,8 @@ const samples = [
   sample("ORD696-S001", "in_batch", "a696-1"),                 // in a planned batch: not offered
   sample("ORD696-S002", "in_batch"),                           // same order, not batched yet: offered
   sample("ORD697-S001", "acquired", "a697-1"),                 // in an acquired batch: not offered
-  sample("ORD698-S001", "acquired"),                           // order past In batch: not offered
+  sample("ORD698-S001", "acquired"),                           // order moved on by another batch, sample never batched: offered
+  sample("ORD701-S002", "sequence_exported"),                  // same order as an exported batch, not in it: offered
   sample("ORD701-S001", "sequence_exported", "a701-1"),        // in an exported batch: not offered
   sample("ORD703-S001", "in_batch", "a703-1"),                 // its batch was archived (cancelled): offered again
   sample("ORD704-S001", "registered", "a704-1"),               // only in an archived version: offered again
@@ -57,6 +59,6 @@ beforeEach(() => {
   vi.mocked(createAdminClient).mockResolvedValue({ schema: vi.fn(() => ({ from })) } as never);
 });
 
-test("live: samples in a planned, exported or acquired batch, and orders past In batch, are not offered", async () => {
-  expect((await listBuilderSamples()).map(item => item.code)).toEqual(["ORD694-S001", "ORD696-S002", "ORD703-S001", "ORD704-S001"]);
+test("live: samples in a planned, exported or acquired batch are not offered; the rest of their orders are", async () => {
+  expect((await listBuilderSamples()).map(item => item.code)).toEqual(["ORD694-S001", "ORD696-S002", "ORD698-S001", "ORD701-S002", "ORD703-S001", "ORD704-S001"]);
 });
