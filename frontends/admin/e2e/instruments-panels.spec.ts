@@ -75,7 +75,7 @@ test("add an instrument, a profile on it with its own rules and a panel, make it
   await expect(row).toContainText("Lipid mediators");
 
   // Batch builder's form only shows once a sample is registered: e2e/batch.spec.ts checks it pre-fills the active
-  // profile's rules (the example profile's 4 blanks, no interval QC).
+  // profile's rules (the example profile's 4 blanks, 5 blanks after every 4 samples, no interval QC).
 
   await openServiceStep(page);
   await expect(page.getByLabel("Panel", { exact: true }).locator("option", { hasText: "Synthetic oxylipins E2E" })).toHaveCount(1, slow);
@@ -102,6 +102,13 @@ test("add an instrument, a profile on it with its own rules and a panel, make it
   await openServiceStep(page);
   await expect(page.getByLabel("Panel", { exact: true }).locator("option", { hasText: "Panel A · broad lipidome" })).toHaveCount(1, slow);
   await expect(page.getByLabel("Panel", { exact: true }).locator("option", { hasText: "Synthetic oxylipins E2E" })).toHaveCount(0);
+
+  // 0039: its panel is archived, but the active profile still points at the instrument, so it cannot be archived.
+  await page.goto("/admin/instruments-panels");
+  await page.getByRole("link", { name: "Edit Synthetic Orbitrap E2E", exact: true }).click();
+  const instrumentEdit = page.getByRole("region", { name: "Edit Synthetic Orbitrap E2E", exact: true });
+  await expect(instrumentEdit.getByText('Profile "Synthetic Orbitrap profile E2E" uses this instrument. Archive or move the profile first.')).toBeVisible(slow);
+  await expect(instrumentEdit.getByRole("button", { name: "Archive instrument" })).toHaveCount(0);
 });
 
 test("Instruments & panels fits a 390 px phone, with an edit form open and archived rows shown", async ({ page }) => {
