@@ -44,12 +44,15 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
     const paste = readPaste(text);
     const added = paste.cells.flatMap((line, origin) => { const draft = draftFromCells(line, paste.mapping); return Object.values(draft).some(Boolean) ? [{ key: nextKey++, draft, origin }] : []; });
     if (!added.length) { setPasteNote({ text: "Nothing to add: paste at least one row with a FullName.", empty: true }); return; }
-    setRows(list => [...list.map(row => ({ ...row, origin: null })), ...added]);
+    const next = [...rows.map(row => ({ ...row, origin: null })), ...added];
+    setRows(next);
     setSource({ ...paste, edited: false });
     setPasteText("");
     const unused = paste.headers ? paste.headers.filter((header, index) => header && !paste.mapping[index]) : [];
     const header = paste.headers ? "header row recognised" : "no header row, columns read in grid order";
-    setPasteNote({ text: `Added ${plural(added.length, "row")} from the paste · ${header}${unused.length ? ` · ignored ${plural(unused.length, "column")}: ${unused.join(", ")}` : ""}.`, empty: false });
+    const nextDrafts = next.map(row => row.draft);
+    const checked = summarizeChecks(nextDrafts, checkSamples(nextDrafts, { existingNames, manifest }));
+    setPasteNote({ text: `Added ${plural(added.length, "row")} from the paste · ${header}${unused.length ? ` · ignored ${plural(unused.length, "column")}: ${unused.join(", ")}` : ""} · ${plural(checked.errors, "error")}, ${plural(checked.warnings, "warning")}.`, empty: false });
   };
   const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const text = event.clipboardData.getData("text/plain");
@@ -96,8 +99,9 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
       <button type="button" className="button secondary" onClick={() => addRows(pasteText)} disabled={!pasteText.trim()}>Add rows</button>
       <button type="button" className="button subtle" onClick={() => { setRows(list => [...list, { key: nextKey++, draft: emptyDraft(), origin: null }]); setPasteNote(null); }}>Add empty row</button>
     </div>
-    {pasteNote && <p className={pasteNote.empty ? "muted" : "sr-only"} role="status"><small>{pasteNote.text}</small></p>}
   </div>;
+  // Outside the paste box, which folds into "Paste more rows" once the grid has rows, so the note is still announced.
+  const pasteStatus = <p className={pasteNote?.empty ? "muted" : "sr-only"} role="status">{pasteNote && <small>{pasteNote.text}</small>}</p>;
 
   return <div className="registry">
     <div className="page-heading registry-heading">
@@ -139,7 +143,7 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
     {state.error && !summary.errors && <p className="error" role="alert">{state.error}</p>}
 
     {rows.length > 0 && <>
-      <div className="check-pills" aria-label="Paste checks">
+      <div className="check-pills" role="group" aria-label="Paste checks">
         <span className="count-pill valid">{valid} valid</span>
         <span className="count-pill error">{plural(summary.errors, "error")}</span>
         <span className="count-pill warning">{plural(summary.warnings, "warning")}</span>
@@ -211,6 +215,7 @@ export function SampleRegistryGrid({ order, shipmentId, existingNames, nextSampl
     {rows.length > 0 && children}
 
     {rows.length ? <details className="paste-more"><summary>Paste more rows</summary>{pasteBox}</details> : pasteBox}
+    {pasteStatus}
 
     <p className="registry-foot muted"><small>{rows.length ? `${plural(rows.length, "sample")} in the grid${order.expectedSamples ? ` · ${order.expectedSamples} expected` : ""} · ` : ""}Sample IDs are assigned when you save and never contain a client name.</small></p>
   </div>;

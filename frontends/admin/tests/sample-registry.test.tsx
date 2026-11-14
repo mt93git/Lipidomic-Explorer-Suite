@@ -94,6 +94,7 @@ describe("sample registry grid", () => {
     expect(time.closest("td")).toHaveClass("invalid");
     expect(time).toHaveAttribute("placeholder", "—");
     expect(pills()).toHaveTextContent("5 valid2 errors1 warning");
+    expect(screen.getByRole("status")).toHaveTextContent("Added 7 rows from the paste · header row recognised · 2 errors, 1 warning.");
     const items = within(fixList()).getAllByRole("listitem");
     expect(items.map(item => item.textContent)).toEqual([
       "error Row 3: FullName Ctrl_0h_R2 is already used. Nexo matches samples by FullName.",
