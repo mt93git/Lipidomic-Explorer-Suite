@@ -1,13 +1,14 @@
 // @vitest-environment node
-// Account emails (0029): who may send an activation email, whether an account is active, the 10-minute limit, the
+// Account emails (0029): who may send an activation email, whether an account is active, the one reminder per 24 hours, the
 // wording of the invitation and of both activation cases, and what is logged and audited. Every transport and link
 // generator here is a fake; nothing reaches Resend or GoTrue. Synthetic data only.
 import { describe, expect, it, vi } from "vitest";
 import {
-  ACTIVATION_GAP_MS, NO_ORIGIN, activationMessage, activationOf, activationWait, emailNote, invitationMessage, maySendActivation,
+  ACTIVATION_GAP_MS, NO_ORIGIN, activationMessage, activationOf, activationWait, emailNote, nextReminderAt, invitationMessage, maySendActivation,
   sendActivationEmail, sendInvitationEmail, type AccountFacts, type ActivationDeps, type ActivationTarget,
 } from "@/lib/activation";
 import { DEMO_OFF_REASON, OFF_REASON, type LogEntry, type Mail, type NotifyConfig } from "@/lib/notifications";
+import { formatLabInstant } from "@/lib/lab-time";
 import { activatePath } from "@/lib/password-reset";
 import { DataError } from "@/lib/samples";
 
@@ -73,20 +74,27 @@ describe("whether an account is active", () => {
   });
 });
 
-describe("one activation email per person per 10 minutes", () => {
-  it("activationWait counts from the last sent email", () => {
+describe("one reminder per account per 24 hours", () => {
+  it("activationWait counts 24 hours from the last sent email", () => {
+    expect(ACTIVATION_GAP_MS).toBe(24 * 3_600_000);
     expect(activationWait(null, NOW)).toBe(0);
-    expect(activationWait(new Date(NOW - 4 * 60_000).toISOString(), NOW)).toBe(6 * 60_000);
+    expect(activationWait(new Date(NOW - 4 * 3_600_000).toISOString(), NOW)).toBe(20 * 3_600_000);
     expect(activationWait(new Date(NOW - ACTIVATION_GAP_MS).toISOString(), NOW)).toBe(0);
     expect(activationWait("not a date", NOW)).toBe(0);
   });
 
-  it("a second send within 10 minutes is refused with the minutes left; after that it goes", async () => {
+  it("nextReminderAt: when the next reminder may go, null when one may go now", () => {
+    expect(nextReminderAt(null, NOW)).toBeNull();
+    expect(nextReminderAt(new Date(NOW - 2 * 3_600_000).toISOString(), NOW)).toBe("2026-11-12T10:00:00.000Z");
+    expect(nextReminderAt(new Date(NOW - 25 * 3_600_000).toISOString(), NOW)).toBeNull();
+  });
+
+  it("a second reminder within 24 hours is refused with when it was sent and when the next may go; after 24 hours it goes", async () => {
     const { deps, sent } = fakes();
-    const recent = { active: false, hasPassword: false, lastSentAt: new Date(NOW - 9 * 60_000 - 30_000).toISOString() };
-    await expect(send(deps, { activation: recent })).rejects.toThrow("An activation email went to Kai Sample less than 10 minutes ago. You can send another in 1 min.");
+    const recent = { active: false, hasPassword: false, lastSentAt: new Date(NOW - 23 * 3_600_000).toISOString() };
+    await expect(send(deps, { activation: recent })).rejects.toThrow(`Kai Sample was reminded ${formatLabInstant("2026-11-10T13:00:00.000Z")}. One reminder per account per 24 hours: next possible ${formatLabInstant("2026-11-11T13:00:00.000Z")}.`);
     expect(sent).toEqual([]);
-    expect((await send(deps, { activation: { ...recent, lastSentAt: new Date(NOW - 11 * 60_000).toISOString() } })).status).toBe("sent");
+    expect((await send(deps, { activation: { ...recent, lastSentAt: new Date(NOW - 24 * 3_600_000 - 60_000).toISOString() } })).status).toBe("sent");
     expect(sent).toHaveLength(1);
   });
 });

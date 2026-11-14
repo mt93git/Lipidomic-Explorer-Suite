@@ -121,7 +121,7 @@ export function OrderWizard({ clients, panels, placedBy, initial, children, rule
     <div className="page-heading">
       <div>
         <h1>New order</h1>
-        <p>Step {step} of 4. Orders can be placed by lab staff or by the client&apos;s Requester.</p>
+        <p>Step {step} of 4. Orders are placed here by lab staff; a client&apos;s Requester uses Request an order.</p>
       </div>
       <div className="heading-actions">
         <button type="button" className={`button secondary ${styles.headingButton}`} onClick={save} disabled={saving || placing}>{saving ? "Saving…" : "Save draft"}</button>
@@ -157,7 +157,7 @@ export function OrderWizard({ clients, panels, placedBy, initial, children, rule
         <div className="field">
           <label className="field-label" htmlFor="wizard-placedBy">Placed by</label>
           <input id="wizard-placedBy" value={placedBy} readOnly />
-          <small className="field-hint">Lab staff. A client&apos;s Requester or Client admin uses Request an order instead.</small>
+          <small className="field-hint">Lab staff only. A client&apos;s Requester or Client admin uses Request an order instead.</small>
         </div>
       </div>
     </section>}

@@ -10,6 +10,7 @@ import {
   blocked, DEMO_OFF_REASON, OFF_REASON, renderMessage, sendOne, SENDER_NAME, type LogEntry, type LogStatus, type Message,
   type NotifyConfig, type Part, type Transport,
 } from "./notifications";
+import { formatLabInstant } from "./lab-time";
 import { activatePath } from "./password-reset";
 import { INVITATION_DAYS, invitePath, type PersonKind } from "./people";
 import { DataError } from "./samples";
@@ -29,12 +30,18 @@ export function activationOf(_kind: PersonKind, facts: AccountFacts): Activation
   return { active: !!facts.signedInAt, hasPassword: facts.hasPassword, lastSentAt: facts.activationSentAt };
 }
 
-// One activation email per person per 10 minutes: each one replaces the previous link, so a quick second send would
-// break the first email's link. The milliseconds left, 0 when another may go.
-export const ACTIVATION_GAP_MS = 10 * 60_000;
+// One activation email (People's Remind) per account per 24 hours (2026-11-14): each one replaces the previous link,
+// and a person is not nagged. The time is the last sent email in the send log (admin.account_state); the server checks
+// it in sendActivationEmail before any link is made, and People disables the button. The milliseconds left, 0 when
+// another may go.
+export const ACTIVATION_GAP_MS = 24 * 3_600_000;
 export function activationWait(lastSentAt: string | null, now = Date.now()): number {
   const sent = lastSentAt ? Date.parse(lastSentAt) : NaN;
   return Number.isNaN(sent) ? 0 : Math.max(0, sent + ACTIVATION_GAP_MS - now);
+}
+// When the next reminder may go (ISO), null when one may go now.
+export function nextReminderAt(lastSentAt: string | null, now = Date.now()): string | null {
+  return activationWait(lastSentAt, now) ? new Date(Date.parse(lastSentAt as string) + ACTIVATION_GAP_MS).toISOString() : null;
 }
 
 // ---------------------------------------------------------------- the emails
@@ -113,7 +120,7 @@ export type ActivationDeps = {
 };
 
 // "Send activation email" in People. Refuses (DataError) a sender who is not lab Owner or Admin, an active or
-// unreadable account and a second email within 10 minutes. Otherwise logs one row (sent, skipped or failed); a link
+// unreadable account and a second email within 24 hours. Otherwise logs one row (sent, skipped or failed); a link
 // is made only when the email can actually go out, and only a sent email is audited.
 export async function sendActivationEmail(input: { senderRole: string | null; sender: string; person: ActivationTarget }, deps: ActivationDeps): Promise<EmailOutcome & { email: string }> {
   const { person } = input;
@@ -122,8 +129,8 @@ export async function sendActivationEmail(input: { senderRole: string | null; se
   if (!person.activation) throw new DataError("Whether this account is active could not be read. Reload the page and try again.");
   if (person.activation.active) throw new DataError(`${person.name} has already signed in: the account is active.`);
   if (!person.email) throw new DataError(`${person.name}'s account has no email address.`);
-  const wait = activationWait(person.activation.lastSentAt, deps.now ?? Date.now());
-  if (wait) throw new DataError(`An activation email went to ${person.name} less than 10 minutes ago. You can send another in ${Math.ceil(wait / 60_000)} min.`);
+  const next = nextReminderAt(person.activation.lastSentAt, deps.now ?? Date.now());
+  if (next) throw new DataError(`${person.name} was reminded ${formatLabInstant(person.activation.lastSentAt as string)}. One reminder per account per 24 hours: next possible ${formatLabInstant(next)}.`);
   const { email } = person;
   const subject = activationSubject(person.activation.hasPassword);
   let outcome = stopped(email, deps.config);

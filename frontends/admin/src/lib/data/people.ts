@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { activationOf, type AccountFacts } from "../activation";
 import { demoClients } from "../demo";
 import { getEnvironment } from "../environment";
+import { DEMO_OFF_REASON } from "../notifications";
 import {
   acceptDemoInvitation, archiveDemoMember, createDemoInvitation, demoAccountFacts, demoPeopleSeed, MIN_PASSWORD, normaliseEmail, pendingInvitations,
   previewDemoInvitation, requireInviter, revokeDemoInvitation, setDemoRole, targetLabel, TOKEN, validateTarget,
@@ -124,7 +125,9 @@ export async function listPeople(): Promise<PeopleView> {
   const session = await requireWorkspace("staff");
   if (!live()) {
     const [state, { log }] = await Promise.all([demoState(), readDemoNotifications()]);
-    const lastSent = (userId: string) => log.find(row => row.kind === "activation" && row.userId === userId && row.status === "sent")?.at ?? null;
+    // The demo sends no email (skipped, DEMO_OFF_REASON); such a reminder counts as sent, so the 24-hour limit shows.
+    const lastSent = (userId: string) => log.find(row => row.kind === "activation" && row.userId === userId
+      && (row.status === "sent" || (row.status === "skipped" && row.error === DEMO_OFF_REASON)))?.at ?? null;
     return {
       people: state.people.filter(person => !person.archivedAt).map((person): Person => {
         const { kind, id, userId, name, email, role, clientId, clientName, twoStep } = person;

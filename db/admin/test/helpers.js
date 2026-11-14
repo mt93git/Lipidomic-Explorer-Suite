@@ -31,6 +31,7 @@ export const ALL_TABLES = [
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
   'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
   'client_contact', 'notification_pref', 'notification_log', 'shipment_tube', 'panel_rate', 'order_draft', 'instrument_profile', 'notification_rule', 'notification_event',
+  'freezer', 'freezer_rack', 'storage_box_location',
 ];
 // Append-only records with their own refusal triggers and no zz_audit (audit_event since 0003, notification_log 0028).
 export const APPEND_ONLY = ['audit_event', 'notification_log'];
@@ -114,6 +115,11 @@ async function seedAll(db) {
   // New order wizard (0033): the Global panel's line on the rate sheet, and one open draft for client A.
   await q("INSERT INTO admin.panel_rate(id, panel_id, rate_per_sample, currency, minutes_per_injection, updated_by) VALUES ($1, $2, 50.00, 'USD', 20, $3)", [id(900), id(501), U.admin]);
   await q("INSERT INTO admin.order_draft(id, created_by, updated_by, step, client_id, title, data) VALUES ($1, $2, $2, 2, $3, 'Synthetic draft', '{\"title\": \"Synthetic draft\"}')", [id(901), U.operator, C.A]);
+
+  // Freezers and racks (0041): freezer F1 at −80 °C with rack 1; client A's box BOX-1 sits there.
+  await q("INSERT INTO admin.freezer(id, name, temperature) VALUES ($1, 'Freezer F1', '−80 °C')", [id(950)]);
+  await q("INSERT INTO admin.freezer_rack(id, freezer_id, name) VALUES ($1, $2, 'Rack 1')", [id(951), id(950)]);
+  await q("INSERT INTO admin.storage_box_location(id, box, freezer_id, rack_id, updated_by) VALUES ($1, 'BOX-1', $2, $3, $4)", [id(952), id(950), id(951), U.operator]);
 
   // Mixed batch: one injection of A, one of B, one QC (no client). A second batch holds only B.
   await q("INSERT INTO admin.batch(id, name, instrument_id, panel_id) VALUES ($1, 'B2026-001', $3, $4), ($2, 'B2026-002', $3, $4)", [id(400), id(410), id(500), id(501)]);

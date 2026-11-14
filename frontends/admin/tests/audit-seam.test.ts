@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/session";
-import { exportAuditEvents, listAuditEvents } from "@/lib/data/audit";
+import { exportAuditEvents, listAuditEvents, recordAuditExport } from "@/lib/data/audit";
 import { writeDemoState } from "@/lib/data/demo-store";
 import { emptyDemoState, type DemoState } from "@/lib/samples-demo";
 import type { DemoDataset } from "@/lib/release-demo";
@@ -224,6 +224,28 @@ const demoState = (): DemoState => ({
   ...emptyDemoState(),
   shipments: [{ id: "ship-1", orderCode: "ORD048", carrier: "FedEx", trackingNumber: null, condition: "ok", boxCount: 1, notes: null, receivedAt: "2026-11-02T15:00:00Z", receivedBy: "Demo Operator" }],
   datasets: [released],
+});
+
+describe("recording an export (0042)", () => {
+  it("live: admin.record_audit_export with the filter and the row count, as the signed-in user; a refusal reads as one", async () => {
+    vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.supabase.co", anonKey: "public-example" });
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    vi.mocked(createAdminClient).mockResolvedValue({ schema: (name: string) => { expect(name).toBe("admin"); return { rpc }; } } as never);
+    await recordAuditExport({ entity: "order", order: "ORD080", before: 12 }, 12, false);
+    expect(requireWorkspace).toHaveBeenCalledWith("staff");
+    expect(rpc).toHaveBeenCalledWith("record_audit_export", { p_entity: "order", p_order: "ORD080", p_rows: 12, p_truncated: false });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "Lab staff access is required to export the audit log" } } as never);
+    await expect(recordAuditExport({ entity: null, order: null, before: null }, 0, false)).rejects.toThrow("Lab staff access is required to export the audit log");
+  });
+
+  it("demo: the export shows in this browser's audit log, by the person exporting", async () => {
+    vi.mocked(getEnvironment).mockReturnValue({ mock: true, url: "", anonKey: "" });
+    session = { userId: "example-staff", displayName: "Demo Operator", role: "Operator", view: "staff", mock: true };
+    await recordAuditExport({ entity: "order", order: "ORD080", before: null }, 12, false);
+    const page = await listAuditEvents(none);
+    expect(page.rows[0]).toMatchObject({ who: "Demo Operator", entity: "Audit log export", summary: "Audit log exported: 12 rows, entity order, ORD080" });
+    expect((await listAuditEvents({ entity: "audit_export", order: null, before: null })).rows).toHaveLength(1);
+  });
 });
 
 describe("demo seam: the same screen over the demo store", () => {

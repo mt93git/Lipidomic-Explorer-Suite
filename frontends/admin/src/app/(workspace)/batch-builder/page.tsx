@@ -185,7 +185,7 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
         { value: counts[2], label: "pooled QC" }, { value: counts[1], label: "blanks" },
         { value: formatRunTime(plan.minutes), label: "run time" }, { value: endsAt(new Date(), plan.minutes), label: "ends if started now" },
       ]} />
-      <p className="muted"><small>Seed <span className="mono">{parsed.value.seed || "(empty)"}</span> · {groupByOrder(samples.filter(sample => parsed.value.sampleIds.includes(sample.id))).length} orders from {new Set(samples.filter(sample => parsed.value.sampleIds.includes(sample.id)).map(sample => sample.clientId)).size} clients</small></p>
+      <p className="muted"><small>Seed <span className="mono">{parsed.value.seed || "(empty)"}</span> · {countLabel(groupByOrder(samples.filter(sample => parsed.value.sampleIds.includes(sample.id))).length, "order")} from {countLabel(new Set(samples.filter(sample => parsed.value.sampleIds.includes(sample.id)).map(sample => sample.clientId)).size, "client")}</small></p>
       <h3>Plate map</h3>
       <PlateMap injections={plan.injections} clients={new Map(samples.map(sample => [sample.orderCode, sample.clientName]))} />
       <h3>Sequence</h3>
@@ -197,4 +197,8 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
       <p className="muted"><small>Saving records version 1 as a planned batch and moves the orders to In batch. The sequence is frozen later, when you mark it exported.</small></p>
     </section>}
   </>;
+}
+
+function countLabel(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

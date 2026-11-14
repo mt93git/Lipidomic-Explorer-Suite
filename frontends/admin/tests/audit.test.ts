@@ -94,6 +94,13 @@ describe("auditSummary: one human line per event", () => {
     expect(auditEntities).toContainEqual({ value: "activation_email", label: "Activation email" });
   });
 
+  it("names an audit log export (0042) by its row count and filter; listed in the entity menu", () => {
+    expect(auditSummary(event({ entity: "audit_export", entityId: null, after: { entity: "order", order: "ORD080", rows: 12, truncated: false } }), ctx)).toBe("Audit log exported: 12 rows, entity order, ORD080");
+    expect(auditSummary(event({ entity: "audit_export", entityId: null, after: { entity: "box_position", order: null, rows: 1, truncated: false } }), ctx)).toBe("Audit log exported: 1 row, entity box position");
+    expect(auditSummary(event({ entity: "audit_export", entityId: null, after: { entity: null, order: null, rows: 10000, truncated: true } }), ctx)).toBe("Audit log exported: 10000 rows (more existed), all events");
+    expect(auditEntities).toContainEqual({ value: "audit_export", label: "Audit log export" });
+  });
+
   it("reads the client's Nexo switches as on/off in the changed fields", () => {
     const cedar = { name: "Example Cedar", nexo_access: false, members_prepare: false };
     expect(auditChanges(event({ entity: "client", action: "UPDATE", before: cedar, after: { ...cedar, nexo_access: true } }), ctx)).toEqual([{ field: "Nexo access", before: "off", after: "on" }]);

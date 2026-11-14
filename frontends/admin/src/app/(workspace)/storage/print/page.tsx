@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
 import map from "@/components/visual-map.module.css";
+import { freezerCatalog } from "@/lib/data/freezers";
 import { listBox } from "@/lib/data/storage";
+import { placeLabel, placeOf } from "@/lib/freezers";
 import { formatLabInstant } from "@/lib/lab-time";
 import { plural } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
@@ -12,7 +14,7 @@ import styles from "./print.module.css";
 export const metadata: Metadata = { title: "Print box map" };
 type Params = { box?: string; slot?: string };
 
-// a09 "Print box map": one box on paper. A header with the box and when it was printed (lab time), the grid with each
+// a09 "Print box map": one box on paper. A header with the box, its freezer and rack (0041) when set, and when it was printed (lab time), the grid with each
 // aliquot's code in its cell coloured by client, the legend with the free count, and every position as a list. On screen
 // it has a Print button and a way back; printed, the app's bar, sidebar and those buttons are hidden (print.module.css).
 // Lab staff only, like Storage.
@@ -28,7 +30,8 @@ export default async function PrintBoxPage({ searchParams }: { searchParams: Pro
   </div>;
   if (!box) return <div className={styles.sheet}>{toolbar}<p className="empty-state">Choose a box in Storage first.</p></div>;
 
-  const slots = await listBox(box);
+  const [slots, catalog] = await Promise.all([listBox(box), freezerCatalog()]);
+  const place = placeOf(catalog, box);
   const printed = formatLabInstant(new Date().toISOString());
   if (!slots.length) return <div className={styles.sheet}>{toolbar}<h1 className={styles.title}>Box <span className="mono">{box}</span></h1><p className="empty-state">Box {box} holds no aliquot.</p></div>;
 
@@ -41,6 +44,7 @@ export default async function PrintBoxPage({ searchParams }: { searchParams: Pro
       <div>
         <div className={styles.eyebrow}>Lipidomic Explorer Admin · Storage</div>
         <h1 className={styles.title}>Box <span className="mono">{box}</span></h1>
+        {place && <p className={styles.meta}><strong>{placeLabel(place)}</strong>{place.temperature ? ` · ${place.temperature}` : ""}</p>}
         <p className={styles.meta}>{grid.rows.length} × {grid.columns.length} · {slots.length - grid.offGrid.length} taken · {grid.free} free</p>
       </div>
       <p className={styles.printed}>Printed {printed}</p>

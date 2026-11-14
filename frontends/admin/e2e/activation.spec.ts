@@ -25,6 +25,9 @@ test("People: last active, Remind by an Owner (not an Operator), the invitation'
   await activation.getByLabel("Act as (demo)").selectOption("example-owner");
   await activation.getByRole("button", { name: "Remind Demo Requester" }).click();
   await expect(activation.getByRole("status")).toHaveText("Not emailed: the example workspace sends no email.", slow);
+  // One reminder per account per 24 hours: the button now waits and says until when.
+  await expect(activation.getByRole("button", { name: "Remind Demo Requester" })).toBeDisabled(slow);
+  await expect(requester).toContainText(/Reminded .* · next possible /);
 
   const invite = page.getByRole("region", { name: "Invite", exact: true });
   await invite.getByLabel("Email", { exact: true }).fill("synthetic.activation@example.test");

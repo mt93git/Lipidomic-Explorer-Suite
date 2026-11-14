@@ -19,7 +19,7 @@ function rolesOf(helper: string): string[] {
 
 test("every matrix row tied to a role helper lists exactly the roles that helper admits", () => {
   const tied = permissions.filter(row => bodies.has(row.rule));
-  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
+  expect(tied.map(row => row.rule).sort()).toEqual(["can_read_client", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_manager", "is_lab_staff", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer", "is_lab_writer"]);
   for (const row of tied) expect([...row.roles].sort(), row.key).toEqual(rolesOf(row.rule));
 });
 
@@ -50,7 +50,7 @@ const guards: Record<string, RegExp> = {
 
 test("each action row names the functions the app calls for it, and the row's rule is what guards them", () => {
   const withRpcs = permissions.filter(row => row.rpcs?.length);
-  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "instruments_panels", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "notification_prefs", "notification_rules", "qc_review", "release_policy", "request_order", "run_lab", "shipping_instructions", "storage", "submit"]);
+  expect(withRpcs.map(row => row.key).sort()).toEqual(["answer_access", "answer_request", "deliverables", "freezers", "instruments_panels", "invite_client", "invite_lab", "manage_clients", "members_prepare", "nexo_access", "notification_prefs", "notification_rules", "qc_review", "release_policy", "request_order", "run_lab", "shipping_instructions", "storage", "submit"]);
   for (const row of withRpcs) {
     for (const fn of row.rpcs ?? []) expect(guardedBody(fn), `${row.key}: ${fn}`).toMatch(guards[row.rule]);
   }
@@ -115,7 +115,7 @@ test("0026 row: only a lab Owner or Admin adds, edits and archives instruments a
 
 test("0025 row: any lab writer places, moves and removes aliquots; client roles and lab members do not", () => {
   const row = permissions.find(item => item.key === "storage")!;
-  expect(row).toMatchObject({ area: "Lab work", rule: "is_lab_writer", rpcs: ["place_aliquot", "move_aliquot", "remove_aliquot"] });
+  expect(row).toMatchObject({ area: "Lab work", rule: "is_lab_writer", rpcs: ["place_aliquot", "move_aliquot", "remove_aliquot", "set_box_location"] });
   expect([...row.roles].sort()).toEqual(rolesOf("is_lab_writer"));
   for (const role of ["member", "client_admin", "requester", "viewer"]) expect(allows("storage", role), role).toBe(false);
   // A move archives the old placement as 'moved' before the new one; removing needs a reason; nobody writes box_position directly.
@@ -124,6 +124,14 @@ test("0025 row: any lab writer places, moves and removes aliquots; client roles 
   expect(allSql).toMatch(/REVOKE INSERT, UPDATE ON admin\.box_position FROM authenticated;/);
   // The two reads the screen uses are for lab staff only.
   for (const fn of ["storage_boxes", "storage_aliquots"]) expect(latestBody(fn), fn).toMatch(/IF NOT admin\.is_lab_staff\(auth\.uid\(\)\) THEN/);
+});
+
+test("0041 row: only a lab Owner or Admin adds and archives freezers and racks; any lab writer sets a box's place", () => {
+  const row = permissions.find(item => item.key === "freezers")!;
+  expect(row).toMatchObject({ area: "Lab administration", rule: "is_lab_manager", rpcs: ["create_freezer", "create_freezer_rack", "archive_freezer", "archive_freezer_rack"] });
+  expect([...row.roles].sort()).toEqual(rolesOf("is_lab_manager"));
+  for (const role of ["operator", "member", "client_admin", "requester", "viewer"]) expect(allows("freezers", role), role).toBe(false);
+  expect(guardedBody("set_box_location")).toMatch(guards.is_lab_writer);
 });
 
 test("0027 row: any lab writer records QC decisions; client roles and a lab member read them at most", () => {

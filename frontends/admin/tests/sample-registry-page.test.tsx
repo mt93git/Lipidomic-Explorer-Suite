@@ -7,6 +7,8 @@ import { demoSession } from "@/lib/demo";
 
 vi.mock("@/lib/session", () => ({ requireWorkspace: vi.fn(async () => demoSession) }));
 vi.mock("@/lib/data/samples", () => ({ getRegistryOrder: vi.fn(), listRegistryOrders: vi.fn() }));
+// The New order wizard's sample list (tests/registry-prefill.test.tsx covers the prefill); none here.
+vi.mock("@/lib/data/order-drafts", () => ({ getPlacedSampleList: vi.fn(async () => null) }));
 // The grid owns the screen's heading (it shows the column matches); the page hands it the breadcrumb, the banners and the facts.
 vi.mock("@/components/sample-registry-grid", () => ({
   SampleRegistryGrid: ({ order, eyebrow, children, nextSampleNumber }: { order: { code: string }; eyebrow: ReactNode; children: ReactNode; nextSampleNumber: number }) =>

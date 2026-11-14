@@ -25,9 +25,13 @@ export const byBox = (a: BoxSummary, b: BoxSummary) => natural.compare(a.box, b.
 export const describeLocation = (location: StorageLocation) => `box ${location.box}, position ${location.position}`;
 
 // a09's selected position: what is known about the aliquot beyond where it is. volumeUl: admin.aliquot.volume_ul when
-// recorded. nextBatch: the batch it will be injected in next. (The prototype's "Type", original or re-extraction, is
-// not recorded anywhere, so it is not shown.)
-export type AliquotPlans = { volumeUl: number | null; nextBatch: string | null };
+// recorded. nextBatch: the batch it will be injected in next. kind: admin.aliquot.kind (0041), the prototype's "Type".
+export type AliquotKind = "original" | "re_extraction";
+export const aliquotKindLabels: Record<AliquotKind, string> = { original: "Original", re_extraction: "Re-extraction" };
+export const isAliquotKind = (value: unknown): value is AliquotKind => value === "original" || value === "re_extraction";
+// The demo's rule, as assign_aliquot_code's: a sample's first aliquot (-A1) is the original, a later one a re-extraction.
+export const kindFromCode = (code: string): AliquotKind => /-A1$/.test(code) ? "original" : "re_extraction";
+export type AliquotPlans = { volumeUl: number | null; nextBatch: string | null; kind: AliquotKind | null };
 export type PlannedInjection = { batch: string; batchStatus: string; batchArchived: boolean; versionArchived: boolean; injectionStatus: string };
 // The first (in name order) live batch, planned or with its sequence exported, in which the aliquot's injection is
 // still planned. Acquired and later batches, archived batches or versions and done injections do not count.
@@ -91,16 +95,27 @@ export function demoStorageRows(placements: DemoPlacement[], orders: Order[], cl
   });
 }
 
-type Change = { placements: DemoPlacement[]; aliquotId: string; now: Date; id: string };
+// One slot, one holder (0041): a box position held by a live checked-in tube (Receive shipment) is taken too. Box and
+// position compare trimmed and in any case, as the database's one_slot trigger does.
+export type SlotTube = { box: string | null; position: string | null; sampleCode: string; archivedReason?: string };
+export const sameSlot = (box: string, position: string, otherBox: string, otherPosition: string) =>
+  box.trim().toUpperCase() === otherBox.trim().toUpperCase() && position.trim().toUpperCase() === otherPosition.trim().toUpperCase();
+// The live placements as the check-in screen needs them: box, position and the aliquot's code.
+export const storedSlots = (placements: DemoPlacement[]) => placements.filter(item => !item.archivedAt)
+  .map(item => ({ box: item.box, position: item.position, code: demoAliquots.find(aliquot => aliquot.id === item.aliquotId)?.code ?? "an aliquot" }));
+
+type Change = { placements: DemoPlacement[]; aliquotId: string; now: Date; id: string; tubes?: SlotTube[] };
 const findAliquot = (aliquotId: string) => {
   const found = demoAliquots.find(item => item.id === aliquotId);
   if (!found) throw new DataError("Aliquot not found.");
   return found;
 };
 const livePlacement = (placements: DemoPlacement[], aliquotId: string) => placements.find(item => item.aliquotId === aliquotId && !item.archivedAt);
-function requireFreeSlot(placements: DemoPlacement[], box: string, position: string) {
+function requireFreeSlot(placements: DemoPlacement[], box: string, position: string, tubes: SlotTube[] = []) {
   const holder = placements.find(item => !item.archivedAt && item.box === box && item.position === position);
   if (holder) throw new DataError(`Box ${box} position ${position} already holds ${findAliquot(holder.aliquotId).code}.`);
+  const tube = tubes.find(item => !item.archivedReason && item.box && item.position && sameSlot(item.box, item.position, box, position));
+  if (tube) throw new DataError(`Box ${box} position ${position} holds tube ${tube.sampleCode} (checked in at Receive shipment); choose another position.`);
 }
 function cleanSlot(box: string, position: string) {
   const b = box.trim();
@@ -110,24 +125,24 @@ function cleanSlot(box: string, position: string) {
   return { box: b, position: p };
 }
 
-export function demoPlace({ placements, aliquotId, now, id, box, position }: Change & { box: string; position: string }): DemoPlacement[] {
+export function demoPlace({ placements, aliquotId, now, id, box, position, tubes }: Change & { box: string; position: string }): DemoPlacement[] {
   const target = cleanSlot(box, position);
   const aliquot = findAliquot(aliquotId);
   if (aliquot.archivedReason) throw new DataError(`Aliquot ${aliquot.code} is archived (${aliquot.archivedReason}); it cannot be placed.`);
   const current = livePlacement(placements, aliquotId);
   if (current) throw new DataError(`Aliquot ${aliquot.code} is already in box ${current.box} position ${current.position}; move it instead.`);
-  requireFreeSlot(placements, target.box, target.position);
+  requireFreeSlot(placements, target.box, target.position, tubes);
   return [...placements, { id, aliquotId, ...target, placedAt: now.toISOString(), archivedAt: null, archivedReason: null }];
 }
 
-export function demoMove({ placements, aliquotId, now, id, box, position }: Change & { box: string; position: string }): DemoPlacement[] {
+export function demoMove({ placements, aliquotId, now, id, box, position, tubes }: Change & { box: string; position: string }): DemoPlacement[] {
   const target = cleanSlot(box, position);
   const aliquot = findAliquot(aliquotId);
   if (aliquot.archivedReason) throw new DataError(`Aliquot ${aliquot.code} is archived (${aliquot.archivedReason}); remove it from its box instead.`);
   const current = livePlacement(placements, aliquotId);
   if (!current) throw new DataError(`Aliquot ${aliquot.code} is not in a box; place it instead.`);
   if (current.box === target.box && current.position === target.position) throw new DataError(`Aliquot ${aliquot.code} is already in box ${current.box} position ${current.position}.`);
-  requireFreeSlot(placements, target.box, target.position);
+  requireFreeSlot(placements, target.box, target.position, tubes);
   const at = now.toISOString();
   return [...placements.map(item => item === current ? { ...item, archivedAt: at, archivedReason: "moved" } : item),
     { id, aliquotId, ...target, placedAt: at, archivedAt: null, archivedReason: null }];

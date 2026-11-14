@@ -149,7 +149,7 @@ describe("page and wizard", () => {
   it("opens on step 1 with the heading, both buttons, the step bar, the estimate and what the client sees next", async () => {
     render(await page());
     expect(screen.getByRole("heading", { level: 1, name: "New order" })).toBeInTheDocument();
-    expect(screen.getByText("Step 1 of 4. Orders can be placed by lab staff or by the client's Requester.")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 4. Orders are placed here by lab staff; a client's Requester uses Request an order.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save draft" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next: service" })).toBeInTheDocument();
     const steps = within(screen.getByRole("navigation", { name: "New order steps" })).getAllByRole("button");
@@ -157,6 +157,20 @@ describe("page and wizard", () => {
     expect(steps[0]).toHaveAttribute("aria-current", "step");
     expect(screen.getByRole("region", { name: "Estimate" })).toHaveTextContent("Blanks and QC (added by the lab)included");
     expect(within(screen.getByRole("region", { name: "What the client sees next" })).getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("the heading and the Placed by hint say the same thing: lab staff place orders here, a client's Requester uses Request an order", async () => {
+    const panels = await drafts.listWizardPanels();
+    render(<OrderWizard clients={[{ id: "example-atlas", name: "Example Atlas", color: "atlas" }]} panels={panels} placedBy="Demo lab person" initial={{ draftId: null, step: 1, data: emptyWizard() }} />);
+    expect(screen.getByText("Step 1 of 4. Orders are placed here by lab staff; a client's Requester uses Request an order.")).toBeInTheDocument();
+    expect(screen.getByText("Lab staff only. A client's Requester or Client admin uses Request an order instead.")).toBeInTheDocument();
+    expect(screen.queryByText(/placed by lab staff or by the client/)).toBeNull();
+  });
+
+  it("the empty New order page says the same thing", async () => {
+    vi.spyOn(drafts, "listWizardPanels").mockResolvedValueOnce([]);
+    render(await page());
+    expect(screen.getByText("Orders are placed here by lab staff; a client's Requester uses Request an order.")).toBeInTheDocument();
   });
 
   it("Next checks the step; the Service step shows the asked fields; the estimate is not set without a rate", async () => {
@@ -177,7 +191,7 @@ describe("page and wizard", () => {
     expect(estimate).toHaveTextContent("Run time on the Demo QQQ 1");
     expect(estimate).toHaveTextContent("80 injections × 12 min (batch builder default");
     expect(estimate).toHaveTextContent("≈ 16 h");
-    expect(screen.getByText("Step 2 of 4. Orders can be placed by lab staff or by the client's Requester.")).toBeInTheDocument();
+    expect(screen.getByText("Step 2 of 4. Orders are placed here by lab staff; a client's Requester uses Request an order.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next: sample list" })).toBeInTheDocument();
   });
 
@@ -220,7 +234,7 @@ describe("page and wizard", () => {
     await drafts.saveOrderDraft({ id: null, step: 1, data: wizard({ title: "Synthetic two" }) });
     render(await page({ draft: first }));
     expect(screen.getByText(/Resuming a saved draft, last saved by Demo lab person/)).toBeInTheDocument();
-    expect(screen.getByText("Step 2 of 4. Orders can be placed by lab staff or by the client's Requester.")).toBeInTheDocument();
+    expect(screen.getByText("Step 2 of 4. Orders are placed here by lab staff; a client's Requester uses Request an order.")).toBeInTheDocument();
     expect(screen.getByLabelText("Number of samples")).toHaveValue(12);
     const list = screen.getByRole("region", { name: "Saved drafts" });
     expect(list).toHaveTextContent("Synthetic two");

@@ -5,6 +5,7 @@ import { stages } from "../models";
 import { demoLabStaff } from "../release-demo";
 import { DataError, stageFromDb } from "../samples";
 import { demoPeopleSeed, type PeopleState } from "../people";
+import { allows, labRoleKey } from "../roles";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
 import { listClients, listOrders } from "./orders";
@@ -56,9 +57,14 @@ async function manager(actorId?: string) {
   }
   if (role !== "owner" && role !== "admin") throw new DataError("Lab Owner or Admin access is required to manage clients.");
 }
+// canInvite: Invite user (a lab Owner or Admin, as People and create_invitation check); by the signed-in role in both
+// modes, so the demo's Operator sees what a real Operator sees (the demo's People form still has its Act as picker).
 export async function clientPermissions() {
   const session = await requireWorkspace("staff");
-  return { canEdit: !live() || ["Owner", "Admin"].includes(session.role), demoActors: live() ? null : demoLabStaff };
+  return {
+    canEdit: !live() || ["Owner", "Admin"].includes(session.role), canInvite: allows("invite_client", labRoleKey(session.role)),
+    demoActors: live() ? null : demoLabStaff,
+  };
 }
 async function admin() {
   const client = await createAdminClient();
