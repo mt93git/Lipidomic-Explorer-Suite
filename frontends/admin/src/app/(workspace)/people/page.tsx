@@ -4,7 +4,7 @@ import { listAccessRequests } from "@/lib/data/access-requests";
 import { listPeople } from "@/lib/data/people";
 import { formatLabInstant } from "@/lib/lab-time";
 import { initials } from "@/lib/initials";
-import { groupPeople, lastActive, projectRoles, type Person, type PersonRow } from "@/lib/people";
+import { groupPeople, INVITATION_DAYS, lastActive, projectRoles, type Person, type PersonRow } from "@/lib/people";
 import type { LabPerson } from "@/lib/release";
 import { clientRoleNames, clientRoles, labRoleNames, labRoles, type LabRoleKey } from "@/lib/roles";
 import { requireWorkspace } from "@/lib/session";
@@ -94,7 +94,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       </table></div> : <p className="empty-state">No people yet.</p>}
     </section>
     <section className={`panel ${styles.section}`} id="invite" aria-labelledby="invite-title"><h2 id="invite-title">Invite</h2>
-      {view.canInviteClient ? <InviteForm clients={view.clients} canInviteLab={view.canInviteLab} actors={view.demoActors} defaultClientId={view.clients.some(item => item.id === query.client) ? query.client : undefined} />
+      {view.canInviteClient ? <InviteForm clients={view.clients} canInviteLab={view.canInviteLab} actors={view.demoActors} defaultClientId={view.clients.some(item => item.id === query.client) ? query.client : undefined} days={INVITATION_DAYS} />
         : <p className="notice">Only a lab Owner or Admin can invite people. Ask them for an invitation link.</p>}
     </section>
     {access.canAnswer && <div className={styles.section}><AccessRequests requests={access.requests} clients={access.clients} actors={access.demoActors} /></div>}

@@ -3,7 +3,6 @@
 import { useActionState, useState } from "react";
 import { FormAlert } from "@/components/error-summary";
 import type { LabPerson } from "@/lib/release";
-import { INVITATION_DAYS } from "@/lib/people";
 import { clientRoleNames, clientRoles, labRoleNames, labRoles } from "@/lib/roles";
 import { inviteAction } from "./actions";
 import { DemoActor } from "./demo-actor";
@@ -12,7 +11,8 @@ import styles from "./people.module.css";
 // The Owner (lab roles) or an Admin (client roles) creates a 7-day link; the app server emails it to the person
 // (activation.ts) and the link is shown here once as a fallback: only its digest is stored, so it cannot be shown again.
 // defaultClientId: the client chosen before the form opens (Client detail's Invite user).
-export function InviteForm({ clients, canInviteLab, actors, defaultClientId }: { clients: { id: string; name: string }[]; canInviteLab: boolean; actors: LabPerson[] | null; defaultClientId?: string }) {
+// days: INVITATION_DAYS from the server page (lib/people.ts imports node:crypto, which a client bundle must not pull in).
+export function InviteForm({ clients, canInviteLab, actors, defaultClientId, days }: { clients: { id: string; name: string }[]; canInviteLab: boolean; actors: LabPerson[] | null; defaultClientId?: string; days: number }) {
   const [state, action, pending] = useActionState(inviteAction, {});
   const [target, setTarget] = useState("client:requester");
   const [copied, setCopied] = useState(false);
@@ -51,7 +51,7 @@ export function InviteForm({ clients, canInviteLab, actors, defaultClientId }: {
       <DemoActor actors={actors} id="invite-actor" hint="Lab roles need the demo Owner; client roles an Owner or Admin." />
       <div className={styles.inviteSubmit}>
         <button className="button" disabled={pending}>{pending ? "Sending…" : "Send invitation"}</button>
-        <p className="muted">The invitation is valid for {INVITATION_DAYS} days. It is emailed, and its link is shown here once to copy. Lab roles are given by the Owner only.</p>
+        <p className="muted">The invitation is valid for {days} days. It is emailed, and its link is shown here once to copy. Lab roles are given by the Owner only.</p>
       </div>
       {state.error && <FormAlert>{state.error}</FormAlert>}
     </form>
