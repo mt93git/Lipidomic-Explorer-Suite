@@ -15,7 +15,7 @@ test("invite a client member, accept with a password and find them in People", a
   await invite.getByLabel("Role", { exact: true }).selectOption("client:requester");
   await invite.getByLabel("Client", { exact: true }).selectOption({ label: "Example Cedar" });
   await invite.getByLabel("Act as (demo)").selectOption("example-owner");
-  await invite.getByRole("button", { name: "Create invitation link" }).click();
+  await invite.getByRole("button", { name: "Send invitation" }).click();
 
   const notice = page.getByRole("status").filter({ hasText: "Invitation link for synthetic.invitee@example.test" });
   await expect(notice).toBeVisible(slow);
