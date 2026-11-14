@@ -1,0 +1,1612 @@
+{
+  "meta": {
+    "lang": "en",
+    "brand": "Lipidomic Explorer",
+    "badge": "Help",
+    "title": "Help manual",
+    "documentTitle": "Help · Lipidomic Explorer",
+    "eyebrow": "Lipidomics service · Libreros lab",
+    "lede": "How to use the lab’s lipidomics platform, one step at a time: the lab’s back office (Admin), the client portal, and the analysis tool (Nexo).",
+    "updated": "November 2026"
+  },
+  "ui": {
+    "skip": "Skip to content",
+    "searchLabel": "Search the manual",
+    "searchPlaceholder": "Search the manual",
+    "searchHint": "Press / to search",
+    "searchClear": "Clear search",
+    "resultsOne": "1 result",
+    "resultsMany": "{n} results",
+    "resultsNone": "Nothing found for “{q}”. Try one short word, such as “batch” or “release”.",
+    "resultsTitle": "Search results",
+    "menuOpen": "Menu",
+    "menuClose": "Close",
+    "contents": "Contents",
+    "what": "What it is",
+    "who": "Who does it",
+    "when": "When",
+    "how": "Steps",
+    "notes": "Good to know",
+    "partFor": "What it is for",
+    "partWho": "Who uses it",
+    "stepOf": "Step {n} of {total}",
+    "partOf": "Part {n} of {total}",
+    "stepsCount": "{n} steps",
+    "overview": "Overview",
+    "seeAlso": "See also",
+    "updated": "Updated {date}",
+    "shotDesktop": "Desktop",
+    "shotPhone": "Phone",
+    "shotView": "Screenshot view",
+    "shotMissing": "Screenshot coming soon",
+    "shotPhoneAlt": "Phone view.",
+    "shotFull": "Open the full screenshot",
+    "copyLink": "Link to this step",
+    "clientSees": "The client sees",
+    "sideLab": "Lab",
+    "sideClient": "Client",
+    "sideBoth": "Lab and client",
+    "rolesTitle": "Roles in this manual",
+    "chooseTitle": "Find your part",
+    "print": "Print",
+    "top": "Back to top",
+    "noscript": "This manual needs JavaScript to show its pages.",
+    "footer": "Lipidomic Explorer help manual. Something missing or unclear? Tell the lab.",
+    "updating": "Updating",
+    "resultsPartial": "No result matches every word. Showing {n} partial matches."
+  },
+  "roles": [
+    {
+      "id": "lab-owner",
+      "label": "Lab owner",
+      "side": "lab",
+      "about": "Shown as Owner or Lab Owner in the app. Does everything a Lab admin does, and also invites lab staff and sets the release policy."
+    },
+    {
+      "id": "lab-admin",
+      "label": "Lab admin",
+      "side": "lab",
+      "about": "Shown as Admin or Lab Admin in the app. Answers access requests, invites client people, and runs the lab’s work."
+    },
+    {
+      "id": "operator",
+      "label": "Operator",
+      "side": "lab",
+      "about": "Shown as Operator or Lab Operator in the app. Runs the lab’s work: shipments, samples, storage, batches, results, QC review and datasets."
+    },
+    {
+      "id": "client-admin",
+      "label": "Client admin",
+      "side": "client",
+      "about": "Requests orders and follows every order of their client. The lab decides who belongs to a client."
+    },
+    {
+      "id": "requester",
+      "label": "Requester",
+      "side": "client",
+      "about": "Requests orders and follows every order and released dataset of their client. The lab registers the samples and manages client membership."
+    },
+    {
+      "id": "viewer",
+      "label": "Viewer",
+      "side": "client",
+      "about": "Follows every order and released dataset of their client. Cannot request an order."
+    },
+    {
+      "id": "anyone",
+      "label": "No account needed",
+      "side": "client",
+      "about": "Someone at a client lab who has no account yet."
+    }
+  ],
+  "cycle": {
+    "id": "cycle",
+    "title": "The whole cycle",
+    "intro": "This is a common journey from a new client’s access request to released results. Existing clients can start with an order request; QC marking and Nexo access are optional. Press a step to read how it is done.",
+    "stages": [
+      {
+        "title": "Request access",
+        "side": "client",
+        "text": "Someone at a client lab fills in the public **Request access** form. No account exists yet.",
+        "links": [
+          "client/client-request-access",
+          "lab/approve-access"
+        ]
+      },
+      {
+        "title": "Approve and invite",
+        "side": "lab",
+        "text": "A Lab owner or Lab admin approves the request. The app emails the person an invitation link; the lab also sees the link once, to send it themselves if the email could not go. The person sets a password.",
+        "links": [
+          "lab/approve-access",
+          "lab/invite-people",
+          "client/client-accept-invitation"
+        ]
+      },
+      {
+        "title": "Request an order",
+        "side": "client",
+        "text": "The client says what they want measured. Nothing is shipped yet.",
+        "clientSees": "Requested",
+        "links": [
+          "client/client-request-order"
+        ]
+      },
+      {
+        "title": "Accept the order",
+        "side": "lab",
+        "text": "The lab accepts the request, or declines it with a reason. Once accepted, the client ships with the order code on every box.",
+        "clientSees": "Accepted",
+        "links": [
+          "lab/accept-order",
+          "lab/shipping-instructions"
+        ]
+      },
+      {
+        "title": "Receive the shipment",
+        "side": "lab",
+        "text": "The boxes arrive. The lab records the carrier, the condition on arrival and the number of boxes, then checks each tube in against the registered samples and confirms the receipt.",
+        "clientSees": "Samples received",
+        "links": [
+          "lab/receive-shipment"
+        ]
+      },
+      {
+        "title": "Register the samples",
+        "side": "lab",
+        "text": "The lab pastes the client’s sample list, or reviews the one pasted with the order. Each sample gets a lab code.",
+        "clientSees": "Samples received",
+        "links": [
+          "lab/register-samples"
+        ]
+      },
+      {
+        "title": "Build the batch",
+        "side": "lab",
+        "text": "The lab picks the samples, adds blanks and pooled QC, previews the sequence and saves the planned batch. Saving creates any missing aliquots.",
+        "clientSees": "In analysis",
+        "links": [
+          "lab/batch-builder"
+        ]
+      },
+      {
+        "title": "Store the aliquots",
+        "side": "lab",
+        "text": "After saving the batch, the lab assigns each aliquot a box and a position in **Storage**.",
+        "links": [
+          "lab/storage"
+        ]
+      },
+      {
+        "title": "Run the batch",
+        "side": "lab",
+        "text": "The lab downloads the sequence and bench sheet, marks the batch exported, runs the instrument, then marks it acquired.",
+        "clientSees": "In analysis",
+        "links": [
+          "lab/batch-run"
+        ]
+      },
+      {
+        "title": "Ingest the results",
+        "side": "lab",
+        "text": "The lab loads the SCIEX OS results file, reads the checks and accepts it.",
+        "clientSees": "Quality review",
+        "links": [
+          "lab/ingest-results"
+        ]
+      },
+      {
+        "title": "QC review",
+        "side": "lab",
+        "text": "The lab records sample exclusions with a reason; the dataset still keeps every sample’s data. Marking the order **QC reviewed** is optional.",
+        "clientSees": "Quality review",
+        "links": [
+          "lab/qc-review"
+        ]
+      },
+      {
+        "title": "Sign and release",
+        "side": "lab",
+        "text": "The lab builds a frozen dataset version. The signatures the release policy sets, by different people, come next; then it is released.",
+        "clientSees": "Released",
+        "links": [
+          "lab/sign-and-release",
+          "lab/release-policy"
+        ]
+      },
+      {
+        "title": "The client gets the results",
+        "side": "client",
+        "text": "The order reads **Released**. The client sees the released dataset and the files the lab shares.",
+        "clientSees": "Released",
+        "links": [
+          "client/client-dataset-files",
+          "lab/deliverables"
+        ]
+      },
+      {
+        "title": "Open it in Nexo",
+        "side": "both",
+        "text": "Lab staff can open released datasets in Nexo. Clients also need the lab’s Nexo switch and client access enabled on the server. By default the lab opens it first, prepares the data and reads Team’s quality check; clients then land on the board the lab prepared.",
+        "links": [
+          "analysis/nexo-open",
+          "analysis/nexo-prepare",
+          "analysis/nexo-quality-check",
+          "lab/nexo-access",
+          "client/client-open-in-nexo"
+        ]
+      }
+    ]
+  },
+  "parts": [
+    {
+      "id": "lab",
+      "title": "Lab",
+      "app": "Admin",
+      "label": "Lab (Admin)",
+      "keywords": [
+        "login",
+        "password"
+      ],
+      "summary": "For lab staff: orders, samples, storage, batches, results, QC and releases.",
+      "what": "Admin is the lab’s back office. It follows every order from the client’s request to a signed, released dataset: shipments, sample codes, storage, batches, results files, QC decisions and signatures. It is also where the lab decides who has an account and what each client can see.",
+      "who": "Lab staff: the Lab owner, Lab admins and Operators. The separate Member role is not lab staff and sees no client data.",
+      "notes": [
+        "**Signing in.** Enter your **Email** and **Password**, then press **Sign in**.",
+        "**The menu** has three groups: **Lab work**, **Clients** and **Organization**. The pages of this part follow the order of the work, not the order of the menu.",
+        "**Forgot your password?** Press **Forgot your password?** on the sign-in page, enter your **Email** and press **Send reset link**. When password-reset email is configured, the app emails you a link to choose a new password. It works once, for one hour.",
+        "**Audit log**, under **Organization**, records every change: see [Read the audit log](#lab/audit-log)."
+      ],
+      "steps": [
+        {
+          "slug": "approve-access",
+          "title": "Answer an access request",
+          "keywords": [
+            "approve",
+            "decline",
+            "signup",
+            "invitation email"
+          ],
+          "what": "Someone at a client lab has asked for an account on the public **Request access** page. You decide whether they get one, which client they belong to and their role. Approving creates an invitation link and emails it to the person.",
+          "who": [
+            "lab-owner",
+            "lab-admin"
+          ],
+          "when": "When **People** in the menu shows a number, or the **Someone requests access** email arrives if sending and your notification are enabled.",
+          "steps": [
+            "Open **People**. Under **Access requests**, press **Review** on the request.",
+            "Under **Add to**, choose **An existing client** or **A new client**. For a new client, check the **Client name** and choose its **Kind**. The client is created when you approve.",
+            "Choose the **Role**, for example **Client admin** for the first person of a new client.",
+            "Press **Approve and create invitation link**. The app emails the invitation to the person, from “Lipidomics · Libreros Lab”.",
+            "Read the green notice. **Emailed to …** means the invitation is on its way; the link below is a copy in case the email does not arrive. **Not emailed: …** says why, for example that the address is not on this server’s allowlist: then press **Copy link** or **Copy message** and send the link to the person yourself, by email or chat."
+          ],
+          "notes": [
+            "The email, “Welcome to Lipidomics · Activate your account”, says who invited the person and as what, with the link to choose a password. If it was not emailed, the person has nothing until you send the link yourself.",
+            "The link works once, for 7 days, and is shown only once. It stays listed under **Pending invitations**, where **Revoke** cancels it.",
+            "To say no, press **Decline…**, write a **Reason** and press **Decline request**. Only the lab reads the reason, and the app tells the person nothing: write to them yourself if you want to.",
+            "The personal data of a declined request is erased after 90 days."
+          ],
+          "shots": [
+            {
+              "file": "access-request-listed",
+              "caption": "The request waits under **Access requests**. **Review** opens it.",
+              "alt": "The People page with one access request open for review: the person, their organisation and what they want to measure, the Add to choice set to A new client, the Client name, Kind and Role fields, and the Approve and create invitation link and Decline buttons."
+            },
+            {
+              "file": "invitation-link-shown",
+              "caption": "Approved: the notice says whether the invitation was emailed (here **Not emailed**, a test address outside the allowlist), with **Copy link** and **Copy message**. (The link is masked grey.)",
+              "alt": "The People page after approving AR-0068: a green notice that reads Not emailed, because the address’s domain is not on this server’s allowlist, Copy it now and send it yourself, with the invitation link (masked grey) and the Copy link and Copy message buttons; the People table with its Account column, every person Active; and the new invitation listed under Pending invitations with a Revoke button."
+            }
+          ]
+        },
+        {
+          "slug": "invite-people",
+          "title": "Invite people and change roles",
+          "keywords": [
+            "add user",
+            "account",
+            "role"
+          ],
+          "what": "The **People** page lists lab staff and client users with their roles and when each one was last active. Here you invite someone directly, change a role, or end someone’s access.",
+          "who": [
+            "lab-owner",
+            "lab-admin"
+          ],
+          "whoNote": "Lab Owners and Admins manage client invitations and memberships. Only a Lab owner invites lab staff, changes lab roles or archives lab memberships.",
+          "when": "When a colleague joins the lab, or a client asks you to add another person.",
+          "steps": [
+            "Open **People** and press **Invite person**, or scroll down to the **Invite** form below the list.",
+            "Type the person’s **Email**.",
+            "Choose the **Role**. For a client role, also choose the **Client**; lab roles are listed only for the Owner.",
+            "Press **Send invitation**. The app emails the invitation to the person, from “Lipidomics · Libreros Lab”.",
+            "Read the notice above the form: **Emailed to …**, or **Not emailed: …** with the reason. If it was not emailed, press **Copy link** and send the link to the person yourself."
+          ],
+          "notes": [
+            "The link works once, for 7 days, and is shown only once. If it was lost, press **Revoke** under **Pending invitations** and invite the person again; the new invitation is emailed too.",
+            "To change a role, press **Change** next to the person, choose the **Role** and press **Save role**. To end their membership, open **Change**, enter a **Reason**, then press **Archive membership**.",
+            "The lab always keeps at least one active Owner.",
+            "Someone with an account who has never signed in reads **never** under **Last active**: see [Send an activation email](#lab/activation-email)."
+          ],
+          "shots": [
+            {
+              "file": "invite-sent",
+              "caption": "An invitation for a new client person. Not emailed on this test server, so the link is shown to copy (masked).",
+              "alt": "The Invite section of the People page: a green notice, Invitation link for the new address, Not emailed because the address’s domain is not on this server’s allowlist, Copy it now and send it yourself, with the Invitation link (masked grey) and a Copy link button; below it the Email, Client and Role fields and the Send invitation button."
+            }
+          ]
+        },
+        {
+          "slug": "activation-email",
+          "title": "Send an activation email",
+          "keywords": [
+            "activate",
+            "activation",
+            "resend",
+            "welcome",
+            "first sign-in",
+            "remind",
+            "never signed in",
+            "last active"
+          ],
+          "what": "The **Last active** column of **People** says when each person last signed in: **today**, **yesterday**, a number of days, a date, or **never**. For someone who has an account but has never signed in, **Remind** emails a link to choose a password, so they need no **Forgot your password?** to get in.",
+          "who": [
+            "lab-owner",
+            "lab-admin"
+          ],
+          "whoNote": "Lab Owners and Admins, for lab staff and client members alike. Other lab staff see **—** under **Last active**.",
+          "when": "When a person’s **Last active** reads **never** and they have not managed to get in.",
+          "steps": [
+            "Open **People** and find the person in the table.",
+            "Press **Remind** in their row.",
+            "Read the note under the button: **Emailed to …**, or **Not emailed: …** with the reason. Once an email has gone, the row says “Reminded …” with the time and the next possible time."
+          ],
+          "notes": [
+            "One reminder per account every 24 hours. Until then **Remind** cannot be pressed, and the row shows when the next one is possible.",
+            "The person gets “Welcome to Lipidomics · Choose your password”. Its link opens a page with the same title: they type a **Password**, type it again under **Repeat password** and press **Choose password**, then sign in.",
+            "Someone who already has a password gets “Welcome to Lipidomics · Sign in to Admin” instead: their password already works, and the link still lets them choose a new one.",
+            "The link works once, for one hour, and a newer email replaces it. An expired link reads “This activation link no longer works.”: send a new email, or the person presses **Ask for a reset link**.",
+            "**Remind** appears only for someone who has never signed in."
+          ],
+          "shots": [
+            {
+              "file": "people",
+              "caption": "A client person who has never signed in: **never** under **Last active**, and **Remind**. Here the reminder was not emailed (a test address).",
+              "alt": "The People table’s column names (Person, Lab role, Clients and project roles, Last active) above one row: a client Viewer at Harbor Lipid Lab (demo) whose Last active reads never, with a Remind button, the note Not emailed, because the address’s domain is not on this server’s allowlist, and a Change link. On a phone the table scrolls sideways; the picture shows it scrolled to the right, with Last active and Remind."
+            }
+          ]
+        },
+        {
+          "slug": "instruments-panels",
+          "title": "Set up instruments and panels",
+          "keywords": [
+            "assay",
+            "method",
+            "LC",
+            "instrument profile",
+            "rate",
+            "price",
+            "blank",
+            "QC rules"
+          ],
+          "what": "**Instruments & panels** holds everything instrument-specific: the instrument profile (its settings and its blank and QC rules), the assay panels that **New order** and **Batch builder** offer, the rate sheet that prices an order, and the instruments themselves.",
+          "who": [
+            "lab-owner",
+            "lab-admin"
+          ],
+          "whoNote": "Operators can read the page but not change it.",
+          "when": "When the lab gets an instrument or starts to offer a new panel, before the first order that uses it.",
+          "steps": [
+            "Open **Instruments & panels**, under **Organization** in the menu.",
+            "To add an instrument, press **Add instrument** under **Instruments**, enter **Instrument name**, add **Model** and **Serial number** if known, and press **Add instrument**.",
+            "To add a profile, press **Add profile**, enter **Profile name**, choose the **Instrument**, fill in its settings (**Software**, **Batch file**, **Bench sheet**, **Plates**, **Sample name**, **Results parser**) and press **Add profile**. The first profile becomes the active one.",
+            "Under **Blank and QC rules**, set the blanks at the start of the run, the blanks after every so many samples, how often a pooled QC runs, and the QC thresholds. Press **Save rules**.",
+            "To add a panel, press **Add panel**, enter **Panel name**, choose the **Instrument** and **Dataset type**, add **LC method** and **ISTD kits** (separated by commas) if known, and press **Add panel**.",
+            "Under **Rate sheet**, press a panel’s name, enter **Rate per sample**, **Currency** and **Minutes per injection**, and press **Save rate**."
+          ],
+          "notes": [
+            "**Batch builder** pre-fills its blanks and pooled QC from the active profile, and **New order**’s estimate counts them too. To switch profiles, open the other one and press **Make active**.",
+            "A rate left blank shows as “not set” in **New order**, never as a guess. Without **Minutes per injection**, the estimate uses the batch builder’s default.",
+            "To change a record, press its name (or **Edit** on the profile), edit it and press **Save instrument**, **Save panel** or **Save profile**. To stop using it, open it, write a **Reason** and press **Archive instrument**, **Archive panel** or **Archive profile**.",
+            "An instrument cannot be archived while an active panel or a live profile uses it, and the active profile cannot be archived: archive or move those first.",
+            "A panel’s **Dataset type** cannot change once an order or a batch uses the panel. For another type, add a new panel.",
+            "Archived records are kept. Press **Show archived** to see them."
+          ],
+          "shots": [
+            {
+              "file": "instruments-panels",
+              "caption": "The active profile with its settings, its panel, the **Blank and QC rules**, the **Rate sheet** and the **Instruments**.",
+              "alt": "The Instruments & panels page: the profile Demo LC-MS profile (demo) marked active, with its Setting and Value table and its instrument; the Panels card with one panel and its LC method, ISTD and Nexo dataset; the Blank and QC rules with Start of run 2 blanks, Between samples 1 blank after every 10 samples, Pooled QC every 6 and QC thresholds, and a Save rules button; the Rate sheet with USD 85.00 and 14 min for the demo panel and Not set for another; and the Instruments table."
+            }
+          ]
+        },
+        {
+          "slug": "shipping-instructions",
+          "title": "Write the shipping instructions",
+          "keywords": [
+            "courier",
+            "dry ice",
+            "contact"
+          ],
+          "what": "**Shipping instructions** is the one text every client reads once you accept their request: how and when to ship. The same page holds the contact clients see.",
+          "who": [
+            "lab-owner",
+            "lab-admin"
+          ],
+          "when": "Before the first order, and whenever the lab changes how it takes shipments.",
+          "steps": [
+            "Open **Shipping instructions**, under **Organization** in the menu.",
+            "Write the text under **Instructions clients read** and press **Save instructions**.",
+            "Under **Contact for clients**, write how clients reach the lab in **Contact clients read** and press **Save contact**."
+          ],
+          "notes": [
+            "Clients read the instructions at step 2, **Accepted**, of their order. With no saved instructions, the page tells them to write the order code on every box and ship as agreed with the lab.",
+            "The contact shows on **Request access**, on a request that is waiting or declined, and under **Your access** on the client’s home page.",
+            "There is one text for every client."
+          ],
+          "shots": [
+            {
+              "file": "shipping-instructions",
+              "caption": "The current text, the contact, and **Where clients see it**.",
+              "alt": "The Shipping instructions page: the Instructions clients read box with the lab’s shipping text and a Save instructions button, the Contact clients read box with a Save contact button, and a side panel explaining that clients see it at Step 2 · Accepted."
+            }
+          ]
+        },
+        {
+          "slug": "accept-order",
+          "title": "Accept a client’s order request",
+          "what": "A client has asked for an order. You accept it, or decline it with a reason. Until you answer, the client cannot ship and sees “Waiting for the lab”.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "After a client requests an order. A banner on **Pipeline** says a client request is waiting, and the “A client requests an order” email arrives if it is on.",
+          "steps": [
+            "Open **Pipeline**. Press **Review ORD… →** in the banner, or open the order marked “Client request · needs an answer”.",
+            "Read the request under **Accept this request?**, with the **Notes from the client**.",
+            "Check the **Panel** and the **Expected samples**. If the client chose “Let the lab advise”, set the panel now or later.",
+            "Press **Accept request**."
+          ],
+          "notes": [
+            "After you accept, the client sees **Accepted**, reads your [shipping instructions](#lab/shipping-instructions) and ships with the order code, for example `ORD654`, on every box. Press **Receive shipment →** when the boxes arrive.",
+            "To say no, write the reason under **Or decline, with a reason** and press **Decline request**. The client reads this reason on the order. A declined order is archived, never deleted, and leaves the pipeline.",
+            "The person who asked gets the “My order request is answered” email, if it is on for them.",
+            "For an order agreed outside the portal, press **+ New order** on **Pipeline**: see [Place an order](#lab/place-order)."
+          ],
+          "shots": [
+            {
+              "file": "request-review",
+              "caption": "The order page while the request needs an answer.",
+              "alt": "Order ORD654 at step 1, Request: the Accept this request? panel with a Needs an answer tag, the notes from the client, the Panel and Expected samples fields, the Accept request button and the Or decline, with a reason box, beside the Order facts."
+            },
+            {
+              "file": "request-accepted",
+              "caption": "Accepted: the client now sees **Accepted** and can ship.",
+              "alt": "Order ORD654 after accepting: a green Request accepted notice with a Receive shipment button, the next gate Ready for received? with Shipment received pending, and the Deliverables and History sections."
+            }
+          ]
+        },
+        {
+          "slug": "place-order",
+          "title": "Place an order",
+          "keywords": [
+            "new order",
+            "create order",
+            "quote",
+            "estimate",
+            "draft",
+            "wizard"
+          ],
+          "what": "**New order** is for orders placed by lab staff, for example one agreed by email. It has four steps: **Client**, **Service**, **Sample list** and **Review & quote**, with an estimate from the rate sheet. A client’s Requester uses **Request an order** in the portal instead.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When the lab enters an order itself, instead of waiting for a client’s request.",
+          "steps": [
+            "Open **New order** from the menu, or press **+ New order** on **Pipeline**.",
+            "Under **Client**, choose the **Client** and type an **Order title**. Press **Next: service**.",
+            "Under **Service**, choose the **Panel**. Add the **Sample matrix**, **Number of samples**, **Study design**, **Billing**, **Billing reference** and **Notes for the lab** if you have them. Check the **Estimate**. Press **Next: sample list**.",
+            "Under **Sample list**, paste the client’s sample list if you have it (optional). It is read and checked straight away. Press **Next: review & quote**.",
+            "Under **Review & quote**, check every line; **Edit** goes back to that step. Press **Place order**."
+          ],
+          "notes": [
+            "The order starts at Request and the client sees it in their orders. The notice gives the new code, with **Receive shipment →** and **Open order →**.",
+            "The **Estimate** is the panel’s rate times the samples. **Blanks and QC (added by the lab)** are included, counted by the active instrument profile’s rules, and the run time uses the panel’s minutes per injection. A rate not set reads “not set”: set it under [Instruments & panels](#lab/instruments-panels).",
+            "**Save draft** keeps what you typed. Anyone in the lab can resume it from **New order**, under **Saved drafts**, with **Resume**; **Discard** removes it.",
+            "**Download template** on **Sample list** gives the client a CSV with the six Metadata columns. A list pasted here opens pre-filled in the [Sample registry](#lab/register-samples) once the shipment has arrived."
+          ],
+          "shots": [
+            {
+              "file": "new-order-service",
+              "caption": "Step 2, **Service**, with the **Estimate**: 12 samples on the demo panel, blanks and QC by the active profile’s rules.",
+              "alt": "New order, step 2 of 4: the four steps Client, Service, Sample list and Review & quote; the Service card with Client, Panel, Sample matrix Plasma, Number of samples 12, Study design Groups, Billing Purchase order, Billing reference and Notes for the lab; the Estimate card with USD 1,020.00 from the rate sheet at USD 85.00 per sample, Blanks and QC included (2 blanks at start, 1 between samples and 2 pooled QCs, by the active profile’s rules) and a run time of about 4 h, 17 injections × 14 min; and What the client sees next. Save draft and Next: sample list buttons at the top."
+            },
+            {
+              "file": "new-order-review",
+              "caption": "Step 4, **Review & quote**: every line with **Edit**, then **Place order**.",
+              "alt": "New order, step 4 of 4: the Review & quote card listing Client, Order title, Panel, Sample matrix, Number of samples, Study design, Billing, Sample list 12 rows and Notes for the lab, each with an Edit link; the Estimate card; and the Save draft and Place order buttons at the top."
+            }
+          ]
+        },
+        {
+          "slug": "receive-shipment",
+          "title": "Receive a shipment",
+          "keywords": [
+            "courier",
+            "arrival",
+            "check-in",
+            "tube",
+            "scan",
+            "hemolyzed",
+            "missing",
+            "labels",
+            "discrepancy"
+          ],
+          "what": "Receiving has two parts. First you record how the boxes arrived: carrier, tracking, condition and boxes; this opens the order’s sample registry. Once the samples are registered, you check the tubes in one by one against that list and confirm the receipt.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When a client’s boxes arrive at the lab; the tube check-in after you [register the samples](#lab/register-samples).",
+          "steps": [
+            "Open **Receive shipment** from the menu, or press **Receive shipment →** on the order.",
+            "Choose the **Order**; only orders waiting to arrive are listed. Type the **Carrier** and, if you have it, the **Tracking number**. Choose the **Condition on arrival**, type the number of **Boxes** and any **Notes**, and press **Record arrival**. The sample registry opens: [register the samples](#lab/register-samples).",
+            "Back on **Receive shipment**, open the order under **Arrived · check tubes in**. The page lists every tube on the manifest.",
+            "Under **Scan or type the tube label**, scan the tube or type its code or the client’s tube ID. Choose its condition: **intact**, **hemolyzed**, **thawed** or **other** (then **Describe** it). Type the **Box** and **Position**, and press **Check in**. The box stays and the next position is filled in for the next tube.",
+            "When every tube that arrived is checked in, write the **Discrepancy note** if a tube is missing or not intact; it is required then.",
+            "Press **Confirm receipt**."
+          ],
+          "notes": [
+            "Recording the arrival moves the order from Request to Received. The client sees **Samples received**.",
+            "A tube not checked in counts as missing. When tubes are missing or not intact, confirming emails the client, who also reads the note on their order.",
+            "After **Confirm receipt** the tubes of that shipment can no longer change.",
+            "**Print labels** opens tube labels for the manifest (sample code, client tube ID and order), ready to print.",
+            "One box position holds one thing: a position held by a checked-in tube cannot take a stored aliquot, and the other way round.",
+            "**Thawed**, **Damaged** and **Partial · items missing** on arrival flag the order for a condition review. An order request that has not been accepted yet is not listed: accept it first."
+          ],
+          "shots": [
+            {
+              "file": "receive-shipment",
+              "caption": "The arrival record for order ORD703, before **Record arrival**.",
+              "alt": "The Receive shipment form: Order ORD703, Carrier World Courier, a Tracking number, the four Condition on arrival choices with Intact and cold selected, Boxes 1, Notes and the Record arrival button, beside the order at a glance."
+            },
+            {
+              "file": "shipment-checkin",
+              "caption": "The tube check-in: 10 of 12 tubes checked in, one hemolyzed, and the **Discrepancy note** written before **Confirm receipt**.",
+              "alt": "Receive shipment · ORD703: tiles for 12 tubes expected, 10 checked in, 1 hemolyzed and −80 °C stored in the demo intake box; the Check-in card with the tube label field, the Check in button, the condition choices intact, hemolyzed, thawed and other, Box and Position, and the manifest table with each tube’s client ID, condition and box position; the Discrepancy note card saying 2 tubes were not in the box and 1 was hemolyzed, with the note typed; and the Print labels and Confirm receipt buttons."
+            }
+          ]
+        },
+        {
+          "slug": "register-samples",
+          "title": "Register the samples",
+          "keywords": [
+            "registration",
+            "metadata",
+            "manifest"
+          ],
+          "what": "In the **Sample registry** you enter an order’s samples with their Metadata columns. Admin checks every row before saving, and the lab gives each sample its own code.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "After you record the arrival, when you have the client’s sample list.",
+          "steps": [
+            "Open **Sample registry** and choose the order under **Choose an order**. Recording the arrival opens it for you.",
+            "If a sample list was pasted in **New order**, it is already in **Paste from Excel**, marked “From the order’s sample list — review and register”. Otherwise copy the rows from the client’s Excel sheet and paste them there: one sample per row. A header row is matched to the Metadata columns by name.",
+            "Press **Add rows** to put the pasted list in the grid. To type a sample by hand, press **Add empty row**.",
+            "Check the pills (**valid**, **errors**, **warnings**) and the cells marked in the grid. Under **Fix before saving**, correct what is listed, or press the fix button offered for a row. **Map columns** changes how a pasted column was matched.",
+            "Press **Save N valid rows** (the button shows the number)."
+          ],
+          "notes": [
+            "**FullName** is required and must be unique in the order. The other Metadata columns are **Group1Term**, **Group2Term**, **ReplicateTerm**, **PatientTerm** and **TimePointTerm**; you can also record **Client sample ID**, **Matrix** and **Volume (µL)**. **Which columns?** lists them all.",
+            "To check the client’s tube IDs, open **Add the client’s manifest** and paste them, one per line. It is used for the check only.",
+            "Codes such as `ORD703-S001` are assigned when you save. They never contain a client name.",
+            "The order moves from Received to Registered. Its tubes can now be checked in on [Receive shipment](#lab/receive-shipment)."
+          ],
+          "shots": [
+            {
+              "file": "sample-registry-prefill",
+              "caption": "Just after **Record arrival**: the list pasted in **New order** waits in **Paste from Excel**, to review and register.",
+              "alt": "Register samples · ORD704: a green notice that the shipment was recorded, with the carrier, the condition, the time and the name of who received it; the order facts (stage Received, 12 samples expected, 0 registered); and the Paste from Excel box filled with the 12-row sample list under the note From the order’s sample list — review and register, with the Add rows and Add empty row buttons. Map columns and Save 0 valid rows at the top."
+            },
+            {
+              "file": "sample-registry",
+              "caption": "After **Add rows**: 12 valid rows, nothing to fix, ready for **Save 12 valid rows**.",
+              "alt": "Register samples · ORD704 after adding the rows: pills for 12 valid, 0 errors and 0 warnings; the grid with the Sample ID each row will get (ORD704-S001 to S012), client ID, FullName, the group, replicate, patient and time point terms, matrix and volume; Fix before saving with Nothing to fix; Checks Admin runs on every paste; and the Map columns and Save 12 valid rows buttons."
+            }
+          ]
+        },
+        {
+          "slug": "batch-builder",
+          "title": "Build a batch",
+          "keywords": [
+            "sequence",
+            "plate",
+            "run order",
+            "worklist"
+          ],
+          "what": "In **Batch builder** you pick registered samples, set the blanks and pooled QC, and preview the run order and the plate map. The rules start from the active instrument profile. Saving plans the batch.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When registered samples are ready to go on the instrument.",
+          "steps": [
+            "Open **Batch builder**.",
+            "Under **Choose the samples**, tick the samples, or press **Select all** (or **Select all of** an order).",
+            "Choose the **Panel** and the **Plate order**.",
+            "Check the rules, pre-filled from the active instrument profile: **Blanks at start**, **Pooled QC every**, **Blanks between samples** and **After every (samples)**. Tick **Pooled QC at the end** or **Blank after every QC** if you want them.",
+            "Decide on **Randomize the sample order**, and check the **Seed** and the **Minutes per injection**.",
+            "Press **Preview sequence**. Check the plate map and the sequence: the preview says “Not saved yet”.",
+            "Press **Save planned batch**."
+          ],
+          "notes": [
+            "Only samples not already in a live batch are offered. A sample comes back when its batch is archived.",
+            "The rules can be changed for one batch; the profile keeps its own. Set the profile’s rules under [Instruments & panels](#lab/instruments-panels).",
+            "The same samples and seed always give the same order. The seed is saved with the batch.",
+            "Saving creates any missing sample aliquots and moves the batch’s orders to **In batch**. The client sees **In analysis**. You can now [place the aliquots in Storage](#lab/storage).",
+            "The sequence is exported on the batch page: see [Run the batch](#lab/batch-run)."
+          ],
+          "shots": [
+            {
+              "file": "batch-preview",
+              "caption": "The preview for 12 samples: 2 blanks at the start, 1 blank after 10 samples and 2 pooled QCs, as the active profile sets.",
+              "alt": "The Batch builder preview, marked Not saved yet: 17 injections · 3 h 24 min, tiles for 17 injections, 12 samples, 2 pooled QC, 3 blanks, the run time and the end time if started now, and the plate map of plate 1 with two blanks in A1 and B1, the samples down the columns, a blank in F2 and two pooled QCs."
+            }
+          ]
+        },
+        {
+          "slug": "storage",
+          "title": "Store the aliquots",
+          "keywords": [
+            "freezer",
+            "rack",
+            "box",
+            "position",
+            "location",
+            "box map",
+            "print",
+            "re-extraction"
+          ],
+          "what": "**Storage** records which box and position holds each aliquot, and which freezer and rack each box is in. You place aliquots, move them between boxes, remove them when they leave, and print a box map.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "After you save a planned batch in **Batch builder**, which creates any missing sample aliquots; then each time you move an aliquot or take it out.",
+          "steps": [
+            "Open **Storage**, after **Batch builder** under **Lab work** in the menu.",
+            "Under **Waiting for a box**, press **Place** next to an aliquot.",
+            "Type the **Box**, for example `F1-R1-B02`, and the **Position**, for example `A5`. Press **Place**.",
+            "Press a box under **Boxes** to open its map. Choose its **Freezer and rack** and press **Save**.",
+            "Press a cell of the map to see the aliquot there (code, **Type**, sample, client, order, since when, next batch). Press **Move aliquot** or **Remove** if needed: type the **New box** and **Position**, or write the **Reason**.",
+            "To find an aliquot, enter a sample or aliquot code in **Sample or aliquot code** under **Find an aliquot**, then press **Search**."
+          ],
+          "notes": [
+            "An aliquot code is the sample code plus a number, for example `ORD703-S001-A1`. Its **Type** is **Original** for the first aliquot and **Re-extraction** for a later one.",
+            "**Print box map** opens the open box on one page, with its freezer and rack, ready to print.",
+            "**Freezers & racks** lists the lab’s freezers with their temperature and racks. Lab Owners and Admins add them (**Add a freezer**, **Add rack**) and archive them with a reason (**Archive…**); a freezer or rack that still holds a box cannot be archived.",
+            "A move keeps the old position in the history. Removing needs a reason, and the placement stays in the history.",
+            "Each box position holds one aliquot, and not a position a checked-in tube holds. If no aliquot is found for a registered sample, save its batch in **Batch builder** first."
+          ],
+          "shots": [
+            {
+              "file": "storage",
+              "caption": "After saving the batch: the order’s aliquots that are in no box yet wait here, each with **Place**.",
+              "alt": "The Storage page: Find an aliquot; the Boxes list with two boxes, one in Demo freezer F1 (demo) · Rack 1 (demo); Waiting for a box · 9 with the aliquots ORD703-S004-A1 to S012-A1 and a Place link on each; and Freezers & racks with the demo freezer at −80 °C and its rack."
+            },
+            {
+              "file": "storage-placed",
+              "caption": "A box in a freezer and rack, with three aliquots; position A2 selected.",
+              "alt": "The Storage page with box Demo box F1-R1-B03 (demo) open: the place Demo freezer F1 (demo) · Rack 1 (demo) · −80 °C with the Freezer and rack field and Save; the 9 × 9 box map with A1 to A3 taken and A2 ringed; the Selected · A2 panel with Aliquot ORD703-S002-A1, Type Original, Sample, Client, Order, Since and Next batch, and the Move aliquot and Remove buttons; Waiting for a box · 9; Freezers & racks with Archive… links and the New rack field; and Print box map at the top."
+            }
+          ]
+        },
+        {
+          "slug": "batch-run",
+          "title": "Run the batch",
+          "keywords": [
+            "export",
+            "acquire",
+            "instrument",
+            "bench sheet"
+          ],
+          "what": "On the batch page you download the sequence and the bench sheet, freeze the batch, and record when the instrument has acquired it.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When a planned batch is about to go on the instrument.",
+          "steps": [
+            "Open **Batch run** and the batch, for example `B2026-313`. Saving a batch takes you there.",
+            "Under **1. Download**, press **Download sequence CSV** and **Download bench sheet CSV**.",
+            "Under **2. Export**, press **Mark exported**. This freezes the batch version.",
+            "Run the sequence on the instrument.",
+            "When the instrument has finished, press **Mark acquired** under **3. Acquire**.",
+            "Press **Ingest results →** to go on to the results."
+          ],
+          "notes": [
+            "**Mark exported** moves the orders to Sequence exported. **Mark acquired** moves them to Acquired.",
+            "The CSV files use a generic layout; the SCIEX OS template is added when the lab has it.",
+            "To plan another batch, press **+ New batch**."
+          ],
+          "shots": [
+            {
+              "file": "batch-saved",
+              "caption": "A planned batch: download the files, then **Mark exported**.",
+              "alt": "Batch B2026-313 saved as planned: the Files and status panel with 1. Download (Download sequence CSV, Download bench sheet CSV), 2. Export (Mark exported) and 3. Acquire (Mark acquired, not yet available), and the plate map and sequence below."
+            },
+            {
+              "file": "batch-acquired",
+              "caption": "Acquired: the export is recorded with its time and checksum, and **Ingest results →** leads on.",
+              "alt": "Batch B2026-313 acquired: a green notice with an Ingest results button, an Acquired tag, the export recorded with its date, the person and a SHA-256, and 3. Acquire reading Acquired."
+            }
+          ]
+        },
+        {
+          "slug": "ingest-results",
+          "title": "Ingest the results",
+          "keywords": [
+            "SCIEX",
+            "upload",
+            "TXT",
+            "parse"
+          ],
+          "what": "You load the results file exported from SCIEX OS, read what the app found in it, and accept it. The raw peak areas are copied, never changed.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "After the batch is acquired and you have the SCIEX OS results as a TXT file.",
+          "steps": [
+            "Open **Ingest results** and choose the **Order**.",
+            "Choose the file under **SCIEX OS results TXT**. It can be up to 5 MB.",
+            "If you like, fill in the **SCIEX OS version** and the **Processing method**.",
+            "Press **Parse file**. Nothing is accepted yet.",
+            "Read the **Parse summary** and every line under **Checks**.",
+            "Press **Accept**.",
+            "Press **QC review →** to review the order’s samples and exclusions. If you do not need that review, the **Build dataset v1** link opens **Release**."
+          ],
+          "notes": [
+            "If a check stops the file and you still want to accept it, write an **Override reason**. It is saved with the accepted summary.",
+            "Accepting moves the order to Processed and records the file’s SHA-256. The client sees **Quality review**."
+          ],
+          "shots": [
+            {
+              "file": "ingest-parsed",
+              "caption": "Parsed, not yet accepted: the summary, the checks and **Accept**.",
+              "alt": "The Ingest results page: the Upload results TXT form, and the Parse summary marked Awaiting acceptance with counts of Unknown, Blank and Quality Control injections, analytes, IS rows, duplicates dropped and N/A share, six checks all OK, the Override reason field and the Accept button."
+            },
+            {
+              "file": "ingest-accepted",
+              "caption": "Accepted: the order is **Processed**. **QC review →** is the main button; **Build dataset v1** is a link to **Release**.",
+              "alt": "The Ingest results page after accepting results for ORD654: a green notice with the QC review button, Build dataset v1 and Order detail links, and the Parse summary marked Accepted."
+            }
+          ]
+        },
+        {
+          "slug": "qc-review",
+          "title": "Review QC and exclusions",
+          "keywords": [
+            "quality",
+            "exclude",
+            "exclusion"
+          ],
+          "what": "**QC review** records the lab’s decisions on a processed order: which samples to exclude, with a reason, and, if you like, that the lab has reviewed QC. Scientific QC itself happens in Nexo or R.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "After the results are accepted and before the dataset is built.",
+          "steps": [
+            "Open **QC review** and press **Open →** next to the order.",
+            "Read each sample’s **Decision**: **Included**, or **Excluded** with its reason, person and date.",
+            "To record an exclusion, press **Exclude** next to the sample, write the **Reason** and press **Exclude sample**. This records the decision; it does not remove the sample’s data from the dataset.",
+            "If you want to record that QC was reviewed, press **Mark QC reviewed** and then **Yes, mark QC reviewed**.",
+            "Press **Go to Release →** to build the dataset. After marking QC reviewed, the confirmation also offers **Release →**."
+          ],
+          "notes": [
+            "**Mark QC reviewed** is optional. **Release** builds the dataset from Processed too.",
+            "An excluded sample keeps its data in the dataset. The dataset’s processing record lists the exclusions.",
+            "To take an exclusion back, press **Withdraw**, give a reason and press **Withdraw exclusion**. The decision stays in the audit log.",
+            "Once the dataset is built, the order’s QC decisions are closed."
+          ],
+          "shots": [
+            {
+              "file": "qc-review",
+              "caption": "A processed order: three samples, all included, and the optional **Mark QC reviewed**.",
+              "alt": "The QC review page for ORD654: the order facts (stage Processed, results file, 3 samples, 0 excluded), the Optional step panel QC reviewed with the Mark QC reviewed button, and the samples table with an Exclude link on each sample."
+            },
+            {
+              "file": "qc-reviewed",
+              "caption": "QC reviewed: **Release →** builds the dataset next.",
+              "alt": "The QC review page after marking: a green notice that ORD654 is QC reviewed with a Release button, the stage now QC reviewed, and the date and person who marked it."
+            }
+          ]
+        },
+        {
+          "slug": "release-policy",
+          "title": "Set the release policy",
+          "keywords": [
+            "signers",
+            "signature",
+            "approval"
+          ],
+          "what": "The **Release policy** says who may sign a dataset and how many signatures a release needs: at least two, by different eligible people.",
+          "who": [
+            "lab-owner"
+          ],
+          "whoNote": "Only an Owner changes the policy. Lab admins and Operators can read it.",
+          "when": "Before the lab’s first release, and whenever the lab changes who signs.",
+          "steps": [
+            "Open **Release policy**, under **Organization** in the menu.",
+            "Under **Eligible signers**, tick the people who may sign. Lab Owners, Admins and Operators may be listed. With nobody selected, any active Lab owner or Lab admin may sign.",
+            "Set **Required signatures** to at least 2. If you selected named signers, select at least as many people as the required count.",
+            "Press **Save policy**."
+          ],
+          "notes": [
+            "A new policy applies to every release from then on. Earlier policies are kept in the history.",
+            "A person who leaves the lab stops counting, even if listed. Their earlier signatures stay as evidence."
+          ],
+          "shots": [
+            {
+              "file": "release-policy",
+              "caption": "The policy of the pictures: two signatures, from two eligible signers.",
+              "alt": "The Release policy page, signed in as an Owner: a green Release policy saved notice, the current policy 2 signatures required with two eligible signers, the Eligible signers checkboxes, the Required signatures field set to 2 and the Save policy button, beside Who can be a signer."
+            }
+          ]
+        },
+        {
+          "slug": "sign-and-release",
+          "title": "Sign and release a dataset",
+          "keywords": [
+            "signature",
+            "sign",
+            "approve",
+            "publish"
+          ],
+          "what": "In **Release** you build a frozen dataset version from the accepted results, collect the signatures the release policy sets, and release it. Only then can the client see it.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "whoNote": "Any lab staff member can build the dataset. With no named signers, active Lab Owners and Admins may sign and release. With named signers, only those who are still active lab staff may do so; each person signs once.",
+          "when": "After the results are accepted (and, if you do it, after the QC review).",
+          "steps": [
+            "Open **Release** from **QC review**, or use the **Build dataset v1** link after ingesting. Under **Build a dataset**, press **Build dataset v1** next to the order to create the version.",
+            "On the version page, for example “ORD654 · Dataset v1”, check **Files of this version**: the workbook, the analysis file and the companion file, each with its SHA-256.",
+            "Under **Sign this version**, choose your **Role**: **Prepared**, **Reviewed** or **Approved**. Add a **Note (optional)** and press **Sign**.",
+            "Ask the next eligible person to sign in and sign the same way. The page says how many signatures are still needed.",
+            "When the count is met, press **Release dataset**."
+          ],
+          "notes": [
+            "You cannot release on your own: the release needs as many different eligible people as the policy sets, never fewer than two.",
+            "Signing freezes the files’ digests. A correction is a new version.",
+            "Releasing puts the analysis file in Team’s library and creates the Team project, with the client’s people as viewers and the signers as owners. The order then reads **Release complete**, the client sees **Released**, and the client’s people get the “A dataset is released” email if it is on.",
+            "If a released version must be pulled, an eligible release signer can use **Withdraw** with a **Reason**. The Team project is not removed."
+          ],
+          "shots": [
+            {
+              "file": "dataset-built",
+              "caption": "Built: no signatures yet. **Sign this version** is your turn.",
+              "alt": "The ORD654 · Dataset v1 page just after building: the stages Built, Signatures 0 of 2 and Release, the Sign this version form with Role and Note (optional) and a Sign button, the files of this version with their SHA-256 digests, and Signatures marked 0 of 2 required signatures."
+            },
+            {
+              "file": "signed-approved",
+              "caption": "Two different people have signed (Prepared, then Approved): **Release dataset**.",
+              "alt": "The same page signed in as a second person: Signatures 2 of 2, the Release this version panel with the Release dataset button, and the Signatures list showing one Prepared and one Approved signature by two different people."
+            }
+          ]
+        },
+        {
+          "slug": "deliverables",
+          "title": "Share files with the client",
+          "keywords": [
+            "report",
+            "deliverable",
+            "upload",
+            "figure"
+          ],
+          "what": "Under **Deliverables** on an order, you add reports, figures and tables for the client to download. The client only sees the files you show.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "Once the order is accepted and while it is not archived, whenever you have a file for the client. You can share files before or after release.",
+          "steps": [
+            "Open the order from **Pipeline**.",
+            "Under **Deliverables**, type a **Title** and choose the **Kind**.",
+            "Under **File**, choose a PDF, PNG, JPEG, SVG, XLSX or CSV, 50 MB at most.",
+            "Tick **Show to the client now** if the client should see it at once.",
+            "Press **Add file**."
+          ],
+          "notes": [
+            "A new file stays hidden unless you tick **Show to the client now**. Use **Show to client** and **Hide from client** later.",
+            "To take a file back for good, write a reason and press **Retire**.",
+            "When a current released dataset exists, new files belong to that version. Otherwise they belong to the order without a dataset version."
+          ],
+          "shots": [
+            {
+              "file": "deliverable-added",
+              "caption": "A file added and shown: it reads **Client sees it**.",
+              "alt": "The order page of released order ORD654: Release complete with all checks OK and the View datasets and Open in Nexo buttons, and the Deliverables section with a green File added and shown to the client notice, the file tagged Client sees it with Download, Hide from client and Retire, and the form to add another file."
+            }
+          ]
+        },
+        {
+          "slug": "nexo-access",
+          "title": "Turn Nexo on for a client",
+          "keywords": [
+            "analysis",
+            "access",
+            "prepare"
+          ],
+          "what": "The lab decides, client by client, whether the client’s people can open their released datasets in Nexo. It is off by default.",
+          "who": [
+            "lab-owner",
+            "lab-admin"
+          ],
+          "when": "When a client should work with their data in Nexo.",
+          "steps": [
+            "Open **Clients** and the client.",
+            "Under **Nexo access**, press **Turn Nexo access on**.",
+            "Leave the second switch off unless the client should prepare datasets themselves. To allow it, press **Let members prepare in Nexo**."
+          ],
+          "notes": [
+            "With Nexo access on, the client’s people see **Open in Nexo** beside current released datasets only where the server also enables client access to Nexo.",
+            "By default the lab prepares the dataset in Nexo, so the client opens a board that is ready: see [Prepare the data](#analysis/nexo-prepare). With **Let members prepare in Nexo**, they may also prepare datasets and upload their own Excel.",
+            "Turn either back with **Turn Nexo access off** or **Stop members preparing in Nexo**."
+          ],
+          "shots": [
+            {
+              "file": "nexo-switch-on",
+              "caption": "Nexo access on; members preparing stays off, so the lab prepares.",
+              "alt": "A client’s page in Admin: a green notice that Nexo access is turned on, the Edit client form, Members, and the Nexo access panel with access On and a Turn Nexo access off button, and members preparing Off with a Let members prepare in Nexo button."
+            }
+          ]
+        },
+        {
+          "slug": "notifications",
+          "title": "Choose your emails",
+          "keywords": [
+            "email",
+            "notification",
+            "alert"
+          ],
+          "what": "When sending is enabled, the app emails people after the events listed on **Notifications**. For lab staff the page starts with who hears about what; below it each person turns their own emails on or off, and Lab Owners and Admins also see the send log.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator",
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Once, to choose your emails; later, to check what was sent.",
+          "steps": [
+            "Open **Notifications** under **Organization** in the lab menu, or directly in the client portal menu.",
+            "Lab staff: read the table at the top. For each **Event** it shows who gets the email: **Lab staff** (by role, or the owner of the step), **Client admin**, **Requester** and **Client members**.",
+            "Lab Owners and Admins: press a ✓ or — to switch that audience on or off, or press the names under **Lab staff** to choose the roles and press **Save**. For **No results TXT … days after acquisition**, press the number to change the days.",
+            "Under **Your emails**, press **Turn off** on one you do not want. **Turn on** brings it back.",
+            "Lab Owners and Admins: under **Recent sends**, read up to 50 recent entries, one per recipient. **Status** is **Sent**, **Failed** or **Skipped**; **Detail** explains a failure or skip."
+          ],
+          "notes": [
+            "**Gate failed**, **Order requested**, **Access requested** and the results check are for lab staff only.",
+            "The owner of the step is the person who recorded it. Requester is the client member who asked for the order; Client members are everyone in the order’s client, viewers too.",
+            "The results check runs every hour on the server and when lab staff open **Pipeline**, and emails once per order.",
+            "Each switch under **Your emails** is on until you turn it off. A client member’s choice applies to every client they belong to.",
+            "Emails go out only where sending is turned on for the server.",
+            "Invitations and activation emails also come from “Lipidomics · Libreros Lab” and are listed in **Recent sends**. They have no switch."
+          ],
+          "shots": [
+            {
+              "file": "notifications",
+              "caption": "Who hears about what, and your own emails, all on.",
+              "alt": "The Notifications page for lab staff: the table Event, Lab staff, Client admin, Requester and Client members, with rows Shipment received, Gate failed, Batch acquired, No results TXT 3 days after acquisition, Dataset released, Order requested, Order request answered and Access requested, ticks and dashes in the client columns; the explanation below it; and Your emails · Lab work with eight emails, each On with a Turn off button."
+            }
+          ],
+          "whoNote": "Everyone changes only their own email preferences. Only Lab Owners and Admins change the table and read **Recent sends**."
+        },
+        {
+          "slug": "audit-log",
+          "title": "Read the audit log",
+          "keywords": [
+            "history",
+            "who changed",
+            "audit trail",
+            "export",
+            "CSV",
+            "compliance"
+          ],
+          "what": "The **Audit log** records every change in Admin: who did what, and when (lab time). Nothing in it can be edited, and nothing in Admin is hard-deleted.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator"
+          ],
+          "when": "When you need to know who changed something, or to hand over a record of an order.",
+          "steps": [
+            "Open **Audit log**, under **Organization** in the menu.",
+            "Choose an **Entity**, for example **Order** or **Sample**, or type an **Order code**, for example `ORD703`. Press **Filter**.",
+            "Read **When**, **Who**, **Client** and **What**. Press a line under **What** to see the fields that changed, before → after.",
+            "Press **Older** for earlier events, and **Newest** to come back. **Clear** removes the filters.",
+            "To keep a copy, press **Export CSV**. The file holds every page of the current filter."
+          ],
+          "notes": [
+            "Filtering by order code also shows that order’s shipments, samples, results files, datasets and signatures.",
+            "Each export is itself recorded in the audit log, as **Audit log export**, with who exported and the filter."
+          ],
+          "shots": [
+            {
+              "file": "audit-log",
+              "caption": "The audit log filtered to order ORD703: from **Order ORD703 created** to **moved to In batch**.",
+              "alt": "The Audit log page: the Filter and Export CSV buttons, a note Showing ORD703 and its shipments, samples, results files, datasets and signatures, the Entity and Order code filters with ORD703 and Clear, and the events table with When, Who, Client and What, from Order ORD703 created, Shipment received and moved to Received, through Sample ORD703-S001 to S012 registered, to moved to Registered and moved to In batch."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "client",
+      "title": "Client",
+      "app": "portal",
+      "label": "Client (portal)",
+      "keywords": [
+        "login"
+      ],
+      "summary": "For client labs: ask for measurements, follow your orders, get your results.",
+      "what": "The client portal is where your lab asks for measurements, follows each order step by step, and finds the results the lab releases to you.",
+      "who": "People at a client lab: Client admins, Requesters and Viewers.",
+      "notes": [
+        "**What you can see.** Only your own client’s orders, and only the datasets the lab has released and the files it shares with you. Work in progress stays in the lab.",
+        "**What you can do.** A Client admin or a Requester can request orders. A Viewer can follow every order but cannot request one. The lab decides who belongs to your client.",
+        "**Emails.** When sending is enabled, you can receive **My order request is answered** for a request you submitted and **A dataset is released** for a release to your client. Turn either off under **Notifications** in the menu. Your invitation and any activation email always come, from “Lipidomics · Libreros Lab”, when the server can send to you."
+      ],
+      "steps": [
+        {
+          "slug": "client-request-access",
+          "title": "Ask for access",
+          "keywords": [
+            "signup",
+            "register",
+            "account"
+          ],
+          "what": "The **Request access** page tells the lab who you are. A person at the lab reviews every request by hand. No account is created yet.",
+          "who": [
+            "anyone"
+          ],
+          "when": "The first time you want to use the service, when you have no account.",
+          "steps": [
+            "Open the sign-in page and press **Request access →** under “New to the lipidomics service?”.",
+            "Fill in your **Full name**, **Work email** and **Organisation or lab**.",
+            "Choose the **Type**: PI lab, internal group or company.",
+            "If you like, say **What would you like to measure?** Do not include patient names or sample details.",
+            "Press **Send request**.",
+            "Keep the reference you are shown, for example `AR-0068`, and quote it if you write to the lab."
+          ],
+          "notes": [
+            "If the request is approved, an email from “Lipidomics · Libreros Lab”, “Welcome to Lipidomics · Activate your account”, brings your personal link, valid for 7 days, to set your password. If the lab’s server cannot email you, a person at the lab sends you the link. A declined request gets no email from the app; the lab may write to you."
+          ],
+          "shots": [
+            {
+              "file": "request-access-form",
+              "caption": "The public form records an access request. An account is created only after approval and acceptance of the invitation.",
+              "alt": "The Request access form filled in for a synthetic person: Full name, Work email, Organisation or lab, Type set to PI lab, What would you like to measure?, and the Send request button, with the lab’s contact below."
+            },
+            {
+              "file": "request-access-sent",
+              "caption": "Sent: the reference and what happens next.",
+              "alt": "The Request received page: a green notice that the lab has your request and will write to your email, the reference AR-0068, the note that an approved request brings a link valid for 7 days, and a Back to sign in button."
+            }
+          ]
+        },
+        {
+          "slug": "client-accept-invitation",
+          "title": "Accept your invitation",
+          "keywords": [
+            "password",
+            "join",
+            "invite",
+            "activate",
+            "welcome email"
+          ],
+          "what": "The invitation link opens a page where you choose your password. That creates your account.",
+          "who": [
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "When the invitation email arrives, “Welcome to Lipidomics · Activate your account” from “Lipidomics · Libreros Lab”, or when the lab sends you the link itself.",
+          "steps": [
+            "Open the link in the email (or the link the lab sent you). The page says which role and client you join as, the email the invitation is for, and when it expires.",
+            "Choose a **Password** of at least 12 characters, and type it again under **Repeat password**.",
+            "Press **Set password and join**.",
+            "Press **Sign in →** and sign in with your email and your new password."
+          ],
+          "notes": [
+            "No email? Look in your spam folder for “Lipidomics · Libreros Lab”. If the lab’s server could not email you, a person at the lab sends you the link: ask the lab.",
+            "The link works once. If the page says “This invitation link is not valid.”, it has expired, been used or been revoked: ask the lab for a new one.",
+            "Already have an account? Press **Sign in to accept →** and then **Accept invitation**.",
+            "Have an account but never signed in? The lab can send you an activation email, “Welcome to Lipidomics · Choose your password”. Open its link within one hour, choose a **Password**, repeat it, press **Choose password**, then sign in."
+          ],
+          "shots": [
+            {
+              "file": "dana-invitation",
+              "caption": "The invitation: “Join as Client admin at …”.",
+              "alt": "The invitation page: the title Join as Client admin at a synthetic client lab, the email and expiry date, the Password and Repeat password fields (masked grey), and the Set password and join button."
+            },
+            {
+              "file": "dana-account-ready",
+              "caption": "Your account is ready.",
+              "alt": "The same page after joining: a green notice Your account is ready, with the email to sign in with, and a Sign in button."
+            }
+          ]
+        },
+        {
+          "slug": "client-sign-in",
+          "title": "Sign in",
+          "keywords": [
+            "login",
+            "password",
+            "forgot",
+            "reset password",
+            "forgotten password"
+          ],
+          "what": "One sign-in page serves clients and lab staff. Everyone signs in with their email and password.",
+          "who": [
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Each time you come back to the portal.",
+          "steps": [
+            "Type your **Email** and **Password**.",
+            "Press **Sign in**. With one client, you arrive on **Your orders**. If you belong to several clients and none is selected, choose a client first."
+          ],
+          "notes": [
+            "Forgot your password? Press **Forgot your password?**, enter your **Email** and press **Send reset link**. When password-reset email is configured, the app emails you a link that works once, for one hour.",
+            "**Use Yale SSO** is not set up yet. Use your email and password."
+          ],
+          "shots": [
+            {
+              "file": "dana-sign-in",
+              "caption": "The sign-in page, “Welcome back.”",
+              "alt": "The sign-in page: Email, Password (masked grey), the Sign in button, the Forgot your password? link, a disabled Use Yale SSO button, and the Request access link at the bottom."
+            }
+          ]
+        },
+        {
+          "slug": "client-home",
+          "title": "Your orders at a glance",
+          "keywords": [
+            "home",
+            "dashboard",
+            "status"
+          ],
+          "what": "**Your orders** is your home page. It shows everything the lab is doing for your client, and the datasets it has released to you.",
+          "who": [
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Each time you sign in.",
+          "steps": [
+            "Read the four boxes at the top: **Waiting for the lab**, **Waiting for your samples**, **With the lab** and **Released**.",
+            "Under **Orders**, press an order to see where it is. The bar beside it shows its progress.",
+            "Under **Datasets**, find the results the lab has released to you.",
+            "If you belong to more than one client, press **Change client** to choose whose orders you see."
+          ],
+          "notes": [
+            "**Your access** shows your role, what it lets you do, and how to contact the lab.",
+            "A dataset appears only after the lab has signed and released it.",
+            "The menu has **Home** and **Notifications**. Client admins and Requesters also see **Request an order**; Viewers do not."
+          ],
+          "shots": [
+            {
+              "file": "client-home-accepted",
+              "caption": "One order, accepted and waiting for your samples.",
+              "alt": "The client home page Your orders: four boxes with counts, one of them Waiting for your samples: 1, the Orders list with order ORD654 marked Accepted · send your samples and a progress bar, an empty Datasets list, and the Your access panel for a Client admin."
+            }
+          ]
+        },
+        {
+          "slug": "client-request-order",
+          "title": "Request an order",
+          "keywords": [
+            "new order",
+            "measure",
+            "quote"
+          ],
+          "what": "You tell the lab what you would like measured. The lab reviews the request and answers before you ship anything.",
+          "who": [
+            "client-admin",
+            "requester"
+          ],
+          "whoNote": "Client admins and Requesters. A Viewer can follow orders but cannot request one.",
+          "when": "When you have samples you want the lab to measure.",
+          "steps": [
+            "Press **+ Request an order** on **Your orders**, or **Request an order** in the menu.",
+            "Choose the **Panel**. Not sure? Choose **Let the lab advise**.",
+            "Type a short **Title** that you and the lab will both recognise. No patient names.",
+            "Type the **Matrix**, for example Plasma, and the **Expected samples**.",
+            "Add a **Billing reference** and any **Notes** the lab should know.",
+            "Press **Send request**.",
+            "Wait for the lab’s answer. Do not ship anything until the order shows **Accepted**."
+          ],
+          "notes": [
+            "You do not enter sample names or groups here. The lab registers them from your sample list when the shipment arrives.",
+            "Your home page shows the request at once, marked **Requested**, under **Waiting for the lab**.",
+            "The lab accepts it, or tells you why not. You get the “My order request is answered” email if it is on."
+          ],
+          "shots": [
+            {
+              "file": "request-order-form",
+              "caption": "The request form, with “What happens next”.",
+              "alt": "The Request an order form: Requesting for (your client), Panel set to Let the lab advise, Title, Matrix, Expected samples, Billing reference, Notes and the Send request button, with the four steps of What happens next."
+            },
+            {
+              "file": "request-sent",
+              "caption": "Sent: the order waits for the lab.",
+              "alt": "Your orders after sending: a green notice Request ORD654 sent, the Waiting for the lab box at 1, and the order listed as Requested · waiting for the lab’s review."
+            }
+          ]
+        },
+        {
+          "slug": "client-order-status",
+          "title": "Follow an order",
+          "keywords": [
+            "status",
+            "progress",
+            "ship",
+            "shipping"
+          ],
+          "what": "Each order has its own page with six steps, from **Requested** to **Released**. It tells you where the order is and whether the lab needs anything from you.",
+          "who": [
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Any time after you send a request.",
+          "steps": [
+            "On **Your orders**, press the order.",
+            "Read the six steps: **Requested**, **Accepted**, **Samples received**, **In analysis**, **Quality review**, **Released**. The current one is marked.",
+            "At **Accepted**, send your samples: write the order code on every box and follow the **Shipping instructions from the lab**.",
+            "From **Samples received** to **Quality review**, nothing is needed from you.",
+            "At **Released**, your results are ready: see [Get your results and files](#client/client-dataset-files)."
+          ],
+          "notes": [
+            "Ship only after the order shows **Accepted**. The lab records the arrival, and the order moves to **Samples received**.",
+            "If the lab declines a request, the order reads **Declined by the lab** with the lab’s reason. Client admins and Requesters can press **Request another order →**; Viewers cannot request another order.",
+            "**Order facts** lists what you asked for: panel, matrix, samples, billing reference and your notes."
+          ],
+          "shots": [
+            {
+              "file": "client-order-accepted",
+              "caption": "Step 2 of 6: send your samples, with the lab’s shipping instructions.",
+              "alt": "A client order page for ORD654: the six steps with Requested done and Accepted current, the Send your samples panel with the order code and the shipping instructions from the lab, and the Order facts."
+            }
+          ]
+        },
+        {
+          "slug": "client-dataset-files",
+          "title": "Get your results and files",
+          "keywords": [
+            "download",
+            "results",
+            "dataset",
+            "report"
+          ],
+          "what": "When the lab releases a dataset, it appears on your home page and on the order. The lab can also share files with you, such as reports, figures and tables.",
+          "who": [
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "After the order shows **Released**, or when the lab tells you it has shared a file. The “A dataset is released” email tells you too, if it is on.",
+          "steps": [
+            "On **Your orders**, look under **Datasets** for the version, release date and sample count. A file count appears when the lab has shared files for the order.",
+            "Press **Order →** to open the order.",
+            "Under **Your files**, press **Download** next to the file you want."
+          ],
+          "notes": [
+            "You see only the datasets the lab has released and the files it has chosen to share. If the order says “The lab has not shared any files for this order yet.”, ask the lab.",
+            "Every released dataset is signed by at least two different people at the lab.",
+            "The lab can add files later, so look again if you are expecting a report.",
+            "If a version is withdrawn or superseded and no current version remains, the portal shows that status and the lab’s reason; **Open in Nexo** is unavailable."
+          ],
+          "shots": [
+            {
+              "file": "client-home-released",
+              "caption": "Released: the dataset is listed under **Datasets**.",
+              "alt": "Your orders after the release: the Released box at 1, no orders in progress, and under Datasets the order ORD654 with Dataset v1, its release date, 3 samples, 1 file and an Order button."
+            },
+            {
+              "file": "client-order-released",
+              "caption": "The released order: dataset v1 and **Your files**.",
+              "alt": "The released order page: all six steps done, the Released panel with Dataset v1 and its date, signed by two different lab reviewers, and Your files with a CSV report and a Download button."
+            }
+          ]
+        },
+        {
+          "slug": "client-open-in-nexo",
+          "title": "Open a dataset in Nexo",
+          "keywords": [
+            "analysis",
+            "figures",
+            "plots"
+          ],
+          "what": "**Open in Nexo** opens the current released dataset in Nexo, in a new tab. By default the lab prepares the data first, so you land straight on the shared board, with the plots the lab has added.",
+          "who": [
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "After a dataset is released, with Nexo access enabled for your client and on the server.",
+          "steps": [
+            "On **Your orders**, find the dataset under **Datasets**.",
+            "Press **Open in Nexo** next to it.",
+            "Nexo opens the board the lab prepared, with no preparation or quality check on the way. The band under the toolbar reads, for example, “32 lipids · 3 samples”, **You can comment** and **Prepared by Paula · settings**.",
+            "Continue with [Find your way around the Canvas](#analysis/nexo-board)."
+          ],
+          "notes": [
+            "No **Open in Nexo** button? The lab’s client switch and server support are both required. Ask your lab contact.",
+            "**You can comment** is what client people can do on a shared board by default: add comments, not change the plots.",
+            "Press **Prepared by … · settings** to see how the data was prepared: samples, detection, missing values, normalization and the quality check.",
+            "By default the lab prepares the dataset in Nexo first. If it is not ready when you open it, contact the lab.",
+            "Nexo opens the exact version the lab signed and released."
+          ],
+          "shots": [
+            {
+              "file": "client-open-in-nexo",
+              "caption": "The client portal after Nexo access is enabled: **Open in Nexo** appears beside the released dataset.",
+              "alt": "The client’s Your orders page for ORD654, with Dataset v1 under Datasets and the Order and Open in Nexo buttons."
+            },
+            {
+              "file": "client-nexo-board",
+              "caption": "The shared board as the lab prepared it, with the plot the lab added. **You can comment**.",
+              "alt": "Nexo’s Canvas for ORD654 · v1, from Admin, opened by a client: a green Live pill; the band reads 32 lipids · 3 samples, You can comment and Prepared by Paula (simulated) · settings; the toolbar has Targeted lipids, Comment, Draft, Figure page and Export figure, and no Add plot; and the PCA scores · 2D card the lab added, drawn on the canvas. On a phone the toolbar wraps, the band shows 32 lipids · 3 samples and You can comment above the Prepared by chip, and the card fits the screen."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "analysis",
+      "title": "Analysis",
+      "app": "Nexo",
+      "label": "Analysis (Nexo)",
+      "summary": "For anyone exploring a released dataset: prepare it, check it, then build figures on the Canvas.",
+      "what": "Nexo is where you explore a released dataset. The first person to open it prepares the data with Team’s settings and reads Team’s quality check. Then everyone works on one shared board, the Canvas.",
+      "who": "Lab staff, and the people of a client the lab has turned Nexo on for.",
+      "notes": [
+        "**Team** is the lab’s analysis engine. Nexo prepares and checks the data with it and starts from Team’s default settings, so its screens say “Team’s defaults” or “Preparing with Team…”. You work only in Nexo: Team is switched off, and its old addresses lead to Nexo.",
+        "**Who prepares.** By default the lab prepares each dataset, so clients find it ready. The lab can let a client’s members prepare too: see [Turn Nexo on for a client](#lab/nexo-access).",
+        "**One board per dataset.** Everyone who opens the same released version joins the same board and sees the same prepared data.",
+        "**Opening Nexo directly.** Nexo asks you to sign in on “Your analysis starts here”: type the same **Email** and **Password** as for Admin and press **Continue**. **Forgot password?** or, the first time, **First time here?** opens a page that emails you a link to choose your password."
+      ],
+      "steps": [
+        {
+          "slug": "nexo-open",
+          "title": "Open a released dataset in Nexo",
+          "keywords": [
+            "analysis",
+            "Team"
+          ],
+          "what": "**Open in Nexo** opens the exact released dataset version in Nexo, in a new tab. Lab staff open it from Admin; clients use the portal when Nexo is enabled for their client and on the server.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator",
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Once a dataset is released.",
+          "steps": [
+            "Lab staff: on the dataset’s release page, press **Open in Nexo** under **Team project**. The order page (**Release complete**) and **Datasets** have the same button.",
+            "Clients: press **Open in Nexo** next to the dataset on **Your orders**. See [Open a dataset in Nexo](#client/client-open-in-nexo).",
+            "If nobody has prepared the dataset yet, Nexo opens on **Prepare**, for example **Prepare ORD654 · v1**: see [Prepare the data](#analysis/nexo-prepare).",
+            "If it is already prepared, Nexo opens its shared board directly: see [Find your way around the Canvas](#analysis/nexo-board). The top bar names the dataset, for example **ORD654 · v1**, with **from Admin**."
+          ],
+          "notes": [
+            "The link identifies the exact released dataset version in Admin. It is unavailable for built, withdrawn, superseded or archived versions.",
+            "Use **Open in Nexo**. The **Team project** panel also shows **Open Team**, but Team is switched off and its pages lead to Nexo.",
+            "Opening Nexo without a dataset shows **Start**: your projects, and under **Released datasets** those not prepared yet, each with **Prepare**, or **Waiting for the lab** when the lab prepares it first. On a phone, **Prepare** reads **Prepare on a computer**: preparing needs a computer."
+          ],
+          "shots": [
+            {
+              "file": "released",
+              "caption": "A released dataset in Admin: **Open in Nexo** under **Team project**.",
+              "alt": "The ORD654 · Dataset v1 page after release: a green Dataset v1 released notice, the stages Released, Team project and Withdraw, and on the right the Team project panel with the Open Team and Open in Nexo buttons, above the Withdraw panel."
+            }
+          ]
+        },
+        {
+          "slug": "nexo-prepare",
+          "title": "Prepare the data",
+          "keywords": [
+            "prepare",
+            "normalization",
+            "imputation",
+            "QRILC",
+            "detection",
+            "settings",
+            "samples",
+            "study design"
+          ],
+          "what": "When an eligible person first opens a released dataset that nobody has prepared, Nexo opens **Prepare** with the dataset’s name, for example **Prepare ORD654 · v1**: the samples to keep and how Team prepares them. Team’s defaults are filled in: change only what your study needs. A live preview shows what your choices keep.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator",
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "whoNote": "By default the lab prepares. Client people prepare only if the lab has allowed it for their client.",
+          "when": "When you open a released dataset that nobody has prepared yet. Admin’s **Open in Nexo** goes straight to this screen.",
+          "steps": [
+            "Under **Samples**, every sample is ticked, grouped by condition, for example Control and Treated. Untick a sample to leave it out; **Select all** and **Clear** change them all. The line below counts them, for example “3 of 3 selected”.",
+            "Under **Detection**, set **Keep lipids detected in at least** a share of the samples, and where: **All selected samples** or **At least one condition group**.",
+            "Under **Missing values**, **Estimate with QRILC** fills each missing value with a low, plausible estimate. Off, missing values stay missing.",
+            "Under **Normalization**, choose **Median (log scale)**, **PQN (linear scale)** or **None**.",
+            "Under **Study design**, you may choose the **Experimental unit** and the **Sample relationship**. It is optional now, and needed before any statistics.",
+            "Read **With these choices** on the right: how many lipids are kept, for example “32 of 33 lipids kept · 1 left out”, a chart of lipids by how many samples detect them, and a summary of your settings.",
+            "Press **Prepare and check**. Team prepares the data (“Preparing with Team…”), then the [Quality check](#analysis/nexo-quality-check) opens."
+          ],
+          "notes": [
+            "The bottom bar says “All settings are Team’s defaults.” until you change one; then it counts your changes, and **Reset** puts Team’s defaults back.",
+            "**More settings** holds the rarer choices: **Leave out lipids never detected in the selected samples**, **For each file, set entirely missing lipids to zero**, **Replace remaining missing values with zero** and the **Imputation seed**.",
+            "The study design is never guessed for you. You can also confirm it later on the Canvas.",
+            "What you choose here is what everyone on the board sees.",
+            "**Cancel**, or **‹ Start** at the top, leaves without preparing anything.",
+            "The bar at the top shows the steps **Data**, **Review** (current here) and **Canvas**, and on the right your name with the account menu: press the person icon, then **Sign out**."
+          ],
+          "shots": [
+            {
+              "file": "nexo-prepare",
+              "caption": "**Prepare ORD654 · v1** with Team’s defaults: every sample kept, and the preview on the right.",
+              "alt": "Nexo’s Prepare ORD654 · v1 screen, under the top bar with Data, Review (current) and Canvas and the account menu Lab staff: 33 lipids · 3 samples; Samples with Control S1 and S2 and Treated S3 all ticked, 3 of 3 selected, Select all and Clear; Detection with Keep lipids detected in at least 0 % of All selected samples; Missing values with Estimate with QRILC on; Normalization set to Median (log scale); Study design with Choose a unit and Choose a design. On the right, With these choices: 32 of 33 lipids kept · 1 left out, a bar chart of lipids by how many samples detect them with Show as table, and the settings summary. The bottom bar reads 32 of 33 lipids kept, All settings are Team’s defaults, with Cancel and Prepare and check. On a phone the form fills the screen, with Prepare and check at the bottom."
+            }
+          ]
+        },
+        {
+          "slug": "nexo-quality-check",
+          "title": "Read the quality check",
+          "keywords": [
+            "quality",
+            "outlier",
+            "PCA",
+            "exclude",
+            "keep",
+            "check",
+            "verdict"
+          ],
+          "what": "After **Prepare and check**, Nexo shows Team’s **Quality check** of the prepared data: one verdict and three checks. It warns and never blocks: **Open the Canvas** always works.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator",
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "whoNote": "Whoever prepares the dataset. People who open it later go straight to the board.",
+          "when": "Right after you prepare a dataset, before its board opens.",
+          "steps": [
+            "Read the line under the title, for example **Quality check · ORD654 · v1**: “Prepared by Team with your choices: 32 lipids, 3 samples.”",
+            "Read the verdict. **Ready for the Canvas** means everything Team checks before a figure is in order. Otherwise it names what to review.",
+            "Look at the **Three checks**: **Samples group as expected** (the samples on a PCA), **Samples are on one scale** (each sample’s median and middle half) and **Missing values are handled** (missing values per sample, before imputation). Each reads **OK** or **Look**; **Show as table** gives its numbers.",
+            "Press **Open the Canvas →**. The board opens with this preparation: see [Find your way around the Canvas](#analysis/nexo-board)."
+          ],
+          "notes": [
+            "**A flagged sample.** When Team’s outlier rule flags a sample, the verdict says it “looks like an outlier” and offers **Keep** and **Exclude…** for it, for example **Keep S3**. **Exclude…** asks for a **Reason (optional)**, then Team prepares the data again without that sample (“Preparing again with Team…”). **Undo** takes either choice back.",
+            "You can also decide later: the flag travels to the Canvas, where the band says the sample “looks like an outlier and is still undecided”, with **Review**. Lab staff, or someone allowed to prepare the board, can keep or exclude it there. On a phone, **Keep** and **Exclude…** are not offered: the verdict says “Open this check on a computer to keep or exclude it.”",
+            "With **Normalization** set to **None**, or missing values left missing, the verdict says so. You can open the Canvas as it is, or change the settings.",
+            "**Change settings**, or **‹ Preparation settings** at the top, goes back to **Prepare**."
+          ],
+          "shots": [
+            {
+              "file": "nexo-quality-check",
+              "caption": "**Ready for the Canvas**: the three checks are **OK**.",
+              "alt": "Nexo’s Quality check · ORD654 · v1: Prepared by Team with your choices: 32 lipids, 3 samples; the green verdict Ready for the Canvas, 32 lipids · 3 samples, No outlier risks detected; and Three checks, coloured Control and Treated: Samples group as expected with a PCA of the samples, Samples are on one scale with each sample’s median, and Missing values are handled, 29 missing values estimated with QRILC, S3 had the most (53.1 %), each OK with Show as table. The bottom bar reads Ready for the Canvas, with Open the Canvas. On a phone only the first check fits on the screen; the other two follow below it."
+            }
+          ]
+        },
+        {
+          "slug": "nexo-board",
+          "title": "Find your way around the Canvas",
+          "keywords": [
+            "board",
+            "canvas",
+            "library",
+            "comment",
+            "prepared by",
+            "settings"
+          ],
+          "what": "The Canvas is the shared board where you build figures from the prepared data. Everyone who opens the dataset sees the same board. The **Plot library** lists every plot you can add.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator",
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Right after **Open the Canvas**, and each time you or someone else opens the dataset again.",
+          "steps": [
+            "The top bar names the dataset, for example **ORD654 · v1**, with **from Admin** when you came through **Open in Nexo**. **Data**, **Review** and **Canvas** show the three steps; **Canvas** is current. **Live**, with a green dot, means the board is connected and your changes are saved for everyone. The person icon on the right opens the account menu with **Sign out**.",
+            "Read the band under the toolbar: how many lipids and samples the prepared data holds, for example “32 lipids · 3 samples”, and **Prepared by <name> · settings**. Press that chip to see the preparation: samples, detection, missing values, normalization and the quality check.",
+            "Open the **Plot library**: on a new, empty board it is already open; otherwise press **Open library (L)** or **+ Add plot**. Plots are grouped, for example Dashboard, Quality check, Composition, Differential, Heatmaps and Structure; **Illustrations** has drawings to add.",
+            "Use the toolbar for the rest: **Targeted lipids**, **Analysis settings**, **Comment**, **Tidy up**, **Undo** and **Redo**."
+          ],
+          "notes": [
+            "**You can comment** in the band means you may comment but not change the board, and the toolbar has no **+ Add plot**. Client people have this role by default; lab staff can edit.",
+            "If a flagged sample is still undecided, the band says it “looks like an outlier and is still undecided”, with **Review**. Lab staff, or someone allowed to prepare this board, can keep or exclude it; excluding prepares the data again without it, for everyone on this board. If you cannot decide, the card says why: “Lab staff, or someone allowed to prepare this board, can keep or exclude it.”, or on a phone “Open this board on a computer to keep or exclude it.”",
+            "Lab staff: press **Share** to see who can open the board.",
+            "You can open more canvases with **+** next to **Canvas 1**."
+          ],
+          "shots": [
+            {
+              "file": "nexo-board",
+              "caption": "The lab’s new board: an empty Canvas with the **Plot library** open.",
+              "alt": "The Nexo Canvas for ORD654 · v1, from Admin: the Data, Review and Canvas tabs, a green Live pill, Share and the account icon; the toolbar with Targeted lipids, Analysis settings, + Add plot, Comment, Tidy up, Undo, Redo, Draft, Figure page and Export figure; the band 32 lipids · 3 samples, Prepared by Lab staff · settings and the Draft hint; the Plot library listing its plot groups; and an empty canvas with Add plot and Open library (L). On a phone the library covers most of the canvas."
+            }
+          ]
+        },
+        {
+          "slug": "nexo-add-plot",
+          "title": "Add a plot and finish it",
+          "keywords": [
+            "PCA",
+            "figure",
+            "export",
+            "plot"
+          ],
+          "what": "A plot starts as a live draft on the Canvas. You change it in the side panel, then finish it to place it on the figure page.",
+          "who": [
+            "lab-owner",
+            "lab-admin",
+            "operator",
+            "client-admin",
+            "requester",
+            "viewer"
+          ],
+          "when": "Whenever you want a figure.",
+          "steps": [
+            "In the **Plot library**, search for a plot, for example “PCA scores”, or open a group.",
+            "Press **+** on the plot, drag it onto the canvas, or select it and press Enter.",
+            "The plot is drawn on a card and its side panel opens, with **Duplicate**, **Finish plot** and the **Data**, **Appearance**, **Statistics** and **Export** tabs. Change the plot there.",
+            "Press **Finish plot** to place it on the figure page. **Figure page →** shows that page.",
+            "To keep a figure as a file, press **Export figure ▾**."
+          ],
+          "notes": [
+            "The toolbar counts the drafts still open, for example **Draft · 1 to finish**.",
+            "**Duplicate** makes a copy of the plot to try another version.",
+            "Everyone on the board sees the plot: a client who opens the dataset later finds it there."
+          ],
+          "shots": [
+            {
+              "file": "nexo-plot",
+              "caption": "PCA scores · 2D added from the library and drawn, with its side panel.",
+              "alt": "The Nexo Canvas with a PCA scores · 2D card drawn (Control and Treated samples), the Plot library filtered on PCA scores, the toolbar reading Draft · 1 to finish, and the side panel with Duplicate, Finish plot and the Data, Appearance, Statistics and Export tabs. On a phone the library and the side panel cover most of the card."
+            }
+          ],
+          "whoNote": "Anyone who may edit the board: lab staff by default. Client people can comment by default. Only lab staff can finish a plot."
+        }
+      ]
+    }
+  ]
+}
