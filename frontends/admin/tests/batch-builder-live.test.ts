@@ -6,13 +6,14 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
 import { listBuilderSamples } from "@/lib/data/batches";
+import { listClients } from "@/lib/data/orders";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("@/lib/environment", () => ({ getEnvironment: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/data/orders", async (original) => ({
   ...(await original<typeof import("@/lib/data/orders")>()),
-  listClients: vi.fn().mockResolvedValue([{ id: "c1", name: "Synthetic Client" }]),
+  listClients: vi.fn(),
 }));
 
 type Batch = { status: string; archived_at: string | null };
@@ -44,6 +45,7 @@ const injections = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(listClients).mockResolvedValue([{ id: "c1", name: "Synthetic Client" }] as never);
   vi.mocked(getEnvironment).mockReturnValue({ mock: false, url: "https://example.test", anonKey: "example" });
   const result = (table: string) => table === "sample" ? { data: samples, error: null } : { data: injections, error: null };
   const from = vi.fn((table: string) => {
