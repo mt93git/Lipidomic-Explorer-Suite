@@ -202,9 +202,9 @@ export default async function InstrumentsPanelsPage({ searchParams }: { searchPa
   const hiddenPanels = showArchived ? 0 : catalog.panels.filter(item => item.archivedAt && onProfile(item)).length;
   const base: Href = { archived: showArchived, show: shown && shown.id !== listed.find(item => item.isActive)?.id ? shown.id : undefined };
   const editing = {
-    instrument: canEdit ? (query.instrument === "new" ? "new" : catalog.instruments.find(item => item.id === query.instrument && !item.archivedAt)) : undefined,
-    panel: canEdit ? (query.panel === "new" ? "new" : catalog.panels.find(item => item.id === query.panel && !item.archivedAt)) : undefined,
-    profile: canEdit ? (query.profile === "new" ? "new" : profiles.find(item => item.id === query.profile && !item.archivedAt)) : undefined,
+    instrument: canEdit ? (query.instrument === "new" ? "new" as const : catalog.instruments.find(item => item.id === query.instrument && !item.archivedAt)) : undefined,
+    panel: canEdit ? (query.panel === "new" ? "new" as const : catalog.panels.find(item => item.id === query.panel && !item.archivedAt)) : undefined,
+    profile: canEdit ? (query.profile === "new" ? "new" as const : profiles.find(item => item.id === query.profile && !item.archivedAt)) : undefined,
     rate: canEdit ? catalog.panels.find(item => item.id === query.rate && !item.archivedAt) : undefined,
   };
   const editRate = (id: string) => canEdit ? href({ ...base, rate: id }, "rate-form") : null;
