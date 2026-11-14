@@ -10,7 +10,7 @@ import { DataError } from "../samples";
 import { applyDemoState, type DemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
-import { readDemoState } from "./demo-store";
+import { readDemoState, writeDemoState } from "./demo-store";
 
 // The audit log side of the data seam. Live mode reads admin.audit_event with the signed-in user's token (RLS:
 // lab staff only, audit_event_read in 0004), newest first, keyset on id. Demo mode derives a few events of the same
@@ -48,6 +48,24 @@ export async function exportAuditEvents(filters: AuditFilters): Promise<AuditExp
   const session = await requireWorkspace("staff");
   const all = { ...filters, before: null };
   return getEnvironment().mock ? demoExport(all) : liveExport(all, session);
+}
+
+// Export CSV is itself audited (0042): one row with who, the filter and the row count, written before the file is
+// sent (the route refuses the download when it cannot be written). Live: admin.record_audit_export with the user's
+// token. Demo: kept on this browser's demo state, so the demo's audit log shows it too.
+export type DemoAuditExport = { at: string; who: string; entity: string | null; order: string | null; rows: number; truncated: boolean };
+type AuditDemoState = DemoState & { auditExports?: DemoAuditExport[] };
+const DEMO_EXPORTS_KEPT = 50;
+export async function recordAuditExport(filters: AuditFilters, rows: number, truncated: boolean): Promise<void> {
+  const session = await requireWorkspace("staff");
+  if (getEnvironment().mock) {
+    const state = await readDemoState() as AuditDemoState;
+    const entry: DemoAuditExport = { at: new Date().toISOString(), who: session.displayName, entity: filters.entity, order: filters.order, rows, truncated };
+    await writeDemoState({ ...state, auditExports: [...(state.auditExports ?? []), entry].slice(-DEMO_EXPORTS_KEPT) } as AuditDemoState);
+    return;
+  }
+  const { error } = await (await db()).rpc("record_audit_export", { p_entity: filters.entity, p_order: filters.order, p_rows: rows, p_truncated: truncated });
+  if (error) throw refusal(error);
 }
 
 // ---------------------------------------------------------------- live
@@ -220,6 +238,8 @@ export function demoEvents(state: DemoState): { events: AuditEvent[]; ctx: Audit
       add(d.archivedAt, actor(by), "dataset", d.id, { ...before, status: d.status, archived_reason: d.archivedReason }, before);
     }
   }
+  (state as AuditDemoState).auditExports?.forEach((item, index) => add(item.at, actor(item.who), "audit_export", `demo-export-${index + 1}`,
+    { entity: item.entity, order: item.order, rows: item.rows, truncated: item.truncated }));
   const events = drafts
     .map((draft, index) => ({ draft, index }))
     .sort((a, b) => a.draft.createdAt.localeCompare(b.draft.createdAt) || a.index - b.index)

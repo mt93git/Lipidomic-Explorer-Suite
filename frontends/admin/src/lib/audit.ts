@@ -32,12 +32,14 @@ export const AUDIT_PAGE_SIZE = 50;
 // in 0020, recorded without its personal data, deliverable in 0021, client_contact in 0023, notification_pref in 0028), in the
 // order the menu lists them. (admin.notification_log, 0028, is its own append-only record and is not audited.) Plus
 // activation_email (0029): no table, a row written by admin.record_activation_email when an activation email was sent.
+// audit_export (0042): no table, a row written by admin.record_audit_export each time Export CSV is downloaded.
 const entityLabels: Record<string, string> = {
   order: "Order", shipment: "Shipment", sample: "Sample", aliquot: "Aliquot", box_position: "Box position", exclusion: "Exclusion",
   batch: "Batch", batch_version: "Batch version", injection: "Injection", result_file: "Results file", name_map: "Name dictionary entry",
   dataset: "Dataset", signature: "Signature", release_policy: "Release policy", shipping_instructions: "Shipping instructions", client_contact: "Contact for clients", job: "Job",
   client: "Client", client_member: "Client member", lab_staff: "Lab staff", instrument: "Instrument", panel: "Panel",
   access_request: "Access request", deliverable: "Deliverable", notification_pref: "Email notification", activation_email: "Activation email",
+  audit_export: "Audit log export",
 };
 export const auditEntities = Object.entries(entityLabels).map(([value, label]) => ({ value, label }));
 
@@ -96,6 +98,11 @@ function specific(event: AuditEvent, ctx: AuditContext): string | null {
       return `Email "${kind && isNotificationKind(kind) ? kindInfo[kind].label : kind ?? "notification"}" turned ${row.enabled ? "on" : "off"}`;
     }
     case "activation_email": return `Activation email sent to ${text(row.name) ?? personName(row.user_id, ctx) ?? "a person"}`;
+    case "audit_export": {
+      const rows = typeof row.rows === "number" ? `${plural(row.rows, "row")}${row.truncated ? " (more existed)" : ""}` : "rows";
+      const filter = [text(row.entity) ? `entity ${entityLabel(row.entity as string).toLowerCase()}` : null, text(row.order)].filter(Boolean);
+      return `Audit log exported: ${[rows, ...(filter.length ? filter : ["all events"])].join(", ")}`;
+    }
     case "access_request": {
       const name = typeof row.number === "number" ? `Access request ${accessReference(row.number)}` : "Access request";
       if (insert) return `${name} received`;
