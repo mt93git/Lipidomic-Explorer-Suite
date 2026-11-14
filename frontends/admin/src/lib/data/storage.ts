@@ -7,7 +7,7 @@ import { DataError } from "../samples";
 import { requireWorkspace } from "../session";
 import {
   byBox, byPosition, demoMove, isAliquotKind, kindFromCode, demoPlace, demoRemove, demoStorageRows, initialDemoPlacements, nextBatchOf,
-  type AliquotPlans, type BoxSummary, type DemoPlacement, type StoredAliquot,
+  type AliquotPlans, type BoxSummary, type DemoPlacement, type SlotTube, type StoredAliquot,
 } from "../storage";
 import { createAdminClient } from "../supabase/server";
 import { readDemoPlacements, readDemoState, writeDemoPlacements } from "./demo-store";
@@ -147,8 +147,10 @@ async function requireWriter() {
   if (!canWrite) throw new DataError("Only lab Owner, Admin or Operator may change where aliquots are stored.");
 }
 
-async function demoWrite(change: (placements: DemoPlacement[]) => DemoPlacement[]) {
-  await writeDemoPlacements(change(await demoPlacements()));
+// tubes: this browser's check-ins (Receive shipment), whose positions are taken too (0041).
+async function demoWrite(change: (placements: DemoPlacement[], tubes: SlotTube[]) => DemoPlacement[]) {
+  const tubes = (await readDemoState()).tubes ?? [];
+  await writeDemoPlacements(change(await demoPlacements(), tubes));
 }
 
 export async function placeAliquot(aliquotId: string, box: string, position: string): Promise<void> {
@@ -158,7 +160,7 @@ export async function placeAliquot(aliquotId: string, box: string, position: str
     if (error) throw refusal(error);
     return;
   }
-  await demoWrite(placements => demoPlace({ placements, aliquotId, box, position, now: new Date(), id: crypto.randomUUID() }));
+  await demoWrite((placements, tubes) => demoPlace({ placements, aliquotId, box, position, now: new Date(), id: crypto.randomUUID(), tubes }));
 }
 
 export async function moveAliquot(aliquotId: string, box: string, position: string): Promise<void> {
@@ -168,7 +170,7 @@ export async function moveAliquot(aliquotId: string, box: string, position: stri
     if (error) throw refusal(error);
     return;
   }
-  await demoWrite(placements => demoMove({ placements, aliquotId, box, position, now: new Date(), id: crypto.randomUUID() }));
+  await demoWrite((placements, tubes) => demoMove({ placements, aliquotId, box, position, now: new Date(), id: crypto.randomUUID(), tubes }));
 }
 
 export async function removeAliquot(aliquotId: string, reason: string): Promise<void> {

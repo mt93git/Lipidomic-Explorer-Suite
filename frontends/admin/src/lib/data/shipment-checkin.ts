@@ -9,7 +9,8 @@ import {
   type CheckInInput, type CheckinShipment, type CheckinView, type ManifestTube, type Receipt,
 } from "../shipment-checkin";
 import { createAdminClient } from "../supabase/server";
-import { readDemoState, writeDemoState } from "./demo-store";
+import { initialDemoPlacements, storedSlots } from "../storage";
+import { readDemoPlacements, readDemoState, writeDemoState } from "./demo-store";
 import { notifyReceiptDiscrepancy } from "./notifications";
 
 // Receive shipment, tube by tube. Live mode reads the order's received shipments through the signed-in user's own
@@ -161,7 +162,8 @@ export async function checkInTube(orderCode: string, shipmentId: string, input: 
   const { state, order } = await demoOrder(orderCode);
   const view = order ? demoView(order, state, shipmentId) : null;
   if (!view) throw new DataError(`Order ${orderCode} has no received shipment to check in.`);
-  const result = demoCheckIn(state, input, { view, actor: demoSession.displayName, now: new Date(), id: crypto.randomUUID() });
+  const stored = storedSlots((await readDemoPlacements()) ?? initialDemoPlacements()); // Storage's positions are taken too (0041)
+  const result = demoCheckIn(state, input, { view, actor: demoSession.displayName, now: new Date(), id: crypto.randomUUID(), stored });
   await writeDemoState(result.state);
   return { sampleCode: result.tube.sampleCode };
 }

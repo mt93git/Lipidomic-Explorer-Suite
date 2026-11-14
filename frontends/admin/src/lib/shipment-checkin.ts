@@ -132,10 +132,11 @@ export type DemoReceipt = Receipt & { shipmentId: string; orderCode: string; exp
 export type DemoCheckinState = { tubes?: DemoTube[]; receipts?: DemoReceipt[] };
 
 export type CheckInInput = { label: string; condition: TubeCondition; box: string; position: string; note: string };
-type DemoArgs = { view: CheckinView; actor: string; now: Date; id: string };
+// stored: the live placements of Storage (box, position, aliquot code); their positions are taken too (0041).
+type DemoArgs = { view: CheckinView; actor: string; now: Date; id: string; stored?: { box: string; position: string; code: string }[] };
 
 // check_in_tube in the demo: same refusals, same "checked in again" history.
-export function demoCheckIn<S extends DemoCheckinState>(state: S, input: CheckInInput, { view, actor, now, id }: DemoArgs): { state: S; tube: DemoTube } {
+export function demoCheckIn<S extends DemoCheckinState>(state: S, input: CheckInInput, { view, actor, now, id, stored = [] }: DemoArgs): { state: S; tube: DemoTube } {
   if (view.shipment.receipt) throw new DataError(`The receipt of this shipment of ${view.orderCode} is already confirmed; its tubes cannot change.`);
   if (!isTubeCondition(input.condition)) throw new DataError("Choose the tube's condition: intact, hemolyzed, thawed or other.");
   const note = input.note.trim() || null;
@@ -146,6 +147,9 @@ export function demoCheckIn<S extends DemoCheckinState>(state: S, input: CheckIn
   if (slot.box) {
     const holder = live.find(item => item.box === slot.box && item.position === slot.position && item.sampleCode !== tube.sampleCode);
     if (holder) throw new DataError(`Box ${slot.box} position ${slot.position} already holds tube ${holder.sampleCode}.`);
+    const box = slot.box, position = slot.position ?? "";
+    const aliquot = stored.find(item => item.box.trim().toUpperCase() === box.toUpperCase() && item.position.trim().toUpperCase() === position.toUpperCase());
+    if (aliquot) throw new DataError(`Box ${box} position ${position} already holds aliquot ${aliquot.code} in Storage; choose another position.`);
   }
   const saved: DemoTube = { id, shipmentId: view.shipment.id, orderCode: view.orderCode, sampleCode: tube.sampleCode, condition: input.condition, note, ...slot, checkedInAt: now.toISOString(), checkedInBy: actor };
   const tubes = (state.tubes ?? []).map(item => !item.archivedReason && item.shipmentId === view.shipment.id && item.sampleCode === tube.sampleCode ? { ...item, archivedReason: "checked in again" } : item);
