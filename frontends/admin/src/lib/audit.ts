@@ -1,20 +1,27 @@
 // The audit log's reading of admin.audit_event (db/admin/migrations/0001, 0003): a one-line human summary and the
 // changed fields of each event. Pure: no React, no server imports; both sides of the data seam (data/audit.ts) use it.
 import { accessReference } from "./access-requests";
-import { formatLabInstant } from "./lab-time";
+import { formatLabInstant, LAB_TIME_ZONE } from "./lab-time";
 import { stages } from "./models";
 import { isNotificationKind, kindInfo } from "./notifications";
 import { datasetStatusLabels, signerRoleLabels, type DatasetStatus, type SignerRole } from "./release";
 import { dbStages } from "./samples";
+import { colourSlots } from "./visual-map";
 
 export type AuditRecord = Record<string, unknown>;
-// One admin.audit_event row: the audited row after the write, and before it for an UPDATE.
+// One admin.audit_event row: the audited row after the write, and before it for an UPDATE. clientId: the row's
+// client_id column (0003's trigger copies the audited row's client_id; null for lab-wide rows such as a batch).
 export type AuditEvent = {
   id: number; createdAt: string; actor: string | null; entity: string; entityId: string | null;
-  action: "INSERT" | "UPDATE"; before: AuditRecord | null; after: AuditRecord | null;
+  action: "INSERT" | "UPDATE"; before: AuditRecord | null; after: AuditRecord | null; clientId?: string | null;
 };
 // What the summaries name things by: lab people (user id → name), orders (id → code), datasets (id → order and version).
-export type AuditContext = { people: Record<string, string>; orders: Record<string, string>; datasets: Record<string, { orderId: string; version: number }> };
+// The Client column: clients (id → name, every client so the colours are stable), orderClients (order id → client id,
+// for the demo's events, which carry no client_id) and batchClients (batch id → the clients with an injection in it).
+export type AuditContext = {
+  people: Record<string, string>; orders: Record<string, string>; datasets: Record<string, { orderId: string; version: number }>;
+  clients?: Record<string, string>; orderClients?: Record<string, string>; batchClients?: Record<string, string[]>;
+};
 // before is null for an INSERT (the row did not exist).
 export type AuditChange = { field: string; before: string | null; after: string };
 export type AuditFilters = { entity: string | null; order: string | null; before: number | null };
@@ -207,4 +214,82 @@ export function auditHref(filters: AuditFilters): string {
   if (filters.before) query.set("before", String(filters.before));
   const search = query.toString();
   return search ? `/audit-log?${search}` : "/audit-log";
+}
+
+// ---------------------------------------------------------------- client (a21's Client column)
+
+// The clients an event is about: its own client_id; for a batch or batch version (lab-wide rows), every client with an
+// injection in the batch; otherwise the client of the order it names (a signature through its dataset). None for
+// lab-wide events (release policy, lab staff).
+export function auditClientIds(event: AuditEvent, ctx: AuditContext): string[] {
+  if (event.clientId) return [event.clientId];
+  const after = event.after ?? {};
+  const batchId = event.entity === "batch" ? event.entityId : text(after.batch_id);
+  if (batchId) return ctx.batchClients?.[batchId] ?? [];
+  const datasetId = event.entity === "signature" ? text(after.dataset_id) : null;
+  const orderId = event.entity === "order" ? event.entityId : text(after.order_id) ?? (datasetId ? ctx.datasets[datasetId]?.orderId ?? null : null);
+  const client = orderId ? ctx.orderClients?.[orderId] : undefined;
+  return client ? [client] : [];
+}
+
+// Each client once, by name, with its colour slot (visual-map's palette, assigned over every client so one client keeps
+// its colour on every row).
+export type AuditClientTag = { name: string; slot: number };
+export function auditClientTags(ids: readonly string[], ctx: AuditContext): AuditClientTag[] {
+  const names = ctx.clients ?? {};
+  const slots = colourSlots(Object.values(names));
+  const shown = [...new Set(ids.map(id => names[id]).filter((name): name is string => !!name))].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  return shown.map(name => ({ name, slot: slots.get(name) ?? 0 }));
+}
+
+// ---------------------------------------------------------------- when (short, lab time)
+
+const labDate = new Intl.DateTimeFormat("en-CA", { timeZone: LAB_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+const labClock = new Intl.DateTimeFormat("en-GB", { timeZone: LAB_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const labDayMonth = new Intl.DateTimeFormat("en-GB", { timeZone: LAB_TIME_ZONE, day: "numeric", month: "short" });
+// "09:14" today, "Yesterday 18:12", "5 Nov 10:10" this year, "5 Nov 2025 10:10" before; days are the lab's. The full
+// instant with its zone stays in the cell's title and the CSV.
+export function formatAuditWhen(iso: string, now = new Date()): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+  const day = labDate.format(at);
+  const clock = labClock.format(at);
+  if (day === labDate.format(now)) return clock;
+  if (day === labDate.format(new Date(now.getTime() - 86_400_000))) return `Yesterday ${clock}`;
+  const dayMonth = labDayMonth.format(at);
+  return day.slice(0, 4) === labDate.format(now).slice(0, 4) ? `${dayMonth} ${clock}` : `${dayMonth} ${day.slice(0, 4)} ${clock}`;
+}
+
+// ---------------------------------------------------------------- CSV export
+
+// The export holds every event of the filter, newest first, up to this many (a narrower filter reaches older ones).
+export const AUDIT_EXPORT_MAX = 10_000;
+export type AuditCsvRow = { id: number; at: string; who: string; clients: AuditClientTag[]; entity: string; action: "INSERT" | "UPDATE"; summary: string; changes: AuditChange[] };
+
+// Every cell quoted; a cell that starts like a formula (= + - @, tab, return) gets a leading apostrophe so a spreadsheet
+// shows it as text.
+const csvCell = (value: string) => `"${(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value).replace(/"/g, '""')}"`;
+const csvLine = (cells: string[]) => `${cells.map(csvCell).join(",")}\r\n`;
+const changeText = (changes: AuditChange[]) => changes.map(change => `${change.field}: ${change.before === null ? change.after : `${change.before} → ${change.after}`}`).join("; ");
+
+// UTF-8 with a byte order mark (Excel then reads µ, → and accents), CRLF lines, the instant in ISO 8601 (UTC) and in
+// lab time.
+export function auditCsv(rows: readonly AuditCsvRow[], options: { truncated?: boolean } = {}): string {
+  const header = ["Event", "When (ISO 8601, UTC)", `When (lab time, ${LAB_TIME_ZONE})`, "Who", "Client", "Entity", "Action", "What", "Changes"];
+  const body = rows.map(row => csvLine([
+    String(row.id), new Date(row.at).toISOString(), formatLabInstant(row.at), row.who, row.clients.map(client => client.name).join("; "),
+    row.entity, row.action === "INSERT" ? "Insert" : "Update", row.summary, changeText(row.changes),
+  ]));
+  const closing = options.truncated
+    ? [csvLine(["", "", "", "", "", "", "", `Only the newest ${AUDIT_EXPORT_MAX} events are in this file. Filter by entity or order code to export older ones.`, ""])]
+    : [];
+  return `\uFEFF${csvLine(header)}${body.join("")}${closing.join("")}`;
+}
+
+// The Export CSV link keeps the filter, not the page: the file has every page.
+export function auditExportHref(filters: AuditFilters): string {
+  return auditHref({ ...filters, before: null }).replace("/audit-log", "/audit-log/export");
+}
+export function auditExportFilename(filters: AuditFilters, now = new Date()): string {
+  return `${["audit-log", labDate.format(now), filters.order, filters.entity].filter(Boolean).join("-")}.csv`;
 }
