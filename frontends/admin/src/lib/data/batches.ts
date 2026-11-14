@@ -238,8 +238,10 @@ export async function recordInjectionStatuses(name: string, rows: { sample_name:
     exporter = (version.data as { exported_by: string | null } | null)?.exported_by ?? null;
   }
   // Injections recorded Failed turn the run's gate red (0036 "Gate failed"); the owner of the step is who exported
-  // the sequence and ran the batch.
-  const failed = new Set(rows.filter(row => row.status.trim().toLowerCase() === "failed").map(row => row.sample_name.trim()));
+  // the sequence and ran the batch. Only injections that were not Failed before this call count, so pasting the same
+  // status export again (with another row changed) does not announce an old failure twice.
+  const wasFailed = new Set(batch.injections.filter(item => item.status.trim().toLowerCase() === "failed").map(item => item.sample_name));
+  const failed = new Set(rows.filter(row => row.status.trim().toLowerCase() === "failed").map(row => row.sample_name.trim()).filter(name => !wasFailed.has(name)));
   if (changed > 0 && failed.size) {
     const codes = [...new Set(batch.injections.filter(item => failed.has(item.sample_name) && item.orderCode).map(item => item.orderCode as string))].sort();
     await notifyBatch("gate_failed", name, codes, { gate: `${failed.size} ${failed.size === 1 ? "injection" : "injections"} recorded Failed`, stepOwner: exporter });
