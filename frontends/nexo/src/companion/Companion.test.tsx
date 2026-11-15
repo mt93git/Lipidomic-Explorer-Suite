@@ -29,7 +29,8 @@ beforeEach(() => {
   vi.resetModules(); vi.useFakeTimers();
   h.slots = []; h.user = null; h.answered = false; store = {};
   vi.stubGlobal('window', globalThis);
-  vi.stubGlobal('document', { querySelector: () => null, activeElement: null });
+  vi.stubGlobal('document', { querySelector: () => null, querySelectorAll: () => [], activeElement: null });
+  vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: () => {} });
   vi.stubGlobal('localStorage', { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => { store[k] = v; } });
   vi.stubGlobal('addEventListener', () => {}); vi.stubGlobal('removeEventListener', () => {});
   vi.stubGlobal('requestAnimationFrame', (f: () => void) => setTimeout(f, 16));
@@ -88,4 +89,31 @@ test("Home's tip uses Nexo's Home wording, not Team's", async () => {
   expect(tip).not.toMatch(/Open latest|abundance matrix/i);
   expect(tip).toMatch(/Continue/);
   expect(tip).toMatch(/prepare/i);
+});
+
+test('out of the bar it stays out: no flight home after the old 5 s, and the place is kept for the tab', async () => {
+  store = { 'nexo.companion.seen.synthetic-user-1': '1', 'nexo.companion.tipped.synthetic-user-1': 'start' };
+  const session: Record<string, string> = {};
+  vi.stubGlobal('sessionStorage', { getItem: (k: string) => session[k] ?? null, setItem: (k: string, v: string) => { session[k] = v; } });
+  const c = await home();
+  signedIn(c);
+  c.dock().props.onClick({ detail: 1 }); c.render();
+  c.wait(20_000);
+  expect(c.dock().props.style).toEqual({ visibility: 'hidden' });
+  expect(JSON.parse(session['nexo.companion.place.synthetic-user-1'])).toMatchObject({ out: true });
+});
+
+test('sitting idle brings one nudge with the screen tip, and Fewer tips stops it', async () => {
+  const { tips } = await import('./tips');
+  store = { 'nexo.companion.seen.synthetic-user-1': '1', 'nexo.companion.tipped.synthetic-user-1': 'start' };
+  const c = await home();
+  signedIn(c);
+  c.wait(3 * 60_000);
+  expect(c.messages).toEqual([expect.stringMatching(new RegExp(`^${tips.start.title}`))]);
+
+  store = { 'nexo.companion.seen.synthetic-user-1': '1', 'nexo.companion.tipped.synthetic-user-1': 'start', 'nexo.companion.fewer.synthetic-user-1': '1' };
+  const quiet = await home();
+  signedIn(quiet);
+  quiet.wait(3 * 60_000);
+  expect(quiet.messages).toEqual([]);
 });
