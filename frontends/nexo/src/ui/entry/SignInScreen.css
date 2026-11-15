@@ -1,0 +1,23 @@
+.entry-signin { min-height: 100vh; color: #162b3d; background: #fafaf8 url('/nexo/entry/login-spectrum.svg') center center / cover fixed; }
+.entry-signin-bar { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 24px; background: #162230; color: white; font-weight: 700; }
+.entry-signin-bar img { max-width: 80px; max-height: 38px; }
+.entry-signin-main { min-height: calc(100vh - 48px); display: grid; place-items: center; padding: 24px; }
+.entry-signin-card { box-sizing: border-box; width: min(100%, 520px); padding: 36px 40px; background: rgba(255,255,255,.97); border: 1px solid #dce3e8; border-radius: 12px; box-shadow: 0 12px 40px #16223020; }
+.entry-signin-card h1 { font-size: 24px; margin: 0 0 8px; }
+.entry-signin-card p { color: #526477; }
+.entry-signin-card label { display: block; font-weight: 700; margin-top: 18px; }
+/* The selector out-ranks shell.css's `select,input:not(…)` field rule (0,3,1). */
+.entry-signin-card input:not([type=checkbox]):not([type=radio]):not([type=color]) { box-sizing: border-box; display: block; width: 100%; height: var(--field-h, 40px); margin-top: 6px; padding: 0 12px; border: 1px solid var(--field, #7d8a99); border-radius: 5px; font: inherit; }
+.entry-signin-card input[aria-invalid=true] { border: 2px solid #ae3030; }
+.entry-signin-card :is(input,button,a):focus-visible { outline: 3px solid #2674b9; outline-offset: 3px; }
+.entry-signin-primary { width: 100%; min-height: 44px; margin-top: 22px; border: 0; border-radius: 5px; background: #285d88; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+.entry-signin-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.entry-signin-links a, .entry-signin-who button { color: #285d88; min-height: 44px; display: inline-flex; align-items: center; }
+.entry-signin-links p { width: 100%; margin: 0; font-size: 13px; }
+.entry-signin-card .entry-signin-error { color: #a32727; }
+.entry-signin-notice { padding: 12px; background: #edf5fb; border-radius: 5px; }
+.entry-signin-who { display: flex; justify-content: space-between; align-items: center; }
+.entry-signin-who button { border: 0; background: none; font: inherit; cursor: pointer; }
+@media (max-width: 600px) { .entry-signin-main { padding: 20px; } .entry-signin-card { padding: 28px 24px; } }
+@media (pointer: coarse) { .entry-signin-card input:not([type=checkbox]):not([type=radio]):not([type=color]) { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .entry-signin { background-image: url('/nexo/entry/login-spectrum-static.svg'); } }

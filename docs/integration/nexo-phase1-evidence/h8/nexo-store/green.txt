@@ -1,0 +1,4 @@
+PASS the Nexo member is an object, version 1, nodes keyed by id, at most 2 MiB
+PASS the member is saved in the checkpoint, Team still reads it, reopen restores it exactly
+PASS a broken Nexo member is ignored and the checkpoint still opens
+PASS save keeps, clears or sets the member as the request says

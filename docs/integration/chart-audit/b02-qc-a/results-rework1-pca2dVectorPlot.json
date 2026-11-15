@@ -1,0 +1,79 @@
+[
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "refused on arrival (Team): \"Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector view to use the original plot and downloads.\" docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-1-refusal.png; before the change the Inspector shows smartLabelPCA2D on; card schema {\"value\":true,\"default\":true}; API: PATCH /sessions/s39/cards/tcinstance_d1b7899a519f → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":true,\"team_load; smartLabelPCA2D turned off in the Data tab → current; click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-1-draws.png, docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 4 traces, types and x/y/z (rounded to 6 significant digits) as the module render with the same body; module figure in a bare 620x720 div: pca2dVectorPlot-r1-2-api-bare.png"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "locator.evaluate: TypeError: Cannot read properties of null (reading '_fullLayout') [pca2dVectorPlot-r1-3-fail.png, url /nexo/?checkpoint=604149b466cd88d4b540e01fa14755ff09a63eb09b9cabf4386a5abee0841587] API: POST /sessions/s39/cards/tcinstance_d1b7899a519f/render → 422 {\"error\":\"unprocessable\",\"message\":\"Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector view to use the original plot and downloads.\"} [sent {\"width\":620,\"height\":720,\"format\":\"json\"}] | PATCH /sessions/s39/cards/tcinstance_d1b7899a519f → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":true,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_disp [sent {\"inputs\":{\"smartLabelPCA2D\":false},\"actions\":[]}] last console: page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s39/cards/tcinstance_d1b7899a519f/render"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; scoreMarkerSize2D 8→14 redrew (docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-4-data-scoreMarkerSize2D.png); keyboard (Tab) reaches scoreMarkerSize2D, smartLabelPCA2D; dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":25}"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "NO Chart font size [pca2dVectorPlot-r1-5-fail.png, url /nexo/?checkpoint=604149b466cd88d4b540e01fa14755ff09a63eb09b9cabf4386a5abee0841587] API: PATCH /sessions/s39/cards/tcinstance_d1b7899a519f → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":true,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_disp [sent {\"inputs\":{\"smartLabelPCA2D\":false},\"actions\":[]}] | PATCH /sessions/s39/cards/tcinstance_d1b7899a519f → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":24,\"team_pca2dPlot_vector\":true,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_displa [sent {\"inputs\":{\"outlierNumShow\":24,\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"],\"scoreMarkerSize2D\":14,\"normalizationMethod\":\"median\",\"useImputation\":true,\"imputeZerosPerFile\":true,\"imputeRemainingN] last console: page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s39/cards/tcinstance_d1b7899a519f/render"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 312465 B; SVG 16470 B; Team PDF PCA_2D_20261107_1025.pdf 6414 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-7-export-dialog.png"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 780x742; Edit figure → live plotly; docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-8-finished.png"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pca2dVectorPlot\" with {\"scoreMarkerSize2D\":\"14\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/pca2dVectorPlot-r1-9-duplicate.png"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 60000ms exceeded. [pca2dVectorPlot-r1-10-fail.png, url /nexo/?checkpoint=0382becff58b678fa302de85644c0f57502ca352e5ce629b2b5c7205cb13f360] API: PATCH /sessions/s39/cards/tcinstance_d1b7899a519f → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":true,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_disp [sent {\"inputs\":{\"smartLabelPCA2D\":false},\"actions\":[]}] | PATCH /sessions/s39/cards/tcinstance_d1b7899a519f → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Score Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":24,\"team_pca2dPlot_vector\":true,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_displa [sent {\"inputs\":{\"outlierNumShow\":24,\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"],\"scoreMarkerSize2D\":14,\"normalizationMethod\":\"median\",\"useImputation\":true,\"imputeZerosPerFile\":true,\"imputeRemainingN] last console: phone: page did not open on attempt 1 (open-phone-1-fail.png): LE Lipidomic Explorer Data Review Canvas Canvas 1 1 + ⋯ Analysis settings Figure page → ⋯ Draft: edit live plots. Finish a plot to place "
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "3 console error(s) on all pages of this plot (1 = expected refusals: Team's smart-label 422 and/or the 400 of #4's invalid value): page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s39/cards/tcinstance_d1b7899a519f/render | phone: page did not open on attempt 1 (open-phone-1-fail.png): LE Lipidomic Explorer Data Review Canvas Canvas 1 1 + ⋯ Analysis settings Figure page → ⋯ Draft: edit live plots. Finish a plot to place it on the figure page.  | phone: page did not open on attempt 2 (open-phone-2-fail.png): LE Lipidomic Explorer Data Review Canvas Canvas 1 1 + ⋯ Analysis settings Figure page → ⋯ Draft: edit live plots. Finish a plot to place it on the figure page. "
+ }
+]

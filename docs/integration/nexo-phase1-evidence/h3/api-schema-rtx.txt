@@ -1,0 +1,25 @@
+# tests/dual-ui/test_api_schema.R | RTX production tree | H3a
+PASS schema family qc
+PASS schema family dashboard
+PASS schema card violin
+PASS schema card qc
+
+# tests/dual-ui/test_api_catalog.R | RTX production tree | H3a
+PASS catalog 58
+
+# tests/dual-ui/test_api_engine.R | RTX production tree | H3a
+PASS U1 synthetic 12x9, matches archived receipt
+PASS U1 legacy defaults
+PASS U2 plots 5/5
+PASS U2 typed errors
+
+# tests/dual-ui/test_api_http.R | RTX production tree | H3a
+PASS I1 health 200
+PASS I1 catalog 58
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints
+PASS I1 card schema 200
+PASS I1 card PNG bytes
+PASS I1 session delete 200
+

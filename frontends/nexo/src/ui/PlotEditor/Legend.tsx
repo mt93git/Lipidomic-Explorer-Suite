@@ -1,0 +1,8 @@
+import { layoutSchema } from '../../editor/editorState';
+import { LayoutFields } from './Fields';
+import type { PlotEditorProps } from './PlotEditor';
+import { useId } from 'react';
+import { LEGEND_PRESETS, hasLegendEntries, legendPositionPatch, legendPresetOf } from './legendPresets';
+import { proStrings as ps } from '../strings';
+// A plot with nothing to list (b03 chart audit, guided QC) keeps the section, its presets and positions disabled with the reason.
+export default function Legend(p:PlotEditorProps){const preset=legendPresetOf(p.editor),none=!hasLegendEntries(p.figure.data as Parameters<typeof hasLegendEntries>[0]),reasonId=useId(),why=none?reasonId:undefined;return <details><summary>Legend <span className="pro-summary">{none?'None':preset?.name??'Custom'}</span></summary><div className="plot-editor-chips" role="group" aria-label={ps.legendPresets} aria-describedby={why}>{LEGEND_PRESETS.map(x=><button key={x.id} type="button" disabled={none} aria-pressed={preset?.id===x.id} onClick={()=>p.onChange({type:'layoutPatch',patch:x.patch})}>{x.name}</button>)}</div><div className="plot-editor-positions" role="group" aria-label="Legend position" aria-describedby={why}>{(['Top','Middle','Bottom'] as const).flatMap((vertical,row)=>(['Left','Center','Right'] as const).map((horizontal,col)=><button key={`${row}${col}`} type="button" disabled={none} onClick={()=>p.onChange({type:'layoutPatch',patch:legendPositionPatch(vertical,horizontal)})}>{vertical} {horizontal}</button>))}</div>{none?<p id={reasonId} className="field-help legend-none">{ps.legendNone}</p>:<LayoutFields {...p} keys={Object.keys(layoutSchema).filter(k=>k==='showlegend'||k.startsWith('legend.'))}/>}</details>;}

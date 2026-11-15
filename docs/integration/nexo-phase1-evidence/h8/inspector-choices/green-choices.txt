@@ -1,0 +1,6 @@
+PASS schema choices parse option and checkbox markup
+  logratio_tab-logratioPlot selectedBaseline: 2 choices
+  heatmap_barchart_tab-heatmapPlot heatmap_violin_class_select: 9 choices
+  heatmap_barchart_tab-heatmapPlot violin_baseline_group: 2 choices
+  cell_lipid_plot cell_group_column: 4 choices
+PASS schema data-dependent selectors carry the module's choices

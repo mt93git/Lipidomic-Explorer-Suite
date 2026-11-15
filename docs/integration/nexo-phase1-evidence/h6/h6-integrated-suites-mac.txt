@@ -1,0 +1,19 @@
+# H6 integrated suites, Mac, 2026-11-06T12:23:58Z, HEAD 876b735
+TSC_OK
+ Test Files  31 passed (31)
+      Tests  142 passed (142)
+computing gzip size...
+dist/index.html                   0.53 kB │ gzip:   0.36 kB
+dist/assets/index-BzcZG_dp.css   19.44 kB │ gzip:   4.49 kB
+dist/assets/index-C5VJEk1R.js   403.31 kB │ gzip: 131.41 kB
+✓ built in 478ms
+== test_nexo_canvas_edit.cjs exit 0 14 PASS
+== test_nexo_canvas_readonly.cjs exit 0 12 PASS
+== test_nexo_canvas_tabs.cjs exit 0 6 PASS
+== test_nexo_card_chrome.cjs exit 0 11 PASS
+== test_nexo_export.cjs exit 0 16 PASS
+== test_nexo_figure_page.cjs exit 0 2 PASS
+== test_nexo_finish.cjs exit 0 8 PASS
+== test_nexo_inspector.cjs exit 0 8 PASS
+== test_nexo_save.cjs exit 0 6 PASS
+== test_nexo_statistics.cjs exit 0 2 PASS

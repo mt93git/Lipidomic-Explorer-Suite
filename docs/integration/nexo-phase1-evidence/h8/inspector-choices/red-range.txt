@@ -1,0 +1,4 @@
+   × two-ended range sliders (Team sliderInput with value = c(lo, hi)) > is recognised and keeps both ends as numbers 2ms
+     → (0 , isRangePair) is not a function
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+TypeError: (0 , isRangePair) is not a function

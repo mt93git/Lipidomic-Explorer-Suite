@@ -1,0 +1,6 @@
+# npx vite build (frontends/nexo, 95b2526a); Plotly is served separately (public/vendor), not in these chunks
+index.html 0.58 kB | gzip 0.38 kB
+assets/index.css 80.66 kB | gzip 14.79 kB
+assets/vendor.js 192.35 kB | gzip 60.28 kB
+assets/index.js 490.51 kB | gzip 155.38 kB
+app JS gzip total 215.66 kB (budget 250 kB without Plotly)

@@ -1,0 +1,28 @@
+Wave 2d: AAA searchable picker (t-35f4 merged at a2b4b35c) on top of wave 2c (3464875b).
+tsc --noEmit: clean. vitest: 94 files / 422 tests passed.
+
+18 mock suites (Chromium + WebKit), macOS:
+analysis_settings exit=0 pass=6
+inspector exit=0 pass=40
+canvas_edit exit=0 pass=34
+access exit=0 pass=50
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=12
+canvas_open exit=0 pass=14
+card_chrome exit=0 pass=25
+export exit=0 pass=34
+figure_page exit=0 pass=16
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+p3 exit=0 pass=2
+perf exit=1 pass=13
+save exit=0 pass=14
+statistics exit=0 pass=6
+cohort exit=0 pass=8
+library exit=0 pass=16
+
+inspector 40 includes P3 (listbox, aria-activedescendant follows ArrowDown/Up/Home/End, Enter PATCHes) in both engines;
+the 'Reset Nexo style' timeout the task saw on the M1 did not reproduce here.
+perf red only in WebKit on the known WebGL-context console error (green-wave2c-export.txt, follow-up task).
+Screenshots: after-picker-1440/1024/390.png, after-picker-multi-1440.png (the lone checkbox under Lipids is the mock's
+deliberately unlabelled heat_significance control; Team's real control is the 'Show' radio).

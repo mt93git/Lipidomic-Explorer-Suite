@@ -1,0 +1,2 @@
+Error: a JSON array was accepted
+Execution halted

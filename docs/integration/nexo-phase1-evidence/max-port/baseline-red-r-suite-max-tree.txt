@@ -1,0 +1,52 @@
+test_api_actions_replay.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_analysis_settings.R :: PASS analysis settings list Team's sidebar controls with live values and choices || Error in h(simpleError(msg, call)) : 
+test_api_cache.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_catalog.R ::  || Error: Cannot classify Team output: qc_pca_tab-guided_qc_plot
+test_api_computed_controls.R :: PASS computed ids are customCol_<g>, customShape_<g>, bqcSamples and gridLog2fcThresh only || Error in h(simpleError(msg, call)) : 
+test_api_dataset_http.R :: PASS bounded RPC transfer and cleanup: chunked-error  
+test_api_dataset_route.R :: PASS dataset checkpoint POST, close and reopen preserves selected samples, values, metadata, canvas and Nexo sidecar 
+test_api_dataset_session.R :: PASS sessions are keyed by workbook and settings || Error in h(simpleError(msg, call)) : 
+test_api_download_labels.R :: PASS duplicate download labels carry their section heading 
+test_api_download_ownership.R :: PASS sibling cards keep exactly their own downloads || Error in h(simpleError(msg, call)) : 
+test_api_echo_numeric.R :: PASS an echo to a numeric input stays numeric || Error in h(simpleError(msg, call)) : 
+test_api_engine.R :: PASS U1 legacy refused || Error in h(simpleError(msg, call)) : 
+test_api_export.R :: PASS export heatmap members+csv+provenance match Team || Error in h(simpleError(msg, call)) : 
+test_api_health.R :: PASS H4 an unreadable production root never reports a match 
+test_api_heat_significance.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_http.R ::  || Error in eval(quote({ : API did not become healthy: 
+test_api_lazy_open.R :: PASS the original dashboard outputs and the Data page slots wait behind the lazy gate at open || Error in h(simpleError(msg, call)) : 
+test_api_legacy_cards.R ::  || Error: schema of tcinstance_v0_violin before a render: error in evaluating the argument 'x' in selecting a method for function 'Filter': Cannot classify Team output: qc_pca_tab-guided_qc_plot
+test_api_missing_controls_a.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_nexo_store.R :: PASS save keeps, clears or sets the member as the request says 
+test_api_parity.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_pathway_layout_json.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_plotly_click.R ::  || Error in file(con, "r") : cannot open the connection
+test_api_pool.R :: PASS the pool is off by default (LIPIDOMIC_API_WORKERS unset) || Error: workers not ready: 2 0 0 0 0 0 0
+test_api_pool_warm.R ::  || Error: workers not ready: 2 0 0 0 0 0 0
+test_api_record_warning.R :: PASS API checkpoint records near-limit boundary 
+test_api_render_all.R :: FAIL render setup Cannot classify Team output: qc_pca_tab-guided_qc_plot  
+test_api_render_disk_cache.R :: SKIP test_api_render_disk_cache: no git commit for the cache key 
+test_api_render_module_error.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_restore_cards.R :: PASS restore text settings follow Team's 100000-character limit || Error in h(simpleError(msg, call)) : 
+test_api_retina_timing.R :: PASS dpr accepts 1 or 2 only (0, 3, 1.5, "2", NA, a vector -> 400) || Error in h(simpleError(msg, call)) : 
+test_api_roundtrip.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_run_engine_uploads.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_schema.R :: PASS schema family qc || Error: Cannot classify Team output: qc_pca_tab-guided_qc_plot
+test_api_schema_actions.R :: PASS action label is the button text without its tooltip || Error in h(simpleError(msg, call)) : 
+test_api_schema_choices.R :: PASS schema choices parse option and checkbox markup || Error in h(simpleError(msg, call)) : 
+test_api_schema_hidden.R :: PASS dashboard selection bars stay shown 
+test_api_schema_icon_buttons.R :: PASS icon-only buttons are named by their icon's action and the text beside them 
+test_api_session.R :: PASS session open || Error in h(simpleError(msg, call)) : 
+test_api_session_palette.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_small_fixes.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_statistics.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_storage.R :: PASS storage list skips bad records 
+test_api_stress.R ::  || Error: Cannot classify Team output: qc_pca_tab-guided_qc_plot
+test_api_summary_textsize.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_targeted_cohort.R :: PASS cohort lists the imported lipids with their class, as Team's modal does || Error in h(simpleError(msg, call)) : 
+test_api_timecourse_designer.R ::  || Error in h(simpleError(msg, call)) : 
+test_api_unknown_session.R ::  || Error in eval(quote({ : API did not become healthy: 
+test_api_violin_height.R ::  || Error in h(simpleError(msg, call)) : 
+END
+
+[exited with code 0]

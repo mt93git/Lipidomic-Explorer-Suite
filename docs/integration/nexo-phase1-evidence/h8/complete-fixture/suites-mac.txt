@@ -1,0 +1,18 @@
+tip bd204c6 — 14 mock Playwright suites (Chromium+WebKit) and vitest, Mac
+access exit=0 pass=40
+canvas_edit exit=0 pass=26
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=10
+card_chrome exit=0 pass=11
+export exit=0 pass=24
+figure_page exit=0 pass=14
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+inspector exit=0 pass=16
+p3 exit=0 pass=2
+perf exit=0 pass=13
+save exit=0 pass=14
+statistics exit=0 pass=6
+ Test Files  54 passed (54)
+      Tests  223 passed (223)
+

@@ -1,0 +1,83 @@
+import { datasetTypeLabels, datasetTypes, type Instrument, type PanelRecord } from "@/lib/data/instruments-panels";
+import type { PanelRate } from "@/lib/order-wizard";
+import { settingRows, type InstrumentProfile } from "@/lib/instrument-profiles";
+import type { LabPerson } from "@/lib/release";
+import { DemoActor } from "../people/demo-actor";
+
+export const HINT = "Choose a demo Owner or Admin to manage instruments and panels.";
+
+// Edit opens with the focus in the name (the Edit link that opened it is up in the table), as Storage's forms do.
+export function InstrumentFields({ instrument, actors }: { instrument?: Instrument; actors: LabPerson[] | null }) {
+  const key = instrument ? "edit-instrument" : "new-instrument";
+  return <>
+    {instrument && <input type="hidden" name="id" value={instrument.id} />}
+    <label className="field"><span className="field-label">Instrument name</span><input id={`${key}-name`} name="name" required autoFocus={!!instrument} defaultValue={instrument?.name ?? ""} /></label>
+    <label className="field"><span className="field-label">Model</span><input name="model" defaultValue={instrument?.model ?? ""} /></label>
+    <label className="field"><span className="field-label">Serial number</span><input name="serialNumber" defaultValue={instrument?.serialNumber ?? ""} /></label>
+    <DemoActor actors={actors} id={`${key}-actor`} hint={HINT} />
+  </>;
+}
+
+// The dataset type decides how a panel's results are read: once an order or a batch uses the panel it stays as it is
+// (update_panel refuses a change), so the control is shown fixed and the current value is sent.
+export function PanelFields({ panel, instruments, actors, defaultInstrumentId }: { panel?: PanelRecord; instruments: Instrument[]; actors: LabPerson[] | null; defaultInstrumentId?: string }) {
+  const key = panel ? "edit-panel" : "new-panel";
+  const choices = instruments.filter(instrument => !instrument.archivedAt || instrument.id === panel?.instrumentId);
+  const fixed = !!panel && panel.orderCount + panel.batchCount > 0;
+  return <>
+    {panel && <input type="hidden" name="id" value={panel.id} />}
+    <label className="field"><span className="field-label">Panel name</span><input id={`${key}-name`} name="name" required autoFocus={!!panel} defaultValue={panel?.name ?? ""} /></label>
+    <div className="field"><label className="field-label" htmlFor={`${key}-instrument`}>Instrument</label>
+      <select id={`${key}-instrument`} name="instrumentId" defaultValue={panel ? panel.instrumentId ?? "" : defaultInstrumentId ?? ""}>
+        <option value="">No instrument</option>
+        {choices.map(instrument => <option key={instrument.id} value={instrument.id}>{instrument.name}{instrument.archivedAt ? " (archived)" : ""}</option>)}
+      </select></div>
+    <label className="field"><span className="field-label">LC method</span><input name="lcMethod" defaultValue={panel?.lcMethod ?? ""} /></label>
+    <div className="field"><label className="field-label" htmlFor={`${key}-kits`}>ISTD kits</label>
+      <input id={`${key}-kits`} name="istdKits" defaultValue={panel?.istdKits.join(", ") ?? ""} aria-describedby={`${key}-kits-hint`} />
+      <small id={`${key}-kits-hint`}>Separate kits with commas.</small></div>
+    <div className="field"><label className="field-label" htmlFor={`${key}-type`}>Dataset type</label>
+      <select id={`${key}-type`} name={fixed ? undefined : "datasetType"} defaultValue={panel?.datasetType ?? "global"} disabled={fixed} aria-describedby={`${key}-type-hint`}>
+        {datasetTypes.map(type => <option key={type} value={type}>{datasetTypeLabels[type]}</option>)}
+      </select>
+      {fixed && <input type="hidden" name="datasetType" value={panel.datasetType} />}
+      <small id={`${key}-type-hint`}>{fixed ? "Fixed: orders or batches already use this panel. For another type, create a new panel." : "How the panel's results are read. It cannot change once an order or a batch uses the panel."}</small>
+    </div>
+    <DemoActor actors={actors} id={`${key}-actor`} hint={HINT} />
+  </>;
+}
+
+// One panel's line on the rate sheet. Blank clears a part; a rate needs its currency (set_panel_rate refuses otherwise).
+export function RateFields({ panel, rate, actors }: { panel: PanelRecord; rate: PanelRate | null; actors: LabPerson[] | null }) {
+  return <>
+    <input type="hidden" name="panelId" value={panel.id} />
+    <div className="field"><label className="field-label" htmlFor="rate-amount">Rate per sample</label>
+      <input id="rate-amount" name="ratePerSample" inputMode="decimal" autoFocus defaultValue={rate?.ratePerSample ?? ""} aria-describedby="rate-amount-hint" />
+      <small id="rate-amount-hint">Blank: not set. New order then shows the estimate as not set.</small></div>
+    <div className="field"><label className="field-label" htmlFor="rate-currency">Currency</label>
+      <input id="rate-currency" name="currency" maxLength={3} autoCapitalize="characters" defaultValue={rate?.currency ?? ""} aria-describedby="rate-currency-hint" />
+      <small id="rate-currency-hint">Three-letter code, such as USD, EUR or GBP.</small></div>
+    <div className="field"><label className="field-label" htmlFor="rate-minutes">Minutes per injection</label>
+      <input id="rate-minutes" name="minutesPerInjection" inputMode="decimal" defaultValue={rate?.minutesPerInjection ?? ""} aria-describedby="rate-minutes-hint" />
+      <small id="rate-minutes-hint">The method&apos;s run time per injection, for the run time estimate. Blank: the batch builder&apos;s default.</small></div>
+    <DemoActor actors={actors} id="rate-actor" hint={HINT} />
+  </>;
+}
+
+// A profile: its name, the instrument it is for (its panels are the instrument's panels) and the settings table.
+export function ProfileFields({ profile, instruments, actors }: { profile?: InstrumentProfile; instruments: Instrument[]; actors: LabPerson[] | null }) {
+  const key = profile ? "edit-profile" : "new-profile";
+  const choices = instruments.filter(instrument => !instrument.archivedAt || instrument.id === profile?.instrumentId);
+  return <>
+    {profile && <input type="hidden" name="id" value={profile.id} />}
+    <label className="field"><span className="field-label">Profile name</span><input id={`${key}-name`} name="name" required autoFocus defaultValue={profile?.name ?? ""} /></label>
+    <div className="field"><label className="field-label" htmlFor={`${key}-instrument`}>Instrument</label>
+      <select id={`${key}-instrument`} name="instrumentId" required defaultValue={profile?.instrumentId ?? choices[0]?.id ?? ""} aria-describedby={`${key}-instrument-hint`}>
+        {choices.map(instrument => <option key={instrument.id} value={instrument.id}>{instrument.name}{instrument.archivedAt ? " (archived)" : ""}</option>)}
+      </select>
+      <small id={`${key}-instrument-hint`}>The profile&apos;s panels are this instrument&apos;s panels.</small></div>
+    {settingRows.map(([name, label]) => <label key={name} className="field"><span className="field-label">{label}</span>
+      <input name={name} defaultValue={profile?.settings[name] ?? ""} /></label>)}
+    <DemoActor actors={actors} id={`${key}-actor`} hint={HINT} />
+  </>;
+}

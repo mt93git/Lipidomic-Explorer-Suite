@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "violin_plot_render",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b05-heatmaps/violin_plot_render-1-draws.png, docs/integration/chart-audit/b05-heatmaps/violin_plot_render-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent)"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (141132 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b05-heatmaps/violin_plot_render-3-larger.png, docs/integration/chart-audit/b05-heatmaps/violin_plot_render-3-smaller.png"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "29 Team controls all present (allowedInputs not in Team's markup: violin_scale_mode, violin_baseline_group_header, violin_zoom_pct, heatmapDisplayColumns, customizeRowOrder); violin_sig_threshold→0.01 redrew (docs/integration/chart-audit/b05-heatmaps/violin_plot_render-4-data-changed.png); invalid -3: state=error, redrew=false, message=\"Could not update the plot: Invalid value for violin_sig_threshold: below the minimum 1e-04 × (shown 0.5 s after the value)\", field then shows \"-3\" (docs/integration/chart-audit/b05-heatmaps/violin_plot_render-4-data-invalid.png); 0.01 typed again → field shows \"0.01\", after re-selecting the card \"0.01\"; scope \"Differential Expression Filtered Lipids (Menu 3 DE)\" redrew (docs/integration/chart-audit/b05-heatmaps/violin_plot_render-4-significant.png)"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b05-heatmaps/violin_plot_render-5-appearance.png; canvas Undo → \"Audit violin_plot_render\", Redo → \"Audit violin_plot_render\""
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 6,
+  "name": "statistics",
+  "status": "PASS",
+  "detail": "Statistics tab: \"Statistics are available for independent violin copies.\"; Team's significance is in the Data tab: bars true→false redrew (docs/integration/chart-audit/b05-heatmaps/violin_plot_render-6-statistics-bars-off.png), back, \"Numeric p-values\" redrew (docs/integration/chart-audit/b05-heatmaps/violin_plot_render-6-statistics.png), back to stars; baseline group options: Control/Treatment"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "Team Export PDF (#0) produced no file within 60 s; from the click on the page said \"Could not download the file: Request failed (500) × (at 12.0 s)\"; page.waitForEvent: Timeout 60000ms exceeded while waiting for event \"download\" [rest: PNG 861129 B; SVG disabled (\"Download PNG Download SVG This figu"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b05-heatmaps/violin_plot_render-8-finished.png"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit violin_plot_render\" with violin_sig_threshold=0.01; remove + Undo brought it back drawn; docs/integration/chart-audit/b05-heatmaps/violin_plot_render-9-duplicate.png"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 9cb3b2914b6e…: \"Audit violin_plot_render\", violin_sig_threshold=0.01, background kept; docs/integration/chart-audit/b05-heatmaps/violin_plot_render-10-reopened.png"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; 1440x900: tabs Data/Appearance/Statistics/Export, 1 sliders; 1024x768: tabs Data/Appearance/Statistics/Export, 1 sliders; docs/integration/chart-audit/b05-heatmaps/violin_plot_render-12-layout-<width>-<tab>.png"
+ },
+ {
+  "plot": "violin_plot_render",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

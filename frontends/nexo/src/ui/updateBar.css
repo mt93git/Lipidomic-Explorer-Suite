@@ -1,0 +1,8 @@
+/* New-version bar (UpdateBar.tsx): fixed over the top 32 px, above everything, until Reload or ×. Its own colours
+ * (tokens.css --update-*, 7:1 in tokens.test.ts) so it reads the same on any theme. The empty region takes no space. */
+.update-bar-region{position:fixed;top:0;left:0;right:0;z-index:2147483000}
+.update-bar{display:flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:32px;box-sizing:border-box;padding:2px var(--space-2);background:var(--update-bg);color:var(--update-fg);border-bottom:1px solid var(--update-fg);box-shadow:0 1px 4px rgba(0,0,0,.25);font:600 var(--font-chrome)/1.3 var(--font)}
+.update-bar button{font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:4px;min-height:24px;padding:0 10px;cursor:pointer}
+.update-bar .update-bar-close{border-color:transparent;font-size:18px;line-height:1;padding:0 8px}
+.update-bar button:hover{background:rgba(20,27,36,.12)}
+.update-bar button:focus-visible{outline:2px solid var(--update-fg);outline-offset:1px}

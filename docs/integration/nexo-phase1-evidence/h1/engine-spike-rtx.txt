@@ -1,0 +1,13 @@
+# R/frontends/api/spike/engine_spike.R on the RTX (production-identical tree), fixture classic-seed7-synthetic.zip
+# host: <server> | nexo-api env | R 4.4.3 | shiny 1.14.0 | plotly 4.12.1 | recorded: 2026-11-06T04:54:54Z
+## earlier runs (same night): 0/8 (flush outside the reactive domain), 0/8 (silent error reading a missing input in the echo), 6/8 (S4 echoed numeric inputs as text; S6 compared empty nodes as named vs unnamed list)
+## final
+PASS S1 matches archived receipt; echoed=341; R=4.4.3 shiny=1.14.0 plotly=4.12.1 [6.358s]
+PASS S2 QC PCA settled; base64 PNG [3.152s]
+PASS S3 pca plotly x$data present; pathway network nodes present; heatmap heatmap List of 5  $ src     : chr "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAJYCAIAAAAVFBUnAAAACXBIWXMAAAsSAAALEgHS
+PASS S4 inference allowed; volcano PNG [3.392s]
+PASS S5 violin describe status=ok [0.915s]
+PASS S6 canvas ack ok; ZIP canvas identical [0.213s]
+PASS S7 50 PCA renders (harness resize dependency); VmRSS 651.81 -> 650.32 MiB delta=-1.48 MiB; mean=0.0294s [1.475s]
+PASS S8 second session restored; first closed; VmRSS before=650.32 both=881.06 after-gc=881.06 MiB [2.903s]
+SUMMARY 8/8

@@ -1,0 +1,44 @@
+# Green (after the fix), M1, 2026-11-08
+
+## cd frontends/nexo && npx vitest run src/state/actions.test.ts src/ui/sessionRecovery.test.ts
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  08:39:17
+   Duration  359ms (transform 96ms, setup 0ms, collect 114ms, tests 11ms, environment 0ms, prepare 97ms)
+
+
+## cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+ Test Files  111 passed (111)
+      Tests  510 passed (510)
+   Start at  08:39:17
+   Duration  2.22s (transform 9.55s, setup 0ms, collect 22.37s, tests 7.18s, environment 16ms, prepare 6.78s)
+
+tsc: clean
+
+## NEXO_PLOTLY_JS=<repo>/frontends/nexo/public/vendor/plotly.min.js node tests/dual-ui/test_nexo_actions_replay.cjs
+PASS F3 chromium press-records-in-nexo-member
+PASS F3 chromium duplicate-copy-drawn
+PASS F3 chromium save-reopen-drawn
+PASS F3 chromium replay-failure-placeholder-and-inspector-message
+PASS F3 chromium no-console-errors
+PASS F3 webkit press-records-in-nexo-member
+PASS F3 webkit duplicate-copy-drawn
+PASS F3 webkit save-reopen-drawn
+PASS F3 webkit replay-failure-placeholder-and-inspector-message
+PASS F3 webkit no-console-errors
+F3 actions replay OK
+exit=0
+
+## Same suite with the client replay disabled (duplicate + reopen replays removed by hand, then restored): it fails
+PASS F3 chromium press-records-in-nexo-member
+Error: copy: want plot, drew Click 'Initiate Structural Analysis' in the left sidebar
+
+## Regression suites (mock, Chromium + WebKit)
+test_nexo_inspector.cjs: exit 0, 42 PASS, last line: H3 OK
+test_nexo_card_chrome.cjs: exit 0, 29 PASS, last line: H6-0 OK
+test_nexo_save.cjs: exit 0, 16 PASS, last line: H4 OK
+test_nexo_canvas_edit.cjs: exit 0, 34 PASS, last line: H2F OK
+test_nexo_session_reopen.cjs: exit 0, 8 PASS, last line: H9 session reopen OK
+
+## R tests/dual-ui/test_api_actions_replay.R: UNRUN on the M1 (no R); the coordinator runs it on the RTX:
+Rscript tests/dual-ui/test_api_actions_replay.R  ->  expected: three PASS lines then 'PASS test_api_actions_replay'

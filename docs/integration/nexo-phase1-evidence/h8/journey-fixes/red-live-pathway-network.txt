@@ -1,0 +1,14 @@
+PASS H6b chromium violin-svg-undo-redo-edit
+PASS H7b chromium finish-immediately-after-add waits-no-refusal
+PASS H6b chromium image-png
+locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for locator('.card[data-id="tcinstance_c093f9a33aeb-pathwayVisNetwork"]').locator('.body .network canvas') to be visible[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_finish.cjs:81:45)
+    at async <repo>/tests/dual-ui/test_nexo_finish.cjs:129:46 {
+  log: [
+    `  - waiting for locator('.card[data-id="tcinstance_c093f9a33aeb-pathwayVisNetwork"]').locator('.body .network canvas') to be visible`
+  ],
+  name: 'TimeoutError'
+}

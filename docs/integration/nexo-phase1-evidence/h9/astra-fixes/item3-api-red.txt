@@ -1,0 +1,4 @@
+Error in eval(quote({ : 
+  FAIL the API has no plotly_click bridge (api_card_click_sources / api_plotly_points)
+Calls: eval ... local -> eval.parent -> eval -> eval -> eval -> eval
+Execution halted

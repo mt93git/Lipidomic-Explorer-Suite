@@ -1,0 +1,17 @@
+PASS H8c chromium confirm-prompt
+PASS H8c chromium confirm-then-live-plot
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'Data'
+- 'Statistics'
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_group_comparison.cjs:66:12)
+    at async <repo>/tests/dual-ui/test_nexo_group_comparison.cjs:107:46 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'Data',
+  expected: 'Statistics',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

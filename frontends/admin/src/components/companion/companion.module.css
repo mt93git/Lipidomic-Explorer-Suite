@@ -1,0 +1,55 @@
+/* Copied from Nexo frontends/nexo/src/companion at 2ec1f69d; keep in step by hand.
+   Admin: a CSS module (Nexo's companion-* classes without the prefix), Admin's tokens (white popups, --blue, --line,
+   5 px corners, --font-body). In the client top bar the slot sits left of the tools (view switch, client, user chip,
+   sign out); on a phone it stays in the bar, between the brand and Menu. On the signed-out pages (.corner) it sits at
+   the top bar's right end, in the page. */
+/* The neutrophil companion (docs/integration/nexo-companion/prototype.html): Team's artwork and motion, Nexo's face,
+   borders and blue. The 38 px slot sits in the top bar left of the account menu; everything that leaves it is fixed. */
+.slot{display:inline-flex;flex:none;width:38px;height:38px}
+:global(.topbar) > .slot{margin-left:auto}
+:global(.topbar) > .slot ~ :global(.topbar-tools){flex:0 1 auto}
+.corner{position:absolute;z-index:5;top:16px;right:24px}
+.dock,.fly{width:38px;height:38px;min-width:0;min-height:0;padding:0;border:0;border-radius:50%;cursor:pointer;background:radial-gradient(circle,#d9edf0 0%,#eaf4f7 58%,transparent 70%)}
+.dock:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.dock svg,.fly svg,.mini svg{width:100%;height:100%;display:block;overflow:visible}
+.dock :global(.cell-body),.fly :global(.cell-body),.mini :global(.cell-body){transform-origin:80px 85px;animation:assistant-float 3.4s ease-in-out infinite}
+.dock :global(.cell-eyes),.fly :global(.cell-eyes),.mini :global(.cell-eyes){transform-box:fill-box;transform-origin:center;animation:assistant-blink 5s infinite}
+.dock.hello :global(.cell-body),.fly.hello :global(.cell-body){animation:assistant-wave .65s ease-in-out 2}
+@keyframes assistant-float{0%,100%{transform:translateY(1px) scale(1)}50%{transform:translateY(-7px) scale(1.05)}}
+@keyframes assistant-blink{0%,43%,48%,100%{transform:scaleY(1)}45%,46%{transform:scaleY(.12)}}
+@keyframes assistant-wave{0%,100%{transform:rotate(0) translateY(0)}25%{transform:rotate(-10deg) translateY(-5px)}65%{transform:rotate(10deg) translateY(-5px)}}
+@media (prefers-reduced-motion:reduce){.dock *,.fly *,.mini *{animation:none!important}}
+.fly{position:fixed;z-index:60;transform-origin:0 0}
+.fly[data-phase="entrance"],.fly[data-phase="docked"]{pointer-events:none}
+.ring{position:fixed;z-index:59;border:2px solid #78AFE0;border-radius:50%;pointer-events:none;opacity:0}
+.pop{position:fixed;z-index:61;box-sizing:border-box;background:var(--surface,#fff);color:var(--ink,#202e3b);border:1px solid #cfd6de;border-radius:5px;box-shadow:0 8px 28px #16223029;font:13px/1.45 var(--font-body),system-ui,sans-serif;text-align:left}
+.pop b{display:block;margin-bottom:4px;font-size:14px}
+.bubble{width:260px;padding:12px 14px;pointer-events:none}
+.bubble b{font-size:18px}
+.tip{width:300px;padding:12px 14px}
+.tip:focus{outline:none}
+.tip[data-auto]{pointer-events:none}
+.tip::after{content:"";position:absolute;width:12px;height:12px;background:var(--surface,#fff);border:1px solid #cfd6de;border-width:0 1px 1px 0}
+.tip[data-arrow="right"]::after{right:-7px;top:22px;transform:rotate(-45deg)}
+.tip[data-arrow="upr"]::after{top:-7px;right:22px;transform:rotate(225deg)}
+.tipActions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;color:#5b6b78}
+.tipActions label{display:inline-flex;align-items:center;gap:4px}
+.tipActions button,.foot button{background:var(--blue,#2d5f8a);color:#fff;border:0;border-radius:5px;padding:5px 12px;font-weight:700;cursor:pointer}
+.foot button:disabled{opacity:.55;cursor:default}
+.panel{width:330px;max-width:calc(100vw - 24px);max-height:min(600px,calc(100vh - 70px));display:flex;flex-direction:column;overflow:hidden}
+.head{display:flex;gap:10px;align-items:center;padding:14px;border-bottom:1px solid var(--line,#dce3e8)}
+.mini{width:54px;height:54px;flex:none}
+.kicker{font:600 10px/1.3 var(--font-body),system-ui,sans-serif;letter-spacing:.14em;color:#486779}
+.head h2{margin:2px 0 0;font-size:18px;font-weight:700}
+.close{margin-left:auto;align-self:flex-start;border:0;background:none;font-size:18px;cursor:pointer;color:var(--ink,#202e3b)}
+.body{flex:1;overflow:auto;padding:12px 14px;display:grid;gap:10px;align-content:start}
+.q{justify-self:end;margin:0;background:var(--blue,#2d5f8a);color:#fff;border-radius:5px;padding:8px 12px}
+.a{background:#f4f7f9;border:1px solid #e1e8ec;border-radius:5px;padding:10px 12px;font-size:12.5px}
+.a .text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 6px}
+.label{margin:6px 0 0;font-size:11px;color:#5b6b78}
+.foot{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line,#dce3e8)}
+.foot input{flex:1;min-width:0;border:2px solid var(--blue,#2d5f8a);border-radius:5px;padding:6px 8px;font:inherit}
+@media (max-width:1200px){.corner{top:14px;right:18px}}
+@media (max-width:760px){:global(.topbar) > .slot{order:2}.corner{top:10px;right:16px}}
+/* A narrow phone has no room for the brand's badge next to the dock and Menu (the sidebar strip below names the portal). */
+@media (max-width:480px){:global(.topbar):has(> .slot) :global(.badge){display:none}}

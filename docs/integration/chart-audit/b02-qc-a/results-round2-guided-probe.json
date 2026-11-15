@@ -1,0 +1,21 @@
+{
+ "step": "probe",
+ "schemaHasGuided": true,
+ "schemaGuided": [
+  {
+   "id": "guided_qc_sample",
+   "type": "select",
+   "label": "Choose a sample (keyboard accessible)",
+   "options": 25,
+   "group": null
+  }
+ ],
+ "tabs": {
+  "Data": true,
+  "Appearance": false,
+  "Statistics": false,
+  "Export": false
+ },
+ "options": 0,
+ "shot": "docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-guided-probe.png"
+}

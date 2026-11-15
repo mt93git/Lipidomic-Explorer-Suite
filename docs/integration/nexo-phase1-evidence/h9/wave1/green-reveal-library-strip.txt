@@ -1,0 +1,8 @@
+
+ ✓ src/canvas/reveal.test.ts (6 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  07:26:33
+   Duration  244ms (transform 30ms, setup 0ms, collect 23ms, tests 3ms, environment 0ms, prepare 57ms)
+

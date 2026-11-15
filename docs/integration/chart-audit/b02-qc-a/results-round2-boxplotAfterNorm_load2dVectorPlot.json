@@ -1,0 +1,156 @@
+[
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 7c052f91ea6a239b… identical (29204 B)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size: {\"node\":[620,720],\"img\":[620,720],\"state\":\"current\",\"resizeSize\":null}, pointer at the handle hit DIV.resize-handle, last render request {\"width\":240,\"height\":220,\"format\":\"png\"}, hash unchanged=false [boxplotAfterNorm-r2-3-fail.png, url /nexo/?checkpoint=bd0f67b3bca07d972a5641170a56e3c3bd35ad02c942af7eb6418e2a88d9d82c]"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; mergeReplicatesMode single→merged redrew (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-4-data-mergeReplicatesMode.png); keyboard (Tab) reaches mergeReplicatesMode; module actions in the Data tab: Process Outlier Risks... / See high variance lipids... / Show Statistic Detail / Switch to Aggregated Classes / Switch to Aggregated Classes / All / None; computed controls in the schema: bqcSamples; shown: 0 group colour(s), 0 shape select(s); dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":0}"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-5-appearance.png; canvas Undo → \"Audit boxplotAfterNorm\", Redo → \"Audit boxplotAfterNorm\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 322677 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF QC_Boxplot_After_20261107_1708.pdf 5769 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-7-export-dialog.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-8-finished.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit boxplotAfterNorm\" with {\"mergeReplicatesMode\":\"merged\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-9-duplicate.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 9d37b8e4dc71…: \"Audit boxplotAfterNorm\", {\"mergeReplicatesMode\":\"merged\"}, background kept; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-10-phone.png)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "refused on arrival (Team): \"Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector view to use the original plot and downloads.\" docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-1-refusal.png; before the change the Inspector shows smartLabelLoad2D on; card schema {\"value\":true,\"default\":true}; API: PATCH /sessions/s14/cards/tcinstance_1f775ef7f3fa → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Loading Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_l; smartLabelLoad2D turned off in the Data tab → current; click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 12 traces, types and x/y/z (rounded to 6 significant digits) as the module render with the same body; module figure in a bare 620x720 div: load2dVectorPlot-r2-2-api-bare.png"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620x720→780x780→450x520→240x220 (minimum)→620x720 (restored through the handle at zoom factor 1.000); larger: plotly layout 620x682→780x742; smaller: plotly layout 780x742→450x482; minimum: plotly layout 450x482→240x182; docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-3-larger.png, docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-3-smaller.png, docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-3-minimum.png"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; pcaMode class→omics redrew (docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-4-data-pcaMode.png); loadMarkerSize2D 8→12 redrew (docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-4-data-loadMarkerSize2D.png); keyboard (Tab) reaches loadMarkerSize2D, smartLabelLoad2D, pcaMode; module actions in the Data tab: Process Outlier Risks... / See high variance lipids... / Show Statistic Detail / Switch to Aggregated Classes / Switch to Aggregated Classes / All / None; computed controls in the schema: bqcSamples; shown: 0 group colour(s), 0 shape select(s); dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":0}"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); title, font 16 #aa0000, plot background → plot_bgcolor #f0f0ff; 6 palettes, 6 distinct colourings; editor Undo restores the previous palette colours, Redo re-applies; Healthy in grey: N/A on this checkpoint (groups GL_TAG/GP_LPC/GP_LPE/GP_PC/GP_PE/GP_PI/GP_PS/SP_Cer/SP_SM/, no Healthy group; colours unchanged); legend Top Left → x=0; grid toggle present; orientation enabled; docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-5-appearance.png; layout 620x682 in div 620x682, margin {\"l\":62.2997094229971,\"r\":9.29846409298464,\"t\":55,\"b\":47.4221668742217,\"pad\":0,\"autoexpand\":true}; Reset restores the title; canvas Undo → \"Audit load2dVectorPlot\", Redo → \"Audit load2dVectorPlot\""
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 588547 B; SVG 59574 B; Team PDF Loading_2D_20261107_1712.pdf 11245 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-7-export-dialog.png"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x682; Edit figure → live plotly; docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-8-finished.png"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 90000ms exceeded. [load2dVectorPlot-r2-9-fail.png, url /nexo/?checkpoint=af866bb09b6aaca56f308cb665669a38bba328c97a94177072c09e40a24ad342] API: PATCH /sessions/s14/cards/tcinstance_1f775ef7f3fa → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"PCA Loading Plots\",\"outlierScope\":\"global\",\"outlierThreshold\":2.5,\"outlierNumShow\":24,\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":true,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_disp [sent {\"inputs\":{\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"],\"showSingleLipidNames\":true,\"loadMarkerSize2D\":12,\"showLabels3D\":true},\"actions\":[]}] | POST /sessions/s14/cards/tcinstance_fc5e7d425efa/render → 422 {\"error\":\"unprocessable\",\"message\":\"Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector view to use the original plot and downloads.\"} [sent {\"width\":620,\"height\":720,\"format\":\"json\"}] last console: page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s14/cards/tcinstance_1f775ef7f3fa/render | page+: Failed to load resource: the server responded with"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 525b4acc1db4…: \"Audit load2dVectorPlot\", {\"pcaMode\":\"omics\",\"loadMarkerSize2D\":\"12\"}, background kept; docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/load2dVectorPlot-r2-10-phone.png)"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "2 console error(s) on all pages of this plot (2 = expected refusals: Team's smart-label 422 and/or the 400 of #4's invalid value): page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s14/cards/tcinstance_1f775ef7f3fa/render | page+: Failed to load resource: the server responded with a status of 422 (Dunno) @/api/v1/sessions/s14/cards/tcinstance_fc5e7d425efa/render"
+ }
+]

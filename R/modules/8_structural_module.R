@@ -1,6 +1,181 @@
 # R/modules/8_structural_module.R
 # Structural Lipidome Audit.
 
+# Team has no left sidebar: its cards carry their own Run button. Classic keeps its wording.
+structural_team_view <- function() exists("lipidomic_interface", mode = "function") && identical(tryCatch(lipidomic_interface(), error = function(e) ""), "team")
+structural_run_hint <- function() {
+  if (structural_team_view()) "Choose 'Run structural analysis' on this card (or in Data & settings) to compute structural remodeling shifts"
+  else "Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"
+}
+
+# --- Team look for the structural figures ---
+# Canvas 1 draws its figures with dark-gray text (#52514e), regular-weight axis labels and a dot legend
+# outside the plot. The structural figures are ggplot images, so the same look is applied here, in Team
+# only, to the finished plot: colors and weights are restyled, nothing that is plotted changes.
+STRUCTURE_TEAM_TEXT <- "#52514e"
+structure_team_style <- function(p) {
+  if (!structure_team_look_on() || !inherits(p, "ggplot")) return(p)
+  restyle <- function(p, element, ...) {
+    current <- p$theme[[element]]
+    if (inherits(current, "element_blank")) return(p)
+    p + do.call(ggplot2::theme, stats::setNames(list(ggplot2::element_text(...)), element))
+  }
+  tx <- STRUCTURE_TEAM_TEXT; sz <- 10   # default text: Arial 10 (the family is set on the Plotly layout; ggplot keeps its default sans)
+  p <- p + ggplot2::theme(text = ggplot2::element_text(size = sz, color = tx))
+  p <- restyle(p, "axis.text", size = sz, color = tx, face = "plain")
+  p <- restyle(p, "axis.title", size = sz, color = tx, face = "plain")
+  p <- restyle(p, "legend.text", size = sz, color = tx)
+  p <- restyle(p, "legend.title", size = sz, color = tx, face = "plain")
+  p <- restyle(p, "plot.title", size = sz, color = tx, face = "bold")
+  p <- restyle(p, "plot.subtitle", size = sz, color = tx)
+  p <- restyle(p, "strip.text", size = sz, color = tx)
+  if (!inherits(p$theme[["legend.key"]], "element_blank")) p <- p + ggplot2::theme(legend.key = ggplot2::element_blank())
+  p
+}
+structure_team_look_on <- function() structural_team_view()
+# Team: the structural figures are interactive Plotly charts (so the Appearance tab of the Canvas editor
+# works on them); every other interface keeps the static image. Same outputs, same ids.
+structure_plot_output <- function(id, width = "100%", height = "400px") {
+  if (structural_team_view()) plotly::plotlyOutput(id, width = width, height = height) else shiny::plotOutput(id, width = width, height = height)
+}
+structure_font <- list(family = "Arial, Helvetica, sans-serif", size = 10, color = STRUCTURE_TEAM_TEXT)
+structure_image_plotly <- function(g, width = 900, height = 600) {
+  f <- tempfile(fileext = ".png"); on.exit(unlink(f), add = TRUE)
+  ggplot2::ggsave(f, g, width = width / 96, height = height / 96, dpi = 96, device = "png")
+  uri <- paste0("data:image/png;base64,", jsonlite::base64_enc(readBin(f, "raw", file.info(f)$size)))
+  plotly::plot_ly(x = c(0, 1), y = c(0, 1), type = "scatter", mode = "markers", marker = list(opacity = 0), hoverinfo = "none") |>
+    plotly::layout(images = list(list(source = uri, xref = "paper", yref = "paper", x = 0, y = 1, sizex = 1, sizey = 1, xanchor = "left", yanchor = "top", layer = "below")),
+                   xaxis = list(visible = FALSE, range = c(0, 1)), yaxis = list(visible = FALSE, range = c(0, 1)))
+}
+# One ggplot -> Plotly. Title and subtitle become the Plotly title; plots Plotly cannot draw (polar donuts) are
+# placed as an image so the card still works.
+structure_ggplot_to_plotly <- function(g, panel = FALSE) {
+  lab <- tryCatch(ggplot2::get_labs(g), error = function(e) list())
+  ttl <- if (is.character(lab$title) && length(lab$title) == 1 && nzchar(lab$title)) lab$title else ""
+  sb <- if (is.character(lab$subtitle) && length(lab$subtitle) == 1 && nzchar(lab$subtitle)) lab$subtitle else ""
+  if (inherits(g$coordinates, "CoordPolar")) return(structure_image_plotly(g))
+  pl <- tryCatch(suppressWarnings(plotly::ggplotly(g)), error = function(e) NULL)
+  if (is.null(pl)) return(structure_image_plotly(g))
+  txt <- if (nzchar(ttl)) paste0("<b>", ttl, "</b>", if (nzchar(sb)) paste0("<br><sup>", sb, "</sup>") else "") else ""
+  if (!nzchar(txt)) return(pl)
+  if (panel) plotly::layout(pl, annotations = list(list(text = txt, x = 0.5, y = 1.02, xref = "paper", yref = "paper", xanchor = "center", yanchor = "bottom", showarrow = FALSE, font = structure_font)))
+  else plotly::layout(pl, title = list(text = txt, x = 0.01, xanchor = "left", font = structure_font), margin = list(t = if (nzchar(sb)) 80 else 50))
+}
+# Legend keys are always round dots: a bar (square key) or a symbol that is not a circle keeps drawing as it is,
+# but its legend entry is carried by an invisible circle trace in the same legend group.
+structure_round_legend <- function(pl) {
+  pl <- tryCatch(plotly::plotly_build(pl), error = function(e) NULL) %||% pl
+  data <- pl$x$data
+  if (is.null(data) || !length(data)) return(pl)
+  extra <- list()
+  for (i in seq_along(data)) {
+    tr <- data[[i]]
+    if (isTRUE(tr$meta$teamLegendProxy) || !isTRUE(tr$showlegend) || is.null(tr$name) || !nzchar(as.character(tr$name))) next
+    keyed <- tr$type %in% c("bar", "histogram") || (identical(tr$type, "scatter") && grepl("markers", as.character(tr$mode %||% "")))
+    if (!keyed) next
+    col <- tr$marker$color; if (is.null(col) || length(col) < 1) col <- tr$marker$line$color
+    col <- if (is.null(col) || length(col) < 1) "#B0B0B0" else col[[1]]
+    grp <- if (!is.null(tr$legendgroup) && nzchar(as.character(tr$legendgroup))) tr$legendgroup else as.character(tr$name)
+    data[[i]]$legendgroup <- grp; data[[i]]$showlegend <- FALSE
+    extra[[length(extra) + 1]] <- list(type = "scatter", mode = "markers", x = list(NULL), y = list(NULL), name = tr$name, legendgroup = grp, showlegend = TRUE,
+                                      meta = list(teamLegendProxy = TRUE),
+                                      marker = list(symbol = "circle", size = 9, color = col, line = list(width = 0)), hoverinfo = "skip")
+  }
+  if (length(extra)) pl$x$data <- c(data, extra)
+  pl
+}
+# ggplotly names legend entries after the raw scale values (class codes such as GP_PE); the static figure printed the
+# full class names, so the Plotly figure does too. It also gives every series a readable name and marks the helper traces
+# (color bar, text labels) as not editable, so the Series panel only lists real series.
+structure_class_names <- function(pl) {
+  pl <- tryCatch(plotly::plotly_build(pl), error = function(e) NULL) %||% pl
+  data <- pl$x$data
+  if (is.null(data) || !length(data)) return(pl)
+  codes <- unique(c(if (exists("CLASS_MAP_COLORS")) names(CLASS_MAP_COLORS), if (exists("HYPERCLASS_MAP_COLORS")) names(HYPERCLASS_MAP_COLORS)))
+  codes <- codes[nzchar(codes)]; codes <- codes[order(-nchar(codes))]
+  swap <- function(x) {
+    if (!is.character(x) || length(x) != 1L || is.na(x) || !exists("get_full_class_name", mode = "function")) return(x)
+    for (cd in codes) if (grepl(cd, x, fixed = TRUE)) { nw <- tryCatch(as.character(get_full_class_name(cd))[1], error = function(e) cd); if (!is.na(nw) && nzchar(nw)) x <- gsub(cd, nw, x, fixed = TRUE) }
+    x
+  }
+  for (i in seq_along(data)) {
+    tr <- data[[i]]; nm <- tr$name; has_name <- is.character(nm) && length(nm) == 1L && !is.na(nm) && nzchar(nm)
+    is_scatter <- identical(tr$type, "scatter")
+    if (is_scatter && identical(tr$hoverinfo, "skip") && length(tr$x) <= 1L && !identical(tr$mode, "text")) { data[[i]]$name <- "Color bar"; data[[i]]$meta <- list(teamNoEdit = TRUE); next }
+    if (is_scatter && identical(tr$mode, "text")) { data[[i]]$name <- if (has_name) nm else "Labels"; data[[i]]$meta <- list(teamNoEdit = TRUE); next }
+    if (has_name && grepl("^[0-9a-f]{32}$", nm)) data[[i]]$name <- "Points"
+    else if (!has_name && is_scatter && grepl("markers", as.character(tr$mode %||% ""))) data[[i]]$name <- "Points"
+    data[[i]]$name <- swap(data[[i]]$name); if (!is.null(data[[i]]$legendgroup)) data[[i]]$legendgroup <- swap(data[[i]]$legendgroup)
+  }
+  pl$x$data <- data
+  pl
+}
+structure_team_plotly <- function(res, height = NULL) {
+  finish <- function(pl) {
+    h <- if (is.function(height)) tryCatch(height(), error = function(e) NULL) else height
+    pl <- plotly::layout(pl, paper_bgcolor = "#ffffff", plot_bgcolor = "#ffffff", font = structure_font,
+                         hoverlabel = list(bgcolor = "#ffffff", bordercolor = "#d9e1e3", font = list(family = structure_font$family, size = 10, color = "#20323b"), align = "left"))
+    if (is.numeric(h) && length(h) == 1 && is.finite(h) && h > 100) pl <- plotly::layout(pl, height = h)
+    pl <- structure_round_legend(structure_class_names(pl))
+    pl <- plotly::layout(pl, legend = list(font = structure_font, tracegroupgap = 0, itemsizing = "constant", bgcolor = "rgba(0,0,0,0)"))
+    pl |> plotly::event_register("plotly_click") |>
+      plotly::config(displaylogo = FALSE, scrollZoom = FALSE, responsive = TRUE, modeBarButtonsToRemove = c("lasso2d", "select2d"))
+  }
+  if (inherits(res, "plotly")) return(finish(res))
+  parts <- attr(res, "team_parts")
+  if (!is.null(parts) && length(parts) == 1L) return(finish(structure_ggplot_to_plotly(structure_team_style(parts[[1]]))))
+  if (!is.null(parts)) {
+    pls <- lapply(parts, function(g) structure_ggplot_to_plotly(structure_team_style(g), panel = TRUE))
+    ncol <- max(1L, as.integer(attr(res, "team_ncol") %||% 2L))
+    pl <- plotly::subplot(pls, nrows = ceiling(length(pls) / ncol), shareX = FALSE, shareY = FALSE, titleX = TRUE, titleY = TRUE, margin = c(0.06, 0.06, 0.1, 0.1))
+    return(finish(pl))
+  }
+  if (inherits(res, "ggplot")) {
+    pl <- finish(structure_ggplot_to_plotly(structure_team_style(res)))
+    if (isTRUE(attr(res, "team_hide_series"))) pl <- plotly::layout(pl, meta = list(teamHideSeries = TRUE))
+    return(pl)
+  }
+  finish(plotly::plot_ly() |> plotly::layout(xaxis = list(visible = FALSE), yaxis = list(visible = FALSE),
+         annotations = list(list(text = "Nothing to draw for the current settings.", x = 0.5, y = 0.5, xref = "paper", yref = "paper", showarrow = FALSE, font = structure_font))))
+}
+# Correlation network as a native Plotly chart: round nodes (sized by their links), each link split at its middle
+# in the colors of the two nodes it joins, 1.5 pt (weakest) to 3 pt (strongest), dashed when negative.
+structure_network_plotly <- function(g, layout, mode) {
+  lay <- ggraph::create_layout(g, layout = layout)
+  ed <- as.data.frame(tidygraph::activate(g, edges))
+  deg <- as.numeric(igraph::degree(g))
+  col <- as.character(lay$color_val); col[is.na(col) | !nzchar(col)] <- "#B0B0B0"
+  nd <- data.frame(x = lay$x, y = lay$y, name = as.character(lay$name), color = col, degree = deg, stringsAsFactors = FALSE)
+  rng <- range(ed$AbsCor, na.rm = TRUE)
+  w_pt <- if (diff(rng) < 1e-9) rep(3, nrow(ed)) else 1.5 + 1.5 * (ed$AbsCor - rng[1]) / diff(rng)
+  w_px <- w_pt * 96 / 72
+  pl <- plotly::plot_ly()
+  for (i in seq_len(nrow(ed))) {
+    a <- nd[ed$from[i], ]; b <- nd[ed$to[i], ]
+    mx <- (a$x + b$x) / 2; my <- (a$y + b$y) / 2
+    dash <- if (identical(as.character(ed$Direction[i]), "- (Negative)")) "dash" else "solid"
+    tip <- sprintf("%s - %s<br>Pearson r = %.2f", a$name, b$name, ed$Pearson_r[i])
+    pl <- plotly::add_trace(pl, x = c(a$x, mx), y = c(a$y, my), type = "scatter", mode = "lines", line = list(color = a$color, width = w_px[i], dash = dash), hoverinfo = "text", text = tip, showlegend = FALSE, name = "Link", meta = list(teamNoEdit = TRUE))
+    pl <- plotly::add_trace(pl, x = c(mx, b$x), y = c(my, b$y), type = "scatter", mode = "lines", line = list(color = b$color, width = w_px[i], dash = dash), hoverinfo = "text", text = tip, showlegend = FALSE, name = "Link", meta = list(teamNoEdit = TRUE))
+  }
+  dr <- range(nd$degree); sz <- if (diff(dr) < 1e-9) rep(16, nrow(nd)) else 10 + 16 * (nd$degree - dr[1]) / diff(dr)
+  pl <- plotly::add_trace(pl, x = nd$x, y = nd$y, type = "scatter", mode = "markers+text", name = "Nodes", text = nd$name, textposition = "top center", textfont = structure_font,
+                          marker = list(size = sz, color = nd$color, line = list(color = "#b0b0b0", width = 1.2), opacity = 0.95),
+                          hoverinfo = "text", hovertext = paste0(nd$name, "<br>links: ", nd$degree), showlegend = FALSE)
+  plotly::layout(pl, title = list(text = paste0("<b>Undirected Correlation Network: ", mode, "</b><br><sup>Line width: correlation strength (3 pt strongest, 1.5 pt weakest). Dashed: negative correlation.</sup>"), x = 0.01, xanchor = "left", font = structure_font),
+                 xaxis = list(visible = FALSE, zeroline = FALSE, showgrid = FALSE), yaxis = list(visible = FALSE, zeroline = FALSE, showgrid = FALSE),
+                 margin = list(t = 80, l = 20, r = 20, b = 20))
+}
+# renderPlot that, in Team, returns the figure as an interactive Plotly chart and, elsewhere, is plain renderPlot.
+structure_render_plot <- function(expr, env = parent.frame(), quoted = FALSE, ...) {
+  func <- shiny::installExprFunction(expr, "func", env, quoted)
+  if (structural_team_view()) {
+    height <- list(...)$height
+    return(plotly::renderPlotly({ structure_team_plotly(func(), height = height) }))
+  }
+  shiny::renderPlot({ func() }, ...)
+}
+
 # Order display categories by chain length and unsaturation without rewriting labels.
 # Unknown or malformed labels remain in their original order; Other is last.
 structural_order_acyl_chains <- function(chains) {
@@ -287,6 +462,10 @@ structural_ui <- function(id) {
                    div(style = "display: flex; flex-direction: column;",
                       jqui_resizable(
                         plotOutput(ns("networkPlot"), height = "800px"),
+                        options = list(handles = "s, se")
+                      ),
+                      jqui_resizable(
+                        plotOutput(ns("moduleTraitPlot"), height = "520px"),
                         options = list(handles = "s, se")
                       ),
                      shiny::HTML("<div style='margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-left: 4px solid #0072b2; font-size: 11px; line-height: 1.4; color: #333; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; border-radius: 0 4px 4px 0;'><b>Methodology Note (Correlation Networks):</b> Correlation networks illustrate inter-lipid correlations. Nodes represent either aggregated lipid main classes, chain lengths, double bonds, or individual species. Edges indicate pairwise Pearson correlation coefficients (|r|) exceeding the user-specified threshold. Undirected graph layout is optimized using the selected algorithm (e.g. Stress or Fruchterman-Reingold).</div>")
@@ -1467,6 +1646,9 @@ generate_prop_stats_report <- function(raw_data, shared_data, input) {
 
 structural_server <- function(id, shared_data, global_color_map = NULL) {
   moduleServer(id, function(input, output, session) {
+    # Team: the figures of this module are restyled on their way out (Arial 10, Canvas colors);
+    # renderPlot below is shiny::renderPlot behind that restyle. Other interfaces are untouched.
+    renderPlot <- structure_render_plot
     
     # Store custom factor level orderings across variables
     level_prefs <- reactiveValues()
@@ -1964,7 +2146,18 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
     
   # --- 2. Structural Audit Loop ---
     
-    auditResults_event <- eventReactive(input$runAnalysis, {
+    # The comparison the structural views are built on: the contrast and what it enriched. When it changes
+    # (new reference/comparison cohorts, regrouped samples, new prepared data) a view that was already run
+    # is recomputed instead of keeping the previous comparison's shifts.
+    structural_signature <- reactive({
+      ci <- tryCatch(shared_data$de_contrast_info(), error = function(e) NULL)
+      df <- tryCatch(structuralData(), error = function(e) NULL)
+      dirs <- if (!is.null(df) && "Direction" %in% names(df)) paste(table(df$Direction), collapse = "/") else ""
+      paste(paste(ci$ref, collapse = "+"), "vs", paste(ci$comp, collapse = "+"), if (is.null(df)) 0L else nrow(df), dirs)
+    })
+    
+    auditResults_event <- eventReactive(list(input$runAnalysis, structural_signature()), {
+      req((input$runAnalysis %||% 0) > 0)
       req(guided_local_inference_allowed(session, shared_data))
       df <- structuralData()
       req(nrow(df) > 0)
@@ -2282,7 +2475,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
       if (is.null(input$runAnalysis) || input$runAnalysis == 0) {
-        return(generate_empty_plot_message("Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"))
+        return(generate_empty_plot_message(structural_run_hint()))
       }
       summaryPlotReactive()
     })
@@ -2346,9 +2539,41 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        selectInput(session$ns("selectedDetails"), "Select Shifts to Visualize:", choices = choices, multiple = TRUE, selected = saved_selected)
     })
     
-    speciesPlot_event <- eventReactive(input$updateSpecies, {
+    # Shifts that exist for the current comparison, in the same order the selector lists them.
+    species_valid_choices <- reactive({
+      res <- auditResults()
+      req(res)
+      de_sett <- shared_data$de_settings()
+      p_thresh <- de_sett$p_threshold %||% 0.05
+      p_type <- de_sett$p_value_type %||% "p_raw"
+      res_sig <- if (isTRUE(input$noSigThreshold)) res else if (p_type == "p_adj_bh" || p_type == "adjusted") res %>% dplyr::filter(P_Adj <= p_thresh) else res %>% dplyr::filter(P_Value <= p_thresh)
+      if (is.null(res_sig) || nrow(res_sig) == 0) return(character(0))
+      paste(res_sig$Class, res_sig$Feature, sep = " | ")
+    })
+    
+    # Team: the Species figure shows one shift at a time, chosen here (like the lipid chooser of the violin plots).
+    output$speciesOneUI <- renderUI({
+      if (!structural_team_view()) return(NULL)
+      valid <- species_valid_choices()
+      req(length(valid) > 0)
+      parts <- strsplit(valid, " \\| ")
+      shown <- vapply(parts, function(p) paste(tryCatch(as.character(get_full_class_name(p[1]))[1], error = function(e) p[1]), p[2], sep = " | "), character(1))
+      current <- isolate(input$speciesOneShift)
+      selectInput(session$ns("speciesOneShift"), "Shift shown in the plot:", choices = stats::setNames(valid, shown), selected = if (!is.null(current) && current %in% valid) current else valid[1])
+    })
+
+    speciesPlot_event <- eventReactive(list(input$updateSpecies, structural_signature(), input$speciesOneShift), {
+      req((input$updateSpecies %||% 0) > 0)
       req(guided_local_inference_allowed(session, shared_data))
       details <- isolate(input$selectedDetails)
+      # After the comparison changes, a previous selection may name shifts that no longer exist:
+      # draw the first four, which is what the selector resets to.
+      valid <- species_valid_choices()
+      if (length(valid) && (is.null(details) || !all(details %in% valid))) details <- head(valid, 4)
+      if (structural_team_view() && length(valid)) {
+        one <- input$speciesOneShift
+        details <- if (!is.null(one) && one %in% valid) one else if (!is.null(details) && details[1] %in% valid) details[1] else valid[1]
+      }
       req(details)
       pct_top <- isolate(input$labelTop) / 100
       border_col <- if (isTRUE(input$circledDots) && !is.null(input$borderColor) && nzchar(input$borderColor)) input$borderColor else "black"
@@ -2507,7 +2732,10 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       }
       
       if(length(plot_list) > 0) {
-        patchwork::wrap_plots(plot_list, ncol = min(2, length(plot_list)))
+        pw <- patchwork::wrap_plots(plot_list, ncol = min(2, length(plot_list)))
+        attr(pw, "team_parts") <- plot_list
+        attr(pw, "team_ncol") <- min(2, length(plot_list))
+        pw
       } else {
     # Return empty plot with message
         ggplot() + 
@@ -2525,7 +2753,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         return(generate_empty_plot_message("Please select comparison groups above or click 'Show in menu'"))
       }
       if (is.null(input$runAnalysis) || input$runAnalysis == 0) {
-        return(generate_empty_plot_message("Click 'Initiate Structural Analysis' in the left sidebar to compute structural remodeling shifts"))
+        return(generate_empty_plot_message(structural_run_hint()))
       }
       speciesPlotReactive()
     })
@@ -2646,7 +2874,7 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       }
       
       g <- tidygraph::tbl_graph(nodes = nodes, edges = cor_df, directed = FALSE)
-      return(list(graph = g, mode = mode))
+      return(list(graph = g, mode = mode, abundance = df_agg))
     })
     
     output$networkPlot <- renderPlot({
@@ -2659,12 +2887,15 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
        }
        g <- net$graph
        border_col <- if (isTRUE(input$circledDots) && !is.null(input$borderColor) && nzchar(input$borderColor)) input$borderColor else "black"
+       if (structural_team_view()) return(structure_network_plotly(g, input$networkLayout, net$mode))
        p <- ggraph::ggraph(g, layout = input$networkLayout) +
          ggraph::geom_edge_link(aes(color = Direction, edge_width = Significance), alpha = 0.7) +
          ggraph::scale_edge_width_manual(values = c("p < 0.05" = 0.5, "p < 0.01" = 1.2, "p < 0.001" = 2.0)) +
          ggraph::scale_edge_color_manual(values = c("+ (Positive)" = "#0072B2", "- (Negative)" = "#D55E00")) +
          ggraph::geom_node_point(aes(fill = I(color_val)), shape = 21, size = 10, color = border_col, stroke = 1) +
-         ggraph::geom_node_text(aes(label = name), repel = TRUE, size = 4.5, fontface = "bold", bg.color = "white", bg.r = 0.15) +
+         do.call(ggraph::geom_node_text, c(list(mapping = aes(label = name), repel = TRUE, size = 4.5, fontface = "bold", bg.color = "white", bg.r = 0.15),
+           # In Team, push labels of nodes that sit almost on top of each other apart and never drop one.
+           if (structural_team_view()) list(force = 4, box.padding = 1, point.padding = 0.8, max.overlaps = Inf) else list())) +
          ggplot2::theme_void() +
          ggplot2::theme(
             legend.position = "right",
@@ -2675,7 +2906,107 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
                        edge_color = "Correlation", edge_width = "Significance")
        p
     })
-    
+
+    # --- 5b. Module-trait relationships (next to the correlation network) ---
+    # Modules are the communities of the correlation network. A module is summarized per sample by its
+    # eigengene (first principal component of its classes, z-scored, signed to follow their mean) and
+    # correlated (Pearson) with each trait: groups from the sample metadata, one 0/1 column per level,
+    # and numeric metadata columns. Nothing here changes the network or the statistics of other views.
+    moduleTraitData <- reactive({
+      net <- networkData()
+      req(!is.null(net), !is.null(net$abundance))
+      g <- net$graph
+      ab <- as.matrix(net$abundance); storage.mode(ab) <- "double"
+      nodes <- igraph::V(g)$name
+      ab <- ab[intersect(nodes, rownames(ab)), , drop = FALSE]
+      validate(need(nrow(ab) >= 3 && ncol(ab) >= 6, "Module-trait relationships need at least 3 network nodes and 6 samples."))
+      comm <- tryCatch(igraph::cluster_louvain(igraph::as.undirected(g), weights = igraph::E(g)$AbsCor), error = function(e) NULL)
+      member <- if (is.null(comm)) stats::setNames(rep(1L, length(nodes)), nodes) else stats::setNames(as.integer(igraph::membership(comm)), igraph::V(g)$name)
+      member <- member[rownames(ab)]
+      mods <- names(sort(table(member), decreasing = TRUE))
+      z <- t(scale(t(ab))); z[!is.finite(z)] <- 0
+      eig <- vapply(mods, function(m) {
+        rows <- names(member)[member == as.integer(m)]
+        zz <- z[rows, , drop = FALSE]
+        if (nrow(zz) == 1) return(zz[1, ])
+        pc <- stats::prcomp(t(zz), center = TRUE, scale. = FALSE)$x[, 1]
+        if (isTRUE(stats::cor(pc, colMeans(zz)) < 0)) pc <- -pc
+        pc
+      }, numeric(ncol(ab)))
+      eig <- matrix(eig, nrow = ncol(ab), dimnames = list(colnames(ab), NULL))
+      module_label <- vapply(seq_along(mods), function(i) {
+        rows <- names(member)[member == as.integer(mods[i])]
+        txt <- paste(rows, collapse = ", ")
+        paste0("M", i, " (", if (nchar(txt) > 38) paste0(substr(txt, 1, 36), "...") else txt, ")")
+      }, character(1))
+      colnames(eig) <- module_label
+      meta <- tryCatch(shared_data$grouped_metadata(), error = function(e) NULL)
+      validate(need(!is.null(meta) && nrow(meta) > 0, "Module-trait relationships need sample metadata."))
+      sid <- intersect(c("Sample", "SampleName", "Sample_Name", "Sample Name", "sample"), names(meta))
+      sid <- if (length(sid)) sid[1] else names(meta)[1]
+      meta <- meta[match(colnames(ab), as.character(meta[[sid]])), , drop = FALSE]
+      keep <- !is.na(meta[[sid]])
+      validate(need(sum(keep) >= 6, "The samples of the network could not be matched to the sample metadata."))
+      eig <- eig[keep, , drop = FALSE]; meta <- meta[keep, , drop = FALSE]
+      n <- nrow(meta)
+      cols <- setdiff(names(meta), c(sid, "Dynamic_DE_Group", "Cluster", names(meta)[grepl("^TimePoint", names(meta))]))
+      cols <- c(intersect(c("Group1", "Group2"), cols), setdiff(cols, c("Group1", "Group2")))
+      traits <- list()
+      for (cn in cols) {
+        x <- meta[[cn]]
+        if (is.numeric(x) && length(unique(x[!is.na(x)])) >= 5 && stats::sd(x, na.rm = TRUE) > 0) {
+          traits[[cn]] <- as.numeric(x)
+        } else {
+          x <- as.character(x); lv <- unique(x[!is.na(x) & nzchar(x)])
+          if (length(lv) < 2 || length(lv) > 4) next
+          for (l in lv) { k <- sum(x == l, na.rm = TRUE); if (k >= 3 && k <= n - 3) traits[[paste0(cn, ": ", l)]] <- as.numeric(x == l) }
+        }
+        if (length(traits) >= 12) break
+      }
+      # A trait that repeats another (the same samples, or exactly the opposite ones) adds a column, not information.
+      keep_t <- rep(TRUE, length(traits))
+      for (i in seq_along(traits)) {
+        if (!keep_t[i]) next
+        for (j in seq_len(i - 1L)) if (keep_t[j]) {
+          a <- traits[[i]]; b <- traits[[j]]; ok <- !is.na(a) & !is.na(b)
+          if (sum(ok) > 2 && (all(a[ok] == b[ok]) || all(a[ok] == 1 - b[ok]))) { keep_t[i] <- FALSE; break }
+        }
+      }
+      traits <- traits[keep_t]
+      names(traits) <- sub("^Group2", "Group 2", sub("^Group1", "Group 1", names(traits)))
+      validate(need(length(traits) >= 1, "No usable sample traits were found in the metadata."))
+      tm <- do.call(cbind, traits)
+      r <- p <- matrix(NA_real_, nrow = ncol(eig), ncol = ncol(tm), dimnames = list(colnames(eig), colnames(tm)))
+      for (i in seq_len(ncol(eig))) for (j in seq_len(ncol(tm))) {
+        ct <- tryCatch(stats::cor.test(eig[, i], tm[, j]), error = function(e) NULL)
+        if (!is.null(ct)) { r[i, j] <- unname(ct$estimate); p[i, j] <- ct$p.value }
+      }
+      fdr <- matrix(stats::p.adjust(as.vector(p), method = "BH"), nrow = nrow(p), dimnames = dimnames(p))
+      list(r = r, p = p, fdr = fdr, n = n)
+    })
+
+    output$moduleTraitPlot <- renderPlot({
+      if (!lipidomic_hook("inference_allowed")(TRUE, session, shared_data, scope = "structural")) return(generate_empty_plot_message("Module-trait relationships require a confirmed independent study design."))
+      mt <- moduleTraitData()
+      df <- as.data.frame(as.table(mt$r)); names(df) <- c("Module", "Trait", "r")
+      df$p <- as.vector(mt$p); df$fdr <- as.vector(mt$fdr)
+      # Stars follow the FDR (Benjamini-Hochberg over all module-trait pairs), not the raw p.
+      df$stars <- ifelse(is.na(df$fdr), "", ifelse(df$fdr < 0.001, "***", ifelse(df$fdr < 0.01, "**", ifelse(df$fdr < 0.05, "*", ""))))
+      df$hover <- ifelse(is.na(df$r), "", sprintf("%s<br>%s<br>r = %.2f<br>p = %.3g<br>FDR = %.3g", df$Module, df$Trait, df$r, df$p, df$fdr))
+      df$label <- ifelse(is.na(df$r), "", paste0(sprintf("%.2f", df$r), df$stars))
+      df$Module <- factor(df$Module, levels = rev(rownames(mt$r)))
+      df$Trait <- factor(df$Trait, levels = colnames(mt$r))
+      ggplot2::ggplot(df, ggplot2::aes(x = Trait, y = Module, fill = r, text = hover)) +
+        ggplot2::geom_tile(color = "white", linewidth = 0.6) +
+        ggplot2::geom_text(ggplot2::aes(label = label, text = NULL), size = 10 / ggplot2::.pt, color = "#222222") +
+        ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#FFFFFF", high = "#B2182B", midpoint = 0, limits = c(-1, 1), name = "Pearson r") +
+        ggplot2::scale_x_discrete(position = "bottom", expand = c(0, 0)) + ggplot2::scale_y_discrete(expand = c(0, 0)) +
+        ggplot2::theme_minimal(base_size = 10) +
+        ggplot2::theme(panel.grid = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(angle = 40, hjust = 1), legend.position = "right") +
+        ggplot2::labs(x = NULL, y = NULL, title = "Module-trait relationships",
+                      subtitle = paste0("Modules from the correlation network; eigengene vs trait, Pearson r (n = ", mt$n, " samples). * FDR < 0.05, ** FDR < 0.01, *** FDR < 0.001 (Benjamini-Hochberg over all module-trait pairs)"))
+    })
+
    # --- Downloads ---
     output$downloadSummaryPDF <- downloadHandler(
       filename = function() { paste0("structural_summary_", format(Sys.Date(), "%Y%m%d"), ".pdf") },
@@ -2981,7 +3312,9 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
       curr_sel <- isolate(input$prop_group_var)
       selected_val <- if (!is.null(curr_sel) && curr_sel %in% choices) {
         curr_sel
-      } else if ("FullName" %in% choices) {
+      } else if ("FullName" %in% choices && !structural_team_view()) {
+        # Classic opens with one row per sample. A Team card is small, so it opens with one row per group
+        # (the sample-level view stays one choice away in "Group By").
         "FullName"
       } else {
         default_cohort
@@ -4861,12 +5194,15 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
         return(p)
       }
       
+      # Team: the legend reads like the Composition overview one (no title, one column of dots to the right).
+      acyl_team_legend <- structural_team_view()
       p <- ggplot(df_plot, aes(y = GroupingVal, x = Mean_Value, fill = AcylChain)) +
         geom_bar(
           stat = "identity", 
           position = "stack",
           color = "white",
-          linewidth = 0.3
+          linewidth = 0.3,
+          key_glyph = if (acyl_team_legend) "point" else "polygon"
         ) +
         theme_pubr(base_size = input$textSize %||% 12) +
         labs(x = x_label, y = NULL, fill = "Acyl Chain") +
@@ -4875,6 +5211,12 @@ structural_server <- function(id, shared_data, global_color_map = NULL) {
           axis.text.y = element_text(face = "bold"),
           legend.title = element_text(face = "bold")
         )
+      
+      if (acyl_team_legend) {
+        p <- p +
+          guides(fill = guide_legend(title = NULL, ncol = 1, override.aes = list(shape = 21, size = 4, colour = "white", stroke = 0.3))) +
+          theme(legend.position = "right", legend.key.size = grid::unit(1.1, "lines"), legend.text = element_text(size = (input$textSize %||% 12) * 0.8), legend.spacing.y = grid::unit(0, "pt"))
+      }
       
       if (is_pct) {
         p <- p + scale_x_continuous(labels = function(x) paste0(x, "%"), expand = expansion(mult = c(0, 0.05)))

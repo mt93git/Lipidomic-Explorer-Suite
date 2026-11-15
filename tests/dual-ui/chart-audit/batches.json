@@ -1,0 +1,17 @@
+{
+  "checkpoint": "nexo-complete-synthetic",
+  "batches": [
+    {"id": "b01-dashboard", "port": 5181, "sources": ["results_dashboard-plot_pca", "results_dashboard-plot_violin", "results_dashboard-plot_dist", "results_dashboard-plot_comp", "results_dashboard-plot_heat"]},
+    {"id": "b02-qc-a", "port": 5182, "sources": ["qc_pca_tab-boxplotAfterNorm", "qc_pca_tab-outlierPlot", "qc_pca_tab-pca2dPlot", "qc_pca_tab-pca2dVectorPlot", "qc_pca_tab-pca3dPlot", "qc_pca_tab-load2dPlot", "qc_pca_tab-load2dVectorPlot"]},
+    {"id": "b03-qc-b", "port": 5183, "sources": ["qc_pca_tab-load3dPlot", "qc_pca_tab-sampleCorrPlot", "qc_pca_tab-bqcPlot", "qc_pca_tab-bqcDeviationPlot", "qc_pca_tab-bqcAbundancePlot", "qc_pca_tab-outlierPcaPlot", "qc_pca_tab-guided_qc_plot"]},
+    {"id": "b04-composition", "port": 5184, "sources": ["barchart-barPlotUnfiltered", "barchart-barPlotFiltered", "barchart-donutPlotUnfiltered", "barchart-donutPlotFiltered"]},
+    {"id": "b05-heatmaps", "port": 5185, "sources": ["heatmap_barchart_tab-heatmapPlot", "heatmap_barchart_tab-heatmapSDPlot", "heatmap_barchart_tab-filteredHeatmapPlot", "heatmap_barchart_tab-filteredHeatmapSDPlot", "heatmap_barchart_tab-violin_plot_render"]},
+    {"id": "b06-differential", "port": 5186, "sources": ["volcano_tab-volcanoPlot", "lsea_tab-lseaPlot", "logratio_tab-logratioPlot", "group_comparison_tab-comparisonPlot"]},
+    {"id": "b07-structure", "port": 5187, "sources": ["structural_tab-summaryPlot", "structural_tab-speciesPlotPlot", "structural_tab-networkPlot", "structural_tab-propPlotPlot", "structural_tab-diffAcylPlot"]},
+    {"id": "b08-structure-grid", "port": 5188, "sources": ["structural_grid_tab-heatmapPlot", "structural_grid_tab-dotplotPlot", "structural_grid_tab-mergedPlot", "structural_grid_tab-diffAllPlot"]},
+    {"id": "b09-fla", "port": 5189, "sources": ["fla_tab-logratioPlot", "fla_tab-plotVolcano", "fla_tab-plotCircos"]},
+    {"id": "b10-longitudinal", "port": 5190, "sources": ["longitudinal_tab-macroclass_plot", "longitudinal_tab-subclass_plot", "longitudinal_tab-index_plot", "longitudinal_tab-struct_plot", "longitudinal_tab-allmetrics_plot"]},
+    {"id": "b11-pathways-cellular", "port": 5191, "sources": ["pathway_tab-pathwayPlot", "pathway_tab-pathwayVisNetwork", "cellular_org_tab-stressPlot", "cellular_org_tab-cpiPlot", "cellular_org_tab-polarPlot"]},
+    {"id": "b12-cells", "port": 5192, "sources": ["team_cell-cell_lipid_plot", "team_cell-cell_profile_plot", "team_cell-cell_class_plot", "team_cell-cell_comparison_plot"]}
+  ]
+}

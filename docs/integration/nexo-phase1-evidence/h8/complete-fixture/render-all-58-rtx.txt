@@ -1,0 +1,101 @@
+During startup - Warning message:
+Diagnostics: /tmp/RtmpZoQ5ZK/api-render-all-f64d05768a8f3.log 
+[INGESTION TRACE] 2026-11-06 18:43:48.551 | STAGE: 2_RAWDATA_REACTIVE_TRIGGERED | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:43:48.564 | STAGE: 2_FILE_TYPE_DETECTED | --> [INFO]
+[INGESTION TRACE] 2026-11-06 18:43:48.581 | STAGE: 2_RAWDATA_COMPLETED | +++ [SUCCESS]
+    - total_lipids: 76
+    - total_samples: 24
+[INGESTION TRACE] 2026-11-06 18:43:48.603 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:43:48.666 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-06 18:43:48.886 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:43:48.887 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-06 18:43:49.342 | STAGE: 6_IMPUTATION_NORMALIZATION_START | >>> [START]
+    - sample_count: 24
+    - lipid_count: 76
+[INGESTION TRACE] 2026-11-06 18:43:49.346 | STAGE: 6_IMPUTATION_NORMALIZATION_SUCCESS | +++ [SUCCESS]
+
+[PERF - START] 18:43:49.357 | Starting PCA Calculation (mode: omics)
+[PERF - COMPLETE] 18:43:49.366 | omics PCA Calculation Finished in 0.009 sec
+PASS render results_dashboard-plot_pca
+PASS render results_dashboard-plot_violin
+PASS render results_dashboard-plot_dist
+PASS render results_dashboard-plot_comp
+PASS render results_dashboard-plot_heat
+PASS render qc_pca_tab-boxplotAfterNorm
+PASS render qc_pca_tab-outlierPlot
+[PCA2D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+PASS render qc_pca_tab-pca2dPlot
+[PCA2D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+PASS render qc_pca_tab-pca2dVectorPlot
+[PCA3D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+[PCA3D] grouping fields: 1; color map available: TRUE; mapped groups: 2; plotted groups: 2
+PASS render qc_pca_tab-pca3dPlot
+PASS render qc_pca_tab-load2dPlot
+PASS render qc_pca_tab-load2dVectorPlot
+PASS render qc_pca_tab-load3dPlot
+PASS render qc_pca_tab-sampleCorrPlot
+PASS render qc_pca_tab-bqcPlot
+PASS render qc_pca_tab-bqcDeviationPlot
+PASS render qc_pca_tab-bqcAbundancePlot
+PASS render qc_pca_tab-outlierPcaPlot
+PASS render qc_pca_tab-guided_qc_plot
+PASS render barchart-barPlotUnfiltered
+PASS render barchart-barPlotFiltered
+PASS render barchart-donutPlotUnfiltered
+PASS gate barchart-donutPlotFiltered invalid 'type' (closure) of argument
+PASS render heatmap_barchart_tab-heatmapPlot
+PASS render heatmap_barchart_tab-heatmapSDPlot
+PASS render heatmap_barchart_tab-filteredHeatmapPlot
+PASS render heatmap_barchart_tab-filteredHeatmapSDPlot
+PASS render heatmap_barchart_tab-violin_plot_render
+PASS render volcano_tab-volcanoPlot
+PASS render lsea_tab-lseaPlot
+PASS render structural_tab-summaryPlot
+PASS render structural_tab-speciesPlotPlot
+PASS render structural_tab-networkPlot
+PASS render structural_tab-propPlotPlot
+PASS render structural_tab-diffAcylPlot
+PASS render structural_grid_tab-heatmapPlot
+PASS render structural_grid_tab-dotplotPlot
+PASS render structural_grid_tab-mergedPlot
+PASS render structural_grid_tab-diffAllPlot
+PASS render logratio_tab-logratioPlot
+PASS render group_comparison_tab-comparisonPlot
+PASS render fla_tab-logratioPlot
+PASS render fla_tab-plotVolcano
+PASS render fla_tab-plotCircos
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-macroclass_plot
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-subclass_plot
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-index_plot
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+i Do you need to adjust the group aesthetic?
+PASS render longitudinal_tab-struct_plot
+PASS render longitudinal_tab-allmetrics_plot
+PASS render pathway_tab-pathwayPlot
+PASS render pathway_tab-pathwayVisNetwork
+PASS render cellular_org_tab-stressPlot
+PASS render cellular_org_tab-cpiPlot
+PASS render cellular_org_tab-polarPlot
+PASS render cell_lipid_plot
+PASS render cell_profile_plot
+PASS render cell_class_plot
+PASS render cell_comparison_plot
+SUMMARY rendered=57 gated=1 silent=0 failed=0 of 58
+There were 25 warnings (use warnings() to see them)
+exit=0
+SUMMARY rendered=44 gated=7 silent=7 failed=0 of 58
+There were 25 warnings (use warnings() to see them)

@@ -1,0 +1,30 @@
+# HEAD a450df47 (+ evidence)
+$ cd frontends/nexo && npx vitest run src/api/session.test.ts src/state/autosave.test.ts src/ui/sessionRecovery.test.ts
+ ✓ src/state/autosave.test.ts (7 tests) 135ms
+ ✓ src/ui/sessionRecovery.test.ts (3 tests) 35ms
+ ✓ src/api/session.test.ts (10 tests) 54ms
+ Test Files  3 passed (3)
+      Tests  20 passed (20)
+
+$ cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+ Test Files  109 passed (109)
+      Tests  499 passed (499)
+tsc: 0 errors
+
+$ node tests/dual-ui/test_nexo_session_reopen.cjs   (NEXO_PLOTLY_JS=<path>/plotly.min.js)
+PASS H9 chromium evicted-session-reopened-card-redrawn-with-both-inputs (Normalized signal boxplots · #aa3300 Triangle)
+PASS H9 chromium autosave-succeeds-after-reopen
+PASS H9 chromium one-reopen-each-lost-request-retried-once (1 lost, 1 retried, 12 calls)
+PASS H9 chromium failed-reopen-persistent-reload-message-no-retry-storm (1 requests, 0 after)
+PASS H9 webkit evicted-session-reopened-card-redrawn-with-both-inputs (Normalized signal boxplots · #aa3300 Triangle)
+PASS H9 webkit autosave-succeeds-after-reopen
+PASS H9 webkit one-reopen-each-lost-request-retried-once (1 lost, 1 retried, 12 calls)
+PASS H9 webkit failed-reopen-persistent-reload-message-no-retry-storm (1 requests, 0 after)
+H9 session reopen OK
+exit 0
+
+# Regression suites (mock), run on 474093a0 + the mock trace knobs (a450df47 api.ts change), NEXO_PLOTLY_JS set:
+test_nexo_inspector.cjs: exit 0, 42 PASS lines, 0 FAIL, last line: H3 OK
+test_nexo_save.cjs: exit 0, 16 PASS lines, 0 FAIL, last line: H4 OK
+test_nexo_card_chrome.cjs: exit 0, 29 PASS lines, 0 FAIL, last line: H6-0 OK
+test_nexo_canvas_edit.cjs: exit 0, 34 PASS lines, 0 FAIL, last line: H2F OK

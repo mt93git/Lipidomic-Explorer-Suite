@@ -1,0 +1,17 @@
+[
+ {
+  "part": "C layout 1440x900",
+  "status": "PASS",
+  "detail": "tabs [Data, Appearance, Statistics, Export] all <details> open, card chrome + menu: 0 offenders (heat-12-layout-1440-*.png, docs/integration/chart-audit/b01-dashboard/heat-12-layout-1440-card.png)"
+ },
+ {
+  "part": "C layout 1024x768",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('#world .card[data-id=\"tcinstance_625ca1dc65c6-plot_heat\"] header strong').first() |     - locator resolved to <strong tabindex=\"0\" role=\"button\" class=\"card-title\" title=\"Abundance heatmap\" aria-keyshortcuts=\"Enter F2\" aria-label=\"Abundance heatmap\">Abundance heatmap</strong>"
+ },
+ {
+  "part": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

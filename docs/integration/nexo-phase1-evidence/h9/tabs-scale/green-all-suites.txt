@@ -1,0 +1,20 @@
+analysis_settings exit=0 pass=6
+inspector exit=0 pass=24
+canvas_edit exit=0 pass=32
+access exit=0 pass=40
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=12
+card_chrome exit=0 pass=11
+export exit=0 pass=24
+figure_page exit=0 pass=16
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+p3 exit=0 pass=2
+perf exit=0 pass=15
+save exit=0 pass=14
+statistics exit=0 pass=6
+DONE
+ Test Files  74 passed (74)
+      Tests  321 passed (321)
+
+[exited with code 0]

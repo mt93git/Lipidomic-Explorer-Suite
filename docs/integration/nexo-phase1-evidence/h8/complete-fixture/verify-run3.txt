@@ -1,0 +1,16 @@
+WROTE <out>/nexo-complete-synthetic.zip (76 lipids x 24 samples, sha256 b6432fe4c946e6ef0bfc62fae54099e44744289f5f45648f09e65a94ed78cf59)
+qc_pca_tab-pca2dVectorPlot render
+qc_pca_tab-load2dVectorPlot NOT RENDERED: Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switch off Editable vector view to use the original plot and downloads.
+barchart-barPlotFiltered render
+barchart-donutPlotFiltered NOT RENDERED: invalid 'type' (closure) of argument
+heatmap_barchart_tab-filteredHeatmapPlot render
+heatmap_barchart_tab-filteredHeatmapSDPlot render
+structural_tab-summaryPlot render
+structural_tab-speciesPlotPlot render
+structural_grid_tab-heatmapPlot render
+structural_grid_tab-dotplotPlot render
+longitudinal_tab-macroclass_plot render
+longitudinal_tab-subclass_plot render
+longitudinal_tab-index_plot render
+longitudinal_tab-struct_plot render
+VERIFY 12 of 14 rendered

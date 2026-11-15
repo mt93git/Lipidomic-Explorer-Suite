@@ -1,0 +1,13 @@
+AssertionError [ERR_ASSERTION]: view-only banner too tall on a phone
+    at phoneReadOnly (<repo>/tests/dual-ui/test_nexo_access.cjs:99:5)
+    at runNextTicks (node:internal/process/task_queues:64:5)
+    at process.processImmediate (node:internal/timers:452:9)
+    at process.callbackTrampoline (node:internal/async_hooks:130:17)
+    at async <repo>/tests/dual-ui/test_nexo_access.cjs:378:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

@@ -1,0 +1,5 @@
+node_modules/
+dist/
+public/vendor/*
+!public/vendor/jspdf.umd.min.js
+!public/vendor/jspdf-LICENSE.txt

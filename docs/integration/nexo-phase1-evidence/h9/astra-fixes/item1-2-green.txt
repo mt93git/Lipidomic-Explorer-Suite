@@ -1,0 +1,8 @@
+## part 1 (synthetic markup), test_api_download_ownership.R
+PASS b07 F5: the network lists no download of another plot; proportions and summary keep theirs
+PASS a carrier that draws its own plot keeps its downloads
+PASS b06 row 7: the violin card offers Export PDF/Data and the four batch exports, told apart by their heading
+PASS sibling cards keep exactly their own downloads
+
+## test_api_download_labels.R
+PASS duplicate download labels carry their section heading

@@ -1,0 +1,65 @@
+same    results_dashboard-plot_pca                    dl_pca
+same    results_dashboard-plot_violin                 dl_violin
+same    results_dashboard-plot_dist                   dl_dist
+same    results_dashboard-plot_comp                   dl_comp
+same    results_dashboard-plot_heat                   dl_heat
+same    qc_pca_tab-boxplotAfterNorm                   downloadBoxplotAfter
+same    qc_pca_tab-outlierPlot                        downloadOutlierPDF
+same    qc_pca_tab-pca2dPlot                          downloadPCA2Dpdf
+qc_pca_tab-pca2dVectorPlot                    NO STATIC ANCHOR (wrappers: )
+same    qc_pca_tab-pca3dPlot                          downloadPCA3Dpdf
+same    qc_pca_tab-load2dPlot                         downloadLoad2Dpdf
+qc_pca_tab-load2dVectorPlot                   NO STATIC ANCHOR (wrappers: )
+same    qc_pca_tab-load3dPlot                         downloadLoad3Dpdf
+same    qc_pca_tab-sampleCorrPlot                     downloadSampleCorrCSV, downloadSampleCorrPDF
+same    qc_pca_tab-bqcPlot                            downloadBqcPdf
+same    qc_pca_tab-bqcDeviationPlot                   downloadBqcPdf
+same    qc_pca_tab-bqcAbundancePlot                   downloadBqcPdf
+same    qc_pca_tab-outlierPcaPlot                     
+same    qc_pca_tab-guided_qc_plot                     
+same    barchart-barPlotUnfiltered                    downloadBarCSV_Unfiltered, downloadBarPDF_Unfiltered, downloadBarPNG_Unfiltered
+same    barchart-barPlotFiltered                      downloadBarCSV_Filtered, downloadBarPDF_Filtered, downloadBarPNG_Filtered
+same    barchart-donutPlotUnfiltered                  downloadDonutCSV_Unfiltered, downloadDonutPDF_Unfiltered, downloadDonutPNG_Unfiltered
+same    barchart-donutPlotFiltered                    downloadDonutCSV_Filtered, downloadDonutPDF_Filtered, downloadDonutPNG_Filtered
+same    heatmap_barchart_tab-heatmapPlot              
+same    heatmap_barchart_tab-heatmapSDPlot            
+same    heatmap_barchart_tab-filteredHeatmapPlot      
+same    heatmap_barchart_tab-filteredHeatmapSDPlot    
+same    heatmap_barchart_tab-violin_plot_render       
+same    volcano_tab-volcanoPlot                       downloadTable, downloadPlot
+same    lsea_tab-lseaPlot                             downloadTable, downloadPlot
+same    structural_tab-summaryPlot                    downloadSummaryCSV, downloadSummaryPDF, downloadSummaryPNG
+same    structural_tab-speciesPlotPlot                downloadSpeciesPDF, downloadSpeciesPNG
+CHANGED structural_tab-networkPlot                   
+   old: downloadPropCSV, downloadPropPDF
+   new: 
+same    structural_tab-propPlotPlot                   downloadPropCSV, downloadPropPDF
+same    structural_tab-diffAcylPlot                   downloadPropCSV, downloadPropPDF
+same    structural_grid_tab-heatmapPlot               downloadHeatmapCSV, downloadHeatmapPDF
+same    structural_grid_tab-dotplotPlot               downloadDotplotCSV, downloadDotplotPDF
+same    structural_grid_tab-mergedPlot                downloadMergedCSV, downloadMergedPDF
+same    structural_grid_tab-diffAllPlot               downloadDiffAllCSV, downloadDiffAllPDF
+CHANGED logratio_tab-logratioPlot                    
+   old: downloadPlot, downloadCSV
+   new: downloadPlot, downloadCSV, downloadAllMacroZip, downloadAllMacroCsv, downloadAllSubclassZip, downloadAllSubclassCsv
+same    group_comparison_tab-comparisonPlot           downloadPlot, downloadCSV, downloadAllMacroZip, downloadAllMacroCsv, downloadAllSubclassZip, downloadAllSubclassCsv
+same    fla_tab-logratioPlot                          downloadLedger, downloadPlot
+same    fla_tab-plotVolcano                           dl_volcano_csv, dl_volcano_pdf
+same    fla_tab-plotCircos                            downloadCircosPDF
+same    longitudinal_tab-macroclass_plot              downloadCSV, downloadPlot
+same    longitudinal_tab-subclass_plot                downloadCSV, downloadPlot
+same    longitudinal_tab-index_plot                   downloadCSV, downloadPlot
+same    longitudinal_tab-struct_plot                  downloadCSV, downloadPlot
+same    longitudinal_tab-allmetrics_plot              downloadCSV, downloadPlot
+CHANGED pathway_tab-pathwayPlot                      
+   old: downloadPlotCSV, downloadPlotPDF
+   new: downloadPlotCSV, downloadPlotPDF, download_config
+pathway_tab-pathwayVisNetwork                 NO STATIC ANCHOR (wrappers: )
+same    cellular_org_tab-stressPlot                   downloadStressCSV, downloadStressPDF
+same    cellular_org_tab-cpiPlot                      downloadCpiCSV, downloadCpiPDF
+same    cellular_org_tab-polarPlot                    downloadPolarCSV, downloadPolarPDF
+same    cell_lipid_plot                               cell_lipid_csv, cell_profile_csv, cell_class_profile_csv, cell_comparison_csv
+same    cell_profile_plot                             cell_lipid_csv, cell_profile_csv, cell_class_profile_csv, cell_comparison_csv
+same    cell_class_plot                               cell_lipid_csv, cell_profile_csv, cell_class_profile_csv, cell_comparison_csv
+same    cell_comparison_plot                          cell_lipid_csv, cell_profile_csv, cell_class_profile_csv, cell_comparison_csv
+static anchors compared: 55  changed: 3 

@@ -1,0 +1,14 @@
+# red at 16f0abc8 + mock 66 long sample ids + overflow assertion
+AssertionError [ERR_ASSERTION]: BQC sample names overflow their rows: Pool_QC_Replicate_S01, Pool_QC_Replicate_S02, Pool_QC_Replicate_S03
++ actual - expected
+
++ [
++   'Pool_QC_Replicate_S01',
++   'Pool_QC_Replicate_S02',
++   'Pool_QC_Replicate_S03',
++   'Pool_QC_Replicate_S04',
++   'Pool_QC_Replicate_S05',
++   'Pool_QC_Replicate_S06',
++   'Pool_QC_Replicate_S07',
++   'Pool_QC_Replicate_S08',
+...

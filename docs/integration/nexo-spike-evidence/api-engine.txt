@@ -1,0 +1,11 @@
+# tests/dual-ui/test_api_engine.R
+# host: MacBook Air (dev) | R version 4.4.2 (2024-10-31) | plotly 4.11.0 | shiny 1.12.1 | plumber 1.3.3
+# base: 31436be + implementation | run: 2026-11-06T03:35:03Z
+## red (stub commit 31436be)
+Error in api_load_session(fixture) : not implemented
+## green
+exit=0
+PASS U1 synthetic 12x9
+PASS U1 legacy defaults
+PASS U2 plots 5/5
+PASS U2 typed errors

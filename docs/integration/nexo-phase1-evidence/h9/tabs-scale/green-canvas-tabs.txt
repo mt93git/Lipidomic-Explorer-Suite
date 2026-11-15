@@ -1,0 +1,14 @@
+canvas_tabs exit=0 pass=12
+DONE
+PASS H8 chromium move-to-tab-titled-picker-and-toast
+PASS H2G chromium move-filter-hud-minimap-F2
+PASS H8 chromium tab-rename-delete-feedback-and-card-count
+PASS H2G chromium pointer-reorder-delete-move-single-undo
+PASS H9 chromium tabs-scale-ellipsis-scroll-fade-all-tabs-menu
+PASS H2G chromium no-console-errors
+PASS H8 webkit move-to-tab-titled-picker-and-toast
+PASS H2G webkit move-filter-hud-minimap-F2
+PASS H8 webkit tab-rename-delete-feedback-and-card-count
+PASS H2G webkit pointer-reorder-delete-move-single-undo
+PASS H9 webkit tabs-scale-ellipsis-scroll-fade-all-tabs-menu
+PASS H2G webkit no-console-errors

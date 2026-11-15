@@ -1,0 +1,33 @@
+$ cd frontends/nexo && npx vitest run src/state/layoutUpload.test.ts
+ ✓ src/state/layoutUpload.test.ts (7 tests) 3ms
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+
+$ cd frontends/nexo && npx vitest run && npx tsc --noEmit -p .
+ Test Files  111 passed (111)
+      Tests  511 passed (511)
+tsc: clean
+
+$ NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_pathway_layout_json.cjs
+PASS F3 chromium export-tab-lists-download-layout-json-and-it-parses
+PASS F3 chromium upload-redraws-card-and-member-keeps-layout
+PASS F3 chromium bad-file-shows-teams-message
+PASS F3 chromium one-undo-reverts-upload-redo-restores
+PASS F3 chromium duplicate-keeps-layout
+PASS F3 chromium no-console-errors
+PASS F3 webkit export-tab-lists-download-layout-json-and-it-parses
+PASS F3 webkit upload-redraws-card-and-member-keeps-layout
+PASS F3 webkit bad-file-shows-teams-message
+PASS F3 webkit one-undo-reverts-upload-redo-restores
+PASS F3 webkit duplicate-keeps-layout
+PASS F3 webkit no-console-errors
+F3 pathway layout JSON OK
+
+Regression suites (mock), same tree:
+  test_nexo_inspector.cjs: exit 0, 42 PASS, 0 FAIL, last line: H3 OK
+  test_nexo_card_chrome.cjs: exit 0, 29 PASS, 0 FAIL, last line: H6-0 OK
+  test_nexo_save.cjs: exit 0, 16 PASS, 0 FAIL, last line: H4 OK
+  test_nexo_canvas_edit.cjs: exit 0, 34 PASS, 0 FAIL, last line: H2F OK
+
+$ Rscript tests/dual-ui/test_api_pathway_layout_json.R
+UNRUN: no R on this machine. For the coordinator on the RTX against the real engine.

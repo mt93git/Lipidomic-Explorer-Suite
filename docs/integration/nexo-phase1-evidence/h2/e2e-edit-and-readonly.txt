@@ -1,0 +1,33 @@
+# tests/dual-ui/test_nexo_canvas_edit.cjs (H2f) | MacBook Air | mock build | Chromium + WebKit | commit bffa7e5
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H2F chromium toolbar-tidy-remove-all-undo
+PASS H2F chromium no-console-errors
+PASS H2F webkit header-drag-store-settle-single-undo-camera
+PASS H2F webkit keyboard-and-corner-resize
+PASS H2F webkit delete-undo
+PASS H2F webkit duplicate-undo
+PASS H2F webkit library-add-undo-preserves-camera
+PASS H2F webkit toolbar-tidy-remove-all-undo
+PASS H2F webkit no-console-errors
+H2F OK
+
+# tests/dual-ui/test_nexo_canvas_readonly.cjs after H2f
+PASS E1 chromium cards-equal-nodes
+PASS E1 chromium live-plots-have-traces-at-100
+PASS E1 chromium zoom-25-frozen
+PASS E1 chromium zoom-200-culled-empty
+PASS E1 chromium fit-click-inspector-live
+PASS E1 chromium no-console-errors-or-failed-requests
+PASS E1 webkit cards-equal-nodes
+PASS E1 webkit live-plots-have-traces-at-100
+PASS E1 webkit zoom-25-frozen
+PASS E1 webkit zoom-200-culled-empty
+PASS E1 webkit fit-click-inspector-live
+PASS E1 webkit no-console-errors-or-failed-requests
+E1 OK
+
+# vitest: 15 files, 63 tests; tsc clean; build ok

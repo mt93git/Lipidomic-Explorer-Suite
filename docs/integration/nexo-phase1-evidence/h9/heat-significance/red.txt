@@ -1,0 +1,161 @@
+# Red (before the change). Commands run from <repo>.
+
+## vitest: cd frontends/nexo && npx vitest run src/ui/forms/controlStatus.test.ts src/cardFailurePlacement.test.ts
+
+ RUN  v3.2.7 <repo>/frontends/nexo
+
+ ❯ src/cardFailurePlacement.test.ts (3 tests | 2 failed) 6ms
+   ✓ card failure message placement > finds the message rule 1ms
+   × card failure message placement > is laid out from the top of the body, not centred vertically 4ms
+     → expected 'center' to be 'start' // Object.is equality
+   × card title tooltip > is anchored to the title text: the title keeps its tooltip, the card element has none 1ms
+     → expected '  updateTitle() {\n    this.title.tex…' not to match /this\.el\.title = /
+ ❯ src/ui/forms/controlStatus.test.ts (5 tests | 3 failed) 8ms
+   × Team status note on a control > not allowed: Significant only is disabled and described by the note; All lipids stays enabled 4ms
+     → expected undefined to deeply equal { Object (id, text, ...) }
+   × Team status note on a control > a stored "significant" is kept (checked) while not allowed: no silent change of inputs 2ms
+     → expected { value: 'significant', …(3) } to match object { checked: true, disabled: true }
+(2 matching properties omitted from actual)
+   × Team status note on a control > allowed: every option enabled; the note shows Team's "Showing N" text 1ms
+     → expected undefined to deeply equal { Object (id, text, ...) }
+   ✓ Team status note on a control > allowed with no text (All lipids shown): no note, nothing disabled 0ms
+   ✓ Team status note on a control > a control without a status is unchanged 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/cardFailurePlacement.test.ts > card failure message placement > is laid out from the top of the body, not centred vertically
+AssertionError: expected 'center' to be 'start' // Object.is equality
+
+Expected: [32m"start"[39m
+Received: [31m"center"[39m
+
+ ❯ src/cardFailurePlacement.test.ts:18:42
+     16|   it('finds the message rule', () => { expect(block.length).toBeGreate…
+     17|   it('is laid out from the top of the body, not centred vertically', (…
+     18|     expect(last(block, 'align-content')).toBe('start');
+       |                                          ^
+     19|     expect(last(block, 'place-items')).toBe('start center');
+     20|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/cardFailurePlacement.test.ts > card title tooltip > is anchored to the title text: the title keeps its tooltip, the card element has none
+AssertionError: expected '  updateTitle() {\n    this.title.tex…' not to match /this\.el\.title = /
+
+[32m- Expected:[39m 
+/this\.el\.title = /
+
+[31m+ Received:[39m 
+"  updateTitle() {
+    this.title.textContent = this.node.label; this.title.title = this.node.label;
+    this.title.setAttribute('aria-label', this.node.label || s.cardTitle);
+    this.thumbTitle.textContent = this.node.label; this.el.title = this.node.label;
+    this.el.setAttribute('aria-label', this.node.label);
+    this.body.querySelectorAll('img').forEach(img => { img.alt = this.node.label; });
+    this.updateStatistics(); this.exportNotice.hidden = !exportReceipts.changed(this.node);
+  }
+  /** Journey review 4.1: a plot that carries confirmed statistics says so on its header; stale ones s"
+
+ ❯ src/cardFailurePlacement.test.ts:26:24
+     24|   it('is anchored to the title text: the title keeps its tooltip, the …
+     25|     expect(update).toMatch(/this\.title\.title = this\.node\.label/);
+     26|     expect(update).not.toMatch(/this\.el\.title = /);
+       |                        ^
+     27|   });
+     28| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/ui/forms/controlStatus.test.ts > Team status note on a control > not allowed: Significant only is disabled and described by the note; All lipids stays enabled
+AssertionError: expected undefined to deeply equal { Object (id, text, ...) }
+
+[32m- Expected:[39m 
+{
+  "allowed": false,
+  "id": "heat_significance-status",
+  "text": "Significant only is unavailable. Statistics need a confirmed independent study design, current prepared data and no synthetic samples. Review the design, then try again.",
+}
+
+[31m+ Received:[39m 
+undefined
+
+ ❯ src/ui/forms/controlStatus.test.ts:13:27
+     11|   it('not allowed: Significant only is disabled and described by the n…
+     12|     const c = heat({allowed:false, text:unavailable, option:'significa…
+     13|     expect(statusNote(c)).toEqual({id:'heat_significance-status', text…
+       |                           ^
+     14|     expect(choiceStates(c, 'all')).toEqual([
+     15|       {value:'all', label:'All lipids', checked:true, disabled:false},
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/ui/forms/controlStatus.test.ts > Team status note on a control > a stored "significant" is kept (checked) while not allowed: no silent change of inputs
+AssertionError: expected { value: 'significant', …(3) } to match object { checked: true, disabled: true }
+(2 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "checked": true,[22m
+[32m-   "disabled": true,[39m
+[31m+   "disabled": false,[39m
+[2m  }[22m
+
+ ❯ src/ui/forms/controlStatus.test.ts:21:57
+     19|     const c = heat({allowed:false, text:unavailable, option:'significa…
+     20|     const states = choiceStates(c, 'significant');
+     21|     expect(states.find(s => s.value === 'significant')).toMatchObject(…
+       |                                                         ^
+     22|     expect(states.find(s => s.value === 'all')).toMatchObject({checked…
+     23|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/ui/forms/controlStatus.test.ts > Team status note on a control > allowed: every option enabled; the note shows Team's "Showing N" text
+AssertionError: expected undefined to deeply equal { Object (id, text, ...) }
+
+[32m- Expected:[39m 
+{
+  "allowed": true,
+  "id": "heat_significance-status",
+  "text": "Showing 12 significant lipids: limma moderated t-test, BH-adjusted p < 0.05.",
+}
+
+[31m+ Received:[39m 
+undefined
+
+ ❯ src/ui/forms/controlStatus.test.ts:27:27
+     25|     const text = 'Showing 12 significant lipids: limma moderated t-tes…
+     26|     const c = heat({allowed:true, text, option:'significant'});
+     27|     expect(statusNote(c)).toEqual({id:'heat_significance-status', text…
+       |                           ^
+     28|     expect(choiceStates(c, 'significant').map(s => s.disabled)).toEqua…
+     29|     expect(choiceStates(c, 'significant').find(s => s.value === 'signi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  5 failed | 3 passed (8)
+   Start at  08:25:47
+   Duration  283ms (transform 45ms, setup 0ms, collect 43ms, tests 14ms, environment 0ms, prepare 89ms)
+
+exit 1
+
+## browser (mock): node tests/dual-ui/test_nexo_heat_significance.cjs
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByRole('radio', { name: 'Significant only', exact: true }) to be visible
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_heat_significance.cjs:60:23)
+    at async <repo>/tests/dual-ui/test_nexo_heat_significance.cjs:163:46 {
+  log: [
+    "  - waiting for getByRole('radio', { name: 'Significant only', exact: true }) to be visible"
+  ],
+  name: 'TimeoutError'
+}
+exit 1
+
+## R: Rscript tests/dual-ui/test_api_heat_significance.R
+Not run on the M1 (no R). Expected red before the API change: 'heat_significance carries no status: ...' (to be run by the coordinator on the RTX).

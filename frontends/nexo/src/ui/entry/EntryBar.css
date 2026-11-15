@@ -1,0 +1,5 @@
+/* The account on the right of the entry bar: the person's name, then the board's account menu (topBar.css). */
+.topbar .entry-account{margin-left:auto;display:flex;align-items:center;gap:var(--space-2);min-width:0}
+.topbar .entry-account-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;color:#dbe3ea}
+/* Phones: the steps need the room; the icon alone opens the menu. */
+@media(max-width:600px){.topbar .entry-account-name{display:none}}

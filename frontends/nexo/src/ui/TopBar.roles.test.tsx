@@ -1,0 +1,15 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, expect, it, vi } from 'vitest';
+const state = vi.hoisted(() => ({ enabled: true, canShare: false }));
+vi.mock('../collab/mode', () => ({ collab: () => state.enabled ? { url: 'wss://synthetic.test/collab', project: 'synthetic' } : null }));
+vi.mock('../collab/roles', () => ({ currentRole: () => ({ role: 'owner', canShare: state.canShare }), subscribeRole: () => () => {} }));
+import { TopBar } from './TopBar';
+const html = () => renderToStaticMarkup(createElement(TopBar, { projectName: 'Synthetic', onCheckpoints() {}, saveText: 'Live', saveStatus: 'collab' }));
+it('Share is hidden when canShare is false', () => { state.enabled = true; state.canShare = false; expect(html()).not.toContain('>Share</button>'); });
+it('Share is hidden with the flag off', () => { state.enabled = false; state.canShare = true; expect(html()).not.toContain('>Share</button>'); });
+it('Share is shown when permitted in collab', () => { state.enabled = true; state.canShare = true; expect(html()).toContain('>Share</button>'); });
+afterEach(() => vi.unstubAllGlobals());
+it('a dataset opened from Admin has the chip "from Admin"', () => { vi.stubGlobal('location', { search: '?dataset=synthetic' }); expect(html()).toMatch(/Synthetic ▾<\/button><span class="from-admin">from Admin<\/span>/); });
+it('a checkpoint has no chip', () => { vi.stubGlobal('location', { search: '?checkpoint=synthetic' }); expect(html()).not.toContain('from Admin'); });
+it('the lab logo replaces the LE box', () => { expect(html()).toMatch(/<header class="topbar"><img class="logo" src="\/nexo\/entry\/libreros-lab-logo.webp" alt="Libreros Lab"[^>]*\/><h1 class="app-name">Lipidomic Explorer<\/h1>/); expect(html()).not.toContain('>LE<'); });

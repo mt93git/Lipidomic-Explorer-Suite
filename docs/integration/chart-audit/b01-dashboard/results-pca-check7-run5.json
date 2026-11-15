@@ -1,0 +1,20 @@
+[
+ {
+  "plot": "pca",
+  "check": "1-draws",
+  "status": "PASS",
+  "detail": "card tcinstance_be61b96fc4ef-plot_pca current at 100 % (docs/integration/chart-audit/b01-dashboard/pca-1-draws-100.png); zoomed out to 41 %: image (docs/integration/chart-audit/b01-dashboard/pca-1-draws-zoomed-out.png)"
+ },
+ {
+  "plot": "pca",
+  "check": "7-export",
+  "status": "PASS",
+  "detail": "Principal components.png 161778 B; Principal components.svg 15948 B; Principal components.pdf 91006 B; dialog: Principal components.pdf 69301 B; \"Plot data (CSV)\" → results_pca_scores_20261107.csv 3562 B (docs/integration/chart-audit/b01-dashboard/pca-7-export.png)"
+ },
+ {
+  "plot": "pca",
+  "check": "11-console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

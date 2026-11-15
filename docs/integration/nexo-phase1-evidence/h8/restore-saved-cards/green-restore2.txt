@@ -1,0 +1,22 @@
+8689e92 Text settings follow Team's 100000-character limit
+== test_api_restore_cards
+PASS restore text settings follow Team's 100000-character limit
+PASS restore a Team instance draws with its saved inputs
+PASS restore a fixed family node draws through its fixed instance
+PASS restore does not dirty the session
+PASS restore an id the checkpoint does not hold is still unknown
+exit=0
+== test_api_schema
+PASS schema family qc
+PASS schema family dashboard
+PASS schema boolean strict
+PASS schema card violin
+PASS schema card qc
+PASS schema selection bars 4 (heat_group_selection, heat_lipid_selection, comp_class_selection, comp_group_selection) carry defaults and the all-token; a JSON array is accepted
+exit=0
+== test_api_roundtrip
+PASS roundtrip reopen returns the checkpoint, not later edits
+PASS roundtrip nexo->zip->nexo
+PASS roundtrip zip->team-validate
+PASS roundtrip keeps project records
+exit=0

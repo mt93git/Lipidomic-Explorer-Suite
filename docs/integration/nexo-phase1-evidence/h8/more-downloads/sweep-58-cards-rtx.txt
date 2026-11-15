@@ -1,0 +1,61 @@
+# Sweep on the RTX, synthetic checkpoint classic-seed7-synthetic, nexo/phase1 d5bb0a5
+# per catalog card: drawn|gated, n downloads, each id[label]=bytes or ERR(module message)
+results_dashboard-plot_pca                 drawn  n=1 dl_pca[Plot data (CSV)]=1202B
+results_dashboard-plot_violin              drawn  n=1 dl_violin[Plot data (CSV)]=696B
+results_dashboard-plot_dist                drawn  n=1 dl_dist[Plot data (CSV)]=6454B
+results_dashboard-plot_comp                drawn  n=1 dl_comp[Plot data (CSV)]=16039B
+results_dashboard-plot_heat                drawn  n=1 dl_heat[Plot data (CSV)]=2990B
+qc_pca_tab-boxplotAfterNorm                drawn  n=1 downloadBoxplotAfter[PDF]=5847B
+qc_pca_tab-outlierPlot                     drawn  n=1 downloadOutlierPDF[PDF]=4874B
+qc_pca_tab-pca2dPlot                       drawn  n=1 downloadPCA2Dpdf[PDF]=5539B
+qc_pca_tab-pca2dVectorPlot                 gated  n=1 downloadPCA2Dpdf[PDF]=5559B
+qc_pca_tab-pca3dPlot                       drawn  n=1 downloadPCA3Dpdf[PDF]=4229B
+qc_pca_tab-load2dPlot                      drawn  n=1 downloadLoad2Dpdf[PDF]=6449B
+qc_pca_tab-load2dVectorPlot                gated  n=1 downloadLoad2Dpdf[PDF]=6437B
+qc_pca_tab-load3dPlot                      drawn  n=1 downloadLoad3Dpdf[PDF]=4229B
+qc_pca_tab-sampleCorrPlot                  drawn  n=2 downloadSampleCorrCSV[CSV]=1119B | downloadSampleCorrPDF[PDF]=6393B
+qc_pca_tab-bqcPlot                         drawn  n=1 downloadBqcPdf[PDF]=ERR(error in evaluating the argument 'x' in selecting a method f)
+qc_pca_tab-bqcDeviationPlot                drawn  n=1 downloadBqcPdf[PDF]=ERR(error in evaluating the argument 'x' in selecting a method f)
+qc_pca_tab-bqcAbundancePlot                drawn  n=1 downloadBqcPdf[PDF]=ERR(error in evaluating the argument 'x' in selecting a method f)
+qc_pca_tab-outlierPcaPlot                  drawn  n=0 
+qc_pca_tab-guided_qc_plot                  drawn  n=0 
+barchart-barPlotUnfiltered                 drawn  n=2 downloadBarCSV_Unfiltered[CSV]=1139B | downloadBarPDF_Unfiltered[PDF]=5132B
+barchart-barPlotFiltered                   gated  n=2 downloadBarCSV_Filtered[CSV]=ERR(No lipids passed filters (Significant & Global Filters).) | downloadBarPDF_Filtered[PDF]=4162B
+barchart-donutPlotUnfiltered               drawn  n=2 downloadDonutCSV_Unfiltered[CSV]=1459B | downloadDonutPDF_Unfiltered[PDF]=9672B
+barchart-donutPlotFiltered                 gated  n=2 downloadDonutCSV_Filtered[CSV]=67B | downloadDonutPDF_Filtered[PDF]=4158B
+heatmap_barchart_tab-heatmapPlot           drawn  n=2 downloadHeatmapCSV[Data]=470B | downloadHeatmapPDF[PDF]=6350B
+heatmap_barchart_tab-heatmapSDPlot         drawn  n=2 downloadHeatmapSDCSV[Data]=ERR(arguments imply differing number of rows: 12, 9) | downloadHeatmapSDPDF[PDF]=6241B
+heatmap_barchart_tab-filteredHeatmapPlot   gated  n=2 downloadFilteredHeatmapCSV[Data]=ERR(No lipids passed significance filters.) | downloadFilteredHeatmapPDF[PDF]=4144B
+heatmap_barchart_tab-filteredHeatmapSDPlot gated  n=2 downloadFilteredHeatmapSDCSV[Data]=ERR(No lipids passed significance filters.) | downloadFilteredHeatmapSDPDF[PDF]=4151B
+heatmap_barchart_tab-violin_plot_render    drawn  n=2 download_violin_pdf[Export PDF]=140213B | download_violin_csv[Export Data]=12604B
+volcano_tab-volcanoPlot                    drawn  n=2 downloadTable[CSV]=5350B | downloadPlot[PDF]=6054B
+lsea_tab-lseaPlot                          drawn  n=0 
+structural_tab-summaryPlot                 gated  n=2 downloadPropCSV[CSV]=1482B | downloadPropPDF[PDF]=4975B
+structural_tab-speciesPlotPlot             gated  n=1 downloadSpeciesPDF[PDF]=4120B
+structural_tab-networkPlot                 drawn  n=2 downloadPropCSV[CSV]=1482B | downloadPropPDF[PDF]=4975B
+structural_tab-propPlotPlot                drawn  n=2 downloadPropCSV[CSV]=1482B | downloadPropPDF[PDF]=4964B
+structural_tab-diffAcylPlot                drawn  n=2 downloadDiffAcylCSV[Diff CSV]=627B | downloadDiffAcylPDF[Diff PDF]=5283B
+structural_grid_tab-heatmapPlot            gated  n=2 downloadHeatmapCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadHeatmapPDF[PDF]=ERR(The plot data are unavailable for this session.)
+structural_grid_tab-dotplotPlot            gated  n=2 downloadDotplotCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadDotplotPDF[PDF]=ERR(The plot data are unavailable for this session.)
+structural_grid_tab-mergedPlot             drawn  n=2 downloadMergedCSV[CSV]=327B | downloadMergedPDF[PDF]=5579B
+structural_grid_tab-diffAllPlot            drawn  n=2 downloadDiffAllCSV[CSV]=327B | downloadDiffAllPDF[PDF]=5825B
+logratio_tab-logratioPlot                  drawn  n=2 downloadCSV[CSV]=1184B | downloadPlot[PDF]=17305B
+group_comparison_tab-comparisonPlot        drawn  n=6 downloadCSV[CSV]=1184B | downloadPlot[PDF]=16674B | downloadAllMacroZip[Download All PDFs (ZIP)]=48022B | downloadAllMacroCsv[Download Dataset (CSV)]=3405B | downloadAllSubclassZip[Download All PDFs (ZIP)]=141278B | downloadAllSubclassCsv[Download Dataset (CSV)]=10264B
+fla_tab-logratioPlot                       drawn  n=2 downloadLedger[CSV]=423B | downloadPlot[PDF]=38329B
+fla_tab-plotVolcano                        drawn  n=2 dl_volcano_csv[CSV]=2127B | dl_volcano_pdf[PDF]=7144B
+fla_tab-plotCircos                         drawn  n=1 downloadCircosPDF[PDF]=ERR(unused argument (include_title = TRUE))
+longitudinal_tab-macroclass_plot           gated  n=2 downloadCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadPlot[PDF]=ERR(The plot data are unavailable for this session.)
+longitudinal_tab-subclass_plot             gated  n=2 downloadCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadPlot[PDF]=ERR(The plot data are unavailable for this session.)
+longitudinal_tab-index_plot                gated  n=2 downloadCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadPlot[PDF]=ERR(The plot data are unavailable for this session.)
+longitudinal_tab-struct_plot               gated  n=2 downloadCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadPlot[PDF]=ERR(The plot data are unavailable for this session.)
+longitudinal_tab-allmetrics_plot           drawn  n=2 downloadCSV[CSV]=ERR(The plot data are unavailable for this session.) | downloadPlot[PDF]=ERR(The plot data are unavailable for this session.)
+pathway_tab-pathwayPlot                    drawn  n=2 downloadPlotCSV[CSV]=1505B | downloadPlotPDF[PDF]=4224B
+pathway_tab-pathwayVisNetwork              drawn  n=2 downloadPlotCSV[CSV]=1505B | downloadPlotPDF[PDF]=4224B
+cellular_org_tab-stressPlot                drawn  n=2 downloadStressCSV[CSV]=3051B | downloadStressPDF[PDF]=40863B
+cellular_org_tab-cpiPlot                   drawn  n=2 downloadCpiCSV[CSV]=455B | downloadCpiPDF[PDF]=17888B
+cellular_org_tab-polarPlot                 drawn  n=2 downloadPolarCSV[CSV]=789B | downloadPolarPDF[PDF]=6214B
+cell_lipid_plot                            drawn  n=4 cell_lipid_csv[Download CSV]=1443B | cell_profile_csv[Download CSV]=1572B | cell_class_profile_csv[Download CSV]=2362B | cell_comparison_csv[Download CSV]=2109B
+cell_profile_plot                          drawn  n=4 cell_lipid_csv[Download CSV]=1443B | cell_profile_csv[Download CSV]=1572B | cell_class_profile_csv[Download CSV]=2362B | cell_comparison_csv[Download CSV]=2109B
+cell_class_plot                            drawn  n=4 cell_lipid_csv[Download CSV]=1443B | cell_profile_csv[Download CSV]=1572B | cell_class_profile_csv[Download CSV]=2362B | cell_comparison_csv[Download CSV]=2109B
+cell_comparison_plot                       drawn  n=4 cell_lipid_csv[Download CSV]=1443B | cell_profile_csv[Download CSV]=1572B | cell_class_profile_csv[Download CSV]=2362B | cell_comparison_csv[Download CSV]=2109B
+SUMMARY ok=82 err=22

@@ -1,0 +1,3 @@
+Rscript --vanilla tests/dual-ui/test_api_targeted_cohort.R  (RTX, before R/frontends/api/cohort.R)
+Error in api_cohort_get(s) : could not find function "api_cohort_get"
+exit=1

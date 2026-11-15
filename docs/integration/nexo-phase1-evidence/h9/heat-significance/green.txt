@@ -1,0 +1,33 @@
+# Green (after the change). Commands run from <repo>.
+
+## cd frontends/nexo && npx vitest run
+ ✓ src/ui/forms/controlStatus.test.ts (5 tests) 3ms
+ ✓ src/cardFailurePlacement.test.ts (4 tests) 3ms
+ Test Files  112 passed (112)
+      Tests  513 passed (513)
+exit 0
+
+## cd frontends/nexo && npx tsc --noEmit -p .
+exit 0
+
+## node tests/dual-ui/test_nexo_heat_significance.cjs (mock, Chromium and WebKit)
+PASS heat-significance chromium not-allowed-option-disabled-note-says-why
+PASS heat-significance chromium allowed-option-enabled-note-showing-n
+PASS heat-significance chromium stored-significant-kept-reason-shown-card-message
+PASS heat-significance chromium card-failure-message-at-top-of-body
+PASS heat-significance chromium status-badge-not-covered-by-title-tooltip
+PASS heat-significance webkit not-allowed-option-disabled-note-says-why
+PASS heat-significance webkit allowed-option-enabled-note-showing-n
+PASS heat-significance webkit stored-significant-kept-reason-shown-card-message
+PASS heat-significance webkit card-failure-message-at-top-of-body
+PASS heat-significance webkit status-badge-not-covered-by-title-tooltip
+heat-significance OK
+exit 0
+
+## node tests/dual-ui/test_nexo_inspector.cjs (mock): 42 PASS lines, H3 OK, exit 0
+## node tests/dual-ui/test_nexo_card_chrome.cjs (mock): 29 PASS lines, H6-0 OK, exit 0
+## node tests/dual-ui/test_nexo_canvas_edit.cjs (mock): 34 PASS lines, H2F OK, exit 0
+## node tests/dual-ui/test_nexo_access.cjs (mock): 54 PASS lines, H7c OK, exit 0
+
+## R: Rscript tests/dual-ui/test_api_heat_significance.R
+Not run on the M1 (no R): to be run by the coordinator on the RTX.

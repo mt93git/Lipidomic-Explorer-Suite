@@ -1,0 +1,9 @@
+PASS the pool is off by default (LIPIDOMIC_API_WORKERS unset)
+PASS two workers open the session's checkpoint
+PASS workers draw cards in parallel (overlapping), equal to the main process's render (PNG bytes; Plotly traces to 1e-9)
+PASS a worker applies the session's targeted cohort before drawing
+PASS acted cards and foreign formats are drawn by the main process
+PASS a dead worker is replaced and its checkpoint reopened
+PASS a job no worker can take falls back to the main process
+PASS over HTTP two renders run on workers through promises; /health answered meanwhile (busy workers: 1)
+PASS test_api_pool

@@ -1,0 +1,13 @@
+AssertionError [ERR_ASSERTION]: library closed on open
+
+false !== true
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_canvas_open.cjs:52:12)
+    at async <repo>/tests/dual-ui/test_nexo_canvas_open.cjs:106:46 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

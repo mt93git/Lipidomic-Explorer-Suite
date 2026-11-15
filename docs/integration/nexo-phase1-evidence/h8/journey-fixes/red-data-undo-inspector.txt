@@ -1,0 +1,6 @@
+page.waitForFunction: Timeout 30000ms exceeded.
+    at browserTests (<repo>/tests/dual-ui/test_nexo_inspector.cjs:63:16)
+    at async <repo>/tests/dual-ui/test_nexo_inspector.cjs:135:46 {
+  log: [],
+  name: 'TimeoutError'
+}

@@ -1,0 +1,153 @@
+// Shared test harness: fresh in-memory PGlite, auth stub, migrations, synthetic seed.
+// All data here is synthetic. No lab data.
+import { PGlite } from '@electric-sql/pglite';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const read = (p) => readFileSync(root + p, 'utf8');
+
+export const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+// Users. Lab roles: owner/admin/operator see all clients; a lab "member" does not.
+export const U = {
+  owner: id(1), admin: id(2), operator: id(3), member: id(4),
+  aAdmin: id(11), aReq: id(12), aView: id(13),
+  bReq: id(21),
+  both: id(30), // requester in client A and viewer in client B
+};
+export const C = { A: id(100), B: id(200) };
+
+// Every table that carries client data, with the column naming the client.
+export const CLIENT_TABLES = {
+  client: 'id', client_member: 'client_id', order: 'client_id', shipment: 'client_id',
+  sample: 'client_id', aliquot: 'client_id', box_position: 'client_id', exclusion: 'client_id',
+  injection: 'client_id', name_map: 'client_id', dataset: 'client_id', signature: 'client_id',
+  job: 'client_id', audit_event: 'client_id', deliverable: 'client_id', shipment_tube: 'client_id',
+};
+
+export const ALL_TABLES = [
+  'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
+  'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
+  'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
+  'client_contact', 'notification_pref', 'notification_log', 'shipment_tube', 'panel_rate', 'order_draft', 'instrument_profile', 'notification_rule', 'notification_event',
+  'freezer', 'freezer_rack', 'storage_box_location',
+];
+// Append-only records with their own refusal triggers and no zz_audit (audit_event since 0003, notification_log 0028).
+export const APPEND_ONLY = ['audit_event', 'notification_log'];
+
+export async function freshDb({ seed = true } = {}) {
+  const db = new PGlite();
+  await db.exec(read('test/auth_stub.sql'));
+  await db.exec(read('test/pilot_stub.sql')); // Team's library tables live in the same database
+  await db.exec(read('test/storage_stub.sql')); // so does Supabase Storage (bucket admin-files, 0006)
+  for (const f of readdirSync(root + 'migrations').filter((f) => f.endsWith('.sql')).sort()) {
+    await db.exec(read('migrations/' + f));
+  }
+  if (seed) await seedAll(db);
+  return db;
+}
+
+// Switch identity. `null` = migration owner (superuser, bypasses RLS, auth.uid() is null).
+// Anything else = the non-superuser `authenticated` role with that JWT subject.
+export async function as(db, user) {
+  await db.exec('RESET ROLE');
+  await db.query("SELECT set_config('request.jwt.claim.sub', $1, false)", [user ?? '']);
+  if (user) await db.exec('SET ROLE authenticated');
+}
+
+export const count = async (db, sql, params = []) =>
+  (await db.query(`SELECT count(*)::int AS n FROM (${sql}) q`, params)).rows[0].n;
+
+// Populate every table, for two clients, as the migration owner.
+async function seedAll(db) {
+  await as(db, null);
+  for (const [key, u] of Object.entries(U)) await db.query('INSERT INTO auth.users(id, email) VALUES ($1, $2)', [u, `${key.toLowerCase()}@example.test`]);
+  const q = (sql, p) => db.query(sql, p);
+  for (const [u, role] of [[U.owner, 'owner'], [U.admin, 'admin'], [U.operator, 'operator'], [U.member, 'member']]) {
+    await q('INSERT INTO admin.lab_staff(user_id, role, display_name) VALUES ($1, $2, $2)', [u, role]);
+  }
+  await q("INSERT INTO admin.instrument(id, name, model) VALUES ($1, 'QQQ-1', 'Triple quad')", [id(500)]);
+  await q("INSERT INTO admin.panel(id, instrument_id, name, dataset_type) VALUES ($1, $2, 'Global panel', 'global')", [id(501), id(500)]);
+  // 0035: the active instrument profile of QQQ-1 (id 502), with its blank and QC rules.
+  await q("INSERT INTO admin.instrument_profile(id, instrument_id, name, is_active, software, blanks_at_start, pooled_qc_every) VALUES ($1, $2, 'QQQ-1 profile', true, 'Synthetic acquisition software', 2, 8)", [id(502), id(500)]);
+
+  await q("INSERT INTO admin.client(id, name, kind) VALUES ($1, 'Synthetic Lab Alpha', 'pi_lab'), ($2, 'Synthetic Company Beta', 'company')", [C.A, C.B]);
+  for (const [c, u, r] of [[C.A, U.aAdmin, 'client_admin'], [C.A, U.aReq, 'requester'], [C.A, U.aView, 'viewer'],
+    [C.B, U.bReq, 'requester'], [C.A, U.both, 'requester'], [C.B, U.both, 'viewer']]) {
+    await q('INSERT INTO admin.client_member(client_id, user_id, role) VALUES ($1, $2, $3)', [c, u, r]);
+  }
+
+  // Per client k = 1 (A) or 2 (B): ids k01..k11
+  for (const [k, c] of [[1, C.A], [2, C.B]]) {
+    const b = k * 100;
+    await q("INSERT INTO admin.\"order\"(id, client_id, panel_id, title, matrix) VALUES ($1, $2, $3, 'Synthetic order', 'plasma')", [id(b + 1), c, id(501)]);
+    await q("INSERT INTO admin.shipment(id, client_id, order_id, carrier, condition) VALUES ($1, $2, $3, 'courier', 'ok')", [id(b + 2), c, id(b + 1)]);
+    await q("INSERT INTO admin.sample(id, client_id, order_id, shipment_id, full_name, group1_term) VALUES ($1, $2, $3, $4, 'Ctrl_1', 'Ctrl'), ($5, $2, $3, $4, 'Trt_1', 'Trt')", [id(b + 3), c, id(b + 1), id(b + 2), id(b + 4)]);
+    await q('INSERT INTO admin.aliquot(id, client_id, sample_id) VALUES ($1, $2, $3)', [id(b + 5), c, id(b + 3)]);
+    await q("INSERT INTO admin.box_position(id, client_id, aliquot_id, box, position) VALUES ($1, $2, $3, $4, 'A1')", [id(b + 6), c, id(b + 5), `BOX-${k}`]);
+    await q("INSERT INTO admin.exclusion(id, client_id, sample_id, reason) VALUES ($1, $2, $3, 'haemolysed')", [id(b + 7), c, id(b + 4)]);
+    await q("INSERT INTO admin.name_map(id, client_id, export_name, clean_name) VALUES ($1, $2, 'PC(14:0_16:0)+AcO', 'PC 14:0_16:0')", [id(b + 8), c]);
+    await q("INSERT INTO admin.job(id, client_id, kind) VALUES ($1, $2, 'build_dataset')", [id(b + 11), c]);
+    // 0032: the first sample's tube checked in, intact, in box RCV-k A1 (id k14).
+    await q("INSERT INTO admin.shipment_tube(id, client_id, shipment_id, sample_id, condition, box, position) VALUES ($1, $2, $3, $4, 'intact', $5, 'A1')", [id(b + 14), c, id(b + 2), id(b + 3), `RCV-${k}`]);
+  }
+  await q("INSERT INTO admin.name_map(id, export_name, clean_name) VALUES ($1, 'CE 24:4 +NH4', 'CE 24:4')", [id(300)]);
+  await q("INSERT INTO admin.job(id, kind) VALUES ($1, 'parse_results')", [id(301)]);
+  // Same meaning as having no policy: any lab owner or admin may sign, two signatures.
+  await q("INSERT INTO admin.release_policy(eligible_signers, required_signatures) VALUES ('{}', 2)");
+  // The lab's current shipping instructions (0019), shown to clients on an accepted order.
+  await q("INSERT INTO admin.shipping_instructions(body, set_by) VALUES ('Ship on dry ice, Monday to Wednesday, to the synthetic lab address.', $1)", [U.admin]);
+  // The lab's contact for clients (0023), shown on Request access, a waiting or declined order and Your access.
+  await q("INSERT INTO admin.client_contact(body, set_by) VALUES ('Write to lab@example.test, quoting your reference.', $1)", [U.admin]);
+  // One pending client invitation (0015); only the digest of a synthetic token is stored.
+  await q("INSERT INTO admin.invitation(id, email, client_id, client_role, token_sha256, expires_at, created_by) VALUES ($1, 'invitee@example.test', $2, 'viewer', $3, now() + interval '7 days', $4)", [id(600), C.A, 'c'.repeat(64), U.admin]);
+
+  // One pending access request from the public form (0020), from someone without an account.
+  await q("INSERT INTO admin.access_request(id, full_name, email, organisation, kind, message) VALUES ($1, 'Robin Example', 'robin@larch.example.test', 'Example Larch', 'company', 'About 40 synthetic plasma samples')", [id(700)]);
+
+  // Email notifications (0028): client A's viewer turned off released-dataset emails; one skipped send to the Operator.
+  await q("INSERT INTO admin.notification_pref(user_id, kind, enabled) VALUES ($1, 'dataset_released', false)", [U.aView]);
+  await q("INSERT INTO admin.notification_log(id, kind, user_id, email, subject, status, error, reference) VALUES ($1, 'access_requested', $2, 'operator@example.test', 'New access request AR-0001', 'skipped', 'Sending is off', 'AR-0001')", [id(800), U.operator]);
+  // The scheduled results check (0036) already announced client B's order once (sent, 0040).
+  await q("INSERT INTO admin.notification_event(id, kind, order_id, client_id, reference, sent_at) VALUES ($1, 'results_missing', $2, $3, 'ORD002', now())", [id(810), id(201), C.B]);
+
+  // New order wizard (0033): the Global panel's line on the rate sheet, and one open draft for client A.
+  await q("INSERT INTO admin.panel_rate(id, panel_id, rate_per_sample, currency, minutes_per_injection, updated_by) VALUES ($1, $2, 50.00, 'USD', 20, $3)", [id(900), id(501), U.admin]);
+  await q("INSERT INTO admin.order_draft(id, created_by, updated_by, step, client_id, title, data) VALUES ($1, $2, $2, 2, $3, 'Synthetic draft', '{\"title\": \"Synthetic draft\"}')", [id(901), U.operator, C.A]);
+
+  // Freezers and racks (0041): freezer F1 at −80 °C with rack 1; client A's box BOX-1 sits there.
+  await q("INSERT INTO admin.freezer(id, name, temperature) VALUES ($1, 'Freezer F1', '−80 °C')", [id(950)]);
+  await q("INSERT INTO admin.freezer_rack(id, freezer_id, name) VALUES ($1, $2, 'Rack 1')", [id(951), id(950)]);
+  await q("INSERT INTO admin.storage_box_location(id, box, freezer_id, rack_id, updated_by) VALUES ($1, 'BOX-1', $2, $3, $4)", [id(952), id(950), id(951), U.operator]);
+
+  // Mixed batch: one injection of A, one of B, one QC (no client). A second batch holds only B.
+  await q("INSERT INTO admin.batch(id, name, instrument_id, panel_id) VALUES ($1, 'B2026-001', $3, $4), ($2, 'B2026-002', $3, $4)", [id(400), id(410), id(500), id(501)]);
+  await q('INSERT INTO admin.batch_version(id, batch_id, version) VALUES ($1, $2, 1), ($3, $4, 1)', [id(401), id(400), id(411), id(410)]);
+  await q(`INSERT INTO admin.injection(id, batch_version_id, seq, sample_type, sample_name, client_id, aliquot_id) VALUES
+    ($1, $4, 1, 'Unknown', 'B2026-001_001_ORD001-S001', $5, $6),
+    ($2, $4, 2, 'Unknown', 'B2026-001_002_ORD002-S001', $7, $8),
+    ($3, $4, 3, 'Quality Control', 'B2026-001_003_PQC', NULL, NULL)`,
+  [id(402), id(403), id(404), id(401), C.A, id(105), C.B, id(205)]);
+  await q("INSERT INTO admin.injection(id, batch_version_id, seq, sample_type, sample_name, client_id, aliquot_id) VALUES ($1, $2, 1, 'Unknown', 'B2026-002_001_ORD002-S001', $3, $4)", [id(412), id(411), C.B, id(205)]);
+  await q("INSERT INTO admin.result_file(id, batch_id, batch_version_id, sha256, storage_path, status) VALUES ($1, $2, $3, $4, 'results/b1.txt', 'parsed')", [id(405), id(400), id(401), 'a'.repeat(64)]);
+
+  // Released dataset per client (with its analysis/companion manifest), signed by the two people the
+  // default policy allows (a lab owner and a lab admin).
+  for (const [k, c] of [[1, C.A], [2, C.B]]) {
+    const b = k * 100;
+    await q("INSERT INTO admin.dataset(id, client_id, order_id, result_file_id, version, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes) VALUES ($1, $2, $3, $4, 1, 'datasets/x.xlsx', $5, $6, 100, $7, 50)", [id(b + 9), c, id(b + 1), id(405), 'b'.repeat(64), '9'.repeat(64), '7'.repeat(64)]);
+    await q("INSERT INTO admin.signature(id, client_id, dataset_id, user_id, role) VALUES ($1, $2, $3, $4, 'prepared'), ($5, $2, $3, $6, 'reviewed')", [id(b + 10), c, id(b + 9), U.owner, id(b + 12), U.admin]);
+    await q("UPDATE admin.dataset SET status = 'released' WHERE id = $1", [id(b + 9)]);
+    // A report the lab shared with the client for that release (0021). The object itself is not seeded.
+    await q("INSERT INTO admin.deliverable(id, client_id, order_id, dataset_id, title, kind, file_name, content_type, size_bytes, sha256, storage_path, visible_to_client, added_by) VALUES ($1, $2, $3, $4, 'Study report', 'report', 'report.pdf', 'application/pdf', 1000, $5, $6, true, $7)",
+      [id(b + 13), c, id(b + 1), id(b + 9), String(k).repeat(64), `${c}/ORD00${k}/deliverables/${String(k).repeat(64)}/report.pdf`, U.operator]);
+  }
+}
+
+// 0021/0022: a client's people reach Nexo only while its switch is on. Set it as the lab's Admin, through the function.
+export async function setNexoAccess(db, client, on) {
+  await as(db, U.admin);
+  await db.query('SELECT admin.set_client_nexo_access($1, $2)', [client, on]);
+  await as(db, null);
+}

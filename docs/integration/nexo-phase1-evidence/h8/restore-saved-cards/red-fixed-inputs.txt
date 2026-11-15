@@ -1,0 +1,6 @@
+PASS restore text settings follow Team's 100000-character limit
+PASS restore a Team instance draws with its saved inputs
+PASS restore a fixed family node draws through its fixed instance
+Error in eval(quote({ : 
+Execution halted
+exit=1

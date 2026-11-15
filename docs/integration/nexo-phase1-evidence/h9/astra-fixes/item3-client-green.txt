@@ -1,0 +1,29 @@
+## vitest src/plotlyClick.test.ts
+ ✓ src/plotlyClick.test.ts (8 tests) 167ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+
+## node tests/dual-ui/test_nexo_plotly_click.cjs (mock, Chromium + WebKit; 5 consecutive runs green after the hover wait)
+PASS b12 chromium class-bar-click-selects-class-and-redraws (Class totals · two cohorts · class PE)
+PASS b12 chromium class-click-is-one-undo-step
+PASS b12 chromium comparison-point-click-selects-measurement-and-redraws
+PASS b12 chromium no-click-forwarding-without-clickSource (dashboard PCA point clicked)
+PASS b12 chromium no-console-errors
+PASS b12 webkit class-bar-click-selects-class-and-redraws (Class totals · two cohorts · class PE)
+PASS b12 webkit class-click-is-one-undo-step
+PASS b12 webkit comparison-point-click-selects-measurement-and-redraws
+PASS b12 webkit no-click-forwarding-without-clickSource (dashboard PCA point clicked)
+PASS b12 webkit no-console-errors
+b12 plotly click OK
+
+## test_api_plotly_click.R part 1 (docker R 4.6, plotly 4.12.1)
+PASS the click sources are the ones Team registers (event_register) and observes on a canvas copy
+PASS click points: plotly's shape is accepted and parses as event_data reads it; malformed clicks are 400
+## app rule (after the client change)
+cd frontends/nexo && npx vitest run: 126 files, 593 tests passed
+npx tsc --noEmit -p .: no errors
+node tests/dual-ui/test_nexo_inspector.cjs: exit 0, 44 PASS lines (H3 OK)
+node tests/dual-ui/test_nexo_card_chrome.cjs: exit 0, 29 PASS lines (H6-0 OK)
+
+## follow-up d6323cbe (red) -> green: a figure drawn by a render worker / disk cache (source tcinstance_pool<hash>-<source>) binds too
+vitest: 126 files, 594 tests passed; tsc clean; test_nexo_inspector.cjs exit 0 (44 PASS); test_nexo_card_chrome.cjs exit 0 (29 PASS); test_nexo_plotly_click.cjs exit 0 (10 PASS)

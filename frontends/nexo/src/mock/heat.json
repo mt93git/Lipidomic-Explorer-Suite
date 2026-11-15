@@ -1,0 +1,1 @@
+{"data":[{"type":"heatmap","x":["Control","Case"],"y":["PC","PE","TAG"],"z":[[-1,1],[0.5,-0.5],[-0.8,0.8]],"colorscale":"RdBu"}],"layout":{"title":"Abundance heatmap","margin":{"l":45,"r":20,"t":45,"b":40}}}

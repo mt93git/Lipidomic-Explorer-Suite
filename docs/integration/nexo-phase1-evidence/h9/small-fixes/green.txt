@@ -1,0 +1,252 @@
+Nexo Phase 1 small fixes: green (c57f9850 = merge of nexo/phase1 caac04da over 3fe292a9; M1, 2026-11-08)
+
+== cd frontends/nexo && npx vitest run (full) ==
+ Test Files  125 passed (125)
+      Tests  585 passed (585)
+
+== npx tsc --noEmit -p . ==
+(no output, exit 0)
+
+== npx vitest run <the five item test files> --reporter=verbose ==
+
+ RUN  v3.2.7 <repo>/frontends/nexo
+
+ ✓ src/state/autosave.test.ts > edit saves at 15s; continuous edits at 60s 319ms
+ ✓ src/state/autosave.test.ts > failure retries after 5s 15ms
+ ✓ src/state/autosave.test.ts > stale ack keeps dirty; edits during save resave after 1s 19ms
+ ✓ src/state/autosave.test.ts > watchdog ignores a late ack and retries without losing edits 28ms
+ ✓ src/state/autosave.test.ts > paused and view-only suppress saves; busy retries stop after 24 22ms
+ ✓ src/runNeedsGate.test.ts > run-need gate (b10 check 11) > a card that showed its run need waits until a PATCH presses the module button 5ms
+ ✓ src/state/autosave.test.ts > H8 journeys 8.1: a failed save keeps its reason until a save succeeds 16ms
+ ✓ src/state/autosave.test.ts > a lost session that could not be reopened shows the failure and is not retried (no retry loop) 3ms
+ ✓ src/state/autosave.test.ts > outage (500/502/503/network): one "Can't reach the server" status, backoff, recovers by itself 8ms
+ ✓ src/state/autosave.test.ts > outage backoff caps at 60 s 9ms
+ ✓ src/state/autosave.test.ts > 409 session_lost: no retry, Reopen offered (lost), edits kept; reopen() retries and the pill returns to normal 4ms
+ ✓ src/inspectorStatus.test.ts > Inspector status follows the card > a card in render error: "Could not draw this plot" and the card message, even after a 200 PATCH 2ms
+ ✓ src/inspectorStatus.test.ts > Inspector status follows the card > a card in error with no body message (a failed PATCH) keeps the form message 0ms
+ ✓ src/inspectorStatus.test.ts > Inspector status follows the card > a run need names the need (also when the read-only card shows it as a message) 0ms
+ ✓ src/inspectorStatus.test.ts > Inspector status follows the card > waiting without a run need says Needs settings; updating says Updating… 0ms
+ ✓ src/inspectorStatus.test.ts > Inspector status follows the card > a current card: Up to date, except while a PATCH is in flight 0ms
+ ✓ src/inspectorStatus.test.ts > Inspector status follows the card > one source of truth: the Inspector reads the card through the handle, no second state machine 3ms
+ ✓ src/runNeedsFresh.test.ts > run-need gate before the first render > createCard of a time course sets the gate (no render request until Generate analysis) 2899ms
+ ✓ src/runNeedsFresh.test.ts > run-need gate before the first render > other plots are not gated 2ms
+ ✓ src/runNeedsFresh.test.ts > run-need gate before the first render > a replay that presses the module button opens the gate 4ms
+ ✓ src/ui/closeButtons.test.ts > no accessible name is the × glyph 16ms
+ ✓ src/ui/closeButtons.test.ts > Analysis settings close is named "Close Analysis settings" 1ms
+
+ Test Files  5 passed (5)
+      Tests  22 passed (22)
+   Start at  10:57:49
+   Duration  9.01s (transform 5.76s, setup 0ms, collect 7.13s, tests 3.40s, environment 30ms, prepare 4.39s)
+
+
+== NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_small_fixes.cjs (mock) ==
+PASS small-fixes chromium inspector-follows-card-error ("Could not draw this plot. Editable vector view unavailable: …")
+PASS small-fixes chromium fresh-longitudinal-card-gated (0 refused renders, 0 console errors, Inspector "Needs Generate Analysis")
+PASS small-fixes chromium generate-analysis-draws-and-inspector-up-to-date
+PASS small-fixes chromium close-buttons-named-in-words
+PASS small-fixes chromium outage-one-pill-message-no-toasts-backoff-recovers (pills ["Autosave ready","Can't reach the server · retrying","Saved · 10:56 AM"], 3 refused saves)
+PASS small-fixes chromium lost-session-no-retry-reopen-offered
+PASS small-fixes chromium reopen-saves-kept-edits
+PASS small-fixes webkit inspector-follows-card-error ("Could not draw this plot. Editable vector view unavailable: …")
+PASS small-fixes webkit fresh-longitudinal-card-gated (0 refused renders, 0 console errors, Inspector "Needs Generate Analysis")
+PASS small-fixes webkit generate-analysis-draws-and-inspector-up-to-date
+PASS small-fixes webkit close-buttons-named-in-words
+PASS small-fixes webkit outage-one-pill-message-no-toasts-backoff-recovers (pills ["Autosave ready","Can't reach the server · retrying","Saved · 10:57 AM"], 3 refused saves)
+PASS small-fixes webkit lost-session-no-retry-reopen-offered
+PASS small-fixes webkit reopen-saves-kept-edits
+small-fixes OK
+
+== Rscript tests/dual-ui/test_api_small_fixes.R ==
+UNRUN: Rscript is not installed on the M1 (item 5 is static: on.exit(unlink(path)) in api_card_upload, R/frontends/api/export.R).
+
+== NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_inspector.cjs (mock) -> test_nexo_inspector exit 0 ==
+PASS C1 chromium computed-colour-shape-bqc-save-reopen-render-label
+PASS C1 webkit computed-colour-shape-bqc-save-reopen-render-label
+PASS H8 chromium data-change-undo-redo-restores-server-card-form
+PASS H8b chromium fast-undo-redo-ends-at-the-redone-value-on-the-server
+PASS H8c chromium data-change-then-tab-switch-still-reaches-the-server
+PASS P3 chromium listbox-picker-activedescendant-arrows-enter-patch
+PASS H3 chromium schema-edit-render-status
+PASS F13 chromium nexo-log-range-badge-team-view-save-reopen
+PASS H3 chromium appearance-palette-background-undo-no-request
+PASS H3 chromium copy-style-violin-paste-single-undo
+PASS H3 chromium apply-style-to-tab-confirm-counts-single-undo
+PASS F12 chromium legend-chip-right-outside-single-undo
+PASS F6 chromium saved-style-apply-to-another-card-single-undo
+PASS F7 chromium colour-blind-preview-nothing-saved
+PASS H3 chromium illustration-toggle-escape
+PASS P2 chromium lipid-filter-pick-all-none-class
+PASS F10 chromium heat-preset-viridis-single-undo
+PASS H8 chromium selection-bar-checklist-team-encoding-null-label
+PASS H8 chromium zoomed-out-image-card-follows-data-change-and-undo
+PASS H8 chromium zoomed-out-plotly-card-retakes-its-snapshot-after-data-change
+PASS F1 chromium module-action-button-redraws-the-card-and-shows-its-dialog
+PASS P1 chromium ordered-grouping-keyboard-patch-buttons-add-remove
+PASS H3 chromium no-console-errors
+PASS H8 webkit data-change-undo-redo-restores-server-card-form
+PASS H8b webkit fast-undo-redo-ends-at-the-redone-value-on-the-server
+PASS H8c webkit data-change-then-tab-switch-still-reaches-the-server
+PASS P3 webkit listbox-picker-activedescendant-arrows-enter-patch
+PASS H3 webkit schema-edit-render-status
+PASS F13 webkit nexo-log-range-badge-team-view-save-reopen
+PASS H3 webkit appearance-palette-background-undo-no-request
+PASS H3 webkit copy-style-violin-paste-single-undo
+PASS H3 webkit apply-style-to-tab-confirm-counts-single-undo
+PASS F12 webkit legend-chip-right-outside-single-undo
+PASS F6 webkit saved-style-apply-to-another-card-single-undo
+PASS F7 webkit colour-blind-preview-nothing-saved
+PASS H3 webkit illustration-toggle-escape
+PASS P2 webkit lipid-filter-pick-all-none-class
+PASS F10 webkit heat-preset-viridis-single-undo
+PASS H8 webkit selection-bar-checklist-team-encoding-null-label
+PASS H8 webkit zoomed-out-image-card-follows-data-change-and-undo
+PASS H8 webkit zoomed-out-plotly-card-retakes-its-snapshot-after-data-change
+PASS F1 webkit module-action-button-redraws-the-card-and-shows-its-dialog
+PASS P1 webkit ordered-grouping-keyboard-patch-buttons-add-remove
+PASS H3 webkit no-console-errors
+H3 OK
+
+== NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_card_chrome.cjs (mock) -> test_nexo_card_chrome exit 0 ==
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    frontends/nexo/src/cards.ts:45:20:
+      45 │     script.src = `${import.meta.env.BASE_URL}vendor/plotly.min.js`...
+         ╵                     ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    frontends/nexo/src/network/vis.ts:10:17:
+      10 │     const base = import.meta.env.BASE_URL, css = document.createEl...
+         ╵                  ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+PASS H6-0 unit menu upward-downward-clamp
+PASS W2 chromium header-actions-hover-and-tab
+PASS F11 chromium inline-rename-enter-escape-f2-single-undo
+PASS R16 chromium tooltips-supplement-names-focus-hover
+PASS H9 chromium notice-once-toast-only
+PASS H6-0 chromium anatomy-menu-remove-undo-duplicate-badge-finish
+PASS R11 chromium card-state-mapping-on-card
+PASS H9 chromium plot-fills-card-body
+PASS W2 chromium thumb-15-header-25-frozen-image-click-focus
+PASS H6-0 chromium screenshot 1440
+PASS H6-0 chromium screenshot 1024
+PASS H6-0 chromium screenshot 390
+PASS H6-0 chromium no-console-errors
+PASS W2 chromium touch-actions-without-hover
+PASS F11 chromium view-only-link-and-phone-cannot-rename
+PASS W2 webkit header-actions-hover-and-tab
+PASS F11 webkit inline-rename-enter-escape-f2-single-undo
+PASS R16 webkit tooltips-supplement-names-focus-hover
+PASS H9 webkit notice-once-toast-only
+PASS H6-0 webkit anatomy-menu-remove-undo-duplicate-badge-finish
+PASS R11 webkit card-state-mapping-on-card
+PASS H9 webkit plot-fills-card-body
+PASS W2 webkit thumb-15-header-25-frozen-image-click-focus
+PASS H6-0 webkit screenshot 1440
+PASS H6-0 webkit screenshot 1024
+PASS H6-0 webkit screenshot 390
+PASS H6-0 webkit no-console-errors
+PASS W2 webkit touch-actions-without-hover
+PASS F11 webkit view-only-link-and-phone-cannot-rename
+H6-0 OK
+
+== NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_save.cjs (mock) -> test_nexo_save exit 0 ==
+PASS H4 chromium move-dirty-saving-saved
+PASS R14 chromium save-pill-one-quiet-control-aaa
+PASS H8 chromium autosave-failure-reason-toast-retry-now
+PASS H8 chromium named-save-closes-dialog-current-first
+PASS H4 chromium named-save-list-download-reload-position
+PASS H8 chromium picker-groups-team-first-with-date-and-source
+PASS H4 chromium no-console-errors
+PASS H8 chromium failed-open-offers-try-again
+PASS H4 webkit move-dirty-saving-saved
+PASS R14 webkit save-pill-one-quiet-control-aaa
+PASS H8 webkit autosave-failure-reason-toast-retry-now
+PASS H8 webkit named-save-closes-dialog-current-first
+PASS H4 webkit named-save-list-download-reload-position
+PASS H8 webkit picker-groups-team-first-with-date-and-source
+PASS H4 webkit no-console-errors
+PASS H8 webkit failed-open-offers-try-again
+H4 OK
+
+== NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_access.cjs (mock) -> test_nexo_access exit 0 ==
+PASS H7c chromium phone-view-only-chrome
+PASS H8 chromium phone-opens-fitted-with-content
+PASS H7c chromium phone-pan-pinch-wheel-zoom
+PASS H7c chromium phone-inspector-read-only-export-works
+PASS R15 chromium phone-view-actions-no-key-letters-no-tooltips
+PASS H7c chromium phone-card-menu-and-shortcuts-inert
+PASS H7c chromium phone-no-autosave-no-checkpoint-post
+PASS H9 chromium phone-view-only aaa-text-contrast
+PASS H7c chromium phone-axe-banner-dismiss
+PASS H8 chromium phone-banner-compact-and-stays-dismissed
+PASS H7c chromium phone-figure-page-read-only
+PASS H7c chromium phone-no-console-errors
+PASS H7c chromium mode-param-overrides
+PASS H7c chromium layout-768x1024
+PASS H7c chromium layout-1024x768
+PASS H9 chromium canvas aaa-text-contrast
+PASS H9 chromium inspector aaa-text-contrast
+PASS H9 chromium export-dialog aaa-text-contrast
+PASS H7c chromium finished-inspector-status-matches-badge
+PASS H9 chromium figure-page aaa-text-contrast
+PASS H7c chromium desktop-axe-canvas-inspector-export-figure
+PASS H8b chromium empty-canvas-hint-add-plot
+PASS H7c chromium keyboard-tab-order-focus-rings
+PASS H7c chromium keyboard-enter-selects-arrow-moves
+PASS H7c chromium keyboard-escape-cascade
+PASS H8b chromium keyboard-shortcuts-dialog
+PASS R17 chromium motion-tokens-easing-reduced-motion-zero
+PASS H7c webkit phone-view-only-chrome
+PASS H8 webkit phone-opens-fitted-with-content
+PASS H7c webkit phone-pan-pinch-wheel-zoom
+PASS H7c webkit phone-inspector-read-only-export-works
+PASS R15 webkit phone-view-actions-no-key-letters-no-tooltips
+PASS H7c webkit phone-card-menu-and-shortcuts-inert
+PASS H7c webkit phone-no-autosave-no-checkpoint-post
+PASS H9 webkit phone-view-only aaa-text-contrast
+PASS H7c webkit phone-axe-banner-dismiss
+PASS H8 webkit phone-banner-compact-and-stays-dismissed
+PASS H7c webkit phone-figure-page-read-only
+PASS H7c webkit phone-no-console-errors
+PASS H7c webkit mode-param-overrides
+PASS H7c webkit layout-768x1024
+PASS H7c webkit layout-1024x768
+PASS H9 webkit canvas aaa-text-contrast
+PASS H9 webkit inspector aaa-text-contrast
+PASS H9 webkit export-dialog aaa-text-contrast
+PASS H7c webkit finished-inspector-status-matches-badge
+PASS H9 webkit figure-page aaa-text-contrast
+PASS H7c webkit desktop-axe-canvas-inspector-export-figure
+PASS H8b webkit empty-canvas-hint-add-plot
+PASS H7c webkit keyboard-tab-order-focus-rings
+PASS H7c webkit keyboard-enter-selects-arrow-moves
+PASS H7c webkit keyboard-escape-cascade
+PASS H8b webkit keyboard-shortcuts-dialog
+PASS R17 webkit motion-tokens-easing-reduced-motion-zero
+axe moderate/minor findings: 0
+H7c OK
+
+== NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_timecourse_designer.cjs (mock) -> test_nexo_timecourse_designer exit 0 ==
+PASS F4 chromium check11-no-render-while-waiting (0 refusal before)
+PASS F4 chromium buckets-from-schema
+PASS F4 chromium keyboard-move-to-timecourse-2-redraws
+PASS F4 chromium remove-item-redraws-member-not-instance
+PASS F4 chromium duplicate-keeps-buckets
+PASS F4 chromium save-reopen-keeps-buckets
+PASS F4 chromium add-timecourse-empty-bucket
+PASS F4 chromium no-console-errors
+PASS F4 webkit check11-no-render-while-waiting (0 refusal before)
+PASS F4 webkit buckets-from-schema
+PASS F4 webkit keyboard-move-to-timecourse-2-redraws
+PASS F4 webkit remove-item-redraws-member-not-instance
+PASS F4 webkit duplicate-keeps-buckets
+PASS F4 webkit save-reopen-keeps-buckets
+PASS F4 webkit add-timecourse-empty-bucket
+PASS F4 webkit no-console-errors
+F4 time-course designer OK

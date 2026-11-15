@@ -1,13 +1,13 @@
 # Team canvas copies are real scientific modules with a private input namespace.
 # The shared prepared matrix remains authoritative; only view controls are local.
 team_plot_instance_families <- list(
-  results_dashboard = list(ui = 'results_dashboard_ui', server = 'results_dashboard_module_server', outputs = c('plot_pca','plot_violin','plot_dist','plot_comp','plot_heat')),
+  results_dashboard = list(ui = 'results_dashboard_ui', server = 'results_dashboard_module_server', outputs = c('plot_pca','plot_violin','plot_dist','plot_comp','plot_heat','plot_pcascore')),
   qc_pca_tab = list(ui='qc_boxplot_ui',server='qc_boxplot_server',colors=TRUE,outputs=c('boxplotAfterNorm','outlierPlot','pca2dPlot','pca2dVectorPlot','pca3dPlot','load2dPlot','load2dVectorPlot','load3dPlot','sampleCorrPlot','bqcPlot','bqcDeviationPlot','bqcAbundancePlot','outlierPcaPlot','guided_qc_plot')),
   barchart = list(ui='barchart_ui',server='barchart_server',colors=TRUE,outputs=c('barPlotUnfiltered','barPlotFiltered','donutPlotUnfiltered','donutPlotFiltered')),
   heatmap_barchart_tab = list(ui='heatmap_ui',server='heatmap_server',outputs=c('heatmapPlot','heatmapSDPlot','filteredHeatmapPlot','filteredHeatmapSDPlot','violin_plot_render')),
   volcano_tab=list(ui='volcano_ui',server='volcano_server',outputs='volcanoPlot'),
   lsea_tab=list(ui='lsea_ui',server='lsea_server',outputs='lseaPlot'),
-  structural_tab=list(ui='structural_ui',server='structural_server',colors=TRUE,outputs=c('summaryPlot','speciesPlotPlot','networkPlot','propPlotPlot','diffAcylPlot')),
+  structural_tab=list(ui='structural_ui',server='structural_server',colors=TRUE,outputs=c('summaryPlot','speciesPlotPlot','networkPlot','moduleTraitPlot','propPlotPlot','diffAcylPlot')),
   structural_grid_tab=list(ui='structural_grid_ui',server='structural_grid_server',outputs=c('heatmapPlot','dotplotPlot','mergedPlot','diffAllPlot')),
   logratio_tab=list(ui='logratio_ui',server='logratio_server',colors=TRUE,outputs='logratioPlot'),
   group_comparison_tab=list(ui='team_group_comparison_ui',server='team_group_comparison_server',colors=TRUE,outputs='comparisonPlot'),
@@ -100,6 +100,13 @@ team_plot_instance_source <- function(source) {
 # modules build selectors inside renderUI after seeing the data. Action buttons,
 # file inputs, arbitrary event names and computed user identifiers are excluded.
 team_plot_instance_family_files <- c(results_dashboard='R/frontends/team/results_dashboard.R',qc_pca_tab='R/modules/2_qc_boxplot_module.R',barchart='R/modules/5_barchart_module.R',heatmap_barchart_tab='R/modules/4_heatmap_module.R',volcano_tab='R/modules/6_volcano_module.R',lsea_tab='R/modules/7_lsea_module.R',structural_tab='R/modules/8_structural_module.R',structural_grid_tab='R/modules/12_structural_grid_module.R',logratio_tab='R/modules/9_logratio_module.R',fla_tab='R/modules/10_fla_module.R',longitudinal_tab='R/modules/11_longitudinal_module.R',pathway_tab='R/modules/13_pathway_module.R',cellular_org_tab='R/modules/14_cellular_org_module.R')
+# Opt-in server log for creating and restoring independent copies (LIPIDOMIC_CANVAS_DEBUG=1). It prints one line per
+# step to the R console and nothing else; off by default. Pair it with ?canvasdebug=1 in the browser address.
+team_canvas_debug <- function(fmt, ...) {
+  if (!identical(Sys.getenv("LIPIDOMIC_CANVAS_DEBUG"), "1")) return(invisible())
+  message(sprintf("[canvas] %s", tryCatch(sprintf(fmt, ...), error = function(e) fmt)))
+  invisible()
+}
 team_plot_instance_dynamic_ids <- function(family) {
   files <- team_plot_instance_family_files
   controls <- c('selectInput','selectizeInput','numericInput','textInput','textAreaInput','sliderInput','radioButtons','checkboxInput','checkboxGroupInput','dateInput','dateRangeInput','colourInput')
@@ -271,6 +278,7 @@ team_plot_instance_ns_targets <- function(x) {
 # browser waited for them forever and the card never came. Dropped: ids that
 # appear only in that replaced UI function or only inside renderUI outputs that
 # have no slot in the copy's markup. Ids used anywhere else are kept.
+team_plot_instance_after_run_ids <- list(structural_tab = c("selectedDetails", "topClassesCount"))
 team_plot_instance_unhosted_ids <- local({
   cache <- new.env(parent=emptyenv())
   function(family) {
@@ -301,6 +309,10 @@ team_plot_instance_unhosted_ids <- local({
       }
       out <- setdiff(unique(c(classic,names(edges))),c(reachable,other))
     }
+    # Controls a module draws only after an analysis that a checkpoint does not keep (the run button's click count is
+    # not saved), or only late while the module settles. A restored copy must not wait for them: it would never
+    # settle (found with ?canvasdebug=1: Species waited for "selectedDetails" and "topClassesCount" until it timed out).
+    out <- union(out,team_plot_instance_after_run_ids[[family]])
     assign(family,out,cache);out
   }
 })
@@ -565,6 +577,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
   create <- function(value, request_token = NULL, restored = FALSE) {
     value <- team_plot_instance_validate(value)
     resolved <- team_plot_instance_source(value$source); spec <- resolved$spec; id <- value$id
+    team_canvas_debug('create id=%s source=%s restored=%s saved inputs=[%s]',id,value$source,restored,paste(names(value$inputs),collapse=','))
     # Show the tab that holds this plot. A copy starts from its source view's
     # settings, whose open tab is usually another one; modules render only the
     # open tab, so the copy's own plot (or the renderUI that builds it) never came.
@@ -687,6 +700,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
     # can otherwise wait indefinitely for an unrelated subsequent flush.
     reply <- list(allowedInputs=team_plot_instance_input_ids(value$source),generation=generation)
     if (!is.null(request_token)) reply$request <- request_token
+    team_canvas_debug('ready id=%s source=%s restored=%s inputs=[%s]',id,value$source,restored,paste(names(value$inputs),collapse=','))
     session$sendCustomMessage('team-canvas-instance-ready',c(value,reply))
     invisible(value)
   }
@@ -753,7 +767,7 @@ team_plot_instances_server <- function(input, output, session, shared_data, dash
         request$inputs <- request$inputs[names(request$inputs) %in% allowed]
         create(request, token)
       }
-    },error=function(e)session$sendCustomMessage('team-canvas-instance-error',c(list(id=if(is.list(request))request$id else NULL,message=conditionMessage(e)),if(!is.null(token))list(request=token))))
+    },error=function(e){team_canvas_debug('create FAILED id=%s: %s',if(is.list(request))request$id else '?',conditionMessage(e));session$sendCustomMessage('team-canvas-instance-error',c(list(id=if(is.list(request))request$id else NULL,message=conditionMessage(e)),if(!is.null(token))list(request=token)))})
   },ignoreInit=TRUE)
   # Violin statistics read only this session's registered independent copies.
   if (exists('team_violin_stats_server',mode='function'))

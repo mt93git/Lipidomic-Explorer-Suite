@@ -1,0 +1,20 @@
+Wave 2 integration (nexo/wave2-int), Mac, mock build. tsc clean; vitest 91 files / 405 tests.
+Runner: every tests/dual-ui/test_nexo_<suite>.cjs with NEXO_PLOTLY_JS set; exit code and PASS count per suite.
+analysis_settings exit=0 pass=6
+inspector exit=0 pass=36
+canvas_edit exit=0 pass=34
+access exit=0 pass=50
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=12
+canvas_open exit=0 pass=14
+card_chrome exit=0 pass=25 (after the WebKit Option+Tab fix)
+export exit=0 pass=24
+figure_page exit=0 pass=16
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+p3 exit=0 pass=2
+perf exit=0 pass=15
+save exit=0 pass=14
+statistics exit=0 pass=6
+cohort exit=0 pass=8
+library exit=0 pass=16

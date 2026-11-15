@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "plotCircos",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "study design confirmed first (Animal, independent) via the Differential volcano row; docs/integration/chart-audit/b09-fla/dpr2/plotCircos-1-draws.png, docs/integration/chart-audit/b09-fla/dpr2/plotCircos-1-zoomed-out.png; image 620x720 in a 618x682 box (dpr 2, 1.00 px per CSS px, object-fit contain); docs/integration/chart-audit/b09-fla/dpr2/plotCircos-1-card-100.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (4484 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b09-fla/dpr2/plotCircos-3-larger.png, docs/integration/chart-audit/b09-fla/dpr2/plotCircos-3-smaller.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "21 Team controls all present (allowedInputs not in Team's markup: selectedBaseline, volcano_target_group); corrThresh→0.6 redrew (docs/integration/chart-audit/b09-fla/dpr2/plotCircos-4-data-changed.png); slider bounded like Team: an out-of-range value cannot be entered"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b09-fla/dpr2/plotCircos-5-appearance.png; canvas Undo → \"Audit plotCircos\", Redo → \"Audit plotCircos\""
+ },
+ {
+  "plot": "plotCircos",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "plotCircos",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 187857 B; SVG disabled (\"More downloads from this analysis PDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team PDF Functional_Correlation_Network_20261107.pdf 14985 B; card PDF 87621 B; docs/integration/chart-audit/b09-fla/dpr2/plotCircos-7-export-dialog.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 12,
+  "name": "layout",
+  "status": "FAIL",
+  "detail": "page.evaluate: Execution context was destroyed, most likely because of a navigation (script l.422)"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 8,
+  "name": "finish",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded. (script l.102)"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded. (script l.102)"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 15000ms exceeded. (script l.102)"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

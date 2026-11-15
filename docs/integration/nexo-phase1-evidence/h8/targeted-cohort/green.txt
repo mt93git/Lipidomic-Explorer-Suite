@@ -1,0 +1,7 @@
+Rscript --vanilla tests/dual-ui/test_api_targeted_cohort.R  (RTX, nexo-api env)
+PASS cohort lists the imported lipids with their class, as Team's modal does
+PASS cohort applies like Team's modal and the plots redraw from Team's code
+PASS cohort refuses unknown lipids
+PASS cohort is saved in its own checkpoint member, Team still reads the archive, reopen restores it
+PASS clearing the cohort restores the full dataset
+exit=0

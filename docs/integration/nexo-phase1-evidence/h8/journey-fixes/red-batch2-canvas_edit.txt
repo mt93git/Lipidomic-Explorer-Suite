@@ -1,0 +1,15 @@
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+locator.waitFor: Timeout 3000ms exceeded.
+Call log:
+[2m  - waiting for locator('.toast').filter({ hasText: 'Pasted as a new card' }) to be visible[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:93:71)
+    at async <repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:174:46 {
+  log: [
+    "  - waiting for locator('.toast').filter({ hasText: 'Pasted as a new card' }) to be visible"
+  ],
+  name: 'TimeoutError'
+}

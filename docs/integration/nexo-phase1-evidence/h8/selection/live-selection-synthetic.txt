@@ -1,0 +1,3 @@
+raw tokens in text inputs 0 lists [{"label":"Visible sample groups","count":"2 of 2","n":2},{"label":"Visible lipids","count":"12 of 12","n":12},{"label":"Visible lipid classes","count":"9 of 9","n":9},{"label":"Conditions","count":"2 of 2","n":2}]
+patches ["{\"inputs\":{\"heat_group_selection\":\"[\\\"Treatment\\\"]\"},\"actions\":[]}"] status Up to date count now 1 of 2
+errors []

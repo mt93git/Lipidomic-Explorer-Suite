@@ -1,0 +1,25 @@
+# H7 integrated suites, Mac, 2026-11-06T15:14:27Z, HEAD fe6c343
+TSC_OK
+ Test Files  33 passed (33)
+      Tests  162 passed (162)
+computing gzip size...
+dist/index.html                   0.57 kB │ gzip:  0.37 kB
+dist/assets/index-DPEMPivX.css   20.35 kB │ gzip:  4.65 kB
+dist/assets/vendor-DyvUWP44.js  192.35 kB │ gzip: 60.28 kB
+dist/assets/index-wRP3AoXD.js   216.81 kB │ gzip: 73.39 kB
+✓ built in 836ms
+== test_nexo_access.cjs exit 0 32 PASS
+== test_nexo_canvas_edit.cjs exit 0 14 PASS
+== test_nexo_canvas_readonly.cjs exit 0 12 PASS
+== test_nexo_canvas_tabs.cjs exit 0 6 PASS
+== test_nexo_card_chrome.cjs exit 0 11 PASS
+== test_nexo_export.cjs exit 0 18 PASS
+== test_nexo_figure_page.cjs exit 0 2 PASS
+== test_nexo_finish.cjs exit 0 10 PASS
+== test_nexo_inspector.cjs exit 0 8 PASS
+== test_nexo_perf.cjs exit 0 11 PASS
+INFO H7b chromium zoom step median 2.40 ms · p90 2.90 ms · max 2.90 ms (whole run incl. live redraws: script 65.6 ms, style 30.4 ms, layout 19.0 ms)
+INFO H7b chromium draw() of 40 cards median 0.90 ms · p90 1.00 ms · max 1.00 ms
+INFO H7b webkit draw() of 40 cards median 1.00 ms · p90 2.00 ms · max 2.00 ms
+== test_nexo_save.cjs exit 0 6 PASS
+== test_nexo_statistics.cjs exit 0 2 PASS

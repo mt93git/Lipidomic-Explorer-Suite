@@ -1,0 +1,20 @@
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H8d chromium copy-paste-plot
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H8d chromium zoom-shortcuts
+PASS H8 chromium add-placeholder-reveal-highlight-minimap-locate
+PASS H8d chromium rail-palettes-text
+locator.isDisabled: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('group', { name: 'Arrange selected cards', exact: true }).getByRole('button', { name: 'Distribute horizontally', exact: true })[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:156:102)
+    at async <repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:196:46 {
+  log: [
+    "  - waiting for getByRole('group', { name: 'Arrange selected cards', exact: true }).getByRole('button', { name: 'Distribute horizontally', exact: true })"
+  ],
+  name: 'TimeoutError'
+}

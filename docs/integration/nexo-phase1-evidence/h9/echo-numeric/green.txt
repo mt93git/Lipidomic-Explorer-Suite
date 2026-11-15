@@ -1,0 +1,4 @@
+$ Rscript --vanilla tests/dual-ui/test_api_echo_numeric.R   (RTX, production tree, after the fix)
+PASS an echo to a numeric input stays numeric
+PASS summaryPlot Text Size stays numeric through the module's own sync
+PASS test_api_echo_numeric

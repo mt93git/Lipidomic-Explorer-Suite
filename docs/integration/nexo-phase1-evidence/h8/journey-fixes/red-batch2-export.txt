@@ -1,0 +1,13 @@
+PASS H6d chromium preset-cell-dpi
+PASS H6d chromium bundle-download Mock_pca_2d_Publication_Bundle.zip
+locator.waitFor: Timeout 3000ms exceeded.
+Call log:
+[2m  - waiting for locator('.toast').filter({ hasText: 'Downloaded Mock_pca_2d_Publication_Bundle.zip' }) to be visible[22m
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_export.cjs:69:91)
+    at async <repo>/tests/dual-ui/test_nexo_export.cjs:146:46 {
+  log: [
+    "  - waiting for locator('.toast').filter({ hasText: 'Downloaded Mock_pca_2d_Publication_Bundle.zip' }) to be visible"
+  ],
+  name: 'TimeoutError'
+}

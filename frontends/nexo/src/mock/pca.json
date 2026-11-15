@@ -1,0 +1,1 @@
+{"data":[{"type":"scatter","mode":"markers","name":"Control","x":[-2,-1,0],"y":[1,2,0],"marker":{"color":"#2d5f8a"}},{"type":"scatter","mode":"markers","name":"Case","x":[1,2,3],"y":[0,2,1],"marker":{"color":"#c0504d"}}],"layout":{"title":"PCA","margin":{"l":45,"r":20,"t":45,"b":40},"xaxis":{"title":"PC1"},"yaxis":{"title":"PC2"}}}

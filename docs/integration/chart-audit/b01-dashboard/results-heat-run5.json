@@ -1,0 +1,44 @@
+[
+ {
+  "plot": "heat",
+  "check": "1-draws",
+  "status": "PASS",
+  "detail": "card tcinstance_540c92b2134b-plot_heat current at 100 % (docs/integration/chart-audit/b01-dashboard/heat-1-draws-100.png); zoomed out to 41 %: image (docs/integration/chart-audit/b01-dashboard/heat-1-draws-zoomed-out.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "3-size",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "heat",
+  "check": "5-appearance",
+  "status": "FAIL",
+  "detail": "ok: title, font size, font colour, x axis title, y axis title, plot background, title before undo, Undo, Redo, Reset, preset Nexo, title kept for 8-10; not offered: x grid toggle, palette: \"Color palette This chart uses continuous or per-point colors. Categorical palettes apply to charts with series or groups.\", legend position (this plot shows no legend), orientation (disabled for this plot); FAILED: preset Publication, preset Team original does not restore Team look (docs/integration/chart-audit/b01-dashboard/heat-5-appearance.png, docs/integration/chart-audit/b01-dashboard/heat-5-preset-nexo.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "8-finish",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "heat",
+  "check": "9-duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "heat",
+  "check": "10-save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 180000ms exceeded. | Call log: |   - waiting for locator('.toast').filter({ hasText: 'Saved checkpoint audit-b01-dashboard-synthetic' }) to be visible | "
+ },
+ {
+  "plot": "heat",
+  "check": "11-console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 409 (Conflict) || Failed to load resource: the server responded with a status of 500 (Internal Server Error) || Failed to load resource: the server responded with a status of 500 (Internal Server Error) || Failed to load resource: the server responded with a status of 500 (Internal Server Error) || Failed to load resource: the server responded with a status of 500 (Internal Server Error); API errors: POST /sessions/s24/cards/tcinstance_540c92b2134b/render → 409 {\"error\":\"session_lost\",\"message\":\"This session was closed or evicted; reopen the checkpoint.\"} || POST /sessions/s24/canvas/validate → 500 {\"error\":\"500 - Internal server error\"} || POST /sessions/s24/canvas/validate → 500 {\"error\":\"500 - Internal server error\"} || POST /sessions/s24/canvas/validate → 500 {\"error\":\"500 - Internal server error\"} || POST /sessions/s24/canvas/validate → 500 {\"error\":\"500 - Internal server error\"}"
+ }
+]

@@ -1,0 +1,53 @@
+test_api_actions_replay.R 21s :: PASS test_api_actions_replay 
+test_api_analysis_settings.R 13s :: PASS the setting is saved in the checkpoint and restored on reopen 
+test_api_cache.R 17s :: PASS memory guard soft 2400 MB evicts LRU + clears caches, hard 2700 MB quits 3 
+test_api_catalog.R 10s :: PASS catalog defaults of 58 entries pass the validator; colour names and two-value ranges accepted 
+test_api_checkpoint_scope.R 7s :: PASS switch off again: shared workspace as before; client workspaces stay on disk, unlisted 
+test_api_computed_controls.R 18s :: PASS test_api_computed_controls 
+test_api_dataset_http.R 1s :: PASS bounded RPC transfer and cleanup: chunked-error  
+test_api_dataset_route.R 8s :: PASS dataset checkpoint POST, close and reopen preserves selected samples, values, metadata, canvas and Nexo sidecar 
+test_api_dataset_session.R 15s :: PASS a plot can be added to a dataset session 
+test_api_dependency_guards.R 0s :: PASS test_api_dependency_guards 
+test_api_download_labels.R 1s :: PASS duplicate download labels carry their section heading 
+test_api_download_ownership.R 21s :: PASS test_api_download_ownership 
+test_api_echo_numeric.R 14s :: PASS test_api_echo_numeric 
+test_api_engine.R 15s :: PASS U2 typed errors 
+test_api_export.R 17s :: PASS more downloads: a failing module handler is a 422 with its reason 
+test_api_health.R 0s :: PASS H4 an unreadable production root never reports a match 
+test_api_heat_significance.R 12s :: PASS test_api_heat_significance 
+test_api_http.R 18s :: PASS I1 session delete 200 
+test_api_lazy_open.R 12s :: PASS test_api_lazy_open 
+test_api_legacy_cards.R 13s :: PASS test_api_legacy_cards 
+test_api_missing_controls_a.R 19s :: PASS test_api_missing_controls_a 
+test_api_nexo_store.R 4s :: PASS save keeps, clears or sets the member as the request says 
+test_api_parity.R 15s :: PASS parity 5/5 
+test_api_pathway_layout_json.R 13s :: PASS test_api_pathway_layout_json 
+test_api_plotly_click.R 12s :: PASS test_api_plotly_click 
+test_api_pool.R 66s :: PASS test_api_pool 
+test_api_pool_warm.R 32s :: PASS test_api_pool_warm 
+test_api_record_warning.R 1s :: PASS API checkpoint records near-limit boundary 
+test_api_render_all.R 79s :: PASS render cell_comparison_plot 
+test_api_render_disk_cache.R 2s :: SKIP test_api_render_disk_cache: no git commit for the cache key 
+test_api_render_module_error.R 12s :: PASS test_api_render_module_error 
+test_api_restore_cards.R 17s :: PASS restore an id the checkpoint does not hold is still unknown 
+test_api_retina_timing.R 31s :: PASS test_api_retina_timing 
+test_api_roundtrip.R 22s :: PASS roundtrip keeps project records 
+test_api_run_engine_uploads.R 13s :: PASS test_api_run_engine_uploads 
+test_api_schema.R 14s :: PASS schema selection bars 4 (heat_group_selection, heat_lipid_selection, comp_class_selection, comp_group_selection) carry defaults and the all-token; a JSON array is accepted 
+test_api_schema_actions.R 16s :: PASS an update without a dialog returns no modal 
+test_api_schema_choices.R 16s :: PASS schema radio choices narrowed by the module at run time replace the markup's 
+test_api_schema_hidden.R 2s :: PASS dashboard selection bars stay shown 
+test_api_schema_icon_buttons.R 2s :: PASS icon-only buttons are named by their icon's action and the text beside them 
+test_api_session.R 14s :: PASS session close 
+test_api_session_palette.R 18s :: PASS test_api_session_palette 
+test_api_small_fixes.R 12s :: PASS test_api_small_fixes 
+test_api_statistics.R 13s :: PASS group comparison confirm 
+test_api_storage.R 1s :: PASS storage list skips bad records 
+test_api_stress.R 0s :: SKIP test_api_stress: set NEXO_API_PERF=1 to run timing budgets 
+test_api_summary_textsize.R 15s :: PASS test_api_summary_textsize 
+test_api_targeted_cohort.R 13s :: PASS clearing the cohort restores the full dataset 
+test_api_time_limit.R 9s :: PASS outermost guard clears the limit on exit  
+test_api_timecourse_designer.R 17s :: PASS test_api_timecourse_designer 
+test_api_unknown_session.R 12s :: PASS test_api_unknown_session 
+test_api_violin_height.R 43s :: PASS test_api_violin_height 
+TOTAL 788s

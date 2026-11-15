@@ -247,18 +247,19 @@ team_canvas_array <- function(x,limit) {
   x
 }
 team_canvas_editor <- function(editor) {
-  editor <- team_canvas_object(editor,c("layout","traces","annotations","categoryLabels","swapAxes","palette","greyHealthy"))
+  editor <- team_canvas_object(editor,c("layout","traces","annotations","categoryLabels","swapAxes","palette","greyHealthy","groupEllipses"))
   if(!is.null(editor$swapAxes)) editor$swapAxes <- team_canvas_boolean(editor$swapAxes)
+  if(!is.null(editor$groupEllipses)) editor$groupEllipses <- team_canvas_boolean(editor$groupEllipses)
   if(!is.null(editor$greyHealthy)) editor$greyHealthy <- team_canvas_boolean(editor$greyHealthy)
   if(!is.null(editor$palette)) {
     editor$palette <- team_canvas_editor_text(editor$palette)
     if(!editor$palette %in% c("Pastel","Gelato Days","Lab","Okabe–Ito","Nature (NPG)","Viridis"))team_canvas_fail()
   }
   texts <- c("title.text","xaxis.title.text","yaxis.title.text")
-  colors <- c("paper_bgcolor","plot_bgcolor","font.color","title.font.color","legend.font.color","legend.bgcolor","xaxis.color","yaxis.color","xaxis.gridcolor","yaxis.gridcolor","xaxis.zerolinecolor","yaxis.zerolinecolor")
+  colors <- c("paper_bgcolor","plot_bgcolor","font.color","title.font.color","legend.font.color","legend.bgcolor","xaxis.color","yaxis.color","xaxis.gridcolor","yaxis.gridcolor","xaxis.linecolor","yaxis.linecolor","xaxis.zerolinecolor","yaxis.zerolinecolor")
   sizes <- c("font.size","title.font.size","legend.font.size","xaxis.title.font.size","yaxis.title.font.size","xaxis.tickfont.size","yaxis.tickfont.size")
   positions <- c("title.x","title.y","legend.x","legend.y")
-  bools <- c("showlegend",unlist(lapply(c("xaxis","yaxis"),function(a)paste0(a,".",c("showgrid","zeroline","showline","showticklabels")))))
+  bools <- c("showlegend",unlist(lapply(c("xaxis","yaxis"),function(a)paste0(a,".",c("showgrid","zeroline","showline","mirror","showticklabels")))))
   widths <- unlist(lapply(c("xaxis","yaxis"),function(a)paste0(a,".",c("gridwidth","zerolinewidth","linewidth"))))
   angles <- c("xaxis.tickangle","yaxis.tickangle")
   choices <- list("legend.orientation"=c("h","v"),"title.xanchor"=c("left","center","right","auto"),"legend.xanchor"=c("left","center","right","auto"),"title.yanchor"=c("top","middle","bottom","auto"),"legend.yanchor"=c("top","middle","bottom","auto"))
@@ -272,12 +273,12 @@ team_canvas_editor <- function(editor) {
   }
   indices <- numeric()
   if(!is.null(editor$traces)) editor$traces <- unname(lapply(team_canvas_array(editor$traces,100L),function(t) {
-    t <- team_canvas_object(t,c("index","sourceKey","name","hidden","points","innerBox","color","fillColor","fillOpacity","lineColor","lineWidth","markerSize","opacity","scaleLow","scaleMid","scaleHigh"),"index")
+    t <- team_canvas_object(t,c("index","sourceKey","name","hidden","points","innerBox","color","fillColor","fillOpacity","lineColor","markerLineColor","markerLineWidth","lineWidth","markerSize","markerSymbol","opacity","scaleLow","scaleMid","scaleHigh"),"index")
     t$index <- team_canvas_number(t$index,0,999)
     if(t$index!=floor(t$index)||t$index %in% indices)team_canvas_fail()
     indices <<- c(indices,t$index)
     scale_fields <- c("scaleLow","scaleMid","scaleHigh");if(any(scale_fields %in% names(t)) && !all(scale_fields %in% names(t)))team_canvas_fail()
-    for(k in setdiff(names(t),"index"))t[[k]] <- if(k %in% c("name","sourceKey"))team_canvas_editor_text(t[[k]]) else if(k %in% c("color","fillColor","lineColor",scale_fields))team_canvas_hex(t[[k]]) else if(k %in% c("hidden","points","innerBox"))team_canvas_boolean(t[[k]]) else team_canvas_number(t[[k]],0,if(k %in% c("opacity","fillOpacity"))1 else if(k=="lineWidth")20 else 100)
+    for(k in setdiff(names(t),"index"))t[[k]] <- if(k %in% c("name","sourceKey"))team_canvas_editor_text(t[[k]]) else if(k=="markerSymbol"){if(!is.character(t[[k]])||length(t[[k]])!=1L||!t[[k]] %in% c("circle","square","triangle-up","star","diamond"))team_canvas_fail();t[[k]]} else if(k %in% c("color","fillColor","lineColor","markerLineColor",scale_fields))team_canvas_hex(t[[k]]) else if(k %in% c("hidden","points","innerBox"))team_canvas_boolean(t[[k]]) else team_canvas_number(t[[k]],0,if(k %in% c("opacity","fillOpacity"))1 else if(k %in% c("lineWidth","markerLineWidth"))20 else 100)
     if("hidden" %in% names(t) && (is.null(t$sourceKey) || !nzchar(t$sourceKey)))team_canvas_fail("Series visibility requires a source identity.")
     t
   }))

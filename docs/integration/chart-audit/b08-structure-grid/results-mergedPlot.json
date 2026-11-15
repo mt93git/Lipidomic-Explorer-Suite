@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "mergedPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "design confirmed in the Library (Animal, independent); docs/integration/chart-audit/b08-structure-grid/mergedPlot-1-draws.png, docs/integration/chart-audit/b08-structure-grid/mergedPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (42295 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b08-structure-grid/mergedPlot-3-larger.png, docs/integration/chart-audit/b08-structure-grid/mergedPlot-3-smaller.png"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "Team renderUI controls missing from the Data tab: gridLog2fcThresh; \"Show Statistic Detail\" → dialog: \"Statistics Console Context: Structural Grids White on Black Mathematical calculus, parameter estimates, and degrees of freedom computed for \" (docs/integration/chart-audit/b08-structure-grid/merged"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b08-structure-grid/mergedPlot-5-appearance.png; canvas Undo → \"Audit mergedPlot\", Redo → \"Audit mergedPlot\""
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 313545 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV MergedClassesGrid_20261107_2344.csv 2611 B; Team PDF MergedClassesGrid_20261107_2344.pdf 8380 B; card PDF 275955 B; docs/integration/chart-audit/b08-structure-grid/mergedPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b08-structure-grid/mergedPlot-8-finished.png"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit mergedPlot\" with position=sn1; remove + Undo brought it back drawn; docs/integration/chart-audit/b08-structure-grid/mergedPlot-9-duplicate.png"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b08-structure-grid/mergedPlot-12-layout-1440-data.png; docs/integration/chart-audit/b08-structure-grid/mergedPlot-12-layout-1440-card.png; 1440x900: 4 tabs (Data/Appearance/Statistics/Export); docs/integration/chart-audit/b08-structure-grid/mergedPlot-12-layout-1024-data.png; docs/integration/chart-audit/b08-structure-grid/mergedPlot-12-layout-1024-card.png; 1024x768: 4 tabs (Data/Appearance/Statistics/Export)"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 4efe7124d436…: \"Audit mergedPlot\", position=sn1, background kept; docs/integration/chart-audit/b08-structure-grid/mergedPlot-10-reopened.png"
+ },
+ {
+  "plot": "mergedPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,17 @@
+INFO API commit ea830fc RSS 1036.515625 MB sessions 2
+INFO opened synthetic checkpoint with 0 cards in 2.0 s
+INFO added 6 (Normalized signal boxplots)
+INFO added 12 (PCA loadings · editable 2D)
+INFO added 18 (Outlier PCA)
+INFO added 24 (Signal variability heatmap)
+PASS stress canvas holds 24 plots (added 24 in 30.5 s; add→card median 1245.0ms p95 1898.0ms max 2021.0ms (n=24))
+INFO not settled: PCA scores · editable 2DUpdating… [pca2dVectorPlot] tier=frozen body=0 ; PCA loadings · editable 2DUpdating… [load2dVectorPlot] tier=frozen body=0
+PASS stress all 24 cards settled 180.1 s after Fit: {"current":22,"updating":2}
+INFO render requests 21: server+network median 151.7ms p95 191.4ms max 195.0ms (n=21)
+INFO zoom step input→paint median 5.0ms p95 18.8ms max 19.4ms (n=74)
+INFO frame interval over zoom+pan median 16.7ms p95 16.7ms max 916.7ms (n=490); frames >33 ms: 2/490; long tasks 3 (max 804 ms)
+INFO live Plotly cards during gestures max 1 (cap 4)
+INFO browser JS heap 23 → 27 MB, DOM nodes 3181, layouts 127, style 49 ms, script 423 ms during gestures
+INFO API RSS 1036.515625 → 1323.3359375 MB, sessions 2
+PASS stress gestures with 24 plots: live cap held, zoom median < 16 ms, frame median < 20 ms
+INFO console errors 6: Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno)

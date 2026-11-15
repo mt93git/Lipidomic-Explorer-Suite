@@ -74,3 +74,23 @@ body.guided-app .rd-header h2{display:none}
 .rd-heat-significance{margin:8px 0 4px}.rd-heat-significance .form-group{margin-bottom:0}
 .rd-heat-significance label.is-unavailable{color:#6b7785 !important;cursor:not-allowed !important}
 .rd-heat-significance-note{margin:2px 0 6px;font-size:13px;line-height:1.45;color:#526477}.rd-heat-significance-note:empty{display:none}
+
+/* PCA score analysis (Statistics tab of the PCA card) */
+.rd-pca-score { display: flex; flex-direction: column; gap: 8px; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; }
+.rd-pca-score h4 { margin: 0; font-size: 10pt; font-weight: 700; }
+.rd-pca-score .form-group { margin-bottom: 0; }
+.rd-pca-score .shiny-options-group { max-height: 150px; overflow: auto; }
+.rd-pca-score-table { width: 100%; border-collapse: collapse; }
+.rd-pca-score-table th, .rd-pca-score-table td { padding: 4px 6px; border-bottom: 1px solid #d9d8d2; font-size: 10pt; }
+.rd-pca-score-table th { color: #6b6a65; font-weight: 600; background: #f1f0ec; text-align: left; }
+.rd-pca-score-report p { margin: 0 0 4px; font-size: 10pt; color: #20323b; }
+.tc-inspector-statistics { overflow-x: hidden; }
+.rd-pca-score { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; }
+.rd-pca-score * { max-width: 100%; box-sizing: border-box; }
+.rd-pca-score select, .rd-pca-score .form-control, .rd-pca-score .btn { width: 100%; }
+.rd-pca-score .form-group, .rd-pca-score .shiny-input-container { width: 100% !important; max-width: 100% !important; min-width: 0; }
+.rd-pca-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(0,0,0,.25); }
+
+/* PCA score: the button that adds the figure to the canvas lives on the PCA card only. */
+.rd-pca-score.is-score-card .rd-pcs-plot-btn,.rd-pca-score.is-score-card .rd-pcs-plot-note{display:none}
+.rd-pca-score .rd-pcs-plot-btn{width:100%;margin-top:6px}

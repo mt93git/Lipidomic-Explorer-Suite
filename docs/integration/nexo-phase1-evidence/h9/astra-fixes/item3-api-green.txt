@@ -1,0 +1,9 @@
+## test_api_plotly_click.R part 1 (Team code check + point validation)
+PASS the click sources are the ones Team registers (event_register) and observes on a canvas copy
+PASS click points: plotly's shape is accepted and parses as event_data reads it; malformed clicks are 400
+
+## mechanism probe (shiny 1.13.0 + plotly 4.12.1 MockShinySession, R/utils_plot_events.R): root input plotly_click-<ns source> reaches a module observer
+input value: [{"curveNumber":0,"pointNumber":2,"x":1.5,"y":"PC"}] 
+after click 1: hits = 1  y = PC  class(hit) = data.frame 
+same value again without reset: hits = 2 
+same value after NULL reset: hits = 3 

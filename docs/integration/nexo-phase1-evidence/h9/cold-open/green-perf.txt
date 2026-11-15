@@ -1,0 +1,17 @@
+PASS H7b chromium prefetch warm 4, fit misses 0, visible priority
+PASS H7b chromium cold open: all 10 Plotly cards in view queued their figure at once
+PASS H7b chromium live-cap 20 in view → 4 live
+PASS H7b chromium 10-zoom-steps cap-held median<16ms
+PASS H7b chromium draw-40 median<8ms
+PASS H7b chromium pan-back image-cache first pass 5 renders, second pass 0
+PASS H8 chromium refused-frozen-card-shows-module-message
+PASS H7b chromium screenshot-1440 no-console-errors
+PASS H7b webkit prefetch warm 4, fit misses 0, visible priority
+PASS H7b webkit cold open: all 10 Plotly cards in view queued their figure at once
+PASS H7b webkit live-cap 20 in view → 4 live
+PASS H7b webkit 10-zoom-steps cap-held
+PASS H7b webkit draw-40
+PASS H7b webkit pan-back image-cache first pass 5 renders, second pass 0
+PASS H8 webkit refused-frozen-card-shows-module-message
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+(the remaining WebKit AssertionError is the known WebGL-context console error, follow-up task t-1ef7)

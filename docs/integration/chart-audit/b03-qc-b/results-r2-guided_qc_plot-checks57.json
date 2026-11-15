@@ -1,0 +1,30 @@
+[
+ {
+  "plot": "guided_qc_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/guided_qc_plot-1-draws.png, docs/integration/chart-audit/b03-qc-b/guided_qc_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Chart font size|Base size; Chart text color; Plot background; font 16 #aa0000, plot bg #f0f0ff; 6 palettes, 6 distinct colourings; Healthy in grey present; no legend on this plot: positions disabled, reason \"This plot has no legend: no series has a name to list, so a position would show nothing useful.\"; grid toggle; orientation enabled; Undo/Redo; Reset → title \"Click to enter Plot title\"; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-5-appearance.png; canvas Undo → \"Audit guided_qc_plot\", Redo → \"Audit guided_qc_plot\""
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 133476 B; SVG 12689 B; no Team downloads; card PDF 70955 B; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,38 @@
+[
+ {
+  "plot": "heat",
+  "check": "1-draws",
+  "status": "PASS",
+  "detail": "card tcinstance_ced82188d0d8-plot_heat current at 100% (docs/integration/chart-audit/b01-dashboard/heat-1-draws-100.png); zoomed out to 41%: image (docs/integration/chart-audit/b01-dashboard/heat-1-draws-zoomed-out.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "3-size",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('#inspector').locator('details.size-section').getByRole('button', { name: /^Single column/ }) | "
+ },
+ {
+  "plot": "heat",
+  "check": "8-finish",
+  "status": "PASS",
+  "detail": "finished snapshot 560×442×558×417 (docs/integration/chart-audit/b01-dashboard/heat-8-finished.png); Edit returns to the live plot titled \"undefined\""
+ },
+ {
+  "plot": "heat",
+  "check": "9-duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate tcinstance_a853b7a10e7d-plot_heat has the same inputs and title \"undefined\" (docs/integration/chart-audit/b01-dashboard/heat-9-duplicate.png); Remove + Undo restored it with its title"
+ },
+ {
+  "plot": "heat",
+  "check": "10-save-reopen",
+  "status": "PASS",
+  "detail": "saved audit-b01-dashboard-synthetic (0c0ad6a5f230…), reopened in a new page: title \"undefined\" and inputs identical (docs/integration/chart-audit/b01-dashboard/heat-10-reopened.png); deleted it (HTTP 200)"
+ },
+ {
+  "plot": "heat",
+  "check": "11-console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,9 @@
+# red (coordinator): gated cards added after a real design confirmation, mock Team sliders on the volcano
+chromium:1440x900 volcano_tab-volcanoPlot Data spill form.schema-form>fieldset>div.field.field-range "Alpha:"
+chromium:1440x900 volcano_tab-volcanoPlot Data spill form.schema-form>fieldset>div.field.field-range "Weight -Log10PControls how heavily the s"
+PASS chromium:1440x900 longitudinal_tab-macroclass_plot
+chromium:1024x768 volcano_tab-volcanoPlot Data spill form.schema-form>fieldset>div.field.field-range "Alpha:"
+chromium:1024x768 volcano_tab-volcanoPlot Data spill form.schema-form>fieldset>div.field.field-range "Weight -Log10PControls how heavily the s"
+PASS chromium:1024x768 longitudinal_tab-macroclass_plot
+PASS chromium:390x844 phone
+SUMMARY offenders=4 sources=2 engines=chromium

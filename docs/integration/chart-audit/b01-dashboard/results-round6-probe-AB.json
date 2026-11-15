@@ -1,0 +1,47 @@
+[
+ {
+  "part": "A data-tab pca",
+  "status": "PASS",
+  "detail": "added from the Library: card tcinstance_9e4bdb0c201c-plot_pca \"Principal components\": 3 controls [Color samples by | PCA abundance scale | PCA scaling]; schema none (cached) (docs/integration/chart-audit/b01-dashboard/pca-4-data-tab-legacy.png)"
+ },
+ {
+  "part": "A data-tab violin",
+  "status": "PASS",
+  "detail": "added from the Library: card tcinstance_03a787987fb4-plot_violin \"Feature distributions\": 2 controls [Color samples by | Filter Choose a lipid]; schema none (cached) (docs/integration/chart-audit/b01-dashboard/violin-4-data-tab-legacy.png)"
+ },
+ {
+  "part": "A data-tab dist",
+  "status": "PASS",
+  "detail": "added from the Library: card tcinstance_013b320c6cc1-plot_dist \"Signal distribution\": 1 controls [Color samples by]; schema none (cached) (docs/integration/chart-audit/b01-dashboard/dist-4-data-tab-legacy.png)"
+ },
+ {
+  "part": "A data-tab comp",
+  "status": "PASS",
+  "detail": "added from the Library: card tcinstance_081502fc84bd-plot_comp \"Composition overview\": 13 controls [Color samples by | CER | LPC | LPE | PC | PE | PI | PS | SM | TG | Control | Treatment | X axis]; schema none (cached) (docs/integration/chart-audit/b01-dashboard/comp-4-data-tab-legacy.png)"
+ },
+ {
+  "part": "A data-tab heat",
+  "status": "PASS",
+  "detail": "added from the Library: card tcinstance_fdfa95248beb-plot_heat \"Abundance heatmap\": 83 controls [Color samples by | Most variable | Control | Treatment | Filter Visible lipids | PE(18:0/16:0) | PS(16:0/18:0) | PE(16:0/18:0) | PI(16:0/18:1) | TG(16:0_18:0_18:1) | PC(18:0/16:1) | PS(18:0/16:1) | TG(16:0_16:1_18:1) | PC(18:0/16:0) | PI(20:5/22:6) | TG(18:0_22:6_18:1) | PS(18:1/22:6) | PS(18:1/20:4) | PE(18:0/22:6) | PS(18:2/20:4) | PI(18:1/20:4) | TG(20:4_20:4_18:1) | PS(20:5/22:6) | TG(18:1_22:6_18:1) | PE(20:5/22:6) | PC(18:0/22:6) | PE(18:2/20:4) | PC(18:1/20:4) | PE(18:1/22:6) | PI(18:0/22:6) | TG(18:1_20:4_18:1) | PE(20:4/20:4) | PS(20:4/20:4) | PS(18:0/22:6) | PC(18:2/20:4) | PC(20:4/20:4) | PC(16:0/16:1) | PC(18:1/22:6) | TG(16:0_18:1_18:1) | PE(18:1/20:4) | PC(20:5/22:6) | PI(18:2/20:4) | PC(16:0/18:0) | TG(18:0_16:0_18:1) | TG(16:0_16:0_18:1) | PS(18:0/16:0) | PI(18:1/22:6) | PI(18:0/16:0) | TG(18:2_20:4_18:1) | PI(16:0/16:1) | PE(16:0/16:0) | PC(16:0/16:0) | TG(20:5_22:6_18:1) | PS(16:0/16:0) | PE(18:0/16:1) | PI(18:0/16:1) | PI(16:0/16:0) | PS(16:0/16:1) | PI(20:4/20:4) | PS(16:0/18:1) | PE(16:0/16:1) | PE(16:0/18:1) | TG(18:0_16:1_18:1) | PC(16:0/18:1) | PI(16:0/18:0) | LPE(16:0) | SM(d18:1/24:1) | LPE(18:1) | LPE(22:6) | SM(d18:1/18:0) | Cer(d18:1/22:0) | Cer(d18:1/24:1) | LPC(16:0) | SM(d18:1/16:0) | Cer(d18:1/24:0) | LPC(20:4) | Cer(d18:1/16:0) | LPC(18:1) | LPC(18:0) | LPE(18:0) | SM(d18:1/24:0) | All lipids | Significant only]; schema none (cached) (docs/integration/chart-audit/b01-dashboard/heat-4-data-tab-legacy.png)"
+ },
+ {
+  "part": "B card actions heat",
+  "status": "PASS",
+  "detail": "header chrome Edit/Duplicate visible when selected true/true (opacity 1); Edit opens the Inspector: true; header Duplicate → tcinstance_7427b00a5df5-plot_heat; menu Duplicate → tcinstance_813ad43d1287-plot_heat; menu Data & settings opens the Data tab: true; menu Remove removed both copies (docs/integration/chart-audit/b01-dashboard/heat-9-header-duplicate.png)"
+ },
+ {
+  "part": "C layout 1440x900",
+  "status": "FAIL",
+  "detail": "page.evaluate: ReferenceError: inspectBase is not defined"
+ },
+ {
+  "part": "C layout 1024x768",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "part": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

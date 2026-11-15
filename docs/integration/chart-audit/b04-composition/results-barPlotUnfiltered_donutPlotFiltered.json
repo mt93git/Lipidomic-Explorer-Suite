@@ -1,0 +1,100 @@
+[
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b04-composition/barPlotUnfiltered-1-draws.png, docs/integration/chart-audit/b04-composition/barPlotUnfiltered-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (29181 B); card image 620x380 shown at 618x342"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→450 px wide, redrawn each time; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-3-larger.png, docs/integration/chart-audit/b04-composition/barPlotUnfiltered-3-smaller.png"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "13 Team controls all present; renderUI barGroupMode: \"Group By: Lipid Main Class Lipid Category\"; barDisplayColumns: \"Display Columns (Subset): Control_Synthetic plasma_T1 Contro\" (allowedInputs not in Team's markup: barGroupMode, barDisplayColumns); barValueMode→Absolute (%) redrew (docs/integration/chart-audit/b04-composition/barPlotUnfiltered-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-5-appearance.png; canvas Undo → \"Audit barPlotUnfiltered\", Redo → \"Audit barPlotUnfiltered\""
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 221376 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV LipidAnalysis_261107_LipidAnalysis_Barchart_Unfiltered_Data_Rep.csv 20439 B; Team PDF LipidAnalysis_261107_LipidAnalysis_Barchart_Unfiltered_Rep.pdf 5641 B; card PDF 189974 B; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-7-export-dialog.png"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 450x220 in a 448x182 body; Edit figure → live png; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-8-finished.png"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit barPlotUnfiltered\" with barValueMode=Absolute (%); remove + Undo brought it back drawn; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-9-duplicate.png"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over 8 tab views (1440:Data, 1440:Appearance, 1440:Statistics, 1440:Export, 1024:Data, 1024:Appearance, 1024:Statistics, 1024:Export) + card chrome and More menu at both sizes; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-12-layout-*.png"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 4bd0921dc4e7…: \"Audit barPlotUnfiltered\", barValueMode=Absolute (%), background kept; docs/integration/chart-audit/b04-composition/barPlotUnfiltered-10-reopened.png"
+ },
+ {
+  "plot": "barPlotUnfiltered",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "donutPlotFiltered",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "card state error: Could not update Data & settings Composition share · filtered ⋯ Request failed (500)"
+ },
+ {
+  "plot": "donutPlotFiltered",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+ }
+]

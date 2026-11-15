@@ -1,0 +1,91 @@
+Resultado:
+## Revisión de integridad: Nexo (`nexo/phase1` = 24bef475, base ebee653)
+
+Revisión solo estática: no hay R instalado en esta máquina y no ejecuté ningún test. No edité nada.
+
+### P1: Nexo puede guardar o calcular algo que Team no haría
+
+**P1-1. Los checkpoints antiguos se preparan con ajustes por defecto, no con los del checkpoint.**
+- Si el ZIP no trae `shared-state-v1` aplicado (`saved` es NULL), la API usa `preparation_settings(list(), "team")` (`R/frontends/api/session.R:152-153`).
+- Además selecciona todas las columnas numéricas (`session.R:181`) y no hace ninguna comprobación del recibo, solo pone `"no archived receipt (legacy checkpoint)"` (`session.R:195`).
+- Team, en cambio, toma los ajustes de las entradas de QC restauradas a través de `qc_settings_bridge` (`R/server.R:31,48,76-79`) y la selección de `data_hub-selectedColumns` restaurada.
+- Consecuencia: en un checkpoint antiguo, Nexo muestra resultados de una preparación (normalización, imputación, muestras) que Team no habría calculado, sin ningún aviso.
+
+**P1-2. Los ZIP guardados por Nexo pierden los registros del proyecto.**
+- Team, tras `export_session_path`, siempre añade `team-project-records-v1.json` (`R/frontends/team/project_library.R:382`, `project_records.R:38-50`). Contiene métodos, notas de diseño (unidad, relación, notas), historial de ejecuciones y acciones del companion.
+- La API solo exporta (`R/frontends/api/storage.R:85`) y no arranca `team_project_records_server`.
+- Si se abre en Nexo un checkpoint guardado por Team y se vuelve a guardar, esos registros desaparecen sin aviso. Team luego lo abre como un checkpoint "antiguo" (`project_records.R:53`) y no avisa de nada.
+- Es el campo que difiere en la pregunta 4. El resto del ZIP sale del mismo `export_session_path`: `state.json`, `shared-state-v1.json`, `team-canvas-v1.json` (procedente del canvas ya validado) y `data_files`.
+
+### P2: corregir antes del PR a Max
+
+1. **Falta el aviso de pseudoreplicación.** Team asigna `shared_data$team_da_participant_reason` (`R/server.R:55-59`) y la API no. Por eso `team_da_participant_status()` siempre devuelve NULL (`da_participant_warning.R:13-17`). Cualquier vista, banner o exportación de análisis diferencial servida por la API sale sin el aviso que Team muestra. No pude verificar si alguna de las salidas de gráfico que Nexo renderiza lo lleva incrustado.
+
+2. **Pregunta 3 (gate de diseño): Nexo es más estricto que Team, no más laxo.**
+   - En producción, Team con interfaz `team` tiene el workspace siempre activo (`workspace.R:5-8`). Por tanto `team_simple_review_enabled()` es TRUE (`guided_workflow.R:69`) y `design_issues()` no mira ni la casilla de confirmación, ni la unidad, ni el tipo (`guided_workflow.R:367`).
+   - Así, `design_ok()` solo exige que no se esté restaurando y que haya al menos una muestra seleccionada. Después `guide_allows_inference` exige unidad no vacía, tipo independiente y ninguna muestra sintética.
+   - La API, además, exige la casilla `guide_design_confirm` (`session.R:160-162`).
+   - Lo que la API se salta: la comprobación `is_restoring` (cubierta en la práctica por el `api_require` de `session.R:179`), la de "seleccionar al menos una muestra", y el recibo ligado al token de diseño junto con el reinicio de la confirmación cuando cambia el diseño (`guided_workflow.R:350-366`). Esto último solo aplica fuera del workspace.
+   - Además, `design_check = function() TRUE` (`session.R:157`).
+   - Conclusión: no encontré ningún camino por el que Nexo muestre p-valores que Team retendría. Al revés: Nexo puede retenerlos cuando Team los muestra.
+
+3. **Las tarjetas nuevas no usan los mismos valores de partida que Team.**
+   - Team copia los valores en vivo de la vista de origen de esa familia (`www/team/js/canvas.js:333,297-309`).
+   - Nexo envía los valores por defecto del markup (`frontends/nexo/src/canvas.ts:197`) y la API los fija antes de crear la tarjeta (`cards.R:43-53`).
+   - Con el mismo checkpoint y la misma acción, la figura sale con otros ajustes. Además, la API llama a `team_canvas_instances_create` directamente, sin pasar por el observer de `plot_instances.R:705-721` (que usa la copia restaurada del servidor y filtra por las entradas permitidas).
+
+4. **Ruta legacy del dashboard con valores por defecto propios.**
+   - `top_n = 10L` (`session.R:208`), mientras que la UI de Team usa 30 (`results_dashboard.R:238`). Afecta al heatmap cuando el archivo no trae `top_n`. El cliente también mete `n_class: 7, top_n: 10` (`frontends/nexo/src/api.ts:19`).
+   - Esta ruta lee `archive$state$inputs` crudo (`session.R:205`), no los valores que la restauración dejó realmente en la sesión.
+
+5. **Validación del inspector más laxa que el navegador** (`schema.R:140-174`).
+   - Un `select` o `multiselect` sin opciones en el esquema estático acepta cualquier valor (`schema.R:150,154`). En la creación se valida contra ese esquema estático (`cards.R:35`), así que Nexo puede fijar valores que el selectize de Team nunca aceptaría.
+   - Un booleano con cualquier texto se convierte en FALSE en vez de rechazarse (`schema.R:165`).
+
+6. **Pregunta 2 (eco de las actualizaciones de entradas):**
+   - `bus$echo` solo recoge `value` o `selected` (`session.R:29-33`).
+     - Los `updateSelectInput` que solo cambian `choices` (`11_longitudinal_module.R:454,463`) se ignoran. El navegador pasa a la primera opción nueva; la sesión headless conserva el valor antiguo.
+     - Los selectize en modo servidor que solo cambian `choices` (`4_heatmap_module.R:372,378,384`, `11_longitudinal_module.R:1384`) también se ignoran. No pude verificar qué hace el JS en ese caso.
+     - El único `updateSliderInput` con `max` también lleva `value` dentro del rango (`2_qc_boxplot_module.R:1110`).
+     - No hay `updateCheckboxGroupInput` solo con `choices`.
+     - `accordion_panel_set` usa `method`/`values`, así que se pierde y los acordeones no aparecen en el `state.json` de Nexo.
+   - La sesión headless acepta mensajes dirigidos a IDs que no tienen binding en el navegador (el navegador los descarta) y no recorta sliders ni rechaza opciones ausentes. Sí: un checkpoint restaurado puede acabar con valores que el navegador habría recortado o rechazado, y se vuelven a guardar en `state.json`.
+   - La conversión de tipos depende de `shared$restored_inputs()`, que `runAnalysis` vacía (`1_shared_data_module.R:595`). La API dispara `runAnalysis` al abrir (`session.R:184`), así que después de abrir ya no se convierte ningún eco.
+
+7. **Almacenamiento (pregunta 7)**, comparado con el backend de ficheros de Team en c95f41a4 (que no está en ebee653; producción usa el backend remoto de `project_library.R`):
+   - Team guarda `name = "<label>.zip"`, que puede llegar a 84 caracteres. Nexo pasa todos los nombres por `api_storage_label` (máximo 80, `storage_files.R:50`): un nombre de Team con etiqueta de 77-80 caracteres hace fallar toda la lista con 400.
+   - Un `.json` inválido hace fallar toda la lista con 503 (`storage_files.R:48-49`); Team lo salta con un warning.
+   - A la inversa, los registros de Nexo usan `name = label` sin `.zip`. Es cosmético en Team.
+   - `api_storage_dir` hace chmod 0700 incluso sobre una raíz que ya existía (`storage_files.R:26`). Con permisos 0600/0700, Team y Nexo tienen que correr con el mismo usuario.
+
+8. **Pares de estadísticas con formas distintas dentro del propio Nexo.** `statistics/settings.ts` trabaja con pares `{a, b}`, pero el validador guardado los exige como `[a, b]` (`state/validate-support.ts:27`). Cuando H5 escriba `applied`, `toCanvasV1` lo rechazará.
+
+### P3
+
+- **Pregunta 6:** hoy nada escribe `node.statistics`. `StatisticsTab.tsx:1` es un placeholder y `src/statistics/*` no está conectado: los valores restaurados pasan tal cual. `duplicateNode` copia `statistics` y `finished` del original (`canvas/editing.ts:15-18`). Team vuelve a verificar antes de dibujar y Nexo no dibuja, así que no hay fuga. `sanitizeSettings` cambia el efecto sin avisar (`settings.ts:62`), mientras que Team lo rechaza. El transporte de la API es fiel a `team_violin_stats_server`; el `bh`→`BH` de `statistics.R:21` es inofensivo.
+- **Pregunta 5:** al TS le faltan reglas que R sí tiene:
+  - rechazo de claves desconocidas en estado, nodo, `visual` y `finished`;
+  - `kind` desconocido (TS lo convierte en `plot`);
+  - claves de `visual` no permitidas en ilustraciones;
+  - la lista de entradas permitidas por fuente, el regex de nombres de clave y los tipos de cada elemento de `instance.inputs` (`plot_instances.R:511-525`);
+  - la lista blanca de elementos y atributos SVG (`canvas_state.R:51-134`);
+  - más de 40 nodos por pestaña (`canvas_state.R:400`).
+  
+  Además `toCanvasV1` devuelve el estado sin normalizar (`serialize.ts:10`). Todo esto falla cerrado: el ack de R lo rechaza al guardar con un mensaje genérico. `serialize.ts` no omite ni renombra campos: `instance` → `{id, source, inputs}`, y `finished.provenance` y `tabs.figure.order` se mantienen. La API permite 160 tarjetas frente a 40 nodos en el canvas.
+- **Deduplicación y poda de autoguardados** (`storage_files.R:77-78`, `storage.R:91-94`):
+  - Mismos bytes con otra etiqueta devuelve el registro existente y la etiqueta nueva se descarta.
+  - Si un "Guardar como X" coincide en bytes con un autoguardado, se queda como "autosave" y puede podarse.
+  - Un guardado manual etiquetado "autosave" se poda.
+  - Son casos poco probables, porque los ZIP llevan mtimes y casi nunca coinciden byte a byte.
+- **Ruta de renderizado (pregunta 1):** la API no filtra ni reordena datos. Toma el `$x` del widget (`cards.R:126`) o el último mensaje `team-group-comparison-data`. Coincide con el navegador, salvo que el bus de 500 mensajes descarte uno. Las opciones de `violin_lipid` copian el `base()` de Team (`schema.R:124`).
+
+### No pude verificar
+- Qué hace el JS de Shiny con selectize en modo servidor cuando solo se actualizan las `choices`, y si los mensajes a IDs sin binding se descartan en esta versión de Shiny.
+- Qué IDs archivados no tienen elemento en el DOM del workspace de Team.
+- Si los ajustes de QC que reconstruye Team (bridge) difieren alguna vez del `saved$spec$settings` en checkpoints no antiguos. Si difieren, Team quedaría "dirty" y retendría la inferencia, mientras que Nexo no.
+- Si la vista de origen de cada familia existe en el DOM del workspace, que es lo que determina qué copia Team en la pregunta 2.3.
+- El formato real del backend que Max usará: producción no tiene backend de ficheros.
+- Si `team-canvas-v1` con `inputs: []` frente a `{}` es estable en el ida y vuelta TS↔R.
+- Nada de esto se ha ejecutado.
+
+coste $4.792 (opus-5-5 $4.792)

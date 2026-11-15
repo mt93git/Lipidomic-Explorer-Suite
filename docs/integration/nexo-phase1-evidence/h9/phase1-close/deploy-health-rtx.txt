@@ -1,0 +1,7 @@
+# deployed /api/v1/health on the RTX after OS/Linux/deploy-nexo.sh, 2026-11-08
+{"ok":true,"commit":"95b2526a16050a13e27a917e302d8c8458919b5a","root":"<home>/nexo-spike","r":"4.4.3","shiny":"1.14.0","plotly":"4.12.1","sessions":0,"rssMb":580.328125,"science":{"globalMd5":"1d099bff4774ee4b606b86a88fd04c86","productionRoot":"<home>/lipidomic-team-ana-20261028","scienceMatchesProduction":true,"scienceFiles":21,"scienceDiffers":[]},"workers":{"size":3,"idle":3,"busy":0,"starting":0,"queued":0,"warming":0,"warmQueued":0}}
+NRestarts=0
+ActiveState=active
+team :3952 HTTP 200
+catalog outputs 58
+nginx /nexo/ and /api/v1/health without credentials: 401 (deploy-nexo.sh output)

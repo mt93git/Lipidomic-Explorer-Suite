@@ -1,0 +1,20 @@
+{
+  "name": "nexo-collab",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.23.2"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.mjs",
+    "test": "node --test 'test/*.test.mjs'"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-database": "4.8.0",
+    "@hocuspocus/server": "4.8.0",
+    "yjs": "13.6.33"
+  },
+  "devDependencies": {
+    "@hocuspocus/provider": "4.8.0"
+  }
+}

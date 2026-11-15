@@ -1,0 +1,13 @@
+## red
+PASS H4 chromium named-save-list-download-reload-position
+PASS H4 chromium no-console-errors
+  name: 'TimeoutError'
+## green
+PASS H4 chromium move-dirty-saving-saved
+PASS H4 chromium named-save-list-download-reload-position
+PASS H4 chromium no-console-errors
+PASS H8 chromium failed-open-offers-try-again
+PASS H4 webkit move-dirty-saving-saved
+PASS H4 webkit named-save-list-download-reload-position
+PASS H4 webkit no-console-errors
+PASS H8 webkit failed-open-offers-try-again

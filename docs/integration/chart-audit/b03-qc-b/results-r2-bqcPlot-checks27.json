@@ -1,0 +1,44 @@
+[
+ {
+  "plot": "bqcPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/bqcPlot-1-draws.png, docs/integration/chart-audit/b03-qc-b/bqcPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 7,
+  "name": "export-placeholder",
+  "status": "PASS",
+  "detail": "placeholder: Team PDF said \" | Could not download the file: Team's module could not make this file (server error 500). Check that the plot shows data, then try again. ×\"; docs/integration/chart-audit/b03-qc-b/bqcPlot-7-download-blocked.png"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 2,
+  "name": "bqc-replicates",
+  "status": "PASS",
+  "detail": "picked S01, S02, S03 (\"3 of 24 samples selected\"): card image 620x720 3874 B placeholder → 620x720 30766 B drawn; docs/integration/chart-audit/b03-qc-b/bqcPlot-2-bqc-picked.png"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (30121 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 377237 B; SVG disabled (\"More downloads from this analysis PDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); simulated 500 on Team PDF: page said \" | Could not download the file: Audit: the module could not build this file. ×\" (docs/integration/chart-audit/b03-qc-b/bqcPlot-7-download-PDF-failed.png); Team PDF BQC_CoV_Analysis_20261108_0201.pdf 10249 B; card PDF 102413 B; docs/integration/chart-audit/b03-qc-b/bqcPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "bqcPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+ }
+]

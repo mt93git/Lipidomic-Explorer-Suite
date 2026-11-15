@@ -1,0 +1,53 @@
+During startup - Warning message:
+PASS export presets
+[INGESTION TRACE] 2026-11-06 18:04:59.657 | STAGE: 2_RAWDATA_REACTIVE_TRIGGERED | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:04:59.657 | STAGE: 2_RAWDATA_REACTIVE_TRIGGERED | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:04:59.659 | STAGE: 2_FILE_TYPE_DETECTED | --> [INFO]
+[INGESTION TRACE] 2026-11-06 18:04:59.659 | STAGE: 2_FILE_TYPE_DETECTED | --> [INFO]
+[INGESTION TRACE] 2026-11-06 18:04:59.667 | STAGE: 2_RAWDATA_COMPLETED | +++ [SUCCESS]
+    - total_lipids: 12
+    - total_samples: 8
+[INGESTION TRACE] 2026-11-06 18:04:59.667 | STAGE: 2_RAWDATA_COMPLETED | +++ [SUCCESS]
+    - total_lipids: 12
+    - total_samples: 8
+[INGESTION TRACE] 2026-11-06 18:04:59.724 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:04:59.724 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:04:59.736 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-06 18:04:59.736 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[1] "DEBUG: Global Filtered Set length: 12"
+[INGESTION TRACE] 2026-11-06 18:04:59.947 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:04:59.947 | STAGE: 7_LIPID_ANNOTATION_START | >>> [START]
+[INGESTION TRACE] 2026-11-06 18:04:59.954 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-06 18:04:59.954 | STAGE: 7_LIPID_ANNOTATION_SUCCESS | +++ [SUCCESS]
+[1] "DEBUG: Global Filtered Set length: 12"
+[1] "DEBUG: Global Filtered Set length: 12"
+[LIPIDOMIC EXPLORER 18:05:00] 'Run Analysis' action triggered.
+  >> Staged uploaded file(s): 1
+  >> [STATUS] Triggering fresh analysis execution across all data modules...
+[INGESTION TRACE] 2026-11-06 18:05:00.751 | STAGE: 6_IMPUTATION_NORMALIZATION_START | >>> [START]
+    - sample_count: 8
+    - lipid_count: 12
+[INGESTION TRACE] 2026-11-06 18:05:00.751 | STAGE: 6_IMPUTATION_NORMALIZATION_START | >>> [START]
+    - sample_count: 8
+    - lipid_count: 12
+[INGESTION TRACE] 2026-11-06 18:05:00.751 | STAGE: 6a_QRILC_IMPUTATION_RUNNING | --> [INFO]
+[INGESTION TRACE] 2026-11-06 18:05:00.751 | STAGE: 6a_QRILC_IMPUTATION_RUNNING | --> [INFO]
+[INGESTION TRACE] 2026-11-06 18:05:00.762 | STAGE: 6_IMPUTATION_NORMALIZATION_SUCCESS | +++ [SUCCESS]
+[INGESTION TRACE] 2026-11-06 18:05:00.762 | STAGE: 6_IMPUTATION_NORMALIZATION_SUCCESS | +++ [SUCCESS]
+
+[PERF - START] 18:05:00.787 | Starting PCA Calculation (mode: omics)
+[PERF - COMPLETE] 18:05:00.796 | omics PCA Calculation Finished in 0.008 sec
+[DE AUTO-ROUTE] Small sample size detected (min cohort n = 4 < 5). Non-parametric rank tests suffer severe power loss under multiple testing. Preserving empirical Bayes moderated limma.
+PASS export 400
+PASS export pca_2d members+csv+provenance match Team
+PASS export volcano members+csv+provenance match Team
+PASS export class_abundance members+csv+provenance match Team
+PASS export heatmap members+csv+provenance match Team
+PASS legacy dashboard data.csv without a live render
+PASS card data.csv from the module's download handler
+Error in api_card_downloads(s, violin$instanceId) : 
+  could not find function "api_card_downloads"
+Calls: local ... eval.parent -> eval -> eval -> eval -> eval -> eval
+In addition: Warning messages:
+Execution halted
+exit=0

@@ -1,0 +1,20 @@
+[
+ {
+  "plot": "heat",
+  "check": "1-draws",
+  "status": "PASS",
+  "detail": "card tcinstance_0892751cc732-plot_heat current at 100% (docs/integration/chart-audit/b01-dashboard/heat-1-draws-100.png); zoomed out to 41%: image (docs/integration/chart-audit/b01-dashboard/heat-1-draws-zoomed-out.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "3-size",
+  "status": "PASS",
+  "detail": "click-to-focus at 65%; drag: plot 1000×1062 → smaller 756×879 (docs/integration/chart-audit/b01-dashboard/heat-3-size-smaller.png) → larger 1214×1215 (docs/integration/chart-audit/b01-dashboard/heat-3-size-larger.png); no overflow; Size section: typed 560×480 → plot 560×442 ok; Nature 1-col (89 mm) → plot 336×442 ok (docs/integration/chart-audit/b01-dashboard/heat-3-size-section.png)"
+ },
+ {
+  "plot": "heat",
+  "check": "11-console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

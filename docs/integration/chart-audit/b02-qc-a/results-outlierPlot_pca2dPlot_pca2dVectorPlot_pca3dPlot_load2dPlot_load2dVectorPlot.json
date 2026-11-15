@@ -1,0 +1,338 @@
+[
+ {
+  "plot": "outlierPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b02-qc-a/outlierPlot-1-draws.png, docs/integration/chart-audit/b02-qc-a/outlierPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x480 (27612 B); card image 620x480 shown at 618x646"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b02-qc-a/outlierPlot-3-larger.png, docs/integration/chart-audit/b02-qc-a/outlierPlot-3-smaller.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); outlierThreshold→3.5 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-4-data-changed.png); invalid -4: state=error, redrew=true, message=\"Could not update the plot: Invalid value for outlierThreshold: below the minimum 1 ×\" (docs/integration/chart-audit/b02-qc-a/outlierPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 2 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b02-qc-a/outlierPlot-5-appearance.png; canvas Undo → \"Audit outlierPlot\", Redo → \"Audit outlierPlot\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 282191 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team PDF Outliers_Detection_20261106.pdf 5219 B; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b02-qc-a/outlierPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x480 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/outlierPlot-8-finished.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit outlierPlot\" with outlierThreshold=3.5; remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/outlierPlot-9-duplicate.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 2c3e6f93a22a…: \"Audit outlierPlot\", outlierThreshold=3.5, background kept; docs/integration/chart-audit/b02-qc-a/outlierPlot-10-reopened.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b02-qc-a/pca2dPlot-1-draws.png, docs/integration/chart-audit/b02-qc-a/pca2dPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (42420 B); card image 620x720 shown at 618x646"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b02-qc-a/pca2dPlot-3-larger.png, docs/integration/chart-audit/b02-qc-a/pca2dPlot-3-smaller.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "locator.fill: Error: Malformed value"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 2 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b02-qc-a/pca2dPlot-5-appearance.png; canvas Undo → \"Audit pca2dPlot\", Redo → \"Audit pca2dPlot\""
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 417486 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team PDF PCA_2D_20261106_2127.pdf 6732 B; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b02-qc-a/pca2dPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/pca2dPlot-8-finished.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pca2dPlot\" with scoreMarkerSize2D=14; remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/pca2dPlot-9-duplicate.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 224f22d8b3db…: \"Audit pca2dPlot\", scoreMarkerSize2D=14, background kept; docs/integration/chart-audit/b02-qc-a/pca2dPlot-10-reopened.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "card state error: PCA scores · editable 2D Could not update Data & settings Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Switc"
+ },
+ {
+  "plot": "pca2dVectorPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno)"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b02-qc-a/pca3dPlot-1-draws.png, docs/integration/chart-audit/b02-qc-a/pca3dPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 2 traces as the module render (scatter3d); title {\"text\":\"3D PCA Score (Single Replicates)\"}"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b02-qc-a/pca3dPlot-3-larger.png, docs/integration/chart-audit/b02-qc-a/pca3dPlot-3-smaller.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "locator.fill: Error: Malformed value"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Chart font size; Chart text color; Plot background; font 16 #aa0000, plot bg undefined; 6 palettes, 6 distinct colourings; Healthy in grey present; legend Top Left → x=0; NO grid toggle; orientation disabled (not supported for this plot); Undo/Redo; Reset → title \"3D PCA Score (Single Replicates)\"; docs/integration/chart-audit/b02-qc-a/pca3dPlot-5-appearance.png; canvas Undo → \"Audit pca3dPlot\", Redo → \"Audit pca3dPlot\""
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 282742 B; SVG disabled (\"no reason shown\"); Team PDF PCA_3D_20261106_2130.pdf 4229 B; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b02-qc-a/pca3dPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x418 in a 421x424 body; Edit figure → live plotly; docs/integration/chart-audit/b02-qc-a/pca3dPlot-8-finished.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pca3dPlot\" with scoreMarkerSize3D=14; remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/pca3dPlot-9-duplicate.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 49498b39b3fd…: \"Audit pca3dPlot\", scoreMarkerSize3D=14, background kept; docs/integration/chart-audit/b02-qc-a/pca3dPlot-10-reopened.png"
+ },
+ {
+  "plot": "pca3dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b02-qc-a/load2dPlot-1-draws.png, docs/integration/chart-audit/b02-qc-a/load2dPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "FAIL",
+  "detail": "inspector pcaMode not at default omics"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b02-qc-a/load2dPlot-3-larger.png, docs/integration/chart-audit/b02-qc-a/load2dPlot-3-smaller.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); pcaMode→classes redrew (docs/integration/chart-audit/b02-qc-a/load2dPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 2 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b02-qc-a/load2dPlot-5-appearance.png; canvas Undo → \"Audit load2dPlot\", Redo → \"Audit load2dPlot\""
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 1122957 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team PDF Loading_2D_20261106_2131.pdf 11950 B; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b02-qc-a/load2dPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/load2dPlot-8-finished.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit load2dPlot\" with pcaMode=classes; remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/load2dPlot-9-duplicate.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 0853bfc04fc0…: \"Audit load2dPlot\", pcaMode=classes, background kept; docs/integration/chart-audit/b02-qc-a/load2dPlot-10-reopened.png"
+ },
+ {
+  "plot": "load2dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "card state error: PCA loadings · editable 2D Could not update Data & settings Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view. Swi"
+ },
+ {
+  "plot": "load2dVectorPlot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno)"
+ }
+]

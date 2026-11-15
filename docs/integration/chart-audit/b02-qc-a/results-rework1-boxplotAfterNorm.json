@@ -1,0 +1,79 @@
+[
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-1-draws.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r1-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 2,
+  "name": "matches-team",
+  "status": "FAIL",
+  "detail": "no render request seen for the card"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "locator.evaluate: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 30000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "page.waitForEvent: Timeout 180000ms exceeded while waiting for event \"download\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 8,
+  "name": "finish",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "FAIL",
+  "detail": "page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.click: Timeout 15000ms exceeded."
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "111 console error(s) on all pages of this plot: page+: Failed to load resource: the server responded with a status of 500 (Internal Server Error) @/api/v1/sessions/s4/cards/tcinstance_ccbf25cfb8f1/render | page+: Failed to load resource: the server responded with a status of 500 (Internal Server Error) @/api/v1/sessions/s4/canvas/validate | page+: Failed to load resource: the server responded with a status of 500 (Internal Server Error) @/api/v1/sessions/s4/canvas/validate | page+: Failed to load resource: the server responded with a status of 500 (Internal Server Error) @/api/v1/sessions/s4/canvas/validate"
+ }
+]

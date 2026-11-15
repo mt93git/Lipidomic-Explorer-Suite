@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "heatmapSDPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-1-draws.png, docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent); sharp at 100 %: image 1000x1100 drawn at 965x1062 in a 998x1062 box (dpr 1, zoom − 100% + Fit 100%) → 1.04 image px per screen px (docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-1-sharp-100.png)"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (38913 B); card image 1000x1100 shown at 998x1062"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "655→815→422 px wide, redrawn each time; docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-3-larger.png, docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-3-smaller.png"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "29 Team controls all present (allowedInputs not in Team's markup: violin_scale_mode, violin_baseline_group_header, violin_zoom_pct, heatmapDisplayColumns, customizeRowOrder); showHeatmapGrid→true redrew (docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-5-appearance.png; canvas Undo → \"Audit heatmapSDPlot\", Redo → \"Audit heatmapSDPlot\""
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "Team Data (#0) produced no file within 60 s; within 9 s of the click the page said \"Downloaded Audit heatmapSDPlot.png × (at 0.0 s) | Could not download the file: Request failed (500) × (at 1.0 s)\"; page.waitForEvent: Timeout 60000ms exceeded while waiting for event \"download\""
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 698x761 in a 658x684 body; Edit figure → live png; docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-8-finished.png"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit heatmapSDPlot\" with showHeatmapGrid=true; remove + Undo brought it back drawn; docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-9-duplicate.png"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 2adb14966b9e…: \"Audit heatmapSDPlot\", showHeatmapGrid=true, background kept; docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-10-reopened.png"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; 1440x900: tabs Data/Appearance/Statistics/Export, 1 sliders; 1024x768: tabs Data/Appearance/Statistics/Export, 1 sliders; docs/integration/chart-audit/b05-heatmaps/heatmapSDPlot-12-layout-<width>-<tab>.png"
+ },
+ {
+  "plot": "heatmapSDPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

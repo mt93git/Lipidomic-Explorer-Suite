@@ -1,0 +1,7 @@
+Rscript --vanilla tests/dual-ui/test_api_analysis_settings.R  (RTX, nexo-api env)
+PASS analysis settings list Team's sidebar controls with live values and choices
+PASS analysis settings update sets the shared input and redraws every card
+PASS the volcano redraws from Team's code with the new cutoff
+PASS analysis settings refuse bad values, preparation controls and actions
+PASS the setting is saved in the checkpoint and restored on reopen
+exit=0

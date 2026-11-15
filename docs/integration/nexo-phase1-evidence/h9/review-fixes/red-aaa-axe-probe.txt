@@ -1,0 +1,37 @@
+== 1440: 31 violations, 20 incomplete
+span[aria-current="step"] :: {"fg":"#ffffff","bg":"#2d5f8a","r":6.74,"fs":"9.8pt (13px)","fw":"normal"}
+#library-tab-illustrations :: {"fg":"#5a6878","bg":"#f3f5f7","r":5.21,"fs":"9.8pt (13px)","fw":"normal"}
+details[open=""] > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+#locate-results_dashboard-plot_pca :: {"fg":"#2d5f8a","bg":"#ffffff","r":6.74,"fs":"9.0pt (12px)","fw":"normal"}
+#locate-results_dashboard-plot_violin :: {"fg":"#2d5f8a","bg":"#ffffff","r":6.74,"fs":"9.0pt (12px)","fw":"normal"}
+details[open=""] > .library-row[data-state="Add"]:nth-child(4) > span > small :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+details[open=""] > .library-row[data-state="Add"]:nth-child(5) > span > small :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+details[open=""] > .library-row[data-state="Add"]:nth-child(6) > span > small :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+.library-group:nth-child(2) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(2) > summary > span :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"normal"}
+.library-group:nth-child(3) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(4) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(5) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(6) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(7) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(8) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(9) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(10) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(11) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(12) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.library-group:nth-child(13) > summary :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"8.3pt (11px)","fw":"bold"}
+.draft :: {"fg":"#2d5f8a","bg":"#eaf1f7","r":5.91,"fs":"9.0pt (12px)","fw":"normal"}
+.status-band > span:nth-child(1) :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+button[title="Fit all (Shift+1)"] :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+button[title="Zoom to 100% (Shift+0)"] :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+#inspector > p :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+div[aria-label="Inspector tabs"] > button[role="tab"]:nth-child(1) :: {"fg":"#2d5f8a","bg":"#ffffff","r":6.74,"fs":"9.8pt (13px)","fw":"normal"}
+div[aria-label="Inspector tabs"] > button[role="tab"]:nth-child(2) :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.8pt (13px)","fw":"normal"}
+button[role="tab"]:nth-child(3) :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.8pt (13px)","fw":"normal"}
+button[role="tab"]:nth-child(4) :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.8pt (13px)","fw":"normal"}
+fieldset > p :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+== 390: 4 violations, 4 incomplete
+span[aria-current="step"] :: {"fg":"#ffffff","bg":"#2d5f8a","r":6.74,"fs":"9.8pt (13px)","fw":"normal"}
+.status-band > span:nth-child(1) :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+button[title="Fit all (Shift+1)"] :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}
+button[title="Zoom to 100% (Shift+0)"] :: {"fg":"#5a6878","bg":"#ffffff","r":5.69,"fs":"9.0pt (12px)","fw":"normal"}

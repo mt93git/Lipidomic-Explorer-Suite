@@ -1,0 +1,11 @@
+# tests/dual-ui/test_api_http.R
+# host: MacBook Air (dev) | R version 4.4.2 (2024-10-31) | plotly 4.11.0 | shiny 1.12.1 | plumber 1.3.3
+# base: 31436be + implementation | run: 2026-11-06T03:35:12Z
+## red (stub commit 31436be)
+Error in eval(quote({ : httr::status_code(health) == 200L is not TRUE
+## green
+exit=0
+PASS I1 health 200
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints

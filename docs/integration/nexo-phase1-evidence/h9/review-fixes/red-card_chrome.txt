@@ -1,0 +1,30 @@
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    frontends/nexo/src/cards.ts:36:20:
+      36 │     script.src = `${import.meta.env.BASE_URL}vendor/plotly.min.js`...
+         ╵                     ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    frontends/nexo/src/network/vis.ts:10:17:
+      10 │     const base = import.meta.env.BASE_URL, css = document.createEl...
+         ╵                  ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+PASS H6-0 unit menu upward-downward-clamp
+AssertionError [ERR_ASSERTION]: notice "Card removed" shown/announced 2 times
+
+2 !== 1
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_card_chrome.cjs:72:12)
+    at async <repo>/tests/dual-ui/test_nexo_card_chrome.cjs:155:46 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 2,
+  expected: 1,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

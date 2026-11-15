@@ -1,0 +1,26 @@
+# green (coordinator) after the slider margin fix: full sweep, vitest, 18 suites
+sweep exit=0 pass=119
+SUMMARY offenders=0 sources=59 engines=chromium
+ Test Files  100 passed (100)
+      Tests  461 passed (461)
+analysis_settings exit=0 pass=6
+inspector exit=0 pass=40
+canvas_edit exit=0 pass=34
+access exit=0 pass=54
+canvas_readonly exit=0 pass=12
+canvas_tabs exit=0 pass=12
+canvas_open exit=0 pass=14
+card_chrome exit=0 pass=29
+export exit=0 pass=34
+figure_page exit=0 pass=16
+finish exit=0 pass=12
+group_comparison exit=0 pass=12
+p3 exit=0 pass=2
+perf exit=0 pass=17
+save exit=0 pass=16
+statistics exit=0 pass=6
+cohort exit=0 pass=8
+library exit=0 pass=16
+DONE
+
+## pilot checkpoint (private run, read-only, writes aborted): 24 of 24 cards clean at 1440x900 after the fix (before: Team sliderInputs spilled 2 px on 3-10 cards)

@@ -1,0 +1,32 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+import type * as Roles from './roles';
+const toasts = vi.hoisted(() => [] as string[]);
+vi.mock('../ui/model', () => ({ notify: (text: string) => { toasts.push(text); } }));
+const stored = new Map<string, string>();
+const storage = { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => { stored.set(k, v); }, removeItem: (k: string) => { stored.delete(k); } };
+let onRole: typeof Roles.onRole, currentRole: typeof Roles.currentRole;
+let initCollab: typeof import('./mode').initCollab;
+let initReadOnly: typeof import('../state/readonly').initReadOnly, isReadOnly: typeof import('../state/readonly').isReadOnly, readOnlyReason: typeof import('../state/readonly').readOnlyReason;
+const project = '00000000-0000-4000-8000-000000000001';
+const send = (role: string, canShare = false) => onRole(JSON.stringify({ type: 'role', role, canShare }));
+beforeEach(async () => { toasts.length = 0; stored.clear(); vi.stubGlobal('sessionStorage', storage); vi.resetModules(); ({ onRole, currentRole } = await import('./roles')); ({ initCollab } = await import('./mode')); ({ initReadOnly, isReadOnly, readOnlyReason } = await import('../state/readonly')); initReadOnly({ search: '', width: 1000, coarse: false }); initCollab({ url: 'wss://synthetic.test/collab', search: `?project=${project}` }); vi.stubGlobal('location', { reload: vi.fn() }); });
+it('viewer is read only for role', () => { send('viewer'); expect(isReadOnly()).toBe(true); expect(readOnlyReason()).toBe('role'); });
+it('commenter is read only for role', () => { send('commenter'); expect(isReadOnly()).toBe(true); expect(readOnlyReason()).toBe('role'); });
+it('editor can edit', () => { send('editor'); expect(isReadOnly()).toBe(false); });
+it('editor to viewer reloads', () => { send('editor'); send('viewer'); expect(location.reload).toHaveBeenCalledOnce(); });
+it('keeps the role and share permission', () => { send('owner', true); expect(currentRole()).toEqual({ role: 'owner', canShare: true }); });
+it('flag off ignores role messages', () => { initCollab({ url: undefined, search: '' }); send('viewer'); expect(isReadOnly()).toBe(false); });
+it('commenter may comment, viewer may not', async () => {
+  const { canComment } = await import('../state/readonly');
+  send('commenter'); expect(canComment()).toBe(true);
+  send('viewer'); expect(canComment()).toBe(false);
+});
+it('the first role on joining says nothing', () => { send('editor'); expect(toasts).toEqual([]); });
+it('a role change tells the person their new role', () => { send('commenter'); send('viewer'); expect(toasts).toEqual(['Your role on this project is now Viewer.']); });
+it('the new role is told after the reload it causes', async () => {
+  send('editor'); send('viewer');
+  expect(location.reload).toHaveBeenCalledOnce();
+  vi.resetModules(); ({ onRole } = await import('./roles')); (await import('./mode')).initCollab({ url: 'wss://synthetic.test/collab', search: `?project=${project}` });
+  send('viewer');
+  expect(toasts).toEqual(['Your role on this project is now Viewer.']);
+});

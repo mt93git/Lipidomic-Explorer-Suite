@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "guided_qc_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b03-qc-b/guided_qc_plot-1-draws.png, docs/integration/chart-audit/b03-qc-b/guided_qc_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 1 traces as the module render (scatter); title undefined"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-3-larger.png, docs/integration/chart-audit/b03-qc-b/guided_qc_plot-3-smaller.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); maxPCs→4 redrew (docs/integration/chart-audit/b03-qc-b/guided_qc_plot-4-data-changed.png); invalid -1: state=error, redrew=false, message=\"Could not update the plot: Invalid value for maxPCs: below the minimum 2 ×\" (docs/integration/chart-audit/b03-qc-b/guided_qc_plot-4-data-invalid.png)"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "font size not on the plot (12)"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 92588 B; SVG 13581 B; no Team downloads; card PDF 53474 B; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-8-finished.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit guided_qc_plot\" with maxPCs=4; remove + Undo brought it back drawn; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-9-duplicate.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 97f9bd68f3fe…: \"Audit guided_qc_plot\", maxPCs=4, background kept; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-10-reopened.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders over every tab, all sections open, at 1440x900 and 1024x768; docs/integration/chart-audit/b03-qc-b/guided_qc_plot-12-data-1024.png"
+ },
+ {
+  "plot": "guided_qc_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

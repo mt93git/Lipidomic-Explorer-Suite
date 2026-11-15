@@ -1,0 +1,3 @@
+Error: identical(opts$labels, c("Alpha", "Beta")) is not TRUE
+Execution halted
+exit=1

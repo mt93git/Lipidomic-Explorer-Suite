@@ -1,0 +1,2 @@
+PASS b06-8 chromium finish-after-export (2 module downloads: CSV / PDF)
+b06-8 finish after export OK

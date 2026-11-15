@@ -1,0 +1,18 @@
+ RUN  v3.2.7 <repo>/frontends/nexo
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/timecourse/designer.test.ts [ src/timecourse/designer.test.ts ]
+Error: Cannot find module './designer' imported from '<repo>/frontends/nexo/src/timecourse/designer.test.ts'
+ ❯ src/timecourse/designer.test.ts:2:1
+      1| import { describe, expect, it } from 'vitest';
+      2| import { addCohort, bucketsOf, isBucketControl, moveItem, removeItem, …
+       | ^
+      3| import type { SchemaControl } from '../api/types';
+      4| 
+Caused by: Error: Failed to load url ./designer (resolved id: ./designer) in <repo>/frontends/nexo/src/timecourse/designer.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22907:33
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  08:33:10
+   Duration  3.07s (transform 133ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 312ms)
+R: tests/dual-ui/test_api_timecourse_designer.R not run on the M1 (no R). Expected red on the RTX at section 1: 'expected at least two time-course buckets, got 0' (the schema has no bucket type before this change).

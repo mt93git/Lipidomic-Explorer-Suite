@@ -1,0 +1,33 @@
+# Playwright suites on the Mac (mock build), commit 5ccff4d+, 2026-11-06T11:27Z
+## canvas_edit
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H2F chromium toolbar-tidy-remove-all-undo
+## canvas_tabs
+PASS H2G chromium move-filter-hud-minimap-F2
+PASS H2G chromium pointer-reorder-delete-move-single-undo
+PASS H2G chromium no-console-errors
+PASS H2G webkit move-filter-hud-minimap-F2
+PASS H2G webkit pointer-reorder-delete-move-single-undo
+PASS H2G webkit no-console-errors
+## inspector
+PASS H3 chromium schema-edit-render-status
+PASS H3 chromium appearance-palette-background-undo-no-request
+PASS H3 chromium illustration-toggle-escape
+PASS H3 chromium no-console-errors
+PASS H3 webkit schema-edit-render-status
+PASS H3 webkit appearance-palette-background-undo-no-request
+## save
+PASS H4 chromium move-dirty-saving-saved
+PASS H4 chromium named-save-list-download-reload-position
+PASS H4 chromium no-console-errors
+PASS H4 webkit move-dirty-saving-saved
+PASS H4 webkit named-save-list-download-reload-position
+PASS H4 webkit no-console-errors
+## statistics
+PASS H5 chromium analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+PASS H5 webkit analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+## canvas_readonly (NEXO_PLOTLY_JS set; 12/12 chromium+webkit)

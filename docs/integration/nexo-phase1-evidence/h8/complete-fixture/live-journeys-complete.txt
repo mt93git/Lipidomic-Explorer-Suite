@@ -1,0 +1,33 @@
+deployed bd204c6 on the RTX; Vite dev + tunnel; checkpoint nexo-complete-synthetic
+PASS L1 chromium open-0-cards-settle
+PASS L2 chromium confirm-study-design-unlocks-gated-rows
+PASS L3 chromium add-and-draw png (Normalized signal boxplots)
+PASS L3 chromium add-and-draw plotly (Guided quality check)
+PASS L3 chromium add-and-draw network (Interactive pathway network)
+PASS L3 chromium add-and-draw volcano (Differential volcano)
+PASS L3 chromium add-and-draw violin (Feature distributions)
+PASS L3 chromium add-confirm-and-draw group comparison
+PASS L4 chromium data-change-and-undo corrMethod
+PASS L5 chromium statistics-confirm-stale-undo
+PASS L6 chromium finish-two-figure-page-2-of-6-plots-finished
+PASS L7 chromium export volcano csv 32984 B + pdf 10442 B, finished violin snapshot only, png 180669 B, bundle 131745 B
+PASS L8 chromium named-save-reopen-same-cards-finished-statistics
+PASS L9 chromium no-console-errors
+cleanup: deleted 02479a738b0b… (200)
+PASS L1 webkit open-0-cards-settle
+PASS L2 webkit confirm-study-design-unlocks-gated-rows
+PASS L3 webkit add-and-draw png (Normalized signal boxplots)
+PASS L3 webkit add-and-draw plotly (Guided quality check)
+PASS L3 webkit add-and-draw network (Interactive pathway network)
+PASS L3 webkit add-and-draw volcano (Differential volcano)
+PASS L3 webkit add-and-draw violin (Feature distributions)
+PASS L3 webkit add-confirm-and-draw group comparison
+PASS L4 webkit data-change-and-undo corrMethod
+PASS L5 webkit statistics-confirm-stale-undo
+PASS L6 webkit finish-two-figure-page-2-of-6-plots-finished
+PASS L7 webkit export volcano csv 32984 B + pdf 10458 B, finished violin snapshot only, png 163624 B, bundle 131745 B
+PASS L8 webkit named-save-reopen-same-cards-finished-statistics
+PASS L9 webkit no-console-errors
+cleanup: deleted 412d9e2e98d4… (200)
+LIVE OK
+exit=0

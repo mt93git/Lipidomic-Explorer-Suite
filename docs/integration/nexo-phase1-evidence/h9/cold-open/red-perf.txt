@@ -1,0 +1,2 @@
+PASS H7b chromium prefetch warm 4, fit misses 0, visible priority
+AssertionError [ERR_ASSERTION]: only 6 of 10 cards in view had asked for their figure after 1.5 s

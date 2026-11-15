@@ -1,0 +1,19 @@
+# Red (before the fix), M1, 2026-11-08
+
+## vitest src/state/actions.test.ts (recorded-press model and replay order): module missing
+
+
+Caused by: Error: Failed to load url ./actions (resolved id: ./actions) in <repo>/src/state/actions.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22907:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  08:31:52
+   Duration  287ms (transform 26ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 54ms)
+
+
+## R tests/dual-ui/test_api_actions_replay.R: UNRUN on the M1 (no R). Expected red on the RTX before the fix:
+FAIL api_card_replay is not defined (the API cannot replay recorded presses)

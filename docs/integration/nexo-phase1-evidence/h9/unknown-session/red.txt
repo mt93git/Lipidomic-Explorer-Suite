@@ -1,0 +1,5 @@
+$ Rscript --vanilla tests/dual-ui/test_api_unknown_session.R   (RTX, production tree, before the fix)
+Error in eval(quote({ : unknown session not answered 404 not_found:
+  POST /canvas/validate -> 500 500 - Internal server error
+  POST /cards/tcinstance_000000000000/statistics/violin -> 422 unprocessable
+Execution halted

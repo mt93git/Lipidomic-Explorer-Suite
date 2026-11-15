@@ -1,0 +1,45 @@
+== test_api_schema
+PASS schema family qc
+PASS schema family dashboard
+PASS schema boolean strict
+PASS schema card violin
+PASS schema card qc
+PASS schema selection bars 4 (heat_group_selection, heat_lipid_selection, comp_class_selection, comp_group_selection) carry defaults and the all-token; a JSON array is accepted
+exit=0
+== test_api_restore_cards
+PASS restore text settings follow Team's 100000-character limit
+PASS restore a Team instance draws with its saved inputs
+PASS restore a fixed family node draws through its fixed instance
+PASS restore a fixed family node keeps the family's run-time inputs
+PASS restore does not dirty the session
+PASS restore an id the checkpoint does not hold is still unknown
+exit=0
+== test_api_roundtrip
+PASS roundtrip reopen returns the checkpoint, not later edits
+PASS roundtrip nexo->zip->nexo
+PASS roundtrip zip->team-validate
+PASS roundtrip keeps project records
+exit=0
+== test_api_statistics
+PASS stats describe
+PASS stats apply welch/bh
+PASS stats check
+PASS stats 400
+PASS stats violin-only
+PASS stats parity welch
+PASS group comparison confirm
+exit=0
+== test_api_render_all
+PASS silent longitudinal_tab-index_plot The plot inputs are unavailable for this session.
+PASS silent longitudinal_tab-struct_plot The plot inputs are unavailable for this session.
+PASS render longitudinal_tab-allmetrics_plot
+PASS render pathway_tab-pathwayPlot
+PASS render pathway_tab-pathwayVisNetwork
+PASS render cellular_org_tab-stressPlot
+PASS render cellular_org_tab-cpiPlot
+PASS render cellular_org_tab-polarPlot
+PASS render cell_lipid_plot
+PASS render cell_profile_plot
+PASS render cell_class_plot
+PASS render cell_comparison_plot
+exit=0

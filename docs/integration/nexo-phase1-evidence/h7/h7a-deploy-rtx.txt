@@ -1,0 +1,7 @@
+65aad8ef H7a: per-session render cache and RSS memory guard
+clean
+{"ok":true,"commit":"65aad8ef26da7872617f9ae456888dbafff25370","root":"<server-home>/nexo-spike","r":"4.4.3","shiny":"1.14.0","plotly":"4.12.1","sessions":0,"rssMb":620}
+nginx /nexo/ without credentials: 401
+nginx /api/v1/health without credentials: 401
+Production Team (:3952) HTTP status: 200
+SUMMARY rendered=44 gated=7 silent=7 failed=0 of 58

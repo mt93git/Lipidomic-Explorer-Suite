@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nexo canvas redesign · interactive prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,600;0,6..12,700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Tokens (Team vocabulary, Nexo values) ---------- */
+:root{
+  --accent:#2d5f8a;--navy:#162230;--ink:#141b24;--muted:#5a6878;--line:#e3e7ec;--line-strong:#cfd6de;--tint:#eaf1f7;--paper:#fff;--canvas:#f3f5f7;--grid-dot:#cfd7e1;
+  --green:#2e8b57;--amber:#b7791f;--amber-bg:#fff4e0;--amber-fg:#7a4b00;--red:#b3261e;--red-bg:#fdecea;--red-fg:#8a1f11;--blue-bg:#e7f0fa;
+  --font:'Nunito Sans',system-ui,sans-serif;--r-sm:6px;--r-md:8px;--r-lg:10px;--r-xl:12px;
+  --shadow-card:0 1px 2px #16223014,0 4px 14px #1622300f;--shadow-hover:0 2px 4px #16223018,0 10px 24px #16223014;--shadow-pop:0 2px 6px #16223014,0 12px 32px #1622301c;
+  --bar-top:48px;--bar-head:44px;--rail:56px;--lib:280px;--insp:320px;
+  --t-fast:120ms;--t-panel:180ms;--t-camera:280ms;--ease:cubic-bezier(.2,.7,.2,1);
+}
+@media(prefers-reduced-motion:reduce){:root{--t-fast:0ms;--t-panel:0ms;--t-camera:0ms}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}[hidden]{display:none!important}
+body{font:14px/1.5 var(--font);color:var(--ink);background:var(--canvas);overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;border-radius:var(--r-sm)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:20px;height:20px;flex:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+kbd{font:600 10.5px/1 var(--font);color:var(--muted);background:var(--paper);border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:2px 5px;letter-spacing:.02em}
+
+/* ---------- Reviewer bar (not part of the product) ---------- */
+#scenes{position:fixed;left:0;right:0;top:0;height:30px;z-index:1000;display:flex;align-items:center;gap:4px;padding:0 8px;background:#fde68a;color:#3b2f05;font-size:12px;border-bottom:1px solid #d9b52a;overflow-x:auto;white-space:nowrap}
+#scenes strong{margin-right:6px}#scenes button{padding:3px 8px;border:1px solid #c9a227;background:#fff7d6;border-radius:999px;font-size:12px}
+#scenes button[aria-pressed=true]{background:#3b2f05;color:#fff;border-color:#3b2f05}
+body.scenes #app{top:30px}body:not(.scenes) #scenes{display:none}
+
+/* ---------- App shell ---------- */
+#app{position:absolute;inset:0;display:grid;grid-template-rows:var(--bar-top) minmax(0,1fr)}
+.topbar{display:flex;align-items:center;gap:12px;padding:0 12px 0 10px;background:var(--navy);color:#fff;font-size:13px}
+.topbar .mark{width:28px;height:28px;border-radius:7px;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:700;font-size:12px;letter-spacing:.02em}
+.topbar .app{font-weight:600;font-size:14px;color:#fff}
+.topbar .project{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px 0 12px;border-radius:999px;background:#ffffff14;color:#fff;border:1px solid #ffffff22}
+.topbar .project:hover{background:#ffffff22}
+.topbar .project .dot{width:7px;height:7px;border-radius:50%;background:#7fd1a1}
+.topbar .project .dot.saving{background:#f2c14e}.topbar .project .dot.error{background:#ff8a7a}
+.topbar .project small{color:#c4d1dc;font-weight:400}
+.topbar nav{display:flex;gap:2px;margin-left:8px}
+.topbar nav a{color:#c4d1dc;text-decoration:none;padding:5px 12px;border-radius:999px}
+.topbar nav a:hover{color:#fff;background:#ffffff14}
+.topbar nav a[aria-current]{color:#fff;background:var(--accent)}
+.topbar .grow{flex:1}
+.topbar .help,.topbar .avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#c4d1dc}
+.topbar .help:hover,.topbar .avatar:hover{background:#ffffff14;color:#fff}
+
+.shell{display:grid;grid-template-columns:var(--rail) 0 minmax(0,1fr) 0;min-height:0;position:relative;transition:grid-template-columns var(--t-panel) var(--ease)}
+.shell.lib-open{grid-template-columns:var(--rail) var(--lib) minmax(0,1fr) 0}
+.shell.insp-open{grid-template-columns:var(--rail) 0 minmax(0,1fr) var(--insp)}
+.shell.lib-open.insp-open{grid-template-columns:var(--rail) var(--lib) minmax(0,1fr) var(--insp)}
+
+/* Rail */
+.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;background:var(--paper);border-right:1px solid var(--line)}
+.rail button{position:relative;width:38px;height:38px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-md)}
+.rail button:hover{background:var(--canvas);color:var(--ink)}
+.rail button[aria-pressed=true]{background:var(--tint);color:var(--accent)}
+.rail button[aria-pressed=true]::before{content:'';position:absolute;left:-9px;top:9px;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--accent)}
+.rail hr{width:24px;border:0;border-top:1px solid var(--line);margin:4px 0}
+.rail .spacer{flex:1}
+.rail button .tip{position:absolute;left:46px;top:50%;transform:translateY(-50%) translateX(-4px);opacity:0;pointer-events:none;background:var(--navy);color:#fff;font-size:12px;padding:4px 8px;border-radius:6px;white-space:nowrap;display:flex;gap:8px;align-items:center;transition:opacity var(--t-fast),transform var(--t-fast);z-index:30}
+.rail button .tip kbd{color:#c4d1dc;background:#ffffff1a;border-color:#ffffff33}
+.rail button:hover .tip,.rail button:focus-visible .tip{opacity:1;transform:translateY(-50%) translateX(0)}
+
+/* Library panel */
+.library{grid-column:2;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--paper);border-right:1px solid var(--line);opacity:0;transition:opacity var(--t-panel) var(--ease)}
+.lib-open .library{opacity:1}
+.library header{display:flex;align-items:center;gap:6px;height:var(--bar-head);padding:0 8px 0 14px;border-bottom:1px solid var(--line)}
+.library header .seg{display:flex;background:var(--canvas);border-radius:999px;padding:2px}
+.library header .seg button{padding:4px 12px;border-radius:999px;font-size:13px;color:var(--muted)}
+.library header .seg button[aria-selected=true]{background:var(--paper);color:var(--navy);font-weight:600;box-shadow:0 1px 2px #16223014}
+.library header .x{margin-left:auto;width:30px;height:30px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-md)}
+.library header .x:hover{background:var(--canvas);color:var(--ink)}
+.lib-tools{display:flex;gap:6px;padding:10px 12px 6px}
+.search{flex:1;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 10px;border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--paper);color:var(--muted)}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px #2d5f8a22}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--ink);font-size:13px}
+.search kbd{margin-left:auto}
+.lib-view{display:flex;border:1px solid var(--line-strong);border-radius:var(--r-md);overflow:hidden}
+.lib-view button{width:30px;height:30px;display:grid;place-items:center;color:var(--muted)}
+.lib-view button[aria-pressed=true]{background:var(--tint);color:var(--accent)}
+.chips{display:flex;gap:6px;padding:4px 12px 8px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--paper)}
+.chips button:hover{border-color:var(--line-strong);color:var(--ink)}
+.chips button[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.lib-body{flex:1;overflow:auto;padding:0 8px 16px;min-height:0}
+.fam{margin-top:6px}
+.fam summary{list-style:none;display:flex;align-items:center;gap:8px;height:30px;padding:0 6px;border-radius:var(--r-sm);color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:sticky;top:0;background:var(--paper);z-index:1}
+.fam summary::-webkit-details-marker{display:none}
+.fam summary .chev{transition:transform var(--t-fast)}.fam[open] summary .chev{transform:rotate(90deg)}
+.fam summary .n{margin-left:auto;font-weight:600;color:var(--muted);background:var(--canvas);border-radius:999px;padding:0 7px;font-size:11px;line-height:18px}
+.fam summary:hover{background:var(--canvas)}
+.row{display:flex;align-items:center;gap:10px;height:44px;padding:0 6px 0 8px;border-radius:var(--r-md);cursor:grab;position:relative}
+.row:hover,.row:focus-within{background:var(--canvas)}
+.row .glyph{width:32px;height:32px;border-radius:var(--r-md);display:grid;place-items:center;color:var(--accent);background:var(--tint);flex:none}
+.row .txt{flex:1;min-width:0;line-height:1.25}
+.row .txt b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.row .txt small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .add{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--accent);opacity:0;transition:opacity var(--t-fast)}
+.row:hover .add,.row:focus-within .add,.row.touch .add{opacity:1}
+.row .add:hover{background:var(--paper);box-shadow:0 1px 2px #16223020}
+.row[data-state=on] .glyph{background:var(--navy);color:#fff}
+.row[data-state=on] .txt small{color:var(--green)}
+.row[data-state=gated] .glyph{background:var(--canvas);color:var(--muted)}
+.row[data-state=gated] .txt small{color:var(--amber-fg)}
+.row[data-state=off]{opacity:.55;cursor:default}
+.row[data-state=off] .glyph{background:var(--canvas);color:var(--muted)}
+.row .count{position:absolute;left:30px;top:6px;min-width:14px;height:14px;border-radius:7px;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;line-height:14px;text-align:center;padding:0 3px;border:2px solid var(--paper)}
+/* grid view */
+.lib-body.grid .fam .rows{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:2px 2px 8px}
+.lib-body.grid .row{flex-direction:column;justify-content:flex-start;height:auto;padding:8px 4px 6px;gap:6px;text-align:center}
+.lib-body.grid .row .glyph{width:40px;height:40px}
+.lib-body.grid .row .glyph .ic{width:24px;height:24px}
+.lib-body.grid .row .txt b{white-space:normal;font-size:11.5px;line-height:1.2;max-height:2.4em;overflow:hidden}
+.lib-body.grid .row .txt small{display:none}
+.lib-body.grid .row .add{position:absolute;right:2px;top:2px}
+.lib-body.grid .row .count{left:auto;right:16px;top:4px}
+.lib-foot{padding:8px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center}
+
+/* Canvas column */
+.col{grid-column:3;display:flex;flex-direction:column;min-width:0;min-height:0}
+.head{display:flex;align-items:center;height:var(--bar-head);padding:0 8px 0 6px;gap:4px;background:var(--paper);border-bottom:1px solid var(--line)}
+.tabs{display:flex;align-items:center;gap:2px;min-width:0;overflow:hidden}
+.tab{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 12px;border-radius:var(--r-md);font-size:13px;color:var(--muted);white-space:nowrap}
+.tab:hover{background:var(--canvas);color:var(--ink)}
+.tab[aria-selected=true]{color:var(--navy);font-weight:600;background:var(--tint)}
+.tab .n{font-size:11px;font-weight:600;color:var(--muted);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:0 6px;line-height:16px}
+.tab[aria-selected=true] .n{color:var(--accent);border-color:#2d5f8a33}
+.tabs .plus{width:28px;height:28px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-sm)}
+.tabs .plus:hover{background:var(--canvas);color:var(--ink)}
+.head .grow{flex:1}
+.tool{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:var(--r-md);font-size:13px;color:var(--ink)}
+.tool:hover{background:var(--canvas)}
+.tool:disabled{color:#a3adb8;cursor:default;background:none}
+.tool.icon{width:30px;padding:0;justify-content:center;color:var(--muted)}
+.tool.icon:hover{color:var(--ink)}
+.tool.primary{background:var(--accent);color:#fff;font-weight:600;padding:0 12px}
+.tool.primary:hover{background:#254f74}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:var(--tint);color:var(--accent);font-size:12px;font-weight:600}
+.chip i{width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.vsep{width:1px;height:20px;background:var(--line);margin:0 4px}
+
+.stage{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--canvas)}
+#viewport{position:absolute;inset:0;overflow:hidden;touch-action:none;background-image:radial-gradient(var(--grid-dot) 1px,transparent 1.2px);background-size:20px 20px;cursor:default}
+#viewport.hand{cursor:grab}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.card{position:absolute;display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-card);overflow:hidden;transition:box-shadow var(--t-fast),border-color var(--t-fast)}
+.card:hover{border-color:var(--line-strong);box-shadow:var(--shadow-hover)}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 0 5px #2d5f8a1f,var(--shadow-hover)}
+.card header{display:flex;align-items:center;gap:8px;height:36px;flex:none;padding:0 8px 0 12px;border-bottom:1px solid var(--line);cursor:grab;background:var(--paper)}
+.card header .t{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.card header .st{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none}
+.card header .st.updating{background:var(--amber)}.card header .st.error{background:var(--red)}.card header .st.waiting{background:#a3adb8}
+.card header .acts{display:flex;gap:2px;opacity:0;transition:opacity var(--t-fast)}
+.card:hover header .acts,.card.sel header .acts,.card:focus-within header .acts{opacity:1}
+.card header .acts button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-sm)}
+.card header .acts button:hover{background:var(--canvas);color:var(--ink)}
+.card .body{flex:1;min-height:0;position:relative;display:grid;place-items:center;background:var(--paper)}
+.card .body svg.plot{width:100%;height:100%;display:block}
+.card .badge{position:absolute;right:8px;bottom:8px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.card .badge.fin{color:var(--green);border-color:#2e8b5733}
+.card .grip{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;opacity:0}
+.card.sel .grip{opacity:1}
+.card .grip::after{content:'';position:absolute;right:5px;bottom:5px;width:7px;height:7px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);border-radius:0 0 2px 0}
+/* thumb tier (zoom < 20%): the chrome steps back, the picture is the card */
+.world-thumb .card header{height:0;border:0;overflow:hidden;padding:0}
+.world-thumb .card{border-width:2px}
+/* card states */
+.skel{position:absolute;inset:12px;border-radius:var(--r-md);background:linear-gradient(90deg,var(--canvas) 25%,#e9edf1 37%,var(--canvas) 63%);background-size:400% 100%;animation:shimmer 1.4s ease-in-out infinite}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+@media(prefers-reduced-motion:reduce){.skel{animation:none;background:var(--canvas)}}
+.skel-bars{position:absolute;left:24px;right:24px;bottom:28px;top:30px;display:flex;align-items:flex-end;gap:8px;opacity:.5}
+.skel-bars i{flex:1;background:#dfe5eb;border-radius:3px 3px 0 0}
+.state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;font-size:13px;color:var(--muted)}
+.state .ico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--canvas);color:var(--muted)}
+.state.err .ico{background:var(--red-bg);color:var(--red-fg)}
+.state.wait .ico{background:var(--amber-bg);color:var(--amber-fg)}
+.state b{color:var(--ink);font-weight:600}
+.state .btns{display:flex;gap:6px;margin-top:4px}
+.state .btns button{font-size:12.5px;padding:5px 10px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--paper)}
+.state .btns button.p{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.state .btns button:hover{background:var(--canvas)}.state .btns button.p:hover{background:#254f74}
+
+/* overlays */
+.zoom{position:absolute;left:12px;bottom:12px;display:flex;align-items:center;height:32px;padding:0 2px;background:var(--paper);border:1px solid var(--line);border-radius:999px;box-shadow:var(--shadow-card);z-index:5}
+.zoom button{height:28px;min-width:28px;padding:0 8px;display:grid;place-items:center;font-size:12.5px;color:var(--muted);border-radius:999px}
+.zoom button:hover{background:var(--canvas);color:var(--ink)}
+.zoom .pct{min-width:44px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.zoom .sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+#minimap{position:absolute;right:12px;bottom:12px;width:160px;height:96px;background:#ffffffee;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-card);cursor:crosshair;z-index:5;opacity:1;transition:opacity 220ms var(--ease)}
+#minimap.hidden{opacity:0;pointer-events:none}
+#minimap .node{fill:#d6e0ea;stroke:#a9bccd;stroke-width:1;vector-effect:non-scaling-stroke}
+#minimap .node.sel{fill:#2d5f8a66;stroke:var(--accent)}
+#minimap .view{fill:#2d5f8a12;stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.selchip{position:absolute;right:12px;top:12px;display:flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 12px;background:var(--paper);border:1px solid var(--line);border-radius:999px;box-shadow:var(--shadow-card);font-size:12.5px;z-index:5;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity var(--t-fast),transform var(--t-fast)}
+.selchip.on{opacity:1;transform:none;pointer-events:auto}
+.selchip b{font-weight:600;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.selchip button{height:24px;padding:0 10px;border-radius:999px;background:var(--tint);color:var(--accent);font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px}
+.hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%) translateY(8px);background:var(--navy);color:#fff;font-size:12.5px;padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:opacity 200ms,transform 200ms var(--ease);z-index:6;white-space:nowrap;max-width:calc(100% - 24px)}
+.hint.on{opacity:1;transform:translateX(-50%)}
+.hint kbd{color:#c4d1dc;background:#ffffff1a;border-color:#ffffff33}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.empty .box{pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 32px;border:1.5px dashed var(--line-strong);border-radius:var(--r-xl);background:#ffffffb8;backdrop-filter:blur(2px);max-width:380px;text-align:center}
+.empty .box .ico{width:44px;height:44px;border-radius:12px;background:var(--tint);color:var(--accent);display:grid;place-items:center}
+.empty .box h3{margin:0;font-size:15px;color:var(--navy)}
+.empty .box p{margin:0;font-size:13px;color:var(--muted)}
+.empty .box .btns{display:flex;gap:8px}
+.empty .box .btns button{height:32px;padding:0 14px;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--paper);font-size:13px}
+.empty .box .btns button.p{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.empty .box .sugg{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.empty .box .sugg button{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px 4px 6px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%) translateY(10px);display:flex;align-items:center;gap:10px;padding:9px 10px 9px 14px;background:var(--navy);color:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-pop);font-size:13px;z-index:60;opacity:0;pointer-events:none;transition:opacity 180ms,transform 180ms var(--ease);max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translateX(-50%);pointer-events:auto}
+.toast button{height:26px;padding:0 10px;border-radius:var(--r-sm);color:#fff;background:#ffffff1f;font-weight:600}
+.toast button:hover{background:#ffffff33}
+.toast.err{background:#5c1f1f}
+
+/* Inspector */
+.insp{grid-column:4;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--paper);border-left:1px solid var(--line);opacity:0;transition:opacity var(--t-panel) var(--ease)}
+.insp-open .insp{opacity:1}
+.insp header{display:flex;align-items:center;gap:10px;height:var(--bar-head);padding:0 8px 0 16px;border-bottom:1px solid var(--line)}
+.insp header .st{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
+.insp header h2{flex:1;min-width:0;margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--navy)}
+.insp header .x{width:30px;height:30px;display:grid;place-items:center;color:var(--muted);border-radius:var(--r-md)}
+.insp header .x:hover{background:var(--canvas);color:var(--ink)}
+.insp .status{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
+.insp .status .fin{margin-left:auto;height:26px;padding:0 10px;border-radius:var(--r-sm);background:var(--accent);color:#fff;font-weight:600;font-size:12px}
+.insp .itabs{display:flex;padding:0 8px;border-bottom:1px solid var(--line)}
+.insp .itabs button{height:38px;padding:0 10px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;border-radius:0;margin-bottom:-1px}
+.insp .itabs button[aria-selected=true]{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+.insp .itabs button:hover{color:var(--ink)}
+.insp .pane{flex:1;overflow:auto;padding:12px 16px 24px;font-size:13px}
+.insp .grp{border:0;padding:0;margin:0 0 6px}
+.insp .grp summary{list-style:none;display:flex;align-items:center;gap:8px;height:34px;font-weight:600;color:var(--navy);cursor:pointer;border-radius:var(--r-sm)}
+.insp .grp summary::-webkit-details-marker{display:none}
+.insp .grp summary .chev{transition:transform var(--t-fast);color:var(--muted)}.insp .grp[open] summary .chev{transform:rotate(90deg)}
+.insp .f{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;padding:4px 0 10px}
+.insp .f label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.insp .f label.w{grid-column:1/-1}
+.insp .f input,.insp .f select,.insp .f .seg{height:30px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 8px;background:var(--paper);color:var(--ink);font-size:13px}
+.insp .f .seg{display:flex;padding:2px;gap:2px;background:var(--canvas);border:0}
+.insp .f .seg button{flex:1;border-radius:4px;font-size:12px;color:var(--muted)}
+.insp .f .seg button[aria-pressed=true]{background:var(--paper);color:var(--navy);font-weight:600;box-shadow:0 1px 2px #16223014}
+.insp .f .sw{display:flex;align-items:center;gap:8px;height:30px;color:var(--ink);font-size:13px}
+.insp .f .sw i{width:30px;height:18px;border-radius:9px;background:var(--line-strong);position:relative;flex:none}
+.insp .f .sw i::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left var(--t-fast)}
+.insp .f .sw.on i{background:var(--accent)}.insp .f .sw.on i::after{left:14px}
+.insp .pal{display:flex;gap:6px;grid-column:1/-1}
+.insp .pal span{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line-strong)}
+.insp .pal span.on{box-shadow:0 0 0 2px var(--accent)}
+.insp .muted{color:var(--muted);font-size:12px}
+.insp .foot{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.insp .foot button{height:28px;padding:0 10px;border:1px solid var(--line-strong);border-radius:var(--r-sm);font-size:12.5px;background:var(--paper)}
+
+/* Phone (read only) */
+@media(max-width:600px){
+  :root{--bar-top:44px;--bar-head:40px;--rail:0px}
+  .topbar{padding:0 8px;gap:6px}.topbar .app,.topbar .project{display:none}.topbar nav{margin-left:0}.topbar nav a{padding:4px 10px;font-size:12.5px}
+  .topbar .help{display:none}
+  .topbar .view{margin-left:auto;display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;border:1px solid #ffffff33;color:#c4d1dc;font-size:12px}
+  .rail{display:none}
+  .shell,.shell.lib-open,.shell.insp-open,.shell.lib-open.insp-open{grid-template-columns:0 0 minmax(0,1fr) 0;grid-template-rows:minmax(0,1fr) auto}
+  .library{display:none}
+  .head{padding:0 4px}.head .tool:not(.keep),.head .chip,.head .vsep{display:none}.tabs{overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}.tabs .plus{display:none}
+  .insp .fin,.insp .foot{display:none}.insp .pane{opacity:.9}.insp .pane input,.insp .pane select,.insp .pane .seg,.insp .pane .sw{pointer-events:none}.insp .status::after{content:'· view only';margin-left:4px}
+  .banner{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--blue-bg);color:#1d4f7c;font-size:12.5px;border-bottom:1px solid #1d4f7c22}
+  .banner button{margin-left:auto;color:#1d4f7c;width:26px;height:26px;display:grid;place-items:center}
+  .zoom{height:30px;bottom:10px;left:10px}.zoom button{height:26px;min-width:26px;font-size:12px}
+  #minimap{width:96px;height:58px;right:10px;bottom:10px}
+  .selchip{display:none}
+  .insp{grid-column:1/-1;grid-row:2;height:0;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -6px 24px #16223020;transition:height var(--t-panel) var(--ease),opacity var(--t-panel)}
+  .insp-open .insp{height:46dvh}
+  .insp::before{content:'';position:absolute;top:6px;left:calc(50% - 18px);width:36px;height:4px;border-radius:2px;background:var(--line-strong)}
+  .insp header{padding-top:8px}
+  .hint{bottom:48px;font-size:12px}
+}
+@media(min-width:601px){.banner,.topbar .view{display:none}}
+@media(max-width:1100px){.topbar nav{margin-left:0}.head .tool.hide-md{display:none}}
+</style>
+</head>
+<body class="scenes">
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" id="sprite">
+  <symbol id="nx-scatter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17"/><circle cx="9" cy="14" r="1.6"/><circle cx="13" cy="8" r="1.6"/><circle cx="17" cy="12" r="1.6"/><circle cx="11" cy="17" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="6" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="nx-scatter-3d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l7-4 7 4v8l-7 4-7-4z"/><path d="M5 8l7 4 7-4M12 12v8"/><circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="nx-loadings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="M12 12l6-5M18 7h-3.2M18 7v3.2"/><path d="M12 12l-5 5M7 17h3.2M7 17v-3.2"/><path d="M12 12l5.5 3.5"/></symbol>
+  <symbol id="nx-quadrant" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><path d="M12 3.5v17M3.5 12h17" stroke-dasharray="2 2"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="7.5" r="1.3"/></symbol>
+  <symbol id="nx-violin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-2.5 2.5-2.5 5.5 0 9-2.5 3.5-2.5 6.5 0 9 2.5-2.5 2.5-5.5 0-9 2.5-3.5 2.5-6.5 0-9Z"/><path d="M16 5c-2 2-2 4 0 7-2 3-2 5 0 7 2-2 2-4 0-7 2-3 2-5 0-7Z"/><path d="M8 9v6M16 10v4"/></symbol>
+  <symbol id="nx-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v3M7 17v3M5 4h4M5 20h4"/><rect x="4" y="7" width="6" height="10" rx="1"/><path d="M4 12h6"/><path d="M17 6v2M17 15v3M15 6h4M15 18h4"/><rect x="14" y="8" width="6" height="7" rx="1"/><path d="M14 11h6"/></symbol>
+  <symbol id="nx-strip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><circle cx="8" cy="7" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="11" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="9" r="1.2"/><circle cx="16" cy="13" r="1.2"/><circle cx="16" cy="16.5" r="1.2"/><path d="M6 11h4M14 13h4"/></symbol>
+  <symbol id="nx-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><rect x="5.5" y="11" width="3.5" height="9" rx=".8"/><rect x="10.25" y="5" width="3.5" height="15" rx=".8"/><rect x="15" y="14" width="3.5" height="6" rx=".8"/></symbol>
+  <symbol id="nx-bar-grouped" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><rect x="4.5" y="9" width="3" height="11" rx=".7"/><rect x="8" y="13" width="3" height="7" rx=".7" fill="currentColor" fill-opacity=".35"/><rect x="13" y="6" width="3" height="14" rx=".7"/><rect x="16.5" y="11" width="3" height="9" rx=".7" fill="currentColor" fill-opacity=".35"/></symbol>
+  <symbol id="nx-bar-stacked" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><rect x="6" y="4" width="4.5" height="16" rx=".8"/><path d="M6 10h4.5M6 15h4.5"/><rect x="13.5" y="7" width="4.5" height="13" rx=".8"/><path d="M13.5 12h4.5M13.5 16h4.5"/><path d="M6 15.5h4.5v4H6z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M13.5 16.5h4.5v3h-4.5z" fill="currentColor" fill-opacity=".35" stroke="none"/></symbol>
+  <symbol id="nx-bar-diverging" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect x="12" y="5" width="7" height="3" rx=".7"/><rect x="7" y="10.5" width="5" height="3" rx=".7" fill="currentColor" fill-opacity=".35"/><rect x="12" y="16" width="4" height="3" rx=".7"/></symbol>
+  <symbol id="nx-donut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 4v4.5M15.5 12H20M12 15.5V20"/><path d="M12 4a8 8 0 0 1 8 8h-4.5a3.5 3.5 0 0 0-3.5-3.5z" fill="currentColor" fill-opacity=".35" stroke="none"/></symbol>
+  <symbol id="nx-density" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M3 18c3 0 3-10 6-10s3 8 6 8 3-6 6-6"/><path d="M3 18c3 0 3-10 6-10s3 8 6 8 3-6 6-6v8H3z" fill="currentColor" fill-opacity=".18" stroke="none"/></symbol>
+  <symbol id="nx-heatmap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/><path d="M3.5 3.5h5.7v5.7H3.5zM9.2 9.2h5.6v5.6H9.2zM14.8 14.8h5.7v5.7h-5.7z" fill="currentColor" fill-opacity=".9" stroke="none"/><path d="M14.8 3.5h5.7v5.7h-5.7zM3.5 14.8h5.7v5.7H3.5z" fill="currentColor" fill-opacity=".35" stroke="none"/></symbol>
+  <symbol id="nx-matrix" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><path d="M3.5 20.5L20.5 3.5"/><path d="M3.5 3.5h5.7v5.7H3.5zM9.2 9.2h5.6v5.6H9.2zM14.8 14.8h5.7v5.7h-5.7z" fill="currentColor" fill-opacity=".9" stroke="none"/><circle cx="17.5" cy="6.5" r="1.3" fill="currentColor" fill-opacity=".4" stroke="none"/><circle cx="6.5" cy="17.5" r="1.3" fill="currentColor" fill-opacity=".4" stroke="none"/></symbol>
+  <symbol id="nx-volcano" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17"/><path d="M12 20V8" stroke-dasharray="2 2"/><path d="M6 13h14" stroke-dasharray="2 2"/><circle cx="7" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="17.5" cy="6.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="10" cy="15.5" r="1.1"/><circle cx="14" cy="16.5" r="1.1"/><circle cx="12" cy="18" r="1.1"/></symbol>
+  <symbol id="nx-lollipop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16"/><path d="M4 7h10M4 12h6M4 17h13"/><circle cx="15.5" cy="7" r="1.8" fill="currentColor" stroke="none"/><circle cx="11.5" cy="12" r="1.8"/><circle cx="18.5" cy="17" r="1.8" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="nx-dotplot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17"/><circle cx="8.5" cy="7.5" r="1.2"/><circle cx="13" cy="7.5" r="2" fill="currentColor" stroke="none"/><circle cx="17.5" cy="7.5" r="1.2"/><circle cx="8.5" cy="12.5" r="2" fill="currentColor" fill-opacity=".45" stroke="none"/><circle cx="13" cy="12.5" r="1.2"/><circle cx="17.5" cy="12.5" r="2.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="17" r="1"/><circle cx="13" cy="17" r="1.6" fill="currentColor" fill-opacity=".45" stroke="none"/></symbol>
+  <symbol id="nx-small-multiples" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><rect x="13.5" y="13.5" width="7" height="7" rx="1"/><path d="M5.5 8.5l1.5-2 1.5 1 1.5-2M15.5 8.5l1.5-1 1.5 1M5.5 18.5h4M15.5 18.5l1.5-2.5 1.5 2.5"/></symbol>
+  <symbol id="nx-network" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><circle cx="5" cy="6" r="1.8"/><circle cx="19" cy="6" r="1.8"/><circle cx="5" cy="18" r="1.8"/><circle cx="19" cy="18" r="1.8"/><path d="M6.4 7.2l3.9 3.2M17.6 7.2l-3.9 3.2M6.4 16.8l3.9-3.2M17.6 16.8l-3.9-3.2"/></symbol>
+  <symbol id="nx-pathway" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="6" height="4" rx="1"/><rect x="15" y="4" width="6" height="4" rx="1"/><rect x="9" y="16" width="6" height="4" rx="1"/><path d="M9 6h6M12 8v8"/><path d="M13.6 4.6L15 6l-1.4 1.4M10.6 14.6L12 16l1.4-1.4"/></symbol>
+  <symbol id="nx-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17"/><path d="M6 15l4-5 4 3 6-7"/><circle cx="6" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="13" r="1.2" fill="currentColor" stroke="none"/><circle cx="20" cy="6" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="nx-line-multi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17"/><path d="M6 16l4-4 4 2 6-6"/><path d="M6 11l4-3 4 1 6-4" stroke-opacity=".45"/><path d="M6 18l4-1 4-2 6-1" stroke-opacity=".45"/></symbol>
+  <symbol id="nx-circos" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8 4.6a8.5 8.5 0 0 1 8 0" stroke-width="3"/><path d="M4.4 14a8.5 8.5 0 0 0 4.6 5.5" stroke-width="3"/><path d="M7.5 19.2C10 14 14 9 16.5 5.2M9.5 4.6c1 5 5 8 10 10" stroke-opacity=".6"/></symbol>
+  <symbol id="nx-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
+  <symbol id="nx-band" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17h17"/><path d="M6 8h14M6 16h14" stroke-dasharray="2 2"/><path d="M6 12h14" stroke-opacity=".5"/><circle cx="8" cy="12.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="13" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="6" r="1.2"/></symbol>
+  <symbol id="nx-page" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><rect x="8.5" y="11" width="7" height="5" rx=".8"/><path d="M8.5 18.5h7"/></symbol>
+  <symbol id="nx-fam-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></symbol>
+  <symbol id="nx-fam-molecule" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.9l7.5-3.8M8.2 13.1l7.5 3.8"/></symbol>
+  <symbol id="nx-fam-cell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="10" r="1.4"/><circle cx="15" cy="14" r="2.3"/></symbol>
+  <symbol id="nx-fam-illustration" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><circle cx="9" cy="9.5" r="1.6"/><path d="M4 17l5-4 3 2.5 3.5-4L20 17"/></symbol>
+  <!-- UI glyphs -->
+  <symbol id="ui-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="ui-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 1.5-2s0-2 1.5-2h1.5A3.5 3.5 0 0 0 20 13.5C20 7.5 16.5 3 12 3z"/><circle cx="8" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ui-select" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v14l4-4 3 6 2.5-1.2-3-5.8H18z"/></symbol>
+  <symbol id="ui-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11M11 10V4.5a1.5 1.5 0 0 1 3 0V11M14 10.5V6a1.5 1.5 0 0 1 3 0v8.5a5.5 5.5 0 0 1-11 0v-2.2a1.6 1.6 0 0 1 3-.8L9 13"/></symbol>
+  <symbol id="ui-inspector" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15M16.5 9h2M16.5 12h2"/></symbol>
+  <symbol id="ui-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></symbol>
+  <symbol id="ui-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/></symbol>
+  <symbol id="ui-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+  <symbol id="ui-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v12M6 12h12"/></symbol>
+  <symbol id="ui-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"/></symbol>
+  <symbol id="ui-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L20 20"/></symbol>
+  <symbol id="ui-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M5 12h14M5 17h14"/></symbol>
+  <symbol id="ui-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></symbol>
+  <symbol id="ui-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="ui-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="ui-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7H4v4M4 11a8 8 0 1 1 2.3 7"/><path d="M4 7l4 4"/></symbol>
+  <symbol id="ui-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h4v4M20 11a8 8 0 1 0-2.3 7"/><path d="M20 7l-4 4"/></symbol>
+  <symbol id="ui-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></symbol>
+  <symbol id="ui-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M12.5 7.5l4 4"/></symbol>
+  <symbol id="ui-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="ui-fit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></symbol>
+  <symbol id="ui-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="ui-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="ui-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></symbol>
+  <symbol id="ui-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="ui-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="ui-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<div id="scenes" role="toolbar" aria-label="Prototype scenes">
+  <strong>Scenes</strong>
+  <button data-scene="default" aria-pressed="true">1 · Default (both closed)</button>
+  <button data-scene="library">2 · Library open</button>
+  <button data-scene="library-grid">2b · Library grid + search</button>
+  <button data-scene="selected">3 · Card selected + inspector</button>
+  <button data-scene="board">4 · 30-card board</button>
+  <button data-scene="states">5 · Card states</button>
+  <button data-scene="empty">6 · Empty tab</button>
+  <button data-scene="phone">7 · Phone (resize to 390)</button>
+  <button data-scene="hide" style="margin-left:auto">Hide this bar</button>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <span class="mark" aria-hidden="true">LE</span><span class="app">Lipidomic Explorer</span>
+    <button class="project" id="project" title="Open or save a checkpoint"><span class="dot" id="savedot"></span><span>Synthetic demo</span><small id="savetext">Saved</small><svg class="ic" style="width:16px;height:16px;color:#c4d1dc"><use href="#ui-down"/></svg></button>
+    <nav aria-label="Steps"><a href="#">Data</a><a href="#">Review</a><a href="#" aria-current="step">Canvas</a></nav>
+    <span class="grow"></span>
+    <span class="view"><svg class="ic" style="width:14px;height:14px"><use href="#ui-eye"/></svg>View only</span>
+    <button class="help" id="helpbtn" aria-label="Keyboard shortcuts (?)" title="Keyboard shortcuts (?)"><svg class="ic"><use href="#ui-help"/></svg></button>
+    <button class="avatar" aria-label="Account"><svg class="ic"><use href="#ui-user"/></svg></button>
+  </header>
+
+  <div class="shell" id="shell">
+    <nav class="rail" aria-label="Tools">
+      <button id="r-plots" aria-pressed="false" aria-label="Plot library"><svg class="ic"><use href="#nx-fam-dashboard"/></svg><span class="tip">Plot library <kbd>L</kbd></span></button>
+      <button id="r-ill" aria-pressed="false" aria-label="Illustrations"><svg class="ic"><use href="#nx-fam-illustration"/></svg><span class="tip">Illustrations <kbd>⇧L</kbd></span></button>
+      <button id="r-text" aria-label="Text and shapes"><svg class="ic"><use href="#ui-text"/></svg><span class="tip">Text and shapes (Figure page) <kbd>T</kbd></span></button>
+      <button id="r-pal" aria-label="Palettes"><svg class="ic"><use href="#ui-palette"/></svg><span class="tip">Palettes <kbd>P</kbd></span></button>
+      <hr>
+      <button id="r-select" aria-pressed="true" aria-label="Select"><svg class="ic"><use href="#ui-select"/></svg><span class="tip">Select <kbd>V</kbd></span></button>
+      <button id="r-hand" aria-pressed="false" aria-label="Pan"><svg class="ic"><use href="#ui-hand"/></svg><span class="tip">Pan <kbd>H</kbd> · hold <kbd>Space</kbd></span></button>
+      <span class="spacer"></span>
+      <button id="r-insp" aria-pressed="false" aria-label="Inspector"><svg class="ic"><use href="#ui-inspector"/></svg><span class="tip">Inspector <kbd>I</kbd></span></button>
+    </nav>
+
+    <aside class="library" id="library" aria-label="Library">
+      <header>
+        <div class="seg" role="tablist"><button role="tab" aria-selected="true" id="lt-plots">Plots</button><button role="tab" aria-selected="false" id="lt-ill">Illustrations</button></div>
+        <button class="x" id="lib-x" aria-label="Close library (Esc)"><svg class="ic"><use href="#ui-x"/></svg></button>
+      </header>
+      <div class="lib-tools">
+        <label class="search"><svg class="ic" style="width:16px;height:16px"><use href="#ui-search"/></svg><input id="q" type="search" placeholder="Search 59 plots" aria-label="Search plots"><kbd>/</kbd></label>
+        <div class="lib-view" role="group" aria-label="View"><button id="v-list" aria-pressed="true" aria-label="List"><svg class="ic" style="width:16px;height:16px"><use href="#ui-list"/></svg></button><button id="v-grid" aria-pressed="false" aria-label="Grid"><svg class="ic" style="width:16px;height:16px"><use href="#ui-grid"/></svg></button></div>
+      </div>
+      <div class="chips" id="chips" aria-label="Families"></div>
+      <div class="lib-body" id="libbody"></div>
+      <div class="lib-foot"><svg class="ic" style="width:16px;height:16px;color:var(--muted)"><use href="#ui-arrow"/></svg><span>Drag a plot onto the canvas, or press <kbd>Enter</kbd> on a row</span></div>
+    </aside>
+
+    <main class="col" aria-label="Canvas area">
+      <div class="head">
+        <div class="tabs" role="tablist" aria-label="Canvas tabs" id="tabs"></div>
+        <button class="tool icon keep" id="tab-more" aria-label="Tab actions"><svg class="ic" style="width:16px;height:16px"><use href="#ui-more"/></svg></button>
+        <span class="grow"></span>
+        <button class="tool hide-md"><svg class="ic" style="width:16px;height:16px;color:var(--muted)"><use href="#ui-settings"/></svg>Analysis settings</button>
+        <button class="tool primary" id="t-add"><svg class="ic" style="width:16px;height:16px"><use href="#ui-plus"/></svg>Add plot</button>
+        <span class="vsep"></span>
+        <button class="tool icon" id="t-undo" aria-label="Undo (Ctrl+Z)" disabled><svg class="ic" style="width:17px;height:17px"><use href="#ui-undo"/></svg></button>
+        <button class="tool icon" aria-label="Redo (Ctrl+Shift+Z)" disabled><svg class="ic" style="width:17px;height:17px"><use href="#ui-redo"/></svg></button>
+        <span class="vsep"></span>
+        <span class="chip" id="draft" title="Finish each plot to place it on the figure page"><i></i><span id="drafttext">Draft · 2 to finish</span></span>
+        <button class="tool keep">Figure page<svg class="ic" style="width:14px;height:14px;color:var(--muted)"><use href="#ui-arrow"/></svg></button>
+        <button class="tool hide-md">Export<svg class="ic" style="width:14px;height:14px;color:var(--muted)"><use href="#ui-down"/></svg></button>
+        <button class="tool icon keep" aria-label="More"><svg class="ic" style="width:16px;height:16px"><use href="#ui-more"/></svg></button>
+      </div>
+      <div class="banner" id="banner"><svg class="ic" style="width:16px;height:16px"><use href="#ui-eye"/></svg><span>View only on this phone. Open on a computer to edit.</span><button aria-label="Dismiss"><svg class="ic" style="width:14px;height:14px"><use href="#ui-x"/></svg></button></div>
+      <div class="stage" id="stage">
+        <div id="viewport" tabindex="0" aria-label="Canvas"><div id="world"></div></div>
+        <div class="empty" id="empty" hidden><div class="box">
+          <span class="ico"><svg class="ic" style="width:24px;height:24px"><use href="#nx-fam-dashboard"/></svg></span>
+          <h3>This canvas is empty</h3><p>Add a plot from the library, or drag an illustration here.</p>
+          <div class="btns"><button class="p" id="e-add">Add plot</button><button id="e-lib">Open library <kbd style="margin-left:4px">L</kbd></button></div>
+          <div class="sugg" aria-label="Suggested"><button><svg class="ic" style="width:16px;height:16px;color:var(--accent)"><use href="#nx-scatter"/></svg>Principal components</button><button><svg class="ic" style="width:16px;height:16px;color:var(--accent)"><use href="#nx-volcano"/></svg>Differential volcano</button><button><svg class="ic" style="width:16px;height:16px;color:var(--accent)"><use href="#nx-heatmap"/></svg>Abundance heatmap</button></div>
+        </div></div>
+        <div class="selchip" id="selchip"><b id="selname">Principal components</b><button id="sel-insp"><svg class="ic" style="width:14px;height:14px"><use href="#ui-inspector"/></svg>Inspect <kbd style="color:var(--accent);background:#fff">I</kbd></button></div>
+        <div class="zoom" aria-label="Zoom">
+          <button id="z-out" aria-label="Zoom out (−)"><svg class="ic" style="width:16px;height:16px"><use href="#ui-minus"/></svg></button>
+          <button class="pct" id="z-pct" title="Zoom to 100% (Shift+0)">100%</button>
+          <button id="z-in" aria-label="Zoom in (+)"><svg class="ic" style="width:16px;height:16px"><use href="#ui-plus"/></svg></button>
+          <span class="sep"></span>
+          <button id="z-fit" title="Fit all (Shift+1) · Fit selection (Shift+2)"><svg class="ic" style="width:16px;height:16px;margin-right:4px"><use href="#ui-fit"/></svg>Fit</button>
+        </div>
+        <svg id="minimap" role="img" aria-label="Minimap" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="hint" id="hint"></div>
+      </div>
+    </main>
+
+    <aside class="insp" id="insp" aria-label="Inspector">
+      <header><span class="st" id="i-st"></span><h2 id="i-title">Principal components</h2><button class="x" id="insp-x" aria-label="Close inspector (Esc)"><svg class="ic"><use href="#ui-x"/></svg></button></header>
+      <div class="status"><svg class="ic" style="width:14px;height:14px;color:var(--green)"><use href="#ui-check"/></svg><span id="i-status">Up to date · live plot</span><button class="fin">Finish plot</button></div>
+      <div class="itabs" role="tablist"><button role="tab" aria-selected="false">Data</button><button role="tab" aria-selected="true">Appearance</button><button role="tab" aria-selected="false">Statistics</button><button role="tab" aria-selected="false">Export</button></div>
+      <div class="pane">
+        <details class="grp" open><summary><svg class="ic chev" style="width:16px;height:16px"><use href="#ui-chev"/></svg>Size &amp; position</summary>
+          <div class="f"><label>Width <input value="440 px"></label><label>Height <input value="330 px"></label><label>X <input value="40"></label><label>Y <input value="40"></label><label class="w">Preset <div class="seg"><button aria-pressed="true">Free</button><button>1 col · 85 mm</button><button>2 col · 170 mm</button></div></label></div></details>
+        <details class="grp" open><summary><svg class="ic chev" style="width:16px;height:16px"><use href="#ui-chev"/></svg>Typography</summary>
+          <div class="f"><label class="w">Family <select><option>Nunito Sans</option><option>Arial</option><option>Helvetica</option></select></label><label>Base size <input value="12 pt"></label><label>Title <input value="14 pt"></label><label class="w sw on"><i></i>Match fonts across this tab</label></div></details>
+        <details class="grp" open><summary><svg class="ic chev" style="width:16px;height:16px"><use href="#ui-chev"/></svg>Palette</summary>
+          <div class="f"><div class="pal"><span class="on" style="background:#2d5f8a"></span><span style="background:#c44e52"></span><span style="background:#55a868"></span><span style="background:#8172b2"></span><span style="background:#ccb974"></span><span style="background:#64b5cd"></span></div><label class="w sw"><i></i>Healthy in grey</label></div></details>
+        <details class="grp"><summary><svg class="ic chev" style="width:16px;height:16px"><use href="#ui-chev"/></svg>Axes</summary><p class="muted">Titles, ticks, grid and zero lines.</p></details>
+        <details class="grp"><summary><svg class="ic chev" style="width:16px;height:16px"><use href="#ui-chev"/></svg>Legend</summary><p class="muted">Placement, orientation, font.</p></details>
+        <details class="grp"><summary><svg class="ic chev" style="width:16px;height:16px"><use href="#ui-chev"/></svg>Series</summary><p class="muted">Show, rename, colour, size.</p></details>
+      </div>
+      <div class="foot"><button>Copy style</button><button>Paste style</button><span style="margin-left:auto">Team original <svg class="ic" style="width:14px;height:14px;vertical-align:-3px"><use href="#ui-arrow"/></svg></span></div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"><span id="toasttext">Moved to Canvas 2</span><button id="toastundo">Undo</button><button id="toastx" aria-label="Dismiss" style="padding:0 6px"><svg class="ic" style="width:14px;height:14px"><use href="#ui-x"/></svg></button></div>
+
+<script>
+/* ============ Catalog (59 outputs, 13 families) + icon map ============ */
+const FAMILIES=[["Dashboard","nx-fam-dashboard"],["Quality check","nx-pulse"],["Composition","nx-bar-stacked"],["Differential","nx-volcano"],["Heatmaps","nx-heatmap"],["Structure","nx-fam-molecule"],["Group comparison","nx-violin"],["Distributions & ratios","nx-density"],["Longitudinal","nx-line"],["Pathways","nx-pathway"],["Cellular organization","nx-fam-cell"],["Cell comparisons","nx-bar-grouped"],["Export studio","nx-page"]];
+const CAT=[
+["results_dashboard-plot_pca","Dashboard","Principal components","nx-scatter"],["results_dashboard-plot_violin","Dashboard","Feature distributions","nx-violin"],["results_dashboard-plot_dist","Dashboard","Signal distribution","nx-density"],["results_dashboard-plot_comp","Dashboard","Composition overview","nx-bar-stacked"],["results_dashboard-plot_heat","Dashboard","Abundance heatmap","nx-heatmap"],
+["qc_pca_tab-boxplotAfterNorm","Quality check","Normalized signal boxplots","nx-box"],["qc_pca_tab-outlierPlot","Quality check","Outlier screening","nx-band"],["qc_pca_tab-pca2dPlot","Quality check","PCA scores · 2D","nx-scatter"],["qc_pca_tab-pca2dVectorPlot","Quality check","PCA scores · editable 2D","nx-scatter"],["qc_pca_tab-pca3dPlot","Quality check","PCA scores · 3D","nx-scatter-3d"],["qc_pca_tab-load2dPlot","Quality check","PCA loadings · 2D","nx-loadings"],["qc_pca_tab-load2dVectorPlot","Quality check","PCA loadings · editable 2D","nx-loadings"],["qc_pca_tab-load3dPlot","Quality check","PCA loadings · 3D","nx-scatter-3d"],["qc_pca_tab-sampleCorrPlot","Quality check","Sample correlation","nx-matrix"],["qc_pca_tab-bqcPlot","Quality check","Batch quality check","nx-pulse"],["qc_pca_tab-bqcDeviationPlot","Quality check","Batch deviation","nx-band"],["qc_pca_tab-bqcAbundancePlot","Quality check","Batch abundance","nx-bar"],["qc_pca_tab-outlierPcaPlot","Quality check","Outlier PCA","nx-scatter"],["qc_pca_tab-guided_qc_plot","Quality check","Guided quality check","nx-pulse"],
+["barchart-barPlotUnfiltered","Composition","Composition · unfiltered","nx-bar-stacked"],["barchart-barPlotFiltered","Composition","Composition · filtered","nx-bar-stacked","de"],["barchart-donutPlotUnfiltered","Composition","Composition share · unfiltered","nx-donut"],["barchart-donutPlotFiltered","Composition","Composition share · filtered","nx-donut","de"],
+["volcano_tab-volcanoPlot","Differential","Differential volcano","nx-volcano","de"],["lsea_tab-lseaPlot","Differential","Lipid set enrichment","nx-lollipop","de"],["fla_tab-plotVolcano","Differential","Functional ratio volcano","nx-volcano"],["structural_tab-diffAcylPlot","Differential","Acyl chain remodeling","nx-bar-diverging","de"],
+["heatmap_barchart_tab-heatmapPlot","Heatmaps","Average signal heatmap","nx-heatmap"],["heatmap_barchart_tab-heatmapSDPlot","Heatmaps","Signal variability heatmap","nx-heatmap"],["heatmap_barchart_tab-filteredHeatmapPlot","Heatmaps","Filtered average heatmap","nx-heatmap","de"],["heatmap_barchart_tab-filteredHeatmapSDPlot","Heatmaps","Filtered variability heatmap","nx-heatmap","de"],["heatmap_barchart_tab-violin_plot_render","Heatmaps","Selected-feature distributions","nx-violin"],
+["structural_tab-summaryPlot","Structure","Structural remodeling shifts","nx-bar-diverging","de"],["structural_tab-speciesPlotPlot","Structure","Species structural features","nx-strip","de"],["structural_tab-networkPlot","Structure","Correlation network","nx-network"],["structural_tab-propPlotPlot","Structure","Acyl chain proportions","nx-bar-stacked"],["structural_grid_tab-heatmapPlot","Structure","Structural grid · selected class heatmap","nx-heatmap","de"],["structural_grid_tab-dotplotPlot","Structure","Structural grid · selected class dotplot","nx-dotplot","de"],["structural_grid_tab-mergedPlot","Structure","Structural grid · all classes","nx-small-multiples","de"],["structural_grid_tab-diffAllPlot","Structure","Structural grid · differential overview","nx-small-multiples","de"],
+["group_comparison_tab-comparisonPlot","Group comparison","Lipid class comparison","nx-violin"],
+["logratio_tab-logratioPlot","Distributions & ratios","Violin distributions","nx-violin"],["fla_tab-logratioPlot","Distributions & ratios","Functional ratio distributions","nx-violin"],["fla_tab-plotCircos","Distributions & ratios","Functional correlation circos","nx-circos"],
+["longitudinal_tab-macroclass_plot","Longitudinal","Time course · main class","nx-line","time"],["longitudinal_tab-subclass_plot","Longitudinal","Time course · subclass","nx-line","time"],["longitudinal_tab-index_plot","Longitudinal","Time course · functional index","nx-line","time"],["longitudinal_tab-struct_plot","Longitudinal","Time course · structure","nx-line","time"],["longitudinal_tab-allmetrics_plot","Longitudinal","Time course · all metrics","nx-line-multi","time"],
+["pathway_tab-pathwayPlot","Pathways","Lipid pathway map","nx-pathway"],["pathway_tab-pathwayVisNetwork","Pathways","Interactive pathway network","nx-network"],
+["cellular_org_tab-stressPlot","Cellular organization","Organelle stress proxies","nx-strip"],["cellular_org_tab-cpiPlot","Cellular organization","Peroxidation index (CPI)","nx-strip"],["cellular_org_tab-polarPlot","Cellular organization","Storage vs structural map","nx-quadrant"],
+["cell_lipid_plot","Cell comparisons","Selected feature profile","nx-strip"],["cell_profile_plot","Cell comparisons","Class profile","nx-bar"],["cell_class_plot","Cell comparisons","Class totals · two cohorts","nx-bar-grouped"],["cell_comparison_plot","Cell comparisons","Cohort comparison","nx-scatter"],
+["export_studio-studio_preview_plot","Export studio","Publication preview","nx-page"]];
+const byId=Object.fromEntries(CAT.map(c=>[c[0],c]));
+
+/* ============ Synthetic SVG plots (no data; deterministic) ============ */
+let seed=7;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+const C1='#2d5f8a',C2='#c44e52',C3='#55a868',G='#5a6878',L='#e3e7ec';
+function plotSvg(kind,label,w=440,h=294,s=1){seed=7+label.length*13;
+  const W=400,H=260,m={l:44,r:16,t:30,b:34};const ax=`<path d="M${m.l} ${m.t}V${H-m.b}H${W-m.r}" fill="none" stroke="#141b24" stroke-width="1"/>`;
+  const title=`<text x="${W/2}" y="18" text-anchor="middle" font-size="12" font-weight="600" fill="#141b24">${label}</text>`;
+  const xl=`<text x="${(m.l+W-m.r)/2}" y="${H-10}" text-anchor="middle" font-size="10" fill="${G}">x</text>`;
+  const grid=[0,1,2,3].map(i=>`<line x1="${m.l}" x2="${W-m.r}" y1="${m.t+i*(H-m.t-m.b)/4}" y2="${m.t+i*(H-m.t-m.b)/4}" stroke="${L}"/>`).join('');
+  let body='';
+  const pw=W-m.l-m.r,ph=H-m.t-m.b;
+  const p=(x,y)=>[m.l+x*pw,m.t+ph-y*ph];
+  switch(kind){
+    case 'nx-scatter':case 'nx-quadrant':case 'nx-loadings':{for(let i=0;i<34;i++){const c=i%2?C2:C1;const[x,y]=p(.15+rnd()*.7+(i%2?.1:-.1),.15+rnd()*.7);body+=`<circle cx="${x}" cy="${y}" r="3.2" fill="${c}" fill-opacity=".85"/>`;}
+      if(kind!=='nx-scatter'){body+=`<line x1="${m.l+pw/2}" x2="${m.l+pw/2}" y1="${m.t}" y2="${m.t+ph}" stroke="${G}" stroke-dasharray="3 3"/><line x1="${m.l}" x2="${m.l+pw}" y1="${m.t+ph/2}" y2="${m.t+ph/2}" stroke="${G}" stroke-dasharray="3 3"/>`}
+      body+=`<circle cx="${W-70}" cy="${m.t+8}" r="3" fill="${C1}"/><text x="${W-62}" y="${m.t+11}" font-size="9" fill="${G}">Control</text><circle cx="${W-70}" cy="${m.t+22}" r="3" fill="${C2}"/><text x="${W-62}" y="${m.t+25}" font-size="9" fill="${G}">Case</text>`;break;}
+    case 'nx-scatter-3d':{body+=`<path d="M${m.l+40} ${m.t+ph-20}l${pw-80} 0 M${m.l+40} ${m.t+ph-20}L${m.l+10} ${m.t+ph-70} M${m.l+40} ${m.t+ph-20}V${m.t+20}" stroke="${G}" fill="none"/>`;for(let i=0;i<30;i++){const[x,y]=p(.1+rnd()*.8,.1+rnd()*.8);body+=`<circle cx="${x}" cy="${y}" r="${2+rnd()*2.5}" fill="${i%2?C2:C1}" fill-opacity=".8"/>`}break;}
+    case 'nx-violin':{[[.25,C1],[.75,C2]].forEach(([cx,c])=>{const[x0]=p(cx,0);const a=36+rnd()*20;body+=`<path d="M${x0} ${m.t+12} C${x0-a} ${m.t+ph*.35},${x0-a*.4} ${m.t+ph*.6},${x0} ${m.t+ph-10} C${x0+a*.4} ${m.t+ph*.6},${x0+a} ${m.t+ph*.35},${x0} ${m.t+12}Z" fill="${c}" fill-opacity=".35" stroke="${c}"/><rect x="${x0-6}" y="${m.t+ph*.38}" width="12" height="${ph*.28}" fill="#fff" stroke="${c}"/><line x1="${x0-6}" x2="${x0+6}" y1="${m.t+ph*.52}" y2="${m.t+ph*.52}" stroke="${c}" stroke-width="2"/>`});
+      body+=`<text x="${p(.25,0)[0]}" y="${H-18}" text-anchor="middle" font-size="10" fill="${G}">Control</text><text x="${p(.75,0)[0]}" y="${H-18}" text-anchor="middle" font-size="10" fill="${G}">Case</text>`;break;}
+    case 'nx-box':case 'nx-band':{for(let i=0;i<8;i++){const[x]=p((i+.5)/8,0);const c=i<4?C1:C2;const y1=m.t+20+rnd()*60,y2=y1+40+rnd()*60;body+=`<line x1="${x}" x2="${x}" y1="${y1-18}" y2="${y2+18}" stroke="${c}"/><rect x="${x-10}" y="${y1}" width="20" height="${y2-y1}" fill="${c}" fill-opacity=".25" stroke="${c}"/><line x1="${x-10}" x2="${x+10}" y1="${(y1+y2)/2}" y2="${(y1+y2)/2}" stroke="${c}" stroke-width="2"/>`}break;}
+    case 'nx-strip':case 'nx-dotplot':{for(let g=0;g<4;g++){const c=g%2?C2:C1;for(let i=0;i<9;i++){const[x,y]=p((g+.5)/4+(rnd()-.5)*.12,.1+rnd()*.8);body+=`<circle cx="${x}" cy="${y}" r="3" fill="${c}" fill-opacity=".8"/>`}}break;}
+    case 'nx-bar':case 'nx-bar-grouped':case 'nx-histogram':case 'nx-pulse':{const n=kind==='nx-histogram'?14:7;for(let i=0;i<n;i++){const v=.2+rnd()*.75;const[x,y]=p(i/n+.02,v);const bw=pw/n-6;body+=`<rect x="${x}" y="${y}" width="${kind==='nx-bar-grouped'?bw/2-1:bw}" height="${m.t+ph-y}" fill="${C1}" rx="2"/>`;if(kind==='nx-bar-grouped'){const v2=.2+rnd()*.75;const[,y2]=p(0,v2);body+=`<rect x="${x+bw/2+1}" y="${y2}" width="${bw/2-1}" height="${m.t+ph-y2}" fill="${C2}" rx="2"/>`}}break;}
+    case 'nx-bar-stacked':{const cols=['#2d5f8a','#5b86ad','#8fb0cc','#c44e52','#d98a8d','#55a868'];for(let i=0;i<6;i++){const[x]=p(i/6+.03,0);const bw=pw/6-10;let y=m.t+ph;const parts=[.1,.15,.2,.25,.15,.15].map(v=>v*(.8+rnd()*.4));const tot=parts.reduce((a,b)=>a+b,0);parts.forEach((v,k)=>{const hh=v/tot*ph*.92;y-=hh;body+=`<rect x="${x}" y="${y}" width="${bw}" height="${hh}" fill="${cols[k]}"/>`})}break;}
+    case 'nx-bar-diverging':case 'nx-lollipop':{for(let i=0;i<9;i++){const v=(rnd()-.5)*.9;const[x0,y]=p(.5,1-(i+.5)/9);const[x1]=p(.5+v,0);const c=v>0?C2:C1;if(kind==='nx-lollipop'){body+=`<line x1="${x0}" x2="${x1}" y1="${y}" y2="${y}" stroke="${c}"/><circle cx="${x1}" cy="${y}" r="4.5" fill="${c}"/>`}else body+=`<rect x="${Math.min(x0,x1)}" y="${y-8}" width="${Math.abs(x1-x0)}" height="16" fill="${c}" rx="2"/>`}body+=`<line x1="${m.l+pw/2}" x2="${m.l+pw/2}" y1="${m.t}" y2="${m.t+ph}" stroke="#141b24"/>`;break;}
+    case 'nx-donut':{const cols=['#2d5f8a','#5b86ad','#8fb0cc','#c44e52','#d98a8d','#55a868','#ccb974'];let a=0;const cx=W/2,cy=H/2+8,r=84,ri=48;const vals=[.22,.18,.16,.14,.12,.1,.08];vals.forEach((v,i)=>{const a2=a+v*Math.PI*2;const x1=cx+r*Math.cos(a),y1=cy+r*Math.sin(a),x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);const xi1=cx+ri*Math.cos(a2),yi1=cy+ri*Math.sin(a2),xi2=cx+ri*Math.cos(a),yi2=cy+ri*Math.sin(a);body+=`<path d="M${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}L${xi1} ${yi1}A${ri} ${ri} 0 0 0 ${xi2} ${yi2}Z" fill="${cols[i]}" stroke="#fff"/>`;a=a2});return wrap(title+body,w,h);}
+    case 'nx-density':{const pts=[];for(let i=0;i<=40;i++){const x=i/40;const y=Math.exp(-((x-.35)**2)/.02)*.8+Math.exp(-((x-.7)**2)/.03)*.5;pts.push(p(x,y*.95))}const d=pts.map((q,i)=>(i?'L':'M')+q[0]+' '+q[1]).join('');body+=`<path d="${d}L${pts[40][0]} ${m.t+ph}L${pts[0][0]} ${m.t+ph}Z" fill="${C1}" fill-opacity=".2"/><path d="${d}" fill="none" stroke="${C1}" stroke-width="1.5"/>`;break;}
+    case 'nx-heatmap':case 'nx-matrix':{const n=12,k=9,cw=pw/n,ch=ph/k;for(let i=0;i<n;i++)for(let j=0;j<k;j++){const v=kind==='nx-matrix'?(1-Math.abs(i-j*n/k)/n):rnd();const col=v>.5?`rgba(196,78,82,${(v-.5)*2})`:`rgba(45,95,138,${(.5-v)*2})`;body+=`<rect x="${m.l+i*cw}" y="${m.t+j*ch}" width="${cw}" height="${ch}" fill="${col}" stroke="#fff" stroke-width=".5"/>`}return wrap(title+body,w,h);}
+    case 'nx-volcano':{for(let i=0;i<120;i++){const x=(rnd()+rnd()+rnd())/3;const y=Math.abs(x-.5)*2*rnd()+rnd()*.15;const sig=y>.55&&Math.abs(x-.5)>.2;const[X,Y]=p(x,Math.min(y,.98));body+=`<circle cx="${X}" cy="${Y}" r="2.6" fill="${sig?(x>.5?C2:C1):'#b8c2cc'}"/>`}const[xa]=p(.3,0),[xb]=p(.7,0),[,yt]=p(0,.55);body+=`<line x1="${xa}" x2="${xa}" y1="${m.t}" y2="${m.t+ph}" stroke="${G}" stroke-dasharray="3 3"/><line x1="${xb}" x2="${xb}" y1="${m.t}" y2="${m.t+ph}" stroke="${G}" stroke-dasharray="3 3"/><line x1="${m.l}" x2="${m.l+pw}" y1="${yt}" y2="${yt}" stroke="${G}" stroke-dasharray="3 3"/>`;break;}
+    case 'nx-line':case 'nx-line-multi':{const n=kind==='nx-line'?2:4;for(let s=0;s<n;s++){const c=[C1,C2,C3,'#8172b2'][s];let d='';let y=.3+rnd()*.4;for(let i=0;i<=6;i++){y=Math.max(.08,Math.min(.95,y+(rnd()-.5)*.3));const[X,Y]=p(i/6,y);d+=(i?'L':'M')+X+' '+Y;body+=`<circle cx="${X}" cy="${Y}" r="3" fill="${c}"/>`}body=`<path d="${d}" fill="none" stroke="${c}" stroke-width="1.6"/>`+body}break;}
+    case 'nx-network':case 'nx-pathway':{const nodes=[];for(let i=0;i<14;i++)nodes.push([m.l+20+rnd()*(pw-40),m.t+16+rnd()*(ph-32)]);for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++)if(rnd()<.18)body+=`<line x1="${nodes[i][0]}" y1="${nodes[i][1]}" x2="${nodes[j][0]}" y2="${nodes[j][1]}" stroke="#b8c2cc"/>`;nodes.forEach((q,i)=>body+=`<circle cx="${q[0]}" cy="${q[1]}" r="${6+rnd()*6}" fill="${i%3?C1:C2}" fill-opacity=".85" stroke="#fff"/>`);return wrap(title+body,w,h);}
+    case 'nx-circos':{const cx=W/2,cy=H/2+8,r=86;const cols=[C1,C2,C3,'#8172b2','#ccb974'];for(let i=0;i<5;i++){const a0=i/5*Math.PI*2,a1=(i+.9)/5*Math.PI*2;body+=`<path d="M${cx+r*Math.cos(a0)} ${cy+r*Math.sin(a0)}A${r} ${r} 0 0 1 ${cx+r*Math.cos(a1)} ${cy+r*Math.sin(a1)}" fill="none" stroke="${cols[i]}" stroke-width="10"/>`}for(let i=0;i<9;i++){const a=rnd()*Math.PI*2,b=rnd()*Math.PI*2;body+=`<path d="M${cx+(r-6)*Math.cos(a)} ${cy+(r-6)*Math.sin(a)}Q${cx} ${cy} ${cx+(r-6)*Math.cos(b)} ${cy+(r-6)*Math.sin(b)}" fill="none" stroke="${C1}" stroke-opacity=".35" stroke-width="2"/>`}return wrap(title+body,w,h);}
+    case 'nx-small-multiples':{for(let g=0;g<6;g++){const gx=m.l+(g%3)*(pw/3),gy=m.t+Math.floor(g/3)*(ph/2);body+=`<rect x="${gx+4}" y="${gy+4}" width="${pw/3-8}" height="${ph/2-8}" fill="none" stroke="${L}"/>`;for(let i=0;i<10;i++)body+=`<circle cx="${gx+10+rnd()*(pw/3-20)}" cy="${gy+10+rnd()*(ph/2-20)}" r="2.4" fill="${i%2?C2:C1}"/>`}return wrap(title+body,w,h);}
+    case 'nx-page':{body+=`<rect x="${W/2-70}" y="${m.t}" width="140" height="${ph}" fill="#fff" stroke="${G}"/><rect x="${W/2-58}" y="${m.t+12}" width="116" height="70" fill="${C1}" fill-opacity=".15"/><rect x="${W/2-58}" y="${m.t+92}" width="116" height="70" fill="${C2}" fill-opacity=".15"/>`;return wrap(title+body,w,h);}
+    default:body+='';
+  }
+  return wrap(title+grid+ax+body+xl,w,h);
+  function wrap(inner,w,h){return `<svg class="plot" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" font-family="Nunito Sans,system-ui,sans-serif" aria-hidden="true">${inner}</svg>`}
+}
+
+/* ============ State ============ */
+const $=id=>document.getElementById(id);
+const shell=$('shell'),world=$('world'),vp=$('viewport'),mm=$('minimap');
+const S={lib:false,insp:false,closedByUser:false,mode:'select',sel:null,nodes:[],cam:{x:0,y:0,scale:1},tab:0,tabs:[{name:'Canvas 1',n:3},{name:'Figures',n:0}],view:'list',fam:null,q:'',thumb:false,mmTimer:0};
+const MIN_ZOOM=.05,MAX_ZOOM=4,PAD=32,THUMB_BELOW=.2;
+const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const phone=()=>innerWidth<=600;
+function ui(){
+  shell.classList.toggle('lib-open',S.lib&&!phone());shell.classList.toggle('insp-open',S.insp);
+  $('r-plots').setAttribute('aria-pressed',S.lib&&S.libTab!=='ill');$('r-ill').setAttribute('aria-pressed',S.lib&&S.libTab==='ill');
+  $('r-insp').setAttribute('aria-pressed',String(S.insp));
+  $('r-select').setAttribute('aria-pressed',S.mode==='select');$('r-hand').setAttribute('aria-pressed',S.mode==='hand');vp.classList.toggle('hand',S.mode==='hand');
+  $('selchip').classList.toggle('on',!!S.sel&&!S.insp&&!phone());
+  if(S.sel){const n=S.nodes.find(n=>n.id===S.sel);$('selname').textContent=n?n.label:'';$('i-title').textContent=n?n.label:'Inspector';$('i-status').textContent=n?(n.state==='error'?'Could not update · R returned an error':n.state==='loading'?'Updating…':n.state==='waiting'?'Needs settings · choose a comparison':n.finished?'Finished · on the figure page':`Up to date · ${n.live?'live plot':'image from R'}`):'';$('i-st').style.background=n?(n.state==='error'?'var(--red)':n.state==='loading'?'var(--amber)':n.state==='waiting'?'#a3adb8':'var(--green)'):''}
+  else{$('i-title').textContent='Nothing selected';$('i-status').textContent='Select a card to see its settings'}
+  document.querySelectorAll('.card').forEach(c=>c.classList.toggle('sel',c.dataset.id===S.sel));
+  $('empty').hidden=S.nodes.length>0;
+  const pend=S.nodes.filter(n=>!n.finished&&n.kind==='plot').length;$('drafttext').textContent=pend?`Draft · ${pend} to finish`:'Draft · all finished';
+  renderTabs();
+}
+function renderTabs(){$('tabs').innerHTML=S.tabs.map((t,i)=>`<button class="tab" role="tab" aria-selected="${i===S.tab}">${t.name}<span class="n">${i===S.tab?S.nodes.length:t.n}</span></button>`).join('')+`<button class="plus" aria-label="Add canvas tab"><svg class="ic" style="width:16px;height:16px"><use href="#ui-plus"/></svg></button>`;
+  $('tabs').querySelectorAll('.tab').forEach((b,i)=>b.onclick=()=>{S.tab=i;ui();hint(`Switched to ${S.tabs[i].name}`)});}
+function openLib(tab='plots'){S.lib=true;S.libTab=tab;ui();setTimeout(()=>$('q').focus({preventScroll:true}),reduced?0:190)}
+function closeLib(){S.lib=false;ui();vp.focus({preventScroll:true})}
+function openInsp(){S.insp=true;S.closedByUser=false;ui();if(phone()){const n=S.nodes.find(n=>n.id===S.sel);setTimeout(()=>{if(n)fitAll(true,[n]);else fitAll(true)},reduced?0:200)}}
+function closeInsp(){S.insp=false;if(S.sel)S.closedByUser=true;ui();vp.focus({preventScroll:true});if(phone())setTimeout(()=>fitAll(true),reduced?0:200)}
+function select(id){const changed=id!==S.sel;S.sel=id;const opening=id&&changed&&!S.closedByUser&&!S.insp;if(id&&changed&&!S.closedByUser)S.insp=true;if(!id)S.closedByUser=false;ui();drawMinimap();if(phone()&&id&&(opening||changed)){const n=S.nodes.find(n=>n.id===id);setTimeout(()=>{if(n)fitAll(true,[n])},reduced?0:220)}}
+
+/* ============ Library ============ */
+function renderLib(){const body=$('libbody');body.className='lib-body '+(S.view==='grid'?'grid':'');const q=S.q.trim().toLowerCase();
+  const on=new Set(S.nodes.map(n=>n.src));
+  const fams=FAMILIES.filter(f=>!S.fam||f[0]===S.fam);
+  body.innerHTML=fams.map(([f,icon],fi)=>{const rows=CAT.filter(c=>c[1]===f&&(!q||c[2].toLowerCase().includes(q)||f.toLowerCase().includes(q)));if(!rows.length)return'';
+    const open=q||S.fam||fi===0||S.view==='grid';
+    return `<details class="fam" ${open?'open':''}><summary><svg class="ic chev" style="width:14px;height:14px"><use href="#ui-chev"/></svg><svg class="ic" style="width:16px;height:16px;color:var(--muted)"><use href="#${icon}"/></svg>${f}<span class="n">${rows.length}</span></summary><div class="rows">${rows.map(c=>{
+      const cnt=S.nodes.filter(n=>n.src===c[0]).length;const gated=c[4]==='de',time=c[4]==='time';const st=cnt?'on':gated?'gated':time?'off':'add';
+      const sub=cnt?`On canvas · ${cnt}`:gated?'Needs a confirmed design':time?'Needs time points':c[0].includes('Vector')||c[0].startsWith('results_')||c[0].startsWith('cell_')||c[0].includes('guided')||c[0].includes('3d')||c[0].includes('pathwayPlot')?'Live plot':'Image from R';
+      return `<div class="row" role="button" tabindex="0" draggable="true" data-id="${c[0]}" data-state="${st}" title="${c[2]}"><span class="glyph"><svg class="ic"><use href="#${c[3]}"/></svg></span>${cnt?`<span class="count">${cnt}</span>`:''}<span class="txt"><b>${c[2]}</b><small>${sub}</small></span><button class="add" aria-label="Add ${c[2]}" ${st==='off'?'disabled':''}><svg class="ic" style="width:16px;height:16px"><use href="#ui-plus"/></svg></button></div>`}).join('')}</div></details>`}).join('')||`<p style="padding:24px 12px;color:var(--muted);text-align:center;font-size:13px">No plot matches “${S.q}”.<br><button style="color:var(--accent);font-weight:600;margin-top:6px" id="clearq">Clear search</button></p>`;
+  body.querySelectorAll('.row').forEach(r=>{const add=()=>{const c=byId[r.dataset.id];if(r.dataset.state==='off')return;if(r.dataset.state==='gated'){toast('This plot needs a confirmed study design. Review › Study design.',true);return}addCard(c[0]);};
+    r.querySelector('.add').onclick=e=>{e.stopPropagation();add()};r.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();add()}};
+    r.ondragstart=e=>{e.dataTransfer.setData('application/nexo-plot',r.dataset.id);e.dataTransfer.effectAllowed='copy'};
+    if(r.dataset.state==='on')r.onclick=()=>{const n=S.nodes.find(n=>n.src===r.dataset.id);if(n){select(n.id);reveal(n)}}});
+  const cq=$('clearq');if(cq)cq.onclick=()=>{S.q='';$('q').value='';renderLib()};
+  $('chips').innerHTML=`<button aria-pressed="${!S.fam}" data-f="">All</button>`+FAMILIES.map(f=>`<button aria-pressed="${S.fam===f[0]}" data-f="${f[0]}">${f[0]}</button>`).join('');
+  $('chips').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.fam=b.dataset.f||null;renderLib()});
+}
+$('q').oninput=e=>{S.q=e.target.value;renderLib()};
+$('v-list').onclick=()=>{S.view='list';$('v-list').setAttribute('aria-pressed','true');$('v-grid').setAttribute('aria-pressed','false');renderLib()};
+$('v-grid').onclick=()=>{S.view='grid';$('v-grid').setAttribute('aria-pressed','true');$('v-list').setAttribute('aria-pressed','false');renderLib()};
+$('lt-plots').onclick=()=>{S.libTab='plots';$('lt-plots').setAttribute('aria-selected','true');$('lt-ill').setAttribute('aria-selected','false');ui()};
+$('lt-ill').onclick=()=>{S.libTab='ill';$('lt-ill').setAttribute('aria-selected','true');$('lt-plots').setAttribute('aria-selected','false');ui()};
+vp.ondragover=e=>{if(e.dataTransfer.types.includes('application/nexo-plot')){e.preventDefault();e.dataTransfer.dropEffect='copy'}};
+vp.ondrop=e=>{const id=e.dataTransfer.getData('application/nexo-plot');if(!id)return;e.preventDefault();const r=vp.getBoundingClientRect();const wx=(e.clientX-r.left-S.cam.x)/S.cam.scale,wy=(e.clientY-r.top-S.cam.y)/S.cam.scale;addCard(id,{x:wx-220,y:wy-20})};
+
+/* ============ Cards ============ */
+let seq=100;
+function node(src,x,y,opts={}){const c=byId[src];const live=/results_|cell_|Vector|3d|guided|pathwayPlot/.test(src);return Object.assign({id:'n'+(seq++),kind:'plot',src,label:c[2],icon:c[3],x,y,width:440,height:330,live,finished:false,state:'ok'},opts)}
+function cardEl(n){const el=document.createElement('article');el.className='card';el.dataset.id=n.id;el.tabIndex=0;el.setAttribute('aria-label',n.label);
+  const st=n.state==='loading'?'updating':n.state==='error'?'error':n.state==='waiting'?'waiting':'';
+  let body='';
+  if(n.state==='loading')body=`<div class="skel"></div><div class="skel-bars">${[.5,.8,.35,.9,.6,.7,.45].map(v=>`<i style="height:${v*100}%"></i>`).join('')}</div><div class="badge">Rendering…</div>`;
+  else if(n.state==='error')body=`<div class="state err"><span class="ico"><svg class="ic"><use href="#ui-alert"/></svg></span><b>Could not draw this plot</b><span>R returned: “Not enough samples in Case”</span><div class="btns"><button class="p">Retry</button><button>Data &amp; settings</button></div></div>`;
+  else if(n.state==='waiting')body=`<div class="state wait"><span class="ico"><svg class="ic"><use href="#ui-settings"/></svg></span><b>Needs a comparison</b><span>Choose Reference and Comparison cohorts to draw it.</span><div class="btns"><button class="p">Study design</button></div></div>`;
+  else if(n.state==='empty')body=`<div class="state"><span class="ico"><svg class="ic"><use href="#${n.icon}"/></svg></span><b>Nothing to show</b><span>No lipid passes the current thresholds.</span><div class="btns"><button>Review thresholds</button></div></div>`;
+  else body=plotSvg(n.icon,n.label)+(n.finished?`<div class="badge fin">Finished</div>`:'');
+  el.innerHTML=`<header><span class="st ${st}" title="${n.state}"></span><span class="t">${n.label}</span><span class="acts"><button aria-label="Edit"><svg class="ic" style="width:15px;height:15px"><use href="#ui-edit"/></svg></button><button aria-label="Duplicate"><svg class="ic" style="width:15px;height:15px"><use href="#ui-copy"/></svg></button><button aria-label="More"><svg class="ic" style="width:15px;height:15px"><use href="#ui-more"/></svg></button></span></header><div class="body">${body}</div><span class="grip" aria-hidden="true"></span>`;
+  el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.width=n.width+'px';el.style.height=n.height+'px';
+  el.onpointerdown=e=>{if(e.button!==0||S.mode==='hand')return;select(n.id);if(e.target.closest('header')&&!e.target.closest('button')&&!phone()){dragCard(e,n,el)}};
+  el.onkeydown=e=>{if(e.key==='Enter'){select(n.id);openInsp()}};
+  return el}
+function dragCard(e,n,el){e.stopPropagation();const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;el.setPointerCapture(e.pointerId);
+  const mv=ev=>{n.x=Math.round((ox+(ev.clientX-sx)/S.cam.scale)/10)*10;n.y=Math.round((oy+(ev.clientY-sy)/S.cam.scale)/10)*10;el.style.left=n.x+'px';el.style.top=n.y+'px';drawMinimap()};
+  const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);$('t-undo').disabled=false};el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up)}
+function renderCards(){world.innerHTML='';S.nodes.forEach(n=>world.appendChild(cardEl(n)));ui();drawMinimap()}
+function addCard(src,at){const c=byId[src];let x,y;if(at){x=at.x;y=at.y}else{const right=Math.max(0,...S.nodes.map(n=>n.x+n.width));x=S.nodes.length?right+30:40;y=40;if(x>2000){x=40;y=Math.max(...S.nodes.map(n=>n.y+n.height))+30}}
+  const n=node(src,Math.round(x/10)*10,Math.round(y/10)*10,{state:'loading'});S.nodes.push(n);renderCards();select(n.id);reveal(n);renderLib();$('t-undo').disabled=false;
+  save('saving');setTimeout(()=>{n.state='ok';renderCards();save('saved');toast(`Added ${c[2]}`)},reduced?300:1100)}
+function save(s){$('savedot').className='dot '+(s==='saving'?'saving':'');$('savetext').textContent=s==='saving'?'Saving…':'Saved'}
+
+/* ============ Camera ============ */
+function applyCam(animate){const c=S.cam;if(animate&&!reduced){world.style.transition=`transform var(--t-camera) var(--ease)`;vp.style.transition='background-size var(--t-camera) var(--ease),background-position var(--t-camera) var(--ease)'}else{world.style.transition='none';vp.style.transition='none'}
+  world.style.transform=`translate(${c.x}px,${c.y}px) scale(${c.scale})`;vp.style.backgroundSize=`${20*c.scale}px ${20*c.scale}px`;vp.style.backgroundPosition=`${c.x}px ${c.y}px`;
+  $('z-pct').textContent=Math.round(c.scale*100)+'%';
+  const thumb=c.scale<THUMB_BELOW;if(thumb!==S.thumb){S.thumb=thumb;world.classList.toggle('world-thumb',thumb)}
+  drawMinimap()}
+function zoomTo(scale,px,py,animate){const c=S.cam;scale=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,scale));px=px??vp.clientWidth/2;py=py??vp.clientHeight/2;c.x=px-(px-c.x)/c.scale*scale;c.y=py-(py-c.y)/c.scale*scale;c.scale=scale;applyCam(animate)}
+function bounds(nodes=S.nodes){if(!nodes.length)return null;const x=Math.min(...nodes.map(n=>n.x)),y=Math.min(...nodes.map(n=>n.y)),r=Math.max(...nodes.map(n=>n.x+n.width)),b=Math.max(...nodes.map(n=>n.y+n.height));return{x,y,w:r-x,h:b-y}}
+/* Opening rule: fit all (floor 5 %, ceiling 100 %) with 32 px padding on every side. */
+function fitAll(animate=true,nodes=S.nodes){const b=bounds(nodes);if(!b){S.cam={x:24,y:24,scale:1};applyCam(animate);return}
+  const scale=Math.max(MIN_ZOOM,Math.min(1,(vp.clientWidth-2*PAD)/b.w,(vp.clientHeight-2*PAD)/b.h));
+  S.cam.scale=scale;S.cam.x=(vp.clientWidth-b.w*scale)/2-b.x*scale;S.cam.y=(vp.clientHeight-b.h*scale)/2-b.y*scale;applyCam(animate)}
+function reveal(n){const c=S.cam;const sx=n.x*c.scale+c.x,sy=n.y*c.scale+c.y,sw=n.width*c.scale,sh=n.height*c.scale;const inside=sx>=0&&sy>=0&&sx+sw<=vp.clientWidth&&sy+sh<=vp.clientHeight;if(inside)return;
+  const need=Math.min(c.scale,(vp.clientWidth-2*PAD)/n.width,(vp.clientHeight-2*PAD)/n.height);c.scale=Math.max(MIN_ZOOM,need);c.x=vp.clientWidth/2-(n.x+n.width/2)*c.scale;c.y=vp.clientHeight/2-(n.y+n.height/2)*c.scale;applyCam(true)}
+function drawMinimap(){const b=bounds();const c=S.cam;const vx=-c.x/c.scale,vy=-c.y/c.scale,vw=vp.clientWidth/c.scale,vh=vp.clientHeight/c.scale;
+  if(!b){mm.classList.add('hidden');return}
+  const wholeVisible=vx<=b.x&&vy<=b.y&&vx+vw>=b.x+b.w&&vy+vh>=b.y+b.h;
+  /* The minimap steps back when the whole board is on screen; it returns on pan or zoom and after a hover of the corner. */
+  mm.classList.toggle('hidden',wholeVisible&&!S.mmForce);
+  const X=Math.min(vx,b.x)-40,Y=Math.min(vy,b.y)-40,R=Math.max(vx+vw,b.x+b.w)+40,B=Math.max(vy+vh,b.y+b.h)+40;
+  mm.setAttribute('viewBox',`${X} ${Y} ${R-X} ${B-Y}`);
+  mm.innerHTML=S.nodes.map(n=>`<rect class="node ${n.id===S.sel?'sel':''}" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" rx="${8/Math.max(.2,c.scale)}"/>`).join('')+`<rect class="view" x="${vx}" y="${vy}" width="${vw}" height="${vh}" rx="4"/>`}
+mm.onpointerdown=e=>{const r=mm.getBoundingClientRect(),b=mm.viewBox.baseVal;const ar=b.width/b.height,er=r.width/r.height;let sx=r.width/b.width,sy=r.height/b.height,ox=0,oy=0;if(ar>er){sy=sx;oy=(r.height-b.height*sy)/2}else{sx=sy;ox=(r.width-b.width*sx)/2}
+  const wx=b.x+(e.clientX-r.left-ox)/sx,wy=b.y+(e.clientY-r.top-oy)/sy;S.cam.x=vp.clientWidth/2-wx*S.cam.scale;S.cam.y=vp.clientHeight/2-wy*S.cam.scale;applyCam(true)};
+$('stage').addEventListener('pointermove',e=>{const r=$('stage').getBoundingClientRect();S.mmForce=e.clientX>r.right-190&&e.clientY>r.bottom-120;drawMinimap()});
+vp.addEventListener('wheel',e=>{e.preventDefault();const r=vp.getBoundingClientRect();if(e.ctrlKey||e.metaKey){zoomTo(S.cam.scale*Math.exp(-e.deltaY*.01),e.clientX-r.left,e.clientY-r.top)}else{S.cam.x-=e.deltaX;S.cam.y-=e.deltaY;applyCam(false)}},{passive:false});
+let pan=null,pinch=null;const pts=new Map();
+vp.onpointerdown=e=>{pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===2){const[a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:S.cam.scale,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,x:S.cam.x,y:S.cam.y};pan=null;return}
+  if(e.target===vp||e.target===world){if(S.mode==='hand'||e.button===1||space||phone()){pan={x:e.clientX,y:e.clientY,cx:S.cam.x,cy:S.cam.y};vp.setPointerCapture(e.pointerId)}else select(null)}};
+vp.onpointermove=e=>{if(pts.has(e.pointerId))pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pinch&&pts.size===2){const[a,b]=[...pts.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);const r=vp.getBoundingClientRect();const scale=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,pinch.s*d/pinch.d));const mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top;S.cam.x=mx-(pinch.cx-r.left-pinch.x)/pinch.s*scale;S.cam.y=my-(pinch.cy-r.top-pinch.y)/pinch.s*scale;S.cam.scale=scale;applyCam(false);return}
+  if(pan){S.cam.x=pan.cx+e.clientX-pan.x;S.cam.y=pan.cy+e.clientY-pan.y;applyCam(false)}};
+vp.onpointerup=vp.onpointercancel=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;pan=null};
+$('z-in').onclick=()=>zoomTo(S.cam.scale*1.25,null,null,true);$('z-out').onclick=()=>zoomTo(S.cam.scale/1.25,null,null,true);$('z-pct').onclick=()=>zoomTo(1,null,null,true);$('z-fit').onclick=()=>fitAll(true);
+new ResizeObserver(()=>{applyCam(false)}).observe(vp);
+
+/* ============ Hints, toasts, keys ============ */
+let hintT=0;function hint(text,keys=[]){const h=$('hint');h.innerHTML=text+keys.map(k=>` <kbd>${k}</kbd>`).join('');h.classList.add('on');clearTimeout(hintT);hintT=setTimeout(()=>h.classList.remove('on'),2800)}
+let toastT=0;function toast(text,err=false,undo=true){const t=$('toast');$('toasttext').textContent=text;t.classList.toggle('err',err);$('toastundo').hidden=!undo||err;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),err?9000:6000)}
+$('toastx').onclick=()=>$('toast').classList.remove('on');$('toastundo').onclick=()=>{$('toast').classList.remove('on');hint('Undone')};
+let space=false;
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea,select'))return;const k=e.key.toLowerCase();
+  if(k==='l'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();S.lib?closeLib():openLib(e.shiftKey?'ill':'plots')}
+  else if(k==='i'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();S.insp?closeInsp():openInsp()}
+  else if(k==='v'){S.mode='select';ui();hint('Select',['V'])}else if(k==='h'){S.mode='hand';ui();hint('Pan',['H'])}
+  else if(k==='/'){e.preventDefault();openLib()}
+  else if(e.key==='Escape'){if(S.insp)closeInsp();else if(S.lib)closeLib();else select(null)}
+  else if(k==='m'){S.mmForce=!S.mmForce;drawMinimap();hint(S.mmForce?'Minimap pinned':'Minimap automatic',['M'])}
+  else if(e.key==='+'||e.key==='='){zoomTo(S.cam.scale*1.25,null,null,true)}else if(e.key==='-'){zoomTo(S.cam.scale/1.25,null,null,true)}
+  else if(e.shiftKey&&e.code==='Digit1'){e.preventDefault();fitAll(true);hint('Fit all',['⇧1'])}
+  else if(e.shiftKey&&e.code==='Digit2'){e.preventDefault();const n=S.nodes.find(n=>n.id===S.sel);if(n){fitAll(true,[n]);hint('Fit selection',['⇧2'])}}
+  else if(e.shiftKey&&e.code==='Digit0'){e.preventDefault();zoomTo(1,null,null,true);hint('100 %',['⇧0'])}
+  else if(e.key===' '){space=true;vp.classList.add('hand')}
+  else if(e.key==='?'){hint('Shortcuts: L library · I inspector · V/H tools · ⇧1 fit all · ⇧2 fit selection · ⇧0 100 % · M minimap · ? this list')}});
+addEventListener('keyup',e=>{if(e.key===' '){space=false;vp.classList.toggle('hand',S.mode==='hand')}});
+$('r-plots').onclick=()=>S.lib&&S.libTab!=='ill'?closeLib():openLib('plots');$('r-ill').onclick=()=>S.lib&&S.libTab==='ill'?closeLib():openLib('ill');
+$('r-select').onclick=()=>{S.mode='select';ui()};$('r-hand').onclick=()=>{S.mode='hand';ui()};$('r-insp').onclick=()=>S.insp?closeInsp():openInsp();
+$('lib-x').onclick=closeLib;$('insp-x').onclick=closeInsp;$('sel-insp').onclick=openInsp;$('t-add').onclick=()=>openLib();$('e-add').onclick=()=>openLib();$('e-lib').onclick=()=>openLib();
+$('r-text').onclick=()=>hint('Text and shapes live on the Figure page');$('r-pal').onclick=()=>{if(S.sel){openInsp();hint('Palette section opened in Appearance')}else hint('Select a plot first to change its palette')};
+$('helpbtn').onclick=()=>hint('Shortcuts: L library · I inspector · V/H tools · ⇧1 fit all · ⇧2 fit selection · ⇧0 100 % · M minimap');
+$('banner').querySelector('button').onclick=()=>$('banner').remove();
+$('insp').querySelectorAll('.itabs button').forEach(b=>b.onclick=()=>{$('insp').querySelectorAll('.itabs button').forEach(x=>x.setAttribute('aria-selected','false'));b.setAttribute('aria-selected','true')});
+
+/* ============ Scenes ============ */
+function demoNodes(){return [node('results_dashboard-plot_pca',40,40),node('results_dashboard-plot_violin',510,40),Object.assign(node('results_dashboard-plot_heat',980,40),{finished:true}),Object.assign(node('qc_pca_tab-boxplotAfterNorm',40,400),{height:300}),Object.assign(node('volcano_tab-volcanoPlot',510,400),{height:300})]}
+function boardNodes(count=30){const list=[];const ids=CAT.filter(c=>!c[4]).map(c=>c[0]);const cols=8;for(let i=0;i<count;i++){list.push(node(ids[i%ids.length],40+(i%cols)*470,40+Math.floor(i/cols)*360,{finished:i%4===0}))}return list}
+const scenes={
+  default(){S.nodes=demoNodes();S.lib=false;S.insp=false;S.sel=null;renderCards();fitAll(false);if(S.cam.scale>=1){S.cam={x:24,y:24,scale:1};applyCam(false)}if(!phone())hint('Welcome back · press L for plots, I for the inspector',[])},
+  library(){scenes.default();S.view='list';S.fam=null;S.q='';$('q').value='';renderLib();openLib();$('hint').classList.remove('on')},
+  'library-grid'(){scenes.default();S.view='grid';$('v-grid').click();S.q='';S.fam='Quality check';renderLib();openLib();$('hint').classList.remove('on')},
+  selected(){scenes.default();S.closedByUser=false;select(S.nodes[0].id);$('hint').classList.remove('on')},
+  board(){S.nodes=boardNodes(30);S.lib=false;S.insp=false;S.sel=null;renderCards();fitAll(false);hint(`30 cards · opened at ${Math.round(S.cam.scale*100)} % so the whole board is visible`,['⇧1'])},
+  states(){S.nodes=[node('results_dashboard-plot_pca',40,40),node('qc_pca_tab-sampleCorrPlot',510,40,{state:'loading'}),node('volcano_tab-volcanoPlot',980,40,{state:'error'}),node('barchart-barPlotFiltered',40,400,{state:'waiting'}),node('structural_grid_tab-heatmapPlot',510,400,{state:'empty'}),Object.assign(node('results_dashboard-plot_heat',980,400),{finished:true})];S.lib=false;S.insp=false;S.sel=null;renderCards();fitAll(false);hint('Card states: live · rendering · error · needs settings · empty · finished')},
+  empty(){S.nodes=[];S.lib=false;S.insp=false;S.sel=null;renderCards();S.cam={x:24,y:24,scale:1};applyCam(false);$('hint').classList.remove('on')},
+  phone(){scenes.default();hint('Resize the window to 390 px (or open on a phone): read-only, fit all, tap a card for details')},
+  hide(){document.body.classList.remove('scenes');setTimeout(()=>applyCam(false),50)}
+};
+document.querySelectorAll('#scenes button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#scenes button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');scenes[b.dataset.scene]()});
+const params=new URLSearchParams(location.search);if(params.get('bare')==='1')document.body.classList.remove('scenes');
+renderLib();
+requestAnimationFrame(()=>{(scenes[params.get('scene')]||scenes.default)();if(phone()){fitAll(false)}});
+addEventListener('resize',()=>ui());
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "logratioPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b06-differential/logratioPlot-1-draws.png, docs/integration/chart-audit/b06-differential/logratioPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent)"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (33850 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b06-differential/logratioPlot-3-larger.png, docs/integration/chart-audit/b06-differential/logratioPlot-3-smaller.png"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "25 Team controls all present (allowedInputs not in Team's markup: selectedBaseline, featureLevel, selectedFeatures_flat); showBaseline→true redrew (docs/integration/chart-audit/b06-differential/logratioPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b06-differential/logratioPlot-5-appearance.png; canvas Undo → \"Audit logratioPlot\", Redo → \"Audit logratioPlot\""
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 279850 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV Violin_Plots_Data_2026-11-07-23-18.csv 3397 B; Team PDF Violin_Plots_2026-11-07-23-19.pdf 18567 B; card PDF 217626 B; docs/integration/chart-audit/b06-differential/logratioPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "FAIL",
+  "detail": "not finished after 180 s: state=updating \"Updating…\", page said \"\" (docs/integration/chart-audit/b06-differential/logratioPlot-8-finish-failed.png); page.waitForFunction: Timeout 180000ms exceeded."
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit logratioPlot\" with showBaseline=false; remove + Undo brought it back drawn; docs/integration/chart-audit/b06-differential/logratioPlot-9-duplicate.png"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened bd1b4fb024a3…: \"Audit logratioPlot\", showBaseline=false, background kept; docs/integration/chart-audit/b06-differential/logratioPlot-10-reopened.png"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; 1440x900: tabs Data/Appearance/Statistics/Export, 1 sliders; 1024x768: tabs Data/Appearance/Statistics/Export, 1 sliders; docs/integration/chart-audit/b06-differential/logratioPlot-12-layout-<width>-<tab>.png"
+ },
+ {
+  "plot": "logratioPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

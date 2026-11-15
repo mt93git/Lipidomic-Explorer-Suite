@@ -1,0 +1,3 @@
+$ Rscript --vanilla tests/dual-ui/test_api_echo_numeric.R   (RTX, production tree, before the fix)
+Error: echoed numeric input became: "14"
+Execution halted

@@ -1,0 +1,5 @@
+Rscript --vanilla tests/dual-ui/test_api_analysis_settings.R  (RTX, before R/frontends/api/analysis.R)
+Error in api_analysis_schema(s) :
+  could not find function "api_analysis_schema"
+Execution halted
+exit=1

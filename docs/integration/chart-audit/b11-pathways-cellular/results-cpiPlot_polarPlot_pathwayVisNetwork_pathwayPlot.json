@@ -1,0 +1,345 @@
+[
+ {
+  "plot": "pathwayPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "at first: state=current \"−1 0 1 Saturation Change (Z-score) Lipid Pathway Map G3P Fatty Acids TGΔC: +2.43 DG PA LPA LCB CerΔC: +0.02 SMΔC: -0.04 \", action: none needed (docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-1-before-generate.png); then: docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-1-draws.png, docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 5 traces as the module render (scatter); title {\"text\":\"Lipid Pathway Map\",\"font\":{\"size\":20}}"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "4 element(s) overflow the card body"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "27 Team controls all present (Team's run-time controls active_classes_select, move_node_select, edge_to_remove, add_edge_source, add_edge_target: all present); node_color_map→fc redrew (docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "FAIL",
+  "detail": "font size not on the plot (12; layout.font {\"color\":\"#aa0000\"}; field shows ?)"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 238039 B; SVG 37377 B; Team CSV Lipid_Pathway_Visualization_Data_20261108_0026.csv 2327 B; Team PDF Lipid_Pathway_Visualization_20261108_0026.pdf 4224 B; card PDF 133527 B; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-8-finished.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pathwayPlot\" with node_color_map=fc (at first: state=current, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-9-duplicate.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 579524a67c28…: \"Audit pathwayPlot\", node_color_map=fc, background kept (at first: state=current, drawn=false); docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-10-reopened.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "at first: state=current \"\", action: none needed (docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-1-before-generate.png); then: docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-1-draws.png, docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": "1b",
+  "name": "network-pan",
+  "status": "PASS",
+  "detail": "drag 90,-50 inside the network panned it and its zoom-in button zoomed it; world transform \"translate(-300px, 24px) scale(1)\" and card position unchanged; wheel −300 over it (by design, canvas owns the wheel): world translate(-300px, 24px) scale(1) → translate(-300px, 324px) scale(1), network changed; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-1b-network-pan.png"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 18 nodes / 17 edges; card draws them on a 618x682 canvas (9405 inked samples)"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-3-larger.png, docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-3-smaller.png"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "27 Team controls all present (Team's run-time controls active_classes_select, move_node_select, edge_to_remove, add_edge_source, add_edge_target: all present); node_color_map→fc redrew (docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 17 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-5-appearance.png; canvas Undo → \"Audit pathwayVisNetwork\", Redo → \"Audit pathwayVisNetwork\""
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 328910 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); no Team downloads; card PDF 159615 B; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-7-export-dialog.png"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 421x460 in a 421x460 body; Edit figure → live visnetwork; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-8-finished.png"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pathwayVisNetwork\" with node_color_map=fc (at first: state=current, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-9-duplicate.png"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened e65b156fe4c0…: \"Audit pathwayVisNetwork\", node_color_map=fc, background kept (at first: state=current, drawn=false); docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-10-reopened.png"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b11-pathways-cellular/pathwayVisNetwork-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "pathwayVisNetwork",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "at first: state=current \"\", action: none needed (docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-1-before-generate.png); then: docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-1-draws.png, docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (38194 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-3-larger.png, docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-3-smaller.png"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "15 Team controls all present (Team's run-time controls selectedBaseline: all present); pointSize→6 redrew (docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-4-data-changed.png); invalid -1: state=error, redrew=false, message=\"Could not update the plot: Invalid value for pointSize: below the minimum 1 ×\" (docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-5-appearance.png; canvas Undo → \"Audit cpiPlot\", Redo → \"Audit cpiPlot\""
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 335927 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team CSV cpi_ferroptosis_vulnerability_2026-11-08.csv 1301 B; Team PDF cpi_ferroptosis_vulnerability_2026-11-08.pdf 18276 B; card PDF 164338 B; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-8-finished.png"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit cpiPlot\" with pointSize=6 (at first: state=current, drawn=true); remove + Undo brought it back drawn; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-9-duplicate.png"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 69d5c3eea0c2…: \"Audit cpiPlot\", pointSize=6, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-10-reopened.png"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b11-pathways-cellular/cpiPlot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "cpiPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "at first: state=current \"\", action: none needed (docs/integration/chart-audit/b11-pathways-cellular/polarPlot-1-before-generate.png); then: docs/integration/chart-audit/b11-pathways-cellular/polarPlot-1-draws.png, docs/integration/chart-audit/b11-pathways-cellular/polarPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (47781 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-3-larger.png, docs/integration/chart-audit/b11-pathways-cellular/polarPlot-3-smaller.png"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "15 Team controls all present (Team's run-time controls selectedBaseline: all present); pointSize→6 redrew (docs/integration/chart-audit/b11-pathways-cellular/polarPlot-4-data-changed.png); invalid -1: state=error, redrew=false, message=\"Could not update the plot: Invalid value for pointSize: below the minimum 1 ×\" (docs/integration/chart-audit/b11-pathways-cellular/polarPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-5-appearance.png; canvas Undo → \"Audit polarPlot\", Redo → \"Audit polarPlot\""
+ },
+ {
+  "plot": "polarPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "polarPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 438820 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team CSV phenotypic_polarization_scores_2026-11-08.csv 2318 B; Team PDF phenotypic_polarization_scores_2026-11-08.pdf 7232 B; card PDF 382954 B; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-8-finished.png"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit polarPlot\" with pointSize=6 (at first: state=current, drawn=true); remove + Undo brought it back drawn; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-9-duplicate.png"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 7c7dcbed8c61…: \"Audit polarPlot\", pointSize=6, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b11-pathways-cellular/polarPlot-10-reopened.png"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b11-pathways-cellular/polarPlot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "polarPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

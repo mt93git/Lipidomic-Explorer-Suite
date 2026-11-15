@@ -1,0 +1,2 @@
+# Written by seed.mjs: order codes and the test operator's TOTP secret. Never commit.
+.seed.local.json

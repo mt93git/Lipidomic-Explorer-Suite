@@ -1,0 +1,19 @@
+/* Targeted lipid cohort: entry, chip and side sheet (layout from .analysis-sheet). */
+.cohort-entry {display:inline-flex; align-items:center; gap:var(--space-2); flex:none}
+.cohort-chip {display:inline-flex; align-items:center; border:1px solid var(--blue-fg); border-radius:999px; background:var(--blue-bg); color:var(--blue-fg); font-size:var(--font-chrome); white-space:nowrap}
+.cohort-chip button {background:none; border:0; color:inherit; font:inherit; font-weight:600; padding:2px 10px; min-height:24px; cursor:pointer; border-radius:999px}
+.cohort-chip button + button {padding:2px 8px; border-left:1px solid var(--blue-fg); border-radius:0 999px 999px 0; font-weight:400}
+.cohort-chip button:focus-visible {outline:2px solid var(--blue-fg); outline-offset:2px}
+.cohort-sheet {gap:var(--space-2)}
+.cohort-intro {color:var(--muted); margin:0}
+.cohort-search {width:100%; box-sizing:border-box; font:inherit; padding:6px 8px; border:1px solid var(--muted); border-radius:6px; color:var(--ink)}
+.cohort-actions {display:flex; gap:var(--space-2)}
+.cohort-count {margin:0; color:var(--ink); font-weight:600}
+.cohort-list {flex:1; min-height:0; overflow:auto; border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+.cohort-class {padding:var(--space-2) 0; border-bottom:1px solid var(--line)}
+.cohort-class-head {display:flex; align-items:center; gap:var(--space-2); font-weight:600; color:var(--ink)}
+.cohort-class-count {margin-left:auto; color:var(--muted); font-weight:400; font-variant-numeric:tabular-nums}
+.cohort-class ul {list-style:none; margin:var(--space-1) 0 0; padding:0 0 0 22px}
+.cohort-class li label {display:flex; align-items:center; gap:var(--space-2); padding:2px 0; color:var(--ink)}
+.cohort-error:empty, .cohort-sheet .analysis-status:empty {display:none}
+.cohort-error {color:var(--red-fg); background:var(--red-bg); padding:6px 8px; border-radius:6px; margin:0}

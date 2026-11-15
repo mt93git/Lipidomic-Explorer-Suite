@@ -1,0 +1,52 @@
+$ cd frontends/nexo && npx vitest run src/state/layoutUpload.test.ts
+ RUN  v3.2.7 <repo>/frontends/nexo
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/state/layoutUpload.test.ts [ src/state/layoutUpload.test.ts ]
+Error: Cannot find module './layoutUpload' imported from '<repo>/frontends/nexo/src/state/layoutUpload.test.ts'
+ ❯ src/state/layoutUpload.test.ts:4:1
+      2| // Team's fileInput would accept it, reports Team's own message, and k…
+      3| import { describe, expect, it } from 'vitest';
+      4| import { checkUploadFile, isUploadId, parseLayoutJson, uploadsOf, carr…
+       | ^
+      5| import { computedResends } from './computed';
+      6| import { mockComputedLabel, mockLayoutApply, mockLayoutDownload } from…
+Caused by: Error: Failed to load url ./layoutUpload (resolved id: ./layoutUpload) in <repo>/frontends/nexo/src/state/layoutUpload.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22907:33
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  08:31:36
+   Duration  277ms (transform 31ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 34ms)
+
+$ NEXO_PLOTLY_JS=<path>/plotly.min.js node tests/dual-ui/test_nexo_pathway_layout_json.cjs
+Error: npm run build
+
+> nexo-v0@0.0.0 build
+> tsc --noEmit && vite build
+
+src/state/layoutUpload.test.ts(4,108): error TS2307: Cannot find module './layoutUpload' or its corresponding type declarations.
+src/state/layoutUpload.test.ts(6,29): error TS2305: Module '"../mock/schema"' has no exported member 'mockLayoutApply'.
+src/state/layoutUpload.test.ts(6,46): error TS2305: Module '"../mock/schema"' has no exported member 'mockLayoutDownload'.
+
+
+    at run (<repo>/tests/dual-ui/test_nexo_pathway_layout_json.cjs:21:34)
+    at <repo>/tests/dual-ui/test_nexo_pathway_layout_json.cjs:107:3
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+(exit 1)
+
+$ (same, with layoutUpload.test.ts set aside so the mock build compiles)
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByRole('group', { name: 'More downloads from this analysis' }).getByRole('button', { name: 'Download Layout JSON', exact: true }) to be visible
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_pathway_layout_json.cjs:57:16)
+    at async <repo>/tests/dual-ui/test_nexo_pathway_layout_json.cjs:117:46 {
+  log: [
+    "  - waiting for getByRole('group', { name: 'More downloads from this analysis' }).getByRole('button', { name: 'Download Layout JSON', exact: true }) to be visible"
+  ],
+  name: 'TimeoutError'
+}
+(exit 1)
+
+$ Rscript tests/dual-ui/test_api_pathway_layout_json.R
+UNRUN on the M1 (no R): expected red, api_card_downloads lists no download_config and api_card_upload does not exist.

@@ -1,0 +1,23 @@
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H8d chromium copy-paste-plot
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H8d chromium zoom-shortcuts
+PASS H8 chromium add-placeholder-reveal-highlight-minimap-locate
+PASS H8d chromium rail-palettes-text
+PASS H2F chromium toolbar-tidy-remove-all-undo
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^Requires configuration · Confirm study design…$/. Input:
+
+'Requires configuration'
+
+    at browserTests (<repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:158:12)
+    at async <repo>/tests/dual-ui/test_nexo_canvas_edit.cjs:184:46 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'Requires configuration',
+  expected: /^Requires configuration · Confirm study design…$/,
+  operator: 'match',
+  diff: 'simple'
+}

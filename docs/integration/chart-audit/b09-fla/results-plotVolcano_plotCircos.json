@@ -1,0 +1,170 @@
+[
+ {
+  "plot": "plotVolcano",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "study design confirmed first (Animal, independent) via the Differential volcano row; docs/integration/chart-audit/b09-fla/plotVolcano-1-draws.png, docs/integration/chart-audit/b09-fla/plotVolcano-1-zoomed-out.png; image 620x720 in a 618x682 box (dpr 1, 1.00 px per CSS px, object-fit contain); docs/integration/chart-audit/b09-fla/plotVolcano-1-card-100.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (45789 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b09-fla/plotVolcano-3-larger.png, docs/integration/chart-audit/b09-fla/plotVolcano-3-smaller.png"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "21 Team controls all present (allowedInputs not in Team's markup: selectedBaseline, volcano_target_group); labelMode→Functional Name redrew (docs/integration/chart-audit/b09-fla/plotVolcano-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b09-fla/plotVolcano-5-appearance.png; canvas Undo → \"Audit plotVolcano\", Redo → \"Audit plotVolcano\""
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 495685 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV Volcano_Data_2026-11-07.csv 2897 B; Team PDF Volcano_Plot_2026-11-07.pdf 8000 B; card PDF 235952 B; docs/integration/chart-audit/b09-fla/plotVolcano-7-export-dialog.png"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders at 1440x900 and 1024x768 (spill/overlap/escape, all tabs, details and toggles open, card chrome + menu); 10 screenshots e.g. docs/integration/chart-audit/b09-fla/plotVolcano-12-layout-1440-data.png"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b09-fla/plotVolcano-8-finished.png"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit plotVolcano\" with labelMode=Functional Name; remove + Undo brought it back drawn; docs/integration/chart-audit/b09-fla/plotVolcano-9-duplicate.png"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened cd3c3369c8eb…: \"Audit plotVolcano\", labelMode=Functional Name, background kept; docs/integration/chart-audit/b09-fla/plotVolcano-10-reopened.png"
+ },
+ {
+  "plot": "plotVolcano",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "study design confirmed first (Animal, independent) via the Differential volcano row; docs/integration/chart-audit/b09-fla/plotCircos-1-draws.png, docs/integration/chart-audit/b09-fla/plotCircos-1-zoomed-out.png; image 620x720 in a 618x682 box (dpr 1, 1.00 px per CSS px, object-fit contain); docs/integration/chart-audit/b09-fla/plotCircos-1-card-100.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (4484 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b09-fla/plotCircos-3-larger.png, docs/integration/chart-audit/b09-fla/plotCircos-3-smaller.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "21 Team controls all present (allowedInputs not in Team's markup: selectedBaseline, volcano_target_group); corrThresh→0.7 redrew (docs/integration/chart-audit/b09-fla/plotCircos-4-data-changed.png); slider bounded like Team: an out-of-range value cannot be entered"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b09-fla/plotCircos-5-appearance.png; canvas Undo → \"Audit plotCircos\", Redo → \"Audit plotCircos\""
+ },
+ {
+  "plot": "plotCircos",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "plotCircos",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 186434 B; SVG disabled (\"More downloads from this analysis PDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team PDF Functional_Correlation_Network_20261107.pdf 14985 B; card PDF 88042 B; docs/integration/chart-audit/b09-fla/plotCircos-7-export-dialog.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders at 1440x900 and 1024x768 (spill/overlap/escape, all tabs, details and toggles open, card chrome + menu); 10 screenshots e.g. docs/integration/chart-audit/b09-fla/plotCircos-12-layout-1440-data.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b09-fla/plotCircos-8-finished.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit plotCircos\" with corrThresh=0.7; remove + Undo brought it back drawn; docs/integration/chart-audit/b09-fla/plotCircos-9-duplicate.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened fc6fc6eca433…: \"Audit plotCircos\", corrThresh=0.7, background kept; docs/integration/chart-audit/b09-fla/plotCircos-10-reopened.png"
+ },
+ {
+  "plot": "plotCircos",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

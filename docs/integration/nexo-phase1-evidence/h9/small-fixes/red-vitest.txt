@@ -1,0 +1,29 @@
+   ✓ edit saves at 15s; continuous edits at 60s 20ms
+   ✓ failure retries after 5s 1ms
+   ✓ stale ack keeps dirty; edits during save resave after 1s 0ms
+   ✓ watchdog ignores a late ack and retries without losing edits 0ms
+   ✓ paused and view-only suppress saves; busy retries stop after 24 3ms
+   ✓ H8 journeys 8.1: a failed save keeps its reason until a save succeeds 1ms
+   ✓ a lost session that could not be reopened shows the failure and is not retried (no retry loop) 1ms
+   × outage (500/502/503/network): one "Can't reach the server" status, backoff, recovers by itself 7ms
+   × outage backoff caps at 60 s 4ms
+   × 409 session_lost: no retry, Reopen offered (lost), edits kept; reopen() retries and the pill returns to normal 1ms
+   × run-need gate before the first render > createCard of a time course sets the gate (no render request until Generate analysis) 177ms
+   ✓ run-need gate before the first render > other plots are not gated 0ms
+   × run-need gate before the first render > a replay that presses the module button opens the gate 0ms
+ FAIL  src/inspectorStatus.test.ts [ src/inspectorStatus.test.ts ]
+Error: Cannot find module './inspectorStatus' imported from '<repo>/src/inspectorStatus.test.ts'
+Caused by: Error: Failed to load url ./inspectorStatus (resolved id: ./inspectorStatus) in <repo>/src/inspectorStatus.test.ts. Does the file exist?
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/runNeedsFresh.test.ts > run-need gate before the first render > createCard of a time course sets the gate (no render request until Generate analysis)
+AssertionError: expected false to be true // Object.is equality
+ FAIL  src/runNeedsFresh.test.ts > run-need gate before the first render > a replay that presses the module button opens the gate
+AssertionError: expected false to be true // Object.is equality
+ FAIL  src/state/autosave.test.ts > outage (500/502/503/network): one "Can't reach the server" status, backoff, recovers by itself
+AssertionError: expected { status: 'error', …(4) } to match object { status: 'offline', …(1) }
+ FAIL  src/state/autosave.test.ts > outage backoff caps at 60 s
+AssertionError: expected "spy" to be called 7 times, but got 40 times
+ FAIL  src/state/autosave.test.ts > 409 session_lost: no retry, Reopen offered (lost), edits kept; reopen() retries and the pill returns to normal
+AssertionError: expected { status: 'error', …(4) } to match object { status: 'error', lost: true }
+ Test Files  3 failed (3)
+      Tests  5 failed | 8 passed (13)

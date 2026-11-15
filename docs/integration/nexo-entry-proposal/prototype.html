@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nexo entry · sign-in and data preparation · proposal prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,600;0,6..12,700&display=swap" rel="stylesheet">
+<style>
+/* Proposal prototype, not product code. Synthetic data and fictional people only.
+   Tokens: frontends/nexo/src/tokens.css. Illustrations: Team's, copied next to this file. */
+:root{--accent:#235273;--navy:#162230;--ink:#141b24;--muted:#44505e;--line:#e3e7ec;--line-strong:#cfd6de;--tint:#eaf1f7;--paper:#fff;--canvas:#f3f5f7;--grid-dot:#cdd6e2;
+--amber-bg:#fff4e0;--amber-fg:#6b4200;--blue-bg:#e7f0fa;--blue-fg:#1d4f7c;--red-bg:#fdecea;--red-fg:#8a1f11;--green-bg:#e6f4ec;--green-strong:#1a5a38;--danger:#9b2c2c;--pill-fg:#dbe3ea;
+--font:'Nunito Sans',system-ui,sans-serif;--r-sm:6px;--r-md:8px;--r-lg:12px;--shadow-card:0 2px 10px #16223014;--shadow-pop:0 2px 6px #16223014,0 10px 28px #16223018;
+--shadow-entry:0 18px 50px rgba(22,34,48,.16),0 2px 6px rgba(22,34,48,.08);
+/* Proposed entry tokens */
+--field:#7d8a99;      /* field border, 3.5:1 on white (Team #cbd5e1 is 1.5:1, Nexo --line-strong 1.5:1) */
+--field-h:40px;--h1:24px;--h2:18px;--body:14px;--chrome:13px;--small:12px;
+--s1:#2a78d6;--s2:#eb6834;--off:#9aa5b1; /* chart series: Control, Treated, left out */
+--bar:48px;--rb:0px;--ease:cubic-bezier(.2,.7,.2,1)}
+body.scenes{--rb:30px}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;padding-top:var(--rb);font:var(--body)/1.55 var(--font);color:var(--ink);background:var(--canvas);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;border-radius:var(--r-sm)}
+h1,h2,h3,p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[tabindex="-1"]:focus{outline:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+svg.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* Reviewer bar (not product UI) */
+#scenes{position:fixed;left:0;right:0;top:0;height:30px;z-index:1000;display:flex;align-items:center;gap:4px;padding:0 8px;background:#fde68a;color:#3b2f05;font-size:12px;border-bottom:1px solid #d9b52a;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+#scenes::-webkit-scrollbar{display:none}
+#scenes strong{margin-right:4px}#scenes .sep{width:1px;height:16px;background:#c9a227;margin:0 4px;flex:none}
+#scenes button{padding:3px 8px;border:1px solid #c9a227;background:#fff7d6;border-radius:999px;font-size:12px;flex:none;line-height:1.3}
+#scenes button[aria-pressed=true]{background:#3b2f05;color:#fff;border-color:#3b2f05}
+#scenes :focus-visible{outline-color:#3b2f05}
+body:not(.scenes) #scenes{display:none}
+
+/* Shell: Nexo's navy bar with the lab logo */
+.topbar{position:sticky;top:var(--rb);z-index:50;height:var(--bar);display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--navy);color:#fff;font-size:var(--chrome)}
+.topbar :focus-visible{outline-color:#fff}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;color:#fff;text-decoration:none;border-radius:var(--r-sm)}
+.brand img{height:30px;width:auto;display:block}
+.brand b{font-size:14px;font-weight:700;white-space:nowrap}
+.steps{display:flex;gap:4px;margin-left:8px}
+.steps button{height:30px;padding:0 12px;border-radius:999px;color:var(--pill-fg);font-size:var(--chrome)}
+.steps button[aria-current=step]{background:var(--accent);color:#fff;font-weight:600}
+.steps button:disabled{color:#9fb0bf;cursor:default}
+.pchip{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--r-md);background:#ffffff14;color:#fff;font-weight:600;white-space:nowrap}
+.pchip small{font-size:11px;font-weight:600;color:var(--pill-fg);border:1px solid #ffffff40;border-radius:999px;padding:0 8px;line-height:18px}
+.spacer{flex:1}
+.account{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px 0 4px;border-radius:999px;color:#fff;white-space:nowrap}
+.account:hover,.helpbtn:hover{background:#ffffff14}
+.av{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.account .av{box-shadow:0 0 0 1.5px #ffffffb3}
+.account small{font-size:11px;color:var(--pill-fg);border:1px solid #ffffff40;border-radius:999px;padding:0 8px;line-height:18px}
+.helpbtn{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 4px;border-radius:999px;color:var(--pill-fg)}
+.helpbtn img{width:26px;height:26px;border-radius:50%;background:#fff;display:block}
+.menu{position:absolute;right:12px;top:calc(var(--bar) - 4px);z-index:60;min-width:220px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:8px}
+.menu p{padding:4px 8px;color:var(--muted);font-size:var(--small)}.menu p b{display:block;color:var(--ink);font-size:var(--chrome)}
+.menu button{display:block;width:100%;text-align:left;height:32px;padding:0 8px;font-size:var(--chrome)}.menu button:hover{background:var(--tint)}
+.menu :focus-visible{outline-color:var(--accent)}
+
+/* Stage and illustration: one fixed layer, so the art always fills the screen */
+#stage{position:relative;min-height:calc(100vh - var(--rb) - var(--bar));min-height:calc(100dvh - var(--rb) - var(--bar))}
+#art{position:fixed;left:0;right:0;bottom:0;top:calc(var(--rb) + var(--bar));z-index:0;pointer-events:none;background:#fafaf8 center/cover no-repeat}
+#view{position:relative;z-index:1}
+body.scene-1 #art{background-image:url(login-spectrum.svg)}
+body.scene-2 #art{background-image:url(data-matrix.svg)}
+body.scene-3 #art,body.scene-4 #art{background-color:#f7f6fa;background-image:url(step-backdrop.svg);background-position:center bottom}
+body.noart #art{background:var(--canvas)}
+/* Tall screens: the sign-in art is cropped to its left third, where the peaks carry the lipid characters (Team's centre crop loses them);
+   the step art switches to Team's portrait drawing. */
+@media(max-aspect-ratio:4/5){body.scene-1 #art{background-position:left bottom}body.scene-3 #art,body.scene-4 #art{background-image:url(step-backdrop-portrait.svg)}}
+@media(prefers-reduced-motion:reduce){body.scene-1 #art{background-image:url(login-spectrum-static.svg)}body.scene-2 #art{background-image:url(data-matrix-static.svg)}}
+
+/* Shared pieces */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-card)}
+.btn{height:var(--field-h);padding:0 16px;border-radius:var(--r-md);font-weight:600;font-size:var(--body);display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;text-decoration:none}
+.btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{background:#1c4460}
+.btn.secondary{border:1px solid var(--field);background:#fff;color:var(--ink)}.btn.secondary:hover{background:var(--tint)}
+.btn.small{height:32px;padding:0 12px;font-size:var(--chrome)}
+.btn:disabled{background:#e3e7ec;color:#44505e;cursor:not-allowed;border-color:transparent}
+.link{color:var(--accent);text-decoration:underline;text-underline-offset:2px;font-size:var(--chrome);border-radius:2px}
+.muted{color:var(--muted)}.small{font-size:var(--small)}.nowrap{white-space:nowrap}
+.field{display:grid;gap:4px;margin-top:16px}
+.field label,.lab{font-size:var(--chrome);font-weight:600;color:var(--ink)}
+.field .hint{font-size:var(--small);color:var(--muted)}
+.input{height:var(--field-h);width:100%;padding:0 12px;border:1px solid var(--field);border-radius:var(--r-md);background:#fff;font-size:var(--body)}
+.input::placeholder{color:var(--muted);opacity:1}   /* the browsers' own placeholder gray is 4.6:1 (Chromium) or 2.4:1 (WebKit) */
+select.input{padding-right:8px}
+.input[aria-invalid=true]{border:2px solid var(--danger);padding:0 11px}
+.withbtn{position:relative}.withbtn .input{padding-right:64px}
+.withbtn button{position:absolute;right:4px;top:4px;height:calc(var(--field-h) - 8px);padding:0 10px;font-size:var(--chrome);font-weight:600;color:var(--accent)}
+.msg{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;border-radius:var(--r-md);font-size:var(--chrome);line-height:1.45}
+.msg svg{margin-top:1px}
+.msg.info{background:var(--blue-bg);color:var(--blue-fg)}.msg.warn{background:var(--amber-bg);color:var(--amber-fg)}.msg.bad{background:var(--red-bg);color:var(--red-fg)}.msg.good{background:var(--green-bg);color:var(--green-strong)}
+.err{display:flex;gap:6px;align-items:flex-start;color:var(--red-fg);font-size:var(--chrome);line-height:1.4}
+.avs{display:inline-flex}.avs .av{width:24px;height:24px;font-size:10px;color:#fff;border:2px solid #fff;margin-left:-6px}.avs .av:first-child{margin-left:0}
+.tag{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;font-size:var(--small);font-weight:600;white-space:nowrap}
+.tag.new{background:var(--amber-bg);color:var(--amber-fg)}.tag.ok{background:var(--green-bg);color:var(--green-strong)}.tag.plain{background:var(--tint);color:var(--accent)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}.dot.c1{background:var(--s1)}.dot.c2{background:var(--s2)}.dot.off{background:var(--off)}
+
+/* Scene 1 · Sign in */
+.signin{display:grid;justify-items:center;padding:88px 16px 48px}
+.signin .card{width:min(400px,100%);padding:32px;border-radius:16px;border-color:transparent;box-shadow:var(--shadow-entry)}
+.signin h1{font-size:clamp(20px,5.6vw,var(--h1));line-height:1.25;font-weight:700;letter-spacing:-.005em}
+.signin .lede{margin-top:4px;color:var(--muted)}
+.signin .eyebrow{margin-bottom:2px;font-size:var(--small);font-weight:600;color:var(--muted)}
+.signin .btn.primary{width:100%;margin-top:24px}
+.signin .links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}
+.signin .back{display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;color:var(--accent);font-size:var(--chrome);font-weight:600}
+.signin .msg{margin-bottom:16px}
+.signin .who{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:6px 10px;background:var(--tint);border-radius:var(--r-md);font-size:var(--chrome)}
+.signin .who span{min-width:0;overflow:hidden;text-overflow:ellipsis;flex:1}
+.code{letter-spacing:.5em;font-size:20px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;padding-left:calc(12px + .5em)}
+.signin .foot{margin-top:16px;font-size:var(--small);color:var(--muted)}
+@media(max-width:480px){.signin{padding:32px 16px}.signin .card{padding:24px}}
+
+/* Scene 2 · Start */
+.page{max-width:960px;margin:0 auto;padding:32px 24px 56px}
+.sheet{background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-entry);padding:32px}
+.sheet h1{font-size:var(--h1);line-height:1.25;font-weight:700}
+.sheet .lede{margin-top:4px;color:var(--muted)}
+.feature{display:flex;align-items:center;gap:16px;margin-top:24px;padding:16px 20px;background:var(--tint);border-radius:var(--r-lg)}
+.feature .grow{flex:1;min-width:0}.feature h2{font-size:var(--h2);line-height:1.3;font-weight:700}
+.feature .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:var(--chrome);margin-top:2px}
+.sec{margin-top:32px}
+.sec>header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.sec h2{font-size:var(--h2);line-height:1.3;font-weight:700}.sec h2 span{color:var(--muted);font-weight:400}
+.seg{display:inline-flex;border:1px solid var(--field);border-radius:var(--r-md);overflow:hidden;background:#fff}
+.seg button{height:32px;padding:0 12px;font-size:var(--chrome);border-radius:0;border-left:1px solid var(--line-strong)}.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true],.seg button[aria-checked=true]{background:var(--accent);color:#fff;font-weight:600}
+.seg :focus-visible{outline-offset:-3px}.seg [aria-pressed=true]:focus-visible,.seg [aria-checked=true]:focus-visible{outline-color:#fff}
+.rows{list-style:none;margin:0;padding:0}
+.rows li{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr) 112px;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.rows li:first-child{border-top:0}
+.rows .name{font-weight:700;font-size:var(--body)}.rows .sub{color:var(--muted);font-size:var(--chrome)}
+.rows .state{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:var(--chrome)}
+.rows .btn{width:100%}
+.tert{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:var(--chrome)}
+.empty{display:grid;justify-items:center;text-align:center;gap:8px;padding:32px 16px 16px}
+.empty img{width:96px;height:96px}.empty h2{font-size:var(--h2)}.empty p{max-width:44ch;color:var(--muted)}
+@media(max-width:720px){.page{padding:16px 12px 32px}.sheet{padding:20px 16px}
+ .feature{flex-direction:column;align-items:stretch}
+ .rows li{grid-template-columns:minmax(0,1fr) 104px;gap:4px 12px}.rows .state{grid-column:1;grid-row:2}.rows li>.btn{grid-column:2;grid-row:1/span 2;align-self:center}}
+
+/* Scene 3 · Prepare the data */
+.prep{max-width:1160px;margin:0 auto;padding:32px 24px 56px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start}
+.prep .side{position:sticky;top:calc(var(--rb) + var(--bar) + 24px);padding:24px}
+.crumb{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;color:var(--accent);font-size:var(--chrome);font-weight:600}
+.frow{display:grid;grid-template-columns:152px minmax(0,1fr);gap:8px 24px;padding:20px 0;border-top:1px solid var(--line)}
+.frow:first-of-type{margin-top:24px}
+.frow>div:first-child h2{font-size:var(--body);font-weight:700;line-height:1.4}
+.frow>div:first-child p{font-size:var(--small);color:var(--muted);line-height:1.4;margin-top:2px}
+.frow .ctl{min-width:0;display:grid;gap:12px;justify-items:start;align-content:start;align-items:start}
+.grp{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px;align-items:start;width:100%}
+.grp>b{display:inline-flex;align-items:center;gap:6px;height:32px;font-size:var(--chrome);font-weight:600}
+.grp .chips,.ofrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ofrow{width:100%}
+.chipck{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 8px;border:1px solid var(--field);border-radius:999px;background:#fff;font-size:var(--chrome);cursor:pointer;white-space:nowrap}
+.chipck input,.ck input{accent-color:var(--accent);width:16px;height:16px;margin:0;flex:none}
+.chipck:has(input:checked){background:var(--tint);border-color:var(--accent)}
+.chipck:has(input:focus-visible),.ck:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.chipck input:focus-visible,.ck input:focus-visible{outline:none}
+.sampletools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--chrome);color:var(--muted)}
+.slider{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:4px 16px;align-items:center;width:100%;max-width:440px}
+.slider input{width:100%;margin:0;height:24px;accent-color:var(--accent)}
+.slider output{font-size:var(--h2);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.slider .ticks{display:flex;justify-content:space-between;font-size:var(--small);color:var(--muted)}
+.switch{display:inline-flex;align-items:center;gap:12px;cursor:pointer;font-size:var(--body)}
+.switch input{appearance:none;-webkit-appearance:none;width:40px;height:24px;border-radius:999px;background:#fff;border:1px solid var(--field);position:relative;margin:0;flex:none;cursor:pointer}
+.switch input::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--field);transition:transform .15s var(--ease)}
+.switch input:checked{background:var(--accent);border-color:var(--accent)}.switch input:checked::after{transform:translateX(16px);background:#fff}
+.ck{display:flex;align-items:flex-start;gap:8px;font-size:var(--chrome);cursor:pointer;border-radius:4px}.ck input{margin-top:2px}
+.help{font-size:var(--small);color:var(--muted);line-height:1.45;max-width:60ch}
+.pair{display:flex;gap:12px;flex-wrap:wrap;width:100%}.pair>label{display:grid;gap:4px;flex:1 1 180px;max-width:240px;font-size:var(--small);color:var(--muted);font-weight:600}
+details.more{border-top:1px solid var(--line);padding:16px 0 0}
+details.more>summary{cursor:pointer;font-weight:700;font-size:var(--body);list-style:none;display:flex;align-items:center;gap:8px;border-radius:4px}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px}
+details.more[open]>summary::before{transform:rotate(45deg)}
+details.more>summary span{font-weight:400;color:var(--muted);font-size:var(--chrome)}
+details.more .in{display:grid;gap:12px;padding:16px 0 4px 22px;justify-items:start}
+.formfoot{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);font-size:var(--chrome);color:var(--muted)}
+.side h2{font-size:var(--chrome);font-weight:700;color:var(--muted)}
+.hero{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px}
+.hero b{font-size:40px;line-height:1.1;font-weight:700;letter-spacing:-.01em}.hero span{color:var(--muted)}
+.ctitle{font-size:var(--small);font-weight:600;color:var(--ink);margin-top:16px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--small);color:var(--muted);margin:4px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.chart{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:var(--font);font-size:11px;fill:var(--muted)}.chart text.lbl{fill:var(--ink);font-weight:600}
+.chart .ax{stroke:#cfd6de;stroke-width:1}.chart .grid{stroke:#e9edf1;stroke-width:1}
+.chart .hit{fill:transparent;cursor:default}.chart .hit:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.facts{margin:16px 0 0;padding:16px 0 0;border-top:1px solid var(--line);display:grid;gap:8px}
+.facts div{display:grid;grid-template-columns:104px minmax(0,1fr);gap:12px;font-size:var(--chrome)}
+.facts dt{color:var(--muted)}.facts dd{margin:0}
+details.tbl{margin-top:4px}details.tbl summary{cursor:pointer;font-size:var(--small);color:var(--accent);text-decoration:underline;text-underline-offset:2px;list-style:none;display:inline-block;border-radius:2px}
+details.tbl summary::-webkit-details-marker{display:none}
+table.mini{border-collapse:collapse;font-size:var(--small);width:100%;margin-top:6px;font-variant-numeric:tabular-nums}
+table.mini th,table.mini td{text-align:left;padding:3px 8px 3px 0;border-bottom:1px solid var(--line);font-weight:400}table.mini th{color:var(--muted)}
+/* The action bar of steps 3 and 4: always in view at the bottom of the screen, at every width */
+.prep,.check{min-height:calc(100vh - var(--rb) - var(--bar) - var(--field-h) - 17px);min-height:calc(100dvh - var(--rb) - var(--bar) - var(--field-h) - 17px)}
+.stickybar{position:sticky;bottom:0;z-index:40;padding:8px 24px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line-strong);box-shadow:0 -4px 16px #16223014}
+.stickybar .in{max-width:1112px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.stickybar .stat{font-size:var(--chrome);font-weight:600;line-height:1.3;white-space:nowrap}.stickybar .stat b{font-size:var(--h2)}.stickybar .stat svg.ic{vertical-align:-4px;margin-right:6px}
+.stickybar .stat.look{color:var(--amber-fg)}.stickybar .stat.ok{color:var(--green-strong)}
+.stickybar .grow{flex:1;min-width:0;font-size:var(--chrome);color:var(--muted)}
+@media(max-width:960px){.prep{grid-template-columns:minmax(0,1fr);padding:16px 12px 24px}.prep .side{position:static}}
+@media(max-width:720px){.stickybar{padding-left:12px;padding-right:12px}.stickybar .stat{flex:1;min-width:0;white-space:normal}.stickybar .btn{flex:none}.stickybar .grow,.stickybar .btn.secondary{display:none}.formfoot{display:block}}   /* the status may wrap (a wider fallback font), the action never leaves the screen */
+@media(max-width:600px){.frow{grid-template-columns:minmax(0,1fr);gap:8px}.sheet.form{padding:20px 16px}.pair>label{max-width:none;flex-basis:100%}
+ .seg.stack{display:flex;flex-direction:column;width:100%}.seg.stack button{border-left:0;border-top:1px solid var(--line-strong);text-align:left}.seg.stack button:first-child{border-top:0}}
+.join{display:grid;justify-items:center;padding:64px 16px 48px}
+.join .card{width:min(520px,100%);padding:32px;border-radius:16px;border-color:transparent;box-shadow:var(--shadow-entry)}
+.join .head{display:flex;gap:16px;align-items:center}.join .head img{width:56px;height:56px;flex:none}
+.join h1{font-size:var(--h1);line-height:1.25}
+.progress{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:8px}
+.progress i{display:block;height:100%;width:40%;border-radius:999px;background:var(--accent);animation:slide 1.4s var(--ease) infinite}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@media(prefers-reduced-motion:reduce){.progress i{animation:none;width:100%;opacity:.45}}
+body.hold .progress i{animation:none;transform:translateX(70%)}   /* hold=1: a still frame */
+@media(max-width:480px){.join{padding:24px 12px}.join .card{padding:24px 20px}}
+
+/* Scene 4 · Quality check and hand-off */
+.check{max-width:1160px;margin:0 auto;padding:32px 24px 56px}
+.verdict{display:flex;gap:16px;align-items:flex-start;padding:16px 20px;border-radius:var(--r-lg);margin-top:20px}
+.verdict.warn{background:var(--amber-bg);color:var(--amber-fg)}.verdict.good{background:var(--green-bg);color:var(--green-strong)}
+.verdict svg.ic{width:24px;height:24px;margin-top:2px}.verdict h2{font-size:var(--h2);line-height:1.3}.verdict p{font-size:var(--chrome);max-width:76ch}
+.verdict .grow{flex:1;min-width:0}
+.decide{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.decide .input{width:min(320px,100%);height:32px;font-size:var(--chrome)}
+.checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:12px}
+.checks section{border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;background:#fff;min-width:0}
+.checks h3{font-size:var(--body);font-weight:700;display:flex;gap:8px;align-items:center;line-height:1.35}
+.checks .res{font-size:var(--chrome);color:var(--muted);margin:4px 0 8px;min-height:3.9em;line-height:1.3}
+.st{display:inline-flex;align-items:center;gap:4px;font-size:var(--small);font-weight:700;margin-left:auto;white-space:nowrap}
+.st.ok{color:var(--green-strong)}.st.look{color:var(--amber-fg)}.st svg.ic{width:16px;height:16px}
+.checkhead{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px}
+.checkhead h2{font-size:var(--h2)}
+@media(max-width:960px){.check{padding:16px 12px 32px}.checks{grid-template-columns:minmax(0,1fr)}.checks .res{min-height:0}.verdict{flex-direction:column;gap:8px}}
+.cv{display:grid;grid-template-columns:56px minmax(0,1fr);height:calc(100vh - var(--rb) - var(--bar));height:calc(100dvh - var(--rb) - var(--bar));min-height:480px;background:var(--canvas)}
+.cv .main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.cv .rail{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0;color:var(--muted)}
+.cv .rail span{width:36px;height:36px;border-radius:8px;display:grid;place-items:center}.cv .rail span.on{background:var(--tint);color:var(--accent)}
+.cv .tabs,.cv .hintbar{display:flex;align-items:center;gap:16px;padding:0 12px;background:#fff;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;min-width:0}
+.cv .tabs{font-size:13px;height:42px;flex:none}.cv .tabs .t{background:var(--tint);border-radius:8px;padding:4px 10px;font-weight:600}.cv .tabs .dim{color:#6b7682}
+.cv .hintbar{font-size:12px;color:var(--muted);height:30px;flex:none}.cv .hintbar b{color:var(--ink)}
+.prepchip{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;background:var(--tint);color:var(--accent);font-size:12px;font-weight:600;flex:none}
+.cv .board{flex:1;min-height:0;position:relative;background-image:radial-gradient(var(--grid-dot) 1px,transparent 1px);background-size:20px 20px;display:grid;place-items:center;overflow:hidden;padding:16px}
+.emptyc{width:min(530px,100%);background:#fff;border:1px dashed var(--line-strong);border-radius:var(--r-lg);padding:24px;text-align:center;display:grid;justify-items:center;gap:12px}
+.emptyc .icn{width:44px;height:44px;border-radius:10px;background:var(--tint);color:var(--accent);display:grid;place-items:center}
+.emptyc .sug{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.emptyc .sug span{border:1px solid var(--line-strong);border-radius:999px;padding:4px 12px;font-size:13px}
+.zoom{position:absolute;left:12px;bottom:12px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:12px;box-shadow:var(--shadow-card)}
+.loadc{width:min(400px,100%);padding:24px;display:grid;gap:12px}
+.loadc .head{display:flex;gap:12px;align-items:center}.loadc img{width:48px;height:48px}.loadc h2{font-size:var(--h2)}
+.loadc ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:var(--chrome)}
+.loadc li{display:flex;align-items:center;gap:8px}.loadc li.done{color:var(--green-strong)}.loadc li svg.ic{width:16px;height:16px}
+.viewonly{display:flex;gap:8px;align-items:center;padding:6px 12px;background:var(--blue-bg);color:var(--blue-fg);font-size:12px;line-height:1.35}
+@media(max-width:720px){.cv .wide{display:none}}
+.setpop{position:absolute;left:12px;top:12px;width:min(380px,calc(100% - 24px));padding:16px;z-index:5;box-shadow:var(--shadow-pop)}
+.setpop h2{font-size:var(--body)}.setpop .facts{border-top:0;padding-top:0;margin-top:8px}
+@media(min-width:721px){.viewonly{display:none}}
+
+/* Reviewer panel (not product UI) */
+#review{position:relative;z-index:2;background:#fff7d6;border-top:1px solid #d9b52a;color:#3b2f05;padding:24px;font-size:13px;line-height:1.5}
+#review .in{max-width:1120px;margin:0 auto}
+#review h2{font-size:16px;line-height:1.3}#review .note{margin-top:4px;max-width:96ch}
+#review h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+#review .trio{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+#review .trio>div{background:#fffdf3;border:1px solid #e6cf7a;border-radius:8px;padding:12px;min-width:0}
+#review ul{margin:0;padding-left:18px}#review li{margin:2px 0}
+#review .fixes{margin-top:16px}#review .fixes ul{columns:2;column-gap:32px}#review .fixes li{break-inside:avoid}
+@media(max-width:960px){#review .trio{grid-template-columns:minmax(0,1fr)}#review .fixes ul{columns:1}#review{padding:16px 12px}}
+body.nonotes #review{display:none}
+#tip{position:fixed;z-index:900;pointer-events:none;background:var(--navy);color:#fff;font-size:12px;line-height:1.4;padding:6px 8px;border-radius:6px;max-width:240px;box-shadow:var(--shadow-pop)}
+@media(max-width:560px){.brand b.hideable{display:none}.account .nm,.account small,.helpbtn span{display:none}.account{padding:0 4px}.helpbtn{padding:0 4px}.topbar{gap:8px;padding:0 10px}.steps{margin-left:0;gap:0}.steps button{padding:0 9px}}
+@media(max-width:1020px){.pchip{display:none}}
+/* Touch screens (last, so it wins over the sizes above): 44 px fields and buttons, 40 px small controls, 16 px input text */
+@media(pointer:coarse){:root{--field-h:44px}.input{font-size:16px}.code{font-size:20px}.btn.small,.seg button,.chipck,.grp>b{height:40px}.decide .input{height:40px;font-size:16px}
+ .withbtn button{top:2px;height:calc(var(--field-h) - 4px)}.slider input{height:40px;margin:-8px 0;position:relative;z-index:1}.switch{padding:8px 0;margin:-8px 0}.ck{padding:10px 0;margin:-6px 0}
+ /* Text links and the bar's buttons keep their look and get a taller hit area: 40 px, and the full height of the bar */
+ .link,.crumb,.back,.prepchip,details.tbl summary,details.more>summary,.steps button,.helpbtn,.account,.brand{position:relative}
+ .link::after,.crumb::after,.back::after,.prepchip::after,details.tbl summary::after,details.more>summary::after,.steps button::after,.helpbtn::after,.account::after,.brand::after{content:"";position:absolute;left:0;right:0;top:50%;height:40px;transform:translateY(-50%)}
+ .steps button::after,.helpbtn::after,.account::after,.brand::after{height:var(--bar)}.link::after{left:-4px;right:-4px}.helpbtn::after,.account::after{left:-3px;right:-3px}
+ .cv .hintbar{height:40px}}
+</style>
+</head>
+<body class="scenes scene-1">
+<div id="scenes" role="toolbar" aria-label="Prototype scenes (reviewer only)">
+  <strong>Proposal</strong>
+  <button data-scene="1">1 · Sign in</button><button data-scene="2">2 · Start</button><button data-scene="3">3 · Prepare</button><button data-scene="4">4 · Check → Canvas</button>
+  <span class="sep"></span><span id="statebtns" style="display:contents"></span>
+  <span class="sep"></span><button id="tonotes">Team today → proposal ↓</button><button id="hidebar" title="Hide this reviewer bar (reload to show it again)">Hide bar</button>
+</div>
+<header class="topbar" id="topbar"></header>
+<div id="stage"><div id="art" aria-hidden="true"></div><main id="view"></main></div>
+<aside id="review" aria-label="Reviewer notes: Team today and the proposal"></aside>
+<div id="tip" role="tooltip" hidden></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);
+const HOLD=params.get('hold')==='1';            /* hold=1: nothing advances by itself (stable screenshots) */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ic=(d,cls='')=>`<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const I={back:'<path d="M15 6l-6 6 6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',warn:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+ ok:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',bad:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+ arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',plot:'<path d="M4 4v16h16"/><circle cx="9" cy="14" r="1.3"/><circle cx="13" cy="9" r="1.3"/><circle cx="17" cy="12" r="1.3"/>',
+ grid:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+ target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',text:'<path d="M6 6h12M12 6v13"/>',cursor:'<path d="M6 4l12 8-5 1.5L11 19z"/>',move:'<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
+ panel:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M10 5v14"/>',upload:'<path d="M12 16V5M7 10l5-5 5 5M5 19h14"/>'};
+
+/* ---------- Fictional people, clients and orders ---------- */
+const CLIENT='Fennel Hill group',CLIENT2='Marlow Bay lab';
+const P={ana:{name:'Ana R.',first:'Ana',ini:'AR',kind:'staff',tag:'Lab',email:'ana.r@lab.example',c:'#235273'},
+ lee:{name:'Dr. Lee',first:'Dr. Lee',ini:'DL',kind:'client',tag:'Client',email:'lee@fennelhill.example',c:'#6d28d9'},
+ tomas:{name:'Tomás',ini:'T',c:'#9a3412'},okafor:{name:'M. Okafor',ini:'MO',c:'#115e59'},mia:{name:'Mia S.',ini:'MS',c:'#9d174d'}};
+const av=k=>`<span class="av" style="background:${P[k].c}" title="${esc(P[k].name)}">${P[k].ini}</span>`;
+const ORDER='ORD041 · v1';
+
+/*DATA*/
+/* ---------- Synthetic dataset: 76 lipids × 6 samples (which cells hold a detected value) ---------- */
+const SAMPLES=['Control_1','Control_2','Control_3','Treated_1','Treated_2','Treated_3'].map((id,idx)=>({id,idx,g:id.split('_')[0]}));
+const GROUPS=['Control','Treated'];
+function rng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const LIP=[];
+[['PC',14,30],['PE',10,32],['TG',14,46],['SM',7,32],['Cer',6,34],['LPC',6,14],['PI',5,34],['PS',4,34],['DG',5,32],['CE',3,16],['LPE',2,16]]
+ .forEach(([cls,n,base])=>{for(let i=0;i<n;i++)LIP.push(`${cls} ${base+2*i}:${i%4}`);});
+const DET=(()=>{const r=rng(41);
+ const ks=[].concat(...[[6,40],[5,13],[4,8],[3,6],[2,4],[1,3],[0,2]].map(([k,n])=>Array(n).fill(k)));
+ for(let i=ks.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[ks[i],ks[j]]=[ks[j],ks[i]];}
+ return ks.map((k,i)=>{const row=Array(6).fill(false);
+  if(k>0&&k<=3&&i%2===0){const g=r()<.5?[0,1,2]:[3,4,5];g.slice(0,k).forEach(x=>row[x]=true);return row;}  /* seen in one condition only */
+  const w=[1,1,1,1,1,4];const miss=new Set();
+  while(miss.size<6-k){let t=r()*w.reduce((a,b,x)=>a+(miss.has(x)?0:b),0);for(let x=0;x<6;x++){if(miss.has(x))continue;t-=w[x];if(t<=0){miss.add(x);break;}}}
+  return row.map((_,x)=>!miss.has(x));});})();
+/* Team's defaults as its published workspace prefills them (R/guided_preparation_controls.R) */
+const TEAM={minDetectionPct:0,detectionScope:'global',useImputation:true,normalizationMethod:'median',dropNonDetected:true,imputationSeed:42,imputeZerosPerFile:true,imputeRemainingNAtoZero:false};
+const NORM={median:'Median (log scale)',pqn:'PQN (linear scale)',none:'None'};
+const SCOPE={global:'all selected samples',group:'at least one condition group'};
+/* Team's detection rule (R/ux_preparation.R): detected = finite and > 0; a lipid is kept when its detected
+   fraction reaches the threshold, across the selected samples or in at least one condition group. */
+function prepare(p,excluded={}){
+ const sel=SAMPLES.filter(s=>p.samples[s.id]&&!excluded[s.id]),n=sel.length,thr=p.minDetectionPct/100;
+ const hist=Array.from({length:n+1},()=>({kept:0,out:0})),out=[],keptIdx=[];
+ LIP.forEach((name,i)=>{const k=sel.filter(s=>DET[i][s.idx]).length;let keep=n>0,why='';
+  if(keep&&k===0&&p.dropNonDetected){keep=false;why='never detected';}
+  else if(keep){const frac=p.detectionScope==='group'?Math.max(...GROUPS.map(g=>{const m=sel.filter(s=>s.g===g);return m.length?m.filter(s=>DET[i][s.idx]).length/m.length:0;})):k/n;
+   if(frac<thr){keep=false;why=`detected in ${k} of ${n}`;}}
+  hist[k][keep?'kept':'out']++;if(keep)keptIdx.push(i);else out.push({name,why});});
+ const perSample=sel.map(s=>({id:s.id,g:s.g,missing:keptIdx.filter(i=>!DET[i][s.idx]).length}));
+ const missing=perSample.reduce((a,s)=>a+s.missing,0);
+ return{sel,n,kept:keptIdx.length,total:LIP.length,out,hist,perSample,missing,cells:keptIdx.length*n};
+}
+/* Team's outlier rule (R/modules/2_qc_boxplot_module.R): distance to the centroid in PC1/PC2, flagged when
+   (distance - median) / MAD > 2.5. Scores below are synthetic. */
+const PCS={flag:{Control_1:[-2.2,.5],Control_2:[-1.7,-.6],Control_3:[-2.5,-.1],Treated_1:[2,.4],Treated_2:[2.4,-.5],Treated_3:[.9,5.6]},
+ clean:{Control_1:[-2.2,.5],Control_2:[-1.7,-.6],Control_3:[-2.5,-.1],Treated_1:[2,.4],Treated_2:[2.4,-.5],Treated_3:[1.8,1]}};
+const median=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+function outliers(sel,set,limit=2.5){
+ const pts=sel.map(s=>({...s,x:PCS[set][s.id][0],y:PCS[set][s.id][1]}));if(!pts.length)return{pts,line:0};
+ const cx=pts.reduce((a,p)=>a+p.x,0)/pts.length,cy=pts.reduce((a,p)=>a+p.y,0)/pts.length;
+ pts.forEach(p=>p.d=Math.hypot(p.x-cx,p.y-cy));
+ const med=median(pts.map(p=>p.d)),mad=1.4826*median(pts.map(p=>Math.abs(p.d-med)))||1e-6;
+ pts.forEach(p=>{p.z=(p.d-med)/mad;p.flag=p.z>limit;});
+ return{pts,line:med+limit*mad,med,mad};
+}
+/* Per-sample spread after normalization (synthetic): median and quartiles on the log2 scale */
+const SPREAD={q:{Control_1:[18.6,21.7],Control_2:[18.5,21.8],Control_3:[18.7,21.6],Treated_1:[18.4,21.9],Treated_2:[18.5,21.8],Treated_3:[17.7,22.5]},
+ shift:{median:[0,0,0,0,0,0],pqn:[0,.05,-.04,.03,.06,-.08],none:[0,.5,-.3,.2,.8,-1.2]}};
+/*ENDDATA*/
+
+/* ---------- State ---------- */
+const freshPrep=()=>({...TEAM,samples:Object.fromEntries(SAMPLES.map(s=>[s.id,true])),unit:'',design:''});
+const S={scene:'1',state:'password',who:'ana',email:'',order:ORDER,flash:'',prep:freshPrep(),decide:{},pcs:'flag',fresh:true,ret:false,filter:'all',timers:[]};
+const isSynth=()=>!BOARDS.some(b=>b.id===S.order);     /* a dataset prepared in this prototype: the synthetic 76 × 6 one */
+const isJoined=()=>S.who==='lee'&&S.order===ORDER;     /* the client member on the board Ana R. prepared */
+const STATES={'1':[['password','Password'],['code','6-digit code'],['wrong-code','Wrong code'],['signed-out','Signed out'],['forgot','Forgot password'],['activate','Activate invitation']],
+ '2':[['staff','Lab staff'],['client','Client member'],['empty','Nothing released yet']],
+ '3':[['prepare','Prepare'],['more','More settings open'],['joiner','Joiner: already prepared']],
+ '4':[['check','1 sample to review'],['clear','All clear'],['loading','Canvas loading'],['canvas','Canvas']]};
+const later=(fn,ms)=>{if(!HOLD)S.timers.push(setTimeout(fn,ms));};
+const view=()=>$('view');
+
+/* ---------- Top bar: Nexo's navy bar, the lab logo, the same three steps as today ---------- */
+const HELP={'1':'Trouble signing in? Your lab contact can resend your invitation or reset your authenticator.','2':'Projects are boards you can open. A released dataset becomes a project the first time someone prepares it.',
+ '3':'These are Team’s preparation choices. Team’s defaults are filled in; change only what your study needs.','4':'A flagged sample is a hint, not a verdict. Keep it or exclude it; you can change your mind on the Canvas.'};
+function topbar(){
+ const signed=S.scene!=='1',me=P[S.who],inProject=S.scene==='3'||S.scene==='4',home=me.kind==='client'?'client':'staff';
+ const onBoard=S.state==='joiner'||(S.scene==='4'&&(S.state==='canvas'||S.state==='loading'));
+ const step=S.scene==='2'?'Data':onBoard?'Canvas':'Review';
+ const off=s=>S.scene==='2'?s!=='Data':S.scene==='3'&&!onBoard&&s==='Canvas';   /* nothing to review before a dataset is chosen, no Canvas before it is prepared */
+ $('topbar').innerHTML=`<button class="brand" id="home" aria-label="Libreros Lab · Lipidomic Explorer${signed?' · go to Start':''}"><img src="libreros-lab-logo.webp" alt="" width="63" height="30"><b class="${signed?'hideable':''}">Lipidomic Explorer</b></button>`+
+ (signed?`${inProject?`<span class="pchip">${S.order}${isSynth()&&me.kind==='staff'?'<small>from Admin</small>':''}</span>`:''}
+  <nav class="steps" aria-label="Analysis steps">${['Data','Review','Canvas'].map(s=>`<button data-step="${s}" ${s===step?'aria-current="step"':''} ${off(s)?'disabled':''}>${s}</button>`).join('')}</nav>`:'')+
+ `<span class="spacer"></span><button class="helpbtn" id="help" aria-expanded="false"><img src="help-neutrophil.svg" alt=""><span>Help</span></button>`+
+ (signed?`<button class="account" id="account" aria-haspopup="menu" aria-expanded="false">${av(S.who)}<span class="nm">${me.name}</span><small>${me.tag}</small></button>`:'');
+ $('home').onclick=()=>{if(signed)go('2',home);};
+ document.querySelectorAll('.steps button').forEach(b=>b.onclick=()=>{const s=b.dataset.step;
+  if(s==='Data')go('2',home);else if(s===step)return;
+  else if(s==='Canvas'){S.fresh=true;go('4','loading');}                               /* from the quality check: same as "Open the Canvas" */
+  else if(isSynth()&&!isJoined())go('4',S.pcs==='clean'?'clear':'check');             /* from the Canvas: the preparer reopens the check */
+  else if($('pchip'))$('pchip').click();});                                           /* a joiner reviews what was prepared */
+ $('help').onclick=e=>pop(e.currentTarget,`<p><b>Help</b>${esc(HELP[S.scene])}</p>`);
+ if(signed)$('account').onclick=e=>pop(e.currentTarget,`<p><b>${me.name}</b>${me.email} · ${me.kind==='staff'?'Lab staff':`Client member · ${CLIENT}`}</p><button role="menuitem" id="acct">Account and security</button><button role="menuitem" id="out">Sign out</button>`,()=>{$('out').onclick=()=>{S.email='';go('1','password');};$('acct').onclick=closePop;});
+}
+function closePop(){const m=document.querySelector('.menu');if(m){m.remove();document.querySelectorAll('.topbar [aria-expanded]').forEach(b=>b.setAttribute('aria-expanded','false'));}}
+function pop(btn,html,wire){const open=btn.getAttribute('aria-expanded')==='true';closePop();if(open)return;
+ const m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');m.innerHTML=html;$('topbar').appendChild(m);btn.setAttribute('aria-expanded','true');if(wire)wire();}
+addEventListener('click',e=>{if(!e.target.closest('.menu,.helpbtn,.account'))closePop();});
+addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
+
+/* ---------- Scene 1 · Sign in ---------- */
+const MSG={email_empty:'Enter the email on your invitation.',email_invalid:'Enter a valid email address.',password_empty:'Enter your password.',password_short:'Use at least 12 characters.',code_empty:'Enter the one-time code.',
+ rejected:'Email or password is not right. Check both, or reset your password.',wrong_code:'That code did not match. Codes change every 30 seconds: enter the newest one.'};
+function signin(){
+ const st=S.state,back=`<button class="back" data-go="password">${ic(I.back)}Back to sign in</button>`;
+ const email=(id='email')=>`<div class="field"><label for="${id}">Email</label><input class="input" id="${id}" type="email" autocomplete="username" inputmode="email" value="${esc(S.email)}" aria-describedby="${id}-err"><p class="err" id="${id}-err" hidden></p></div>`;
+ const pass=(label,ac,hint='')=>`<div class="field"><label for="pw">${label}</label><div class="withbtn"><input class="input" id="pw" type="password" autocomplete="${ac}" aria-describedby="pw-err${hint?' pw-hint':''}"><button type="button" id="showpw" aria-pressed="false" aria-label="Show password">Show</button></div>${hint?`<p class="hint" id="pw-hint">${hint}</p>`:''}<p class="err" id="pw-err" hidden></p></div>`;
+ const otc=label=>`<div class="field"><label for="otc">${label}</label><input class="input" id="otc" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="otc-err"><p class="err" id="otc-err" hidden></p></div>`;
+ let h;
+ if(st==='code'||st==='wrong-code'){const bad=st==='wrong-code';
+  h=`<div class="who">${ic('<circle cx="12" cy="9" r="3.5"/><path d="M5 20c1-4 4-5.5 7-5.5s6 1.5 7 5.5"/>')}<span>${esc(S.email||P.ana.email)}</span><button class="link" data-go="password">Not you?</button></div>
+  <p class="eyebrow">Step 2 of 2</p><h1>Enter your 6-digit code</h1><p class="lede">Open your authenticator app and type the code for Lipidomic Explorer.</p>
+  <form id="f" novalidate><div class="field"><label for="code">6-digit code</label><input class="input code" id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" aria-describedby="code-err" ${bad?'aria-invalid="true"':''}>
+  <p class="err" id="code-err" ${bad?'role="alert"':'hidden'}>${bad?ic(I.bad)+'<span>'+MSG.wrong_code+'</span>':''}</p></div>
+  <button class="btn primary" type="submit">Verify and sign in</button></form>
+  <p class="foot">No authenticator at hand? Ask your lab contact to reset it.</p>`;
+ }else if(st==='forgot'){
+  h=`${back}<h1>Reset your password</h1><p class="lede">Type the one-time code the lab sent you, then choose a new password.</p>
+  <form id="f" novalidate>${email()}${otc('One-time code')}${pass('New password','new-password','At least 12 characters.')}<button class="btn primary" type="submit">Set new password</button></form>`;
+ }else if(st==='activate'){
+  h=`${back}<h1>Activate your invitation</h1><p class="lede">Type the one-time code from your invitation, then choose a password.</p>
+  <form id="f" novalidate>${email()}${otc('Invitation code')}${pass('Password','new-password','At least 12 characters.')}<button class="btn primary" type="submit">Activate account</button></form>
+  <p class="foot">Next: you connect your authenticator app for the 6-digit code.</p>`;
+ }else{
+  h=`${st==='signed-out'?`<div class="msg info" role="status">${ic(I.info)}<span>You were signed out. Sign in to go back to <b class="nowrap">${ORDER}</b>.</span></div>`:''}${S.flash?`<div class="msg good" role="status">${ic(I.ok)}<span>${S.flash}</span></div>`:''}
+  <h1>Your analysis starts here</h1><p class="lede">Sign in to open your private projects.</p>
+  <form id="f" novalidate>${email()}${pass('Password','current-password')}<button class="btn primary" type="submit">Continue</button></form>
+  <div class="links"><button class="link" data-go="forgot">Forgot password?</button><button class="link" data-go="activate">Activate your invitation</button></div>`;
+ }
+ S.flash='';
+ view().innerHTML=`<div class="signin"><section class="card" aria-label="Sign in">${h}</section></div>`;
+ const q=id=>$(id),fail=(id,msg)=>{const f=q(id),e=q(id+'-err');f.setAttribute('aria-invalid','true');e.hidden=false;e.innerHTML=ic(I.bad)+`<span>${msg}</span>`;return f;};
+ view().querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(q('email'))S.email=q('email').value.trim();go('1',b.dataset.go);});
+ if(q('showpw'))q('showpw').onclick=e=>{const on=q('pw').type==='password';q('pw').type=on?'text':'password';e.currentTarget.textContent=on?'Hide':'Show';e.currentTarget.setAttribute('aria-pressed',String(on));e.currentTarget.setAttribute('aria-label',on?'Hide password':'Show password');};
+ const code=q('code');
+ if(code)code.oninput=()=>{code.value=code.value.replace(/\D/g,'').slice(0,6);if(code.value.length===6)q('f').requestSubmit();};
+ q('f').onsubmit=e=>{e.preventDefault();view().querySelectorAll('.err').forEach(x=>{x.hidden=true;});view().querySelectorAll('[aria-invalid]').forEach(x=>x.removeAttribute('aria-invalid'));
+  if(code){if(code.value==='000000'||code.value.length<6)return go('1','wrong-code');S.who=/lee/i.test(S.email)?'lee':'ana';
+   if(S.ret){S.ret=false;S.order=ORDER;S.fresh=false;return go('4','loading');}          /* signed out in the middle of work: back on that board */
+   return go('2',S.who==='lee'?'client':'staff');}
+  let bad=null;const em=q('email').value.trim();
+  if(st!=='password'&&st!=='signed-out'){if(q('pw').value.length<12)bad=fail('pw',MSG.password_short);if(!q('otc').value.trim())bad=fail('otc',MSG.code_empty);}
+  else if(!q('pw').value)bad=fail('pw',MSG.password_empty);
+  if(!em)bad=fail('email',MSG.email_empty);else if(!/^\S+@\S+\.\S+$/.test(em))bad=fail('email',MSG.email_invalid);
+  if(bad)return bad.focus();
+  S.email=em;if(st==='forgot'||st==='activate'){S.flash=st==='forgot'?'Password set. Sign in with your new password.':'Account activated. Sign in to finish setting up.';return go('1','password');}
+  S.ret=st==='signed-out';go('1','code');};
+ const first=[...view().querySelectorAll('input')].find(i=>!i.value);if(first)first.focus({preventScroll:true});
+}
+
+/* ---------- Scene 2 · Start ---------- */
+const BOARDS=[{id:'ORD038 · v2',client:CLIENT2,size:'112 lipids · 12 samples',by:'you',when:'edited yesterday',on:['tomas'],set:['12 of 12 · 6 Control · 6 Treated','112 of 118 lipids · 12 samples']},
+ {id:'ORD036 · v1',client:CLIENT,size:'98 lipids · 8 samples',by:'Tomás',when:'edited 3 Nov',on:[],set:['8 of 8 · 4 Control · 4 Treated','98 of 104 lipids · 8 samples']},
+ {id:'ORD033 · v2',client:CLIENT2,size:'120 lipids · 10 samples',by:'you',when:'edited 28 Oct',on:[],set:['10 of 10 · 5 Control · 5 Treated','120 of 127 lipids · 10 samples']}];
+const RELEASED=[{id:'ORD041 · v1',client:CLIENT,when:'Released 9 Nov'},{id:'ORD044 · v1',client:CLIENT2,when:'Released today'}];
+const SHARED={id:ORDER,client:CLIENT,size:'74 lipids · 6 samples',by:'Ana R.',when:'9 Nov',on:['ana'],isNew:true};   /* the board the client member joins */
+function start(){
+ const st=S.state,client=st!=='staff';
+ const boards=client?(st==='empty'?[]:[SHARED,BOARDS[1]]):BOARDS.filter(b=>S.filter==='all'||b.client===S.filter);
+ const rel=client?(st==='empty'?[]:[{id:'ORD043 · v1',client:CLIENT,when:'Released today'}]):RELEASED.filter(b=>S.filter==='all'||b.client===S.filter);
+ const sub=b=>client?b.size||'':[b.client,b.size].filter(Boolean).join(' · ');
+ const feature=client?{id:ORDER,meta:`Prepared by Ana R. · 74 lipids · 6 samples`,on:['ana'],label:'New from the lab',cta:'Open'}
+  :{id:'ORD038 · v2',meta:`${CLIENT2} · 112 lipids · 12 samples · edited yesterday`,on:['tomas'],label:'Continue where you left off',cta:'Continue'};
+ view().innerHTML=`<div class="page"><div class="sheet">
+  <h1>${st==='staff'?'Welcome back, Ana':'Welcome, Dr. Lee'}</h1>
+  <p class="lede">${st==='staff'?'Lab staff · all clients':CLIENT}</p>
+  ${st==='empty'?`<div class="empty"><img src="help-macrophage.svg" alt=""><h2>Nothing here yet</h2><p>When the lab releases a dataset to ${CLIENT}, it shows up on this page, ready to open.</p><p class="small">Expecting one already? Ask your lab contact.</p></div>`:`
+  <section class="feature" aria-label="${feature.label}"><div class="grow"><p class="small muted">${feature.label}</p><h2>${feature.id}</h2>
+   <div class="meta"><span>${feature.meta}</span><span class="avs">${feature.on.map(av).join('')}</span><span>${feature.on.map(k=>P[k].name).join(', ')} on the board now</span></div></div>
+   <button class="btn primary" id="cta">${feature.cta} ${ic(I.arrow)}</button></section>
+  <section class="sec"><header><h2>Projects <span>${boards.length}</span></h2><span class="spacer"></span>${client?'':`<div class="seg" role="group" aria-label="Filter by client">${[['all','All clients'],[CLIENT,CLIENT],[CLIENT2,CLIENT2]].map(([v,l])=>`<button data-f="${v}" aria-pressed="${S.filter===v}">${l}</button>`).join('')}</div>`}</header>
+   <ul class="rows">${boards.map(b=>`<li><div><div class="name">${b.id}${b.isNew?' <span class="tag new">New</span>':''}</div><div class="sub">${sub(b)}</div></div><div class="state"><span>Prepared by ${b.by} · ${b.when}</span>${b.on.length?`<span class="avs">${b.on.map(av).join('')}</span>`:''}</div><button class="btn secondary small" data-open="${b.id}" aria-label="Open ${b.id}">Open</button></li>`).join('')||'<li><div class="sub">No projects for this client yet.</div></li>'}</ul></section>
+  <section class="sec"><header><h2>Released datasets <span>${rel.length} not prepared yet</span></h2></header>
+   <ul class="rows">${rel.map(b=>`<li><div><div class="name">${b.id} <span class="tag new">New</span></div><div class="sub">${client?'From the lab':b.client}</div></div><div class="state">${b.when} · opens after one preparation step</div><button class="btn secondary small" data-prep="${b.id}" aria-label="Prepare ${b.id}">Prepare</button></li>`).join('')||'<li><div class="sub">Nothing waiting for this client.</div></li>'}</ul></section>
+  ${client?'':`<p class="tert">${ic(I.upload)}<span>Have a checkpoint saved from Team?</span><button class="link" id="zip">Import a Team checkpoint (.zip)</button></p>`}`}
+ </div></div>`;
+ const open=id=>{S.order=id;S.fresh=false;if(client&&id===ORDER)go('3','joiner');else go('4','loading');};
+ if($('cta'))$('cta').onclick=()=>open(feature.id);
+ view().querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;start();});
+ view().querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
+ view().querySelectorAll('[data-prep]').forEach(b=>b.onclick=()=>{S.order=b.dataset.prep;S.prep=freshPrep();S.decide={};go('3','prepare');});
+}
+
+/* ---------- Charts: shared pieces (thin marks, solid hairline axes, text in ink, hover/focus tooltip + table twin) ---------- */
+const C1='#2a78d6',C2='#eb6834',OFF='#9aa5b1',gcol=g=>g==='Control'?C1:C2;
+const wait=(fn,ms)=>S.timers.push(setTimeout(fn,ms));
+function tips(root){root.querySelectorAll('[data-tip]').forEach(m=>{
+ const show=()=>{const t=$('tip');t.textContent=m.dataset.tip;t.hidden=false;const r=m.getBoundingClientRect(),w=t.offsetWidth;
+  t.style.left=Math.max(8,Math.min(document.documentElement.clientWidth-w-8,r.left+r.width/2-w/2))+'px';t.style.top=Math.max(8,r.top-t.offsetHeight-8)+'px';},hide=()=>{$('tip').hidden=true;};
+ m.addEventListener('pointerenter',show);m.addEventListener('pointerleave',hide);m.addEventListener('focus',show);m.addEventListener('blur',hide);});}
+const topRound=(x,y,w,h,r=4)=>{r=Math.min(r,h,w/2);return`M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`;};
+const endRound=(x,y,w,h,r=4)=>{r=Math.min(r,w,h/2);return`M${x},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h-r}Q${x+w},${y+h} ${x+w-r},${y+h}H${x}Z`;};
+const table=(head,rows)=>`<details class="tbl"><summary>Show as table</summary><table class="mini"><thead><tr>${head.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
+const pct=(a,b)=>b?(100*a/b).toFixed(1).replace(/\.0$/,'')+' %':'0 %';
+
+/* Lipids by number of samples where detected: kept (blue) stacked under left out (gray) */
+function histogram(r){
+ const W=332,H=150,L=28,R=4,T=14,B=30,n=r.n,band=(W-L-R)/(n+1),bw=Math.min(24,band-8);
+ const max=Math.max(10,Math.ceil(Math.max(...r.hist.map(h=>h.kept+h.out))/10)*10),y=v=>T+(H-T-B)*(1-v/max),base=y(0);
+ const top=r.hist.reduce((a,h,k)=>h.kept+h.out>r.hist[a].kept+r.hist[a].out?k:a,0);
+ let g='';
+ r.hist.forEach((h,k)=>{const x=L+band*k+(band-bw)/2,tot=h.kept+h.out,yk=y(h.kept),yt=y(tot),gap=h.kept&&h.out?2:0;
+  if(h.kept)g+=`<path d="${h.out?`M${x},${base}V${yk}H${x+bw}V${base}Z`:topRound(x,yk,bw,base-yk)}" fill="${C1}"/>`;
+  if(h.out&&yk-gap-yt>0)g+=`<path d="${topRound(x,yt,bw,yk-gap-yt)}" fill="${OFF}"/>`;
+  if(k===top&&tot)g+=`<text class="lbl" x="${x+bw/2}" y="${yt-4}" text-anchor="middle">${tot}</text>`;
+  g+=`<text x="${x+bw/2}" y="${base+13}" text-anchor="middle">${k}</text>`;
+  const tip=`Detected in ${k} of ${n} samples: ${tot} lipid${tot===1?'':'s'}`+(tot?(h.out===0?', all kept':h.kept===0?', all left out':`, ${h.kept} kept and ${h.out} left out`):'');
+  g+=`<rect class="hit" x="${L+band*k}" y="${T-10}" width="${band}" height="${base-T+10}" tabindex="0" role="img" aria-label="${tip}" data-tip="${tip}"/>`;});
+ return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="group" aria-label="Lipids by number of samples where they are detected">
+  ${[0,max/2,max].map(v=>`<line class="${v?'grid':'ax'}" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`).join('')}
+  ${g}<text x="${L+(W-L-R)/2}" y="${H-2}" text-anchor="middle">samples where the lipid is detected (of ${n})</text></svg>`;
+}
+
+/* ---------- Scene 3 · Prepare the data ---------- */
+const UNITS=['Animal','Human','Cell line','Donor'];
+const DESIGNS={independent:'Independent experimental units',paired:'Matched or repeated measurements',uncertain:'Mixed or uncertain'};
+const changed=p=>Object.keys(TEAM).filter(k=>p[k]!==TEAM[k]).length+(SAMPLES.some(s=>!p.samples[s.id])?1:0);
+const missingLine=(p,r)=>r.missing===0?'None among the kept lipids':`${r.missing} of ${r.cells} values (${pct(r.missing,r.cells)}) · ${p.useImputation?'estimated with QRILC':p.imputeRemainingNAtoZero?'set to zero':'stay missing'}`;
+function preview(){
+ const p=S.prep,r=prepare(p),ok=r.n>0&&r.kept>=2,left=r.total-r.kept;
+ const why=r.n===0?'Select at least one sample.':'Fewer than two lipids pass the detection filter. Lower the threshold or review the samples.';
+ $('side').innerHTML=`<h2>With these choices</h2>
+  <div class="hero" aria-live="polite"><b>${r.kept}</b><span>of ${r.total} lipids kept${left?` · ${left} left out`:''}</span></div>
+  ${ok?'':`<p class="msg bad" role="alert" style="margin-top:12px">${ic(I.bad)}<span>${why}</span></p>`}
+  ${r.n?`<p class="ctitle">Lipids by how many samples detect them</p>
+  <div class="legend"><span><i class="dot c1"></i>Kept</span><span><i class="dot off"></i>Left out</span></div>${histogram(r)}
+  ${table(['Detected in','Lipids','Kept','Left out'],r.hist.map((h,k)=>[`${k} of ${r.n}`,h.kept+h.out,h.kept,h.out]))}`:''}
+  <dl class="facts"><div><dt>Samples</dt><dd>${r.n} of ${SAMPLES.length} · ${GROUPS.map(g=>`${r.sel.filter(s=>s.g===g).length} ${g}`).join(' · ')}</dd></div>
+  <div><dt>Left out</dt><dd>${left?`${r.out.slice(0,3).map(o=>o.name).join(', ')}${left>3?` and ${left-3} more`:''}`:'No lipid'}</dd></div>
+  <div><dt>Missing values</dt><dd>${r.n?missingLine(p,r):'—'}</dd></div>
+  <div><dt>Normalization</dt><dd>${NORM[p.normalizationMethod]}</dd></div>
+  <div><dt>Study design</dt><dd>${p.unit&&p.design?`${p.unit} · ${DESIGNS[p.design].toLowerCase()}`:'Not set · needed before statistics'}</dd></div></dl>`;
+ tips($('side'));
+ const n=changed(p);document.querySelectorAll('.changed').forEach(el=>{el.innerHTML=n?`${n} change${n===1?'':'s'} from Team’s defaults · <button type="button" class="link" data-reset>Reset</button>`:'All settings are Team’s defaults.';});
+ document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>{const keep={unit:p.unit,design:p.design};S.prep={...freshPrep(),...keep};prepareScene();});
+ $('scount').textContent=`${r.n} of ${SAMPLES.length} selected`;$('s-err').hidden=r.n>0;
+ $('thr-o').textContent=`${p.minDetectionPct} %`;
+ const extra=['dropNonDetected','imputeZerosPerFile','imputeRemainingNAtoZero','imputationSeed'].filter(k=>p[k]!==TEAM[k]).length;$('more-sum').textContent=extra?`${extra} changed`:'Team’s defaults';
+ $('go').disabled=!ok;
+ $('kept').innerHTML=`<b>${r.kept}</b> of ${r.total} lipids kept`;
+}
+function prepareScene(){
+ if(S.state==='joiner')return joiner();
+ const p=S.prep,seg=(key,opts,label,cls='')=>`<div class="seg ${cls}" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button type="button" data-k="${key}" data-v="${v}" aria-pressed="${p[key]===v}">${l}</button>`).join('')}</div>`;
+ view().innerHTML=`<div class="prep"><section class="sheet form" aria-labelledby="pt">
+  <button class="crumb" id="tostart">${ic(I.back)}Start</button>
+  <h1 id="pt">Prepare ${S.order}</h1>
+  <p class="lede">${LIP.length} lipids · ${SAMPLES.length} samples. Team’s defaults are filled in: change only what your study needs.</p>
+  <form id="pf" novalidate>
+  <div class="frow" role="group" aria-labelledby="l-s"><div><h2 id="l-s">Samples</h2><p>Groups come from the dataset’s sample sheet.</p></div><div class="ctl">
+   ${GROUPS.map(g=>`<div class="grp" role="group" aria-label="${g}"><b><i class="dot" style="background:${gcol(g)}"></i>${g}</b><div class="chips">${SAMPLES.filter(s=>s.g===g).map(s=>`<label class="chipck"><input type="checkbox" data-s="${s.id}" ${p.samples[s.id]?'checked':''}>${s.id}</label>`).join('')}</div></div>`).join('')}
+   <div class="sampletools"><span id="scount"></span><button type="button" class="link" data-all="1">Select all</button><button type="button" class="link" data-all="">Clear</button></div>
+   <p class="err" id="s-err" hidden>${ic(I.bad)}<span>Select at least one sample.</span></p></div></div>
+  <div class="frow" role="group" aria-labelledby="l-d"><div><h2 id="l-d">Detection</h2><p>Which lipids are measured often enough to keep.</p></div><div class="ctl">
+   <label class="lab" for="thr">Keep lipids detected in at least</label>
+   <div class="slider"><input type="range" id="thr" min="0" max="100" step="5" value="${p.minDetectionPct}"><output for="thr" id="thr-o"></output><div class="ticks" aria-hidden="true"><span>0</span><span>50</span><span>100 %</span></div></div>
+   <div class="ofrow"><span class="lab">of</span>${seg('detectionScope',[['global','All selected samples'],['group','At least one condition group']],'Where must a lipid be detected?','stack')}</div></div></div>
+  <div class="frow"><div><h2>Missing values</h2><p>What happens to cells without a measurement.</p></div><div class="ctl">
+   <label class="switch"><input type="checkbox" role="switch" data-b="useImputation" ${p.useImputation?'checked':''} aria-describedby="q-h"><span>Estimate with QRILC</span></label>
+   <p class="help" id="q-h">Fills each missing value with a low, plausible estimate. Off: missing values stay missing.</p></div></div>
+  <div class="frow"><div><h2>Normalization</h2><p>Puts the samples on one scale.</p></div><div class="ctl">${seg('normalizationMethod',Object.entries(NORM),'Normalization method')}</div></div>
+  <div class="frow"><div><h2>Study design</h2><p>Optional now. Needed before any statistics.</p></div><div class="ctl">
+   <div class="pair"><label>Experimental unit<select class="input" id="unit"><option value="">Choose a unit</option>${UNITS.map(u=>`<option ${p.unit===u?'selected':''}>${u}</option>`).join('')}</select></label>
+   <label>Sample relationship<select class="input" id="design"><option value="">Choose a design</option>${Object.entries(DESIGNS).map(([v,l])=>`<option value="${v}" ${p.design===v?'selected':''}>${l}</option>`).join('')}</select></label></div>
+   <p class="help">Never guessed for you. You can also confirm it later on the Canvas.</p></div></div>
+  <details class="more" id="more" ${S.state==='more'?'open':''}><summary>More settings <span id="more-sum"></span></summary><div class="in">
+   <label class="ck"><input type="checkbox" data-b="dropNonDetected" ${p.dropNonDetected?'checked':''}><span>Leave out lipids never detected in the selected samples</span></label>
+   <label class="ck"><input type="checkbox" data-b="imputeZerosPerFile" ${p.imputeZerosPerFile?'checked':''}><span>For each file, set entirely missing lipids to zero</span></label>
+   <label class="ck"><input type="checkbox" data-b="imputeRemainingNAtoZero" ${p.imputeRemainingNAtoZero?'checked':''}><span>Replace remaining missing values with zero</span></label>
+   <div class="pair"><label>Imputation seed<input class="input" id="seed" type="number" min="1" step="1" value="${p.imputationSeed}" style="max-width:120px"></label></div></div></details>
+  <p class="formfoot changed"></p>
+  </form></section>
+  <aside class="card side" id="side" aria-label="Live preview of the preparation"></aside></div>
+  <div class="stickybar"><div class="in"><p class="stat" id="kept"></p><p class="grow changed"></p><button type="button" class="btn secondary" id="cancel">Cancel</button><button class="btn primary" id="go" type="submit" form="pf">Prepare and check</button></div></div>`;
+ const f=$('pf');
+ f.addEventListener('input',e=>{const t=e.target;
+  if(t.dataset.s)p.samples[t.dataset.s]=t.checked;else if(t.dataset.b)p[t.dataset.b]=t.checked;else if(t.id==='thr')p.minDetectionPct=Number(t.value);
+  else if(t.id==='seed')p.imputationSeed=Number(t.value)||TEAM.imputationSeed;else if(t.id==='unit')p.unit=t.value;else if(t.id==='design')p.design=t.value;preview();});
+ f.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{p[b.dataset.k]=b.dataset.v;b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));preview();});
+ f.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{SAMPLES.forEach(s=>p.samples[s.id]=!!b.dataset.all);f.querySelectorAll('[data-s]').forEach(c=>c.checked=!!b.dataset.all);preview();});
+ const home=()=>go('2',P[S.who].kind==='client'?'client':'staff');$('tostart').onclick=home;$('cancel').onclick=home;
+ f.onsubmit=e=>{e.preventDefault();$('go').disabled=true;$('go').textContent='Preparing with Team…';S.decide={};wait(()=>go('4',null),HOLD?0:900);};
+ preview();
+}
+function settingsList(p,r,qc,set){return `<dl class="facts">
+ <div><dt>Samples</dt><dd>${set?set[0]:`${r.n} of ${SAMPLES.length} · ${GROUPS.map(g=>`${r.sel.filter(s=>s.g===g).length} ${g}`).join(' · ')}`}</dd></div>
+ <div><dt>Detection</dt><dd>${p.minDetectionPct?`At least ${p.minDetectionPct} % of ${SCOPE[p.detectionScope]}`:'No threshold'}${p.dropNonDetected?' · never-detected lipids left out':''}</dd></div>
+ <div><dt>Missing values</dt><dd>${p.useImputation?`Estimated with QRILC (seed ${p.imputationSeed})`:p.imputeRemainingNAtoZero?'Set to zero':'Left missing'}</dd></div>
+ <div><dt>Normalization</dt><dd>${NORM[p.normalizationMethod]}</dd></div>
+ <div><dt>Quality check</dt><dd>${qc}</dd></div>
+ <div><dt>Result</dt><dd><b>${set?set[1]:`${r.kept} of ${r.total} lipids · ${r.n} samples`}</b></dd></div></dl>`;}
+function joiner(){
+ const p=freshPrep(),r=prepare(p);
+ view().innerHTML=`<div class="join"><section class="card" aria-labelledby="jt">
+  <div class="head"><img src="help-neutrophil.svg" alt=""><div><h1 id="jt">${ORDER} is ready</h1><p class="muted">Nothing to prepare. You are joining the board Ana R. prepared on 9 Nov.</p></div></div>
+  ${settingsList(p,r,'Treated_3 flagged, kept by Ana R.')}
+  <div role="status" style="margin-top:20px"><p class="small muted">Opening the shared board…</p><div class="progress"><i></i></div></div>
+ </section></div>`;
+ later(()=>go('4','canvas'),2800);
+}
+
+/* ---------- Scene 4 · Quality check, then the Canvas ---------- */
+const AMBER='#b45309';
+function pcaChart(o,excluded){
+ const W=300,H=192,L=30,R=12,T=18,B=30,all=[...o.pts,...excluded];
+ const xs=all.map(p=>p.x),ys=all.map(p=>p.y),x0=Math.floor(Math.min(...xs)-1),x1=Math.ceil(Math.max(...xs)+1),y0=Math.floor(Math.min(...ys)-1),y1=Math.ceil(Math.max(...ys)+1);
+ const X=v=>L+(W-L-R)*(v-x0)/(x1-x0),Y=v=>T+(H-T-B)*(1-(v-y0)/(y1-y0)),tick=(a,b)=>{const t=[];for(let v=Math.ceil(a/2)*2;v<=b;v+=2)t.push(v);return t;};
+ let g=tick(x0,x1).map(v=>`<line class="${v?'grid':'ax'}" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H-B}"/><text x="${X(v)}" y="${H-B+13}" text-anchor="middle">${v}</text>`).join('')
+  +tick(y0,y1).map(v=>`<line class="${v?'grid':'ax'}" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/>${v===y0?'':`<text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${v}</text>`}`).join('');   /* no label in the corner, where it would touch the first x label */
+ all.forEach(p=>{const ex=excluded.includes(p),tip=`${p.id} · ${p.g} · PC1 ${p.x}, PC2 ${p.y}`+(ex?' · excluded':` · distance ${p.d.toFixed(2)}, limit ${o.line.toFixed(2)}${p.flag?' · flagged':''}`);
+  if(p.flag&&!ex)g+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="10" fill="none" stroke="${AMBER}" stroke-width="2"/>`;
+  g+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="5" fill="${ex?'#fff':gcol(p.g)}" stroke="${ex?OFF:'#fff'}" stroke-width="2"/>`;
+  if(p.flag||ex)g+=`<text class="lbl" x="${X(p.x)+14}" y="${Y(p.y)+4}">${p.id}${ex?' (excluded)':''}</text>`;
+  g+=`<circle class="hit" cx="${X(p.x)}" cy="${Y(p.y)}" r="14" tabindex="0" role="img" aria-label="${tip}" data-tip="${tip}"/>`;});
+ return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="group" aria-label="Principal components, PC1 against PC2, one point per sample">${g}
+  <text x="${L}" y="10">PC2 (21 %)</text><text x="${W-R}" y="${H-2}" text-anchor="end">PC1 (58 %)</text></svg>`;
+}
+function rowsChart(rows,{min,max,ticks,unit,label,draw}){
+ const W=300,H=192,L=70,R=28,T=6,B=30,rh=Math.min(30,(H-T-B)/Math.max(1,rows.length)),X=v=>L+(W-L-R)*(v-min)/(max-min);   /* same height as the PCA chart, so the three cards line up */
+ return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="group" aria-label="${label}">
+  ${ticks.map(v=>`<line class="${v===min?'ax':'grid'}" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H-B}"/><text x="${X(v)}" y="${H-B+13}" text-anchor="middle">${v}${unit}</text>`).join('')}
+  ${rows.map((r,i)=>{const cy=T+i*rh+rh/2;return `<text x="${L-8}" y="${cy+4}" text-anchor="end">${r.id}</text>${draw(r,cy,X)}<rect class="hit" x="0" y="${cy-rh/2}" width="${W}" height="${rh}" tabindex="0" role="img" aria-label="${r.tip}" data-tip="${r.tip}"/>`;}).join('')}
+  <text x="${L+(W-L-R)/2}" y="${H-2}" text-anchor="middle">${label}</text></svg>`;
+}
+function qcModel(){
+ const p=S.prep,ex=Object.fromEntries(Object.keys(S.decide).filter(id=>S.decide[id].choice==='remove').map(id=>[id,true]));
+ const r=prepare(p,ex),set=S.pcs,o=outliers(r.sel,set),excluded=SAMPLES.filter(s=>ex[s.id]&&p.samples[s.id]).map(s=>({...s,x:PCS[set][s.id][0],y:PCS[set][s.id][1]}));
+ const open=o.pts.filter(q=>q.flag&&!S.decide[q.id]),kept=o.pts.filter(q=>q.flag&&S.decide[q.id]);
+ const sh=SPREAD.shift[p.normalizationMethod],spread=r.sel.map(s=>({id:s.id,g:s.g,med:20.1+sh[s.idx],q1:SPREAD.q[s.id][0]+sh[s.idx],q3:SPREAD.q[s.id][1]+sh[s.idx]}));
+ const gap=spread.length?Math.max(...spread.map(s=>s.med))-Math.min(...spread.map(s=>s.med)):0;
+ const worst=[...r.perSample].sort((a,b)=>b.missing-a.missing)[0],handled=p.useImputation||p.imputeRemainingNAtoZero||r.missing===0;
+ return{p,r,o,excluded,open,kept,spread,gap,worst,handled,looks:open.length+(p.normalizationMethod==='none'?1:0)+(handled?0:1)};
+}
+function checkScene(){
+ const m=qcModel(),{p,r,o}=m,st=ok=>`<span class="st ${ok?'ok':'look'}">${ic(ok?I.ok:I.warn)}${ok?'OK':'Look'}</span>`;
+ const decided=Object.entries(S.decide).map(([id,d])=>`${id} ${d.choice==='remove'?`excluded${d.reason?` (“${esc(d.reason)}”)`:''}`:'kept'} by ${P[S.who].name} · <button class="link" data-undo="${id}">Undo</button>`).join(' · ');
+ const f=m.open[0];
+ const verdict=m.looks?`<section class="verdict warn" aria-labelledby="vt">${ic(I.warn)}<div class="grow"><h2 id="vt">${f?`${m.open.length} sample${m.open.length===1?'':'s'} to review`:'One thing to review'}</h2>
+   <p>${f?`${f.id} sits far from the other samples. Keep it or exclude it. Either way the Canvas opens, and the choice stays visible there.`:p.normalizationMethod==='none'?'The samples are not on one scale: no normalization was applied.':'Missing values stay in the data: some plots and statistics will skip them.'}</p>
+   ${f?`<div class="decide" id="decide"><button class="btn secondary small" id="keep">Keep ${f.id}</button><button class="btn secondary small" id="excl">Exclude…</button></div>`:''}
+   ${decided?`<p style="margin-top:8px">${decided}</p>`:''}</div></section>`
+  :`<section class="verdict good" aria-labelledby="vt">${ic(I.ok)}<div class="grow"><h2 id="vt">Ready for the Canvas</h2><p>${r.kept} lipids · ${r.n} samples. ${decided||'No outlier risks detected.'}</p></div></section>`;
+ const g1=m.open.length===0,missTip=s=>`${s.id}: ${s.missing} of ${r.kept} lipids missing before imputation (${pct(s.missing,r.kept)})`;
+ const maxMiss=Math.max(25,Math.ceil(Math.max(0,...r.perSample.map(s=>100*s.missing/r.kept))/25)*25);
+ view().innerHTML=`<div class="check"><div class="sheet">
+  <button class="crumb" id="back">${ic(I.back)}Preparation settings</button>
+  <h1>Quality check · ${S.order}</h1><p class="lede">Prepared by Team with your choices: ${r.kept} of ${r.total} lipids, ${r.n} samples.</p>
+  ${verdict}
+  <div class="checkhead"><h2>Three checks</h2><div class="legend" aria-label="Legend"><span><i class="dot c1"></i>Control</span><span><i class="dot c2"></i>Treated</span>${o.pts.some(q=>q.flag)?`<span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="none" stroke="${AMBER}" stroke-width="2"/></svg>Flagged by Team’s outlier rule</span>`:''}</div></div>
+  <div class="checks">
+   <section aria-labelledby="c1"><h3 id="c1">Samples group as expected ${st(g1)}</h3>
+    <p class="res">${m.open.length?`${f.id} is ${f.z.toFixed(1)} MAD beyond the median distance. Team flags above 2.5.`:m.kept.length?`${m.kept.map(q=>q.id).join(', ')} flagged and kept. The others group by condition.`:m.excluded.length?`${m.excluded.map(q=>q.id).join(', ')} excluded. The other samples group by condition.`:'No outlier risks detected. Samples group by condition.'}</p>
+    ${pcaChart(o,m.excluded)}${table(['Sample','Group','PC1','PC2','Distance','Flag'],o.pts.map(q=>[q.id,q.g,q.x,q.y,q.d.toFixed(2),q.flag?'Flagged':'—']))}</section>
+   <section aria-labelledby="c2"><h3 id="c2">Samples are on one scale ${st(p.normalizationMethod!=='none')}</h3>
+    <p class="res">${p.normalizationMethod==='none'?`Not normalized: medians differ by up to ${m.gap.toFixed(1)} (log2).`:p.normalizationMethod==='median'?'Medians line up after median normalization.':`Medians within ${m.gap.toFixed(2)} (log2) after PQN.`}</p>
+    ${rowsChart(m.spread.map(s=>({...s,tip:`${s.id}: median ${s.med.toFixed(1)}, middle half ${s.q1.toFixed(1)} to ${s.q3.toFixed(1)} (log2)`})),{min:16,max:24,ticks:[16,18,20,22,24],unit:'',label:'log2 abundance: median and middle half',
+     draw:(s,cy,X)=>`<line x1="${X(s.q1)}" x2="${X(s.q3)}" y1="${cy}" y2="${cy}" stroke="${gcol(s.g)}" stroke-width="2" stroke-linecap="round"/><circle cx="${X(s.med)}" cy="${cy}" r="5" fill="${gcol(s.g)}" stroke="#fff" stroke-width="2"/>`})}
+    ${table(['Sample','Median','Q1','Q3'],m.spread.map(s=>[s.id,s.med.toFixed(1),s.q1.toFixed(1),s.q3.toFixed(1)]))}</section>
+   <section aria-labelledby="c3"><h3 id="c3">Missing values are handled ${st(m.handled)}</h3>
+    <p class="res">${r.missing===0?'No missing values among the kept lipids.':`${r.missing} missing values ${p.useImputation?'estimated with QRILC':p.imputeRemainingNAtoZero?'set to zero':'stay missing'}. ${m.worst.id} had the most (${pct(m.worst.missing,r.kept)}).`}</p>
+    ${rowsChart(r.perSample.map(s=>({...s,v:100*s.missing/r.kept,tip:missTip(s)})),{min:0,max:maxMiss,ticks:[0,maxMiss/2,maxMiss],unit:' %',label:'missing before imputation, per sample',
+     draw:(s,cy,X)=>(s.v>0?`<path d="${endRound(X(0),cy-5,X(s.v)-X(0),10)}" fill="${gcol(s.g)}"/>`:'')+(s.id===m.worst.id&&s.v>0?`<text class="lbl" x="${X(s.v)+5}" y="${cy+4}">${Math.round(s.v)} %</text>`:'')})}
+    ${table(['Sample','Missing','Of lipids','Share'],r.perSample.map(s=>[s.id,s.missing,r.kept,pct(s.missing,r.kept)]))}</section>
+  </div>
+ </div></div>
+ <div class="stickybar"><div class="in"><p class="stat ${m.looks?'look':'ok'}">${ic(m.looks?I.warn:I.ok)}${m.looks?(f?`${m.open.length} sample${m.open.length===1?'':'s'} to review`:'One thing to review'):'Ready for the Canvas'}</p>
+  <p class="grow">${f?'You can decide later: the flag travels to the Canvas.':m.looks?'You can open the Canvas as it is, or change the settings.':'Everything Team checks before a figure is in order.'}</p>
+  <button class="btn secondary" id="back2">Change settings</button><button class="btn primary" id="open">Open the Canvas ${ic(I.arrow)}</button></div></div>`;
+ tips(view());
+ const back=()=>go('3','prepare');$('back').onclick=back;$('back2').onclick=back;
+ $('open').onclick=()=>{S.fresh=true;go('4','loading');};
+ view().querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{delete S.decide[b.dataset.undo];checkScene();});
+ if(f){$('keep').onclick=()=>{S.decide[f.id]={choice:'keep'};checkScene();$('open').focus();};
+  /* As in Team's Review: the reason is optional, the source measurements are kept, Undo restores the sample. */
+  $('excl').onclick=()=>{$('decide').innerHTML=`<label class="sr" for="why">Reason for excluding ${f.id} (optional)</label><input class="input" id="why" placeholder="Reason (optional)" maxlength="120"><button class="btn secondary small" id="exok">Exclude ${f.id}</button><button class="link" id="exno">Cancel</button>`;
+   $('why').focus();$('exno').onclick=checkScene;$('exok').onclick=()=>{S.decide[f.id]={choice:'remove',reason:$('why').value.trim()};checkScene();$('open').focus();};
+   $('why').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('exok').click();}};};}   /* preventDefault: the same Enter must not press the button that takes the focus next */
+}
+function canvasScene(){
+ const loading=S.state==='loading',old=BOARDS.find(b=>b.id===S.order),joined=isJoined(),m=qcModel();
+ const p=old||joined?freshPrep():m.p,r=old||joined?prepare(p):m.r,who=old?old.by:joined?'Ana R.':'you',fresh=S.fresh&&!old&&!joined;
+ const sum=old?old.size:`${r.kept} lipids · ${r.n} samples`;
+ const flagNote=old?'No outlier risks detected':joined?'Treated_3 flagged, kept by Ana R.'
+  :[...m.kept.map(q=>`${q.id} flagged, kept`),...m.excluded.map(q=>`${q.id} excluded`),...m.open.map(q=>`${q.id} flagged, not decided yet`)].join(', ')||'No outlier risks detected';
+ view().innerHTML=`<div class="cv"><div class="rail" aria-hidden="true">${[I.grid,I.target,I.text,I.cursor,I.move,I.panel].map((d,i)=>`<span class="${i===3?'on':''}">${ic(d)}</span>`).join('')}</div>
+  <div class="main"><div class="tabs" aria-hidden="true"><span class="t">Canvas 1 <span class="muted">0</span></span><span class="spacer"></span><span class="wide">Targeted lipids</span><span class="wide">Analysis settings</span><span class="wide">+ Add plot</span><span class="wide dim">Tidy up</span><span class="wide dim">Undo</span><span class="wide dim">Redo</span><span class="wide t">Draft</span><span>Figure page →</span><span class="wide">Export figure ▾</span></div>
+  <p class="viewonly">${ic(I.info)}<span>View only on this device. Open Nexo on a computer to edit.</span></p>
+  <div class="hintbar"><b>${sum}</b><button class="prepchip" id="pchip" aria-expanded="false">Prepared by ${who} · settings</button><span class="wide">Draft: edit live plots. Finish a plot to place it on the figure page.</span></div>
+  <div class="board">${loading?`<section class="card loadc" role="status"><div class="head"><img src="help-neutrophil.svg" alt=""><div><h2>Opening your board</h2><p class="small muted">${S.order}</p></div></div>
+    <ul>${fresh?`<li class="done">${ic(I.check)}Data prepared with Team</li><li class="done">${ic(I.check)}Quality check reviewed</li>`:`<li class="done">${ic(I.check)}Signed in as ${P[S.who].name}</li>`}<li>${ic(I.arrow)}Loading the board and its plots…</li></ul><div class="progress"><i></i></div></section>`
+   :`<section class="emptyc"><span class="icn">${ic(I.plot)}</span><p>This canvas is empty.<span class="wide"> Add a plot from the library or drag an illustration here.</span></p>
+    <div class="sug wide"><button class="btn primary small">Add plot</button><button class="btn secondary small">Open library (L)</button></div>
+    <div class="sug wide"><span>Principal components</span><span>Feature distributions</span><span>Abundance heatmap</span></div></section>`}
+   <div class="setpop card" id="setpop" hidden></div><div class="zoom" aria-hidden="true">−&nbsp; 100% &nbsp;+ &nbsp;·&nbsp; Fit</div></div></div></div>`;
+ $('pchip').onclick=e=>{const sp=$('setpop'),open=sp.hidden;sp.hidden=!open;e.currentTarget.setAttribute('aria-expanded',String(open));
+  if(open)sp.innerHTML=`<h2>Prepared by ${who}${old?'':joined?' · 9 Nov':' · today'}</h2>${settingsList(p,r,flagNote,old&&old.set)}<p class="small muted" style="margin-top:12px">Everyone on this board sees the same prepared data.</p>`;};
+ if(AUTOSET&&!loading){AUTOSET=false;$('pchip').click();}
+ if(loading)later(()=>go('4','canvas'),1800);
+}
+let AUTOSET=params.get('settings')==='1';                   /* settings=1: open the settings card once (for a screenshot) */
+
+/* ---------- Reviewer notes per scene: Team today → proposal ---------- */
+const REVIEW={
+'1':{t:'1 · Sign in',
+ note:'Try it: any password works; the code 000000 shows the wrong-code state; an email containing “lee” signs in as the client member; from “Signed out” you land back on the board you left. Nexo has no sign-in of its own today: it links to Admin’s. Who hosts this page is question 1 of the proposal.',
+ team:['One screen: Email, Password, “Sign in”.','Reset and invitation share one folded form with 5 fields: Email (typed again), Activation code, a “Code type” select, New password, Confirm new password.','No second step: Team signs in with email and password only.','The bar says “Not signed in” in its middle; on a phone it shows a menu button with nothing to open.'],
+ kept:['The spectrum illustration, full screen, behind one white card.','The heading and its sub-line, word for word.','Email and password first; a one-time code for an invitation or a reset.','Each message next to the field it is about, in Team’s words.'],
+ cut:['“Code type” select: the two links already say which one.','“Confirm new password”: one field with Show.','The second Email entry: carried over from the first screen.','“Not signed in” and the phone menu button.','The serif heading font (a second family).'],
+ why:['Reset or activate: 5 fields → 3 fields.','The code step is new to Team’s people (Admin signs in with an authenticator code), but it is one field that submits itself at the sixth digit.','Signed out in the middle of work: one sentence, and after sign-in you are back where you were.','One primary button per screen.'],
+ fixes:['Type: one family (Nunito Sans) on a 24 / 18 / 14 / 13 / 12 px scale. Team’s card mixes 30, 15, 14 and 13 px in two families.','The heading fits one line at 390 px (Team’s wraps to two).','Card 400 px wide, 32 px padding (Team: 620 px wide, fields 538 px).','Field borders 3.5:1 against white (Team 1.5:1, Nexo’s dialogs 1.5:1).','All text at least 7:1 (Team’s sub-line 6.1:1, its link 6.7:1).','Focus: one 2 px ring at 2 px offset (Team: 3 px ring, 3 px offset and a glow). On the navy bar the ring is white, because the accent would be 1.9:1 there.','Touch: 44 px fields and buttons, 16 px input text so a phone does not zoom on focus (Team: 13 px), and every text link has a 40 px high tap area.','Spacing on a 4 / 8 / 12 / 16 / 24 / 32 px grid; label, field and button share one left edge.','Bar: Help and the account sit right-aligned; nothing floats in the middle.','Copy: Team’s 19-word rejection becomes 12 words: “Email or password is not right. Check both, or reset your password.”','The illustration is fixed to the screen. On a phone, Team’s long activation form outgrows it: the artwork ends three quarters of the way down the card.','Phone: the illustration is cropped to its tall peaks, where the lipid characters stand. Team’s centre crop shows three small peaks and none of the characters.','Reduced motion: the static version of the illustration.']},
+'2':{t:'2 · Start',
+ note:'Lab staff see every client; a client member sees only their own group. A released dataset is prepared once: from then on it is a project for everyone who may open it.',
+ team:['“Choose how to begin”: project cards (“Select to see its checkpoints”) and, for the selected one, a side card with up to 4 checkpoints and “Open latest”.','A “New matrix” card to upload, and “All checkpoints and save options” below.','Resuming: “Open latest”, 1 click for the first project by name (it arrives selected), 2 for any other.','In Nexo today: an unbranded card that lists checkpoints and offers Upload ZIP.'],
+ kept:['The data-matrix illustration behind one white sheet.','Your projects, with their lipid and sample counts.','The latest work first.','An empty state that says what will happen and who to ask.'],
+ cut:['The side card and the checkpoint lists: versions live on the Canvas.','“New matrix” upload: data arrive as datasets released in Admin. Lab staff keep “Import a Team checkpoint (.zip)”.','Two lists (projects, checkpoints) → one list of projects.'],
+ why:['Any project opens in 1 click (Team: 1 for the first by name, 2 for the others).','A released dataset is visible before anyone prepares it, with one action.','A client member sees only their group and no upload.','You see who is on a board before you open it.'],
+ fixes:['One sheet with 32 px padding; rows on a three-column grid, so names, status and buttons each share an edge.','One primary button per screen (Continue / Open); row actions are secondary buttons.','Counts sit beside the heading in muted text instead of badges.','“New” is an amber tag with a word, never colour alone.','No text on the artwork: every word sits on white (at least 7:1).','Phone: each row becomes two lines and the button keeps a 40 px touch height.','The lab logo replaces Nexo’s “LE” box; the role (“Lab”, “Client”) is a labelled pill beside the name.']},
+'3':{t:'3 · Prepare the data',
+ note:'Move the detection slider or untick a sample: the preview recounts at once with Team’s rule (synthetic matrix, 76 lipids × 6 samples). “Joiner” is what a second person on a shared board sees: nothing to prepare.',
+ team:['3 screens before the Canvas: abundance matrix, sample labels (sample-id column, 5 optional mappings, confirm), review and prepare.','Review asks 9 fields: the detection slider, and 8 folded under “Study design and preparation options”. 5 more sit under “Advanced preparation and PCA options” on a Results page the workspace hides: they stay at their defaults.','In Nexo today: a 560 px dialog with raw values (“global”, “median”), no preview; at 390 px its footer is cut off.'],
+ kept:['Every science choice Nexo sends to Team, with Team’s wording and defaults.','The detection threshold with its live preview.','QRILC for missing values; the three normalizations.','Samples chosen by group; the study design is never prefilled.'],
+ cut:['Matrix upload and label mapping: a released dataset already carries its Abundance and Metadata sheets.','7 on screen (6 of Team’s and the sample choice) + 4 under “More settings” (2 of Team’s folded ones and the 2 zero rules Nexo’s API asks).','“Design notes”, “Drop Misc lipids”, PCA level and maximum components: Nexo’s dataset API does not ask them today.','For a joiner, the whole step: they see “Prepared by Ana R.” and its settings.'],
+ why:['3 screens → 1, with one primary action: “Prepare and check”.','The preview answers “what do I lose?” before the server run.','With Team’s defaults a typical dataset needs 1 click.','The joiner clicks nothing: the card shows while the board loads.'],
+ fixes:['Row titles in a 152 px left column: every control starts on one edge.','Words instead of raw values: “All selected samples”, “Median (log scale)”.','Type: 24 px title, 14 px bold row titles, 12 px help, one family.','Controls 32 px high (40 px on touch); the chosen option is filled and bold, not colour alone.','The preview number is 40 px: the one thing to read.','Chart: kept in blue, left out in gray, a legend above, values on hover or keyboard focus, and “Show as table”.','Errors say what to do: “Select at least one sample.”','“Prepare and check” stays in a bar at the bottom of the screen at every width: the one action is never below the fold. The same bar carries “Open the Canvas” in step 4.','“n changes from Team’s defaults · Reset” sits beside the action.','Phone: one column; the two detection options stack, each 40 px high.']},
+'4':{t:'4 · Quality check → Canvas',
+ note:'The flag is Team’s rule on synthetic scores: distance to the centre in PC1/PC2, flagged above 2.5 MAD. Keep or exclude Treated_3, or open the Canvas straight away: the check advises, it does not block (question 3).',
+ team:['Review shows a sample overview (PCA): click a point to exclude that sample (reason optional); Undo restores it.','The Quality Check tool has 6 tabs: normalization, outliers, PCA scores, PCA loadings, sample correlation, BQC CoV.','Its outlier tab: MAD threshold 2.5; a flagged sample can be kept, averaged or removed.'],
+ kept:['Team’s outlier rule and its 2.5 limit.','PCA coloured by condition.','Keep, or Exclude with an optional reason; Undo restores the sample.','Advisory: the Canvas opens either way.'],
+ cut:['6 tabs → 3 checks and one verdict.','PCA loadings and sample correlation stay Canvas plots (its Quality check library).','BQC CoV stays a Canvas plot too (“Batch quality check”; it needs at least 2 BQC replicate samples).','“Average” as a decision is not offered here (question 3).'],
+ why:['One glance says go, or look at one sample.','A decision is 1 click (Keep) or 2 (Exclude, with a reason if you want one).','The detailed QC plots stay one click away on the Canvas.','The hand-off says what was done while the board loads.'],
+ fixes:['Status is an icon and a word (“OK”, “Look”), never colour alone.','Three cards on one grid, 16 px padding, charts aligned.','Two series colours checked for colour-blind separation; a legend, and direct labels only on the flagged sample and the worst bar.','Chart text in ink and muted tokens (at least 7:1); grid lines are solid hairlines.','Every mark has a hover and keyboard-focus tooltip, and each chart a “Show as table” twin.','Verdict text 8.0:1 on amber, 7.2:1 on green.','The Canvas keeps a “Prepared by … · settings” chip in its hint bar.','Loading: a short list of what is done instead of a bare spinner; reduced motion stops the animation.']}};
+function renderReview(){
+ const r=REVIEW[S.scene],ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+ $('review').innerHTML=`<div class="in"><h2>${r.t} · Team today → proposal</h2><p class="note">${r.note}</p>
+  <div class="trio"><div><h3>Team today</h3>${ul(r.team)}</div><div><h3>Kept</h3>${ul(r.kept)}</div><div><h3>Removed or merged</h3>${ul(r.cut)}</div><div><h3>Why</h3>${ul(r.why)}</div></div>
+  <div class="fixes"><h3>Cosmetic fixes in this scene</h3>${ul(r.fixes)}</div></div>`;
+}
+
+/* ---------- Scene switcher ---------- */
+const RENDER={'1':signin,'2':start,'3':prepareScene,'4':()=>S.state==='canvas'||S.state==='loading'?canvasScene():checkScene()};
+/* go(scene, state, {review}): review = a jump from the yellow bar or a direct link, which resets the person and the dataset of that state */
+function go(scene,state,o={}){
+ S.timers.forEach(clearTimeout);S.timers=[];$('tip').hidden=true;closePop();
+ if(!STATES[scene])scene='1';
+ if(scene==='4'&&state==null&&!o.review){state='check';S.pcs='flag';}      /* after "Prepare and check": Team's result decides the verdict */
+ if(!STATES[scene].some(([k])=>k===state))state=STATES[scene][0][0];
+ if(scene==='2')S.who=state==='staff'?'ana':'lee';
+ if(state==='joiner'){S.who='lee';S.order=ORDER;}
+ if(o.review){
+  if(scene!=='2'&&state!=='joiner')S.who='ana';
+  S.order=ORDER;S.fresh=true;S.ret=false;
+  if(scene==='4'){const board=state==='loading'||state==='canvas';S.pcs=state==='clear'?'clean':'flag';S.decide=board?{Treated_3:{choice:'keep'}}:{};}
+ }
+ S.scene=scene;S.state=state;
+ const b=document.body.classList;Object.keys(STATES).forEach(n=>b.toggle('scene-'+n,n===scene));b.toggle('noart',scene==='4'&&(state==='loading'||state==='canvas'));
+ document.querySelectorAll('#scenes [data-scene]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.scene===scene)));
+ $('statebtns').innerHTML=STATES[scene].map(([k,l])=>`<button data-state="${k}" aria-pressed="${k===state}">${l}</button>`).join('');
+ $('statebtns').querySelectorAll('button').forEach(x=>x.onclick=()=>go(scene,x.dataset.state,{review:true}));
+ topbar();RENDER[scene]();renderReview();
+ try{const u=new URLSearchParams(location.search);u.set('scene',scene);u.set('state',state);history.replaceState(null,'','?'+u);}catch(e){}
+ scrollTo(0,0);
+ const h=view().querySelector('h1');if(h&&scene!=='1'&&!o.review){h.tabIndex=-1;h.focus({preventScroll:true});}   /* a new screen starts at its title */
+}
+document.querySelectorAll('#scenes [data-scene]').forEach(x=>x.onclick=()=>go(x.dataset.scene,null,{review:true}));
+$('tonotes').onclick=()=>$('review').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
+$('hidebar').onclick=()=>document.body.classList.remove('scenes');
+if(HOLD)document.body.classList.add('hold');
+if(params.get('bar')==='0')document.body.classList.remove('scenes');       /* bar=0: without the reviewer bar */
+if(params.get('notes')==='0')document.body.classList.add('nonotes');       /* notes=0: without the reviewer notes */
+go(params.get('scene')||'1',params.get('state'),{review:true});
+</script>
+</body>
+</html>

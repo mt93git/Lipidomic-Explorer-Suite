@@ -1,0 +1,21 @@
+# tests/dual-ui/test_api_statistics.R | RTX production tree | H5a
+PASS stats describe
+PASS stats apply welch/bh
+PASS stats check
+PASS stats 400
+PASS stats violin-only
+PASS stats parity welch
+PASS group comparison confirm
+
+# tests/dual-ui/test_api_http.R | RTX production tree | H5a
+PASS I1 health 200
+PASS I1 catalog 58
+PASS I1 sessions 200 cached
+PASS I1 pca 200
+PASS I1 errors 400/404/422 and checkpoints
+PASS stats HTTP describe 200
+PASS I1 card schema 200
+PASS I1 card PNG bytes
+PASS I1 checkpoint validate/save/download/upload/delete
+PASS I1 session delete 200
+

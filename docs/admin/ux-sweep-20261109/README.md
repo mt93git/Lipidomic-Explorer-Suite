@@ -1,0 +1,15 @@
+# Admin UX sweep · 2026-11-09
+
+Proposal only: a visual review of the Admin back office (`frontends/admin`, Next 16, branch `admin/phase1` at 38b3b5c5) in demo mode with synthetic data. Nothing in the app was changed.
+
+1. 17 implemented screens reviewed in the Lab staff and Client views, at 1440×900 and 390×844, with key states (empty, filled, validation error, success, long names).
+2. 52 screenshots in `screenshots/current-*.png` (palette PNG, 2.2 MB in total), captured by `capture.mjs` against the dev server.
+3. `proposal.html` is a self-contained page: the Pareto top 10 first, then one card per finding with the current screenshot, a before/after mockup built with the app's own tokens, and the rationale; smaller notes follow.
+4. Top 10: sidebar with 23 undifferentiated entries; grey validation errors with no summary or focus; registry task below the fold; Ingest results and Name dictionary off-pattern with no next step; signer's action at the bottom of the dataset page; board showing 4.8 of 10 stages; success feedback styled as information; nine identical primary buttons on Release; 9–10 px text; phone overflow on the registry and hash wrapping on the dataset page.
+5. Four facts were measured in the page rather than read off images: board 1,162 px for 2,532 px of columns; document 1,080 px wide at a 390 px viewport once registry rows exist; error text computed as rgb(82,100,119); font sizes down to 9 px.
+6. Every proposal stays inside the brand (tokens, Cormorant/Nunito/Plex Mono, ADMIN badge) and favours CSS or ordering changes; effort is S for eight of the ten.
+7. Placeholder screens (New order, Storage, Batch builder, QC review, Clients, People, Client home, Client order and others) are listed in one line and not designed.
+8. Open `proposal.html` in a browser (double-click, or `xdg-open docs/admin/ux-sweep-20261109/proposal.html`); images are referenced relatively, no network or scripts needed.
+9. To recapture: `cd packages/admin-ingest && npm ci && npm run build`, `cd frontends/admin && npm ci && npm run dev -- --port 3110`, `npx playwright install chromium`, then `node ../../docs/admin/ux-sweep-20261109/capture.mjs` from `frontends/admin`.
+10. Implementation of the eight effort-S findings (1, 2, 3, 4, 7, 8, 9, 10) followed on the task branch, one commit per finding; `screenshots/after-*.png` are the same shots retaken after those commits (`PREFIX=after ONLY=pipeline,release,... node ../../docs/admin/ux-sweep-20261109/capture.mjs` from `frontends/admin`; `ONLY` lists shot names without the viewport suffix). Finding 5 (effort M) followed: a status strip and a "Your turn" card on the dataset page, with `after-release-dataset-signed-1of2-1440.png` new and `after-release-dataset-built-*` and `after-release-dataset-released-1440.png` retaken (`ONLY=release-dataset-built,release-dataset-signed-1of2,release-dataset-released`). Finding 6 (effort M) is not implemented.
+11. The "Skip to content" box that a full-page capture can paint mid-page is a capture artefact (the fixed link drawn at the scroll offset), not an app defect; the script scrolls to the top before each capture.

@@ -1,0 +1,236 @@
+tsc ok
+      Tests  202 passed (202)
+dist/index.html                   0.58 kB │ gzip:  0.39 kB
+dist/assets/index-C_bm2jjI.css   47.81 kB │ gzip:  8.95 kB
+dist/assets/vendor-DyvUWP44.js  192.35 kB │ gzip: 60.28 kB
+dist/assets/index-DVSwiKpY.js   298.16 kB │ gzip: 97.18 kB
+✓ built in 933ms
+== tests/dual-ui/test_nexo_access.cjs
+PASS H7c chromium phone-view-only-chrome
+PASS H8 chromium phone-opens-fitted-with-content
+PASS H7c chromium phone-pan-pinch-wheel-zoom
+PASS H7c chromium phone-inspector-read-only-export-works
+PASS H7c chromium phone-card-menu-and-shortcuts-inert
+PASS H7c chromium phone-no-autosave-no-checkpoint-post
+PASS H7c chromium phone-axe-banner-dismiss
+PASS H8 chromium phone-banner-compact-and-stays-dismissed
+PASS H7c chromium phone-figure-page-read-only
+PASS H7c chromium phone-no-console-errors
+PASS H7c chromium mode-param-overrides
+PASS H7c chromium layout-768x1024
+PASS H7c chromium layout-1024x768
+PASS H7c chromium finished-inspector-status-matches-badge
+PASS H7c chromium desktop-axe-canvas-inspector-export-figure
+PASS H8b chromium empty-canvas-hint-add-plot
+PASS H7c chromium keyboard-tab-order-focus-rings
+PASS H7c chromium keyboard-enter-selects-arrow-moves
+PASS H7c chromium keyboard-escape-cascade
+PASS H8b chromium keyboard-shortcuts-dialog
+PASS H7c webkit phone-view-only-chrome
+PASS H8 webkit phone-opens-fitted-with-content
+PASS H7c webkit phone-pan-pinch-wheel-zoom
+PASS H7c webkit phone-inspector-read-only-export-works
+PASS H7c webkit phone-card-menu-and-shortcuts-inert
+PASS H7c webkit phone-no-autosave-no-checkpoint-post
+PASS H7c webkit phone-axe-banner-dismiss
+PASS H8 webkit phone-banner-compact-and-stays-dismissed
+PASS H7c webkit phone-figure-page-read-only
+PASS H7c webkit phone-no-console-errors
+PASS H7c webkit mode-param-overrides
+PASS H7c webkit layout-768x1024
+PASS H7c webkit layout-1024x768
+PASS H7c webkit finished-inspector-status-matches-badge
+PASS H7c webkit desktop-axe-canvas-inspector-export-figure
+PASS H8b webkit empty-canvas-hint-add-plot
+PASS H7c webkit keyboard-tab-order-focus-rings
+PASS H7c webkit keyboard-enter-selects-arrow-moves
+PASS H7c webkit keyboard-escape-cascade
+PASS H8b webkit keyboard-shortcuts-dialog
+H7c OK
+== tests/dual-ui/test_nexo_canvas_edit.cjs
+PASS H2F chromium header-drag-store-settle-single-undo-camera
+PASS H2F chromium keyboard-and-corner-resize
+PASS H2F chromium delete-undo
+PASS H2F chromium duplicate-undo
+PASS H8d chromium copy-paste-plot
+PASS H2F chromium library-add-undo-preserves-camera
+PASS H8d chromium zoom-shortcuts
+PASS H8 chromium add-placeholder-reveal-highlight-minimap-locate
+PASS H8d chromium rail-palettes-text
+PASS H8 chromium align-distribute-selected-from-canvas-tools
+PASS H2F chromium toolbar-tidy-remove-all-undo
+PASS H8 chromium library-gated-rows-inline-reason-and-link
+PASS H2F chromium no-console-errors
+PASS H2F webkit header-drag-store-settle-single-undo-camera
+PASS H2F webkit keyboard-and-corner-resize
+PASS H2F webkit delete-undo
+PASS H2F webkit duplicate-undo
+PASS H8d webkit copy-paste-plot
+PASS H2F webkit library-add-undo-preserves-camera
+PASS H8d webkit zoom-shortcuts
+PASS H8 webkit add-placeholder-reveal-highlight-minimap-locate
+PASS H8d webkit rail-palettes-text
+PASS H8 webkit align-distribute-selected-from-canvas-tools
+PASS H2F webkit toolbar-tidy-remove-all-undo
+PASS H8 webkit library-gated-rows-inline-reason-and-link
+PASS H2F webkit no-console-errors
+H2F OK
+== tests/dual-ui/test_nexo_canvas_readonly.cjs
+PASS E1 chromium cards-equal-nodes
+PASS E1 chromium live-plots-have-traces-at-100
+PASS E1 chromium zoom-25-frozen
+PASS E1 chromium zoom-200-culled-empty
+PASS E1 chromium fit-click-inspector-live
+PASS E1 chromium no-console-errors-or-failed-requests
+PASS E1 webkit cards-equal-nodes
+PASS E1 webkit live-plots-have-traces-at-100
+PASS E1 webkit zoom-25-frozen
+PASS E1 webkit zoom-200-culled-empty
+PASS E1 webkit fit-click-inspector-live
+PASS E1 webkit no-console-errors-or-failed-requests
+E1 OK
+== tests/dual-ui/test_nexo_canvas_tabs.cjs
+PASS H8 chromium move-to-tab-titled-picker-and-toast
+PASS H2G chromium move-filter-hud-minimap-F2
+PASS H8 chromium tab-rename-delete-feedback-and-card-count
+PASS H2G chromium pointer-reorder-delete-move-single-undo
+PASS H2G chromium no-console-errors
+PASS H8 webkit move-to-tab-titled-picker-and-toast
+PASS H2G webkit move-filter-hud-minimap-F2
+PASS H8 webkit tab-rename-delete-feedback-and-card-count
+PASS H2G webkit pointer-reorder-delete-move-single-undo
+PASS H2G webkit no-console-errors
+H2G OK
+== tests/dual-ui/test_nexo_card_chrome.cjs
+PASS H6-0 unit menu upward-downward-clamp
+PASS H6-0 chromium anatomy-menu-remove-undo-duplicate-badge-finish
+PASS H6-0 chromium screenshot 1440
+PASS H6-0 chromium screenshot 1024
+PASS H6-0 chromium screenshot 390
+PASS H6-0 chromium no-console-errors
+PASS H6-0 webkit anatomy-menu-remove-undo-duplicate-badge-finish
+PASS H6-0 webkit screenshot 1440
+PASS H6-0 webkit screenshot 1024
+PASS H6-0 webkit screenshot 390
+PASS H6-0 webkit no-console-errors
+H6-0 OK
+== tests/dual-ui/test_nexo_export.cjs
+PASS H6d chromium preset-cell-dpi
+PASS H6d chromium bundle-download Mock_pca_2d_Publication_Bundle.zip
+PASS H8 chromium publication-scope-explained-volcano-gated-download-toast allowed=false
+PASS H6d chromium focus-stays-in-dialog-after-download
+PASS H6d chromium server-400-inline
+PASS H6d chromium escape-focus-return
+PASS H6d chromium inspector-csv violin_data.csv
+PASS H6d chromium plot-scope-png
+PASS H6d chromium menu-figure-page-svg figure-canvas-1.svg
+PASS H6d chromium no-console-errors
+PASS H6d webkit preset-cell-dpi
+PASS H6d webkit bundle-download Mock_pca_2d_Publication_Bundle.zip
+PASS H8 webkit publication-scope-explained-volcano-gated-download-toast allowed=false
+PASS H6d webkit focus-stays-in-dialog-after-download
+PASS H6d webkit server-400-inline
+PASS H6d webkit escape-focus-return
+PASS H6d webkit inspector-csv violin_data.csv
+PASS H6d webkit plot-scope-png
+PASS H6d webkit menu-figure-page-svg figure-canvas-1.svg
+PASS H6d webkit no-console-errors
+H6d OK
+== tests/dual-ui/test_nexo_figure_page.cjs
+PASS H8 chromium status-hint-follows-figure-mode
+PASS H8d chromium figure dblclick-text duplicate z-order aspect-lock
+PASS H8 chromium figure-page-pending-count-and-finish-from-row
+PASS H6c chromium world-page editing undo redo bounds SVG reload 0 console errors screenshots 1440/390
+PASS H8 webkit status-hint-follows-figure-mode
+PASS H8d webkit figure dblclick-text duplicate z-order aspect-lock
+PASS H8 webkit figure-page-pending-count-and-finish-from-row
+PASS H6c webkit world-page editing undo redo bounds SVG reload 0 console errors screenshots 1440/390
+H6c OK
+== tests/dual-ui/test_nexo_finish.cjs
+PASS H6b chromium violin-svg-undo-redo-edit
+PASS H7b chromium finish-immediately-after-add waits-no-refusal
+PASS H6b chromium image-png
+PASS H8 chromium pathway-network-live-frozen-finish
+PASS H6b chromium illustration-accent-svg-parses
+PASS H6b chromium save-reload screenshot-1440 no-console-errors
+PASS H6b webkit violin-svg-undo-redo-edit
+PASS H7b webkit finish-immediately-after-add waits-no-refusal
+PASS H6b webkit image-png
+PASS H8 webkit pathway-network-live-frozen-finish
+PASS H6b webkit illustration-accent-svg-parses
+PASS H6b webkit save-reload screenshot-1440 no-console-errors
+H6b OK
+== tests/dual-ui/test_nexo_group_comparison.cjs
+PASS H8c chromium confirm-prompt
+PASS H8c chromium confirm-then-live-plot
+PASS H8 chromium group-comparison-opens-on-statistics
+PASS H8c chromium hide-condition-undo
+PASS H8c chromium results-table-csv
+PASS H8c chromium no-console-errors
+PASS H8c webkit confirm-prompt
+PASS H8c webkit confirm-then-live-plot
+PASS H8 webkit group-comparison-opens-on-statistics
+PASS H8c webkit hide-condition-undo
+PASS H8c webkit results-table-csv
+PASS H8c webkit no-console-errors
+H8c OK
+== tests/dual-ui/test_nexo_inspector.cjs
+PASS H8 chromium data-change-undo-redo-restores-server-card-form
+PASS H3 chromium schema-edit-render-status
+PASS H3 chromium appearance-palette-background-undo-no-request
+PASS H3 chromium illustration-toggle-escape
+PASS H8 chromium selection-bar-checklist-team-encoding-null-label
+PASS H8 chromium zoomed-out-image-card-follows-data-change-and-undo
+PASS H8 chromium zoomed-out-plotly-card-retakes-its-snapshot-after-data-change
+PASS H3 chromium no-console-errors
+PASS H8 webkit data-change-undo-redo-restores-server-card-form
+PASS H3 webkit schema-edit-render-status
+PASS H3 webkit appearance-palette-background-undo-no-request
+PASS H3 webkit illustration-toggle-escape
+PASS H8 webkit selection-bar-checklist-team-encoding-null-label
+PASS H8 webkit zoomed-out-image-card-follows-data-change-and-undo
+PASS H8 webkit zoomed-out-plotly-card-retakes-its-snapshot-after-data-change
+PASS H3 webkit no-console-errors
+H3 OK
+== tests/dual-ui/test_nexo_live_journeys.cjs
+SKIP live journeys: set NEXO_LIVE_BASE to an app + API to test against
+== tests/dual-ui/test_nexo_perf.cjs
+PASS H7b chromium live-cap 12 in view → 4 live
+PASS H7b chromium 10-zoom-steps cap-held median<16ms
+PASS H7b chromium draw-40 median<8ms
+PASS H7b chromium pan-back image-cache first pass 2 renders, second pass 0
+PASS H8 chromium refused-frozen-card-shows-module-message
+PASS H7b chromium screenshot-1440 no-console-errors
+PASS H7b webkit live-cap 12 in view → 4 live
+PASS H7b webkit 10-zoom-steps cap-held
+PASS H7b webkit draw-40
+PASS H7b webkit pan-back image-cache first pass 2 renders, second pass 0
+PASS H8 webkit refused-frozen-card-shows-module-message
+PASS H7b webkit screenshot-1440 no-console-errors
+PASS H7b index.html does not block on Plotly
+H7b OK
+== tests/dual-ui/test_nexo_save.cjs
+PASS H4 chromium move-dirty-saving-saved
+PASS H8 chromium autosave-failure-reason-toast-retry-now
+PASS H8 chromium named-save-closes-dialog-current-first
+PASS H4 chromium named-save-list-download-reload-position
+PASS H8 chromium picker-groups-team-first-with-date-and-source
+PASS H4 chromium no-console-errors
+PASS H8 chromium failed-open-offers-try-again
+PASS H4 webkit move-dirty-saving-saved
+PASS H8 webkit autosave-failure-reason-toast-retry-now
+PASS H8 webkit named-save-closes-dialog-current-first
+PASS H4 webkit named-save-list-download-reload-position
+PASS H8 webkit picker-groups-team-first-with-date-and-source
+PASS H4 webkit no-console-errors
+PASS H8 webkit failed-open-offers-try-again
+H4 OK
+== tests/dual-ui/test_nexo_statistics.cjs
+PASS H5 chromium analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+PASS H8 chromium statistics-marker-and-cleared-after-data-change-one-undo-step
+PASS H8 chromium statistics-on-a-library-added-violin
+PASS H5 webkit analysis-diff-confirm-annotations-display-csv-undo-no-requests-no-console-errors
+PASS H8 webkit statistics-marker-and-cleared-after-data-change-one-undo-step
+PASS H8 webkit statistics-on-a-library-added-violin
+H5 OK
+exit=0

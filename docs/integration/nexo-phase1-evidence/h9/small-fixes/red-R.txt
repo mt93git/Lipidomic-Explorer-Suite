@@ -1,0 +1,1 @@
+Rscript not installed on the M1: tests/dual-ui/test_api_small_fixes.R unrun (red expected on check 1: temp upload file left after an accepted upload).

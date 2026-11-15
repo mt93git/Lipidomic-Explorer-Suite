@@ -1,0 +1,9 @@
+# green
+## R (RTX)
+PASS the v0 dashboard instance answers its schema on demand
+PASS a v0 dashboard instance is patchable on demand and the session stays clean
+PASS other ids stay unknown
+PASS test_api_legacy_cards
+## browser
+inspector exit=0 pass=40
+DONE

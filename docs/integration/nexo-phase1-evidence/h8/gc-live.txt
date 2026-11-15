@@ -1,0 +1,12 @@
+PASS H8c-live chromium card shows the confirm prompt after 1.4 s
+PASS H8c-live chromium real comparison drawn 0.4 s after confirm: {"total":4,"violins":2}
+PASS H8c-live chromium results table 9 rows; first: CeramideTreatment vs Controln/aunavailable: unpaired inference is not enabled
+PASS H8c-live chromium hiding condition "Treatment" 2 -> 1 violins
+PASS H8c-live chromium Comparison CSV 72 rows, header: "Sample","GroupingVal","X_Grp","Facet_Grp","Feature","Plot_Value","P_Value","Significance","Is_Basel
+INFO H8c-live chromium console errors 0
+PASS H8c-live webkit card shows the confirm prompt after 0.9 s
+PASS H8c-live webkit real comparison drawn 0.8 s after confirm: {"total":4,"violins":2}
+PASS H8c-live webkit results table 9 rows; first: CeramideTreatment vs Controln/aunavailable: unpaired inference is not enabled
+PASS H8c-live webkit hiding condition "Treatment" 2 -> 1 violins
+PASS H8c-live webkit Comparison CSV 72 rows, header: "Sample","GroupingVal","X_Grp","Facet_Grp","Feature","Plot_Value","P_Value","Significance","Is_Basel
+INFO H8c-live webkit console errors 0

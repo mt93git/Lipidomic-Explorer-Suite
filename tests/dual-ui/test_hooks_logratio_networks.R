@@ -64,7 +64,7 @@ circos_logic <- find_assign(fla, as.name("circos_plot_logic"))
 circos_plot <- find_assign(fla, quote(output$plotCircos))
 for (rhs in list(network_data, network_plot, cor_data, circos_logic, circos_plot))
   stopifnot(length(hook_calls(list(rhs[[2L]][[2L]]), "inference_allowed")) == 1L)  # the first statement is the gate
-stopifnot(length(hook_calls(structural, "inference_allowed")) == 2L, length(hook_calls(fla, "inference_allowed")) == 3L)
+stopifnot(length(hook_calls(structural, "inference_allowed")) == 3L, length(hook_calls(fla, "inference_allowed")) == 3L)
 # #10 is fixed in the module for both interfaces (Max, 3 Nov): no FLA palette hook.
 stopifnot(length(hook_calls(fla, "fla_violin_palette")) == 0L)
 
@@ -74,7 +74,7 @@ stopifnot(length(hook_calls(list(banner), "de_banner")) == 1L, length(hook_calls
   calls_fn(banner_base, "render_de_not_run_banner_base"), !calls_fn(banner_base, "render_de_not_run_banner"))
 # The unwarned Differential analysis banner the structural banner builds on.
 stopifnot(any(grepl("^render_de_not_run_banner_base <- function\\(shared_data\\)", readLines("R/modules/utils_stats.R"))))
-cat("PASS modules call violin_export_table x2, logratio_shared_data, inference_allowed x5, de_banner; FLA palette fixed in module\n")
+cat("PASS modules call violin_export_table x2, logratio_shared_data, inference_allowed x6, de_banner; FLA palette fixed in module\n")
 
 # --- 2. Classic: no registrations, every default reproduces the original code ---
 stopifnot(identical(lipidomic_hook_registered(), character()))

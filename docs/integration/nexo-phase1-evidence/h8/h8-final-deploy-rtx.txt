@@ -1,0 +1,25 @@
+dist/assets/vendor-DyvUWP44.js  192.35 kB │ gzip: 60.28 kB
+dist/assets/index-BJyzdElX.js   246.86 kB │ gzip: 83.07 kB
+✓ built in 658ms
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 3960 after 0 ms: Couldn't connect to server
+{"ok":true,"commit":"309419cfbc2ff6420833657a010c1ef7af8e85a9","root":"<server-home>/nexo-spike","r":"4.4.3","shiny":"1.14.0","plotly":"4.12.1","sessions":0,"rssMb":583.12109375,"science":{"globalMd5":"1d099bff4774ee4b606b86a88fd04c86","productionRoot":"<server-home>/lipidomic-team-ana-20261028","scienceMatchesProduction":true,"scienceFiles":21,"scienceDiffers":[]}}
+Science matches production: True 
+Manual nginx steps (printed only):
+  sudo cp -p /etc/nginx/conf.d/lipidomic-explorer.conf /etc/nginx/conf.d/lipidomic-explorer.conf.bak.$(date +%Y%m%d-%H%M%S)
+  Paste OS/Linux/nginx-nexo-locations.conf inside the existing server block
+  listening on 127.0.0.1:3880. Keep its auth_basic enabled.
+  sudo nginx -t && sudo systemctl reload nginx
+nginx /nexo/ without credentials: 401
+nginx /api/v1/health without credentials: 401
+Production Team (:3952) HTTP status: 200

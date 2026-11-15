@@ -1,0 +1,135 @@
+{
+ "version": "1",
+ "presets": [
+  {
+   "key": "nature",
+   "name": "Nature / Nature Research",
+   "publisher": "Springer Nature",
+   "single_col_mm": 89,
+   "mid_col_mm": 120,
+   "double_col_mm": 180,
+   "max_height_mm": 225,
+   "target_font_pt": 7.5,
+   "min_font_pt": 6,
+   "max_font_pt": 8.5,
+   "recommended_dpi": 600,
+   "font_family": "sans"
+  },
+  {
+   "key": "cell",
+   "name": "Cell / Cell Press",
+   "publisher": "Elsevier",
+   "single_col_mm": 85,
+   "mid_col_mm": 114,
+   "double_col_mm": 174,
+   "max_height_mm": 235,
+   "target_font_pt": 7.5,
+   "min_font_pt": 6,
+   "max_font_pt": 8.5,
+   "recommended_dpi": 600,
+   "font_family": "sans"
+  },
+  {
+   "key": "science",
+   "name": "Science / AAAS",
+   "publisher": "AAAS",
+   "single_col_mm": 55,
+   "mid_col_mm": 120,
+   "double_col_mm": 175,
+   "max_height_mm": 230,
+   "target_font_pt": 7,
+   "min_font_pt": 6,
+   "max_font_pt": 8,
+   "recommended_dpi": 600,
+   "font_family": "sans"
+  },
+  {
+   "key": "embo",
+   "name": "EMBO / PNAS",
+   "publisher": "EMBO / NAS",
+   "single_col_mm": 84,
+   "mid_col_mm": 120,
+   "double_col_mm": 178,
+   "max_height_mm": 225,
+   "target_font_pt": 7.5,
+   "min_font_pt": 6,
+   "max_font_pt": 9,
+   "recommended_dpi": 600,
+   "font_family": "sans"
+  },
+  {
+   "key": "custom",
+   "name": "Custom Dimension Preset",
+   "publisher": "User Defined",
+   "single_col_mm": 100,
+   "mid_col_mm": 140,
+   "double_col_mm": 190,
+   "max_height_mm": 250,
+   "target_font_pt": 8,
+   "min_font_pt": 5,
+   "max_font_pt": 14,
+   "recommended_dpi": 300,
+   "font_family": "sans"
+  }
+ ],
+ "figures": [
+  {
+   "key": "pca_2d",
+   "title": "PCA 2D Score Plot (Quality Check)"
+  },
+  {
+   "key": "volcano",
+   "title": "Volcano Plot (Differential Lipids)"
+  },
+  {
+   "key": "class_abundance",
+   "title": "Top Lipid Class Abundance (Bar Chart)"
+  },
+  {
+   "key": "heatmap",
+   "title": "Lipid Abundance Heatmap (Matrix)"
+  }
+ ],
+ "formats": [
+  "pdf",
+  "svg",
+  "png",
+  "tiff",
+  "csv",
+  "rscript"
+ ],
+ "fonts": [
+  {
+   "key": "sans",
+   "title": "Arial / Helvetica"
+  },
+  {
+   "key": "serif",
+   "title": "Times New Roman"
+  },
+  {
+   "key": "mono",
+   "title": "Courier"
+  }
+ ],
+ "dpi": [
+  300,
+  600,
+  1200
+ ],
+ "limits": {
+  "widthMm": [
+   40,
+   250
+  ],
+  "heightMm": [
+   40,
+   250
+  ],
+  "basePt": [
+   5,
+   12
+  ]
+ },
+ "svgAvailable": true
+}

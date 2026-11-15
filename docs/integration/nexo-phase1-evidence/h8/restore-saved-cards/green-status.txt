@@ -1,0 +1,2 @@
+ ✓ src/cardStatus.test.ts (2 tests) 2ms
+      Tests  2 passed (2)

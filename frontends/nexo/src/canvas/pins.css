@@ -1,0 +1,7 @@
+/* Comment pins (canvas/pins.ts): above every card, the selected one too (cards reach z-index 10); the same size on
+   screen at any zoom (pins.ts scales them by 1 / zoom from their tip). The background is the author's colour, inline. */
+.comment-pin{position:absolute;z-index:11;transform-origin:50% 100%;min-width:26px;height:26px;padding:0 6px;white-space:nowrap;border-radius:13px 13px 13px 0;border:2px solid #fff;background:#7256b5;color:#fff;font:600 12px/1 system-ui;cursor:pointer}
+.comment-pin[data-resolved=true]{opacity:.5}
+.comment-pin[aria-current=true]{box-shadow:0 0 0 2px var(--ink)}
+/* Comment mode: what the next click does. */
+.comment-hint{position:absolute;top:12px;left:50%;translate:-50% 0;z-index:30;padding:6px 12px;border-radius:var(--radius-pill);background:var(--navy);color:var(--paper);font-size:var(--font-chrome);white-space:nowrap;pointer-events:none}

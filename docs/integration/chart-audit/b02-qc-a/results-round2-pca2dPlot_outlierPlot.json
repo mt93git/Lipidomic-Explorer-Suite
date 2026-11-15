@@ -1,0 +1,156 @@
+[
+ {
+  "plot": "pca2dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 31e8e0e3580ca4dd… identical (40483 B)"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size: {\"node\":[620,720],\"img\":[620,720],\"state\":\"current\",\"resizeSize\":null}, last render request {\"width\":240,\"height\":220,\"format\":\"png\"}, hash unchanged=false [pca2dPlot-r2-3-fail.png, url /nexo/?checkpoint=c2caff92694aebc58f8468df08e7cb900aecc16a62e8963ad97898e72a1ad201]"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; scoreMarkerSize2D 8→14 redrew (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-4-data-scoreMarkerSize2D.png); scoreTextSize2D 4→6 redrew (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-4-data-scoreTextSize2D.png); keyboard (Tab) reaches scoreMarkerSize2D, scoreTextSize2D; module actions in the Data tab: Process Outlier Risks... / See high variance lipids... / Show Statistic Detail / Switch to Aggregated Classes / Switch to Aggregated Classes / All / None; computed controls in the schema: bqcSamples; shown: 0 group colour(s), 0 shape select(s); Use custom colors on: Colour for Control / Colour for Treatment (schema customCol_Control, customCol_Treatment); first group → #00aa00 redrew (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-4-data-custom-colour.png); dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":0}"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-5-appearance.png; canvas Undo → \"Audit pca2dPlot\", Redo → \"Audit pca2dPlot\""
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 580818 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF PCA_2D_20261107_1704.pdf 6705 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-7-export-dialog.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-8-finished.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pca2dPlot\" with {\"scoreMarkerSize2D\":\"14\",\"scoreTextSize2D\":\"6\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-9-duplicate.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 705aa80d3c74…: \"Audit pca2dPlot\", {\"scoreMarkerSize2D\":\"14\",\"scoreTextSize2D\":\"6\"}, background kept; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-10-phone.png)"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 9c69322956791f75… identical (28863 B)"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 3,
+  "name": "size",
+  "status": "FAIL",
+  "detail": "no redraw at the new size: {\"node\":[620,720],\"img\":[620,480],\"state\":\"current\",\"resizeSize\":null}, last render request {\"width\":240,\"height\":220,\"format\":\"png\"}, hash unchanged=false [outlierPlot-r2-3-fail.png, url /nexo/?checkpoint=f8074d8f8fdd5f4e8594ef0327d1610b0bd49dc5335b2844bec4742ada069e4e]"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; outlierThreshold 2.5→3.5 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-4-data-outlierThreshold.png); invalid outlierThreshold=-4 refused: state=error, \"Could not update the plot: Invalid value for outlierThreshold: below the minimum 1 ×\" (docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-4-data-invalid.png); outlierScope global→group redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-4-data-outlierScope.png); outlierNumShow 24→10 redrew (docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-4-data-outlierNumShow.png); keyboard (Tab) reaches outlierScope, outlierThreshold, outlierNumShow; module actions in the Data tab: Process Outlier Risks... / See high variance lipids... / Show Statistic Detail / Switch to Aggregated Classes / Switch to Aggregated Classes / All / None; computed controls in the schema: bqcSamples; shown: 0 group colour(s), 0 shape select(s); dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":0}"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-5-appearance.png; canvas Undo → \"Audit outlierPlot\", Redo → \"Audit outlierPlot\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 288067 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; Team PDF Outliers_Detection_20261107.pdf 5339 B; card PDF offered; docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-7-export-dialog.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x400; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-8-finished.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit outlierPlot\" with {\"outlierThreshold\":\"3.5\",\"outlierScope\":\"group\",\"outlierNumShow\":\"24\"} (module reset: duplicate {\"outlierThreshold\":\"3.5\",\"outlierScope\":\"group\",\"outlierNumShow\":\"24\"} vs original {\"outlierThreshold\":\"3.5\",\"outlierScope\":\"group\",\"outlierNumShow\":\"10\"}), background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/outlierPlot-r2-9-duplicate.png"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "locator.waitFor: Timeout 90000ms exceeded. [outlierPlot-r2-10-fail.png, url /nexo/?checkpoint=24dca6fda217f35eb2e899d88053f24afe5ea404606e2749c82b721231b25b69] API: PATCH /sessions/s12/cards/tcinstance_8a77f2e560d9 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"Outliers Detection\",\"outlierScope\":\"group\",\"outlierThreshold\":3.5,\"outlierNumShow\":\"24\",\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_d [sent {\"inputs\":{\"outlierScope\":\"group\",\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"]},\"actions\":[]}] | PATCH /sessions/s12/cards/tcinstance_8a77f2e560d9 → 200 {\"settled\":true,\"inputs\":{\"main_tabs\":\"Outliers Detection\",\"outlierScope\":\"group\",\"outlierThreshold\":3.5,\"outlierNumShow\":10,\"team_pca2dPlot_vector\":false,\"team_load2dPlot_vector\":false,\"bqcPattern\":\"BQC\",\"bqcCovThreshold\":20,\"filterBqcOutliers\":false,\"bqc_dis [sent {\"inputs\":{\"outlierNumShow\":10,\"colorGrouping\":[\"Group1\"],\"labelParts\":[\"Group1\"]},\"actions\":[]}] last console: page+: Failed to load resource: the server responded with a status of 400 (Bad Request) @/api/v1/sessions/s12/cards/tcinstance_8a77f2e560d9"
+ },
+ {
+  "plot": "outlierPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "1 console error(s) on all pages of this plot (1 = expected refusals: Team's smart-label 422 and/or the 400 of #4's invalid value): page+: Failed to load resource: the server responded with a status of 400 (Bad Request) @/api/v1/sessions/s12/cards/tcinstance_8a77f2e560d9"
+ }
+]

@@ -1,0 +1,16 @@
+[
+ {
+  "plot": "donutPlotFiltered",
+  "n": 1,
+  "name": "draws",
+  "status": "FAIL",
+  "detail": "card state error: Could not update Data & settings Composition share · filtered ⋯ Request failed (500)"
+ },
+ {
+  "plot": "donutPlotFiltered",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+ }
+]

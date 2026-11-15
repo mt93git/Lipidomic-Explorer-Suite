@@ -1,0 +1,93 @@
+[
+ {
+  "plot": "pathwayPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "at first: state=current \"−1 0 1 Saturation Change (Z-score) Lipid Pathway Map G3P Fatty Acids TGΔC: +2.43 DG PA LPA LCB CerΔC: +0.02 SMΔC: -0.04 \", action: none needed (docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-1-before-generate.png); then: docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-1-draws.png, docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same 5 traces as the module render (scatter); title {\"text\":\"Lipid Pathway Map\",\"font\":{\"size\":20}}"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-3-larger.png, docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-3-smaller.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "27 Team controls all present (Team's run-time controls active_classes_select, move_node_select, edge_to_remove, add_edge_source, add_edge_target: all present); node_color_map→fc redrew (docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": "4b",
+  "name": "layout-json",
+  "status": "FAIL",
+  "detail": "F3: no \"Upload Layout JSON (.json):\" field in the Data tab; the API's card schema has uploads=[] (F1: no *_json box in the Data tab; downloaded pathway_layout_config.json 240 B (18 classes, overrides []); Move Node TG → (123,-45): layout {\"TG\":[123,-45]}, redrew; docs/integration/chart-audit/b11-pat"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); Plot title on the plot; Chart font size|Base size; Chart text color; Plot background; font 16 #aa0000, plot bg #f0f0ff; 6 palettes, 6 distinct colourings; Healthy in grey present; grid toggle; orientation enabled; Undo/Redo; Reset → title \"Lipid Pathway Map\"; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-5-appearance.png; canvas Undo → \"Audit pathwayPlot\", Redo → \"Audit pathwayPlot\""
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 213373 B; SVG 37286 B; Team CSV Lipid_Pathway_Visualization_Data_20261108_1040.csv 2327 B; Team PDF Lipid_Pathway_Visualization_20261108_1040.pdf 4224 B; Team Download Layout JSON pathway_layout_config.json 264 B; card PDF 123236 B; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x460 in a 421x460 body; Edit figure → live plotly; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-8-finished.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pathwayPlot\" with node_color_map=fc (at first: state=current, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-9-duplicate.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 481c21d24455…: \"Audit pathwayPlot\", node_color_map=fc, background kept (at first: state=current, drawn=false); docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-10-reopened.png"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b11-pathways-cellular/pathwayPlot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "pathwayPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

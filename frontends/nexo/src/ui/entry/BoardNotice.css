@@ -1,0 +1,45 @@
+/* The board's "Prepared by … · settings" chip, its card (scene 4 canvas-settings) and the undecided-sample banner. */
+.board-notice{position:relative;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;font-size:12px}
+.notice-chip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border:0;border-radius:999px;background:var(--tint);color:var(--accent);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.notice-banner{display:inline-flex;align-items:center;gap:6px;margin:0;min-height:22px;padding:2px 10px;border-radius:999px;background:var(--amber-bg);color:var(--amber-fg);border:1px solid #d9a12b;font-weight:600;line-height:1.35}
+.notice-ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.notice-link{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.board-notice :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.notice-card{position:absolute;left:0;top:calc(100% + 6px);z-index:60;width:min(380px,calc(100vw - 24px));padding:16px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius-lg,12px);box-shadow:var(--shadow-pop);font-size:var(--font-chrome,13px);white-space:normal}
+.notice-card header{display:flex;align-items:center;gap:8px}
+.notice-card h2{margin:0;flex:1;font-size:var(--body,14px)}
+.notice-close{width:28px;height:28px;border:0;border-radius:6px;background:none;font-size:18px;line-height:1;color:var(--muted);cursor:pointer}
+.notice-meaning p{margin:0}
+.notice-meaning{margin:8px 0 0;padding:8px 12px;border-radius:var(--radius-md,8px);background:var(--amber-bg);color:var(--amber-fg);line-height:1.45}
+.notice-card dl{margin:8px 0 0;display:grid;gap:8px}
+.notice-card dl div{display:grid;grid-template-columns:104px minmax(0,1fr);gap:12px}
+.notice-card dt{color:var(--muted)}.notice-card dd{margin:0}
+.notice-same{margin:12px 0 0;font-size:var(--font-small,12px);color:var(--muted)}
+/* ENTRY-8: the decision in the card (Keep / Exclude… with an optional reason / Undo), as on the quality check. */
+.notice-decide{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.notice-btn{height:32px;padding:0 12px;border:1px solid var(--field,#7d8a99);border-radius:var(--radius-md,8px);background:#fff;color:var(--ink);font:inherit;font-weight:600;white-space:nowrap;cursor:pointer}
+.notice-btn:hover{background:var(--tint)}
+.notice-btn:disabled{background:#e3e7ec;color:#44505e;border-color:transparent;cursor:not-allowed}
+.notice-input{height:32px;flex:1 1 160px;min-width:0;padding:0 12px;border:1px solid var(--field,#7d8a99);border-radius:var(--radius-md,8px);background:#fff;color:var(--ink);font:inherit}
+.notice-input::placeholder{color:var(--muted);opacity:1}
+.notice-meaning .notice-link{color:var(--accent)}
+.notice-card dd .notice-link{color:var(--accent)}
+.notice-link:disabled{color:var(--muted);cursor:not-allowed}
+.notice-decided{display:block}
+.notice-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.notice-status{margin:8px 0 0;color:var(--muted)}
+.notice-error{margin:8px 0 0;padding:8px 12px;border-radius:var(--radius-md,8px);background:var(--red-bg);color:var(--red-fg)}
+@media (pointer:coarse){.notice-chip,.notice-banner{min-height:32px}.notice-close{width:40px;height:40px}.notice-btn,.notice-input{height:40px}.notice-input{font-size:16px}}
+/* In the board's status band (StatusBand notice): one line; on a narrow board the band's hint gives way. The dataset
+   summary stays (FIX-JOINER-PHONE): under 600 px the band wraps (shell.css, UX3-E). */
+.status-band .board-notice{flex:0 1 auto;flex-wrap:nowrap}
+.status-band .notice-banner{min-width:0}
+.status-band .notice-banner>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The card is in the band too: its lines wrap (the band's one-line rule is for the band's own text). */
+.status-band .notice-card span{overflow:visible;white-space:normal}
+@media(max-width:720px){.status-band .board-notice~span{display:none}
+ /* The banner's Review opens the same card as the chip: on a narrow board the banner keeps the room, and the card
+    opens across the band (not from the chip, which would push it past the edge). */
+ .status-band .board-notice:has(.notice-banner) .notice-chip{display:none}
+ .status-band{position:relative}.status-band .board-notice{position:static}
+ .status-band .notice-card{left:12px;right:12px;width:auto;top:calc(100% + 6px)}}

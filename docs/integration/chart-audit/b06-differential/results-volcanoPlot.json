@@ -1,0 +1,86 @@
+[
+ {
+  "plot": "volcanoPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b06-differential/volcanoPlot-1-draws.png, docs/integration/chart-audit/b06-differential/volcanoPlot-1-zoomed-out.png; zoomed out tier=frozen image; study design confirmed (Animal, independent)"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (51202 B); card image 620x720 shown at 618x682"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b06-differential/volcanoPlot-3-larger.png, docs/integration/chart-audit/b06-differential/volcanoPlot-3-smaller.png"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "26 Team controls all present (allowedInputs not in Team's markup: none); pointSize→6 redrew (docs/integration/chart-audit/b06-differential/volcanoPlot-4-data-changed.png); invalid -3: state=error, redrew=false, message=\"Could not update the plot: Invalid value for pointSize: below the minimum 0.1 ×\" (docs/integration/chart-audit/b06-differential/volcanoPlot-4-data-invalid.png)"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b06-differential/volcanoPlot-5-appearance.png; canvas Undo → \"Audit volcanoPlot\", Redo → \"Audit volcanoPlot\""
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 404506 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV volcano_data.csv 32984 B; Team PDF volcano_plot.pdf 10241 B; card PDF 334420 B; docs/integration/chart-audit/b06-differential/volcanoPlot-7-export-dialog.png"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b06-differential/volcanoPlot-8-finished.png"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit volcanoPlot\" with pointSize=6; remove + Undo brought it back drawn; docs/integration/chart-audit/b06-differential/volcanoPlot-9-duplicate.png"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened d454d2d60ba7…: \"Audit volcanoPlot\", pointSize=6, background kept; docs/integration/chart-audit/b06-differential/volcanoPlot-10-reopened.png"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 12,
+  "name": "layout",
+  "status": "FAIL",
+  "detail": "locator.allTextContents: Target page, context or browser has been closed"
+ },
+ {
+  "plot": "volcanoPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

@@ -1,0 +1,17 @@
+WROTE <out>/nexo-complete-synthetic.zip (76 lipids x 24 samples, sha256 768dfa8f8908a0556f8a351ab35f34e6148a5022633e0026b75bcbe6fd2d9150)
+qc_pca_tab-pca2dVectorPlot render
+qc_pca_tab-load2dVectorPlot render
+barchart-barPlotFiltered render
+barchart-donutPlotFiltered TEAM BUG (expected): NOT RENDERED: invalid 'type' (closure) of argument
+heatmap_barchart_tab-filteredHeatmapPlot render
+heatmap_barchart_tab-filteredHeatmapSDPlot render
+structural_tab-summaryPlot render
+structural_tab-speciesPlotPlot render
+structural_grid_tab-heatmapPlot render
+structural_grid_tab-dotplotPlot render
+longitudinal_tab-macroclass_plot render
+longitudinal_tab-subclass_plot render
+longitudinal_tab-index_plot render
+longitudinal_tab-struct_plot render
+VERIFY 13 of 13 rendered (the Team-bug donut excluded)
+exit=0

@@ -1,0 +1,6 @@
+PASS schema family qc
+PASS schema family dashboard
+PASS schema boolean strict
+PASS schema card violin
+PASS schema card qc
+PASS schema selection bars 4 (heat_group_selection, heat_lipid_selection, comp_class_selection, comp_group_selection) carry defaults and the all-token; a JSON array is accepted

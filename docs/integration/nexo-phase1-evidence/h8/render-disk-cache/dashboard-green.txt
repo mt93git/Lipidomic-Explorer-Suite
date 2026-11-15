@@ -1,0 +1,5 @@
+render_disk_cache exit=0 pass=6
+http exit=0 pass=11
+engine exit=0 pass=4
+cache exit=0 pass=10
+PASS a reopened dashboard copy draws from disk without re-creating it (0.004 s)

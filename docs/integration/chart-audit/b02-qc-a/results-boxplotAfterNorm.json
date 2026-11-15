@@ -1,0 +1,79 @@
+[
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-1-draws.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x680 (30943 B); card image 620x720 shown at 618x646"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-3-larger.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-3-smaller.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 Team controls all present (allowedInputs not in Team's markup: guided_qc_reason, guided_qc_sample); mergeReplicatesMode→merged redrew (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-4-data-changed.png); no numeric control (N/A)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 2 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-5-appearance.png; canvas Undo → \"Audit boxplotAfterNorm\", Redo → \"Audit boxplotAfterNorm\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 281194 B; SVG disabled (\"This figure is a raster image; SVG is not available.\"); Team PDF QC_Boxplot_After_20261106_2125.pdf 5769 B; dialog buttons: Download PNG/Download SVG/Plot data (CSV)/Close; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-7-export-dialog.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x498 in a 421x424 body; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-8-finished.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit boxplotAfterNorm\" with mergeReplicatesMode=merged; remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-9-duplicate.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened c8c464090b72…: \"Audit boxplotAfterNorm\", mergeReplicatesMode=merged, background kept; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-10-reopened.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

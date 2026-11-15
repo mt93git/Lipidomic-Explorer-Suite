@@ -772,7 +772,7 @@ structural_ui <- function(id) {
                   ),
                   uiOutput(ns("de_not_run_banner_summary")),
                   jqui_resizable(
-                    plotOutput(ns("summaryPlot"), height = "600px"),
+                    structure_plot_output(ns("summaryPlot"), height = "600px"),
                     options = list(handles = "s, se")
                   ),
                   uiOutput(ns("structural_stat_note"))
@@ -831,13 +831,14 @@ structural_ui <- function(id) {
                   ),
                   uiOutput(ns("de_not_run_banner_species")),
                   uiOutput(ns("classSelectorUI")),
+                  uiOutput(ns("speciesOneUI")),
                   fluidRow(
                     column(6, sliderInput(ns("labelTop"), "Label Top % Extremes:", min=0, max=100, value=0, step=1)),
                     column(6, actionButton(ns("updateSpecies"), "Load Species Plot", class = "btn-secondary", style="margin-top: 25px; width: 100%;"))
                   ),
                   hr(),
                   jqui_resizable(
-                    plotOutput(ns("speciesPlotPlot"), height = "600px"),
+                    structure_plot_output(ns("speciesPlotPlot"), height = "600px"),
                     options = list(handles = "s, se")
                   ),
                   uiOutput(ns("species_stat_note"))
@@ -904,7 +905,11 @@ structural_ui <- function(id) {
                   ),
                    div(style = "display: flex; flex-direction: column;",
                       jqui_resizable(
-                        plotOutput(ns("networkPlot"), height = "800px"),
+                        structure_plot_output(ns("networkPlot"), height = "800px"),
+                        options = list(handles = "s, se")
+                      ),
+                      jqui_resizable(
+                        structure_plot_output(ns("moduleTraitPlot"), height = "520px"),
                         options = list(handles = "s, se")
                       ),
                      shiny::HTML("<div style='margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-left: 4px solid #0072b2; font-size: 13px; line-height: 1.4; color: #333; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; border-radius: 0 4px 4px 0;'><b>Methodology Note (Correlation Networks):</b> Correlation networks illustrate inter-lipid correlations. Nodes represent either aggregated lipid main classes, chain lengths, double bonds, or individual species. Edges indicate pairwise Pearson correlation coefficients (|r|) exceeding the user-specified threshold. Undirected graph layout is optimized using the selected algorithm (e.g. Stress or Fruchterman-Reingold).</div>")
@@ -1352,18 +1357,7 @@ structural_proportions_ui <- function(id) {
                           id = ns("prop_plot_viewport"),
                           class = "prop-plot-scroll-viewport",
                           style = "width: 100%; height: 100%; overflow-y: auto; overflow-x: auto; position: relative; border-radius: 6px;",
-                          plotOutput(
-                            ns("propPlotPlot"),
-                            width = "100%",
-                            height = "auto",
-                            hover = hoverOpts(
-                              id = ns("propPlot_hover"),
-                              delay = 50,
-                              delayType = "debounce",
-                              clip = TRUE,
-                              nullOutside = TRUE
-                            )
-                          ),
+                          structure_plot_output(ns("propPlotPlot"), width = "100%", height = "620px"),
                           uiOutput(ns("propPlot_tooltip"), style = "position: absolute; top: 0; left: 0; pointer-events: none; width: 0; height: 0;")
                         )
                       ),
@@ -1386,11 +1380,7 @@ structural_proportions_ui <- function(id) {
                           id = ns("diff_plot_viewport"),
                           class = "prop-plot-scroll-viewport",
                           style = "width: 100%; height: 100%; overflow-y: auto; overflow-x: auto; position: relative; border-radius: 6px;",
-                          plotOutput(
-                            ns("diffAcylPlot"),
-                            width = "100%",
-                            height = "100%"
-                          )
+                          structure_plot_output(ns("diffAcylPlot"), width = "100%", height = "620px")
                         )
                       ),
                       options = list(handles = "s, se")

@@ -1,0 +1,8 @@
+# tests/dual-ui/test_api_parity.R
+# host: MacBook Air (dev) | R version 4.4.2 (2024-10-31) | plotly 4.11.0 | shiny 1.12.1 | plumber 1.3.3
+# base: 31436be + implementation | run: 2026-11-06T03:35:20Z
+## red (stub commit 31436be)
+Error in api_load_session(fixture) : not implemented
+## green
+exit=0
+PASS parity 5/5

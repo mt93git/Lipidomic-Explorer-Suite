@@ -1,0 +1,422 @@
+[
+ {
+  "plot": "macroclass_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "before Generate Analysis: state=error \"The plot inputs are unavailable for this session.\" (docs/integration/chart-audit/b10-longitudinal/macroclass_plot-1-before-generate.png); after Generate Analysis: docs/integration/chart-audit/b10-longitudinal/macroclass_plot-1-draws.png, docs/integration/chart-audit/b10-longitudinal/macroclass_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x550 (25090 B); card image 620x550 shown at 618x682"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-3-larger.png, docs/integration/chart-audit/b10-longitudinal/macroclass_plot-3-smaller.png"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "buttons named by their input id: btn_del_case_case_673990, btn_del_case_case_934241 (docs/integration/chart-audit/b10-longitudinal/macroclass_plot-4-data-changed.png)"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-5-appearance.png; canvas Undo → \"Audit macroclass_plot\", Redo → \"Audit macroclass_plot\""
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 162037 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV longitudinal_lipid categories_GL.csv 2597 B; Team PDF longitudinal_lipid categories_GL.pdf 6538 B; card PDF 73654 B; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x700 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-8-finished.png"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit macroclass_plot\" with plotHeight=700 (at first: state=error, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-9-duplicate.png"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened ee212e177f07…: \"Audit macroclass_plot\", plotHeight=700, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b10-longitudinal/macroclass_plot-10-reopened.png"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b10-longitudinal/macroclass_plot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "macroclass_plot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno)"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "before Generate Analysis: state=error \"The plot inputs are unavailable for this session.\" (docs/integration/chart-audit/b10-longitudinal/subclass_plot-1-before-generate.png); after Generate Analysis: docs/integration/chart-audit/b10-longitudinal/subclass_plot-1-draws.png, docs/integration/chart-audit/b10-longitudinal/subclass_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x550 (25037 B); card image 620x550 shown at 618x682"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b10-longitudinal/subclass_plot-3-larger.png, docs/integration/chart-audit/b10-longitudinal/subclass_plot-3-smaller.png"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "buttons named by their input id: btn_del_case_case_740439, btn_del_case_case_575616 (docs/integration/chart-audit/b10-longitudinal/subclass_plot-4-data-changed.png)"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b10-longitudinal/subclass_plot-5-appearance.png; canvas Undo → \"Audit subclass_plot\", Redo → \"Audit subclass_plot\""
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 162820 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV longitudinal_lipid main classes_GL_TAG.csv 2693 B; Team PDF longitudinal_lipid main classes_GL_TAG.pdf 6542 B; card PDF 74245 B; docs/integration/chart-audit/b10-longitudinal/subclass_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x700 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b10-longitudinal/subclass_plot-8-finished.png"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit subclass_plot\" with plotHeight=700 (at first: state=error, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b10-longitudinal/subclass_plot-9-duplicate.png"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened b7323307a914…: \"Audit subclass_plot\", plotHeight=700, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b10-longitudinal/subclass_plot-10-reopened.png"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b10-longitudinal/subclass_plot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b10-longitudinal/subclass_plot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "subclass_plot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno)"
+ },
+ {
+  "plot": "index_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "before Generate Analysis: state=error \"The plot inputs are unavailable for this session.\" (docs/integration/chart-audit/b10-longitudinal/index_plot-1-before-generate.png); after Generate Analysis: docs/integration/chart-audit/b10-longitudinal/index_plot-1-draws.png, docs/integration/chart-audit/b10-longitudinal/index_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "index_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x550 (20711 B); card image 620x550 shown at 618x682"
+ },
+ {
+  "plot": "index_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b10-longitudinal/index_plot-3-larger.png, docs/integration/chart-audit/b10-longitudinal/index_plot-3-smaller.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "buttons named by their input id: btn_del_case_case_913065, btn_del_case_case_712301 (docs/integration/chart-audit/b10-longitudinal/index_plot-4-data-changed.png)"
+ },
+ {
+  "plot": "index_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 17 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b10-longitudinal/index_plot-5-appearance.png; canvas Undo → \"Audit index_plot\", Redo → \"Audit index_plot\""
+ },
+ {
+  "plot": "index_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "index_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 212942 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV PC_Index.csv 4263 B; Team PDF PC_Index.pdf 6547 B; card PDF 157482 B; docs/integration/chart-audit/b10-longitudinal/index_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x550 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b10-longitudinal/index_plot-8-finished.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit index_plot\" with plotHeight=700 (at first: state=error, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b10-longitudinal/index_plot-9-duplicate.png"
+ },
+ {
+  "plot": "index_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "FAIL",
+  "detail": "reopened plotHeight=550, saved 700"
+ },
+ {
+  "plot": "index_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b10-longitudinal/index_plot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b10-longitudinal/index_plot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "index_plot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno)"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "before Generate Analysis: state=error \"The plot inputs are unavailable for this session.\" (docs/integration/chart-audit/b10-longitudinal/struct_plot-1-before-generate.png); after Generate Analysis: docs/integration/chart-audit/b10-longitudinal/struct_plot-1-draws.png, docs/integration/chart-audit/b10-longitudinal/struct_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x550 (23320 B); card image 620x550 shown at 618x682"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b10-longitudinal/struct_plot-3-larger.png, docs/integration/chart-audit/b10-longitudinal/struct_plot-3-smaller.png"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "buttons named by their input id: btn_del_case_case_227604, btn_del_case_case_773266 (docs/integration/chart-audit/b10-longitudinal/struct_plot-4-data-changed.png)"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b10-longitudinal/struct_plot-5-appearance.png; canvas Undo → \"Audit struct_plot\", Redo → \"Audit struct_plot\""
+ },
+ {
+  "plot": "struct_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "struct_plot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 167515 B; SVG disabled (\"More downloads from this analysis CSVPDF Download PNG Download SVG This figure is a raster image; SVG is not available.\"); Team CSV longitudinal_structural features_GL_TAG_-_Total_Carbons.csv 4033 B; Team PDF longitudinal_structural features_GL_TAG_-_Total_Carbons.pdf 6554 B; card PDF 73585 B; docs/integration/chart-audit/b10-longitudinal/struct_plot-7-export-dialog.png"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x700 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b10-longitudinal/struct_plot-8-finished.png"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit struct_plot\" with plotHeight=700 (at first: state=error, drawn=false); remove + Undo brought it back drawn; docs/integration/chart-audit/b10-longitudinal/struct_plot-9-duplicate.png"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened 035ff69f7900…: \"Audit struct_plot\", plotHeight=700, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b10-longitudinal/struct_plot-10-reopened.png"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b10-longitudinal/struct_plot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b10-longitudinal/struct_plot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "struct_plot",
+  "n": 11,
+  "name": "console",
+  "status": "FAIL",
+  "detail": "Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno) | Failed to load resource: the server responded with a status of 422 (Dunno)"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "before Generate Analysis: state=current \"\" (docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-1-before-generate.png); after Generate Analysis: docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-1-draws.png, docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-1-zoomed-out.png; zoomed out tier=frozen image"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "module render 620x550 (3221 B); card image 620x550 shown at 618x682"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620→780→390 px wide, redrawn each time; docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-3-larger.png, docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-3-smaller.png"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "FAIL",
+  "detail": "buttons named by their input id: btn_del_case_case_923232, btn_del_case_case_458164 (docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-4-data-changed.png)"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background) — no plot-level controls that would silently do nothing; docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-5-appearance.png; canvas Undo → \"Audit allmetrics_plot\", Redo → \"Audit allmetrics_plot\""
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "Team has no statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 7,
+  "name": "export",
+  "status": "FAIL",
+  "detail": "CSV is empty (90 B)"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 423x550 in a 421x460 body; Edit figure → live png; docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-8-finished.png"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit allmetrics_plot\" with plotHeight=700 (at first: state=current, drawn=true); remove + Undo brought it back drawn; docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-9-duplicate.png"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened f47281779d9c…: \"Audit allmetrics_plot\", plotHeight=700, background kept (at first: state=current, drawn=true); docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-10-reopened.png"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 12,
+  "name": "layout",
+  "status": "PASS",
+  "detail": "0 offenders; docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-12-1440-data.png; 1440x900: 4 tabs; docs/integration/chart-audit/b10-longitudinal/allmetrics_plot-12-1024-data.png; 1024x768: 4 tabs"
+ },
+ {
+  "plot": "allmetrics_plot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console errors"
+ }
+]

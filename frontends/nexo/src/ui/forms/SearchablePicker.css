@@ -1,0 +1,35 @@
+/* Data-tab long pickers: one bordered control (the inputs' line and radius tokens), a search row with the
+   count on it, then whole rows of a listbox (single) or checkbox rows (multiple). Tint marks hover and choice. */
+#inspector .schema-form .searchable-picker{display:block;min-width:0;--picker-row:var(--control)}
+#inspector .schema-form .picker-frame{min-width:0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--paper);overflow:hidden;transition:border-color var(--motion)}
+#inspector .schema-form .picker-frame:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+#inspector .schema-form .picker-search{display:flex;align-items:center;gap:var(--space-2);height:var(--control);padding:0 var(--space-2);border-bottom:1px solid var(--line);color:var(--muted)}
+#inspector .schema-form .picker-icon{flex:none}
+#inspector .schema-form .picker-search input[type=search]{flex:1 1 auto;width:auto;min-width:0;height:100%;padding:0;border:0;border-radius:0;background:transparent;outline:none;box-shadow:none}
+#inspector .schema-form .picker-search input[type=search]:focus-visible{outline:none}
+#inspector .schema-form .picker-result-count{flex:none;color:var(--muted);font-size:var(--font-small);font-variant-numeric:tabular-nums;white-space:nowrap}
+#inspector .schema-form .picker-list{position:relative;display:block;height:calc(var(--picker-rows,6) * var(--picker-row));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;outline:none}
+#inspector .schema-form .picker-list[hidden]{display:none}
+#inspector .schema-form .picker-list .picker-option{display:flex;align-items:center;gap:var(--space-2);height:var(--picker-row);margin:0;padding:0 var(--space-2);color:var(--ink);font-size:var(--font-chrome);font-weight:400;line-height:1.2;cursor:pointer;user-select:none;transition:background-color var(--motion)}
+#inspector .schema-form .picker-list .picker-option:hover,#inspector .schema-form .picker-list .picker-option.is-active{background:var(--tint)}
+#inspector .schema-form .picker-list .picker-option.is-active{box-shadow:inset 2px 0 0 var(--accent)}
+#inspector .schema-form .picker-list .picker-option[aria-selected=true]{background:var(--tint);color:var(--navy);font-weight:600}
+#inspector .schema-form .picker-list .picker-option:has(input:checked){background:var(--tint)}
+#inspector .schema-form .picker-list .picker-option input{margin:0}
+#inspector .schema-form .picker-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#inspector .schema-form .picker-check{flex:none;color:var(--accent);visibility:hidden}
+#inspector .schema-form .picker-list .picker-option[aria-selected=true] .picker-check{visibility:visible}
+#inspector .schema-form .picker-empty{margin:0;padding:var(--space-2);color:var(--muted);font-size:var(--font-small);font-style:italic}
+/* Multiple: the bulk actions, the count and the class toggles share one wrapping toolbar row under the field. */
+#inspector .schema-form .picker-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1) var(--space-2);padding:var(--space-1) var(--space-2);border-bottom:1px solid var(--line);background:var(--canvas)}
+#inspector .schema-form .picker-toolbar .selection-actions{display:flex;align-items:center;gap:var(--space-1);flex:1 1 100%}
+#inspector .schema-form .picker-toolbar .selection-actions button{height:24px;margin:0;padding:0 var(--space-2);font-size:var(--font-small);color:var(--ink);border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--paper)}
+#inspector .schema-form .picker-toolbar .selection-actions button:hover{background:var(--tint)}
+#inspector .schema-form .picker-classes{display:flex;flex-wrap:wrap;gap:var(--space-1);max-height:none}
+#inspector .schema-form .picker-classes label.picker-class{display:inline-flex;align-items:center;gap:var(--space-1);height:24px;margin:0;padding:0 var(--space-2);border:1px solid var(--line-strong);border-radius:var(--radius-pill);background:var(--paper);font-size:var(--font-small);font-weight:500;color:var(--ink);cursor:pointer}
+#inspector .schema-form .picker-classes label.picker-class:has(input:checked){background:var(--tint);border-color:var(--accent)}
+#inspector .schema-form .picker-classes label.picker-class span{color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+#inspector .schema-form .is-multiple .picker-list{padding:0}
+@media (prefers-reduced-motion:reduce){
+  #inspector .schema-form .picker-frame,#inspector .schema-form .picker-list .picker-option{transition:none}
+}

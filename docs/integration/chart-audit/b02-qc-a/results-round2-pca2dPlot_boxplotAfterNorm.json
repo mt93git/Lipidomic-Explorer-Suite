@@ -1,0 +1,156 @@
+[
+ {
+  "plot": "pca2dPlot",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 31e8e0e3580ca4dd… identical (40483 B)"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620x720→780x780→450x520→240x220 (minimum)→620x720 (restored through the handle at zoom factor 1.000); larger: image 780x780 for card 780x780, sha256 f2bfdcbd5f… ≠ 31e8e0e358…; smaller: image 450x520 for card 450x520, sha256 5dfb5c55d1… ≠ f2bfdcbd5f…; minimum: image 240x220 for card 240x220, sha256 076b8b6976… ≠ 5dfb5c55d1…; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-3-larger.png, docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-3-smaller.png, docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-3-minimum.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; scoreMarkerSize2D 8→14 redrew (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-4-data-scoreMarkerSize2D.png); scoreTextSize2D 4→6 redrew (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-4-data-scoreTextSize2D.png); keyboard (Tab) reaches scoreMarkerSize2D, scoreTextSize2D; module actions in the Data tab: Process Outlier Risks... / See high variance lipids... / Show Statistic Detail / Switch to Aggregated Classes / Switch to Aggregated Classes / All / None; computed controls in the schema: bqcSamples; shown: 0 group colour(s), 0 shape select(s); Use custom colors on: Colour for Control / Colour for Treatment (schema customCol_Control, customCol_Treatment); first group → #00aa00 redrew (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-4-data-custom-colour.png); dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":0}"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-5-appearance.png; canvas Undo → \"Audit pca2dPlot\", Redo → \"Audit pca2dPlot\""
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 576475 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; card PDF offered; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-7-export-dialog.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-8-finished.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit pca2dPlot\" with {\"scoreMarkerSize2D\":\"14\",\"scoreTextSize2D\":\"6\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-9-duplicate.png"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened d0e285da8dbf…: \"Audit pca2dPlot\", {\"scoreMarkerSize2D\":\"14\",\"scoreTextSize2D\":\"6\"}, background kept; docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/pca2dPlot-r2-10-phone.png)"
+ },
+ {
+  "plot": "pca2dPlot",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 1,
+  "name": "draws",
+  "status": "PASS",
+  "detail": "click-to-focus at 100%, then 100 % reads 100%; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-1-draws.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-1-zoomed-out.png; zoomed out to 41% tier=frozen image"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 2,
+  "name": "matches-team",
+  "status": "PASS",
+  "detail": "same render body {\"width\":620,\"height\":720}: sha256 7c052f91ea6a239b… identical (29204 B)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 3,
+  "name": "size",
+  "status": "PASS",
+  "detail": "620x720→780x780→450x520→240x220 (minimum)→620x720 (restored through the handle at zoom factor 1.000); larger: image 780x780 for card 780x780, sha256 7e530b1240… ≠ 7c052f91ea…; smaller: image 450x520 for card 450x520, sha256 7505b8b19e… ≠ 7e530b1240…; minimum: image 240x220 for card 240x220, sha256 0a0ce05966… ≠ 7505b8b19e…; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-3-larger.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-3-smaller.png, docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-3-minimum.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 4,
+  "name": "data-tab",
+  "status": "PASS",
+  "detail": "48 catalog controls present; mergeReplicatesMode single→merged redrew (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-4-data-mergeReplicatesMode.png); keyboard (Tab) reaches mergeReplicatesMode; module actions in the Data tab: Process Outlier Risks... / See high variance lipids... / Show Statistic Detail / Switch to Aggregated Classes / Switch to Aggregated Classes / All / None; computed controls in the schema: bqcSamples; shown: 0 group colour(s), 0 shape select(s); dynamic \"Choose a sample (keyboard accessible)\": {\"where\":\"inspector:no group\",\"id\":\"guided_qc_sample\",\"options\":0}"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 5,
+  "name": "appearance",
+  "status": "PASS",
+  "detail": "Label renames the card; card Background → rgb(255, 244, 224)/rgba(0, 0, 0, 0); image plot: 25 controls (Label, Background); docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-5-appearance.png; canvas Undo → \"Audit boxplotAfterNorm\", Redo → \"Audit boxplotAfterNorm\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 6,
+  "name": "statistics",
+  "status": "N/A",
+  "detail": "no violin statistics for this plot; tab says \"Statistics are available for independent violin copies.\""
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 7,
+  "name": "export",
+  "status": "PASS",
+  "detail": "PNG 322677 B; SVG disabled: \"This figure is a raster image; SVG is not available.\"; card PDF offered; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-7-export-dialog.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 8,
+  "name": "finish",
+  "status": "PASS",
+  "detail": "snapshot 620x720; Edit figure → live png; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-8-finished.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 9,
+  "name": "duplicate-remove-undo",
+  "status": "PASS",
+  "detail": "duplicate \"Audit boxplotAfterNorm\" with {\"mergeReplicatesMode\":\"merged\"}, background rgb(255, 244, 224); remove + Undo brought it back drawn; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-9-duplicate.png"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 10,
+  "name": "save-reopen",
+  "status": "PASS",
+  "detail": "reopened f635953b34c0…: \"Audit boxplotAfterNorm\", {\"mergeReplicatesMode\":\"merged\"}, background kept; docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-10-reopened.png; phone 375x812: no sideways scroll, chrome text ≥ 12 px (docs/integration/chart-audit/b02-qc-a/boxplotAfterNorm-r2-10-phone.png)"
+ },
+ {
+  "plot": "boxplotAfterNorm",
+  "n": 11,
+  "name": "console",
+  "status": "PASS",
+  "detail": "0 console error(s) on all pages of this plot"
+ }
+]
