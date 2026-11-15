@@ -99,8 +99,9 @@ export function placeBubble(anchor: Box, w: number, h: number, vw: number, vh: n
   return { left, top: topPx, side: best.side, offset };
 }
 
-const CONTROLS = 'button, a[href], input, select, textarea, [role="button"], [role="tab"], [contenteditable="true"], h1, h2';
-/** The page's visible controls and headings, for placeBubble; the companion's own views are left out. */
+const CONTROLS = 'button, a[href], input, select, textarea, [role="button"], [role="tab"], [contenteditable="true"], h1, h2, [data-keep-clear]';
+/** The page's visible controls and headings, for placeBubble; the companion's own views are left out. An app marks
+ *  anything else a tip must not cover (a notice, a canvas card) with `data-keep-clear`. */
 export function controlsOnScreen(doc: Document, skip: (el: Element) => boolean): Rect[] {
   const out: Rect[] = [];
   doc.querySelectorAll(CONTROLS).forEach(el => {
@@ -109,6 +110,15 @@ export function controlsOnScreen(doc: Document, skip: (el: Element) => boolean):
     if (r.width && r.height && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth) out.push({ x: r.left, y: r.top, w: r.width, h: r.height });
   });
   return out;
+}
+
+const TABBABLE = 'a[href], button:not([disabled]), details > summary, iframe, input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+/** The control Tab (or Shift+Tab) reaches from `anchor` in page order, skipping `skip` (the companion's own views): the
+ *  floating companion lives at the end of the page, so it hands Tab on as if it stood where `anchor` is, in the bar. */
+export function tabFrom(doc: Document, anchor: Element, back: boolean, skip: (el: Element) => boolean): HTMLElement | null {
+  const all = [...doc.querySelectorAll<HTMLElement>(TABBABLE)].filter(el => el === anchor || (!skip(el) && el.tabIndex >= 0 && el.getClientRects().length > 0));
+  const i = all.indexOf(anchor as HTMLElement);
+  return i < 0 ? null : all[back ? i - 1 : i + 1] ?? null;
 }
 
 /** A modal dialog is open: the companion shrinks and holds its nudges. */

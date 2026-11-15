@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Keyb
 import { createPortal } from 'react-dom';
 import { askCompanion } from '../api';
 import { adminAnswered, adminUserId } from '../api/adminToken';
-import { asleep, clamp, controlsOnScreen, dragger, firstSpot, fitPlace, keyStep, modalOpen, newNudges, nudgeDue, overDock, placeBubble, readPlace,
+import { asleep, clamp, controlsOnScreen, dragger, firstSpot, fitPlace, keyStep, modalOpen, newNudges, nudgeDue, overDock, placeBubble, readPlace, tabFrom,
   recordNudge, settle, sizeFor, SIZE, TIMING, typing, writePlace, type Box, type Place, type Rect } from '../../../shared/companion/core';
 import { Art } from './Art';
 import { formatAnswer } from './markdown';
@@ -68,7 +68,7 @@ export function Companion({ screen }: { screen: Screen }) {
   const [bubble, setBubble] = useState(false), [hello, setHello] = useState(false), [chat, setChat] = useState(false), [move, setMove] = useState(0);
   const [said, setSaid] = useState(''), [dragging, setDragging] = useState(false), [sleeping, setSleeping] = useState(false), [modal, setModal] = useState(false);
   const [messages, setMessages] = useState(shared.messages), [question, setQuestion] = useState(''), [busy, setBusy] = useState(false);
-  const dockRef = useRef<HTMLButtonElement>(null), flyRef = useRef<HTMLButtonElement>(null), ring = useRef<HTMLSpanElement>(null), tipRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLButtonElement>(null), stand = useRef<HTMLSpanElement>(null), flyRef = useRef<HTMLButtonElement>(null), ring = useRef<HTMLSpanElement>(null), tipRef = useRef<HTMLDivElement>(null);
   const flight = useRef<(() => void) | null>(null), timers = useRef<number[]>([]), refocus = useRef(false), dragged = useRef(false), hold = useRef(false);
   const obstacles = useRef<Rect[]>([]), placeNow = useRef(place); placeNow.current = place;
   const motion = !reduced(), size = modal ? SIZE.mini : sizeFor(!!place?.mini, globalThis.innerWidth ?? Infinity); // no window while Next renders on the server
@@ -141,6 +141,9 @@ export function Companion({ screen }: { screen: Screen }) {
     if (step && place) { e.preventDefault(); save({ ...place, ...clamp(place.x + step[0], place.y + step[1], size, innerWidth, innerHeight) }); return; }
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTip(); }
     else if (e.key === 'Escape') closeTip();
+    // Out of the bar it still sits in the Tab order where the bar has it: Tab goes on from there (into its tip when one
+    // is open), Shift+Tab goes back to the control before the bar's slot.
+    else if (e.key === 'Tab' && (e.shiftKey || !tip) && stand.current) { const to = tabFrom(document, stand.current, e.shiftKey, ours); if (to) { e.preventDefault(); to.focus(); } }
   }
   // The chat's question takes the focus; the companion stays where it is.
   function openChat() { setTip(null); setChat(true); }
@@ -201,7 +204,7 @@ export function Companion({ screen }: { screen: Screen }) {
   const dockBox = () => boxOf(dockRef.current), shown = tip && tips[tip.screen];
   const tipPlace = () => {
     if (rest && !flying) return placeBubble(rest, 300, tipH, innerWidth, innerHeight, obstacles.current);
-    const d = dockBox(), left = Math.max(8, d.x + d.s / 2 + 28 - 300); return { side: 'below', left, top: d.y + d.s + 12, offset: d.x + d.s / 2 - left };
+    return placeBubble(dockBox(), 300, tipH, innerWidth, innerHeight, obstacles.current);
   };
   const placed = shown ? tipPlace() : null, panelTop = chat ? dockBox().y + dockBox().s + 13 : 0, panelRight = chat ? Math.max(12, innerWidth - (dockBox().x + dockBox().s) - 40) : 0;
   // The welcome bubble beside the entrance, on the side that covers no control or heading.
@@ -213,6 +216,8 @@ export function Companion({ screen }: { screen: Screen }) {
       style={view ? { visibility: 'hidden' } : undefined} onPointerDown={dragDock}
       onKeyDown={e => { if (keyStep(e.key, e.shiftKey)) { e.preventDefault(); invoke(true); } }}
       onClick={e => { if (dragged.current) { dragged.current = false; return; } invoke(e.detail === 0); }}><Art/></button>
+    {/* Out of the bar, its place in the Tab order stays here: focus that lands on this stand-in moves to the companion. */}
+    {rest && !flying && <span ref={stand} tabIndex={0} className="companion-said" onFocus={() => flyRef.current?.focus()}/>}
     {typeof document !== 'undefined' && createPortal(<>
       <span ref={ring} className="companion-ring" aria-hidden="true"/>
       {view && <button ref={flyRef} type="button" className={`companion-fly${mood}${dragging ? ' dragging' : ''}`} data-phase={flying ? 'flying' : phase} data-companion=""
