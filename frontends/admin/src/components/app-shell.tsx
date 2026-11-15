@@ -91,7 +91,7 @@ export function AppShell({ session, children, counts = {}, nexoApiBase }: { sess
         <div className="sidebar-footer">LIPIDOMICS SERVICE<br />{staff ? "Admin · Phase 1" : "Client portal"}</div>
       </aside>
       <main className="main" id="main-content" tabIndex={-1}>
-        {session.mock && <div className="example-banner"><span className="example-label">Example data</span><span>A demo workspace. No lab records are changed.</span></div>}
+        {session.mock && <div className="example-banner"><span className="example-label" data-keep-clear="">Example data</span><span data-keep-clear="">A demo workspace. No lab records are changed.</span></div>}
         {children}
       </main>
     </div>
