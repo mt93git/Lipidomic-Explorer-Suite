@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Refresh the manual from a recorded golden journey (steps.json plus desktop/mobile PNGs); last run: the no-two-step run of
-// 2026-11-11 07:31 EST (Admin 8070cbbe, two-step sign-in off; ORD654, B2026-313, AR-0068). Each picture is found by its file name in steps.json.
+// Refresh the manual from a recorded golden journey (steps.json plus desktop/mobile PNGs); last run: the demo-persona run of
+// 2026-11-14 on staging (Morgan Ellis, Riley Chen, Dana Reyes, Lee Park; ORD714, B2026-348, AR-0101). Each picture is found by its file name in steps.json.
 // Usage: node tools/build-screenshots.mjs /path/to/journey-evidence-18of18 /path/to/admin/node_modules
 // WebP quality 80, effort 6; native desktop width and 390 px phone width; top crops for Notifications and for the
 // phone's Quality check (a full-page capture with its sticky bar in the middle; the crop is the phone's own screen).

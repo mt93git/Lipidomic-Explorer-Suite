@@ -406,7 +406,7 @@ window.HELP_DATA = {
       ],
       "nexo-quality-check": [
         390,
-        1516
+        844
       ],
       "nexo-switch-on": [
         390,
