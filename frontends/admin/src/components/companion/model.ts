@@ -2,7 +2,7 @@
 // Admin: the client zone's screens, the entrance on Client home or Choose client (the first signed-in screens), and
 // the "admin-companion" key prefix.
 /** The companion's phases (docs/integration/nexo-companion/prototype.html): the first-visit entrance on Start, docked in
- *  the top bar, or out (re-invoked) on the canvas area with the current screen's tip. */
+ *  the top bar, or out: anywhere the person drags it, until they put it back. */
 export type Screen = 'home' | 'request' | 'order' | 'shipping' | 'results' | 'choose' | 'notifications'
   | 'sign-in' | 'request-access' | 'forgot-password' | 'reset-password' | 'activate' | 'invite';
 export type Phase = 'entrance' | 'docked' | 'out';
@@ -18,13 +18,14 @@ export function writeFlag(store: Store | undefined, user: string, name: keyof Fl
   try { store?.setItem(key(name, user), value ? '1' : '0'); } catch { /* the flag lasts this page only */ }
 }
 export function startPhase(flags: Flags, screen: Screen): Phase { return !flags.seen && (screen === 'home' || screen === 'choose') ? 'entrance' : 'docked'; }
-/** invoke: a click or Enter/Space on the docked mascot; dock: the entrance reached Canvas or its 6 s ran out;
- *  timeout / dismiss: the tip's ~5 s, Esc or a click elsewhere. */
-export function next(phase: Phase, event: 'invoke' | 'dock' | 'timeout' | 'dismiss'): Phase {
+/** invoke: a click, Enter/Space or a drag on the docked mascot takes it out; dock: the entrance's 6 s ran out (or it
+ *  reached another screen), or the person put it back (Dock, a double-click, a drop on the bar). Out, it stays out. */
+export function next(phase: Phase, event: 'invoke' | 'dock'): Phase {
   if (phase === 'docked') return event === 'invoke' ? 'out' : phase;
-  if (phase === 'entrance') return event === 'invoke' || event === 'dock' || event === 'timeout' ? 'docked' : phase;
-  return event === 'timeout' || event === 'dismiss' ? 'docked' : phase;
+  return event === 'dock' || phase === 'entrance' ? 'docked' : phase;
 }
+/** Where it rests, for this tab only (sessionStorage, as Team), per person. */
+export const placeKey = (user: string) => `admin-companion.place.${user}`;
 /** A screen's tip shows by itself once (after the entrance), unless the person chose Fewer tips; a click always shows it. */
 export function autoTip(flags: Flags, screen: Screen, tipped: string[]): boolean { return flags.seen && !flags.fewer && !tipped.includes(screen); }
 export function readTipped(store: Store | undefined, user: string): string[] {
