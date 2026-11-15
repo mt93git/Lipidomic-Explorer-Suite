@@ -8,20 +8,20 @@ import { CompanionScreen } from "@/components/companion/screen";
 import { demoSession } from "@/lib/demo";
 import SignInPage from "@/app/sign-in/page";
 
-// The neutrophil companion in Admin's client zone (src/components/companion, copied from Nexo).
+// The neutrophil companion in Admin's client zone (src/components/companion, Nexo's twin on frontends/shared/companion).
 const pathname = vi.hoisted(() => ({ current: "/client/home" }));
 vi.mock("next/navigation", () => ({ usePathname: () => pathname.current, useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/app/actions", () => ({ signOut: vi.fn(), switchView: vi.fn(), signIn: vi.fn(), enterDemo: vi.fn() }));
 
 const client = { ...demoSession, userId: "u-client", view: "client" as const, role: "Requester", selectedClient: demoSession.clients[0] };
-const dock = () => screen.queryByRole("button", { name: "Neutrophil guide: show a tip for this screen" });
+const dock = () => screen.queryByRole("button", { name: "Neutrophil guide: take it out of the bar" });
 const chatButton = () => screen.queryByRole("button", { name: "Chat with the neutrophil guide" });
 const json = (status: number, body: object) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const allScreens = "home,request,order,shipping,results,choose,notifications,sign-in,request-access,forgot-password,reset-password,activate,invite";
 const seen = (user: string) => { localStorage.setItem(`admin-companion.seen.${user}`, "1"); localStorage.setItem(`admin-companion.tipped.${user}`, allScreens); };
 
 beforeEach(() => {
-  localStorage.clear();
+  localStorage.clear(); sessionStorage.clear(); // each test is a new tab: the companion starts docked
   forgetCompanionToken();
   pathname.current = "/client/home";
   // Reduced motion: no flights, so every step lands at once (the prototype's reduced-motion path).
@@ -51,10 +51,10 @@ describe("companion in the client zone", () => {
     seen("u-client");
     render(<AppShell session={client}>Home</AppShell>);
     const banner = screen.getAllByRole("banner")[0];
-    expect(await within(banner).findByRole("button", { name: "Neutrophil guide: show a tip for this screen" })).toBeVisible();
+    expect(await within(banner).findByRole("button", { name: "Neutrophil guide: take it out of the bar" })).toBeVisible();
     expect(document.getElementById("topbar-menu")).not.toContainElement(dock());
     await userEvent.click(dock()!);
-    const tip = await screen.findByRole("dialog", { name: "Your orders" });
+    const tip = await screen.findByRole("group", { name: "Your orders" });
     expect(tip).toHaveTextContent("Released datasets are listed under Datasets.");
     expect(within(tip).getByRole("button", { name: "Chat with the neutrophil guide" })).toBeVisible();
   });
@@ -64,14 +64,14 @@ describe("companion in the client zone", () => {
     pathname.current = "/orders/ORD040";
     render(<AppShell session={client}><CompanionScreen screen="results" />Order</AppShell>);
     await userEvent.click(dock()!);
-    expect(await screen.findByRole("dialog", { name: "Your results" })).toHaveTextContent("Open in Nexo");
+    expect(await screen.findByRole("group", { name: "Your results" })).toHaveTextContent("Open in Nexo");
   });
 
   it("shows tips but no chat on the signed-out sign-in page", async () => {
     render(await SignInPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByRole("main")).toContainElement(dock());
     await userEvent.click(dock()!);
-    expect(await screen.findByRole("dialog", { name: "Sign in" })).toHaveTextContent("Request access below.");
+    expect(await screen.findByRole("group", { name: "Sign in" })).toHaveTextContent("Request access below.");
     expect(chatButton()).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Question for the guide" })).not.toBeInTheDocument();
   });
@@ -148,5 +148,25 @@ describe("askCompanion", () => {
     await expect(askCompanion("   ", "/api", fetcher)).rejects.toThrow("1 to 500");
     expect(fetcher).not.toHaveBeenCalled();
     expect(MAX_QUESTION).toBe(500);
+  });
+});
+
+describe("companion out of the bar", () => {
+  it("stays out until Dock, moves with the arrow keys, and keeps its spot for the tab", async () => {
+    seen("u-client");
+    render(<Companion screen="home" user="u-client" />);
+    await userEvent.click(dock()!);
+    const out = await screen.findByRole("button", { name: /^Neutrophil guide: Enter shows a tip/ });
+    expect(await screen.findByRole("group", { name: "Your orders" })).toBeVisible();
+    const before = JSON.parse(sessionStorage.getItem("admin-companion.place.u-client")!);
+    expect(before).toMatchObject({ out: true });
+    out.focus();
+    await userEvent.keyboard("{Shift>}{ArrowLeft}{/Shift}{ArrowLeft}");
+    const moved = JSON.parse(sessionStorage.getItem("admin-companion.place.u-client")!);
+    expect(moved.x).toBe(Math.max(8, before.x - 80));
+    await userEvent.click(within(screen.getByRole("group", { name: "Your orders" })).getByRole("button", { name: "Put the guide back in the top bar" }));
+    expect(dock()).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Neutrophil guide: Enter shows a tip/ })).not.toBeInTheDocument();
+    expect(JSON.parse(sessionStorage.getItem("admin-companion.place.u-client")!)).toMatchObject({ out: false, x: moved.x });
   });
 });

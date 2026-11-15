@@ -6,10 +6,12 @@ test('entrance plays on Start only when the per-user flag is absent', () => {
   expect(startPhase(readFlags(store({ 'nexo.companion.seen.u1': '1' }), 'u1'), 'start')).toBe('docked');
   expect(startPhase(readFlags(store({ 'nexo.companion.seen.u2': '1' }), 'u1'), 'start')).toBe('entrance');
 });
-test('re-invoke flies out and returns to the dock', () => {
+test('out of the bar it stays out until the person puts it back', () => {
   expect(next('docked', 'invoke')).toBe('out');
-  expect(next('out', 'timeout')).toBe('docked');
-  expect(next('out', 'dismiss')).toBe('docked');
+  expect(next('out', 'invoke')).toBe('out');
+  expect(next('out', 'dock')).toBe('docked');
+  expect(next('entrance', 'dock')).toBe('docked');
+  expect(next('entrance', 'invoke')).toBe('docked');
 });
 test('an automatic tip shows once per screen and never with Fewer tips', () => {
   expect(autoTip({ seen: true, fewer: false }, 'canvas', [])).toBe(true);
