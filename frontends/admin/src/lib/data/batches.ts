@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { toBenchSheetCsv, toSequenceCsv } from "../batch";
 import type { SaveInjection, StoredRules, BuilderSample } from "../batch-builder";
-import { demoBuilderSamples, recordAcquired, recordBatch, recordExported, toBatchDetail } from "../batch-demo";
+import { demoBuilderSamples, recordAcquired, recordBatch, recordExported, recordInjectionStatus, toBatchDetail } from "../batch-demo";
 import { batchFileNames, type BatchDetail, type BatchFile, type BatchInjection, type BatchStatus, type BatchSummary } from "../batch-run";
 import { demoClients, demoOrders, demoSession } from "../demo";
 import { getEnvironment } from "../environment";
@@ -10,6 +10,7 @@ import { DataError } from "../samples";
 import { applyDemoState } from "../samples-demo";
 import { createAdminClient } from "../supabase/server";
 import { readDemoState, writeDemoState } from "./demo-store";
+import { notifyBatch } from "./notifications";
 import { listClients, listPanels } from "./orders";
 
 export { DataError };
@@ -39,7 +40,9 @@ function refusal(error: { message: string }): DataError {
 
 // ---------------------------------------------------------------- reads
 
-// Orders whose samples may be batched: Registered up to Acquired (the same range create_batch accepts).
+// Orders whose samples may be batched: Registered up to Acquired (the same range create_batch accepts). Not capped at
+// In batch: exporting a batch moves its whole order to Sequence exported (advance_batch_orders), so the order's samples
+// not in that batch, or released by archiving it, must still be offered. Samples already held are hidden below.
 const BATCHABLE = ["registered", "extracted", "in_batch", "sequence_exported", "acquired"];
 type SampleRow = {
   id: string; sample_code: string; full_name: string; client_id: string;
@@ -47,7 +50,9 @@ type SampleRow = {
 };
 type PlannedRow = { aliquot_id: string; batch_version: One<{ archived_at: string | null; batch: One<{ status: string; archived_at: string | null }> }> };
 
-// Registered samples that can go into a batch: not archived, order batchable, and not already in a planned batch.
+// Registered samples that can go into a batch: not archived, order batchable, and not already in a live batch of any
+// status (planned, sequence exported, acquired, ...). A batch is cancelled by archiving it or its version (there is no
+// cancelled status), so only an injection of a live version of a live batch holds its sample.
 export async function listBuilderSamples(): Promise<BuilderSample[]> {
   if (!live()) {
     const state = await readDemoState();
@@ -64,7 +69,7 @@ export async function listBuilderSamples(): Promise<BuilderSample[]> {
   const busy = new Set(((planned.data ?? []) as unknown as PlannedRow[]).filter(row => {
     const version = one(row.batch_version);
     const batch = version && one(version.batch);
-    return version && !version.archived_at && batch && !batch.archived_at && batch.status === "planned";
+    return version && !version.archived_at && batch && !batch.archived_at;
   }).map(row => row.aliquot_id));
   const names = new Map(clients.map(client => [client.id, client.name]));
   return ((samples.data ?? []) as unknown as SampleRow[]).flatMap(row => {
@@ -77,7 +82,7 @@ export async function listBuilderSamples(): Promise<BuilderSample[]> {
 
 type InjectionRow = {
   seq: number; sample_type: BatchInjection["sample_type"]; sample_name: string; client_id: string | null; aliquot_id: string | null;
-  plate: string | null; vial: string | null; status: string; archived_at: string | null;
+  plate: string | null; vial: string | null; status: string; archived_at: string | null; client: One<{ name: string }>;
   aliquot: One<{ sample: One<{ sample_code: string; full_name: string; ord: One<{ code: string }> }> }>;
 };
 type VersionRow = {
@@ -89,7 +94,7 @@ type BatchRow = { id: string; name: string; status: BatchStatus; created_at: str
 const detailSelect = [
   "id, name, status, created_at", "panel:panel(name)",
   "batch_version(id, version, archived_at, exported_at, exported_by, sequence_sha256, rules",
-  "injection(seq, sample_type, sample_name, client_id, aliquot_id, plate, vial, status, archived_at, aliquot:aliquot(sample:sample(sample_code, full_name, ord:order(code)))))",
+  "injection(seq, sample_type, sample_name, client_id, aliquot_id, plate, vial, status, archived_at, client:client(name), aliquot:aliquot(sample:sample(sample_code, full_name, ord:order(code)))))",
 ].join(", "); // the commas matter: supabase-js strips whitespace from select
 
 function toDetail(row: BatchRow, exportedBy: string | null): BatchDetail | null {
@@ -99,7 +104,7 @@ function toDetail(row: BatchRow, exportedBy: string | null): BatchDetail | null 
     const sample = one(one(item.aliquot)?.sample ?? null);
     return {
       seq: item.seq, sample_type: item.sample_type, sample_name: item.sample_name, FullName: sample?.full_name.trim() ?? null, client_id: item.client_id, aliquot_id: item.aliquot_id,
-      plate: item.plate ?? "", vial: item.vial ?? "", sampleCode: sample?.sample_code ?? null, orderCode: one(sample?.ord ?? null)?.code ?? null, status: item.status,
+      plate: item.plate ?? "", vial: item.vial ?? "", sampleCode: sample?.sample_code ?? null, orderCode: one(sample?.ord ?? null)?.code ?? null, status: item.status, clientName: one(item.client)?.name ?? null,
     };
   });
   return {
@@ -207,9 +212,46 @@ export async function markBatchAcquired(name: string): Promise<void> {
   if (!batch) throw new DataError(`Batch ${name} was not found.`);
   if (!live()) {
     await writeDemoState(recordAcquired(await readDemoState(), name, new Date()));
-    return;
+  } else {
+    const { error } = await (await admin()).rpc("mark_batch_acquired", { p_batch_id: batch.id });
+    if (error) throw refusal(error);
   }
-  const { error } = await (await admin()).rpc("mark_batch_acquired", { p_batch_id: batch.id });
-  if (error) throw refusal(error);
+  // Who is told is the Notifications matrix's row (0036): the lab once, each order's client for its own order.
+  await notifyBatch("batch_acquired", name, batch.orderCodes);
 }
 
+
+// admin.record_injection_status(p_batch_id, p_rows) (0031): the run monitor's statuses, matched by injection name.
+// Returns how many injections changed.
+export async function recordInjectionStatuses(name: string, rows: { sample_name: string; status: string }[]): Promise<number> {
+  const batch = await getBatch(name);
+  if (!batch) throw new DataError(`Batch ${name} was not found.`);
+  let changed: number;
+  let exporter: string | null = null;
+  if (!live()) {
+    const result = recordInjectionStatus(await readDemoState(), name, rows);
+    await writeDemoState(result.state);
+    changed = result.changed;
+    exporter = demoSession.userId;
+  } else {
+    const db = await admin();
+    const { data, error } = await db.rpc("record_injection_status", { p_batch_id: batch.id, p_rows: rows });
+    if (error) throw refusal(error);
+    changed = Number(data ?? 0);
+    const version = await db.from("batch_version").select("exported_by").eq("batch_id", batch.id).is("archived_at", null).order("version", { ascending: false }).limit(1).maybeSingle();
+    exporter = (version.data as { exported_by: string | null } | null)?.exported_by ?? null;
+  }
+  // Injections recorded Failed turn the run's gate red (0036 "Gate failed"); the owner of the step is who exported
+  // the sequence and ran the batch. Only injections that were not Failed before this call count, so pasting the same
+  // status export again (with another row changed) does not announce an old failure twice.
+  const wasFailed = new Set(batch.injections.filter(item => item.status.trim().toLowerCase() === "failed").map(item => item.sample_name));
+  const failed = new Set(rows.filter(row => row.status.trim().toLowerCase() === "failed").map(row => row.sample_name.trim()).filter(name => !wasFailed.has(name)));
+  if (changed > 0 && failed.size) {
+    const orders = new Set<string>();
+    for (const item of batch.injections) if (failed.has(item.sample_name) && item.orderCode) orders.add(item.orderCode);
+    const count = (n: number) => `${n} ${n === 1 ? "injection" : "injections"} recorded Failed`;
+    // Lab-only (0040): the lab reads the batch's total.
+    await notifyBatch("gate_failed", name, [...orders].sort(), { gate: count(failed.size), stepOwner: exporter });
+  }
+  return changed;
+}

@@ -17,3 +17,5 @@ e2e/live/.identity-credentials*.json
 # Golden journey (e2e/live/journey.spec.ts): screenshots, videos, steps.json and the seed's local credentials file. Never commit.
 e2e/live/journey-evidence/
 e2e/live/.journey-credentials*.json
+# Showcase seed (e2e/live/demo-seed.mjs): the demo accounts' local credentials file. Never commit.
+e2e/live/.demo-credentials*.json

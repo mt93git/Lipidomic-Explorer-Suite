@@ -76,6 +76,10 @@ export const emptyDraft = (): SampleDraft => Object.fromEntries(columns.map(colu
 
 const normalizeHeader = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
 const fieldByHeader = new Map<string, SampleField>(columns.flatMap(column => [column.label, ...column.aliases].map(alias => [normalizeHeader(alias), column.field] as const)));
+// The column a pasted header names ("Group 1" → group1_term), or null when it is not one of ours.
+export const fieldForHeader = (text: string): SampleField | null => fieldByHeader.get(normalizeHeader(text)) ?? null;
+// The column a header is the exact name of, spelling aside ("Group1Term", "group1term"): not a rename worth reporting.
+export const isCanonicalHeader = (text: string, field: SampleField) => normalizeHeader(text) === normalizeHeader(columns.find(column => column.field === field)?.label ?? "");
 
 // Excel wraps a cell in double quotes when it holds a comma, a quote or a line break, doubling inner quotes.
 function unquote(cell: string): string {
@@ -89,8 +93,11 @@ export type PasteResult = { rows: SampleDraft[]; headerDetected: boolean; ignore
 // Tab-separated rows as copied from Excel or Google Sheets. A first row whose first cell is a known
 // column name is a header and maps the columns by name (any order, spelling variants); otherwise
 // cells are read in the grid's column order. Blank lines and cells beyond the known columns are dropped.
+// The paste as trimmed cells per non-blank line.
+export const pasteLines = (text: string): string[][] => text.split(/\r\n|\r|\n/).map(line => line.split("\t").map(unquote)).filter(cells => cells.some(Boolean));
+
 export function parsePaste(text: string): PasteResult {
-  const lines = text.split(/\r\n|\r|\n/).map(line => line.split("\t").map(unquote)).filter(cells => cells.some(Boolean));
+  const lines = pasteLines(text);
   if (!lines.length) return { rows: [], headerDetected: false, ignoredHeaders: [] };
   const headerDetected = fieldByHeader.has(normalizeHeader(lines[0][0]));
   const ignoredHeaders: string[] = [];

@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import Link from "@/components/app-link";
 import { PlateMap } from "@/components/plate-map";
 import { SequenceTable } from "@/components/sequence-table";
+import { StatTiles, type StatTile } from "@/components/stat-tiles";
+import map from "@/components/visual-map.module.css";
+import { endsAt, injectionStatuses, orderOf, statusCounts } from "@/lib/visual-map";
 import styles from "@/components/batch-plan.module.css";
 import { formatRunTime, storedMinutes } from "@/lib/batch-builder";
 import { batchFileNames, batchStatusLabel, batchSteps, BATCH_NAME } from "@/lib/batch-run";
@@ -11,11 +14,11 @@ import { formatLabInstant } from "@/lib/lab-time";
 import { plural } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../../release/action-form";
-import { markAcquiredAction, markExportedAction } from "../actions";
+import { markAcquiredAction, markExportedAction, pasteStatusAction, setInjectionStatusAction } from "../actions";
 import { BASE_PATH } from "@/lib/base-path";
 
 export const metadata: Metadata = { title: "Batch run" };
-type Params = { saved?: string; exported?: string; acquired?: string };
+type Params = { saved?: string; exported?: string; acquired?: string; status?: string; unmatched?: string };
 
 // The Next.js basePath: a plain download link is not rewritten by the router.
 const BASE = BASE_PATH;
@@ -25,7 +28,7 @@ const BASE = BASE_PATH;
 export default async function BatchPage({ params, searchParams }: { params: Promise<{ name: string }>; searchParams: Promise<Params> }) {
   await requireWorkspace("staff");
   const { name } = await params;
-  const { saved, exported, acquired } = await searchParams;
+  const { saved, exported, acquired, status, unmatched } = await searchParams;
   if (!BATCH_NAME.test(name)) notFound();
   const batch = await getBatch(name);
   if (!batch) notFound();
@@ -33,6 +36,20 @@ export default async function BatchPage({ params, searchParams }: { params: Prom
   const minutes = storedMinutes(batch.rules);
   const counts = (["Unknown", "Blank", "Quality Control"] as const).map(type => batch.injections.filter(row => row.sample_type === type).length);
   const pill = batch.status === "planned" ? "pending" : "ok";
+  const running = batch.status !== "planned";
+  const canRecord = batch.status === "sequence_exported" || batch.status === "acquired";
+  const tally = statusCounts(batch.injections);
+  const tiles: StatTile[] = [
+    { value: batch.injections.length, label: "injections" }, { value: counts[0], label: "samples" },
+    { value: counts[2], label: "pooled QC" }, { value: counts[1], label: "blanks" },
+    ...(minutes ? [{ value: formatRunTime(batch.injections.length * minutes), label: "run time" }] : []),
+    ...(running
+      ? [{ value: `${tally.acquired} / ${batch.injections.length}`, label: "acquired", tone: tally.acquired === batch.injections.length ? "good" as const : undefined },
+        ...(tally.failed ? [{ value: tally.failed, label: "failed", tone: "bad" as const }] : []),
+        ...(tally.skipped ? [{ value: tally.skipped, label: "skipped", tone: "warn" as const }] : []),
+        ...(batch.status === "sequence_exported" && batch.exportedAt && minutes ? [{ value: endsAt(new Date(batch.exportedAt), batch.injections.length * minutes), label: "expected end (from export)" }] : [])]
+      : [{ value: endsAt(new Date(), batch.injections.length * (minutes ?? 0)), label: "ends if started now" }]),
+  ];
   return <>
     <div className="page-heading">
       <div>
@@ -48,6 +65,7 @@ export default async function BatchPage({ params, searchParams }: { params: Prom
 
     {saved && <p className="notice success" role="status"><strong>Batch {batch.name} saved as planned.</strong> Its orders are In batch. Download the files below.</p>}
     {exported && <p className="notice success" role="status"><strong>Sequence exported.</strong> Version {batch.version} is frozen{batch.sequenceSha256 ? <> · SHA-256 <span className="mono">{batch.sequenceSha256.slice(0, 12)}…</span></> : null}. Its orders are at Sequence exported.</p>}
+    {status !== undefined && <p className="notice success" role="status"><strong>Injection status recorded.</strong> {plural(Number(status) || 0, "injection")} changed{Number(unmatched) ? `; ${plural(Number(unmatched), "pasted line")} matched no injection of this batch and ${Number(unmatched) === 1 ? "was" : "were"} ignored` : ""}.</p>}
     {acquired && <p className="notice success" role="status"><strong>Batch acquired.</strong> Its orders are at Acquired. <Link className="button" href="/ingest-results">Ingest results →</Link></p>}
 
     <section className="panel" aria-labelledby="run-title">
@@ -83,13 +101,44 @@ export default async function BatchPage({ params, searchParams }: { params: Prom
     <section className="panel" aria-labelledby="plan-title">
       <div className="eyebrow">Plan</div>
       <h2 id="plan-title">Plate map and sequence</h2>
-      <dl className={`${styles.counts} facts-inline`} aria-label="Batch summary">
-        <div><dt>Samples</dt><dd>{counts[0]}</dd></div><div><dt>Blanks</dt><dd>{counts[1]}</dd></div><div><dt>Pooled QC</dt><dd>{counts[2]}</dd></div>
-        <div><dt>Planned</dt><dd>{formatLabInstant(batch.createdAt)}</dd></div>
-      </dl>
-      <PlateMap injections={batch.injections} />
+      <StatTiles label="Batch summary" tiles={tiles} />
+      <p className="muted"><small>Planned {formatLabInstant(batch.createdAt)} · {plural(batch.orderCodes.length, "order")}</small></p>
+      <PlateMap injections={batch.injections} clients={new Map(batch.injections.flatMap(row => row.orderCode && row.clientName ? [[row.orderCode, row.clientName] as const] : []))} />
       <SequenceTable label="Batch sequence" rows={batch.injections}
         detail={row => row.FullName ? `${row.FullName} · ${row.orderCode}` : "—"} />
     </section>
+
+    {running && <section className="panel" id="monitor" aria-labelledby="monitor-title">
+      <div className="panel-heading"><div><div className="eyebrow">Run monitor</div><h2 id="monitor-title">Acquisition status</h2></div>
+        <span className={`pill ${tally.failed ? "fail" : tally.acquired === batch.injections.length ? "ok" : "pending"}`}>{tally.acquired} of {batch.injections.length} acquired</span></div>
+      <div className="grid-frame"><div className="grid-scroll" role="region" aria-label="Acquisition status (scrolls)" tabIndex={0}>
+        <table className="registry-table registered" aria-label="Acquisition status">
+          <thead><tr><th scope="col">Seq</th><th scope="col">Injection name</th><th scope="col">Order</th><th scope="col">Well</th><th scope="col">Status</th></tr></thead>
+          <tbody>{batch.injections.map(row => <tr key={row.seq}>
+            <td className="mono">{String(row.seq).padStart(3, "0")}</td><td className="mono">{row.sample_name}</td>
+            <td>{orderOf(row) ? <Link className="mono" href={`/orders/${orderOf(row)}`}>{orderOf(row)}</Link> : "—"}</td>
+            <td className="mono">{row.vial}</td>
+            <td><span className={`${map.status} ${map[row.status] ?? ""}`}>{row.status}</span></td>
+          </tr>)}</tbody>
+        </table>
+      </div></div>
+      {canRecord ? <div className={map.monitorForms}>
+        <ActionForm action={pasteStatusAction} submit="Record pasted status" pendingLabel="Recording…" keepValues>
+          <input type="hidden" name="name" value={batch.name} />
+          <label className="field"><span className="field-label">Paste SCIEX OS status</span>
+            <textarea name="paste" required placeholder={`${batch.injections[0]?.sample_name ?? "Sample name"}\tAcquired\n${batch.injections[1]?.sample_name ?? "Sample name"}\tFailed`} />
+            <small className="field-hint">The batch status exported from SCIEX OS, one line per injection: the injection name and its state (Acquired, Failed, Skipped, Waiting). Lines that match no injection are ignored and counted.</small></label>
+        </ActionForm>
+        <ActionForm action={setInjectionStatusAction} submit="Set status" pendingLabel="Saving…" secondary>
+          <input type="hidden" name="name" value={batch.name} />
+          <label className="field"><span className="field-label">One injection</span>
+            <select name="injection" required defaultValue=""><option value="" disabled>Choose an injection…</option>
+              {batch.injections.map(row => <option key={row.seq} value={row.sample_name}>{String(row.seq).padStart(3, "0")} · {row.sample_name} ({row.status})</option>)}</select></label>
+          <label className="field"><span className="field-label">Status</span>
+            <select name="status" required defaultValue="failed">{injectionStatuses.map(item => <option key={item} value={item}>{item}</option>)}</select></label>
+        </ActionForm>
+      </div> : <p className="muted"><small>Results are accepted for this batch; its injection status is final.</small></p>}
+      <p className="muted"><small>The 7500 PC stays offline: the operator pastes the batch status exported from SCIEX OS and Admin matches it by injection name. Mark acquired still moves the orders; a failed injection stays failed.</small></p>
+    </section>}
   </>;
 }

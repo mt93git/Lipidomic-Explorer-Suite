@@ -3,11 +3,14 @@ import Link from "@/components/app-link";
 import { ErrorSummary } from "@/components/error-summary";
 import { PlateMap } from "@/components/plate-map";
 import { SequenceTable } from "@/components/sequence-table";
+import { StatTiles } from "@/components/stat-tiles";
 import styles from "@/components/batch-plan.module.css";
-import { builderDefaults, formatRunTime, parseBuilderForm, planBatch, planKey, PLATE, problemText, type BuilderErrors, type BuilderSample, type BuilderValues } from "@/lib/batch-builder";
+import { formatRunTime, parseBuilderForm, planBatch, planKey, PLATE, problemText, type BuilderErrors, type BuilderSample, type BuilderValues } from "@/lib/batch-builder";
 import { listBuilderSamples } from "@/lib/data/batches";
+import { activeBuilderDefaults } from "@/lib/data/instrument-profiles";
 import { listPanels } from "@/lib/data/orders";
 import { LAB_TIME_ZONE } from "@/lib/lab-time";
+import { endsAt } from "@/lib/visual-map";
 import { plural } from "@/lib/samples";
 import { requireWorkspace } from "@/lib/session";
 import { ActionForm } from "../release/action-form";
@@ -18,6 +21,7 @@ type Params = Record<string, string | string[] | undefined>;
 
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: LAB_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const labels: [keyof BuilderErrors, string, string][] = [["panelId", "Panel", "batch-panelId"], ["samples", "Samples", "batch-samples"], ["blanksAtStart", "Blanks at start", "batch-blanksAtStart"],
+  ["blanksBetween", "Blanks between samples", "batch-blanksBetween"], ["blanksBetweenEvery", "After every (samples)", "batch-blanksBetweenEvery"],
   ["pooledQcEvery", "Pooled QC every", "batch-pooledQcEvery"], ["minutesPerInjection", "Minutes per injection", "batch-minutesPerInjection"]];
 
 function searchOf(params: Params): URLSearchParams {
@@ -29,6 +33,7 @@ function searchOf(params: Params): URLSearchParams {
 // The same fields again, as hidden inputs, for the save form: the action reads them like the preview did.
 function Carried({ values }: { values: BuilderValues }) {
   const fields: [string, string | number | boolean][] = [["panelId", values.panelId], ["blanksAtStart", values.blanksAtStart], ["pooledQcEvery", values.pooledQcEvery],
+    ["blanksBetween", values.blanksBetween], ["blanksBetweenEvery", values.blanksBetweenEvery],
     ["minutesPerInjection", values.minutesPerInjection], ["seed", values.seed], ["plateOrder", values.plateOrder]];
   return <>
     {values.sampleIds.map(id => <input key={id} type="hidden" name="sample" value={id} />)}
@@ -48,15 +53,15 @@ function groupByOrder(samples: BuilderSample[]) {
 export default async function BatchBuilderPage({ searchParams }: { searchParams: Promise<Params> }) {
   await requireWorkspace("staff");
   const search = searchOf(await searchParams);
-  const [samples, panels] = await Promise.all([listBuilderSamples(), listPanels()]);
+  const [samples, panels, defaults] = await Promise.all([listBuilderSamples(), listPanels(), activeBuilderDefaults()]);
   const previewing = search.has("preview");
-  const parsed = previewing ? parseBuilderForm(search, samples) : null;
+  const parsed = previewing ? parseBuilderForm(search, samples, defaults) : null;
   const plan = parsed?.ok ? planBatch(parsed.value, samples) : null;
   const errors = parsed && !parsed.ok ? parsed.errors : {};
   const orders = search.getAll("order");
   const picked = new Set(search.has("sample") || previewing ? search.getAll("sample") : samples.filter(sample => orders.includes(sample.orderCode)).map(sample => sample.id));
-  const value = <K extends keyof typeof builderDefaults>(name: K): string => search.get(name) ?? String(builderDefaults[name]);
-  const checked = (name: "blankAfterQc" | "qcAtEnd" | "randomize") => previewing ? search.has(name) : builderDefaults[name];
+  const value = <K extends keyof typeof defaults>(name: K): string => search.get(name) ?? String(defaults[name]);
+  const checked = (name: "blankAfterQc" | "qcAtEnd" | "randomize") => previewing ? search.has(name) : defaults[name];
   const byId = new Map(samples.map(sample => [sample.id, sample]));
   const counts = plan && (["Unknown", "Blank", "Quality Control"] as const).map(type => plan.injections.filter(row => row.sample_type === type).length);
   const problem = (field: keyof BuilderErrors) => errors[field] ? <small id={`batch-${field}-error`} className="field-error">{errors[field]}</small> : null;
@@ -130,6 +135,20 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
             {problem("pooledQcEvery")}
           </div>
         </div>
+        <div className="form-row">
+          <div className="field">
+            <label className="field-label" htmlFor="batch-blanksBetween">Blanks between samples</label>
+            <input id="batch-blanksBetween" name="blanksBetween" type="number" min={0} step={1} inputMode="numeric" defaultValue={value("blanksBetween")} {...describe("blanksBetween")} />
+            <small className="field-hint">Blanks placed after every group of samples below; 0 means none.</small>
+            {problem("blanksBetween")}
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="batch-blanksBetweenEvery">After every (samples)</label>
+            <input id="batch-blanksBetweenEvery" name="blanksBetweenEvery" type="number" min={0} step={1} inputMode="numeric" defaultValue={value("blanksBetweenEvery")} {...describe("blanksBetweenEvery")} />
+            <small className="field-hint">Only between samples, never after the last one; 0 with 0 blanks.</small>
+            {problem("blanksBetweenEvery")}
+          </div>
+        </div>
         <div className={styles.checks}>
           <label><input type="checkbox" name="qcAtEnd" defaultChecked={checked("qcAtEnd")} /> Pooled QC at the end</label>
           <label><input type="checkbox" name="blankAfterQc" defaultChecked={checked("blankAfterQc")} /> Blank after every QC</label>
@@ -161,12 +180,14 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
     {parsed?.ok && plan && plan.injections.length > 0 && counts && <section className="panel" aria-labelledby="preview-title">
       <div className="panel-heading"><div><div className="eyebrow">Preview</div><h2 id="preview-title">{plural(plan.injections.length, "injection")} · {formatRunTime(plan.minutes)}</h2></div>
         <span className="pill pending">Not saved yet</span></div>
-      <dl className={`${styles.counts} facts-inline`} aria-label="Plan summary">
-        <div><dt>Samples</dt><dd>{counts[0]}</dd></div><div><dt>Blanks</dt><dd>{counts[1]}</dd></div><div><dt>Pooled QC</dt><dd>{counts[2]}</dd></div>
-        <div><dt>Estimated run time</dt><dd>{formatRunTime(plan.minutes)}</dd></div><div><dt>Seed</dt><dd className="mono">{parsed.value.seed || "(empty)"}</dd></div>
-      </dl>
+      <StatTiles label="Plan summary" tiles={[
+        { value: plan.injections.length, label: "injections" }, { value: counts[0], label: "samples" },
+        { value: counts[2], label: "pooled QC" }, { value: counts[1], label: "blanks" },
+        { value: formatRunTime(plan.minutes), label: "run time" }, { value: endsAt(new Date(), plan.minutes), label: "ends if started now" },
+      ]} />
+      <p className="muted"><small>Seed <span className="mono">{parsed.value.seed || "(empty)"}</span> · {countLabel(groupByOrder(samples.filter(sample => parsed.value.sampleIds.includes(sample.id))).length, "order")} from {countLabel(new Set(samples.filter(sample => parsed.value.sampleIds.includes(sample.id)).map(sample => sample.clientId)).size, "client")}</small></p>
       <h3>Plate map</h3>
-      <PlateMap injections={plan.injections} />
+      <PlateMap injections={plan.injections} clients={new Map(samples.map(sample => [sample.orderCode, sample.clientName]))} />
       <h3>Sequence</h3>
       <SequenceTable label="Sequence preview" rows={plan.injections} detail={row => { const sample = row.aliquot_id ? byId.get(row.aliquot_id) : null; return sample ? `${sample.fullName} · ${sample.clientName}` : "—"; }} />
       <ActionForm action={saveBatchAction} submit="Save planned batch" pendingLabel="Saving…" className="form-actions">
@@ -176,4 +197,8 @@ export default async function BatchBuilderPage({ searchParams }: { searchParams:
       <p className="muted"><small>Saving records version 1 as a planned batch and moves the orders to In batch. The sequence is frozen later, when you mark it exported.</small></p>
     </section>}
   </>;
+}
+
+function countLabel(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

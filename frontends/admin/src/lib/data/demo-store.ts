@@ -76,7 +76,7 @@ export async function writeDemoDeliverables(deliverables: DemoDeliverable[]) {
 }
 
 // ---------------------------------------------------------------- Instruments & panels (0026)
-// Same pattern; undefined until the first write, when the example catalog (seedDemoCatalog) is used.
+// Kept in the demo state like notifications; undefined until the first write, when the example catalog (seedDemoCatalog) is used.
 type CatalogDemoState = DemoState & { catalog?: import("./instruments-panels").DemoCatalog };
 export async function readDemoCatalog() {
   return (await readDemoState() as CatalogDemoState).catalog;
@@ -97,15 +97,60 @@ export async function writeDemoPlacements(placements: import("../storage").DemoP
   await writeDemoState(state);
 }
 
+// ---------------------------------------------------------------- Freezers & racks (0041)
+// Same pattern: this browser's freezer list and box places, undefined until the first change (initialDemoFreezers).
+type FreezerDemoState = DemoState & { freezers?: import("../freezers").DemoFreezerState };
+export async function readDemoFreezers() {
+  return (await readDemoState() as FreezerDemoState).freezers;
+}
+export async function writeDemoFreezers(freezers: import("../freezers").DemoFreezerState) {
+  const state: FreezerDemoState = { ...await readDemoState(), freezers };
+  await writeDemoState(state);
+}
+
 // ---------------------------------------------------------------- Notifications (0028)
 // Same pattern: each demo person's turned-off kinds and the demo send log (the demo never sends: every row is skipped).
 export type DemoNotificationLog = import("../notifications").LogEntry & { id: string; at: string };
-export type DemoNotifications = { off: Record<string, string[]>; log: DemoNotificationLog[] };
+// rules (0036): the matrix rows the demo's lab Owner or Admin changed; a row not here is at its default.
+export type DemoNotifications = { off: Record<string, string[]>; log: DemoNotificationLog[]; rules?: Partial<Record<string, import("../notifications").NotificationRule>> };
 type NotificationDemoState = DemoState & { notifications?: DemoNotifications };
 export async function readDemoNotifications(): Promise<DemoNotifications> {
   return (await readDemoState() as NotificationDemoState).notifications ?? { off: {}, log: [] };
 }
 export async function writeDemoNotifications(notifications: DemoNotifications) {
   const state: NotificationDemoState = { ...await readDemoState(), notifications };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Dataset workbooks (release preview)
+// The demo's stored dataset workbooks, by their SHA-256: what a real build uploads to admin-files. Kept in this
+// process's memory like the rest (content-addressed, so browsers can share them), at most 100.
+type Workbooks = Map<string, Buffer>;
+const workbooks: Workbooks = ((globalThis as unknown as { __leAdminDemoWorkbooks?: Workbooks }).__leAdminDemoWorkbooks ??= new Map());
+export function storeDemoWorkbook(sha256: string, bytes: Buffer): void {
+  if (!workbooks.has(sha256) && workbooks.size >= 100) workbooks.delete(workbooks.keys().next().value as string);
+  workbooks.set(sha256, Buffer.from(bytes));
+}
+export const readDemoWorkbook = (sha256: string): Buffer | undefined => workbooks.get(sha256);
+
+// ---------------------------------------------------------------- New order drafts (0033)
+// Same pattern: this browser's order drafts (open, placed and discarded), undefined until the first Save draft.
+type DraftDemoState = DemoState & { orderDrafts?: import("../order-wizard").DemoOrderDraft[] };
+export async function readDemoOrderDrafts() {
+  return (await readDemoState() as DraftDemoState).orderDrafts ?? [];
+}
+export async function writeDemoOrderDrafts(orderDrafts: import("../order-wizard").DemoOrderDraft[], base?: DemoState) {
+  const state: DraftDemoState = { ...(base ?? await readDemoState()), orderDrafts };
+  await writeDemoState(state);
+}
+
+// ---------------------------------------------------------------- Instrument profiles (0035)
+// Kept in the demo state like notifications; undefined until the first write, when the example profile (seedDemoProfiles) is used.
+type ProfileDemoState = DemoState & { profiles?: import("./instrument-profiles").DemoProfile[] };
+export async function readDemoProfiles() {
+  return (await readDemoState() as ProfileDemoState).profiles;
+}
+export async function writeDemoProfiles(profiles: import("./instrument-profiles").DemoProfile[]) {
+  const state: ProfileDemoState = { ...await readDemoState(), profiles };
   await writeDemoState(state);
 }

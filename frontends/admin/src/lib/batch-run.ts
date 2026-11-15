@@ -10,7 +10,7 @@ export const batchStatusLabel = (status: string) => batchStatusLabels[status as 
 
 // One row of the saved sequence, with the sample it belongs to (controls have none). sample_name is the sample code;
 // FullName is not stored on the injection, it is read from the registry sample for the bench sheet (null for controls).
-export type BatchInjection = Injection & { sampleCode: string | null; orderCode: string | null; status: string };
+export type BatchInjection = Injection & { sampleCode: string | null; orderCode: string | null; status: string; clientName?: string | null };
 export type BatchDetail = {
   id: string; name: string; status: BatchStatus; panel: string; version: number; createdAt: string;
   exportedAt: string | null; exportedBy: string | null; sequenceSha256: string | null;

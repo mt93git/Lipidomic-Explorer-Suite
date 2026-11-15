@@ -23,14 +23,15 @@ export const CLIENT_TABLES = {
   client: 'id', client_member: 'client_id', order: 'client_id', shipment: 'client_id',
   sample: 'client_id', aliquot: 'client_id', box_position: 'client_id', exclusion: 'client_id',
   injection: 'client_id', name_map: 'client_id', dataset: 'client_id', signature: 'client_id',
-  job: 'client_id', audit_event: 'client_id', deliverable: 'client_id',
+  job: 'client_id', audit_event: 'client_id', deliverable: 'client_id', shipment_tube: 'client_id',
 };
 
 export const ALL_TABLES = [
   'client', 'client_member', 'lab_staff', 'instrument', 'panel', 'order', 'shipment', 'sample',
   'aliquot', 'box_position', 'exclusion', 'batch', 'batch_version', 'injection', 'result_file',
   'name_map', 'dataset', 'signature', 'audit_event', 'job', 'release_policy', 'invitation', 'shipping_instructions', 'access_request', 'deliverable',
-  'client_contact', 'notification_pref', 'notification_log',
+  'client_contact', 'notification_pref', 'notification_log', 'shipment_tube', 'panel_rate', 'order_draft', 'instrument_profile', 'notification_rule', 'notification_event',
+  'freezer', 'freezer_rack', 'storage_box_location',
 ];
 // Append-only records with their own refusal triggers and no zz_audit (audit_event since 0003, notification_log 0028).
 export const APPEND_ONLY = ['audit_event', 'notification_log'];
@@ -68,6 +69,8 @@ async function seedAll(db) {
   }
   await q("INSERT INTO admin.instrument(id, name, model) VALUES ($1, 'QQQ-1', 'Triple quad')", [id(500)]);
   await q("INSERT INTO admin.panel(id, instrument_id, name, dataset_type) VALUES ($1, $2, 'Global panel', 'global')", [id(501), id(500)]);
+  // 0035: the active instrument profile of QQQ-1 (id 502), with its blank and QC rules.
+  await q("INSERT INTO admin.instrument_profile(id, instrument_id, name, is_active, software, blanks_at_start, pooled_qc_every) VALUES ($1, $2, 'QQQ-1 profile', true, 'Synthetic acquisition software', 2, 8)", [id(502), id(500)]);
 
   await q("INSERT INTO admin.client(id, name, kind) VALUES ($1, 'Synthetic Lab Alpha', 'pi_lab'), ($2, 'Synthetic Company Beta', 'company')", [C.A, C.B]);
   for (const [c, u, r] of [[C.A, U.aAdmin, 'client_admin'], [C.A, U.aReq, 'requester'], [C.A, U.aView, 'viewer'],
@@ -86,6 +89,8 @@ async function seedAll(db) {
     await q("INSERT INTO admin.exclusion(id, client_id, sample_id, reason) VALUES ($1, $2, $3, 'haemolysed')", [id(b + 7), c, id(b + 4)]);
     await q("INSERT INTO admin.name_map(id, client_id, export_name, clean_name) VALUES ($1, $2, 'PC(14:0_16:0)+AcO', 'PC 14:0_16:0')", [id(b + 8), c]);
     await q("INSERT INTO admin.job(id, client_id, kind) VALUES ($1, $2, 'build_dataset')", [id(b + 11), c]);
+    // 0032: the first sample's tube checked in, intact, in box RCV-k A1 (id k14).
+    await q("INSERT INTO admin.shipment_tube(id, client_id, shipment_id, sample_id, condition, box, position) VALUES ($1, $2, $3, $4, 'intact', $5, 'A1')", [id(b + 14), c, id(b + 2), id(b + 3), `RCV-${k}`]);
   }
   await q("INSERT INTO admin.name_map(id, export_name, clean_name) VALUES ($1, 'CE 24:4 +NH4', 'CE 24:4')", [id(300)]);
   await q("INSERT INTO admin.job(id, kind) VALUES ($1, 'parse_results')", [id(301)]);
@@ -104,6 +109,17 @@ async function seedAll(db) {
   // Email notifications (0028): client A's viewer turned off released-dataset emails; one skipped send to the Operator.
   await q("INSERT INTO admin.notification_pref(user_id, kind, enabled) VALUES ($1, 'dataset_released', false)", [U.aView]);
   await q("INSERT INTO admin.notification_log(id, kind, user_id, email, subject, status, error, reference) VALUES ($1, 'access_requested', $2, 'operator@example.test', 'New access request AR-0001', 'skipped', 'Sending is off', 'AR-0001')", [id(800), U.operator]);
+  // The scheduled results check (0036) already announced client B's order once (sent, 0040).
+  await q("INSERT INTO admin.notification_event(id, kind, order_id, client_id, reference, sent_at) VALUES ($1, 'results_missing', $2, $3, 'ORD002', now())", [id(810), id(201), C.B]);
+
+  // New order wizard (0033): the Global panel's line on the rate sheet, and one open draft for client A.
+  await q("INSERT INTO admin.panel_rate(id, panel_id, rate_per_sample, currency, minutes_per_injection, updated_by) VALUES ($1, $2, 50.00, 'USD', 20, $3)", [id(900), id(501), U.admin]);
+  await q("INSERT INTO admin.order_draft(id, created_by, updated_by, step, client_id, title, data) VALUES ($1, $2, $2, 2, $3, 'Synthetic draft', '{\"title\": \"Synthetic draft\"}')", [id(901), U.operator, C.A]);
+
+  // Freezers and racks (0041): freezer F1 at −80 °C with rack 1; client A's box BOX-1 sits there.
+  await q("INSERT INTO admin.freezer(id, name, temperature) VALUES ($1, 'Freezer F1', '−80 °C')", [id(950)]);
+  await q("INSERT INTO admin.freezer_rack(id, freezer_id, name) VALUES ($1, $2, 'Rack 1')", [id(951), id(950)]);
+  await q("INSERT INTO admin.storage_box_location(id, box, freezer_id, rack_id, updated_by) VALUES ($1, 'BOX-1', $2, $3, $4)", [id(952), id(950), id(951), U.operator]);
 
   // Mixed batch: one injection of A, one of B, one QC (no client). A second batch holds only B.
   await q("INSERT INTO admin.batch(id, name, instrument_id, panel_id) VALUES ($1, 'B2026-001', $3, $4), ($2, 'B2026-002', $3, $4)", [id(400), id(410), id(500), id(501)]);

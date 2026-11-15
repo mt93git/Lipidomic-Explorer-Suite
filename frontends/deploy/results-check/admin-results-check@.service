@@ -1,0 +1,9 @@
+[Unit]
+Description=Admin results check: email orders with no results TXT N days after acquisition (%i)
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/admin-results-check/%i.env
+# The secret goes to curl on stdin (--config -), so it never shows in the process list. $$ and %% reach sh as $ and %.
+ExecStart=/bin/sh -c 'printf "header = \\"Authorization: Bearer %%s\\"\\n" "$$ADMIN_CRON_SECRET" | curl --fail --silent --show-error --max-time 120 --config - -X POST "$$ADMIN_URL/api/cron/results-missing"'

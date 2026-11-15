@@ -911,8 +911,8 @@ try {
   const bAgain = await rpc(operatorToken, 'create_batch', bArgs);
   const bFullName = await rpc(operatorToken, 'create_batch', { ...bArgs, p_injections: bInjections.map(r => r.sample_id === bSamples[0] ? { ...r, sample_name: `${run}_S1` } : r) });
   const bCount = sql(`select count(*) from admin.batch_version v join admin.injection i on i.batch_version_id = v.id where i.sample_name = '${bCode[bSamples[0]]}'`);
-  check('0016: create_batch refuses a client requester (42501), samples already in a planned batch (55000) and an Unknown named by its FullName (23514); nothing else was inserted',
-    pgRefused(bByRequester) && !bAgain.ok && bAgain.body?.code === '55000' && /already in a planned batch/.test(bAgain.body?.message ?? '')
+  check('0016: create_batch refuses a client requester (42501), samples already in a live batch (55000) and an Unknown named by its FullName (23514); nothing else was inserted',
+    pgRefused(bByRequester) && !bAgain.ok && bAgain.body?.code === '55000' && /already in batch /.test(bAgain.body?.message ?? '')
       && !bFullName.ok && bFullName.body?.code === '23514' && /named by its sample code/.test(bFullName.body?.message ?? '') && bCount === '1',
     `${show(bByRequester)} | ${show(bAgain)} | ${show(bFullName)} | injections ${bCount}`);
 

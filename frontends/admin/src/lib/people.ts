@@ -4,23 +4,26 @@
 import { createHash } from "node:crypto";
 import type { AccountFacts, Activation } from "./activation";
 import { demoClients } from "./demo";
+import { LAB_TIME_ZONE } from "./lab-time";
 import { demoLabStaff } from "./release-demo";
 import { allows, clientRoleNames, clientRoles, labRoleNames, labRoles, type ClientRoleKey, type LabRoleKey } from "./roles";
 import { DataError } from "./samples";
 
 export type PersonKind = "lab_staff" | "client_member";
 // twoStep: whether the person has an app authenticator; activation: whether they have signed in to Admin (0029,
-// activation.ts). Both null when the app cannot read them (live, for anyone but a lab Owner or Admin).
+// activation.ts); lastSignedInAt: their account's last sign-in (account_state's signed_in_at, shared with Team), null
+// when never or not readable. twoStep and activation are null when the app cannot read them (live, for anyone but a
+// lab Owner or Admin).
 export type Person = {
   kind: PersonKind; id: string; userId: string; name: string; email: string | null; role: string;
-  clientId: string | null; clientName: string | null; twoStep: boolean | null; activation: Activation | null;
+  clientId: string | null; clientName: string | null; twoStep: boolean | null; activation: Activation | null; lastSignedInAt: string | null;
 };
 export type Invitation = {
   id: string; email: string; labRole: LabRoleKey | null; clientId: string | null; clientRole: ClientRoleKey | null;
   target: string; createdAt: string; expiresAt: string;
 };
 // signedInAt and hasPassword: the demo's stand-ins for admin.account_state (no value: never signed in, no password).
-export type DemoPerson = Omit<Person, "activation"> & { archivedAt: string | null; archivedReason: string | null; signedInAt?: string | null; hasPassword?: boolean };
+export type DemoPerson = Omit<Person, "activation" | "lastSignedInAt"> & { archivedAt: string | null; archivedReason: string | null; signedInAt?: string | null; hasPassword?: boolean };
 // clientName: kept when the client is not one of the fixed demo clients (one created while approving an access request).
 export type DemoInvitation = Omit<Invitation, "target"> & {
   clientName?: string | null; tokenSha256: string; createdBy: string; acceptedAt: string | null; acceptedBy: string | null; revokedAt: string | null; revokedBy: string | null;
@@ -29,6 +32,45 @@ export type PeopleState = { people: DemoPerson[]; invitations: DemoInvitation[] 
 export type InvitationTarget = { labRole: string | null; clientId: string | null; clientRole: string | null };
 
 export const INVITATION_DAYS = 7;
+
+// ---------------------------------------------------------------- a19: one row per person
+
+// A person's memberships together: the lab one (if any) and each client one, as People lists them (lab first).
+export type PersonRow = { userId: string; name: string; email: string | null; lab: Person | null; clients: Person[]; account: Person };
+export function groupPeople(people: readonly Person[]): PersonRow[] {
+  const rows = new Map<string, PersonRow>();
+  for (const person of people) {
+    const row = rows.get(person.userId) ?? { userId: person.userId, name: person.name, email: person.email, lab: null, clients: [], account: person };
+    if (person.kind === "lab_staff") { row.lab = person; row.account = person; row.name = person.name; }
+    else row.clients.push(person);
+    row.email ??= person.email;
+    rows.set(person.userId, row);
+  }
+  return [...rows.values()];
+}
+
+// What the person may see: a lab Owner or Admin everything, an Operator the lab's work for every client, then each client
+// membership as "Client · Role". (A lab Member sees no client's data, roles.ts.)
+export function projectRoles(row: PersonRow): string[] {
+  const lab = row.lab?.role === "owner" || row.lab?.role === "admin" ? ["all"] : row.lab?.role === "operator" ? ["lab work, all clients"] : [];
+  return [...lab, ...row.clients.map(member => `${member.clientName ?? "Client"} · ${clientRoleNames[member.role as ClientRoleKey] ?? member.role}`)];
+}
+
+// Last active, in the lab's days: "today", "yesterday", "N d" within 30 days, then the date; "never" for an account that
+// has not signed in; "—" when the account state is not readable (an Operator's view).
+const labDay = new Intl.DateTimeFormat("en-CA", { timeZone: LAB_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+const dayMonth = new Intl.DateTimeFormat("en-GB", { timeZone: LAB_TIME_ZONE, day: "numeric", month: "short" });
+export function lastActive(signedInAt: string | null, readable: boolean, now = new Date()): string {
+  if (!readable) return "—";
+  const at = signedInAt ? new Date(signedInAt) : null;
+  if (!at || Number.isNaN(at.getTime())) return "never";
+  const days = Math.round((Date.parse(labDay.format(now)) - Date.parse(labDay.format(at))) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} d`;
+  const year = labDay.format(at).slice(0, 4);
+  return year === labDay.format(now).slice(0, 4) ? dayMonth.format(at) : `${dayMonth.format(at)} ${year}`;
+}
 export const TOKEN = /^[0-9a-f]{64}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export const MIN_PASSWORD = 12;

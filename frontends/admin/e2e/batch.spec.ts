@@ -30,7 +30,7 @@ test("pick the samples of a Registered order, preview, save, download, mark expo
   await expect(page).toHaveURL(/\/admin\/sample-registry\?order=ORD042&received=/, slow);
   await page.getByLabel("Paste from Excel").fill(metadataSheet);
   await page.getByRole("button", { name: "Add rows" }).click();
-  await page.getByRole("button", { name: "Register 3 samples" }).click();
+  await page.getByRole("button", { name: "Save 3 valid rows" }).click();
   await expect(page).toHaveURL(/\/admin\/sample-registry\?order=ORD042&saved=3$/, slow);
 
   // Builder: ORD042's samples are listed; select them all through the order link, set the rules and preview.
@@ -39,6 +39,12 @@ test("pick the samples of a Registered order, preview, save, download, mark expo
   await page.getByRole("link", { name: "Select all of ORD042" }).click();
   for (const name of ["Ctrl_1", "Ctrl_2", "Trt_1"]) await expect(page.getByRole("checkbox", { name: new RegExp(`^${name}\\b`) })).toBeChecked();
   await page.getByLabel("Panel", { exact: true }).selectOption({ label: "Panel B · sphingolipids" });
+  // The rules start from the active instrument profile (0035: the example profile's 4 blanks, 5 blanks after every 4
+  // samples, no interval QC). Three samples leave no room for blanks between them; the unit tests place them.
+  await expect(page.getByLabel("Blanks at start")).toHaveValue("4");
+  await expect(page.getByLabel("Blanks between samples")).toHaveValue("5");
+  await expect(page.getByLabel("After every (samples)")).toHaveValue("4");
+  await expect(page.getByLabel("Pooled QC every")).toHaveValue("0");
   await page.getByLabel("Blanks at start").fill("1");
   await page.getByLabel("Pooled QC every").fill("0");
   await page.getByLabel("Seed").fill("e2e-seed");

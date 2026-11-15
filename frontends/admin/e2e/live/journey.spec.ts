@@ -263,7 +263,7 @@ test("4 · Paula invites Lee, Dana's colleague, as a Requester", async ({ page }
   await invite.getByLabel("Email", { exact: true }).fill(lee.email);
   await invite.getByLabel("Role", { exact: true }).selectOption("client:requester");
   await invite.getByLabel("Client", { exact: true }).selectOption({ label: clientName });
-  await invite.getByRole("button", { name: "Create invitation link" }).click();
+  await invite.getByRole("button", { name: "Send invitation" }).click();
   leeInvite = await readLink(page, "#invite-link");
   await expect(page.getByRole("table", { name: "Pending invitations" }).getByRole("row").filter({ hasText: lee.email })).toBeVisible(slow);
   await shot(page, "invite-lee", lab("Paula invites Lee: the link is shown once (masked) and listed under Pending invitations"));
@@ -402,7 +402,7 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
 
     await page.getByLabel("Paste from Excel").fill(metadataSheet);
     await page.getByRole("button", { name: "Add rows" }).click();
-    await page.getByRole("button", { name: "Register 3 samples" }).click();
+    await page.getByRole("button", { name: "Save 3 valid rows" }).click();
     await expect(page).toHaveURL(onPath(`/sample-registry\\?order=${code}&saved=3$`), slow);
     const registered = page.getByRole("table", { name: "Registered samples" });
     for (const n of ["001", "002", "003"]) await expect(registered.getByText(`${code}-S${n}`, { exact: true })).toBeVisible(slow);
@@ -525,9 +525,9 @@ test("9 · Paula receives the shipment, registers the samples, plans and runs th
     await page.getByRole("button", { name: "Parse file" }).click();
     const summary = page.getByRole("region", { name: "Parse summary" });
     await expect(summary).toBeVisible(slow);
-    await expect(summary.getByRole("button", { name: "Accept", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Accept", exact: true })).toBeEnabled();
     await shot(page, "ingest-parsed", analysis("Ingest results: the parse summary, ready to accept"));
-    await summary.getByRole("button", { name: "Accept", exact: true }).click();
+    await page.getByRole("button", { name: "Accept", exact: true }).click();
     await expect(status(`Results accepted for ${code}. The order is now Processed`)).toBeVisible(slow);
     await shot(page, "ingest-accepted", analysis("The results are accepted: the order is Processed"));
   });

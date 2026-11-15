@@ -19,7 +19,7 @@ test("open a sample from the registry and see its identity and its history", asy
   await page.goto("/admin/sample-registry?order=ORD043");
   await page.getByLabel("Paste from Excel").fill(metadataSheet);
   await page.getByRole("button", { name: "Add rows" }).click();
-  await page.getByRole("button", { name: "Register 2 samples" }).click();
+  await page.getByRole("button", { name: "Save 2 valid rows" }).click();
   await expect(page).toHaveURL(/\/admin\/sample-registry\?order=ORD043&saved=2$/, slow);
 
   await page.getByRole("table", { name: "Registered samples" }).getByRole("link", { name: "ORD043-S001" }).click();

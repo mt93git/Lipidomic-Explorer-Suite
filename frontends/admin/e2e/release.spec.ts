@@ -17,7 +17,7 @@ test("build a dataset for an order at Processed, sign as two demo people, releas
   await expect(page.getByRole("heading", { level: 1, name: "Release" })).toBeVisible(slow);
   await page.getByRole("row", { name: /ORD048/ }).getByRole("button", { name: "Build dataset v1" }).click();
   await expect(page).toHaveURL(/\/admin\/release\/[0-9a-f-]{36}\?built=1$/, slow);
-  await expect(page.getByRole("heading", { level: 1, name: "ORD048 · Dataset v1" })).toBeVisible(slow);
+  await expect(page.getByRole("heading", { level: 1, name: "Release · ORD048 · dataset v1" })).toBeVisible(slow);
   const datasetId = new URL(page.url()).pathname.split("/").at(-1)!;
   const nexoHref = `${process.env.NEXT_PUBLIC_NEXO_URL!.replace(/\/+$/, "")}/?dataset=${datasetId}`;
   await expect(page.getByRole("link", { name: "Open in Nexo" })).toHaveCount(0);
@@ -26,38 +26,43 @@ test("build a dataset for an order at Processed, sign as two demo people, releas
   await expect(files.getByText("Abundance, Metadata", { exact: true })).toBeVisible();
   await expect(files.getByText("Internal_Standards, QC_Injections, Provenance", { exact: true })).toBeVisible();
   await expect(files.getByText(/^[0-9a-f]{64}$/)).toHaveCount(3);
-  await expect(page.getByText("0 of 2 required signatures")).toBeVisible();
-  // The action comes first: the strip says where the version is, the "Your turn" card holds the one action.
-  await expect(page.getByRole("list", { name: "Release progress" }).getByRole("listitem").nth(1)).toHaveAttribute("aria-current", "step");
-  const turn = page.getByRole("region", { name: /^Your turn/ });
-  await expect(turn.getByRole("heading", { name: "Sign this version" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Release dataset" })).toHaveCount(0);
 
-  // Form controls by role and accessible name: a <label> wrapping a <select> also carries the options' text.
-  await page.getByRole("combobox", { name: /^Sign as/ }).selectOption({ label: "Demo Reviewer A · Admin" });
-  await page.getByRole("combobox", { name: "Role", exact: true }).selectOption("reviewed");
-  await page.getByRole("textbox", { name: "Note (optional)" }).fill("Reviewed the synthetic export.");
-  await page.getByRole("button", { name: "Sign", exact: true }).click();
+  // The Excel preview reads the stored workbook: Abundance first, the other sheets by tab.
+  const preview = page.getByRole("region", { name: "Excel preview" });
+  await expect(preview.getByRole("link", { name: "Abundance" })).toHaveAttribute("aria-current", "page");
+  await expect(preview.getByRole("columnheader").first()).toHaveText("Lipid");
+  await preview.getByRole("link", { name: "Provenance" }).click();
+  await expect(preview.getByRole("cell", { name: "dataset_version", exact: true })).toBeVisible(slow);
+  // Download Excel sends the stored workbook as an attachment.
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download Excel" }).click();
+  expect((await download).suggestedFilename()).toBe("ORD048_dataset_v1.xlsx");
+
+  // The Release button says what is missing; each pending demo signer has a Sign button in the side panel.
+  const signatures = page.getByRole("region", { name: "Signatures" });
+  await expect(page.getByRole("button", { name: "Release (needs 2 signatures)" })).toBeDisabled();
+  const reviewerA = signatures.getByRole("listitem", { name: /^Demo Reviewer A/ });
+  await reviewerA.getByText("Role and note").click();
+  await reviewerA.getByRole("combobox", { name: "Role", exact: true }).selectOption("reviewed");
+  await reviewerA.getByRole("textbox", { name: "Note (optional)" }).fill("Reviewed the synthetic export.");
+  await reviewerA.getByRole("button", { name: "Sign", exact: true }).click();
   await expect(page).toHaveURL(/\?signed=1$/, slow);
-  await expect(page.getByText("1 of 2 required signatures")).toBeVisible(slow);
-  await expect(page.getByRole("list", { name: "Signatures" })).toContainText("Demo Reviewer A · Reviewed · Reviewed the synthetic export.");
-  await expect(page.getByRole("button", { name: "Release dataset" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Release (needs 2nd signature)" })).toBeDisabled(slow);
+  await expect(page.getByRole("list", { name: "Signatures" })).toContainText('Reviewed · "Reviewed the synthetic export."');
+  await expect(signatures.getByRole("listitem", { name: /^Demo Reviewer B/ })).toContainText("countersign required");
 
-  await page.getByRole("combobox", { name: /^Sign as/ }).selectOption({ label: "Demo Reviewer B · Admin" });
-  await page.getByRole("combobox", { name: "Role", exact: true }).selectOption("approved");
-  await page.getByRole("button", { name: "Sign", exact: true }).click();
-  await expect(page.getByText("2 of 2 required signatures")).toBeVisible(slow);
-  await expect(page.getByRole("list", { name: "Signatures" })).toContainText("Demo Reviewer B · Approved");
-  await expect(turn.getByRole("heading", { name: "Release this version" })).toBeVisible();
-  await expect(turn.getByRole("button", { name: "Release dataset" })).toBeEnabled();
+  const reviewerB = signatures.getByRole("listitem", { name: /^Demo Reviewer B/ });
+  await reviewerB.getByText("Role and note").click();
+  await reviewerB.getByRole("combobox", { name: "Role", exact: true }).selectOption("approved");
+  await reviewerB.getByRole("button", { name: "Sign", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Release dataset" })).toBeEnabled(slow);
+  await expect(page.getByRole("list", { name: "Signatures" })).toContainText("Demo Reviewer B · Admin");
 
-  await page.getByRole("combobox", { name: /^Release as/ }).selectOption({ label: "Demo Reviewer B · Admin" });
   await page.getByRole("button", { name: "Release dataset" }).click();
   await expect(page).toHaveURL(/\?released=1$/, slow);
   await expect(page.getByRole("status")).toContainText("Dataset v1 released. ORD048 is now Released", slow);
-  const inNexo = page.getByRole("region", { name: "In Nexo" });
-  await expect(inNexo).toContainText("ORD048 · v1");
-  await expect(inNexo.getByRole("link", { name: "Open in Nexo" })).toHaveAttribute("href", nexoHref);
+  await expect(page.getByText('Released to Example Atlas\'s Nexo project')).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open in Nexo" })).toHaveAttribute("href", nexoHref);
   await expect(page.getByRole("button", { name: "Withdraw" })).toBeVisible();
 
   await page.getByRole("navigation", { name: "Admin navigation" }).getByRole("link", { name: "Pipeline" }).click();

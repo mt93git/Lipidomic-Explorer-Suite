@@ -25,6 +25,18 @@ function sessionAfter(lost: string) {
   });
 }
 
+// Issue #61: the sidecar opening the project's session makes the API close the prepare session (two at most) before
+// this page hears of the switch, so a read sent on the prepare session meanwhile comes back 409 session_lost.
+const followed = new Set<() => void>();
+const recheck = () => [...followed].forEach(check => check());
+/** Resolves once `id`'s requests go to the shared session (meta.session.id). */
+export function sharedSessionReady(id: string): Promise<void> {
+  return new Promise(resolve => {
+    const check = () => { const target = shared(); if (target && liveSession(id) === target) { followed.delete(check); listeners.delete(check); resolve(); } };
+    followed.add(check); listeners.add(check); check();
+  });
+}
+
 /** GET /sessions/<id>/join: the joined session's snapshot (session.R api_session_join). */
 async function joinSession(id: string): Promise<Pick<Session, 'design' | 'preparation' | 'samples' | 'lipids'>> {
   const response = await fetch(`${import.meta.env.VITE_API_BASE ?? '/api/v1'}/sessions/${encodeURIComponent(id)}/join`, { headers: await adminHeaders() });
@@ -45,7 +57,7 @@ export function followSharedSession(session: Session, on: { refresh(): void; wai
       await reopenLostSession(session.sessionId);
       try { const { design, preparation, samples, lipids } = await joinSession(id); Object.assign(session, { design, preparation, samples, lipids }); }
       finally { on.refresh(); }
-    }).catch(() => { /* A render on the new id says what went wrong on its card; the next meta change tries again. */ });
+    }).catch(() => { /* A render on the new id says what went wrong on its card; the next meta change tries again. */ }).finally(recheck);
   };
   listeners.add(check); check();
   return () => { listeners.delete(check); setSessionRecovery(null); };

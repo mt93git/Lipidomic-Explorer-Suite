@@ -31,7 +31,8 @@ const queries = [
   ['notifications', 'lab/notifications'], ['shipping instructions', 'lab/shipping-instructions'],
   ['SCIEX TXT', 'lab/ingest-results'], ['download report', 'client/client-dataset-files'],
   ['viewer request order', 'client/client-request-order'], ['nexo access', 'lab/nexo-access'],
-  ['regster samples', 'lab/register-samples'],
+  ['regster samples', 'lab/register-samples'], ['place an order', 'lab/place-order'], ['audit log', 'lab/audit-log'],
+  ['freezer', 'lab/storage'], ['check in tubes', 'lab/receive-shipment'], ['instrument profile', 'lab/instruments-panels'], ['remind', 'lab/activation-email'],
 ];
 for (const [query, expected] of queries) assert.equal(search.search(index, query).hits[0]?.id, expected, query);
 assert.equal(search.search(index, 'zzxqzzxq').hits.length, 0);

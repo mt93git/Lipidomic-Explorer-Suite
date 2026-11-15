@@ -8,7 +8,7 @@ import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
 import { listOrders } from "@/lib/data/orders";
 import {
-  DataError, buildDataset, getDataset, getReleasePolicy, listDatasets, listReleaseOrders, releaseDataset, setReleasePolicy, signDataset, supersedeDataset, withdrawDataset,
+  DataError, buildDataset, getDataset, getReleasePolicy, listDatasets, listReleaseOrders, readDatasetWorkbook, releaseDataset, setReleasePolicy, signDataset, supersedeDataset, withdrawDataset,
 } from "@/lib/data/release";
 import { demoDefaultPolicy } from "@/lib/release-demo";
 import { fakePostgrest } from "./helpers/fake-postgrest";
@@ -84,6 +84,15 @@ describe("demo seam: the whole release flow in memory, per browser", () => {
     expect(await getDataset(built.datasetId)).toBeNull();
     expect(await listDatasets()).toEqual([]);
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+  it("keeps the built workbook's bytes so the release page can preview and download exactly the stored file", async () => {
+    const built = await buildDataset({ orderId: "ORD048" });
+    const { dataset } = (await getDataset(built.datasetId))!;
+    const stored = await readDatasetWorkbook(dataset);
+    expect(sha(stored.bytes)).toBe(dataset.full.sha256);
+    expect(stored.bytes.byteLength).toBe(dataset.full.sizeBytes);
+    expect(stored.fileName).toBe("ORD048_dataset_v1.xlsx");
+    await expect(readDatasetWorkbook({ ...dataset, full: { ...dataset.full, sha256: "0".repeat(64) } })).rejects.toThrow(/not available/);
   });
   it("supersedes version 1 by a released version 2", async () => {
     const v1 = await buildDataset({ orderId: "ORD053" });
@@ -233,11 +242,17 @@ describe("live seam: the release contract through rpc and storage", () => {
     const folder = "client-uuid/ORD048/datasets";
     expect(uploads.map(u => u.path)).toEqual([`${folder}/${sha(full.bytes)}/dataset-v1.xlsx`, `${folder}/${sha(analysis.bytes)}/analysis.xlsx`, `${folder}/${sha(companion.bytes)}/companion.xlsx`]);
     for (const upload of uploads) expect(upload.options).toMatchObject({ upsert: false, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    expect(rpc).toHaveBeenCalledExactlyOnceWith("build_dataset", {
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenNthCalledWith(1, "build_dataset", {
       p_order_id: "order-uuid", p_result_file_id: "rf-uuid", p_expected_version: 1, p_storage_path: `${folder}/${sha(full.bytes)}/dataset-v1.xlsx`, p_sha256: sha(full.bytes),
       p_analysis_sha256: sha(analysis.bytes), p_analysis_size_bytes: analysis.bytes.byteLength,
       p_companion_sha256: sha(companion.bytes), p_companion_size_bytes: companion.bytes.byteLength,
     });
+    // 0037: then the version's sample and lipid counts, for the Datasets list (the build stands if this fails).
+    expect(rpc).toHaveBeenNthCalledWith(2, "record_dataset_counts", { p_dataset_id: "ds-uuid", p_samples: expect.any(Number), p_lipids: expect.any(Number) });
+    const counted = rpc.mock.calls[1][1] as { p_samples: number; p_lipids: number };
+    expect(counted.p_samples).toBeGreaterThan(0);
+    expect(counted.p_lipids).toBeGreaterThan(0);
     // The TXT on record is checked against its accepted digest before anything is built.
     tables.result_file[0].sha256 = "0".repeat(64);
     await expect(buildDataset({ orderId: "order-uuid" })).rejects.toThrow(/does not match/);
@@ -388,6 +403,17 @@ describe("live seam: the release contract through rpc and storage", () => {
     const recorded = tables.dataset.flatMap(row => [row.storage_path, `client-uuid/ORD048/datasets/${row.analysis_sha256}/analysis.xlsx`, `client-uuid/ORD048/datasets/${row.companion_sha256}/companion.xlsx`]);
     for (const path of removes.flatMap(r => r.paths)) expect(recorded).not.toContain(path);
     for (const path of recorded) expect(buckets["admin-files"].has(path as string), String(path)).toBe(true);
+  });
+  it("reads the stored workbook from admin-files and refuses bytes that do not match the recorded digest", async () => {
+    rpc.mockImplementation(databaseBuild);
+    await buildDataset({ orderId: "order-uuid" });
+    const { dataset } = (await getDataset("ds-v1"))!;
+    const stored = await readDatasetWorkbook(dataset);
+    expect(stored.bytes.equals(uploads[0].bytes)).toBe(true);
+    expect(stored.fileName).toBe("ORD048_dataset_v1.xlsx");
+    buckets["admin-files"].set(dataset.full.path!, Buffer.from("other bytes"));
+    await expect(readDatasetWorkbook(dataset)).rejects.toThrow(/does not match the digest recorded/);
+    await expect(readDatasetWorkbook({ ...dataset, full: { ...dataset.full, path: null } })).rejects.toThrow(/no stored workbook/);
   });
   it("fails closed without an authenticated client", async () => {
     vi.mocked(createAdminClient).mockResolvedValue(null);

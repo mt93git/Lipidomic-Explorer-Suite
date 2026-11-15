@@ -18,7 +18,7 @@ test("review a flagged synthetic blank and accept results", async ({ page }) => 
   await page.getByLabel("SCIEX OS results TXT").setInputFiles({ name: "synthetic-blank.txt", mimeType: "text/plain", buffer: Buffer.from(flagged) });
   await page.getByRole("button", { name: "Parse file" }).click();
   await expect(page.getByText(/Blank injection\(s\).*sample-like detection/)).toBeVisible(slow);
-  await expect(page.getByRole("button", { name: "Accept", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Accept (1 open)", exact: true })).toBeDisabled();
   await page.getByLabel("Override reason").fill("Reviewed synthetic blank; approved for demonstration.");
   await page.getByRole("button", { name: "Accept", exact: true }).click();
   const notice = page.getByRole("status");

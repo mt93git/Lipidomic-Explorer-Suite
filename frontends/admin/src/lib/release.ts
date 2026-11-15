@@ -59,6 +59,41 @@ export function personTurn({ status, policy, signatures, people, person }:
   return { action: "sign", reason: "You are eligible under the current policy. Signing freezes the three digests of the manifest." };
 }
 
+// ---------------------------------------------------------------- the release page's wording
+
+const ordinal = (n: number) => {
+  const tens = n % 100, ones = n % 10;
+  return `${n}${tens >= 11 && tens <= 13 ? "th" : ones === 1 ? "st" : ones === 2 ? "nd" : ones === 3 ? "rd" : "th"}`;
+};
+// The Release button's text: what is still missing, or "Release dataset" when the person looking may release.
+export function releaseButtonLabel(progress: ReleaseProgress, action: PersonTurn["action"]): string {
+  if (!progress.met) {
+    if (progress.counted === 0) return `Release (needs ${progress.required} signature${progress.required === 1 ? "" : "s"})`;
+    return progress.missing === 1 ? `Release (needs ${ordinal(progress.counted + 1)} signature)` : `Release (needs ${progress.missing} more signatures)`;
+  }
+  return action === "release" ? "Release dataset" : "Release (needs an eligible signer)";
+}
+
+// Where the version goes: the client's Nexo project (named like release_dataset names it: order code and title).
+export function releaseDestination(dataset: { clientName: string; orderCode: string; orderTitle: string; projectName: string | null; status: DatasetStatus }): string {
+  const project = dataset.projectName ?? `${dataset.orderCode}${dataset.orderTitle.trim() ? ` ${dataset.orderTitle.trim()}` : ""}`;
+  const verb = { built: "Goes to", released: "Released to", withdrawn: "Withdrawn from", superseded: "Superseded in" }[dataset.status];
+  return `${verb} ${dataset.clientName}'s Nexo project "${project}"`;
+}
+
+// Who can still sign: the people eligible under the policy who have not signed this version.
+export function pendingSigners(policy: ReleasePolicy, signatures: SignatureLike[], people: LabPerson[]): LabPerson[] {
+  const signed = new Set(signatures.map(signature => signature.userId));
+  return people.filter(person => isEligibleSigner(policy, person) && !signed.has(person.userId));
+}
+
+const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+// The rule under the signatures: different signers, releasing locks the version, a change is a new version.
+export function signersRule(required: number, version: number): string {
+  const who = required === 1 ? "One signature is needed." : `The ${numberWords[required] ?? required} signers must be different people.`;
+  return `${who} Releasing locks v${version}; any change becomes v${version + 1} and v${version} stays downloadable.`;
+}
+
 // admin.set_release_policy's checks, worded for the Owner; null when the policy can be saved.
 export function policyProblem(eligible: string[], required: number, staff: LabPerson[]): string | null {
   if (!Number.isInteger(required) || required < 2) return "A release needs at least 2 signatures.";

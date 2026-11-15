@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { activationOf, type AccountFacts } from "../activation";
 import { demoClients } from "../demo";
 import { getEnvironment } from "../environment";
+import { DEMO_OFF_REASON } from "../notifications";
 import {
   acceptDemoInvitation, archiveDemoMember, createDemoInvitation, demoAccountFacts, demoPeopleSeed, MIN_PASSWORD, normaliseEmail, pendingInvitations,
   previewDemoInvitation, requireInviter, revokeDemoInvitation, setDemoRole, targetLabel, TOKEN, validateTarget,
@@ -98,7 +99,7 @@ async function livePeople(manager: boolean): Promise<Omit<PeopleView, "canInvite
   const fallback = (userId: string) => emailOf(userId) ?? `User ${userId.slice(0, 8)}`;
   const account = (kind: PersonKind, userId: string) => {
     const known = facts.get(userId);
-    return { twoStep: known ? known.twoStep : null, activation: known ? activationOf(kind, known) : null };
+    return { twoStep: known ? known.twoStep : null, activation: known ? activationOf(kind, known) : null, lastSignedInAt: known?.signedInAt ?? null };
   };
   const now = Date.now();
   const people: Person[] = [
@@ -124,11 +125,13 @@ export async function listPeople(): Promise<PeopleView> {
   const session = await requireWorkspace("staff");
   if (!live()) {
     const [state, { log }] = await Promise.all([demoState(), readDemoNotifications()]);
-    const lastSent = (userId: string) => log.find(row => row.kind === "activation" && row.userId === userId && row.status === "sent")?.at ?? null;
+    // The demo sends no email (skipped, DEMO_OFF_REASON); such a reminder counts as sent, so the 24-hour limit shows.
+    const lastSent = (userId: string) => log.find(row => row.kind === "activation" && row.userId === userId
+      && (row.status === "sent" || (row.status === "skipped" && row.error === DEMO_OFF_REASON)))?.at ?? null;
     return {
       people: state.people.filter(person => !person.archivedAt).map((person): Person => {
         const { kind, id, userId, name, email, role, clientId, clientName, twoStep } = person;
-        return { kind, id, userId, name, email, role, clientId, clientName, twoStep, activation: activationOf(kind, demoAccountFacts(person, lastSent(userId))) };
+        return { kind, id, userId, name, email, role, clientId, clientName, twoStep, activation: activationOf(kind, demoAccountFacts(person, lastSent(userId))), lastSignedInAt: person.signedInAt ?? null };
       }).sort(byPerson),
       invitations: pendingInvitations(state, new Date()), clients: demoClients.map(({ id, name }) => ({ id, name })),
       canInviteLab: true, canInviteClient: true, demoActors: demoLabStaff,

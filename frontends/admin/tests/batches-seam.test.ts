@@ -4,9 +4,9 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { cookies } from "next/headers";
 import { getEnvironment } from "@/lib/environment";
 import { createAdminClient } from "@/lib/supabase/server";
-import { batchFile, createBatch, getBatch, listBatches, listBuilderSamples, markBatchAcquired, markBatchExported } from "@/lib/data/batches";
+import { batchFile, createBatch, getBatch, listBatches, listBuilderSamples, markBatchAcquired, markBatchExported, recordInjectionStatuses } from "@/lib/data/batches";
 import { listOrders } from "@/lib/data/orders";
-import { readDemoState, writeDemoState } from "@/lib/data/demo-store";
+import { readDemoNotifications, readDemoState, writeDemoNotifications, writeDemoState } from "@/lib/data/demo-store";
 import { planBatch, rulesRecord, saveInjections, type BuilderValues } from "@/lib/batch-builder";
 import type { DemoSample } from "@/lib/samples-demo";
 
@@ -25,7 +25,7 @@ const sample = (n: number, full_name = `Synthetic_${n}`): DemoSample => ({
   full_name, client_sample_id: null, group1_term: null, group2_term: null, replicate_term: null, patient_term: null, time_point_term: null, matrix: null, volume_ul: null,
 });
 const values = (ids: string[]): BuilderValues => ({
-  panelId: "Panel A · broad lipidome", sampleIds: ids, blanksAtStart: 1, pooledQcEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: "", minutesPerInjection: 12, plateOrder: "column-major",
+  panelId: "Panel A · broad lipidome", sampleIds: ids, blanksAtStart: 1, pooledQcEvery: 0, blanksBetween: 0, blanksBetweenEvery: 0, blankAfterQc: false, qcAtEnd: true, randomize: false, seed: "", minutesPerInjection: 12, plateOrder: "column-major",
 });
 const plan = async (ids: string[]) => {
   const samples = await listBuilderSamples();
@@ -66,12 +66,26 @@ test("demo: save, download, mark exported, mark acquired; the order follows and 
   expect(createAdminClient).not.toHaveBeenCalled();
 });
 
+test("demo: an injection recorded Failed announces Gate failed once; pasting the same export again does not repeat it", async () => {
+  await writeDemoState({ ...await readDemoState(), samples: [sample(1), sample(2)] });
+  await writeDemoNotifications({ off: {}, log: [], rules: { gate_failed: { kind: "gate_failed", labRoles: ["operator"], stepOwner: false, clientAdmin: false, requester: false, clientMembers: false, days: null } } });
+  const { name } = await createBatch(await plan(["s-1", "s-2"]));
+  await markBatchExported(name);
+  const gateRows = async () => (await readDemoNotifications()).log.filter(row => row.kind === "gate_failed");
+  expect(await recordInjectionStatuses(name, [{ sample_name: "ORD041-S001", status: "failed" }])).toBe(1);
+  const first = (await gateRows()).length;
+  expect(first).toBeGreaterThan(0);
+  // The same export with one more row changed: S001 was already Failed, so nothing new failed.
+  expect(await recordInjectionStatuses(name, [{ sample_name: "ORD041-S001", status: "failed" }, { sample_name: "ORD041-S002", status: "acquired" }])).toBe(1);
+  expect(await gateRows()).toHaveLength(first);
+});
+
 test("demo: an unknown panel, a second plan of the same samples and another browser's batch are refused or hidden", async () => {
   await writeDemoState({ ...await readDemoState(), samples: [sample(1)] });
   const input = await plan(["s-1"]);
   await expect(createBatch({ ...input, panelId: "No such panel" })).rejects.toThrow(/panel was not found/);
   const { name } = await createBatch(input);
-  await expect(createBatch(input)).rejects.toThrow(/already in a planned batch/);
+  await expect(createBatch(input)).rejects.toThrow(/already in batch B\d{4}-\d+ \(planned\)/);
   await expect(markBatchAcquired(name)).rejects.toThrow(/export its sequence first/);
   jar.clear();
   expect(await getBatch(name)).toBeNull();
@@ -88,8 +102,8 @@ test("live: create_batch gets p_name null and the exact injections and rules, an
   expect(await createBatch({ panelId: "panel-1", injections, rules })).toEqual({ id: "batch-id", name: "B2026-044" });
   expect(rpc).toHaveBeenCalledWith("create_batch", { p_name: null, p_panel_id: "panel-1", p_rules: rules, p_injections: injections });
   expect(eq).toHaveBeenCalledWith("id", "batch-id");
-  rpc.mockResolvedValue({ data: null, error: { message: "sample Synthetic_1 is already in a planned batch (B2026-001)" } });
-  await expect(createBatch({ panelId: "panel-1", injections, rules })).rejects.toThrow("Sample Synthetic_1 is already in a planned batch (B2026-001).");
+  rpc.mockResolvedValue({ data: null, error: { message: "sample Synthetic_1 is already in batch B2026-001 (acquired); archive that batch to batch the sample again" } });
+  await expect(createBatch({ panelId: "panel-1", injections, rules })).rejects.toThrow("Sample Synthetic_1 is already in batch B2026-001 (acquired); archive that batch to batch the sample again.");
 });
 
 test("live: mark exported sends the SHA-256 of the sequence file built from the saved injections and those injections; mark acquired sends the id", async () => {

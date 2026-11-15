@@ -15,7 +15,7 @@ test("invite a client member, accept with a password and find them in People", a
   await invite.getByLabel("Role", { exact: true }).selectOption("client:requester");
   await invite.getByLabel("Client", { exact: true }).selectOption({ label: "Example Cedar" });
   await invite.getByLabel("Act as (demo)").selectOption("example-owner");
-  await invite.getByRole("button", { name: "Create invitation link" }).click();
+  await invite.getByRole("button", { name: "Send invitation" }).click();
 
   const notice = page.getByRole("status").filter({ hasText: "Invitation link for synthetic.invitee@example.test" });
   await expect(notice).toBeVisible(slow);
@@ -44,4 +44,20 @@ test("invite a client member, accept with a password and find them in People", a
   // The link works once.
   await page.goto(link);
   await expect(page.getByRole("heading", { level: 1, name: "This invitation link is not valid." })).toBeVisible(slow);
+});
+
+// On a 390 px phone the People table scrolls sideways inside its panel: names stay whole (not one letter per line),
+// the page itself does not scroll sideways, and Change is reachable by scrolling the table.
+test("People on a phone: whole names and a reachable Change", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin/people");
+  const table = page.getByRole("table", { name: "People" });
+  await expect(table).toBeVisible(slow);
+  const name = table.getByRole("row").nth(1).getByRole("cell").first();
+  expect((await name.boundingBox())!.width).toBeGreaterThanOrEqual(120);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const change = table.locator("summary").filter({ hasText: /^Change / }).first();
+  await change.scrollIntoViewIfNeeded();
+  await expect(change).toBeInViewport();
 });

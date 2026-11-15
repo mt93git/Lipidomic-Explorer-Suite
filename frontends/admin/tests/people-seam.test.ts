@@ -90,6 +90,11 @@ test("live: exact RPC arguments with the user's token; preview with anon; accept
   expect(rpc).toHaveBeenLastCalledWith("archive_member", { p_kind: "client_member", p_id: "row-2", p_reason: "Synthetic" });
   session = { ...session, role: "Admin" };
   await expect(createInvitation({ email: "a@example.test", labRole: "operator", clientId: null, clientRole: null })).rejects.toThrow(/Only the lab Owner/);
+  // An Operator is refused on the server before any RPC (the database's require_inviter refuses it too, 0015).
+  session = { ...session, role: "Operator" };
+  rpc.mockClear();
+  await expect(createInvitation({ email: "a@example.test", labRole: null, clientId: "c-1", clientRole: "viewer" })).rejects.toThrow("Lab Owner or Admin access is required to invite people.");
+  expect(rpc).not.toHaveBeenCalled();
 
   const token = "a".repeat(64);
   const anonRpc = vi.fn().mockResolvedValue({ data: [{ email: "a@example.test", target: "Viewer at Synthetic", expires_at: "2026-11-17T00:00:00Z" }], error: null });

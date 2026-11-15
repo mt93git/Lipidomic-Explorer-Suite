@@ -12,6 +12,10 @@ import type { StoredAliquot } from "@/lib/storage";
 
 vi.mock("@/lib/session", () => ({ requireWorkspace: vi.fn(async () => ({ view: "staff", role: "Operator" })) }));
 vi.mock("@/app/(workspace)/storage/actions", () => ({ placeAliquotAction: vi.fn(), moveAliquotAction: vi.fn(), removeAliquotAction: vi.fn() }));
+vi.mock("@/lib/data/freezers", () => ({ freezerCatalog: vi.fn(async () => ({ freezers: [], locations: [], canManage: false })) }));
+vi.mock("@/app/(workspace)/storage/freezer-actions", () => ({
+  createFreezerAction: vi.fn(), createRackAction: vi.fn(), archiveFreezerAction: vi.fn(), archiveRackAction: vi.fn(), setBoxLocationAction: vi.fn(),
+}));
 vi.mock("@/lib/data/storage", () => ({
   storageAccess: vi.fn(), listBoxes: vi.fn(), listBox: vi.fn(), listUnplaced: vi.fn(), searchAliquots: vi.fn(),
 }));

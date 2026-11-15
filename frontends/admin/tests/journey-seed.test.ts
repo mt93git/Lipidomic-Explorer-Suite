@@ -47,7 +47,7 @@ function seed(file: string) {
 }
 
 describe("journey seed", () => {
-  it("creates only the staff personas with no TOTP factor (no panel: the spec adds the run's on Instruments & panels), writes a mode-600 file with the run, and prints no secret", async () => {
+  it("creates only the staff personas (no TOTP factor) and the panel, writes a mode-600 file with the run, and prints no secret", async () => {
     const file = join(dir, "credentials.json");
     const { code, out } = await seed(file);
     expect(code, out).toBe(0);

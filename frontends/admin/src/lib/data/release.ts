@@ -17,8 +17,8 @@ import { DataError, stageFromDb } from "../samples";
 import { applyDemoState, demoOrderSamples, type DemoState } from "../samples-demo";
 import { requireWorkspace } from "../session";
 import { createAdminClient } from "../supabase/server";
-import { readDemoState, writeDemoState } from "./demo-store";
-import { notify } from "./notifications";
+import { readDemoState, readDemoWorkbook, storeDemoWorkbook, writeDemoState } from "./demo-store";
+import { notify, requesterOf } from "./notifications";
 
 export { DataError };
 
@@ -48,6 +48,8 @@ export type DatasetRecord = {
   // The QC review's exclusions in force when this version was built: recorded decisions, not removed from the data.
   exclusions: RecordedExclusion[];
   archivedAt: string | null; archivedReason: string | null;
+  // How many samples and lipids the version holds (0037), recorded at build; null for a version built before that.
+  samples?: number | null; lipids?: number | null;
 };
 // demoActors: the demo lab people a form may act as (null in live mode, where the signed-in user acts).
 export type ReleaseView = { dataset: DatasetRecord; policy: ReleasePolicy; people: LabPerson[]; me: LabPerson | null; versions: VersionSummary[]; demoActors: LabPerson[] | null };
@@ -94,6 +96,7 @@ function fromDemo(dataset: DemoDataset, state: DemoState): DatasetRecord {
     signatures: dataset.signatures.map(signature => ({ ...signature })),
     exclusions: exclusionsAt((state.exclusions ?? []).filter(item => item.orderCode === dataset.orderCode), dataset.builtAt),
     archivedAt: dataset.archivedAt, archivedReason: dataset.archivedReason,
+    samples: dataset.samples ?? null, lipids: dataset.lipids ?? null,
   };
 }
 const byOrderAndVersion = (a: { orderCode: string; version: number }, b: { orderCode: string; version: number }) => a.orderCode.localeCompare(b.orderCode) || a.version - b.version;
@@ -121,6 +124,7 @@ type DatasetRow = {
   id: string; order_id: string; client_id: string; result_file_id: string | null; version: number; status: DatasetStatus; storage_path: string; sha256: string;
   analysis_sha256: string | null; analysis_size_bytes: number | string | null; companion_sha256: string | null; companion_size_bytes: number | string | null;
   project_id: string | null; companion_path: string | null; released_at: string | null; archived_at: string | null; archived_reason: string | null; created_at: string;
+  sample_count?: number | null; lipid_count?: number | null;
 };
 type SignatureRow = { id: string; dataset_id: string; user_id: string; role: SignerRole; note: string | null; signed_at: string };
 type ExclusionRow = { id: string; sample_id: string; reason: string; decided_by: string | null; created_at: string; archived_at: string | null; archived_reason: string | null;
@@ -128,7 +132,7 @@ type ExclusionRow = { id: string; sample_id: string; reason: string; decided_by:
 type StaffRow = { user_id: string; display_name: string | null; role: LabRole };
 type PolicyRow = { eligible_signers: string[] | null; required_signatures: number; set_by: string | null; created_at: string };
 const orderSelect = "id, code, title, stage, client_id";
-const datasetSelect = "id, order_id, client_id, result_file_id, version, status, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes, project_id, companion_path, released_at, archived_at, archived_reason, created_at";
+const datasetSelect = "id, order_id, client_id, result_file_id, version, status, storage_path, sha256, analysis_sha256, analysis_size_bytes, companion_sha256, companion_size_bytes, project_id, companion_path, released_at, archived_at, archived_reason, created_at, sample_count, lipid_count";
 const BUILD_STAGES = ["processed", "qc_checked", "excel_built", "released"];
 const BUILD_ATTEMPTS = 3;
 class StaleVersion extends Error {} // build_dataset's PT409: another build took the version; build again
@@ -220,6 +224,7 @@ async function liveRecords(db: ReturnType<Awaited<ReturnType<typeof client>>["sc
       })),
       exclusions: exclusionsAt(decisions.filter(item => item.orderId === row.order_id), row.created_at),
       archivedAt: row.archived_at, archivedReason: row.archived_reason,
+      samples: row.sample_count ?? null, lipids: row.lipid_count ?? null,
     };
   });
 }
@@ -345,6 +350,7 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
       sourceSha256: (state.results ?? []).filter(item => item.orderCode === order.code).at(-1)?.sha256 ?? digest(Buffer.from(sourceText, "utf8")),
       headerMode: match.headerMode, matched: match.matched, samples: built.counts.samples, lipids: built.counts.lipids, sciexOsVersion, processingMethod,
     });
+    storeDemoWorkbook(built.full.sha256, built.full.bytes);
     await writeDemoState(result.state);
     return { datasetId: result.dataset.id, version: result.dataset.version };
   }
@@ -394,7 +400,11 @@ export async function buildDataset(input: { orderId: string; actorId?: string })
       if (error instanceof StaleVersion) return null;
       throw error;
     });
-    if (datasetId !== null) return { datasetId, version };
+    if (datasetId !== null) {
+      // 0037: how many samples and lipids this version holds, for the Datasets list. The build stands if this fails.
+      try { await db.rpc("record_dataset_counts", { p_dataset_id: datasetId, p_samples: built.counts.samples, p_lipids: built.counts.lipids }); } catch { /* the list shows a dash */ }
+      return { datasetId, version };
+    }
     if (attempt >= BUILD_ATTEMPTS) throw new DataError(`Other builds of ${row.code} kept taking the next version; nothing was recorded. Try again.`);
   }
 }
@@ -420,6 +430,22 @@ export async function getDataset(id: string): Promise<ReleaseView | null> {
   const records = await liveRecords(db, (siblings.data ?? []) as unknown as DatasetRow[], people);
   const record = records.find(item => item.id === id) ?? (await liveRecords(db, [dataset], people))[0];
   return { dataset: record, policy, people, me: liveMe(session, people), versions: records.map(liveVersion), demoActors: null };
+}
+
+// The stored dataset workbook of a version, exactly its bytes, for the release page's preview and Download Excel.
+// Read only, and only when the bytes still match the SHA-256 recorded at the build; anything else fails closed.
+export async function readDatasetWorkbook(dataset: Pick<DatasetRecord, "orderCode" | "version" | "full">): Promise<{ bytes: Buffer; fileName: string }> {
+  await staffSession();
+  const fileName = `${dataset.orderCode}_dataset_v${dataset.version}.xlsx`;
+  if (!live()) {
+    const bytes = readDemoWorkbook(dataset.full.sha256);
+    if (!bytes) throw new DataError("The example workbook of this version is not available any more (the demo server restarted). Build a new version to preview it.");
+    return { bytes: Buffer.from(bytes), fileName };
+  }
+  if (!dataset.full.path) throw new DataError("This version has no stored workbook on record.");
+  const bytes = await download("admin-files", dataset.full.path);
+  if (digest(bytes) !== dataset.full.sha256) throw new DataError("The stored workbook does not match the digest recorded when this version was built; it is not shown.");
+  return { bytes, fileName };
 }
 
 // Every dataset version the signed-in person may see, by order and version.
@@ -454,7 +480,7 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
     }), input.actorId);
     if (dataset) {
       const { id, orderCode, version, clientId } = dataset;
-      await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client" });
+      await notify({ kind: "dataset_released", datasetId: id, orderId: orderCode, code: orderCode, version, clientId, clientName: demoClients.find(client => client.id === clientId)?.name ?? "your client", requestedBy: await requesterOf(orderCode, "code") });
     }
     return;
   }
@@ -470,11 +496,12 @@ export async function releaseDataset(input: { datasetId: string; actorId?: strin
   const code = (order.data as unknown as OrderRow | null)?.code;
   if (!code) throw new DataError("The order of this dataset was not found.");
   await rpc("release_dataset", { p_dataset_id: dataset.id, p_companion_path: filePaths(dataset, code).companion });
-  // Every active member of the client is told (0028), after the response.
+  // Who is told is the Notifications matrix's row (0036: lab Operators, the client's admins and the requester), after
+  // the response.
   const owner = await db.from("client").select("name").eq("id", dataset.client_id).maybeSingle();
   await notify({
     kind: "dataset_released", datasetId: dataset.id, orderId: dataset.order_id, code, version: dataset.version, clientId: dataset.client_id,
-    clientName: (owner.data as { name: string } | null)?.name ?? "your client",
+    clientName: (owner.data as { name: string } | null)?.name ?? "your client", requestedBy: await requesterOf(dataset.order_id, "id"),
   });
 }
 

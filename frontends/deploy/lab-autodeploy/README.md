@@ -44,6 +44,11 @@ systemctl --user enable --now lab-autodeploy@staging.timer lab-autodeploy@produc
 
 `loginctl enable-linger` keeps user timers running without a login session.
 
+The service runs the script through `sg docker`: the systemd user manager keeps the groups it had when it started, so a
+user added to `docker` later has no docker access from the timer (migrations fail with "permission denied … docker.sock"
+and the environment shows *broken*). A manual run from a fresh login shell needs no `sg`. After a broken run, fix the
+cause and retry with `--force`.
+
 ## Commands
 
 ```bash

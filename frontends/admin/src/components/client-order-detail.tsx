@@ -1,6 +1,7 @@
 import Link from "@/components/app-link";
 import { clientDay, clientSteps, declined, stepOf, type ClientOrder } from "@/lib/client-portal";
 import { clientMayOpenNexo, type ClientDeliverable } from "@/lib/deliverables";
+import { metadataColumns, templateFileName, templateHref } from "@/lib/order-wizard";
 import { mayOpenInNexo, nexoDatasetLink } from "@/lib/release";
 import { ClientDeliverables } from "./deliverables";
 import { LabContact } from "./lab-contact";
@@ -37,6 +38,7 @@ export function ClientOrderDetail({ order, clientName, example, shipping = null,
     <div className="detail-grid">
       <div>{closed ? <DeclinedPanel order={order} mayRequest={mayRequest} contact={contact} />
         : <NowPanel order={order} step={step} shipping={shipping} nexoAccess={nexoAccess} fileCount={files.length} contact={contact} />}
+        {!closed && order.receipt && <ReceiptPanel receipt={order.receipt} />}
         {!closed && (step === 6 || files.length > 0) && <ClientDeliverables items={files} />}</div>
       <section className="panel" aria-labelledby="facts-title">
         <div className="eyebrow">At a glance</div><h2 id="facts-title">Order facts</h2>
@@ -103,7 +105,24 @@ function NowPanel({ order, step, shipping, nexoAccess, fileCount, contact }: {
     {step === 2 && shipping && <div className={styles.shipping} role="note" aria-label="Shipping instructions">
       <div className="eyebrow">Shipping instructions from the lab</div><p>{shipping}</p>
     </div>}
+    {step <= 2 && <p className={styles.template}>
+      <a className="button secondary" href={templateHref()} download={templateFileName}>Download the sample list template</a>
+      <small className="muted">The six metadata columns Nexo reads ({metadataColumns.join(", ")}), one row per sample.</small>
+    </p>}
     {step === 1 && <LabContact text={contact} quote={order.code} />}
     {step === 6 && !release?.retired && nexo && <div className="heading-actions"><a className="button" href={nexo} target="_blank" rel="noreferrer">Open in Nexo</a></div>}
+  </section>;
+}
+
+// The lab's check of the tubes on arrival (0032): what was missing or damaged and the lab's note, as the client is told.
+function ReceiptPanel({ receipt }: { receipt: NonNullable<ClientOrder["receipt"]> }) {
+  const tubes = (n: number) => `${n} tube${n === 1 ? "" : "s"}`;
+  const facts = [receipt.missing ? `${tubes(receipt.missing)} on your manifest ${receipt.missing === 1 ? "was" : "were"} not in the shipment` : "",
+    receipt.damaged ? `${tubes(receipt.damaged)} arrived damaged (hemolyzed, thawed or otherwise)` : ""].filter(Boolean);
+  return <section className="panel" aria-labelledby="receipt-title">
+    <div className="eyebrow">Shipment checked</div>
+    <h2 id="receipt-title">{facts.length ? "Discrepancy on arrival" : "Every tube arrived"}</h2>
+    <p className="muted">The lab checked your tubes in one by one on {clientDay(receipt.confirmedAt, true)}.{facts.length ? ` ${facts.join("; ")}.` : " Nothing was missing or damaged."}</p>
+    {receipt.note && <p className={styles.reason}><strong>Note from the lab.</strong> {receipt.note}</p>}
   </section>;
 }

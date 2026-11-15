@@ -52,6 +52,25 @@ describe("batch builder form", () => {
   });
 });
 
+describe("blanks between samples (instrument profile rule, 0035)", () => {
+  it("reads N blanks after every M samples; empty keeps the defaults (the active profile's); both numbers or neither", () => {
+    expect(builderDefaults).toMatchObject({ blanksBetween: 0, blanksBetweenEvery: 0 });
+    expect(parsed({ blanksBetween: "2", blanksBetweenEvery: "4" })).toMatchObject({ blanksBetween: 2, blanksBetweenEvery: 4 });
+    const fromProfile = parseBuilderForm(form(base), available, { ...builderDefaults, blanksBetween: 5, blanksBetweenEvery: 4 });
+    expect(fromProfile).toMatchObject({ ok: true, value: { blanksBetween: 5, blanksBetweenEvery: 4 } });
+    expect(parseBuilderForm(form({ ...base, blanksBetween: "1.5" }), available)).toEqual({ ok: false, errors: { blanksBetween: "Enter a whole number, 0 or more" } });
+    expect(parseBuilderForm(form({ ...base, blanksBetween: "2", blanksBetweenEvery: "0" }), available))
+      .toEqual({ ok: false, errors: { blanksBetweenEvery: "Enter both numbers (blanks, and after every how many samples), or 0 for both" } });
+  });
+
+  it("plans them and stores them with the batch, so the saved sequence is the previewed one", () => {
+    const value = parsed({ sample: available.slice(0, 5).map(item => item.id), blanksAtStart: "0", pooledQcEvery: "0", blanksBetween: "1", blanksBetweenEvery: "2" });
+    const plan = planBatch(value, available);
+    expect(plan.injections.map(row => row.sample_type)).toEqual(["Unknown", "Unknown", "Blank", "Unknown", "Unknown", "Blank", "Unknown"]);
+    expect(rulesRecord(value).rules).toMatchObject({ blanksBetween: 1, blanksBetweenEvery: 2 });
+  });
+});
+
 describe("planning a batch from the form", () => {
   it("runs the engine over the chosen samples: the sample code as injection name, FullName kept apart, the sample id in the aliquot slot", () => {
     const value = parsed({ sample: available.slice(0, 3).map(item => item.id), blanksAtStart: "1", pooledQcEvery: "0", qcAtEnd: "on" });
@@ -143,7 +162,7 @@ describe("what is saved", () => {
     const value = parsed({ seed: "s-1", minutesPerInjection: "9" });
     const record = rulesRecord(value);
     expect(record).toEqual({
-      rules: { blanksAtStart: 1, pooledQcEvery: 6, blankAfterQc: false, qcAtEnd: false, randomize: false, seed: "s-1" },
+      rules: { blanksAtStart: 1, pooledQcEvery: 6, blanksBetween: 0, blanksBetweenEvery: 0, blankAfterQc: false, qcAtEnd: false, randomize: false, seed: "s-1" },
       plateLayout: { plate: "Plate 1", order: "column-major" }, minutesPerInjection: 9,
     });
     expect(storedMinutes(record)).toBe(9);

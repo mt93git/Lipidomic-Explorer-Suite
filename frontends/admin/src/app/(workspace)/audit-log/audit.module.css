@@ -2,9 +2,15 @@
 .filters label { display: grid; gap: 5px; font-size: var(--text-sm); font-weight: 700; }
 .filters input, .filters select { font: inherit; font-weight: 400; padding: 8px 10px; border: 1px solid #bfcbd5; border-radius: 5px; background: white; color: var(--ink); min-width: 180px; }
 .events { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
-.events th { text-align: left; color: var(--muted); font-weight: 700; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
-.events td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-.events td:first-child { white-space: nowrap; color: var(--muted); }
+/* a21: a framed table with a tinted, small-caps header; When in the mono face. */
+.events th { text-align: left; color: var(--muted); font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--subtle); }
+.events td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.events tbody tr:last-child td { border-bottom: 0; }
+.events td:first-child { white-space: nowrap; font-family: var(--font-mono), "IBM Plex Mono", monospace; font-size: var(--text-xs); color: var(--ink); padding-top: 13px; }
+.events td:nth-child(2), .events td:nth-child(3) { white-space: nowrap; }
+.client { display: inline-flex; align-items: center; gap: 6px; }
+.squares { display: inline-flex; gap: 1px; }
+.none { color: var(--muted); }
 .events summary { cursor: pointer; }
 .changes { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0 2px; padding: 8px 10px; background: var(--subtle); border-radius: 6px; }
 .changes dt { color: var(--muted); font-weight: 700; }
@@ -14,5 +20,5 @@
   .events td:first-child { white-space: normal; }
   .changes { grid-template-columns: 1fr; }
 }
-.scroll { overflow-x: auto; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: white; }
 .change { display: contents; }

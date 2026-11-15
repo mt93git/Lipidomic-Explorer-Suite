@@ -7,6 +7,8 @@ import { applyReleaseState, demoPolicy, type DemoDataset } from "./release-demo"
 import type { RegistryEntry, ReleasePolicy } from "./release";
 import { applyBatchState, type DemoBatch } from "./batch-demo";
 import { applyQcState, type DemoQcState } from "./qc-review";
+import type { ResultCounts } from "./ingest-review";
+import { receiptTitle, type DemoCheckinState } from "./shipment-checkin";
 
 export type DemoShipment = {
   id: string; orderCode: string; carrier: string; trackingNumber: string | null; condition: ShipmentInput["condition"];
@@ -14,7 +16,7 @@ export type DemoShipment = {
 };
 export type DemoSample = SampleInput & { id: string; orderCode: string; shipmentId: string | null; sampleNumber: number; code: string; createdAt: string; registeredBy: string };
 // An accepted SCIEX OS results file (accept_result_file): the order then reads Processed.
-export type DemoResult = { id: string; orderCode: string; sha256: string; acceptedAt: string; acceptedBy: string };
+export type DemoResult = { id: string; orderCode: string; sha256: string; acceptedAt: string; acceptedBy: string; counts?: ResultCounts };
 // One record set per browser, shared by every demo screen (receive, registry, results, release, pipeline, detail).
 // Datasets, their signatures and releases, and the release policy are the release side's records (release-demo.ts).
 // Orders created with New order (create_order) join the example orders in applyDemoState, so every screen sees them.
@@ -22,7 +24,7 @@ export type DemoResult = { id: string; orderCode: string; sha256: string; accept
 // contact: the lab's contact for clients (set_client_contact, 0023), stored the same way.
 export type DemoShipping = { text: string; setAt: string; setBy: string };
 // exclusions, qcReviews: the QC review's decisions (add_exclusion, withdraw_exclusion, mark_qc_checked; qc-review.ts).
-export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null; contact?: DemoShipping | null } & DemoQcState;
+export type DemoState = { shipments: DemoShipment[]; samples: DemoSample[]; results: DemoResult[]; datasets: DemoDataset[]; releasePolicy?: ReleasePolicy; orders?: Order[]; batches?: DemoBatch[]; shipping?: DemoShipping | null; contact?: DemoShipping | null } & DemoQcState & DemoCheckinState;
 
 export const emptyDemoState = (): DemoState => ({ shipments: [], samples: [], results: [], datasets: [] });
 
@@ -80,12 +82,12 @@ export function recordSamples(state: DemoState, { order, shipmentId, samples, ac
   return { state: { ...state, samples: [...state.samples, ...created] }, samples: created };
 }
 
-type ResultArgs = { order: Pick<Order, "code" | "stage" | "released">; id: string; sha256: string; actor: string; now: Date };
+type ResultArgs = { order: Pick<Order, "code" | "stage" | "released">; id: string; sha256: string; actor: string; now: Date; counts?: ResultCounts };
 
 // accept_result_file: a results file is accepted for a Registered or Acquired order; the order reads Processed.
-export function recordResultFile(state: DemoState, { order, id, sha256, actor, now }: ResultArgs): DemoState {
+export function recordResultFile(state: DemoState, { order, id, sha256, actor, now, counts }: ResultArgs): DemoState {
   if (order.released || (order.stage !== REGISTERED && order.stage !== ACQUIRED)) throw new DataError("The order is no longer acquired or registered.");
-  return { ...state, results: [...(state.results ?? []), { id, orderCode: order.code, sha256, acceptedAt: now.toISOString(), acceptedBy: actor }] };
+  return { ...state, results: [...(state.results ?? []), { id, orderCode: order.code, sha256, acceptedAt: now.toISOString(), acceptedBy: actor, ...(counts ? { counts } : {}) }] };
 }
 
 function shipmentTitle(shipment: DemoShipment): string {
@@ -96,7 +98,21 @@ function shipmentTitle(shipment: DemoShipment): string {
 // The example orders with the demo's shipments and samples applied: stage, received date, gates, history and
 // progress follow what was recorded. Orders without records are returned untouched.
 export function applyDemoState(examples: Order[], state: DemoState): Order[] {
-  return applyQcState(applyBatchState(applyRecordedState(examples, state), state), state);
+  return applyReceiptState(applyQcState(applyBatchState(applyRecordedState(examples, state), state), state), state);
+}
+
+// Confirmed receipts (tube check-in, 0032): a history line with the counts and the discrepancy note, and the newest
+// receipt on the order, which the client reads on their order.
+function applyReceiptState(orders: Order[], state: DemoState): Order[] {
+  const receipts = state.receipts ?? [];
+  if (!receipts.length) return orders;
+  return orders.map(order => {
+    const mine = receipts.filter(item => item.orderCode === order.code).sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt));
+    if (!mine.length) return order;
+    const last = mine[mine.length - 1];
+    const events: HistoryEvent[] = mine.map(item => ({ date: item.confirmedAt, title: receiptTitle(item), actor: item.confirmedBy ?? "Lab staff" })).reverse();
+    return { ...order, receipt: { confirmedAt: last.confirmedAt, note: last.note, missing: last.missing, damaged: last.damaged }, history: [...events, ...order.history].sort((a, b) => b.date.localeCompare(a.date)) };
+  });
 }
 
 // An order's registry in the demo: the samples registered in this browser, or, for an example order nobody registered

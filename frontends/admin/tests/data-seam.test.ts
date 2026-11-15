@@ -74,6 +74,15 @@ describe("live seam: the wave 2 database contract", () => {
     const detail = await getRegistryOrder("ORD041");
     expect(detail?.shipment).toMatchObject({ id: "just-received", receivedAt: "2026-11-07T15:00:00Z" });
   });
+  it("names who received the shipment (lab_staff display name, else Lab staff), never their uuid", async () => {
+    const order = { id: "order-uuid", code: "ORD041", title: "Synthetic", stage: "received", matrix: null, expected_samples: 2, client_id: "client-uuid", order_number: 41, archived_at: null, client: { name: "Example Cedar" } };
+    const arrival = (received_by: string) => ({ id: "arrival", order_id: "order-uuid", carrier: "FedEx", tracking_number: null, condition: "ok", box_count: 1, notes: null, received_at: "2026-11-07T15:00:00Z", received_by, created_at: "2026-11-07T15:00:00Z", archived_at: null });
+    const lab_staff = [{ user_id: "operator-uuid", display_name: "Rosa Operator" }, { user_id: "nameless-uuid", display_name: null }];
+    schema.mockReturnValue({ rpc, from: fakePostgrest({ order: [order], shipment: [arrival("operator-uuid")], sample: [], lab_staff }).from } as never);
+    expect((await getRegistryOrder("ORD041"))?.shipment?.receivedBy).toBe("Rosa Operator");
+    schema.mockReturnValue({ rpc, from: fakePostgrest({ order: [order], shipment: [arrival("nameless-uuid")], sample: [], lab_staff }).from } as never);
+    expect((await getRegistryOrder("ORD041"))?.shipment?.receivedBy).toBe("Lab staff");
+  });
   it("fails closed when there is no authenticated client", async () => {
     vi.mocked(createAdminClient).mockResolvedValue(null);
     await expect(receiveShipment(shipment)).rejects.toThrow(DataError);
