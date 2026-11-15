@@ -1,7 +1,7 @@
 // The roaming behaviour shared with Admin (frontends/shared/companion/core.ts); Admin's suite runs the same file's rules
 // through its component.
 import { expect, test } from 'vitest';
-import { clamp, DRAG_THRESHOLD, firstSpot, keyStep, newNudges, nudgeDue, overDock, placeBubble, readPlace, recordNudge, settle, asleep, writePlace, TIMING } from '../../../shared/companion/core';
+import { clamp, DRAG_THRESHOLD, firstSpot, keyStep, newNudges, nudgeDue, overDock, placeBubble, readPlace, recordNudge, settle, asleep, writePlace, TIMING, tabFrom } from '../../../shared/companion/core';
 
 test('out of the bar it never leaves the window or slips under the top bar', () => {
   expect(clamp(-50, -50, 96, 1440, 900)).toEqual({ x: 8, y: 56 });
@@ -81,3 +81,15 @@ test('on a phone it is always the 56 px mini size', async () => {
   const { sizeFor } = await import('../../../shared/companion/core');
   expect(sizeFor(false, 1440)).toBe(96); expect(sizeFor(true, 1440)).toBe(56); expect(sizeFor(false, 390)).toBe(56);
 });
+
+{
+  const el = (name: string, shown = true, tabIndex = 0) => ({ name, tabIndex, getClientRects: () => (shown ? [1] : []) });
+  const before = el('before'), dock = el('dock', true, 0), hidden = el('hidden', false), mine = el('mine'), after = el('after');
+  const doc = { querySelectorAll: () => [before, dock, hidden, mine, after] } as unknown as Document;
+  const skip = (e: Element) => e === (mine as unknown as Element) || e === (dock as unknown as Element);
+  test('tabFrom hands Tab on from the bar slot, skipping hidden and companion controls', () => {
+    expect(tabFrom(doc, dock as unknown as Element, false, skip)).toBe(after);
+    expect(tabFrom(doc, dock as unknown as Element, true, skip)).toBe(before);
+    expect(tabFrom(doc, after as unknown as Element, false, skip)).toBeNull();
+  });
+}

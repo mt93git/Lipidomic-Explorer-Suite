@@ -141,7 +141,7 @@ export class Card {
     this.renderer = renderers[kind];
     this.observer = new MutationObserver(() => { if (!this.el.isConnected) this.dispose(); });
     this.observer.observe(document.documentElement, {childList:true, subtree:true});
-    this.el.className = 'card'; this.el.dataset.id = node.id; this.el.tabIndex = 0;
+    this.el.className = 'card'; this.el.dataset.id = node.id; this.el.dataset.keepClear = ''; this.el.tabIndex = 0;
     this.el.setAttribute('aria-label', node.label);
     Object.assign(this.el.style, { left: `${node.x}px`, top: `${node.y}px`, width: `${node.width}px`, height: `${node.height}px` });
     this.el.style.setProperty('--card-header-height', `${CARD_CHROME - 2}px`);
