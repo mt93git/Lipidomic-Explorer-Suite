@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Commit message guardrails: one imperative English line, type(area): what changed, and a test with every
+# feat or fix. Override, for the maintainer only: LAB_ALLOW_MSG=1, LAB_ALLOW_NOTEST=1.
+set -u
+stop() { echo "commit-msg: $1" >&2; exit 1; }
+subject=$(sed -n '1p' "$1")
+
+# Merges, reverts and fixups made by git itself are not checked.
+case "$subject" in "Merge "*|"Revert "*|"fixup! "*|"squash! "*) exit 0 ;; esac
+
+if [ "${LAB_ALLOW_MSG:-}" != 1 ]; then
+  printf '%s' "$subject" | grep -qE '^(feat|fix|test|docs|chore|refactor|style|perf|build|ci)(\([a-z0-9._/-]+\))?!?: [^ ].*' \
+    || stop "write 'type(area): what changed', for example 'fix(nexo-editor): keep the hidden PCA group hidden'. Types: feat fix test docs chore refactor style perf build ci."
+  text=${subject#*: }
+  [ "${#subject}" -le 100 ] || stop "keep the first line under 100 characters."
+  printf '%s' "$text" | grep -qiE '^(added|fixed|updated|changed|removed|adds|fixes|updates|changes|removes|adding|fixing|updating|changing|removing)\b' \
+    && stop "use the imperative: 'add', 'fix', 'update', not 'added' or 'adds'."
+  printf '%s' "$subject" | grep -qE '[áéíóúñÁÉÍÓÚÑ¿¡]' && stop "write commit messages in English."
+  printf '%s' "$text" | grep -qE '[.]$' && stop "no period at the end of the first line."
+fi
+
+# Test first: a feature or a fix carries a test (a bug test that failed first, a feature test written first).
+if [ "${LAB_ALLOW_NOTEST:-}" != 1 ]; then
+  type=${subject%%[(:!]*}
+  case "$type" in
+    feat|fix)
+      git diff --cached --name-only | grep -qE '(^|/)tests?/|\.test\.(ts|tsx|js|mjs|cjs)$|\.spec\.(ts|tsx|js)$|(^|/)test_[^/]*\.(R|cjs|sh)$' \
+        || stop "a '$type' commit needs a test in the same commit (test first: it fails before the change, passes after). For a change that cannot have one, use another type (docs, chore, style) or ask the maintainer." ;;
+  esac
+fi
+exit 0

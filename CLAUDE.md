@@ -3,8 +3,11 @@
 These rules apply to every change, with or without a skill. If a request conflicts with them, stop and ask.
 
 ## Before the first change of a session
-- `git config core.hooksPath` must print `.githooks`. If it does not, tell the user and offer `git config core.hooksPath .githooks` (once per clone). The hooks refuse commits on `main` and `integration/*`, new data files outside test fixtures, private keys and tokens, R files that do not parse, pushes to `main` or `integration/*`, force pushes, and a push that breaks the Nexo client checks.
+- `git config core.hooksPath` must print `.githooks`. If it does not, tell the user and offer `git config core.hooksPath .githooks` (once per clone). The hooks refuse: commits on `main`, `integration/*` and `lab/*`; a branch that is not `<your-name>/<topic>`; commit messages that are not `type(area): imperative English`; a `feat` or `fix` without a test; new data or office files outside test fixtures, `pr.md`, and screenshots under `docs/integration/`; private keys, tokens, the server address, emails and user folders; Classic changes; edits to existing Admin migrations or a wrong migration number; R files that do not parse; pushes to `main`, `integration/*`, `lab/main` and `lab/production`; force pushes; a branch without the current `lab/main`; a science change mixed with interface work; and a push that breaks the Nexo, Admin or R syntax checks. Never bypass them (`--no-verify`, `LAB_*` overrides are the maintainer's).
 - `git fetch origin` and `git status`. Never start with uncommitted changes you did not make: ask first.
+
+## Skills
+- `lab-setup` checks the computer, `lab-preflight` runs these rules on the current branch before a commit or push, `lab-pr-checklist` prepares the pull request, `/arreglar` and `/crear` do the whole cycle, `admin-migration` adds a database migration, `team-to-nexo-port` carries a Team change to Nexo, `lab-deploy-status` reads staging and production, `/publicar` moves production. Use them instead of doing the steps by hand.
 
 ## Branches
 - `main` is the maintainer's. The lab works on `lab/main`; the lab's work reaches `integration/libreros-guided-workflow` later, through pull requests from `lab/main` that the maintainer reviews.
