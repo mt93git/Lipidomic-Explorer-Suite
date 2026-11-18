@@ -1,0 +1,65 @@
+/* Diagnostics: full page under the top bar, after Canvas. Nexo tokens (tokens.css). */
+.dx-page { position: absolute; inset: 0; overflow: auto; background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: var(--font-body); padding: 20px 24px 48px; z-index: 45; isolation: isolate; }
+.dx-head h2 { margin: 0 0 4px; font-size: 22px; color: var(--navy); }
+.dx-head p { margin: 0 0 14px; max-width: 900px; color: var(--muted); line-height: var(--line-height-body); }
+.dx-controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.dx-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.dx-controls select { min-width: 150px; max-width: 240px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-weight: 400; color: var(--ink); background: var(--paper); }
+.dx-controls output { font-weight: 800; color: var(--accent); }
+.dx-run { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.dx-run:disabled { opacity: .55; cursor: default; }
+.dx-dataset { margin: 0 0 6px auto; color: var(--muted); font-size: 12px; }
+.dx-note { color: var(--muted); }
+.dx-error { background: var(--red-bg); color: var(--red-fg); padding: 8px 12px; border-radius: 6px; }
+.dx-warning { background: var(--amber-bg); color: var(--amber-fg); padding: 8px 12px; border-radius: 6px; margin: 6px 0; }
+.dx-summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 6px; }
+.dx-summary div { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 120px; }
+.dx-summary dt { font-size: 12px; color: var(--muted); }
+.dx-summary dd { margin: 2px 0 0; font-size: 22px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+.dx-summary dd.dx-switch { font-size: 14px; max-width: 360px; }
+.dx-params { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+.dx-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 8px 0 12px; }
+.dx-tabs button { border: 0; background: none; padding: 8px 14px; font: inherit; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; }
+.dx-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.dx-panel { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 16px; margin-bottom: 14px; }
+.dx-panel h3 { margin: 0; font-size: 16px; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+.dx-letter { display: inline-flex; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tint); color: var(--accent); font-size: 12px; align-items: center; justify-content: center; }
+.dx-panel-note { margin: 4px 0 10px; color: var(--muted); font-size: 13px; max-width: 980px; line-height: 1.45; }
+.dx-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.dx-col { display: flex; flex-direction: column; gap: 8px; }
+.dx-chart { position: relative; }
+.dx-svg { display: block; max-width: 100%; height: auto; font-family: var(--font); }
+.dx-svg text { fill: var(--muted); font-size: 10px; }
+.dx-svg .dx-axis-title, .dx-svg .dx-legend-title { fill: var(--ink); font-size: 11px; font-weight: 700; }
+.dx-svg .dx-fig-title { fill: var(--navy); font-size: 12px; font-weight: 800; }
+.dx-svg .dx-row-label { fill: var(--ink); font-size: 9.5px; }
+.dx-svg .dx-row-label.strong { font-weight: 800; }
+.dx-svg .dx-node-label { fill: var(--ink); font-size: 10px; font-weight: 700; }
+.dx-svg .dx-node-dir { fill: #1d4f7c; font-size: 11px; font-weight: 800; }
+.dx-svg .dx-attractor-tag { fill: var(--ink); font-weight: 800; font-size: 11px; }
+.dx-svg .dx-cell { font-size: 12px; font-weight: 700; }
+.dx-svg [tabindex]:focus { outline: none; }
+.dx-svg [tabindex]:focus-visible > *, .dx-svg [tabindex]:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.dx-tip { position: absolute; transform: translate(-50%, calc(-100% - 6px)); background: var(--navy); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; pointer-events: none; white-space: nowrap; z-index: 2; }
+.dx-key { list-style: none; padding: 0; margin: 4px 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.dx-key span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.dx-table { border-collapse: collapse; font-size: 12.5px; background: var(--paper); }
+.dx-table th, .dx-table td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--line); }
+.dx-table th { color: var(--muted); font-weight: 700; font-size: 12px; }
+.dx-table td { font-variant-numeric: tabular-nums; }
+.dx-rules { max-width: 560px; }
+.dx-rules code { font-family: inherit; font-size: 12px; }
+.dx-rules code b { color: var(--accent); font-weight: 800; }
+.dx-meta { min-width: 560px; }
+.dx-meta tbody tr { cursor: pointer; }
+.dx-meta tbody tr:hover, .dx-meta tbody tr[aria-selected="true"] { background: var(--tint); }
+.dx-meta tr.sig td:first-child { font-weight: 800; }
+.dx-tag { margin-left: 6px; padding: 1px 6px; border-radius: 8px; background: var(--amber-bg); color: var(--amber-fg); font-size: 10.5px; font-weight: 700; }
+.dx-filters { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; font-size: 13px; }
+.dx-filters label { display: inline-flex; gap: 5px; align-items: center; }
+.dx-detail-title { margin: 0 0 4px; font-size: 13px; color: var(--navy); }
+@media (max-width: 700px) { .dx-page { padding: 12px 16px 40px; } .dx-meta { min-width: 0; } }
+.dx-advanced { flex-basis: 100%; font-size: 13px; }
+.dx-advanced summary { cursor: pointer; color: var(--accent); font-weight: 700; }
+.dx-advanced > div { display: flex; flex-wrap: wrap; gap: 12px 16px; margin-top: 8px; }
+.dx-method td { vertical-align: top; max-width: 420px; line-height: 1.45; }

@@ -2,6 +2,8 @@
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "statistics.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "export.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "companion.R"), local = TRUE)
+if (!exists("dx_landscape", mode = "function"))
+  source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "diagnostics.R"), local = globalenv())
 if (!exists("api_dataset_route", mode = "function"))
   source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "datasets.R"), local = globalenv())
 if (!exists("api_pool_status", mode = "function"))
@@ -470,6 +472,17 @@ function(id, instanceId, req, res) api_exclusive(res, id = id, {
 #* Current Team group comparison data
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/group-comparison
 function(id, instanceId, req, res) api_exclusive(res, id = id, api_group_comparison(api_session_get(id, api_session_caller(req)), instanceId))
+
+#* Diagnostics: metadata columns and groups the attractor landscape can use (diagnostics.R)
+#* @get /api/v1/sessions/<id>/diagnostics/options
+function(id, req, res) api_exclusive(res, id = id, api_diagnostics_options(api_session_get(id, api_session_caller(req))))
+
+#* Diagnostics: attractor landscape of the prepared data against a reference and a target group (diagnostics.R)
+#* @parser json list(simplifyVector = FALSE)
+#* @post /api/v1/sessions/<id>/diagnostics/landscape
+function(id, req, res) api_exclusive(res, id = id, {
+  api_diagnostics_landscape(api_session_get(id, api_session_caller(req)), api_body(req))
+})
 
 #* Prepared dataset quality check
 #* @get /api/v1/sessions/<id>/quality
