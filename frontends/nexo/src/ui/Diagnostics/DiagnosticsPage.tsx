@@ -12,10 +12,15 @@ export function defaultRequest(options: DiagnosticsOptions): LandscapeRequest | 
   const column = grouped.find(c => /condition|group|state|status/i.test(c.name)) ?? grouped[0];
   if (!column) return null;
   const levels = column.levels.map(l => l.level);
-  const reference = levels.find(l => /control|healthy|normal|baseline/i.test(l)) ?? levels[0];
-  const target = [...levels].reverse().find(l => l !== reference && /crisis|disease|case|treat|tumou?r|sepsis|severe/i.test(l)) ?? levels.find(l => l !== reference)!;
+  const reference = levels.find(l => /control|healthy|normal|baseline|wild.?type|\bwt\b|vehicle|sham/i.test(l)) ?? levels[0];
+  const target = [...levels].reverse().find(l => l !== reference && /crisis|disease|case|treat|tumou?r|sepsis|severe|knock.?out|\bko\b|mutant/i.test(l)) ?? levels.find(l => l !== reference)!;
   const subject = options.columns.find(c => /subject|patient|participant|donor/i.test(c.name));
   return { groupColumn: column.name, reference: [reference], target: [target], nodes: 12, subjectColumn: subject?.name };
+}
+
+// A new reference that is the current target swaps the two groups, so reference and target never end up equal.
+export function withReference(request: LandscapeRequest, level: string): LandscapeRequest {
+  return { ...request, reference: [level], target: request.target[0] === level ? [request.reference[0]] : request.target };
 }
 
 export function DiagnosticsPage({ sessionId }: { sessionId: string }) {
@@ -48,7 +53,7 @@ function Controls({ options, request, onChange, onRun, busy }: { options: Diagno
   return <form className="dx-controls" onSubmit={e => { e.preventDefault(); onRun(); }}>
     <label>{t.groupColumn}<select value={request.groupColumn} onChange={e => { const c = grouped.find(g => g.name === e.target.value)!; set({ groupColumn: c.name, reference: [c.levels[0].level], target: [c.levels[c.levels.length - 1].level] }); }}>
       {grouped.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
-    <label>{t.reference}<select value={request.reference[0]} onChange={e => set({ reference: [e.target.value] })}>{levels.map(l => <option key={l.level} value={l.level}>{l.level} ({l.n})</option>)}</select></label>
+    <label>{t.reference}<select value={request.reference[0]} onChange={e => onChange(withReference(request, e.target.value))}>{levels.map(l => <option key={l.level} value={l.level}>{l.level} ({l.n})</option>)}</select></label>
     <label>{t.target}<select value={request.target[0]} onChange={e => set({ target: [e.target.value] })}>{levels.filter(l => l.level !== request.reference[0]).map(l => <option key={l.level} value={l.level}>{l.level} ({l.n})</option>)}</select></label>
     <label title={t.orderingHelp}>{t.ordering}<select value={request.orderingColumn ?? ''} onChange={e => set({ orderingColumn: e.target.value || undefined })}>
       <option value="">{t.orderingAxis}</option>{numeric.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
