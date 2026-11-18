@@ -5,7 +5,7 @@ vi.mock('../../collab/mode', () => ({ collab: () => null }));
 vi.mock('../../collab/roles', () => ({ currentRole: () => null, subscribeRole: () => () => {} }));
 import { mockDiagnosticsOptions, mockLandscape } from '../../mock/diagnostics';
 import { TopBar } from '../TopBar';
-import { defaultRequest } from './DiagnosticsPage';
+import { defaultRequest, withReference } from './DiagnosticsPage';
 import { LandscapeFigure, NetworkFigure, PerturbationFigure } from './Figures';
 import { edgePath, fitLayout, landscapeCurve, perturbationLabel, rampColor, shortName } from './landscapeMath';
 
@@ -58,6 +58,19 @@ it('the default request picks the condition column, a control reference and a di
   expect(request).toMatchObject({ groupColumn: 'Condition', reference: ['Control'], target: ['Disease'], subjectColumn: 'Subject_ID' });
   expect(request?.orderingColumn).toBeUndefined();
   expect(defaultRequest({ samples: 3, features: 1, columns: [{ name: 'Age', numeric: true, missing: 0, levels: [] }] })).toBeNull();
+});
+
+it('choosing the target as the reference swaps the two groups instead of leaving them equal', () => {
+  const request = { groupColumn: 'Genotype', reference: ['Knockout'], target: ['Wild type'], nodes: 12 };
+  expect(withReference(request, 'Wild type')).toMatchObject({ reference: ['Wild type'], target: ['Knockout'] });
+  expect(withReference(request, 'Heterozygous')).toMatchObject({ reference: ['Heterozygous'], target: ['Wild type'] });
+});
+
+it('a wild type group is the default reference', () => {
+  const request = defaultRequest({ samples: 8, features: 32, columns: [
+    { name: 'Genotype', numeric: false, missing: 0, levels: [{ level: 'Knockout', n: 4 }, { level: 'Wild type', n: 4 }] },
+  ] });
+  expect(request).toMatchObject({ reference: ['Wild type'], target: ['Knockout'] });
 });
 
 it('the figures draw the mock landscape: lipid network, valleys and every perturbation', () => {
