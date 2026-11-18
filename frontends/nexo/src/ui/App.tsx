@@ -22,7 +22,11 @@ import { CanvasHandleContext, tabsBridges, type Camera, type CanvasHandle } from
 import { Library } from './Library/Library';
 import * as tabs from '../state/tabs';
 import { store, ui, useShell, proxy, notify, notifyFailure, openLibrary } from './model';
-import { TopBar } from './TopBar';
+import { TopBar, type BoardView } from './TopBar';
+import { retryLazy } from './retryLazy';
+import { Suspense } from 'react';
+// Diagnostics (the step after Canvas) loads on first use: the canvas never pays for it.
+const DiagnosticsPage = retryLazy(() => import('./Diagnostics/DiagnosticsPage').then(m => ({ default: m.DiagnosticsPage })));
 import { Rail } from './Rail';
 import { TabsBar } from './TabsBar';
 import { Toolbar } from './Toolbar';
@@ -105,6 +109,9 @@ export function App({ session, title, notice }: { session: Session; title?: stri
     const url=new URL(location.href);url.searchParams.set('checkpoint',record.id);history.replaceState(null,'',url);if(label!=='autosave')setProjectName(checkpointLabel([record],record.id,s.project));return record;
   };
   const [figureMode,setFigureMode]=useState(false);
+  // Canvas or Diagnostics (?view=diagnostics); the canvas stays mounted under Diagnostics, so its work and state are kept.
+  const [view,setViewState]=useState<BoardView>(()=>new URLSearchParams(location.search).get('view')==='diagnostics'?'diagnostics':'canvas');
+  const setView=(next:BoardView)=>{setViewState(next);const url=new URL(location.href);if(next==='canvas')url.searchParams.delete('view');else url.searchParams.set('view',next);history.replaceState(history.state,'',url);};
   const [handle, setHandle] = useState<CanvasHandle | null>(null);
   useEffect(() => {
     if (mounted.current) return;
@@ -326,7 +333,7 @@ export function App({ session, title, notice }: { session: Session; title?: stri
     setPicker(null);
   };
 
-  return <CanvasHandleContext.Provider value={handle}><TopBar nearLimit={nearLimit} projectName={projectName} onCheckpoints={()=>setCheckpointsOpen(true)} saveText={collaborating?(engineText||collabText):saveText} saveStatus={collaborating?collabDot(engineText,collabText):saveStatus} saveFailure={saveFailure} onRetrySave={()=>void saver.current?.flush()} onReopen={saveLost?()=>void reopenNow():undefined}/><div className={`shell ${state.ui.libraryOpen && !readOnly ? '' : 'library-closed'} ${state.ui.inspectorOpen || figureMode ? 'inspector-open' : ''}`}>
+  return <CanvasHandleContext.Provider value={handle}><TopBar nearLimit={nearLimit} projectName={projectName} onCheckpoints={()=>setCheckpointsOpen(true)} saveText={collaborating?(engineText||collabText):saveText} saveStatus={collaborating?collabDot(engineText,collabText):saveStatus} saveFailure={saveFailure} onRetrySave={()=>void saver.current?.flush()} onReopen={saveLost?()=>void reopenNow():undefined} view={view} onView={setView}/><div className={`shell ${state.ui.libraryOpen && !readOnly ? '' : 'library-closed'} ${state.ui.inspectorOpen || figureMode ? 'inspector-open' : ''}`}>
     <Rail/>{!readOnly && <Library/>}<main className="canvas-column" aria-label={s.canvasArea}><div className="canvas-header"><TabsBar editTabs={edit} activate={id => {
         if (!handle) return;
         const next = tabs.clone(store.get().tabs); if (!tabs.setActive(next, id)) return;
@@ -341,5 +348,6 @@ export function App({ session, title, notice }: { session: Session; title?: stri
       }}/>
       {picker && <div role="dialog" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setPicker(null); } }} aria-label={picker === 'move' ? s.moveToTab : s.copyToTab}><button onClick={() => setPicker(picker === 'move' ? 'copy' : 'move')}>{picker === 'move' ? s.copyToTabMenu : s.moveToTabMenu}</button><p className="picker-heading">{picker === 'move' ? s.moveToTab : s.copyToTab}</p>{state.tabs.tabs.filter(t => picker === 'copy' || t.id !== state.tabs.active).map(t => <button key={t.id} onClick={() => move(t.id)}>{t.id === state.tabs.active ? p.currentTab(t.name) : t.name}</button>)}<button onClick={() => setPicker(null)}>{s.cancel}</button></div>}<CohortEntry sessionId={session.sessionId} onChanged={()=>saver.current?.markDirty()}/><Toolbar onAnalysis={()=>setAnalysisOpen(true)} onSave={()=>setCheckpointsOpen(true)} onDownload={()=>void download()} onShortcuts={()=>setShortcutsOpen(true)}/></div><StatusBand figureMode={figureMode} summary={datasetSummary(session)} notice={notice}/>{sessionLost && <div className="session-lost" role="alert">{s.sessionLost}<button type="button" onClick={()=>void reopenNow()}>{s.reopenSession}</button><button type="button" onClick={()=>location.reload()}>{s.reloadPage}</button></div>}{readOnly && <ReadOnlyBanner/>}<div className="canvas-body"><div id="canvas-host" role="tabpanel" aria-labelledby={state.tabs.active} ref={host}/>{ready && <ZoomPill/>}{ready && !figureMode && !(state.tabs.tabs.find(t => t.id === state.tabs.active)?.nodes.length) && <EmptyCanvas handle={handle}/>}</div>{!analysisOpen && <Toast/>}</main>
     <aside className="inspector-column"><PanelBoundary resetKey={figureMode}>{handle && (figureMode ? <FigurePage handle={handle}/> : <Inspector handle={handle}/>)}</PanelBoundary></aside>
+    {view==='diagnostics' && <PanelBoundary resetKey={view}><Suspense fallback={null}><DiagnosticsPage sessionId={session.sessionId}/></Suspense></PanelBoundary>}
   </div>{analysisOpen && <AnalysisSettings session={session} onClose={()=>setAnalysisOpen(false)} onApplied={()=>saver.current?.markDirty()}/>}{designOpen && <DesignDialog sessionId={session.sessionId} saved={handle?.savedDesign?.()} onClose={() => setDesignOpen(false)} onConfirmed={design => { session.design = design; tabsBridges.get(handle!)?.refresh(); }}/>}{shortcutsOpen && <ShortcutsDialog onClose={()=>setShortcutsOpen(false)}/>}{state.ui.paletteOpen && !readOnly && <SessionPalettePanel session={session} onClose={()=>ui({paletteOpen:false})} onApplied={()=>saver.current?.markDirty()}/>}{checkpointsOpen && <CheckpointsDialog onClose={()=>setCheckpointsOpen(false)} save={label=>saveNamed(label)}/>}</CanvasHandleContext.Provider>;
 }
