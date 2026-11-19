@@ -63,6 +63,24 @@ check(is.null(tests$Subject_ID), "identifier columns are not tested")
 r2 <- dx_landscape(x, metadata, "Condition", "Healthy", "Disease", ordering_column = "Pseudotime", n_nodes = 8L, cut = 0.5)
 check(r2$params$ordering == "Pseudotime", "a numeric ordering column replaces the axis")
 check(isTRUE(all.equal(unname(vapply(r2$samples, `[[`, numeric(1), "order")), metadata$Pseudotime)), "samples carry the ordering column's values")
+# ---- the same subject across groups (Subject column) -----------------------------------------------------------
+# Six people sampled in A and B, each 0.3 further along in B; P1 has two A samples (averaged); P7 only in A (unpaired).
+pg <- c(rep("A", 6), "A", rep("B", 6), "A"); ps <- c(sprintf("P%d", 1:6), "P1", sprintf("P%d", 1:6), "P7")
+pd <- c(seq(0.1, 0.6, 0.1), 0.1, seq(0.1, 0.6, 0.1) + 0.3, 0.9)
+pairs <- dx_paired(pd, pg, ps)
+check(length(pairs) == 1L && pairs[[1]]$from == "A" && pairs[[1]]$to == "B", "one paired comparison, from the lower to the higher group")
+check(pairs[[1]]$n == 6L && length(pairs[[1]]$subjects) == 6L, "only subjects sampled in both groups are paired")
+check(abs(pairs[[1]]$shift - 0.3) < 1e-9, "the shift is the median within-subject change in d_eff")
+check(pairs[[1]]$p < 0.05, "a consistent within-subject shift is significant (signed-rank p ", signif(pairs[[1]]$p, 2), ")")
+check(!length(dx_paired(pd, pg, NULL)), "without a subject column nothing is paired")
+# Through the whole analysis: Transition and Disease samples of the same patient.
+metadata$Patient <- c(sprintf("H%02d", 1:n_per), sprintf("Q%02d", 1:n_per), sprintf("Q%02d", 1:n_per))
+r3 <- dx_landscape(x, metadata, "Condition", "Healthy", "Disease", subject_column = "Patient", n_nodes = 8L, cut = 0.5)
+check(length(r3$paired) == 1L && r3$paired[[1]]$from == "Transition" && r3$paired[[1]]$to == "Disease" && r3$paired[[1]]$n == n_per,
+  "the landscape pairs each patient's Transition and Disease samples")
+check(r3$paired[[1]]$shift > 0, "patients move towards the target from Transition to Disease")
+check(!length(r$paired), "a landscape without a subject column has no paired comparison")
+check(!"Patient" %in% vapply(r3$metadata, `[[`, character(1), "column"), "the subject column is not tested as metadata")
 # Too few samples in a group is refused with a message, not a crash.
 refused <- tryCatch(dx_landscape(x[1:20, ], metadata[1:20, ], "Condition", "Healthy", "Disease"), error = function(e) conditionMessage(e))
 check(is.character(refused) && grepl("at least three", refused), "a target group with under three samples is refused")
