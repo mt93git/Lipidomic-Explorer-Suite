@@ -22,6 +22,7 @@ import { CanvasHandleContext, tabsBridges, type Camera, type CanvasHandle } from
 import { Library } from './Library/Library';
 import * as tabs from '../state/tabs';
 import { store, ui, useShell, proxy, notify, notifyFailure, openLibrary } from './model';
+import { withTimePoints } from '../catalog';
 import { TopBar, type BoardView } from './TopBar';
 import { retryLazy } from './retryLazy';
 import { Suspense } from 'react';
@@ -262,7 +263,12 @@ export function App({ session, title, notice }: { session: Session; title?: stri
     void Promise.all([import('../collab/session'),import('../collab/refused')]).then(([{followSharedSession,waitingText},refused])=>{
       if(!live)return;
       resyncing.current=refused.resyncing;const refusal=refused.takeRefusal();if(refusal)notify(refusal,true);
-      off=followSharedSession(session,{waiting:waiting=>setEngineText(waiting?waitingText:''),refresh:()=>tabsBridges.get(handle)!.document().nodes.forEach(n=>{handle.refreshCard(n.id);window.dispatchEvent(new CustomEvent('nexo-inputs-restored',{detail:n.id}));})});
+      off=followSharedSession(session,{waiting:waiting=>setEngineText(waiting?waitingText:''),refresh:()=>{
+        // The shared session's design (confirmed on the board or on Prepare) is the one the library and cards gate on.
+        ui({design:withTimePoints(session.design,session.deState)});
+        if(session.design?.confirmed){setDesignOpen(false);window.dispatchEvent(new CustomEvent('nexo-design-confirmed'));}
+        tabsBridges.get(handle)!.document().nodes.forEach(n=>{handle.refreshCard(n.id);window.dispatchEvent(new CustomEvent('nexo-inputs-restored',{detail:n.id}));});
+      }});
     });
     return()=>{live=false;off?.();};
   },[handle]);
