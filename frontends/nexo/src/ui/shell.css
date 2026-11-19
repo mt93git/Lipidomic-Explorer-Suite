@@ -666,6 +666,9 @@ dialog.session-palette{z-index:30;box-shadow:-8px 0 24px rgb(0 0 0 / .08)}
 .session-palette-chips span{width:12px;height:12px;border-radius:2px;border:1px solid rgb(0 0 0 / .15)}
 .session-palette-context{border:1px solid #c6cbd1;border-radius:6px;padding:8px 10px;margin:0 0 10px}
 .session-palette-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+.session-palette-save{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+.session-palette-save .session-palette-row input[type=text]{flex:1;min-width:0;max-width:60%}
+.session-palette-save-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .session-palette-warning{margin:6px 0 2px;padding:4px 8px;border-radius:4px;background:var(--amber-bg);color:var(--amber-fg);font-size:13px}
 .session-palette-row input[type=color]{width:44px;height:28px;padding:0;border:1px solid #a8adb5}
 .session-palette-note button{margin-left:4px}

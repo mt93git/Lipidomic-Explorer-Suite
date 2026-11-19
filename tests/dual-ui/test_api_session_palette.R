@@ -164,6 +164,62 @@ stopifnot(refused(api_palette_update(s, list(palette = "No such palette"))),
   refused(api_palette_update(s, list(restore = list(useCustomColors = TRUE, customColors = list(x = "nope"), activePalette = "Default")))))
 cat("PASS refusals: unknown palette, non-hex colour, unknown group or context, two operations, a bad restore\n")
 
+# 3b. Team's annotation contexts (Lipid class, Lipid category) and "Save & reuse" (Save palette, Download JSON,
+#     Import palette JSON), each through Team's own editor inputs.
+got <- api_palette_get(s)
+ids <- vapply(got$contexts, function(x) x$id, character(1))
+anno <- api_palette_anno(s)
+for (pair in list(c("Lipid Class", "subclass"), c("Hyperclass", "hyperclass"))) {
+  cid <- pair[[1]]
+  if (!pair[[2]] %in% names(anno)) { cat("NOTE the fixture has no", pair[[2]], "column: context", cid, "not offered\n"); next }
+  if (!cid %in% ids) stop("FAIL GET palette does not offer Team's ", cid, " context")
+  ctx <- got$contexts[[match(cid, ids)]]
+  g <- ctx$groups[[1]]$name
+  new <- if (identical(toupper(ctx$groups[[1]]$color), "#123456")) "#654321" else "#123456"
+  res <- api_palette_update(s, list(context = cid, colors = stats::setNames(list(new), g)))
+  map <- api_read(s, if (identical(cid, "Lipid Class")) s$shared$class_color_map() else s$shared$origin_color_map())
+  if (!identical(toupper(map[[g]]), new)) stop("FAIL Team's ", cid, " map has ", map[[g]], " for ", g, ", expected ", new)
+  if (!identical(res$state$customColors[[palette_context_key(cid, g)]], new)) stop("FAIL the state does not carry ", cid, "::", g)
+  if (!identical(api_read(s, s$mock$input$`data_hub-colorEditMode`), cid)) stop("FAIL colorEditMode was not Team's ", cid, " mode")
+  shown <- api_palette_get(s)$contexts[[match(cid, ids)]]$groups
+  if (!identical(toupper(shown[[1]]$color), new)) stop("FAIL GET palette does not show the new ", cid, " colour")
+  cat(sprintf("PASS PATCH palette {context: %s, colors: {%s: %s}} sets Team's class fields + Apply; Team's map follows\n", cid, g, new))
+}
+
+saved_name <- "Nexo test palette"
+before_save <- api_palette_key(s)
+res <- api_palette_update(s, list(save = saved_name))
+if (!saved_name %in% names(api_palette_saved(s))) stop("FAIL Save palette did not add ", saved_name, " to Team's color_palettes")
+if (!identical(res$active, saved_name)) stop("FAIL Save palette did not make ", saved_name, " the active palette")
+kinds <- stats::setNames(vapply(res$palettes, function(x) x$kind, character(1)), vapply(res$palettes, function(x) x$name, character(1)))
+if (!identical(unname(kinds[saved_name]), "saved")) stop("FAIL the saved palette is not listed as kind saved")
+if (!isTRUE(s$dirty)) stop("FAIL saving a palette did not mark the session dirty")
+recorded <- api_palette_saved(s)[[saved_name]]$colors
+if (!identical(toupper(recorded[[palette_context_key("Group1", group)]]), toupper(api_read(s, s$shared$color_maps()$Group1[[group]]))))
+  stop("FAIL the saved palette does not record the session's Group1 colour")
+cat("PASS PATCH palette {save: name} = Team's palette_name + Save palette; listed as saved, active, session dirty\n")
+stopifnot(refused(api_palette_update(s, list(save = "Default"))), refused(api_palette_update(s, list(save = ""))),
+  refused(api_palette_update(s, list(save = names(COLOR_PALETTE_PRESETS)[[1L]]))))
+cat("PASS refusals: Save palette as Default, a preset name or an empty name\n")
+
+ex <- api_palette_export(s)
+if (!identical(ex$record$name, saved_name) || !identical(ex$filename, "Nexo_test_palette.json")) stop("FAIL Download JSON names ", ex$record$name, " / ", ex$filename)
+if (is.null(ex$record$colors[[palette_context_key("Group1", group)]])) stop("FAIL Download JSON has no Group1::", group)
+cat("PASS export: the record Team's Download JSON writes (name, every context colour)\n")
+
+imported <- list(name = "Imported test palette", colors = ex$record$colors)
+first <- names(imported$colors)[[1L]]
+imported$colors[[first]] <- "#0A0B0C"
+res <- api_palette_update(s, list(import = imported))
+if (!imported$name %in% names(api_palette_saved(s)) || !identical(res$active, imported$name)) stop("FAIL Import palette JSON did not add and activate ", imported$name)
+if (!identical(res$state$customColors[[first]], "#0A0B0C")) stop("FAIL the imported colour is not in the state")
+cat("PASS PATCH palette {import: record} = Team's Import palette JSON (palette_upload); added, active, colours applied\n")
+stopifnot(refused(api_palette_update(s, list(import = list(name = imported$name, colors = imported$colors)))),
+  refused(api_palette_update(s, list(import = list(name = "Bad colours", colors = list(x = "red"))))),
+  refused(api_palette_update(s, list(import = "not a record"))))
+cat("PASS refusals: import of an existing name, non-hex colours, a non-record\n")
+api_palette_update(s, list(restore = state0))
+
 # 4. Round trip: save as Nexo does (Team's export_session_path, storage.R api_checkpoint_save), then Team's reader
 #    and Team's restore (api_session_open imports the ZIP through the data hub).
 api_palette_update(s, list(context = "Group1", colors = stats::setNames(list(colour), group)))
@@ -178,6 +234,8 @@ s2 <- api_session_open(zip)
 on.exit(api_session_close(s2), add = TRUE)
 if (!identical(toupper(api_read(s2, s2$shared$color_maps()$Group1[[group]])), colour)) stop("FAIL reopened: Team's session map lost ", colour)
 if (!identical(api_palette_key(s2), api_palette_key(s))) stop("FAIL reopened: the palette state differs")
+if (!all(c(saved_name, imported$name) %in% names(api_read(s2, s2$shared$palette_settings()$color_palettes %||% list()))))
+  stop("FAIL reopened: Team's saved palettes were not kept in the checkpoint")
 cat("PASS round trip: Team's export saves the colour (state.json color_shape) and Team's restore brings it back\n")
 
 # 5. The HTTP routes (plumber), when plumber is installed.
@@ -205,6 +263,8 @@ if (requireNamespace("plumber", quietly = TRUE)) local({
   back <- call("PATCH", path, list(restore = got$body$state))
   if (back$status != 200L || !identical(jsonlite::toJSON(back$body$state), jsonlite::toJSON(got$body$state))) stop("FAIL PATCH restore over HTTP did not round-trip the state")
   if (call("PATCH", path, list(palette = "nope"))$status != 400L) stop("FAIL an unknown palette over HTTP is not 400")
+  exported <- call("GET", paste0(path, "/export"))
+  if (exported$status != 200L || !is.character(exported$body$record$name) || !is.list(exported$body$record$colors)) stop("FAIL GET palette/export answered ", exported$status)
   cat("PASS GET/PATCH /api/v1/sessions/<id>/palette: 200, the state round-trips as JSON; a bad palette 400\n")
 }) else cat("NOTE plumber not installed: HTTP part skipped\n")
 cat("PASS test_api_session_palette\n")
