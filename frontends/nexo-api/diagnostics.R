@@ -279,9 +279,11 @@ dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) 
 # Acquisition order (LC-MS drift): a numeric run-order column that follows d_eff (|rho| >= 0.5), or a batch or plate
 # column that separates it (FDR < 0.05), means the disease axis may carry the order samples were run in. Without such
 # a column the drift cannot be checked, which is said too.
-dx_acquisition_pattern <- "(^|[^a-z])(run|inject|injection|batch|plate|sequence|acquisition|order)"
+# Whole words only (RunOrder, Injection_Position, batchID), so Platelets or Disorder are not taken for one.
+dx_acquisition_words <- c("run", "inject", "injection", "batch", "plate", "sequence", "acquisition", "order")
 dx_acquisition_warnings <- function(columns, tests) {
-  found <- grep(dx_acquisition_pattern, columns, ignore.case = TRUE, value = TRUE)
+  words <- lapply(columns, function(x) tolower(strsplit(gsub("([a-z])([A-Z])", "\\1 \\2", x), "[^A-Za-z]+")[[1]]))
+  found <- columns[vapply(words, function(w) any(w %in% dx_acquisition_words), logical(1))]
   if (!length(found))
     return("No run-order or batch column in the metadata, so drift along the acquisition order cannot be checked. When groups were run in blocks, add the injection order as a numeric column.")
   out <- character(0)

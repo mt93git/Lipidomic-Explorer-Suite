@@ -70,6 +70,9 @@ w <- dx_acquisition_warnings(c("Injection_Position", "Plate", "Age"), drift)
 check(length(w) == 2L && grepl("Injection_Position", w[[1]]) && grepl("Plate", w[[2]]), "an injection position and a plate that follow d_eff are both flagged, Age is not")
 check(!length(dx_acquisition_warnings(c("RunOrder", "Age"), list(list(column = "RunOrder", kind = "numeric", statistic = 0.1, p = 0.5, fdr = 0.6)))),
   "a run order unrelated to d_eff raises nothing")
+check(any(grepl("No run-order", dx_acquisition_warnings(c("Platelets", "Platelets_group", "Disorder"), list()))),
+  "column names that only contain a word (Platelets, Disorder) are not run-order columns")
+check(!length(dx_acquisition_warnings(c("RunOrder", "batchID"), list())), "camel-case run-order and batch names are recognised")
 check(isTRUE(all.equal(unname(vapply(r2$samples, `[[`, numeric(1), "order")), metadata$Pseudotime)), "samples carry the ordering column's values")
 # Too few samples in a group is refused with a message, not a crash.
 refused <- tryCatch(dx_landscape(x[1:20, ], metadata[1:20, ], "Condition", "Healthy", "Disease"), error = function(e) conditionMessage(e))
