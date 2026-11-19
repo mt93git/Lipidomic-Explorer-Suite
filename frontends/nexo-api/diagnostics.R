@@ -294,6 +294,26 @@ dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) 
   out[order(p)]
 }
 
+# Acquisition order (LC-MS drift): a numeric run-order column that follows d_eff (|rho| >= 0.5), or a batch or plate
+# column that separates it (FDR < 0.05), means the disease axis may carry the order samples were run in. Without such
+# a column the drift cannot be checked, which is said too.
+# Whole words only (RunOrder, Injection_Position, batchID), so Platelets or Disorder are not taken for one.
+dx_acquisition_words <- c("run", "inject", "injection", "batch", "plate", "sequence", "acquisition", "order")
+dx_acquisition_warnings <- function(columns, tests) {
+  words <- lapply(columns, function(x) tolower(strsplit(gsub("([a-z])([A-Z])", "\\1 \\2", x), "[^A-Za-z]+")[[1]]))
+  found <- columns[vapply(words, function(w) any(w %in% dx_acquisition_words), logical(1))]
+  if (!length(found))
+    return("No run-order or batch column in the metadata, so drift along the acquisition order cannot be checked. When groups were run in blocks, add the injection order as a numeric column.")
+  out <- character(0)
+  for (t in tests) if (t$column %in% found) {
+    if (t$kind == "numeric" && abs(t$statistic) >= 0.5)
+      out <- c(out, sprintf("d_eff follows %s (rho %.2f): the disease axis may carry an acquisition effect.", t$column, t$statistic))
+    if (t$kind == "categorical" && isTRUE(t$fdr < 0.05))
+      out <- c(out, sprintf("d_eff differs between the levels of %s (FDR %.2g): the disease axis may carry a batch effect.", t$column, t$fdr))
+  }
+  out
+}
+
 # The same subject across groups: for every two groups with at least three subjects sampled in both, each subject's
 # mean d_eff in each (from the group lower on the landscape to the higher) and a Wilcoxon signed-rank test of the shift.
 # Paired, so it is not confounded by who was sampled in each group, nor by acquisition order when each subject's
@@ -450,9 +470,7 @@ dx_landscape <- function(x, metadata, group_column, reference, target, ordering_
       aucFinal = dx_auc(d_final[keep], groups[keep] == g),
       inTarget = mean(d_final[groups %in% g] >= 0.5))
   })
-  warnings <- character(0)
-  for (t in tests) if (t$kind == "numeric" && grepl("run|order|inject|batch|plate", t$column, ignore.case = TRUE) && abs(t$statistic) >= 0.5)
-    warnings <- c(warnings, sprintf("d_eff follows %s (rho %.2f): the disease axis may carry an acquisition effect.", t$column, t$statistic))
+  warnings <- dx_acquisition_warnings(setdiff(names(metadata), skip), tests)
   list(
     params = list(groupColumn = group_column, reference = reference, target = target, ordering = ordering_source,
       nodes = n, window = window, step = step, cut = cut, samples = nrow(x), features = ncol(x), stateSpace = 2^n,

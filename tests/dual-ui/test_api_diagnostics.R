@@ -71,6 +71,17 @@ check(!is.null(cases_tests$Arm) && is.null(cases_tests$Arm$containsGroup), "with
 # An ordering column (pseudotime) is used when given.
 r2 <- dx_landscape(x, metadata, "Condition", "Healthy", "Disease", ordering_column = "Pseudotime", n_nodes = 8L, cut = 0.5)
 check(r2$params$ordering == "Pseudotime", "a numeric ordering column replaces the axis")
+# ---- acquisition order: checked when a column records it, and said when none does -----------------------------
+check(any(grepl("No run-order or batch column", r$warnings)), "without a run-order column the landscape says drift was not checked")
+drift <- list(list(column = "Injection_Position", kind = "numeric", statistic = 0.8, p = 1e-6, fdr = 1e-5),
+  list(column = "Plate", kind = "categorical", statistic = 12, p = 1e-4, fdr = 0.002), list(column = "Age", kind = "numeric", statistic = 0.7, p = 1e-5, fdr = 1e-4))
+w <- dx_acquisition_warnings(c("Injection_Position", "Plate", "Age"), drift)
+check(length(w) == 2L && grepl("Injection_Position", w[[1]]) && grepl("Plate", w[[2]]), "an injection position and a plate that follow d_eff are both flagged, Age is not")
+check(!length(dx_acquisition_warnings(c("RunOrder", "Age"), list(list(column = "RunOrder", kind = "numeric", statistic = 0.1, p = 0.5, fdr = 0.6)))),
+  "a run order unrelated to d_eff raises nothing")
+check(any(grepl("No run-order", dx_acquisition_warnings(c("Platelets", "Platelets_group", "Disorder"), list()))),
+  "column names that only contain a word (Platelets, Disorder) are not run-order columns")
+check(!length(dx_acquisition_warnings(c("RunOrder", "batchID"), list())), "camel-case run-order and batch names are recognised")
 check(isTRUE(all.equal(unname(vapply(r2$samples, `[[`, numeric(1), "order")), metadata$Pseudotime)), "samples carry the ordering column's values")
 # ---- the same subject across groups (Subject column) -----------------------------------------------------------
 # Six people sampled in A and B, each 0.3 further along in B; P1 has two A samples (averaged); P7 only in A (unpaired).
