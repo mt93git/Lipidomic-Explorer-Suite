@@ -60,6 +60,9 @@ async function browserTests(pw, name, base) {
     // Inspector Size: an exact width in px resizes the card (canvas v1 w/h) as one undo step.
     await card(page, id).locator('header').click();
     await page.getByRole('tab', { name: 'Appearance', exact: true }).click();
+    // Size & position starts folded (2026-11-19): open it before typing.
+    const sizeBox = page.locator('#inspector details.size-section');
+    if (!(await sizeBox.evaluate(d => d.open))) await sizeBox.locator('summary').click();
     const widthField = page.getByRole('spinbutton', { name: 'Width (px)', exact: true });
     await widthField.fill('640'); await widthField.press('Enter');
     await page.waitForFunction(nodeId => window.__nexo.store.get().nodes.find(n => n.id === nodeId).width === 640, id);
@@ -68,6 +71,8 @@ async function browserTests(pw, name, base) {
     console.log(`PASS H2F ${name} inspector-size-width-single-undo`);
     // F1/F2 Size & position: a width typed in mm (96 px/in) resizes the card, one undo; exact X moves it, one undo.
     await card(page, id).locator('header').click();
+    // Size & position starts folded (2026-11-19): open it before typing.
+    if (!(await sizeBox.evaluate(d => d.open))) await sizeBox.locator('summary').click();
     await page.getByRole('group', { name: 'Units', exact: true }).getByRole('button', { name: 'mm', exact: true }).click();
     const mmField = page.getByRole('spinbutton', { name: 'Width (mm)', exact: true });
     await mmField.fill('120'); await mmField.press('Enter');

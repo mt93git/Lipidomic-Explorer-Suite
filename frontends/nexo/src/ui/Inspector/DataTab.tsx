@@ -12,6 +12,7 @@ import { UploadControls } from './UploadControls';
 import { isBucketControl } from '../../timecourse/designer';
 import { schemaCache as cache, cacheInputs } from './schemaCache';
 import { paletteNoteKind } from './paletteNote';
+import { openAppearanceSection } from './appearanceFocus';
 import { followsSessionPalette, PALETTE_FOLLOWERS_EVENT } from '../../palette/paletteRedraw';
 // Team's status notes (schema.R api_control_status) follow the session's design and analysis settings: after a design
 // confirmation or an analysis change every cached schema is stale, and the open Data tab reloads its own.
@@ -55,6 +56,8 @@ export function DataTab({node,handle,onStatus}:{node:Node;handle:CanvasHandle;on
   const noteKind = paletteNoteKind(schema, followsSessionPalette(node.id, schema.sessionPalette));
   const paletteNote = noteKind === 'follows' ? <p className="session-palette-note field-help">{s.paletteFollowsSession} <button type="button" onClick={() => ui({paletteOpen: true})}>{s.paletteOpen}</button></p>
     : noteKind === 'own' ? <p className="session-palette-note field-help">{s.paletteOwnColours}</p> : null;
+  // Gerardo 2026-11-19: a plot's own colours, point borders and shapes are in Appearance › Series; say so where a click lands.
+  const appearanceLink = node.kind === 'plot' ? <p className="appearance-link field-help"><button type="button" className="link" onClick={() => openAppearanceSection('Series')}>{s.appearanceLink}</button></p> : null;
   // A fixed dashboard card draws with the inputs kept in Nexo's member; the server's form only knows the
   // session's dashboard values, so show the card's own (after a reopen they differ).
   const own = node.instance?.instanceId || node.instance?.id ? undefined : handle.nexoInputs(node.id);
@@ -63,13 +66,13 @@ export function DataTab({node,handle,onStatus}:{node:Node;handle:CanvasHandle;on
   // b11 F3: the module's configuration file inputs (pathway "Upload Layout JSON (.json):"), above the controls.
   const files = schema.uploads?.length ? <UploadControls uploads={schema.uploads} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus}
     onUploaded={(id, file, result) => handle.recordUpload?.(node.id, id, file, result.inputs)}/> : null;
-  if (!shown.controls.length && !shown.actionControls?.length) return files || noteKind === 'follows' ? <>{paletteNote}{files}</> : <>{paletteNote}<p>This figure has no data controls.</p></>;
+  if (!shown.controls.length && !shown.actionControls?.length) return files || noteKind === 'follows' ? <>{paletteNote}{appearanceLink}{files}</> : <>{paletteNote}{appearanceLink}<p>This figure has no data controls.</p></>;
   // Computed controls (Team's run-time renderUI) are Nexo's own: mounted beside the schema form, kept in Nexo's member.
   const computed = shown.controls.filter(isComputedControl), member = handle.nexoInputs(node.id);
   const plain = computed.length ? {...shown, controls: shown.controls.filter(c => !isComputedControl(c))} as CardSchema : shown;
   const extra = computed.length ? <ComputedControls key={`computed-${version}-${computed.map(c => c.id).join('|')}`} controls={computed} own={member} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onCommit={(patch, baseline) => handle.setComputedInputs?.(node.id, patch, baseline)}/> : null;
-  if (!plain.controls.length && !plain.actionControls?.length) return <>{replayNote}{paletteNote}{files}{extra}</>;
-  return <>{replayNote}{paletteNote}{files}{extra}<SchemaForm key={version} schema={plain} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onUpdated={async (inputs,refresh) => {
+  if (!plain.controls.length && !plain.actionControls?.length) return <>{replayNote}{paletteNote}{appearanceLink}{files}{extra}</>;
+  return <>{replayNote}{paletteNote}{appearanceLink}{files}{extra}<SchemaForm key={version} schema={plain} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onUpdated={async (inputs,refresh) => {
     handle.updateCardInputs(node.id,inputs); cacheInputs(key,inputs);
     if(refresh) { const next = await getCardSchema(sessionId,instanceId); cache.set(key,next); setSchema(next); }
   }} onActed={async (_inputs, action) => {
