@@ -276,6 +276,24 @@ dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) 
   out[order(p)]
 }
 
+# Acquisition order (LC-MS drift): a numeric run-order column that follows d_eff (|rho| >= 0.5), or a batch or plate
+# column that separates it (FDR < 0.05), means the disease axis may carry the order samples were run in. Without such
+# a column the drift cannot be checked, which is said too.
+dx_acquisition_pattern <- "(^|[^a-z])(run|inject|injection|batch|plate|sequence|acquisition|order)"
+dx_acquisition_warnings <- function(columns, tests) {
+  found <- grep(dx_acquisition_pattern, columns, ignore.case = TRUE, value = TRUE)
+  if (!length(found))
+    return("No run-order or batch column in the metadata, so drift along the acquisition order cannot be checked. When groups were run in blocks, add the injection order as a numeric column.")
+  out <- character(0)
+  for (t in tests) if (t$column %in% found) {
+    if (t$kind == "numeric" && abs(t$statistic) >= 0.5)
+      out <- c(out, sprintf("d_eff follows %s (rho %.2f): the disease axis may carry an acquisition effect.", t$column, t$statistic))
+    if (t$kind == "categorical" && isTRUE(t$fdr < 0.05))
+      out <- c(out, sprintf("d_eff differs between the levels of %s (FDR %.2g): the disease axis may carry a batch effect.", t$column, t$fdr))
+  }
+  out
+}
+
 # Fig. 2d: the critical transition index (mean |feature-feature correlation| over mean
 # |sample-sample correlation|) of each group, on the most variable lipids.
 dx_transition_index <- function(z, groups, max_features = 200L) {
@@ -407,9 +425,7 @@ dx_landscape <- function(x, metadata, group_column, reference, target, ordering_
       aucFinal = dx_auc(d_final[keep], groups[keep] == g),
       inTarget = mean(d_final[groups %in% g] >= 0.5))
   })
-  warnings <- character(0)
-  for (t in tests) if (t$kind == "numeric" && grepl("run|order|inject|batch|plate", t$column, ignore.case = TRUE) && abs(t$statistic) >= 0.5)
-    warnings <- c(warnings, sprintf("d_eff follows %s (rho %.2f): the disease axis may carry an acquisition effect.", t$column, t$statistic))
+  warnings <- dx_acquisition_warnings(setdiff(names(metadata), skip), tests)
   list(
     params = list(groupColumn = group_column, reference = reference, target = target, ordering = ordering_source,
       nodes = n, window = window, step = step, cut = cut, samples = nrow(x), features = ncol(x), stateSpace = 2^n,
