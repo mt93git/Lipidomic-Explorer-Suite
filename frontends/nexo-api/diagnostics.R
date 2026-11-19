@@ -235,6 +235,20 @@ dx_mirrors <- function(v, groups) {
   sqrt(chi / (sum(tab) * (min(dim(tab)) - 1))) >= 0.95
 }
 
+# Partial mirror: a level of the column that is one whole group (the same samples, Jaccard >= 0.95), e.g. a
+# treatment column whose "Healthy control" level is the control group. Across all samples its test then carries
+# that group's difference; the column's own question lives in the other levels. Returns the group, or NULL.
+dx_contains_group <- function(v, groups) {
+  keep <- !is.na(v) & !is.na(groups)
+  v <- v[keep]; groups <- groups[keep]
+  if (length(unique(groups)) < 2L) return(NULL)
+  for (l in unique(v)) for (g in unique(groups)) {
+    a <- v == l; b <- groups == g
+    if (sum(a) >= 3L && sum(a & b) / sum(a | b) >= 0.95) return(g)
+  }
+  NULL
+}
+
 dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) {
   out <- list()
   # Identifiers (Subject_ID, Patient_ID, ...) name samples or people: they are not tested.
@@ -265,8 +279,9 @@ dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) 
         list(level = l, n = length(x), min = q[[1]], q1 = q[[2]], median = q[[3]], q3 = q[[4]], max = q[[5]],
           attractors = as.list(table(factor(attractor[keep & v == l], levels = sort(unique(attractor))))))
       })
+      mirrors <- !is.null(groups) && isTRUE(dx_mirrors(v, groups))
       out[[length(out) + 1L]] <- list(column = col, kind = "categorical", n = sum(keep), statistic = unname(kw$statistic),
-        mirrorsGroup = !is.null(groups) && isTRUE(dx_mirrors(v, groups)),
+        mirrorsGroup = mirrors, containsGroup = if (!mirrors && !is.null(groups)) dx_contains_group(v[keep], groups[keep]),
         statisticName = "Kruskal-Wallis H", p = kw$p.value, attractorP = fisher, levels = levels)
     }
   }

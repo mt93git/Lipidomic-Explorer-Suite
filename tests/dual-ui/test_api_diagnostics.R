@@ -39,6 +39,8 @@ x[, up] <- x[, up] + 2.5 * progress; x[, down] <- x[, down] - 2.5 * progress
 age <- round(30 + 30 * progress + rnorm(length(groups), 0, 4))
 metadata <- data.frame(.sample = rownames(x), Condition = groups, Age = age, Site = rep(c("North", "South"), length.out = length(groups)),
   Pseudotime = progress, Subject_ID = sprintf("P%02d", seq_along(groups)), stringsAsFactors = FALSE)
+# Arm repeats the Healthy group as one of its levels and splits the others: a partial mirror.
+metadata$Arm <- ifelse(groups == "Healthy", "Healthy control", rep(c("Drug", "None"), length.out = length(groups)))
 r <- dx_landscape(x, metadata, "Condition", "Healthy", "Disease", n_nodes = 8L, cut = 0.5)
 check(r$params$ordering == "axis", "without an ordering column the reference -> target axis orders the samples")
 check(r$params$nodes == 8L && all(vapply(r$network$nodes, `[[`, character(1), "name") %in% lipids[1:12]), "the network nodes are the planted lipids")
@@ -59,6 +61,10 @@ tests <- setNames(r$metadata, vapply(r$metadata, `[[`, character(1), "column"))
 check(!is.null(tests$Age) && tests$Age$kind == "numeric" && tests$Age$statistic > 0.5 && tests$Age$p < 0.001, "the planted Age association is found")
 check(!is.null(tests$Site) && tests$Site$p > 0.01, "an unrelated column is not significant")
 check(is.null(tests$Subject_ID), "identifier columns are not tested")
+check(!isTRUE(tests$Arm$mirrorsGroup) && identical(tests$Arm$containsGroup, "Healthy"), "a column with one level that is a whole group is flagged as containing it")
+check(is.null(tests$Site$containsGroup), "a column unrelated to the groups contains none")
+cases_tests <- setNames(r$metadataCases, vapply(r$metadataCases, `[[`, character(1), "column"))
+check(!is.null(cases_tests$Arm) && is.null(cases_tests$Arm$containsGroup), "without the reference group the same column is a plain test")
 # An ordering column (pseudotime) is used when given.
 r2 <- dx_landscape(x, metadata, "Condition", "Healthy", "Disease", ordering_column = "Pseudotime", n_nodes = 8L, cut = 0.5)
 check(r2$params$ordering == "Pseudotime", "a numeric ordering column replaces the axis")
