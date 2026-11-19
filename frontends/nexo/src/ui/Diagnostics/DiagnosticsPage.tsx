@@ -2,7 +2,7 @@
 // to lipids) between a reference and a target group, read against every metadata column for diagnosis and prognosis.
 import { useEffect, useMemo, useState } from 'react';
 import { getDiagnosticsOptions, runLandscape, type DiagnosticsOptions, type Landscape, type LandscapeRequest, type MetadataTest } from '../../api/diagnostics';
-import { AttractorComposition, DoubleHeatmap, DoubleRanking, FlowFigure, LandscapeFigure, MetadataDetail, NetworkFigure, PerturbationFigure, SampleMapFigure } from './Figures';
+import { AttractorComposition, DoubleHeatmap, DoubleRanking, FlowFigure, LandscapeFigure, MetadataDetail, NetworkFigure, PairedFigure, PerturbationFigure, SampleMapFigure } from './Figures';
 import { fmtP, perturbationLabel, shortName } from './landscapeMath';
 import { diagnosticsStrings as t } from './strings';
 import './diagnostics.css';
@@ -57,7 +57,7 @@ function Controls({ options, request, onChange, onRun, busy }: { options: Diagno
     <label>{t.target}<select value={request.target[0]} onChange={e => set({ target: [e.target.value] })}>{levels.filter(l => l.level !== request.reference[0]).map(l => <option key={l.level} value={l.level}>{l.level} ({l.n})</option>)}</select></label>
     <label title={t.orderingHelp}>{t.ordering}<select value={request.orderingColumn ?? ''} onChange={e => set({ orderingColumn: e.target.value || undefined })}>
       <option value="">{t.orderingAxis}</option>{numeric.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
-    <label>{t.subject}<select value={request.subjectColumn ?? ''} onChange={e => set({ subjectColumn: e.target.value || undefined })}><option value="">{t.none}</option>{options.columns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
+    <label title={t.subjectHelp}>{t.subject}<select value={request.subjectColumn ?? ''} onChange={e => set({ subjectColumn: e.target.value || undefined })}><option value="">{t.none}</option>{options.columns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
     <label>{t.nodes} <output>{request.nodes ?? 12}</output><input type="range" min={6} max={14} value={request.nodes ?? 12} onChange={e => set({ nodes: Number(e.target.value) })}/></label>
     <details className="dx-advanced"><summary>{t.advanced}</summary><div>
       <label title={t.cutHelp}>{t.cut} <output>{(request.cut ?? 0.6).toFixed(2)}</output><input type="range" min={0.3} max={0.9} step={0.05} value={request.cut ?? 0.6} onChange={e => set({ cut: Number(e.target.value) })}/></label>
@@ -113,9 +113,14 @@ function Panel({ letter, title, note, children }: { letter: string; title: strin
   return <section className="dx-panel"><h3><span className="dx-letter">{letter}</span>{title}</h3><p className="dx-panel-note">{note}</p>{children}</section>;
 }
 
+/** A column that renames the groups (mirrorsGroup) or has one level that is a whole group (containsGroup, e.g. a
+ *  "Healthy control" level in a treatment column): its test across all samples mostly repeats the group difference. */
+export const mirrorTag = (m: MetadataTest) => m.mirrorsGroup ? t.mirror : m.containsGroup ? t.containsGroup(m.containsGroup) : null;
+export const visibleTests = (tests: MetadataTest[], hideMirrors: boolean) => tests.filter(m => !(hideMirrors && mirrorTag(m)));
+
 function Diagnosis({ data }: { data: Landscape }) {
   const [scope, setScope] = useState<'all' | 'cases'>('all'), [hideMirrors, setHideMirrors] = useState(true);
-  const tests = (scope === 'all' ? data.metadata : data.metadataCases).filter(m => !(hideMirrors && m.mirrorsGroup));
+  const tests = visibleTests(scope === 'all' ? data.metadata : data.metadataCases, hideMirrors);
   const [selected, setSelected] = useState<string | null>(null);
   const current: MetadataTest | undefined = useMemo(() => tests.find(m => m.column === selected) ?? tests[0], [tests, selected]);
   return <>
@@ -125,6 +130,8 @@ function Diagnosis({ data }: { data: Landscape }) {
       <table className="dx-table"><thead><tr><th>Group</th><th>n</th><th>Critical transition index</th></tr></thead>
         <tbody>{data.transitionIndex.map(g => <tr key={g.group}><td>{g.group}</td><td>{g.n}</td><td>{g.index.toFixed(2)}</td></tr>)}</tbody></table>
       <AttractorComposition data={data}/></div></Panel>
+    {!!data.paired?.length && <Panel letter="Pr" title={t.figPaired} note={t.notePaired}><div className="dx-row">
+      {data.paired.map(pair => <PairedFigure key={`${pair.from}→${pair.to}`} pair={pair}/>)}</div></Panel>}
     <Panel letter="Md" title={t.figMetadata} note={t.noteMetadata}>
       <div className="dx-filters" role="group" aria-label={t.scope}>
         <label><input type="radio" checked={scope === 'all'} onChange={() => setScope('all')}/>{t.scopeAll}</label>
@@ -134,7 +141,7 @@ function Diagnosis({ data }: { data: Landscape }) {
       <div className="dx-row">
         <table className="dx-table dx-meta"><thead><tr><th>Metadata</th><th>Test</th><th>n</th><th>Statistic</th><th>p</th><th>FDR</th><th>Attractor p</th></tr></thead>
           <tbody>{tests.map(m => <tr key={m.column} aria-selected={current?.column === m.column} onClick={() => setSelected(m.column)} className={m.fdr < 0.05 ? 'sig' : ''}>
-            <td>{m.column}{m.mirrorsGroup && <span className="dx-tag">{t.mirror}</span>}</td><td>{m.kind === 'numeric' ? 'Spearman' : 'Kruskal-Wallis'}</td><td>{m.n}</td>
+            <td>{m.column}{mirrorTag(m) && <span className="dx-tag">{mirrorTag(m)}</span>}</td><td>{m.kind === 'numeric' ? 'Spearman' : 'Kruskal-Wallis'}</td><td>{m.n}</td>
             <td>{m.statistic.toFixed(2)}</td><td>{fmtP(m.p)}</td><td>{fmtP(m.fdr)}</td><td>{fmtP(m.attractorP)}</td></tr>)}</tbody></table>
         {current && <div><h4 className="dx-detail-title">{current.column}</h4><MetadataDetail test={current}/></div>}
       </div>

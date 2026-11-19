@@ -235,6 +235,23 @@ dx_mirrors <- function(v, groups) {
   sqrt(chi / (sum(tab) * (min(dim(tab)) - 1))) >= 0.95
 }
 
+# Partial mirror: one whole group is a level of the column, or the union of several (the same samples, Jaccard
+# >= 0.95), e.g. a treatment column whose "Healthy control" level is the control group, or a visit column that splits
+# the crisis group into first and second crises. Across all samples its test then carries that group's difference;
+# the column's own question lives in the other levels. Returns the group, or NULL.
+dx_contains_group <- function(v, groups) {
+  keep <- !is.na(v) & !is.na(groups)
+  v <- v[keep]; groups <- groups[keep]
+  if (length(unique(groups)) < 2L) return(NULL)
+  for (g in unique(groups)) {
+    b <- groups == g
+    inside <- vapply(unique(v), function(l) mean(b[v == l]) >= 0.95, logical(1))
+    a <- v %in% unique(v)[inside]
+    if (sum(a) >= 3L && sum(a & b) / sum(a | b) >= 0.95) return(g)
+  }
+  NULL
+}
+
 dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) {
   out <- list()
   # Identifiers (Subject_ID, Patient_ID, ...) name samples or people: they are not tested.
@@ -265,8 +282,9 @@ dx_metadata_tests <- function(metadata, d_init, attractor, skip, groups = NULL) 
         list(level = l, n = length(x), min = q[[1]], q1 = q[[2]], median = q[[3]], q3 = q[[4]], max = q[[5]],
           attractors = as.list(table(factor(attractor[keep & v == l], levels = sort(unique(attractor))))))
       })
+      mirrors <- !is.null(groups) && isTRUE(dx_mirrors(v, groups))
       out[[length(out) + 1L]] <- list(column = col, kind = "categorical", n = sum(keep), statistic = unname(kw$statistic),
-        mirrorsGroup = !is.null(groups) && isTRUE(dx_mirrors(v, groups)),
+        mirrorsGroup = mirrors, containsGroup = if (!mirrors && !is.null(groups)) dx_contains_group(v[keep], groups[keep]),
         statisticName = "Kruskal-Wallis H", p = kw$p.value, attractorP = fisher, levels = levels)
     }
   }
@@ -292,6 +310,30 @@ dx_acquisition_warnings <- function(columns, tests) {
       out <- c(out, sprintf("d_eff follows %s (rho %.2f): the disease axis may carry an acquisition effect.", t$column, t$statistic))
     if (t$kind == "categorical" && isTRUE(t$fdr < 0.05))
       out <- c(out, sprintf("d_eff differs between the levels of %s (FDR %.2g): the disease axis may carry a batch effect.", t$column, t$fdr))
+  }
+  out
+}
+
+# The same subject across groups: for every two groups with at least three subjects sampled in both, each subject's
+# mean d_eff in each (from the group lower on the landscape to the higher) and a Wilcoxon signed-rank test of the shift.
+# Paired, so it is not confounded by who was sampled in each group, nor by acquisition order when each subject's
+# samples were run together.
+dx_paired <- function(d, groups, subjects) {
+  if (is.null(subjects)) return(list())
+  subjects <- as.character(subjects); subjects[trimws(subjects) == ""] <- NA
+  ok <- !is.na(d) & !is.na(groups) & !is.na(subjects)
+  if (!any(ok)) return(list())
+  means <- tapply(d[ok], list(subjects[ok], groups[ok]), mean)
+  level <- sort(tapply(d[ok], groups[ok], stats::median))
+  out <- list()
+  for (a in seq_along(level)) for (b in seq_along(level)) if (a < b) {
+    from <- names(level)[[a]]; to <- names(level)[[b]]
+    both <- rownames(means)[!is.na(means[, from]) & !is.na(means[, to])]
+    if (length(both) < 3L) next
+    x <- means[both, from]; y <- means[both, to]
+    p <- suppressWarnings(stats::wilcox.test(y, x, paired = TRUE, exact = FALSE)$p.value)
+    out[[length(out) + 1L]] <- list(from = from, to = to, n = length(both), shift = stats::median(y - x), p = if (is.finite(p)) p else NA_real_,
+      subjects = lapply(seq_along(both), function(i) list(subject = both[[i]], from = unname(x[[i]]), to = unname(y[[i]]))))
   }
   out
 }
@@ -353,11 +395,12 @@ dx_landscape <- function(x, metadata, group_column, reference, target, ordering_
   pcs <- pca$x[, 1:2, drop = FALSE]
   if (stats::cor(pcs[, 1], d_init) < 0) pcs[, 1] <- -pcs[, 1]
   ids_col <- metadata$.sample
+  if (!(length(subject_column) && nzchar(subject_column) && subject_column %in% names(metadata))) subject_column <- NULL
+  subjects <- if (is.null(subject_column)) NULL else as.character(metadata[[subject_column]])
   samples <- lapply(seq_len(nrow(x)), function(i) list(sample = ids_col[[i]], group = dx_null(groups[[i]], "Unassigned"),
     pc1 = pcs[i, 1], pc2 = pcs[i, 2], order = order_value[[i]], dInit = d_init[[i]], dFinal = d_final[[i]],
     entropy = base$entropy_lookup[sample_codes[[i]] + 1], attractor = aid(sample_att[[i]]),
-    state = paste(as.integer(sample_states[i, ]), collapse = ""),
-    subject = if (length(subject_column) && subject_column %in% names(metadata)) as.character(metadata[[subject_column]][[i]]) else NULL))
+    state = paste(as.integer(sample_states[i, ]), collapse = ""), subject = subjects[i]))
   # Fig. 4c: where each initial state settles, and the entropy of the states in each basin.
   d_bin <- round(base$d_state * 20) / 20
   final_d <- vapply(base$attractor_of_state, function(a) round(base$attractors[[match(a, ids)]]$deff, 3), numeric(1))
@@ -414,7 +457,7 @@ dx_landscape <- function(x, metadata, group_column, reference, target, ordering_
       effect = nodes$effect[[i]], p = nodes$p[[i]], fdr = nodes$fdr[[i]], core = scc[[i]] == core && sum(scc == core) > 1L,
       x = layout[i, 1], y = layout[i, 2])),
     edges = if (is.null(edges)) list() else lapply(seq_len(nrow(edges)), function(k) list(from = edges$from[[k]], to = edges$to[[k]], sign = edges$sign[[k]])))
-  skip <- c(".sample", group_column)
+  skip <- c(".sample", group_column, subject_column)
   att_ids <- vapply(sample_att, aid, character(1))
   tests <- dx_metadata_tests(metadata[, setdiff(names(metadata), skip), drop = FALSE], d_init, att_ids, character(0), groups)
   # Within the cases (every sample outside the reference group): the prognostic question, where the
@@ -439,7 +482,7 @@ dx_landscape <- function(x, metadata, group_column, reference, target, ordering_
     entropyByAttractor = entropy_by_attractor,
     perturbations = list(single = singles, double = doubles,
       control = list(score = base$score)),
-    metadata = tests, metadataCases = within, diagnostic = diagnostic, transitionIndex = Filter(Negate(is.null), dx_transition_index(z, groups)),
+    metadata = tests, metadataCases = within, paired = dx_paired(d_init, groups, subjects), diagnostic = diagnostic, transitionIndex = Filter(Negate(is.null), dx_transition_index(z, groups)),
     warnings = I(warnings))
 }
 

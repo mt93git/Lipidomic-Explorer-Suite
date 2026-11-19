@@ -1,8 +1,9 @@
 // The Diagnostics figures, in plain SVG like the entry screens: Shin et al. 2025 Fig. 3c (network), 4b-i (landscape,
 // perturbations) and the metadata panels. Each takes the engine's answer (api/diagnostics.ts) and draws nothing else.
 import { useState, type ReactNode } from 'react';
-import type { Attractor, DoublePerturbation, Landscape, LandscapeSample, MetadataTest, Perturbation } from '../../api/diagnostics';
+import type { Attractor, DoublePerturbation, Landscape, LandscapeSample, MetadataTest, PairedComparison, Perturbation } from '../../api/diagnostics';
 import { binnedMean, clamp, edgePath, entropyColor, extent, fitLayout, fmtP, groupColors, landscapeCurve, niceTicks, perturbationLabel, rampColor, scale, shortName, wellWidth } from './landscapeMath';
+import { diagnosticsStrings } from './strings';
 
 const INK = '#141b24', MUTED = '#44505e', LINE = '#e3e7ec', RED = '#c0392b', NODE = '#a9d4ef', NODE_EDGE = '#2f6f99', WATER = '#5aa4c8';
 
@@ -219,5 +220,21 @@ export function MetadataDetail({ test }: { test: MetadataTest }) {
       <line x1={xs(i)} x2={xs(i)} y1={ys(l.min)} y2={ys(l.max)} stroke={MUTED}/><rect x={xs(i) - 14} y={ys(l.q3)} width={28} height={Math.max(1, ys(l.q1) - ys(l.q3))} fill={rampColor(l.median)} stroke={INK} strokeWidth={0.6}/>
       <line x1={xs(i) - 14} x2={xs(i) + 14} y1={ys(l.median)} y2={ys(l.median)} stroke={INK} strokeWidth={2}/>
       <text transform={`translate(${xs(i)},${H - B + 12}) rotate(25)`} className="dx-row-label">{l.level.length > 22 ? `${l.level.slice(0, 21)}…` : l.level} ({l.n})</text></g>)}
+  </svg></Tip>;
+}
+
+/** The same subject across two groups: one line per subject from its mean d_eff in the lower group to the higher one. */
+export function PairedFigure({ pair }: { pair: PairedComparison }) {
+  const W = 260, H = 250, L = 46, B = 40, T = 14, R = 24, x0 = L + 40, x1 = W - R - 40;
+  const values = pair.subjects.flatMap(s => [s.from, s.to]), [lo, hi] = extent([...values, 0, 1]);
+  const ys = scale(lo, hi, H - B, T), xs = scale(0, 1, L, W - R);
+  return <Tip><svg className="dx-svg" viewBox={`0 0 ${W} ${H + 16}`} width={W} role="img" aria-label={`Same subject: ${pair.from} → ${pair.to}`}>
+    <Axis x={L} y={T} w={W - L - R} h={H - T - B} xs={xs} ys={ys} xt={[]} yt={niceTicks(lo, hi, 5)} yLabel="Effective distance (mean)"/>
+    <text x={x0} y={H - B + 16} textAnchor="middle" fontSize={11} fill={INK}>{pair.from}</text>
+    <text x={x1} y={H - B + 16} textAnchor="middle" fontSize={11} fill={INK}>{pair.to}</text>
+    {pair.subjects.map(s => <line className={s.to >= s.from ? 'dx-pair dx-pair-up' : 'dx-pair dx-pair-down'} key={s.subject} x1={x0} y1={ys(s.from)} x2={x1} y2={ys(s.to)}
+      stroke={rampColor(s.to >= s.from ? 1 : 0)} strokeWidth={1.6} strokeOpacity={0.8} tabIndex={0}
+      data-tip={`${s.subject} · ${s.from.toFixed(2)} → ${s.to.toFixed(2)}`}/>)}
+    <text x={W / 2} y={H + 8} textAnchor="middle" fontSize={11} fill={MUTED}>{diagnosticsStrings.pairedSummary(pair.n, pair.shift, fmtP(pair.p))}</text>
   </svg></Tip>;
 }
