@@ -41,6 +41,8 @@ metadata <- data.frame(.sample = rownames(x), Condition = groups, Age = age, Sit
   Pseudotime = progress, Subject_ID = sprintf("P%02d", seq_along(groups)), stringsAsFactors = FALSE)
 # Arm repeats the Healthy group as one of its levels and splits the others: a partial mirror.
 metadata$Arm <- ifelse(groups == "Healthy", "Healthy control", rep(c("Drug", "None"), length.out = length(groups)))
+# Visit splits Disease into two visits and pools the other samples: Disease is the union of two of its levels.
+metadata$Visit <- ifelse(groups == "Disease", rep(c("Disease 1", "Disease 2"), length.out = length(groups)), "Routine")
 r <- dx_landscape(x, metadata, "Condition", "Healthy", "Disease", n_nodes = 8L, cut = 0.5)
 check(r$params$ordering == "axis", "without an ordering column the reference -> target axis orders the samples")
 check(r$params$nodes == 8L && all(vapply(r$network$nodes, `[[`, character(1), "name") %in% lipids[1:12]), "the network nodes are the planted lipids")
@@ -63,6 +65,7 @@ check(!is.null(tests$Site) && tests$Site$p > 0.01, "an unrelated column is not s
 check(is.null(tests$Subject_ID), "identifier columns are not tested")
 check(!isTRUE(tests$Arm$mirrorsGroup) && identical(tests$Arm$containsGroup, "Healthy"), "a column with one level that is a whole group is flagged as containing it")
 check(is.null(tests$Site$containsGroup), "a column unrelated to the groups contains none")
+check(identical(tests$Visit$containsGroup, "Disease"), "a group split over several levels (first and second visit) is contained too")
 cases_tests <- setNames(r$metadataCases, vapply(r$metadataCases, `[[`, character(1), "column"))
 check(!is.null(cases_tests$Arm) && is.null(cases_tests$Arm$containsGroup), "without the reference group the same column is a plain test")
 # An ordering column (pseudotime) is used when given.

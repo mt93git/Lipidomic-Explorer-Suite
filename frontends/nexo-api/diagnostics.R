@@ -235,15 +235,18 @@ dx_mirrors <- function(v, groups) {
   sqrt(chi / (sum(tab) * (min(dim(tab)) - 1))) >= 0.95
 }
 
-# Partial mirror: a level of the column that is one whole group (the same samples, Jaccard >= 0.95), e.g. a
-# treatment column whose "Healthy control" level is the control group. Across all samples its test then carries
-# that group's difference; the column's own question lives in the other levels. Returns the group, or NULL.
+# Partial mirror: one whole group is a level of the column, or the union of several (the same samples, Jaccard
+# >= 0.95), e.g. a treatment column whose "Healthy control" level is the control group, or a visit column that splits
+# the crisis group into first and second crises. Across all samples its test then carries that group's difference;
+# the column's own question lives in the other levels. Returns the group, or NULL.
 dx_contains_group <- function(v, groups) {
   keep <- !is.na(v) & !is.na(groups)
   v <- v[keep]; groups <- groups[keep]
   if (length(unique(groups)) < 2L) return(NULL)
-  for (l in unique(v)) for (g in unique(groups)) {
-    a <- v == l; b <- groups == g
+  for (g in unique(groups)) {
+    b <- groups == g
+    inside <- vapply(unique(v), function(l) mean(b[v == l]) >= 0.95, logical(1))
+    a <- v %in% unique(v)[inside]
     if (sum(a) >= 3L && sum(a & b) / sum(a | b) >= 0.95) return(g)
   }
   NULL
