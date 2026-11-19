@@ -2,7 +2,7 @@
 // to lipids) between a reference and a target group, read against every metadata column for diagnosis and prognosis.
 import { useEffect, useMemo, useState } from 'react';
 import { getDiagnosticsOptions, runLandscape, type DiagnosticsOptions, type Landscape, type LandscapeRequest, type MetadataTest } from '../../api/diagnostics';
-import { AttractorComposition, DoubleHeatmap, DoubleRanking, FlowFigure, LandscapeFigure, MetadataDetail, NetworkFigure, PerturbationFigure, SampleMapFigure } from './Figures';
+import { AttractorComposition, DoubleHeatmap, DoubleRanking, FlowFigure, LandscapeFigure, MetadataDetail, NetworkFigure, PairedFigure, PerturbationFigure, SampleMapFigure } from './Figures';
 import { fmtP, perturbationLabel, shortName } from './landscapeMath';
 import { diagnosticsStrings as t } from './strings';
 import './diagnostics.css';
@@ -57,7 +57,7 @@ function Controls({ options, request, onChange, onRun, busy }: { options: Diagno
     <label>{t.target}<select value={request.target[0]} onChange={e => set({ target: [e.target.value] })}>{levels.filter(l => l.level !== request.reference[0]).map(l => <option key={l.level} value={l.level}>{l.level} ({l.n})</option>)}</select></label>
     <label title={t.orderingHelp}>{t.ordering}<select value={request.orderingColumn ?? ''} onChange={e => set({ orderingColumn: e.target.value || undefined })}>
       <option value="">{t.orderingAxis}</option>{numeric.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
-    <label>{t.subject}<select value={request.subjectColumn ?? ''} onChange={e => set({ subjectColumn: e.target.value || undefined })}><option value="">{t.none}</option>{options.columns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
+    <label title={t.subjectHelp}>{t.subject}<select value={request.subjectColumn ?? ''} onChange={e => set({ subjectColumn: e.target.value || undefined })}><option value="">{t.none}</option>{options.columns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
     <label>{t.nodes} <output>{request.nodes ?? 12}</output><input type="range" min={6} max={14} value={request.nodes ?? 12} onChange={e => set({ nodes: Number(e.target.value) })}/></label>
     <details className="dx-advanced"><summary>{t.advanced}</summary><div>
       <label title={t.cutHelp}>{t.cut} <output>{(request.cut ?? 0.6).toFixed(2)}</output><input type="range" min={0.3} max={0.9} step={0.05} value={request.cut ?? 0.6} onChange={e => set({ cut: Number(e.target.value) })}/></label>
@@ -125,6 +125,8 @@ function Diagnosis({ data }: { data: Landscape }) {
       <table className="dx-table"><thead><tr><th>Group</th><th>n</th><th>Critical transition index</th></tr></thead>
         <tbody>{data.transitionIndex.map(g => <tr key={g.group}><td>{g.group}</td><td>{g.n}</td><td>{g.index.toFixed(2)}</td></tr>)}</tbody></table>
       <AttractorComposition data={data}/></div></Panel>
+    {!!data.paired?.length && <Panel letter="Pr" title={t.figPaired} note={t.notePaired}><div className="dx-row">
+      {data.paired.map(pair => <PairedFigure key={`${pair.from}→${pair.to}`} pair={pair}/>)}</div></Panel>}
     <Panel letter="Md" title={t.figMetadata} note={t.noteMetadata}>
       <div className="dx-filters" role="group" aria-label={t.scope}>
         <label><input type="radio" checked={scope === 'all'} onChange={() => setScope('all')}/>{t.scopeAll}</label>
