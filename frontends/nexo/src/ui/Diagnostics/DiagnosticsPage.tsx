@@ -113,9 +113,14 @@ function Panel({ letter, title, note, children }: { letter: string; title: strin
   return <section className="dx-panel"><h3><span className="dx-letter">{letter}</span>{title}</h3><p className="dx-panel-note">{note}</p>{children}</section>;
 }
 
+/** A column that renames the groups (mirrorsGroup) or has one level that is a whole group (containsGroup, e.g. a
+ *  "Healthy control" level in a treatment column): its test across all samples mostly repeats the group difference. */
+export const mirrorTag = (m: MetadataTest) => m.mirrorsGroup ? t.mirror : m.containsGroup ? t.containsGroup(m.containsGroup) : null;
+export const visibleTests = (tests: MetadataTest[], hideMirrors: boolean) => tests.filter(m => !(hideMirrors && mirrorTag(m)));
+
 function Diagnosis({ data }: { data: Landscape }) {
   const [scope, setScope] = useState<'all' | 'cases'>('all'), [hideMirrors, setHideMirrors] = useState(true);
-  const tests = (scope === 'all' ? data.metadata : data.metadataCases).filter(m => !(hideMirrors && m.mirrorsGroup));
+  const tests = visibleTests(scope === 'all' ? data.metadata : data.metadataCases, hideMirrors);
   const [selected, setSelected] = useState<string | null>(null);
   const current: MetadataTest | undefined = useMemo(() => tests.find(m => m.column === selected) ?? tests[0], [tests, selected]);
   return <>
@@ -136,7 +141,7 @@ function Diagnosis({ data }: { data: Landscape }) {
       <div className="dx-row">
         <table className="dx-table dx-meta"><thead><tr><th>Metadata</th><th>Test</th><th>n</th><th>Statistic</th><th>p</th><th>FDR</th><th>Attractor p</th></tr></thead>
           <tbody>{tests.map(m => <tr key={m.column} aria-selected={current?.column === m.column} onClick={() => setSelected(m.column)} className={m.fdr < 0.05 ? 'sig' : ''}>
-            <td>{m.column}{m.mirrorsGroup && <span className="dx-tag">{t.mirror}</span>}</td><td>{m.kind === 'numeric' ? 'Spearman' : 'Kruskal-Wallis'}</td><td>{m.n}</td>
+            <td>{m.column}{mirrorTag(m) && <span className="dx-tag">{mirrorTag(m)}</span>}</td><td>{m.kind === 'numeric' ? 'Spearman' : 'Kruskal-Wallis'}</td><td>{m.n}</td>
             <td>{m.statistic.toFixed(2)}</td><td>{fmtP(m.p)}</td><td>{fmtP(m.fdr)}</td><td>{fmtP(m.attractorP)}</td></tr>)}</tbody></table>
         {current && <div><h4 className="dx-detail-title">{current.column}</h4><MetadataDetail test={current}/></div>}
       </div>

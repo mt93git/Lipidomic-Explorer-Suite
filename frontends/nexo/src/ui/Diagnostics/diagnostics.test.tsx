@@ -5,7 +5,7 @@ vi.mock('../../collab/mode', () => ({ collab: () => null }));
 vi.mock('../../collab/roles', () => ({ currentRole: () => null, subscribeRole: () => () => {} }));
 import { mockDiagnosticsOptions, mockLandscape } from '../../mock/diagnostics';
 import { TopBar } from '../TopBar';
-import { defaultRequest, withReference } from './DiagnosticsPage';
+import { defaultRequest, mirrorTag, visibleTests, withReference } from './DiagnosticsPage';
 import { LandscapeFigure, NetworkFigure, PairedFigure, PerturbationFigure } from './Figures';
 import { edgePath, fitLayout, landscapeCurve, perturbationLabel, rampColor, shortName } from './landscapeMath';
 
@@ -71,6 +71,14 @@ it('a wild type group is the default reference', () => {
     { name: 'Genotype', numeric: false, missing: 0, levels: [{ level: 'Knockout', n: 4 }, { level: 'Wild type', n: 4 }] },
   ] });
   expect(request).toMatchObject({ reference: ['Wild type'], target: ['Knockout'] });
+});
+
+it('columns that rename the groups in full or in one level are tagged and hidden together', () => {
+  const test = (column: string, extra: object) => ({ column, kind: 'categorical' as const, n: 60, statistic: 20, statisticName: 'Kruskal-Wallis H', p: 1e-6, fdr: 1e-5, ...extra });
+  const tests = [test('State', { mirrorsGroup: true }), test('HU_group', { mirrorsGroup: false, containsGroup: 'Control' }), test('Sex', { mirrorsGroup: false })];
+  expect(tests.map(mirrorTag)).toEqual(['mirrors groups', 'contains Control', null]);
+  expect(visibleTests(tests, true).map(m => m.column)).toEqual(['Sex']);
+  expect(visibleTests(tests, false)).toHaveLength(3);
 });
 
 it('the figures draw the mock landscape: lipid network, valleys and every perturbation', () => {
