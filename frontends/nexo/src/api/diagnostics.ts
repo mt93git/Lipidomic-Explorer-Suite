@@ -27,6 +27,8 @@ export interface MetadataTest {
   /** The group one of this column's levels repeats (same samples), when the column does not mirror the groups as a whole. */
   containsGroup?: string | null; levels?: LevelSummary[]; points?: { x: number; y: number; attractor: string }[];
 }
+/** Subjects sampled in two groups: each one's mean d_eff in both, and the signed-rank test of the shift. */
+export interface PairedComparison { from: string; to: string; n: number; shift: number; p: number | null; subjects: { subject: string; from: number; to: number }[] }
 export interface Landscape {
   params: { groupColumn: string; reference: string[] | string; target: string[] | string; ordering: string; nodes: number; window: number; step: number; cut: number; samples: number; features: number; stateSpace: number;
     maxInputs?: number; parsimony?: number; ends?: number; perturbations?: string; ruleFit?: number };
@@ -37,6 +39,8 @@ export interface Landscape {
   entropyByAttractor: { attractor: string; deff: number; min: number; q1: number; median: number; q3: number; max: number }[];
   perturbations: { single: Perturbation[]; double: DoublePerturbation[]; control: { score: number } };
   metadata: MetadataTest[]; metadataCases: MetadataTest[];
+  /** Empty without a subject column. */
+  paired?: PairedComparison[];
   diagnostic: { group: string; vs: string; n: number; aucInit: number; aucFinal: number; inTarget: number }[];
   transitionIndex: { group: string; n: number; index: number }[];
   warnings: string[];

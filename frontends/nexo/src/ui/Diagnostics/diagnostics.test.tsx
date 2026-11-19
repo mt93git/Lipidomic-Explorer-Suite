@@ -6,7 +6,7 @@ vi.mock('../../collab/roles', () => ({ currentRole: () => null, subscribeRole: (
 import { mockDiagnosticsOptions, mockLandscape } from '../../mock/diagnostics';
 import { TopBar } from '../TopBar';
 import { defaultRequest, mirrorTag, visibleTests, withReference } from './DiagnosticsPage';
-import { LandscapeFigure, NetworkFigure, PerturbationFigure } from './Figures';
+import { LandscapeFigure, NetworkFigure, PairedFigure, PerturbationFigure } from './Figures';
 import { edgePath, fitLayout, landscapeCurve, perturbationLabel, rampColor, shortName } from './landscapeMath';
 
 it('the landscape surface sits at S max away from the attractors and reaches each attractor entropy at its effective distance', () => {
@@ -100,4 +100,14 @@ it('the top bar offers Diagnostics after Canvas and marks the current view', () 
   expect(html('diagnostics')).toMatch(/<button type="button" class="step">Canvas<\/button><button type="button" class="step" aria-current="step">Diagnostics<\/button>/);
   // Without a view switch (older callers) the bar keeps its single Canvas step.
   expect(renderToStaticMarkup(createElement(TopBar, { projectName: 'Synthetic', onCheckpoints() {}, saveText: '', saveStatus: 'idle' }))).toContain('<span aria-current="step">Canvas</span>');
+});
+
+it('the paired figure draws one line per subject between its two groups, with the median shift and p', () => {
+  const pair = { from: 'Steady State', to: 'Crisis', n: 3, shift: 0.25, p: 0.03, subjects: [
+    { subject: 'P1', from: 0.2, to: 0.5 }, { subject: 'P2', from: 0.4, to: 0.65 }, { subject: 'P3', from: 0.6, to: 0.5 }] };
+  const html = renderToStaticMarkup(createElement(PairedFigure, { pair }));
+  expect(html).toContain('aria-label="Same subject: Steady State → Crisis"');
+  expect((html.match(/<line class="dx-pair/g) ?? []).length).toBe(3);
+  expect((html.match(/dx-pair-down/g) ?? []).length).toBe(1); // P3 moved back towards the reference
+  expect(html).toContain('3 subjects · median shift +0.25 · p = 0.030');
 });
