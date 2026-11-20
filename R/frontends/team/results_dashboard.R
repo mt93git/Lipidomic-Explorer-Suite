@@ -316,6 +316,63 @@ rd_pca_score_stats <- function(score, group, test = c("rank", "param"), correcti
   pairs$stars <- rd_pca_score_stars(pairs$p_adj)
   list(n = n, median = med, tested = tested, skipped = skipped, omnibus = omni, pairs = pairs, test = test, correction = correction)
 }
+# Where the PCA score card's group table goes (paper units): the header row, the row step and the table's domain
+# c(0, domain), with the plot above it. Up to four groups keep the original layout (header 0.215, step 0.052,
+# domain 0.28). More groups grow the table up to half the figure, then shrink the step (never below 0.03), so
+# the last row always stays at y = 0.007, inside the figure.
+rd_pca_score_table_layout <- function(n_groups) {
+  rows <- max(4L, as.integer(n_groups)); bottom <- 0.007; gap <- 0.065; step <- 0.052; cap <- 0.5
+  if (bottom + rows * step + gap > cap) step <- max(0.03, (cap - bottom - gap) / rows)
+  head <- bottom + rows * step
+  list(head = head, step = step, domain = head + gap)
+}
+# The PCA score card's figure (output$plot_pcascore): one box per group with its samples, significance brackets,
+# and the group table (colour, median, n) below the plot. `r` is pcs_result(); it only draws what r holds.
+rd_pca_score_figure <- function(r, meta = NULL) {
+  res <- r$res; lev <- intersect(r$levels, res$tested)
+  fam <- "Arial, Helvetica, sans-serif"
+  colof <- function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) "#6b7280" else col }
+  p <- plotly::plot_ly()
+  for (g in lev) {
+    i <- r$group == g; col <- colof(g)
+    p <- plotly::add_trace(p, type = "box", x = rep(g, sum(i)), y = r$score[i], name = g, text = r$sample[i],
+      boxpoints = "all", jitter = 0.45, pointpos = 0, fillcolor = grDevices::adjustcolor(col, 0.65),
+      line = list(color = "#000000", width = 1.5), marker = list(color = col, size = 6, line = list(color = "#3a3a3a", width = 0.8)),
+      hoverinfo = "y+text", legendgroup = g, showlegend = FALSE)
+  }
+  yr <- range(r$score[r$group %in% lev], na.rm = TRUE); span <- max(diff(yr), 1e-9); pr <- res$pairs
+  shapes <- list(); ann <- list(); top <- yr[2]
+  for (i in seq_len(nrow(pr))) {
+    x1 <- match(pr$A[i], lev) - 1; x2 <- match(pr$B[i], lev) - 1
+    y0 <- yr[2] + span * (0.06 + 0.17 * (i - 1)); y1 <- y0 + span * 0.03; top <- max(top, y1 + span * 0.09)
+    shapes[[length(shapes) + 1L]] <- list(type = "path", path = sprintf("M %s,%s L %s,%s L %s,%s L %s,%s", x1, y0, x1, y1, x2, y1, x2, y0), line = list(color = "#000000", width = 1.5))
+    big <- !identical(pr$stars[i], "ns")
+    ann[[length(ann) + 1L]] <- list(x = (x1 + x2) / 2, y = y1, text = pr$stars[i], showarrow = FALSE, yanchor = "bottom", xanchor = "center", font = list(family = fam, size = if (big) 16 else 12, color = "#000000"))
+  }
+  cell <- function(x, y, text, xanchor, bold = FALSE) list(x = x, y = y, xref = "paper", yref = "paper", text = if (bold) paste0("<b>", text, "</b>") else text,
+    showarrow = FALSE, xanchor = xanchor, yanchor = "middle", align = xanchor, font = list(family = fam, size = 10, color = "#000000"))
+  # Group table below the plot (as in the publication figure): colour dot + group (n), median, n.
+  tab <- rd_pca_score_table_layout(length(lev)); step <- tab$step; y_head <- tab$head
+  ann[[length(ann) + 1L]] <- cell(0.27, y_head, "Group", "center", TRUE)
+  ann[[length(ann) + 1L]] <- cell(0.60, y_head, sprintf("Median PC%d", r$k), "center", TRUE)
+  ann[[length(ann) + 1L]] <- cell(0.86, y_head, "n", "center", TRUE)
+  for (j in seq_along(lev)) {
+    g <- lev[j]; y <- y_head - step * j; nm <- if (nchar(g) > 26L) paste0(substr(g, 1L, 25L), "…") else g
+    ann[[length(ann) + 1L]] <- cell(0.075, y, sprintf("%s (n = %d)", htmltools::htmlEscape(nm), res$n[[g]]), "left")
+    ann[[length(ann) + 1L]] <- cell(0.60, y, sprintf("%+.2f", res$median[[g]]), "center")
+    ann[[length(ann) + 1L]] <- cell(0.86, y, as.character(res$n[[g]]), "center")
+    p <- plotly::add_trace(p, type = "scatter", mode = "markers", x = 0.045, y = y, xaxis = "x2", yaxis = "y2", name = g, legendgroup = g, showlegend = FALSE,
+      meta = list(teamLegendProxy = TRUE), hoverinfo = "skip", marker = list(symbol = "circle", size = 8, color = colof(g), line = list(color = "#3a3a3a", width = 0.8)))
+  }
+  frame <- list(showline = TRUE, linecolor = "#000000", linewidth = 1, mirror = TRUE, showgrid = FALSE, zeroline = FALSE, tickcolor = "#000000", ticklen = 4)
+  p |> rd_layout(meta = meta, shapes = shapes, annotations = ann,
+    xaxis = c(list(title = "", type = "category", domain = c(0, 1), categoryorder = "array", categoryarray = lev, showticklabels = FALSE, ticks = ""), frame[c("showline", "linecolor", "linewidth", "mirror", "showgrid", "zeroline")]),
+    yaxis = c(list(title = sprintf("PC%d score (%.1f%% of variance)", r$k, r$ve), domain = c(tab$domain, 1), ticks = "outside",
+                   range = c(yr[1] - span * 0.05, top + span * 0.03)), frame),
+    xaxis2 = list(domain = c(0, 1), range = c(0, 1), visible = FALSE, fixedrange = TRUE, anchor = "y2"),
+    yaxis2 = list(domain = c(0, tab$domain), range = c(0, tab$domain), visible = FALSE, fixedrange = TRUE, anchor = "x2"),
+    showlegend = FALSE, margin = list(l = 65, r = 15, t = 15, b = 10))
+}
 
 results_dashboard_ui <- function(id = "results_dashboard") {
   ns <- if (is.null(id)) identity else NS(id)
@@ -735,52 +792,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   })
   # The canvas figure: one box per group with its samples, significance brackets, and the group table
   # (colour, median, n) drawn inside the figure on the right.
-  output$plot_pcascore <- plotly::renderPlotly({
-    r <- pcs_result(); res <- r$res; lev <- intersect(r$levels, res$tested)
-    fam <- "Arial, Helvetica, sans-serif"
-    colof <- function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) "#6b7280" else col }
-    p <- plotly::plot_ly()
-    for (g in lev) {
-      i <- r$group == g; col <- colof(g)
-      p <- plotly::add_trace(p, type = "box", x = rep(g, sum(i)), y = r$score[i], name = g, text = r$sample[i],
-        boxpoints = "all", jitter = 0.45, pointpos = 0, fillcolor = grDevices::adjustcolor(col, 0.65),
-        line = list(color = "#000000", width = 1.5), marker = list(color = col, size = 6, line = list(color = "#3a3a3a", width = 0.8)),
-        hoverinfo = "y+text", legendgroup = g, showlegend = FALSE)
-    }
-    yr <- range(r$score[r$group %in% lev], na.rm = TRUE); span <- max(diff(yr), 1e-9); pr <- res$pairs
-    shapes <- list(); ann <- list(); top <- yr[2]
-    for (i in seq_len(nrow(pr))) {
-      x1 <- match(pr$A[i], lev) - 1; x2 <- match(pr$B[i], lev) - 1
-      y0 <- yr[2] + span * (0.06 + 0.17 * (i - 1)); y1 <- y0 + span * 0.03; top <- max(top, y1 + span * 0.09)
-      shapes[[length(shapes) + 1L]] <- list(type = "path", path = sprintf("M %s,%s L %s,%s L %s,%s L %s,%s", x1, y0, x1, y1, x2, y1, x2, y0), line = list(color = "#000000", width = 1.5))
-      big <- !identical(pr$stars[i], "ns")
-      ann[[length(ann) + 1L]] <- list(x = (x1 + x2) / 2, y = y1, text = pr$stars[i], showarrow = FALSE, yanchor = "bottom", xanchor = "center", font = list(family = fam, size = if (big) 16 else 12, color = "#000000"))
-    }
-    ttl <- if (!is.null(res$omnibus)) sprintf("%s p = %s", res$omnibus$name, rd_pca_score_fmt(res$omnibus$p)) else NULL
-    cell <- function(x, y, text, xanchor, bold = FALSE) list(x = x, y = y, xref = "paper", yref = "paper", text = if (bold) paste0("<b>", text, "</b>") else text,
-      showarrow = FALSE, xanchor = xanchor, yanchor = "middle", align = xanchor, font = list(family = fam, size = 10, color = "#000000"))
-    # Group table below the plot (as in the publication figure): colour dot + group (n), median, n.
-    tab_top <- 0.215; step <- 0.052; y_head <- tab_top
-    ann[[length(ann) + 1L]] <- cell(0.27, y_head, "Group", "center", TRUE)
-    ann[[length(ann) + 1L]] <- cell(0.60, y_head, sprintf("Median PC%d", r$k), "center", TRUE)
-    ann[[length(ann) + 1L]] <- cell(0.86, y_head, "n", "center", TRUE)
-    for (j in seq_along(lev)) {
-      g <- lev[j]; y <- y_head - step * j; nm <- if (nchar(g) > 26L) paste0(substr(g, 1L, 25L), "…") else g
-      ann[[length(ann) + 1L]] <- cell(0.075, y, sprintf("%s (n = %d)", htmltools::htmlEscape(nm), res$n[[g]]), "left")
-      ann[[length(ann) + 1L]] <- cell(0.60, y, sprintf("%+.2f", res$median[[g]]), "center")
-      ann[[length(ann) + 1L]] <- cell(0.86, y, as.character(res$n[[g]]), "center")
-      p <- plotly::add_trace(p, type = "scatter", mode = "markers", x = 0.045, y = y, xaxis = "x2", yaxis = "y2", name = g, legendgroup = g, showlegend = FALSE,
-        meta = list(teamLegendProxy = TRUE), hoverinfo = "skip", marker = list(symbol = "circle", size = 8, color = colof(g), line = list(color = "#3a3a3a", width = 0.8)))
-    }
-    frame <- list(showline = TRUE, linecolor = "#000000", linewidth = 1, mirror = TRUE, showgrid = FALSE, zeroline = FALSE, tickcolor = "#000000", ticklen = 4)
-    p |> rd_layout(meta = team_condition_meta(), shapes = shapes, annotations = ann,
-      xaxis = c(list(title = "", type = "category", domain = c(0, 1), categoryorder = "array", categoryarray = lev, showticklabels = FALSE, ticks = ""), frame[c("showline", "linecolor", "linewidth", "mirror", "showgrid", "zeroline")]),
-      yaxis = c(list(title = sprintf("PC%d score (%.1f%% of variance)", r$k, r$ve), domain = c(0.28, 1), ticks = "outside",
-                     range = c(yr[1] - span * 0.05, top + span * 0.03)), frame),
-      xaxis2 = list(domain = c(0, 1), range = c(0, 1), visible = FALSE, fixedrange = TRUE, anchor = "y2"),
-      yaxis2 = list(domain = c(0, 0.28), range = c(0, 0.28), visible = FALSE, fixedrange = TRUE, anchor = "x2"),
-      showlegend = FALSE, margin = list(l = 65, r = 15, t = 15, b = 10))
-  })
+  output$plot_pcascore <- plotly::renderPlotly(rd_pca_score_figure(pcs_result(), team_condition_meta()))
   output$pcs_report <- renderUI({
     r <- pcs_result(); res <- r$res; pr <- res$pairs
     rank <- identical(res$test, "rank")
