@@ -230,7 +230,8 @@ async function browserTests(pw, name, base) {
     // Clear the style before the existing independent inspector journeys.
     await inspector.getByRole('button',{name:'Reset Nexo style',exact:true}).click();
     console.log('PASS F13 '+name+' nexo-log-range-badge-team-view-save-reopen');
-    await inspector.getByText('Color palette',{exact:true}).first().click();
+    // Color palette starts open (2026-11-19); open it only when it is folded.
+    { const palette=inspector.locator('details',{has:page.locator('summary',{hasText:/^Color palette$/})}).first(); if(!(await palette.evaluate(d=>d.open))) await palette.locator('summary').click(); }
     const renderCount = await page.evaluate(()=>window.__nexoMock.renders);
     // A palette recolours the violin's fill; its sample points stay black, as Team draws them (R/results_dashboard.R:420)
     // and as Team's palette leaves them (www/team/js/plot_editor.js:181).

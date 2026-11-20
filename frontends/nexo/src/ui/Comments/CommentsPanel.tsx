@@ -1,3 +1,4 @@
+import { Icon } from '../Icon';
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type * as Y from 'yjs';
 import { boardReadOnly, getAwareness } from '../../collab/provider';
@@ -79,7 +80,7 @@ export function CommentsPanel() {
     {'draft' in at ? !readOnly && <Composer label="New comment" action="Post" autoFocus people={others} onSend={(text, mentions) => {
       const id = board.add({ ...at.draft, text, mentions }); if (id) dispatchEvent(new CustomEvent('nexo-comment-open', { detail: id })); }}/>
     : c ? <>
-      <div><button type="button" onClick={() => showComments({ list: true })}>← All comments</button></div>
+      <div><button type="button" onClick={() => showComments({ list: true })}><Icon name="arrow-left"/>All comments</button></div>
       <article ref={thread} tabIndex={-1} aria-label={`Comment by ${c.displayName || 'you'}`}><Byline c={c}/>{c.resolved && <small style={muted}> · Resolved</small>}<Text m={c} people={people}/>
         {card && <small style={{ ...muted, display: 'block', marginTop: 4 }}>{`Pinned to ${card}`}</small>}</article>
       {c.replies.map((r, i) => <article key={i} style={{ paddingLeft: 12, borderLeft: '2px solid var(--line)' }}><Byline c={r}/><Text m={r} people={people}/></article>)}

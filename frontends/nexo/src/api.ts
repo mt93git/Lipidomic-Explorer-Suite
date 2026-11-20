@@ -6,8 +6,8 @@ import { validateState } from './state/validate';
 import {validateNexo,assertNexoMember} from './state/nexo';
 import { checkpointZip, readCheckpointZip } from './mock/archive';
 import { mockCohortGet, mockCohortPut, mockCohortSaved, mockCohortOpened, mockCohortCounters } from './mock/cohort';
-import { mockPaletteGet, mockPalettePut, mockPaletteSaved, mockPaletteOpened, mockPaletteCounters, mockPaletteOverride, mockPaletteTeamState, mockPaletteGroups } from './mock/palette';
-import type { PaletteChange, PaletteState, SessionPalette } from './palette/sessionPalette';
+import { mockPaletteGet, mockPalettePut, mockPaletteExport, mockPaletteSaved, mockPaletteOpened, mockPaletteCounters, mockPaletteOverride, mockPaletteTeamState, mockPaletteGroups } from './mock/palette';
+import type { PaletteChange, PaletteRecord, PaletteState, SessionPalette } from './palette/sessionPalette';
 import { schemaFor, sessionPaletteFamily, mockCounters, mockActionModals, mockComputedLabel, mockHeatStatus, MOCK_HEAT_RENDER_UNAVAILABLE, MOCK_STRUCTURAL_PLACEHOLDER, mockLayoutApply, mockLayoutDownload, mockAct } from './mock/schema';
 import { checkUploadFile, parseLayoutJson, refusal } from './state/layoutUpload';
 import { mockTimecourseUpdate, mockTimecourseGenerated, isLongitudinal } from './mock/timecourse';
@@ -540,6 +540,8 @@ export async function updateAnalysis(id:string, inputs:Inputs):Promise<import('.
 // Team's session palette (pilot F1; frontends/nexo-api/palette.R): session-wide group colours. A change redraws every card.
 if (mock) Object.assign(window, {__nexoPaletteMock: mockPaletteCounters});
 export const getPalette = sessionRoute('getPalette', (id:string):Promise<SessionPalette> => mock ? enqueue(async () => (mockSession(id), mockPaletteGet(id))) : request(`${path(id)}/palette`));
+/** Team's "Download JSON": the palette record and the file name Team gives it (palette.R api_palette_export). */
+export const exportPalette = sessionRoute('exportPalette', (id:string):Promise<{filename:string; record:PaletteRecord}> => mock ? enqueue(async () => (mockSession(id), mockPaletteExport(id))) : request(`${path(id)}/palette/export`));
 export async function updatePalette(id:string, change:PaletteChange):Promise<SessionPalette> {
  const result = collab() ? await viaIntent('palette', {}, change, () => getPalette(id)) : await sessionRoute('updatePalette', (id:string) => mock ? enqueue(async () => (mockSession(id), mockPalettePut(id, change))) : request<SessionPalette>(`${path(id)}/palette`, change, 'PATCH'))(id);
  heldEdits(id).palette = structuredClone(result.state);

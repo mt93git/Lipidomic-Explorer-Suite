@@ -4,16 +4,41 @@
 // says how many cards actually redrew (Steph review 4b; palette/paletteRedraw.ts).
 // Non-modal: the board stays visible and the cards redraw behind it. Each change is one undo step (canvas.ts).
 import { useContext, useEffect, useRef, useState } from 'react';
-import { getPalette, updatePalette, type Session } from '../api';
+import { exportPalette, getPalette, updatePalette, type Session } from '../api';
 import { CanvasHandleContext } from '../canvas/handle';
-import { groupColourChange, paletteChoiceChange, type PaletteChange, type SessionPalette } from '../palette/sessionPalette';
+import { groupColourChange, paletteChoiceChange, paletteImportClash, paletteSaveName, parsePaletteRecord, type PaletteChange, type SessionPalette } from '../palette/sessionPalette';
 import { similarGroups } from '../palette/groupContrast';
 import { recordPaletteRedraw, startRedrawWatch } from '../palette/paletteRedraw';
 import { notify, notifyFailure } from './model';
 import { strings as s, phrases as p } from './strings';
+/** Team's "Save & reuse": save the colours shown as a named palette, download the active one as JSON, import one. */
+export function SaveReuse({palette, onSave, onDownload, onImport}: {palette: SessionPalette; onSave: (name: string) => void;
+  onDownload: () => void; onImport: (file: File) => void}) {
+  const [name, setName] = useState(''), file = useRef<HTMLInputElement>(null);
+  const valid = paletteSaveName(palette, name), bad = name.trim() !== '' && !valid;
+  const save = () => { if (valid) { onSave(valid); setName(''); } };
+  return <section className="session-palette-save" aria-labelledby="session-palette-save-title">
+    <h3 id="session-palette-save-title">{s.paletteSaveHeading}</h3>
+    <p className="field-help">{s.paletteSaveHelp}</p>
+    <label className="session-palette-row"><span>{s.paletteSaveName}</span>
+      <input type="text" value={name} maxLength={80} placeholder={s.paletteSavePlaceholder} aria-invalid={bad || undefined}
+        aria-describedby={bad ? 'session-palette-save-bad' : undefined} onChange={e => setName(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); save(); } }}/></label>
+    {bad && <p id="session-palette-save-bad" className="field-help" role="status">{s.paletteSaveBadName}</p>}
+    <div className="session-palette-save-actions">
+      <button type="button" disabled={!valid} onClick={save}>{s.paletteSave}</button>
+      <button type="button" onClick={onDownload}>{s.paletteDownload}</button>
+      <button type="button" onClick={() => file.current?.click()}>{s.paletteImport}</button>
+      <input ref={file} type="file" accept="application/json,.json" hidden aria-label={s.paletteImport}
+        onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onImport(f); }}/>
+    </div>
+    <small className="field-help">{s.paletteImportHelp}</small>
+  </section>;
+}
 /** What the panel shows; stateless, so it can be checked without a browser (sessionPalette.test.tsx). */
-export function PaletteView({palette, busy, onPalette, onColour}: {palette: SessionPalette; busy: boolean;
-  onPalette: (name: string) => void; onColour: (context: string, group: string, value: string, commit: boolean) => void}) {
+export function PaletteView({palette, busy, onPalette, onColour, onSave, onDownload, onImport}: {palette: SessionPalette; busy: boolean;
+  onPalette: (name: string) => void; onColour: (context: string, group: string, value: string, commit: boolean) => void;
+  onSave?: (name: string) => void; onDownload?: () => void; onImport?: (file: File) => void}) {
   return <fieldset disabled={busy} className="session-palette-body">
     <h3>{s.paletteChoose}</h3>
     <div className="session-palette-choices" role="group" aria-label={s.paletteChoose}>
@@ -31,6 +56,7 @@ export function PaletteView({palette, busy, onPalette, onColour}: {palette: Sess
       {similarGroups(context.groups).map(([a, b]) => <p key={`${a}|${b}`} className="session-palette-warning" role="status">{p.hardToTellApart(a, b)}</p>)}
     </fieldset>)}
     {!palette.shapesEditable && <small className="field-help">{s.paletteNoShapes}</small>}
+    {onSave && onDownload && onImport && <SaveReuse palette={palette} onSave={onSave} onDownload={onDownload} onImport={onImport}/>}
   </fieldset>;
 }
 export function SessionPalettePanel({session, onClose, onApplied}: {session: Session; onClose: () => void; onApplied: () => void}) {
@@ -49,6 +75,24 @@ export function SessionPalettePanel({session, onClose, onApplied}: {session: Ses
     return () => { mounted.current = false; clearTimeout(timer.current); window.removeEventListener('nexo-palette-restored', restored); if (dialog.open) dialog.close();
       document.querySelector<HTMLElement>('nav.rail [aria-label="Palettes"]')?.focus(); };
   }, [session.sessionId]);
+  // Download JSON: the record Team's downloadHandler writes, under Team's file name.
+  async function download() {
+    setError('');
+    try {
+      const {filename, record} = await exportPalette(session.sessionId);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], {type: 'application/json'})), a = document.createElement('a');
+      a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : String(e)); notifyFailure(s.paletteFailed, e); }
+  }
+  // Import palette JSON: read and check the file here, then Team imports it (palette_upload) and makes it active.
+  async function importFile(file: File) {
+    const record = file.size <= 512 * 1024 ? parsePaletteRecord(await file.text()) : null;
+    if (!record) { setError(s.paletteImportBad); return; }
+    // Team answers a taken name with a generic refusal: say why before sending it.
+    const clash = server.current && paletteImportClash(server.current, record);
+    if (clash) { setError(p.paletteImportExists(clash)); return; }
+    void apply({import: record});
+  }
   async function apply(change: PaletteChange | null) {
     const before = server.current; if (!change || !before) return;
     // The fieldset is disabled while the change is applied, which drops focus to <body>: give it back afterwards.
@@ -61,6 +105,8 @@ export function SessionPalettePanel({session, onClose, onApplied}: {session: Ses
       take(next); handle?.setSessionPalette?.(before.state, next.state);
       onApplied();
       const undo = () => handle?.undo();
+      // Save palette keeps the colours shown: say it was saved instead of counting redraws.
+      if ('save' in change) { notify(p.paletteSaved(next.active), false); return; }
       notify(s.paletteRedrawing, false, undo);
       if (mounted.current) setRedrawing(true);
       void watch.settle({ timeoutMs: 20000 }).then(result => {
@@ -87,7 +133,8 @@ export function SessionPalettePanel({session, onClose, onApplied}: {session: Ses
     <p className="field-help">{s.paletteIntro}</p>
     <div className="analysis-content" aria-busy={busy}>
       {!palette && !error && <p role="status">{s.paletteLoading}</p>}
-      {palette && <PaletteView palette={palette} busy={busy} onPalette={name => void apply(paletteChoiceChange(palette, name))} onColour={colour}/>}
+      {palette && <PaletteView palette={palette} busy={busy} onPalette={name => void apply(paletteChoiceChange(palette, name))} onColour={colour}
+        onSave={name => void apply({save: name})} onDownload={() => void download()} onImport={file => void importFile(file)}/>}
     </div>
     <p role="status" className="analysis-status">{error ? '' : busy ? s.paletteUpdating : redrawing ? s.paletteRedrawing : ''}</p><p role="alert">{error}</p>
   </dialog>;
