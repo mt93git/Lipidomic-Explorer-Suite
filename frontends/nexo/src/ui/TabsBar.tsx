@@ -46,7 +46,7 @@ export function TabsBar({ editTabs, duplicate, remove, activate }: {
         if (e.key === 'F2' || e.key === 'Enter') { e.preventDefault(); rename(tab.id); }
         if (['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) { e.preventDefault(); const n = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.tabs.length) % tabs.tabs.length; activate(tabs.tabs[n].id); document.getElementById(tabs.tabs[n].id)?.focus(); }
       }}><span className="tab-name">{tab.name}</span><span className="badge">{tab.nodes.length}</span></button>)}
-    </div>{(edges.left || edges.right) && <div className="all-tabs"><Menu label={s.allTabsIcon} name={s.allTabs}>
+    </div>{(edges.left || edges.right) && <div className="all-tabs"><Menu label="" name={s.allTabs} caret>
       {tabs.tabs.map(tab => <button key={tab.id} className="tab-option" aria-current={tab.id === tabs.active ? 'true' : undefined} onClick={() => activate(tab.id)}><span className="tab-name">{tab.name}</span><span className="badge">{tab.nodes.length}</span></button>)}
     </Menu></div>}{!readOnly && <><button aria-label={s.addTab} data-tip={s.addTab} disabled={tabs.tabs.length >= model.MAX_TABS} onClick={() => editTabs(t => { model.addTab(t); })}>{s.plus}</button>
     <Menu label={s.more} name={s.tabActions}>

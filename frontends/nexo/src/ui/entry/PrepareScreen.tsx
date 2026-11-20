@@ -1,3 +1,4 @@
+import { Icon } from '../Icon';
 import { useEffect, useId, useState } from 'react';
 import { openDatasetSession, confirmDesign, AdminSignInRequired, adminSignInUrl, type DatasetSession, type DatasetSettings, type PreparationChoices } from '../../api';
 import { datasetPreview } from '../../api/datasetSession';
@@ -101,7 +102,7 @@ export function PrepareScreen({ dataset, choices, onPrepared, onCancel }: {
   return <div className="entry entry-step">
     <div className="prep">
       <section className="sheet form" aria-labelledby={`${id}-title`}>
-        <button type="button" className="crumb" onClick={onCancel}><span aria-hidden="true">‹</span>{p.start}</button>
+        <button type="button" className="crumb" onClick={onCancel}><Icon name="left"/>{p.start}</button>
         <h1 id={`${id}-title`}>{name ? p.title(name) : p.untitled}</h1>
         <p className="lede">{p.lede(preview?.total ?? null, state.samples.length)}</p>
         <form id={`${id}-form`} noValidate onSubmit={e => { e.preventDefault(); if (!busy) return prepare(); }}>

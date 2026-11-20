@@ -1,3 +1,4 @@
+import { Icon } from './Icon';
 import { CanvasHandleContext, tabsBridges } from '../canvas/handle';
 import { exportPage } from '../figure/exportPage';
 import { initialDocument, syncDocument } from '../figure/model';
@@ -54,15 +55,15 @@ export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:(
   // "Undo mine" (Gerardo, 2026-11-10): with nothing on the geometry stack, Undo takes back my last settled science change (collab/intents.ts).
   const [mine, setMine] = useState(false);
   useEffect(() => { const told = (e: Event) => setMine((e as CustomEvent<boolean>).detail); addEventListener('nexo-undo-mine', told); return () => removeEventListener('nexo-undo-mine', told); }, []);
-  const history = !readOnly && <><button disabled={!handle?.canUndo && !mine} onClick={() => { if (handle?.canUndo) handle.undo(); else void import('../collab/intents').then(m => m.undoMine()); }}>{s.undoTool}</button><button disabled={!handle?.canRedo} onClick={() => handle?.redo()}>{s.redoTool}</button></>;
+  const history = !readOnly && <><button disabled={!handle?.canUndo && !mine} onClick={() => { if (handle?.canUndo) handle.undo(); else void import('../collab/intents').then(m => m.undoMine()); }}><Icon name="undo"/>{s.undoTool}</button><button disabled={!handle?.canRedo} onClick={() => handle?.redo()}><Icon name="redo"/>{s.redoTool}</button></>;
   const exports = <><button disabled={!handle} onClick={() => setExporting('publication')}>{s.publicationExport}</button><button disabled={!handle} onClick={() => setExporting('plot')}>{s.exportSelected}</button>{!readOnly && <><button onClick={onSave}>{s.saveCheckpoint}</button><button onClick={onDownload}>{s.downloadZip}</button></>}{(['svg','pdf','print'] as const).map(kind => <button key={kind} disabled={!handle} onClick={() => void pageExport(kind)}>{kind==='svg'?s.pageSvg:kind==='pdf'?s.pagePdf:s.pagePrint}</button>)}</>;
   const analysis = !readOnly && <button data-analysis-trigger disabled={!handle} onClick={onAnalysis}>{s.analysisSettings}</button>;
-  const figure = <button disabled={!handle} onClick={() => { if(handle?.figureMode)handle.exitFigureMode();else handle?.enterFigureMode(); }}>{handle?.figureMode ? s.backToDraft : s.figure}</button>;
+  const figure = <button disabled={!handle} onClick={() => { if(handle?.figureMode)handle.exitFigureMode();else handle?.enterFigureMode(); }}>{handle?.figureMode ? <><Icon name="arrow-left"/>{s.backToDraft}</> : <>{s.figure}<Icon name="arrow-right"/></>}</button>;
   return <div ref={ref} className="toolbar" role="toolbar" aria-label={s.tools}>
     {!collapsed.includes('analysis') && analysis}
     {!collapsed.includes('add') && add}{comment}{!collapsed.includes('arrange') && tidy}{!collapsed.includes('history') && history}
     {!collapsed.includes('add') && <span className="draft">{handle?.figureMode ? s.figurePage : pending ? p.draftPending(pending) : s.draft}</span>}{!collapsed.includes('figure') && figure}
-    {!collapsed.includes('export') && <Menu label={s.export}>{exports}</Menu>}
+    {!collapsed.includes('export') && <Menu label={s.export} caret>{exports}</Menu>}
     <Menu label={s.more} name={s.tools}>{collapsed.includes('figure') && figure}{collapsed.includes('analysis') && analysis}{collapsed.includes('add') && add}{collapsed.includes('arrange') && tidy}{collapsed.includes('history') && history}{collapsed.includes('export') && exports}
       {!readOnly && <><button disabled={!handle || !clipboard()} title={clipboard() ? undefined : s.pasteEmpty} onClick={() => void handle?.paste().catch(error => notifyFailure(s.failPaste, error))}>{s.paste}</button><button onClick={() => setRemoving(true)}>{s.removeAll}</button>
         {/* Journey review 5.4: align and distribute the selected cards (Shift-click or drag a frame to select). */}
