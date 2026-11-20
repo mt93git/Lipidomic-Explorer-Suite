@@ -246,7 +246,7 @@ details[open]>summary::before{transform:rotate(45deg)}
 #inspector h4{font-size:var(--font-label);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:var(--space-4) 0 var(--space-2)}
 #inspector [role=tabpanel]{padding:0 var(--space-4)}
 #inspector [role=tabpanel] p{margin:0 0 var(--space-3);color:var(--muted);font-size:var(--font-small)}
-#inspector [role=tabpanel]>fieldset>div{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+#inspector [role=tabpanel]>fieldset>div:not(.plot-editor){display:flex;flex-wrap:wrap;gap:var(--space-2)}
 #inspector [role=tabpanel]>fieldset>div>button{margin:0}
 #inspector section[aria-label]{padding:0!important}
 #inspector label{display:grid;gap:var(--space-1);margin:0 0 var(--space-3);font-size:var(--font-small);color:var(--ink);font-weight:500}
@@ -666,6 +666,9 @@ dialog.session-palette{z-index:30;box-shadow:-8px 0 24px rgb(0 0 0 / .08)}
 .session-palette-chips span{width:12px;height:12px;border-radius:2px;border:1px solid rgb(0 0 0 / .15)}
 .session-palette-context{border:1px solid #c6cbd1;border-radius:6px;padding:8px 10px;margin:0 0 10px}
 .session-palette-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+.session-palette-save{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+.session-palette-save .session-palette-row input[type=text]{flex:1;min-width:0;max-width:60%}
+.session-palette-save-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .session-palette-warning{margin:6px 0 2px;padding:4px 8px;border-radius:4px;background:var(--amber-bg);color:var(--amber-fg);font-size:13px}
 .session-palette-row input[type=color]{width:44px;height:28px;padding:0;border:1px solid #a8adb5}
 .session-palette-note button{margin-left:4px}
