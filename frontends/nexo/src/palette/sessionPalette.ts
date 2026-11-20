@@ -35,6 +35,10 @@ export function paletteSaveName(palette: SessionPalette, name: string): string |
   if (taken && (taken.kind !== 'saved' || n !== palette.active)) return null;
   return n;
 }
+/** Why an imported record cannot be added (Team refuses a name already listed: Default, a preset or a saved palette), else null. */
+export function paletteImportClash(palette: SessionPalette, record: PaletteRecord): string | null {
+  return palette.palettes.some(p => p.name === record.name) ? record.name : null;
+}
 /** A palette JSON file as Team reads it (name + a map of "<context>::<label>" to #RRGGBB); null when it is not one. */
 export function parsePaletteRecord(text: string): PaletteRecord | null {
   let raw: unknown;

@@ -110,6 +110,7 @@ export const phrases = {
   showOnCanvas: (label: string) => `Show ${label} on the canvas`,
   selectedOf: (n: number, total: number) => `${n} of ${total}`,
   paletteSaved: (name: string) => `Saved palette: ${name}`,
+  paletteImportExists: (name: string) => `A palette named “${name}” already exists — rename it in the file or choose another file.`,
   paletteApplied: (redrew: number, of: number, later: number) => `Session colours applied: ${redrew} of ${of} plots redrew${later ? ` (${later} not drawn yet)` : ''}. Plots with their own colour settings keep them.`,
   groupColour: (group: string) => `Colour for ${group}`, hardToTellApart: (a: string, b: string) => `${a} and ${b} are hard to tell apart. Choose a colour further from the other group's.`, groupShape: (group: string) => `Shape for ${group}`, bqcSelected: (n: number, total: number) => `${n} of ${total} samples selected`,
   // A schema bound may be null (the API sends Team's numericInput without a max as "max": null).

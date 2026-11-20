@@ -188,7 +188,18 @@ for (pair in list(c("Lipid Class", "subclass"), c("Hyperclass", "hyperclass"))) 
 
 saved_name <- "Nexo test palette"
 before_save <- api_palette_key(s)
+# What every card's colours come from: the session maps and the dashboard's condition colours (Team's defaults
+# unless custom_colors names the group, results_dashboard.R rd_team_resolved_condition_colors).
+colour_sources <- function() api_read(s, list(maps = s$shared$color_maps(), class = s$shared$class_color_map(),
+  origin = s$shared$origin_color_map(), dashboard = rd_team_resolved_condition_colors(groups, s$shared$palette_settings())))
+sources_before_save <- colour_sources()
 res <- api_palette_update(s, list(save = saved_name))
+# Saving only records the palette: Team's palette_save copies every shown colour into custom_colors, which made
+# the automatic defaults explicit edits and repainted cards with their own colours (staging demo 2026-11-19: the
+# dashboard PCA went from its pastel condition colours to the session's red).
+if (!identical(res$state$customColors, before_save$customColors) || !identical(res$state$useCustomColors, before_save$useCustomColors))
+  stop("FAIL Save palette changed the session's colour state (custom colours or useCustomColors)")
+if (!identical(colour_sources(), sources_before_save)) stop("FAIL Save palette changed the colours the cards draw with")
 if (!saved_name %in% names(api_palette_saved(s))) stop("FAIL Save palette did not add ", saved_name, " to Team's color_palettes")
 if (!identical(res$active, saved_name)) stop("FAIL Save palette did not make ", saved_name, " the active palette")
 kinds <- stats::setNames(vapply(res$palettes, function(x) x$kind, character(1)), vapply(res$palettes, function(x) x$name, character(1)))

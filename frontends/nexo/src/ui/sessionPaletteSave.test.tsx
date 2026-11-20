@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PaletteView } from './SessionPalette';
-import { paletteSaveName, parsePaletteRecord, type SessionPalette } from '../palette/sessionPalette';
+import { paletteImportClash, paletteSaveName, parsePaletteRecord, type SessionPalette } from '../palette/sessionPalette';
+import { phrases } from './strings';
 import { mockPaletteExport, mockPaletteGet, mockPalettePut, mockPaletteOpened, mockPaletteSaved } from '../mock/palette';
 const palette = (active = 'Default'): SessionPalette => ({ active, shapesEditable: false,
   state: { useCustomColors: false, customColors: {}, activePalette: active },
@@ -24,6 +25,12 @@ describe('Save & reuse', () => {
     for (const bad of ['', '   ', 'Default', 'Tableau Classic', 'Lab figures', 'x'.repeat(81)]) expect(paletteSaveName(palette(), bad), bad).toBeNull();
     expect(paletteSaveName(palette('Lab figures'), 'Lab figures')).toBe('Lab figures');
   });
+  it('an import whose name is already listed is explained, not sent (staging demo 2026-11-19)', () => {
+    const colors = { 'Group1::Control': '#AA3300' };
+    for (const taken of ['Lab figures', 'Default', 'Tableau Classic']) expect(paletteImportClash(palette(), { name: taken, colors }), taken).toBe(taken);
+    expect(paletteImportClash(palette(), { name: 'Lab figures 2', colors })).toBeNull();
+    expect(phrases.paletteImportExists('Lab figures')).toMatch(/already exists.*rename it.*choose another file/);
+  });
   it('an imported file must be a name and a map of #RRGGBB colours', () => {
     expect(parsePaletteRecord('{"name":" Mine ","colors":{"Group1::Control":"#aa3300"}}')).toEqual({ name: 'Mine', colors: { 'Group1::Control': '#AA3300' } });
     for (const bad of ['nope', '[]', '{"name":"x"}', '{"name":"","colors":{"a":"#000000"}}', '{"name":"x","colors":{"a":"red"}}', '{"name":"x","colors":{}}'])
@@ -42,8 +49,12 @@ describe('mock: annotation contexts and Save & reuse, as palette.R', () => {
   it('save, export and import: saved palettes are listed, active, and travel with the checkpoint', () => {
     const id = 'palette-save-session';
     mockPalettePut(id, { context: 'Group1', colors: { Control: '#aa3300' } });
+    const before = mockPaletteGet(id).state;
     const saved = mockPalettePut(id, { save: 'Lab figures' });
     expect(saved.active).toBe('Lab figures');
+    // A save only records the palette: the colour state (and so every plot's colours) stays as it was.
+    expect(saved.state.customColors).toEqual(before.customColors);
+    expect(saved.state.useCustomColors).toBe(before.useCustomColors);
     expect(saved.palettes.find(p => p.name === 'Lab figures')?.kind).toBe('saved');
     expect(() => mockPalettePut(id, { save: 'Default' })).toThrow(/unique palette name/);
     const ex = mockPaletteExport(id);
