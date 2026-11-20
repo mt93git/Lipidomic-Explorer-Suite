@@ -106,7 +106,9 @@ export function mockPalettePut(session: string, body: unknown): SessionPalette {
     if (kinds[0] === 'save') s.activePalette = record.name;
     else Object.assign(s, { useCustomColors: true, customColors: structuredClone(record.colors), activePalette: record.name });
   } else {
-    const restored = validatePaletteState(b.restore); if (!restored) bad('Expected a palette state to restore.');
+    const restored = validatePaletteState(b.restore); if (!restored) return bad('Expected a palette state to restore.');
+    // palette.R: a saved palette no longer listed (a reopen from an older origin) keeps its colours under Default.
+    if (restored.activePalette !== 'Default' && !MOCK_PRESETS[restored.activePalette] && !savedOf(session)[restored.activePalette]) restored.activePalette = 'Default';
     Object.assign(s, restored);
   }
   bySession.set(session, s); mockPaletteCounters.patches.push(structuredClone(body) as PaletteChange);

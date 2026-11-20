@@ -38,6 +38,11 @@ describe('Save & reuse', () => {
   });
 });
 describe('mock: annotation contexts and Save & reuse, as palette.R', () => {
+  it('a restore naming a saved palette this session does not hold keeps its colours under Default (reopen)', () => {
+    const got = mockPalettePut('palette-restore-missing', { restore: { useCustomColors: true, customColors: { 'Group1::Control': '#0a0b0c' }, activePalette: 'Saved elsewhere' } });
+    expect(got.active).toBe('Default');
+    expect(got.state.customColors['Group1::Control']).toBe('#0A0B0C');
+  });
   it('lists Lipid class and Lipid category; a class colour is Team\'s Apply on that context', () => {
     const id = 'palette-class-session', got = mockPaletteGet(id);
     expect(got.contexts.map(c => c.label)).toEqual(['Sample groups (Group 1)', 'Lipid class', 'Lipid category']);
