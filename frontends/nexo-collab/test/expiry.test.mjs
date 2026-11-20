@@ -33,12 +33,14 @@ test('Admin outage keeps the socket and does not close it as signed out', async 
   assert.deepEqual(codes, []); stop();
 });
 
-test('the socket closes 4401 and the provider reconnects with a fresh token', { timeout: 6000 }, async t => {
+test('the socket closes 4401 and the provider reconnects with a fresh token', { timeout: 10000 }, async t => {
   const { fakePostgrest } = await import('./fake-postgrest.mjs');
   const { start } = await import('../src/server.mjs');
   const { HocuspocusProvider } = await import('@hocuspocus/provider');
   const projectId = 'aaaaaaaa-0000-4000-8000-00000000000a';
-  const first = token(Math.floor(Date.now() / 1000) + 1), fresh = token(Math.floor(Date.now() / 1000) + 300);
+  // The first token must still be valid when the socket authenticates, after the server starts and the project is
+  // created: floor(now) + 1 left anywhere from 0 to 1 s and failed under a loaded full run. ceil(now) + 2 leaves 2 to 3 s.
+  const first = token(Math.ceil(Date.now() / 1000) + 2), fresh = token(Math.floor(Date.now() / 1000) + 300);
   const rows = [{ caller: 'synthetic-staff', caller_view: 'staff' }];
   const admin = await fakePostgrest({ [first]: rows, [fresh]: rows });
   const server = await start({ port: 0, dbPath: ':memory:', restUrl: admin.url, anonKey: 'test' });
