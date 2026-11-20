@@ -45,7 +45,9 @@ export function createVersions({ db, engine, connected }) {
       meta.set('session', { id: opened.sessionId, generation: opened.generation });
       meta.set('engineStatus', 'ready');
       // Recovery (engine.mjs open) reopens the restored checkpoint, which already holds its analysis, cohort and palette.
-      meta.set('origin', { checkpointId: version.checkpoint_id });
+      // A dataset project keeps its dataset and preparation settings: a joiner opens with them, decisions re-prepare from them.
+      const { checkpointId: _previous, ...dataset } = meta.get('origin') ?? {};
+      meta.set('origin', { ...dataset, checkpointId: version.checkpoint_id });
       const design = opened.design;
       if (design) meta.set('design', { unit: design.unit, type: design.type, confirmed: design.confirmed === true });
       else meta.delete('design');

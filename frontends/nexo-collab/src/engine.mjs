@@ -61,7 +61,8 @@ export function createEngine({ apiUrl = process.env.NEXO_API_URL, secret = proce
     const meta = state.doc.getMap('meta'), origin = meta.get('origin');
     if (!origin || !meta.get('workspace') || !meta.get('project')) throw new Error('Project meta origin, workspace and project are required');
     const collab = { workspace: meta.get('workspace'), project: meta.get('project') };
-    const checkpointId = origin.checkpointId;
+    // A preparation change (reopen with `settings`) prepares the dataset again, even after a restore.
+    const checkpointId = settings ? undefined : origin.checkpointId;
     const body = checkpointId ? { checkpointId, collab } : {
       ...(origin.adminDatasetId ? { adminDatasetId: origin.adminDatasetId } : { datasetId: origin.datasetId }), settings: settings ?? origin.settings, collab,
     };

@@ -205,3 +205,19 @@ test('another decision on an old project keeps its excluded sample out as Team\'
   assert.deepEqual(current().samples, ['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
   assert.deepEqual(current().outlierTreatments, { Control_2: 'remove' });
 });
+
+// After a restore (meta.origin.checkpointId, versions.mjs) an exclusion prepares the dataset again with the new settings,
+// and recovery follows it; a decision that needs no re-preparation keeps the restored checkpoint.
+test('after a restore an exclusion re-prepares the dataset and drops the checkpoint; keep leaves it', async t => {
+  const { r, doc, decide } = await setup(t);
+  const meta = doc.getMap('meta');
+  meta.set('origin', { ...meta.get('origin'), checkpointId: 'restored-checkpoint' });
+  await decide({ sample: 'Treated_3', choice: 'keep' });
+  assert.equal(meta.get('origin').checkpointId, 'restored-checkpoint');
+  const before = opens(r).length;
+  await decide({ sample: 'Treated_3', choice: 'exclude' });
+  assert.equal(opens(r).length, before + 1);
+  assert.deepEqual(opens(r).at(-1).body.settings.outlierTreatments, { Treated_3: 'remove' });
+  assert.equal(meta.get('origin').checkpointId, undefined);
+  assert.equal(meta.get('origin').adminDatasetId, 'synthetic-dataset');
+});
