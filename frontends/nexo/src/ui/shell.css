@@ -123,6 +123,12 @@ input::placeholder{color:var(--muted);opacity:1}
 details>summary{list-style:none;cursor:pointer}details>summary::-webkit-details-marker{display:none}
 details>summary::before{content:'';display:inline-block;width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin:0 8px 2px 2px;transition:transform var(--motion-hover) var(--ease)}
 details[open]>summary::before{transform:rotate(45deg)}
+/* Chevrons and arrows are SVG (ui/Icon.tsx): Nunito Sans has no ▾ → ↶, so text glyphs fell back to system fonts. */
+.icon{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
+.icon{margin-left:.25em}.icon-left,.icon-arrow-left,.icon-undo,.icon-redo{margin:0 .3em 0 0}
+.entry .crumb .icon,.all-tabs .icon{margin:0}
+/* One select arrow everywhere, drawn like .icon-down; !important because several screens reset select background and padding with shorthands. */
+select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2344505e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 8px center!important;background-size:14px 14px!important;padding-right:28px!important;text-overflow:ellipsis}
 
 /* Top bar: quiet navy, the current step is the one accent fill. */
 .topbar{gap:var(--space-2);padding:0 var(--space-3) 0 var(--space-3)}

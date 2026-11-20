@@ -1,5 +1,6 @@
 import { requestQueue, prefetchEnabled } from './prefetch';
 import { needsStudyDesign, enlargedHeatmap } from './canvas/cardActions';
+import { iconMarkup } from './ui/Icon';
 import { strings as s, phrases as p } from './ui/strings';
 import { completeQueuedAdd } from './canvas/queuedAdd';
 import { sanitizeSettings } from './statistics/settings';
@@ -667,7 +668,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   // The overview is kept as its world centre and scale, so it comes back right even if a panel opened meanwhile.
   let overview: { x: number; y: number; scale: number } | undefined;
   const overviewPill = document.createElement('button'); overviewPill.type = 'button'; overviewPill.className = 'overview-pill'; overviewPill.hidden = true;
-  overviewPill.innerHTML = '<span aria-hidden="true">←</span>'; overviewPill.append(s.backToOverview);
+  overviewPill.innerHTML = iconMarkup('arrow-left'); overviewPill.append(s.backToOverview);
   overviewPill.onpointerdown = e => e.stopPropagation();
   overviewPill.onclick = () => backToOverview();
   vp.parentElement!.append(overviewPill);
