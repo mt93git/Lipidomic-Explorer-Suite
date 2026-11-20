@@ -229,6 +229,16 @@ stopifnot(refused(api_palette_update(s, list(import = list(name = imported$name,
   refused(api_palette_update(s, list(import = list(name = "Bad colours", colors = list(x = "red"))))),
   refused(api_palette_update(s, list(import = "not a record"))))
 cat("PASS refusals: import of an existing name, non-hex colours, a non-record\n")
+# A reopen from an older origin (the collaboration sidecar replays meta.palette {restore}) may name a saved palette
+# that session does not hold: the colours come back under Default instead of a 400 that leaves the project unopened
+# (staging 2026-11-19, ORD699 after a deploy).
+gone <- list(useCustomColors = TRUE, customColors = stats::setNames(list("#0A0B0C"), palette_context_key("Group1", group)),
+  activePalette = "Palette saved in another session")
+res <- tryCatch(api_palette_update(s, list(restore = gone)), error = function(e) e)
+if (inherits(res, "error")) stop("FAIL restore refuses a saved palette the session does not hold: ", conditionMessage(res))
+if (!identical(res$active, "Default") || !identical(res$state$customColors[[palette_context_key("Group1", group)]], "#0A0B0C"))
+  stop("FAIL restore of a missing saved palette did not keep its colours under Default")
+cat("PASS restore naming a saved palette the session does not hold keeps the colours under Default (reopen)\n")
 api_palette_update(s, list(restore = state0))
 
 # 4. Round trip: save as Nexo does (Team's export_session_path, storage.R api_checkpoint_save), then Team's reader

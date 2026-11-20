@@ -213,8 +213,11 @@ api_palette_update <- function(s, body) {
       api_abort("api_bad_request", conditionMessage(e))) else stats::setNames(list(), character())
     saved <- api_read(s, names(s$shared$palette_settings()$color_palettes %||% list()))
     active <- want$activePalette
-    if (!is.character(active) || length(active) != 1L || !active %in% c("Default", names(COLOR_PALETTE_PRESETS), saved))
-      api_abort("api_bad_request", "Unknown palette.")
+    if (!is.character(active) || length(active) != 1L || is.na(active)) api_abort("api_bad_request", "Unknown palette.")
+    # A saved palette's name may outlive its record: the collaboration sidecar replays this state when it reopens a
+    # project from its origin (a dataset or an older checkpoint), which does not hold palettes saved since. The colours
+    # are in the state itself: keep them and name no palette rather than refuse and leave the project unopened.
+    if (!active %in% c("Default", names(COLOR_PALETTE_PRESETS), saved)) active <- "Default"
     # Team's own setter (shared_data$set_palette_settings: the keys its checkpoint restore sets). A previous state
     # is not always reachable through the editor's buttons (a preset writes every context at once).
     api_read(s, s$shared$set_palette_settings(list(useCustomColors = use, custom_colors = custom, active_palette = active)))
