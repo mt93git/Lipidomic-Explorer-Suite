@@ -185,6 +185,12 @@ api_palette_update <- function(s, body) {
     do.call(api_inputs, c(list(s), stats::setNames(list(name), paste0(api_palette_prefix, "palette_name"))))
     do.call(api_inputs, c(list(s), api_palette_click(s, "palette_save")))
     if (!record$name %in% names(api_palette_saved(s))) api_abort("api_bad_request", "Team did not save the palette.")
+    # Team's palette_save also copies every colour the editor shows into custom_colors (useCustomColors = TRUE), so
+    # the automatic defaults become explicit edits and a card with its own colours (the dashboard's condition
+    # colours, rd_team_resolved_condition_colors) switches to them. Saving only records the palette: keep the
+    # colour state as it was, with the saved palette named as the active one.
+    api_read(s, s$shared$set_palette_settings(list(useCustomColors = before$useCustomColors,
+      custom_colors = before$customColors, active_palette = record$name)))
   } else if (identical(kinds, "import")) {
     raw <- body$import
     record <- tryCatch(palette_validate_record(raw, existing = names(api_palette_saved(s))), error = function(e) e)

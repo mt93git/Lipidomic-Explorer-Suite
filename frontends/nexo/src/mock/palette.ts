@@ -102,7 +102,9 @@ export function mockPalettePut(session: string, body: unknown): SessionPalette {
       ? validRecord(session, { name: typeof b.save === 'string' ? b.save : '', colors: currentColours(session) }, s.activePalette)
       : validRecord(session, b.import);
     savedBySession.set(session, { ...savedOf(session), [record.name]: record });
-    Object.assign(s, { useCustomColors: true, customColors: structuredClone(record.colors), activePalette: record.name });
+    // palette.R: a save only records the palette (the colour state stays, the saved one is named active); an import applies it.
+    if (kinds[0] === 'save') s.activePalette = record.name;
+    else Object.assign(s, { useCustomColors: true, customColors: structuredClone(record.colors), activePalette: record.name });
   } else {
     const restored = validatePaletteState(b.restore); if (!restored) bad('Expected a palette state to restore.');
     Object.assign(s, restored);

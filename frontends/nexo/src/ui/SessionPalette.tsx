@@ -6,7 +6,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { exportPalette, getPalette, updatePalette, type Session } from '../api';
 import { CanvasHandleContext } from '../canvas/handle';
-import { groupColourChange, paletteChoiceChange, paletteSaveName, parsePaletteRecord, type PaletteChange, type SessionPalette } from '../palette/sessionPalette';
+import { groupColourChange, paletteChoiceChange, paletteImportClash, paletteSaveName, parsePaletteRecord, type PaletteChange, type SessionPalette } from '../palette/sessionPalette';
 import { similarGroups } from '../palette/groupContrast';
 import { recordPaletteRedraw, startRedrawWatch } from '../palette/paletteRedraw';
 import { notify, notifyFailure } from './model';
@@ -88,6 +88,9 @@ export function SessionPalettePanel({session, onClose, onApplied}: {session: Ses
   async function importFile(file: File) {
     const record = file.size <= 512 * 1024 ? parsePaletteRecord(await file.text()) : null;
     if (!record) { setError(s.paletteImportBad); return; }
+    // Team answers a taken name with a generic refusal: say why before sending it.
+    const clash = server.current && paletteImportClash(server.current, record);
+    if (clash) { setError(p.paletteImportExists(clash)); return; }
     void apply({import: record});
   }
   async function apply(change: PaletteChange | null) {
