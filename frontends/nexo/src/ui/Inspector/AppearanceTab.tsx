@@ -10,6 +10,7 @@ import {StyleBar} from './StyleBar';
 import {matchFontsEntries} from '../../editor/style';
 import {strings as s} from '../strings';
 import ColourBlindCheck from '../PlotEditor/ColourBlindCheck';
+import {clearAppearanceSection,pendingAppearanceSection,revealSection} from './appearanceFocus';
 export function legendGroupsOf(figure:Figure):string[]{return [...new Set(figure.data.map(t=>t.legendgroup||t.name).filter((v):v is string=>typeof v==='string'&&!!v))];}
 export function visualPatchFor(kind:string,field:string,value:string):AppearancePatch{
  if(field==='label')return {label:value.slice(0,512)};
@@ -23,6 +24,8 @@ export function AppearanceTab({node,handle}:{node:import('../../api').Node;handl
  const local=useRef(editor),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
  useEffect(()=>handle.onChange(()=>refresh(v=>v+1)),[handle]);
  useEffect(()=>()=>clearTimeout(timer.current),[]);
+ // A link from Data ("Colours, point borders & shapes") opens its section here once the plot editor is drawn.
+ useEffect(()=>{const section=pendingAppearanceSection();if(section&&revealSection(document.getElementById('inspector')??document,section))clearAppearanceSection();});
  const current=(handle.getSession().canvas.nodes.find(n=>n.id===node.id)??node) as Node;
  const figure=handle.figureOf(node.id);
  const saved=JSON.stringify(current.visual?.editor??{});

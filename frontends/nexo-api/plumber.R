@@ -245,6 +245,12 @@ function(id, req, res) api_exclusive(res, id = id, {
   api_palette_get(api_session_get(id, api_session_caller(req)))
 })
 
+#* Team's "Download JSON" of the session palette: the record its downloadHandler writes (name + every context colour)
+#* @get /api/v1/sessions/<id>/palette/export
+function(id, req, res) api_exclusive(res, id = id, {
+  api_palette_export(api_session_get(id, api_session_caller(req)))
+})
+
 #* Change the session palette through Team's own editor inputs; every group-coloured card redraws
 #* @parser json list(simplifyVector = FALSE)
 #* @patch /api/v1/sessions/<id>/palette

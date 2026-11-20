@@ -123,6 +123,12 @@ input::placeholder{color:var(--muted);opacity:1}
 details>summary{list-style:none;cursor:pointer}details>summary::-webkit-details-marker{display:none}
 details>summary::before{content:'';display:inline-block;width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin:0 8px 2px 2px;transition:transform var(--motion-hover) var(--ease)}
 details[open]>summary::before{transform:rotate(45deg)}
+/* Chevrons and arrows are SVG (ui/Icon.tsx): Nunito Sans has no ▾ → ↶, so text glyphs fell back to system fonts. */
+.icon{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
+.icon{margin-left:.25em}.icon-left,.icon-arrow-left,.icon-undo,.icon-redo{margin:0 .3em 0 0}
+.entry .crumb .icon,.all-tabs .icon{margin:0}
+/* One select arrow everywhere, drawn like .icon-down; !important because several screens reset select background and padding with shorthands. */
+select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2344505e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 8px center!important;background-size:14px 14px!important;padding-right:28px!important;text-overflow:ellipsis}
 
 /* Top bar: quiet navy, the current step is the one accent fill. */
 .topbar{gap:var(--space-2);padding:0 var(--space-3) 0 var(--space-3)}
@@ -246,7 +252,7 @@ details[open]>summary::before{transform:rotate(45deg)}
 #inspector h4{font-size:var(--font-label);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:var(--space-4) 0 var(--space-2)}
 #inspector [role=tabpanel]{padding:0 var(--space-4)}
 #inspector [role=tabpanel] p{margin:0 0 var(--space-3);color:var(--muted);font-size:var(--font-small)}
-#inspector [role=tabpanel]>fieldset>div{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+#inspector [role=tabpanel]>fieldset>div:not(.plot-editor){display:flex;flex-wrap:wrap;gap:var(--space-2)}
 #inspector [role=tabpanel]>fieldset>div>button{margin:0}
 #inspector section[aria-label]{padding:0!important}
 #inspector label{display:grid;gap:var(--space-1);margin:0 0 var(--space-3);font-size:var(--font-small);color:var(--ink);font-weight:500}
@@ -666,6 +672,9 @@ dialog.session-palette{z-index:30;box-shadow:-8px 0 24px rgb(0 0 0 / .08)}
 .session-palette-chips span{width:12px;height:12px;border-radius:2px;border:1px solid rgb(0 0 0 / .15)}
 .session-palette-context{border:1px solid #c6cbd1;border-radius:6px;padding:8px 10px;margin:0 0 10px}
 .session-palette-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+.session-palette-save{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+.session-palette-save .session-palette-row input[type=text]{flex:1;min-width:0;max-width:60%}
+.session-palette-save-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .session-palette-warning{margin:6px 0 2px;padding:4px 8px;border-radius:4px;background:var(--amber-bg);color:var(--amber-fg);font-size:13px}
 .session-palette-row input[type=color]{width:44px;height:28px;padding:0;border:1px solid #a8adb5}
 .session-palette-note button{margin-left:4px}

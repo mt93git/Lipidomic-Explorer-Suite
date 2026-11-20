@@ -223,6 +223,8 @@ async function auditPlot(browser, key) {
       // F1/F2: the section is "Size & position" (details) with mm|px units; fields are labelled "Width (px)" in px
       const sizeBox = inspector(page).locator('details.size-section');
       await sizeBox.waitFor({ timeout: T });
+      // Size & position starts folded (2026-11-19): open it before typing.
+      if (!(await sizeBox.evaluate(d => d.open))) await sizeBox.locator('summary').click();
       await sizeBox.getByRole('group', { name: 'Units', exact: true }).getByRole('button', { name: 'px', exact: true }).click();
       const typed = async (label, v) => { const f = sizeBox.getByLabel(label, { exact: true }); await f.fill(String(v)); await f.press('Enter'); };
       await typed('Width (px)', 560); await typed('Height (px)', 480);

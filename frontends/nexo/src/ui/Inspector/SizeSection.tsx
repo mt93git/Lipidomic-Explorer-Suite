@@ -31,7 +31,7 @@ export function SizeSection({geometry,onSize,onPosition}:{geometry:Geometry;onSi
    if(e.altKey&&e.key.toLowerCase()==='l'){e.preventDefault();setLocked(!locked);return;}
    const stepped=stepField(e.currentTarget.value,e.key,e.shiftKey);if(stepped!==null){e.preventDefault();setDraft(d=>({...d,[k]:stepped}));}
   }}/><span aria-hidden="true">{u}</span></label>;
- return <details className="size-section" open><summary>{s.sizePositionHeading}</summary>
+ return <details className="size-section"><summary>{s.sizePositionHeading}</summary>
   <div role="group" aria-label={s.sizeUnits} className="size-units">{(['mm','px'] as const).map(u=><button type="button" key={u} aria-pressed={unit===u} onClick={()=>setUnit(u)}>{u}</button>)}</div>
   {field('width',s.sizeWidthField,unit)}{field('height',s.sizeHeightField,unit)}
   <label><input type="checkbox" checked={locked} onChange={e=>setLocked(e.target.checked)}/>{s.sizeLock} <span className="size-ratio">{ratioText(geometry.width,geometry.height)}</span></label>
