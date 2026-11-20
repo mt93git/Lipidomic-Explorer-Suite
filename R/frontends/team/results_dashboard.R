@@ -31,14 +31,12 @@ rd_team_heatmap_view <- function(z, group_n) {
     dense <- nrow(z)>60L
     margin <- if(dense)list(l=125,r=20,t=110,b=45) else list(l=125,r=20,t=10,b=145)
     colorbar <- if(dense)list(title='Mean z-score',thickness=12,lenmode='pixels',len=160,y=1,yanchor='top',x=1,xanchor='left') else list(title='Mean z-score',thickness=12)
-    tick_budget <- min(80L,max(2L,floor((height-155)/16)))
-    ticks <- rd_ticks(rownames(z),tick_budget)
+    # Every row keeps its own full lipid name (rows are at least 12 px for the 10 px label).
     list(squares=FALSE,z=z,text=text,x=colnames(z),y=rownames(z),
       width=800,height=height,colorbar=colorbar,
       xaxis=list(title=list(text='Sample group',standoff=20),type='category',tickangle=0,side=if(dense)'top' else 'bottom',
         tickmode='array',tickvals=colnames(z),ticktext=groups,automargin=TRUE),
-      yaxis=list(title='',type='category',tickmode='array',tickvals=ticks,
-        ticktext=vapply(ticks,function(x)if(nchar(x)>19)paste0(substr(x,1,18),'…')else x,character(1)),
+      yaxis=list(title='',type='category',tickmode='array',tickvals=rownames(z),ticktext=rownames(z),
         tickfont=list(size=10),automargin=TRUE),margin=margin)
   }
 }
@@ -1124,11 +1122,11 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
       return(paste(sprintf('Significant only: %d lipid%s pass%s the Differential analysis criterion (%s).',length(h$lipids_visible),if(length(h$lipids_visible)==1L)'' else 's',if(length(h$lipids_visible)==1L)'es' else '',s$criterion),
         if(missing) sprintf('%d further significant lipid%s cannot be drawn here (missing/nonpositive values or zero variance).',missing,if(missing==1L)'' else 's') else '',
         'The lipid picker applies to All lipids; group selection still applies. Full-cohort z-scores and color scale stay fixed; no test is run here.',
-        if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else ''))
+        if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Every row is labeled with its lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else ''))
     }
     paste(sprintf('Showing %d of %d available lipids. Classes select individual lipids; rows are never combined. Full-cohort z-scores and color scale stay fixed.',length(h$lipids_visible),h$n),
       sprintf('%d excluded for missing/nonpositive values; %d for zero variance.',h$n_incomplete,h$n_constant),
-      if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else '')
+      if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Every row is labeled with its lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else '')
   })
 
   # ---- Downloads: exactly the data frames drawn ------------------------------
