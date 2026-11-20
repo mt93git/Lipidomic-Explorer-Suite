@@ -40,6 +40,8 @@ function Boot() {
   // workbook the list's own answer); with the person's role on the project this says who decides a flagged sample.
   const [board, setBoard] = useState<{ id: string; membersPrepare: boolean } | undefined>();
   const [, setRoleSeen] = useState(0), following = useRef<(() => void) | null>(null);
+  // The linked project exists but has no preparation settings (lost to a restore before PR #76): Prepare fills them.
+  const unprepared = useRef(false);
   useEffect(() => subscribeRole(() => setRoleSeen(n => n + 1)), []);
   // Who prepared the board ("Prepared by X"): the project's creator for a joiner, whose board loads behind the join card.
   const [preparedBy, setPreparedBy] = useState<string | undefined>(), [joining, setJoining] = useState<{ settings: DatasetSettings; by: string } | undefined>();
@@ -92,8 +94,18 @@ function Boot() {
   async function project(origin: Failed, opened: Session, signal: AbortSignal, settings?: DatasetSettings) {
     const base = import.meta.env.VITE_COLLAB_URL as string | undefined;
     const params = new URLSearchParams(location.search);
-    // A link that already names a project joins it; only a first open creates one.
-    if (!base || params.get('collab') === '0' || params.get('project')) return false;
+    // A link that already names a project joins it; only a first open creates one. A joined project without settings
+    // takes the ones Prepare chose (the sidecar keeps any already there); a failure only means Prepare asks again next time.
+    if (!base || params.get('collab') === '0') return false;
+    const joined = params.get('project');
+    if (joined) {
+      if (origin.kind === 'dataset' && settings && unprepared.current) {
+        unprepared.current = false;
+        await fetch(`${projects(base, joined).href}/settings`, { method: 'PUT', signal,
+          headers: { 'Content-Type': 'application/json', ...await adminHeaders(signal, true) }, body: JSON.stringify({ settings }) }).catch(() => {});
+      }
+      return false;
+    }
     const response = await fetch(projects(base).href, { method: 'POST', signal,
       headers: { 'Content-Type': 'application/json', ...await adminHeaders(signal, true) },
       // A dataset's project lives in its client's workspace, whoever opens it (plan D3, 2026-11-10).
@@ -141,7 +153,7 @@ function Boot() {
     } catch (e) { if (attempt.current()) throw e; }
     finally { attempt.done(); }
   }
-  async function openDataset(id: string) { try { const project = await projectSettings(id); await requestDataset(id, project?.settings, undefined, creatorName(project)); } catch (e) { fail(e); } }
+  async function openDataset(id: string) { try { const project = await projectSettings(id); unprepared.current = !!project && !project.settings; await requestDataset(id, project?.settings, undefined, creatorName(project)); } catch (e) { fail(e); } }
   // "Open the Canvas": the decisions travel in the project's settings (C3); an exclusion was prepared again on the check
   // (CheckScreen rerun), whose session the board opens on.
   function openCanvas(check: Check, decisions: OutlierDecision[], session?: DatasetSession) {

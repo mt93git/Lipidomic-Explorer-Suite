@@ -242,6 +242,26 @@ test('new dataset: Open the Canvas creates the project with the settings and sho
   expect(edge.openDatasetSession).toHaveBeenCalledTimes(1);
 });
 
+// Staging 2026-11-19: a project that lost its settings to a restore opened on Prepare every time; Prepare on the joined
+// link now writes them into the project (PUT <collab>/projects/<id>/settings), so the next open joins the board.
+test('a joined project without settings: Open the Canvas writes the settings Prepare chose into it, creates nothing', async () => {
+  page('?project=0a000000-0000-4000-8000-000000000017&dataset=synthetic-dataset');
+  edge.fetch.mockImplementation(async (_url: string, init?: RequestInit) => init?.method === 'PUT'
+    ? new Response(JSON.stringify({ settings: prepared, filled: true }), { status: 200 })
+    : new Response(JSON.stringify({ projectId: '0a000000-0000-4000-8000-000000000017', workspace: 'nexo-client-synthetic', origin: { kind: 'dataset', id: 'synthetic-dataset' } }), { status: 200 }));
+  edge.openDatasetSession.mockImplementation(async (_id: string, settings?: unknown) => settings ? { status: 'ready', session: preparedSession } : { status: 'choices', choices });
+  // @ts-expect-error Vitest resolves the explicit TSX entry.
+  await import('./main.tsx');
+  await vi.waitFor(() => expect(shown(screens.PrepareScreen)).toBeDefined());
+  shown(screens.PrepareScreen)!.props.onPrepared(prepared, 'synthetic-prepared', preparedSession);
+  shown(screens.CheckScreen)!.props.onOpenCanvas([]);
+  await vi.waitFor(() => expect(shown(screens.App)).toBeDefined());
+  const puts = edge.fetch.mock.calls.filter(([, init]) => init?.method === 'PUT');
+  expect(puts.map(([url, init]) => [url, JSON.parse(init.body)])).toEqual([
+    ['https://synthetic.invalid/collab/projects/0a000000-0000-4000-8000-000000000017/settings', { settings: { ...prepared, outlierDecisions: [] } }]]);
+  expect(posts()).toEqual([]);
+});
+
 test('Check gets the dataset it prepares again for an exclusion', async () => {
   await newDataset();
   shown(screens.PrepareScreen)!.props.onPrepared(prepared, 'synthetic-prepared', preparedSession);

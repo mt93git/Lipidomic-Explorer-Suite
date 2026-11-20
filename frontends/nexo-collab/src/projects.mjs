@@ -169,6 +169,20 @@ export function createProjects({ db, auth, roles, restUrl, anonKey, changed = ()
         roles.set(id, userId, role);
         changed(id, userId);
         value = { userId, role };
+      } else if (request.method === 'PUT' && id && members === 'settings' && userId === undefined) {
+        // A dataset project that lost its preparation settings (a restore before PR #76) takes the ones Prepare chose on
+        // a joined link, so the next open joins the board instead of asking again. Settings already there are kept.
+        const row = project();
+        if (row.origin_kind !== 'dataset') fail(409, 'not_a_dataset_project');
+        if (!prepares(who, row.workspace)) fail(403, 'lab_prepares');
+        const { settings } = await json(request, 'invalid_settings') ?? {};
+        if (!settings || typeof settings !== 'object' || Array.isArray(settings) || !Array.isArray(settings.samples)) fail(400, 'invalid_settings');
+        value = await edit(id, async doc => {
+          const meta = doc.getMap('meta'), origin = meta.get('origin') ?? {};
+          if (origin.settings) return { settings: origin.settings, filled: false };
+          doc.transact(() => meta.set('origin', { ...origin, adminDatasetId: origin.adminDatasetId ?? row.origin_id, settings }), 'server');
+          return { settings, filled: true };
+        });
       } else if (request.method === 'PUT' && id && members === 'decisions' && userId === undefined) {
         const row = project();
         if (!prepares(who, row.workspace)) fail(403, 'lab_prepares');
