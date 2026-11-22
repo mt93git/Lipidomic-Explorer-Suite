@@ -1,5 +1,5 @@
-# Source branch: refs/up/mods-anapau (vendored unchanged; edit nothing below these 3 lines)
-# Commit: d6a002985ded6fb0342665419f3e352090296281
+# Source branch: refs/up/mods-anapau (with external references.csv, wide-table digest, and restricted-tag support)
+# Base commit: d6a002985ded6fb0342665419f3e352090296281
 # Path: R/companion_kb.R
 # R/companion_kb.R
 # Grounded knowledge base for the companion.
@@ -42,6 +42,12 @@ COMPANION_KB_TYPES <- c("md", "txt", "csv", "tsv", "xlsx", "docx", "pdf")
 
 companion_kb_enabled <- function() !identical(Sys.getenv("LIPIDOMIC_COMPANION_KB", unset = "1"), "0")
 companion_kb_search_seed <- function() identical(Sys.getenv("LIPIDOMIC_KB_SEARCH_SEED", unset = "0"), "1")
+companion_kb_allow_restricted <- function() identical(Sys.getenv("LIPIDOMIC_KB_RESTRICTED_SOURCES", unset = "0"), "1")
+kb_unrestricted <- function(tags) {
+  if (!length(tags)) return(logical())
+  if (companion_kb_allow_restricted()) return(rep(TRUE, length(tags)))
+  !grepl("(^|;)restricted(;|$)", tolower(as.character(tags)))
+}
 companion_kb_audience <- function() if (identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")) "team" else "classic"
 companion_kb_dir <- function() {
   d <- Sys.getenv("LIPIDOMIC_KB_DIR", unset = "")
@@ -492,9 +498,10 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
   q <- unique(kb_tokens(question))
   # By default only the fed library answers questions; the reviewed app guidance (seed) is searched only
   # when LIPIDOMIC_KB_SEARCH_SEED=1. Fixed lookups by tag (the "Explain this step" button) still use the seed.
-  allowed <- which(kb$chunks$audience %in% c("all", audience) & (include_seed | kb$chunks$origin != "seed"))
+  allowed <- which(kb$chunks$audience %in% c("all", audience) & kb_unrestricted(kb$chunks$tags) & (include_seed | kb$chunks$origin != "seed"))
   if (!length(q) || !length(allowed)) return(c(none, list(terms = q)))
   Na <- length(allowed); N <- kb$N
+  avglen_use <- if (companion_kb_allow_restricted()) kb$avglen else { u <- kb_unrestricted(kb$chunks$tags); if (any(u)) mean(kb$len[u]) else 0 }
   mask <- logical(N); mask[allowed] <- TRUE
   score <- numeric(N); matched <- integer(N); specific <- logical(N); unknown <- character()
   idf_hit <- numeric(N); idf_all <- 0
@@ -507,7 +514,7 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
     idf_all <- idf_all + idf
     tf <- tabulate(ids, nbins = N)
     hit <- tf > 0L
-    score <- score + ifelse(hit, idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * kb$len / max(kb$avglen, 1))), 0)
+    score <- score + ifelse(hit, idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * kb$len / max(avglen_use, 1))), 0)
     matched <- matched + as.integer(hit)
     idf_hit <- idf_hit + ifelse(hit, idf, 0)
     if (Na < 10L || df / Na <= 0.6) specific <- specific | hit
@@ -557,7 +564,9 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
 }
 
 kb_citation <- function(row) {
-  paste0("— Source: ", row$source,
+  f <- sub("^.*/", "", row$source); a <- kb_apa()
+  src <- if (f %in% names(a)) unname(a[[f]]) else row$source
+  paste0("— Source: ", src,
          if (nzchar(row$section) && !identical(row$section, row$title)) paste0(" · ", row$section) else "",
          if (!is.na(row$page)) paste0(" · p. ", row$page) else "")
 }
@@ -602,25 +611,41 @@ kb_is_topic <- function(q) {
   length(strsplit(q, " +")[[1L]]) <= 3L && !grepl("^(what|who|why|how|when|where|which|does|do|is|are|can)\\b", q)
 }
 
-kb_shorten <- function(x, max_chars = 340L) {
+kb_is_table_row <- function(x) grepl("^[^:;]{1,40}: [^;]*; [^:;]{1,40}: ", x)
+
+kb_shorten <- function(x, max_chars = 340L, q = character()) {
+  if (kb_is_table_row(x)) {
+    row_max <- max(max_chars, 700L)
+    if (nchar(x) <= row_max) return(x)
+    s <- unlist(strsplit(x, "(?<=[.!?;])\\s+", perl = TRUE)); i0 <- 1L
+    if (length(q)) {
+      m <- which(vapply(s, function(z) any(q %in% kb_tokens(z)), logical(1)))
+      if (length(m)) while (i0 < tail(m, 1L) && sum(nchar(s[i0:tail(m, 1L)])) + tail(m, 1L) - i0 > row_max) i0 <- i0 + 1L
+    }
+    out <- ""
+    for (z in s[seq.int(i0, length(s))]) { if (nzchar(out) && nchar(out) + 1L + nchar(z) > row_max) break; out <- if (nzchar(out)) paste(out, z) else z }
+    return(if (nchar(out) > row_max + 120L) NA_character_ else out)
+  }
   if (nchar(x) <= max_chars) return(x)
   s <- unlist(strsplit(x, "(?<=[.!?])\\s+", perl = TRUE)); out <- ""
   for (z in s) { if (nzchar(out) && nchar(out) + 1L + nchar(z) > max_chars) break; out <- if (nzchar(out)) paste(out, z) else z }
   if (nchar(out) > max_chars + 120L) NA_character_ else out
 }
 
-# Lab transcriptions are cited as <file>/<origin>. Published literature (.pdf) is cited in APA format, taken from
-# knowledge_base/references.csv (columns file, apa); a PDF without an entry there is cited by its file name.
+# Lab transcriptions are cited as <file>/<origin>. External publications and reference datasets listed in
+# knowledge_base/references.csv (columns file, apa) are cited in APA format; an unlisted PDF is cited by its file name.
 kb_apa <- function() {
-  p <- file.path("knowledge_base", "references.csv")
+  p <- Sys.getenv("LIPIDOMIC_KB_REFERENCES", unset = "")
+  if (!nzchar(p)) p <- file.path("knowledge_base", "references.csv")
   if (!file.exists(p)) return(character())
   r <- tryCatch(utils::read.csv(p, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
   if (is.null(r) || !all(c("file", "apa") %in% names(r))) return(character())
   stats::setNames(r$apa, r$file)
 }
 kb_source_label <- function(source) {
-  f <- sub("^.*/", "", source)
-  if (grepl("\\.pdf$", f, ignore.case = TRUE)) { a <- kb_apa(); return(if (f %in% names(a)) unname(a[[f]]) else f) }
+  f <- sub("^.*/", "", source); a <- kb_apa()
+  if (f %in% names(a)) return(unname(a[[f]]))
+  if (grepl("\\.pdf$", f, ignore.case = TRUE)) return(f)
   paste0(f, "/", Sys.getenv("LIPIDOMIC_KB_ORIGIN", unset = COMPANION_KB_ORIGIN))
 }
 
@@ -631,9 +656,10 @@ kb_digest <- function(rows, question) {
     ls <- unlist(strsplit(rows$text[i], "\n+"))
     ls <- trimws(sub("^\\s*([-*+]|[0-9]+[.)])\\s+", "", ls))
     ls <- ls[nzchar(ls) & !grepl("^Diagram labels:", ls)]
+    is_row <- kb_is_table_row(ls)
     # book text: drop figure/table captions and bibliography entries (DOI, "Nat Biotechnol 36, 316-320 (2018)")
-    ls <- ls[!grepl("^(Figure|Fig\\.|Table)\\s*[0-9]", ls) & !grepl("doi\\.org|doi:|\\([12][0-9]{3}\\)\\.?\\s*(https?:|$)", ls)]
-    ls <- vapply(ls, kb_shorten, character(1), USE.NAMES = FALSE); ls <- ls[!is.na(ls) & nchar(ls) >= 25L]
+    ls <- ls[!grepl("^(Figure|Fig\\.|Table)\\s*[0-9]", ls) & (is_row | !grepl("doi\\.org|doi:|\\([12][0-9]{3}\\)\\.?\\s*(https?:|$)", ls, ignore.case = TRUE))]
+    ls <- vapply(ls, kb_shorten, character(1), q = q, USE.NAMES = FALSE); ls <- ls[!is.na(ls) & nchar(ls) >= 25L]
     if (!length(ls)) next
     sec <- tolower(rows$section[i])
     cat_score <- vapply(names(kb_rules), function(nm) 2 * grepl(kb_rules[[nm]]$head, sec, perl = TRUE) + pmin(3, kb_n_match(kb_rules[[nm]]$pat, ls)), numeric(length(ls)))
@@ -642,7 +668,7 @@ kb_digest <- function(rows, question) {
     fm <- 3 * any(q %in% kb_tokens(sub("\\.[A-Za-z]+$", "", sub("^.*/", "", rows$source[i]))))   # the file is named after the subject
     hit <- vapply(ls, function(l) sum(q %in% kb_tokens(l)), numeric(1))
     rel <- 2 * hit + sum(q %in% ctx) + fm * (hit > 0)
-    row_like <- grepl("^[^:;]{1,40}: [^;]*; [^:;]{1,40}: ", ls)   # a table row: fine as evidence, poor as a sentence
+    row_like <- kb_is_table_row(ls)   # a table row: fine as evidence, poor as a sentence
     cat_score[row_like, ] <- cat_score[row_like, , drop = FALSE] - 5
     best <- max.col(cat_score, ties.method = "first")
     cand[[length(cand) + 1L]] <- data.frame(line = ls, cat = names(kb_rules)[best], cs = cat_score[cbind(seq_along(ls), best)],
@@ -698,7 +724,7 @@ companion_kb_answer <- function(question, kb = companion_kb_load(), audience = c
 companion_kb_by_tag <- function(tag, kb = companion_kb_load(), audience = companion_kb_audience()) {
   tag <- tolower(tag)
   has <- vapply(strsplit(kb$chunks$tags, ";", fixed = TRUE), function(x) tag %in% x, logical(1))
-  rows <- kb$chunks[has & kb$chunks$audience %in% c("all", audience), , drop = FALSE]
+  rows <- kb$chunks[has & kb$chunks$audience %in% c("all", audience) & kb_unrestricted(kb$chunks$tags), , drop = FALSE]
   if (!nrow(rows)) return(kb_no_info())
   body <- kb_compose(rows)
   if (companion_kb_friendly()) body <- paste(COMPANION_KB_TONE$step, body, sep = "\n\n")
