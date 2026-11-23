@@ -19,9 +19,9 @@ export function figure1Panels(nodes:Node[]):Panel[]{
 }
 export interface Slot {role:Role;nodeId:string;letter?:string;x:number;y:number;width:number;height:number}
 export const MARGIN=34;const GUTTER=12;
-/** Panel boxes on A4 portrait (points); `reserve` is the height kept under the figure for its legend. */
+/** Panel boxes on A4 portrait (points), filling the page height left above the legend (`reserve`). */
 export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN):Slot[]{
- const W=A4[0]-2*MARGIN,H=Math.min(A4[1]-top-MARGIN-reserve,W*1.25),cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
+ const W=A4[0]-2*MARGIN,H=A4[1]-top-MARGIN-reserve,cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
  const has=(r:Role)=>panels.find(p=>p.role===r),slots:Slot[]=[];
  const put=(p:Panel|undefined,x:number,y:number,width:number,height:number)=>{if(p)slots.push({role:p.role,nodeId:p.nodes[0].id,letter:p.letter,x,y,width,height});};
  const row1=!!(has('pca')||has('pcascore')),r1=.3*H,by=top+(row1?r1:0),bh=.7*H;
@@ -54,6 +54,7 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
   layout.yaxis={...layout.yaxis,domain:[0,1]};layout.xaxis={...layout.xaxis,showticklabels:true};
   layout.annotations=(layout.annotations??[]).filter((a:PlotObject)=>!(a.xref==='paper'&&a.yref==='paper'&&Number(a.y)<domain0)&&a.xref!=='x2'&&a.yref!=='y2');
   layout.shapes=(layout.shapes??[]).filter((s:PlotObject)=>s.xref!=='x2'&&s.yref!=='y2');
+  significantBrackets(data,layout);
  }
  if(role==='heat'&&layout.meta?.teamHeatmap?.geometry==='square-horizontal')data=data.map(t=>t.type!=='heatmap'?t:{...t,x:t.y,y:t.x,z:transpose(t.z),text:transpose(t.text)});
  // Group colours from panel A, the same in every panel.
@@ -66,11 +67,16 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  Object.assign(layout,{paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{family:'Arial, Helvetica, sans-serif',size:9,color:'#000000'},margin:{l:8,r:8,t:role==='violin'?22:8,b:8,autoexpand:true},width:undefined,height:undefined,autosize:false});
  delete layout.width;delete layout.height;
  const legendRight={x:1.02,xanchor:'left',y:1,yanchor:'top',bgcolor:'rgba(0,0,0,0)',borderwidth:0,font:{size:8,color:'#000000'}};
+ // Every legend entry shows: as many columns (Plotly legends) side by side as the panel height needs.
+ const columns=(entries:PlotObject[],reversed:boolean)=>{const n=legendColumns(entries.length,size.height),per=Math.ceil(entries.length/n),plotW=Math.max(60,size.width*96/72*.4);let x=1.02;
+  for(let k=0;k<n;k++){const chunk=entries.slice(k*per,(k+1)*per),key=k?`legend${k+1}`:'legend';if(!chunk.length)break;chunk.forEach(t=>{t.legend=key;});
+   const font=Math.max(6,Math.min(8,Math.floor((size.height*96/72-60)/per/1.6)));layout[key]={...legendRight,x,font:{size:font,color:'#000000'},tracegroupgap:0,itemwidth:30,...(reversed?{traceorder:'reversed'}:{})};
+   x+=(Math.max(...chunk.map(t=>String(t.name).length))*font*.62+44)/plotW;}};
  const groupDots=(groups:string[])=>({tickmode:'array',tickvals:groups,ticktext:groups.map(g=>colours.has(g)?dot(colours.get(g)!):g),tickangle:0,tickfont:{size:14,color:'#000000'},title:{text:''}});
  const ordered=(groups:string[])=>[...order.filter(g=>groups.includes(g)),...groups.filter(g=>!order.includes(g))];
- if(role==='pca'){delete layout.title;layout.showlegend=true;layout.legend=legendRight;}
+ if(role==='pca'){delete layout.title;layout.showlegend=true;columns(data.filter(t=>t.showlegend!==false&&t.name),false);}
  if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=categories({data,layout});layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:ordered(g)};}
- if(role==='comp'){delete layout.title;layout.showlegend=true;layout.legend={...legendRight,traceorder:'reversed'};const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
+ if(role==='comp'){delete layout.title;layout.showlegend=true;columns(data.filter(t=>t.showlegend!==false&&t.name).reverse(),true);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
  if(role==='heat'){
   delete layout.title;const t=data.find(t=>t.type==='heatmap'),rows=(Array.isArray(t?.y)?t!.y:[]).map(String),groups=(Array.isArray(t?.x)?t!.x:[]).map(String);
   const px=size.height*96/72,font=Math.max(3,Math.min(8,px*.75/Math.max(1,rows.length)));
@@ -79,21 +85,34 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
   layout.xaxis={...layout.xaxis,type:'category',...groupDots(groups),ticks:''};for(const k of ['scaleanchor','scaleratio','constrain','domain','categoryorder','categoryarray'])delete layout.xaxis[k];
   data=data.map(d=>d.type!=='heatmap'?d:{...d,showscale:true,colorbar:{title:{text:'Mean z-score',side:'right',font:{size:8}},orientation:'v',x:1.02,xanchor:'left',y:.5,yanchor:'middle',len:.5,lenmode:'fraction',thickness:8,tickfont:{size:7},outlinecolor:'#000000',outlinewidth:1}});
  }
- if(role==='violin'){layout.title={text:textOf(source.layout?.title),x:.5,xanchor:'center',font:{size:9,color:'#000000'}};layout.showlegend=false;const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g};}
+ if(role==='violin'){
+  layout.title={text:textOf(source.layout?.title),x:.5,xanchor:'center',y:.99,yanchor:'top',font:{size:9,color:'#000000'}};layout.showlegend=false;layout.margin={...layout.margin,t:16,l:4,r:4,b:4};
+  // The n labels (n = 18 samples) crowd into one line in a small panel; n is in panel A's legend.
+  const before=(layout.annotations??[]).length;layout.annotations=(layout.annotations??[]).filter((a:PlotObject)=>!/^tcstat-n-/.test(String(a.name??''))&&!/^n = /.test(plain(String(a.text??''))));
+  if(layout.annotations.length<before&&!layout.annotations.some((a:PlotObject)=>/^tcstat-label-/.test(String(a.name??'')))){delete layout.yaxis.range;layout.yaxis.autorange=true;}
+  if(/log10/i.test(textOf(layout.yaxis.title)))layout.yaxis.title={text:'log10 abundance',font:{size:8}};
+  const g=ordered(categories({data,layout})),avail=size.width*96/72-50,fits=g.join('').length*5<=avail;
+  layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...(fits?{tickangle:0}:g.length*11<=avail?{tickangle:-45,tickfont:{size:7,color:'#000000'}}:groupDots(g))};
+ }
  return {data,layout};
 }
 // The legend under Figure 1: one paragraph per panel, written from each card's figure and settings.
 const TESTS:Record<string,[string,string]>={rank:['Kruskal-Wallis test','Mann-Whitney U tests'],param:['one-way ANOVA','Welch t-tests']};
 const CORRECTIONS:Record<string,string>={BH:'Benjamini-Hochberg',holm:'Holm',bonferroni:'Bonferroni',none:'no'};
 export interface PanelSource {figure?:Figure;url?:string;inputs?:Record<string,unknown>}
+/** A number with a real minus sign. */
+const fixed=(v:number,digits:number)=>v.toFixed(digits).replace(/^-/,'−');
+/** Long decimals (4 or more places) the legend would print from a card (axis titles, limits): 1 decimal from 10, 2
+ *  from 1, two significant digits below 1; a real minus sign. Short numbers (thresholds such as 0.001) stay as written. */
+export const roundNumbers=(text:string)=>text.replace(/-?\d+\.\d{4,}/g,m=>{const v=Number(m);return Math.abs(v)<1?String(Number(v.toPrecision(2))).replace(/^-/,'−'):fixed(v,Math.abs(v)>=10?1:2);});
 function sentence(panel:Panel,sources:Map<string,PanelSource>):string{
  const s=sources.get(panel.nodes[0].id)??{},f=s.figure,title=(k:string)=>plain(textOf(f?.layout?.[k]?.title)),inputs={...(panel.nodes[0].instance?.inputs??{}),...(s.inputs??{})};
  const lead=`(${panel.letter}) `;
  if(panel.role==='pca'){const t=plain(textOf(f?.layout?.title)),x=title('xaxis'),y=title('yaxis');return lead+`Principal component analysis scores${t?` (${t})`:''}${x&&y?`, ${x} versus ${y}`:''}; each point is one sample, coloured by group.`;}
  if(panel.role==='pcascore'){const pc=String(inputs.pcs_pc??(/PC\d+/.exec(title('yaxis'))?.[0]??'PC')),[omni,pair]=TESTS[String(inputs.pcs_test??'rank')]??TESTS.rank,corr=CORRECTIONS[String(inputs.pcs_corr??'BH')]??String(inputs.pcs_corr);
-  return lead+`${pc} scores by group (box plots with every sample); ${omni} across groups and ${pair} on each pair with ${corr} correction; brackets mark the pairs tested (* p < 0.05, ** p < 0.01, *** p < 0.001, ns not significant).`;}
+  return lead+`${pc} scores by group (box plots with every sample); ${omni} across groups and ${pair} on each pair with ${corr} correction; brackets mark the significant pairs (adjusted * p < 0.05, ** p < 0.01, *** p < 0.001).`;}
  if(panel.role==='comp'){const classes=f?.data.filter(t=>t.type==='bar').length;return lead+`Lipid composition: mean share of signal by lipid class in each group (stacked bars${classes?`, ${classes} classes`:''}); dots mark the groups, coloured as in A.`;}
- if(panel.role==='heat'){const t=f?.data.find(t=>t.type==='heatmap'),square=f?.layout?.meta?.teamHeatmap?.geometry==='square-horizontal',rows=((square?t?.x:t?.y)??[]).length,def=String(f?.layout?.meta?.teamHeatmap?.valueDefinition??'mean lipid z-score').toLowerCase(),lim=typeof t?.zmax==='number'?` from ${-Math.abs(t.zmax)} to ${t.zmax}`:'';
+ if(panel.role==='heat'){const t=f?.data.find(t=>t.type==='heatmap'),square=f?.layout?.meta?.teamHeatmap?.geometry==='square-horizontal',rows=((square?t?.x:t?.y)??[]).length,def=String(f?.layout?.meta?.teamHeatmap?.valueDefinition??'mean lipid z-score').toLowerCase(),hi=typeof t?.zmax==='number'?t.zmax:undefined,lo=typeof t?.zmin==='number'?t.zmin:hi===undefined?undefined:-Math.abs(hi),lim=hi===undefined?'':` from ${fixed(lo!,1)} to ${fixed(hi,1)}`;
   return lead+`Abundance heatmap of the ${rows} most variable lipids: ${def} per group (colour bar, Mean z-score${lim}); every row is labelled with its lipid and dots mark the groups.`;}
  const lipids=panel.nodes.map(n=>plain(textOf(sources.get(n.id)?.figure?.layout?.title))||n.label);
  return lead+`Feature distributions of ${lipids.join(', ')} by group (violins with every sample), in the group order and colours of A.`;
@@ -106,7 +125,7 @@ export function wrap(text:string,width:number,fontSize:number):string[]{
 }
 /** The legend block: largest font from 8 pt down to 6 pt that keeps it under 40% of the page; past that, lines are cut. */
 export function figure1Caption(panels:Panel[],sources:Map<string,PanelSource>):Omit<Caption,'y'>{
- const paragraphs=panels.map(p=>sentence(p,sources)),lead='Figure 1.',width=A4[0]-2*MARGIN,limit=(A4[1]-2*MARGIN)*.4;
+ const paragraphs=panels.map(p=>roundNumbers(sentence(p,sources))),lead='Figure 1.',width=A4[0]-2*MARGIN,limit=(A4[1]-2*MARGIN)*.4;
  let fontSize=8,lines:Caption['lines']=[];
  for(fontSize of [8,7.5,7,6.5,6]){lines=paragraphs.flatMap((p,i)=>wrap(i?p:`${lead} ${p}`,width,fontSize).map((text,j)=>({text,lead:!i&&!j})));if(lines.length*fontSize*1.25<=limit)break;}
  const most=Math.floor(limit/(fontSize*1.25));if(lines.length>most){lines=lines.slice(0,most);const last=lines[most-1];last.text=last.text.slice(0,Math.max(0,last.text.length-1))+'…';}
@@ -127,4 +146,30 @@ export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise
   items.push({x:slot.x,y:slot.y,width:slot.width,height:slot.height,node,image,...(slot.letter?{letter:slot.letter}:{})});}
  const bottom=Math.max(...slots.map(s=>s.y+s.height));
  return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(title?{titleBlock:title}:{})};
+}
+
+/** Legend columns for n entries in a panel this tall (points): a Plotly legend item is at least 19 px and a vertical
+ *  legend may use the plot area's height (the panel less about 60 px of margins and axis). */
+export function legendColumns(n:number,heightPt:number):number{
+ const per=Math.max(1,Math.floor((heightPt*96/72-60)/19));return Math.min(4,Math.max(1,Math.ceil(n/per)));
+}
+/** Panel B: only the significant brackets (stars), stacked again from the data top, and the y range tightened to them.
+ *  The card is unchanged; this is the Figure 1 drawing only. */
+function significantBrackets(data:PlotObject[],layout:PlotObject){
+ const nums=(path:string)=>(path.match(/-?\d*\.?\d+(?:e-?\d+)?/gi)??[]).map(Number);
+ const isBracket=(s:PlotObject)=>s.type==='path'&&typeof s.path==='string'&&nums(s.path).length===8;
+ const labels=(layout.annotations??[]).filter((a:PlotObject)=>a.xref!=='paper'&&a.yref!=='paper'),others=(layout.annotations??[]).filter((a:PlotObject)=>!labels.includes(a));
+ const brackets=(layout.shapes??[]).filter(isBracket),rest=(layout.shapes??[]).filter((s:PlotObject)=>!isBracket(s));
+ // Each label sits on its bracket (same middle x, the label just above the bracket top): the nearest such bracket.
+ const used=new Set<PlotObject>(),pairs=labels.map((a:PlotObject)=>{const near=brackets.filter((s:PlotObject)=>!used.has(s)&&Math.abs((nums(s.path)[0]+nums(s.path)[4])/2-Number(a.x))<1e-6).sort((x:PlotObject,y:PlotObject)=>Math.abs(nums(x.path)[3]-Number(a.y))-Math.abs(nums(y.path)[3]-Number(a.y)))[0];if(near)used.add(near);return {a,s:near};});
+ const kept=pairs.filter((p:{a:PlotObject})=>!/^ns$/i.test(plain(String(p.a.text??''))));
+ const ys=data.flatMap(t=>Array.isArray(t.y)?t.y.filter((v:unknown)=>typeof v==='number'&&Number.isFinite(v)):[]) as number[];
+ if(!ys.length){layout.annotations=[...others,...kept.map((p:{a:PlotObject})=>p.a)];layout.shapes=[...rest,...kept.flatMap((p:{s?:PlotObject})=>p.s?[p.s]:[])];return;}
+ const lo=Math.min(...ys),hi=Math.max(...ys),span=Math.max(hi-lo,1e-9);let top=hi+span*.05;
+ const shapes:PlotObject[]=[],annotations:PlotObject[]=[];
+ // Many brackets share about 1.4 data spans above the boxes, so the boxes keep most of the panel height.
+ const step=Math.min(.17,1.4/Math.max(1,kept.length));
+ kept.forEach((p:{a:PlotObject;s?:PlotObject},j:number)=>{const y0=hi+span*(.06+step*j),y1=y0+span*.03;top=y1+span*.12;annotations.push({...p.a,y:y1,...(step<.12?{font:{...p.a.font,size:10}}:{})});
+  if(p.s){const v=nums(p.s.path);shapes.push({...p.s,path:`M ${v[0]},${y0} L ${v[0]},${y1} L ${v[4]},${y1} L ${v[4]},${y0}`});}});
+ layout.annotations=[...others,...annotations];layout.shapes=[...rest,...shapes];layout.yaxis={...layout.yaxis,range:[lo-span*.05,top],autorange:false};
 }
