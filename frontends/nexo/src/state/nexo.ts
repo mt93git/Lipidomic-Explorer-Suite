@@ -18,7 +18,8 @@ export interface NexoNode {style?:NexoStyle;inputs?:NexoInputs;actions?:string[]
  *  come back confirmed (production's restore re-applies the archived design inputs; the mock does not). Never confirmed
  *  from here by itself: the user confirms. */
 export interface SavedDesign {unit:string;type:'independent'|'paired'}
-export interface Nexo {version:1;nodes:Record<string,NexoNode>;design?:SavedDesign}
+/** starter: the new board was given its starter cards (ui/starterCanvas.ts); never given them again. */
+export interface Nexo {version:1;nodes:Record<string,NexoNode>;design?:SavedDesign;starter?:true}
 export function validateSavedDesign(value:unknown):SavedDesign|undefined{
  const v=object(value);if(typeof v.unit!=='string'||!v.unit.trim()||v.unit.length>80||(v.type!=='independent'&&v.type!=='paired'))return undefined;
  return {unit:v.unit,type:v.type};
@@ -73,7 +74,7 @@ export function validateNexo(value:unknown,ids?:readonly string[]):Nexo {
  const out:Nexo={version:1,nodes:{}};try{if(new TextEncoder().encode(JSON.stringify(value)).length>2*1024**2)return out;}catch{return out;}
  const v=object(value);if(v.version!==1)return out;
  for(const [id,node] of Object.entries(object(v.nodes))){if(ids&&!ids.includes(id)||id==='__proto__'||id==='constructor')continue;const clean=validateNexoNode(node);if(clean)out.nodes[id]=clean;}
- const design=validateSavedDesign(v.design);if(design)out.design=design;return out;
+ const design=validateSavedDesign(v.design);if(design)out.design=design;if(v.starter===true)out.starter=true;return out;
 }
 /** Same bounds as Team's instance inputs: a plain object, at most 250 keys and 512 KiB. */
 export function validateNexoInputs(value:unknown):NexoInputs|undefined {

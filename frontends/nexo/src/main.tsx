@@ -18,6 +18,7 @@ import { mountUpdateBar } from './ui/UpdateBar';
 import { fromCanvasV1 } from './state/serialize';
 import { initReadOnly, isReadOnly } from './state/readonly';
 import { collab, initCollab } from './collab/mode';
+import { starterOpen, type StarterOpen } from './ui/starterCanvas';
 import { currentRole, subscribeRole } from './collab/roles';
 import './tokens.css';
 import './ui/shell.css';
@@ -42,6 +43,9 @@ function Boot() {
   const [, setRoleSeen] = useState(0), following = useRef<(() => void) | null>(null);
   // The linked project exists but has no preparation settings (lost to a restore before PR #76): Prepare fills them.
   const unprepared = useRef(false);
+  // A new project's first Canvas after Data and Review gets its starter cards (ui/starterCanvas.ts); a board prepared
+  // again for a decision on it is not new.
+  const [starter, setStarter] = useState<StarterOpen>('none'), reprepared = useRef(false);
   useEffect(() => subscribeRole(() => setRoleSeen(n => n + 1)), []);
   // Who prepared the board ("Prepared by X"): the project's creator for a joiner, whose board loads behind the join card.
   const [preparedBy, setPreparedBy] = useState<string | undefined>(), [joining, setJoining] = useState<{ settings: DatasetSettings; by: string } | undefined>();
@@ -120,7 +124,7 @@ function Boot() {
   }
   async function open(id: string) {
     const attempt = begin({ kind: 'checkpoint', id }, s.opening);
-    try { const opened = await openSession(id, attempt.controller.signal); if (!attempt.current()) return; const shared = await project({ kind: 'checkpoint', id }, opened, attempt.controller.signal); if (!attempt.current()) return; setPrepared(undefined); show(opened); if (shared) return; const url = new URL(location.href); url.searchParams.set('checkpoint', id); history.replaceState(null, '', url); }
+    try { const opened = await openSession(id, attempt.controller.signal); if (!attempt.current()) return; const shared = await project({ kind: 'checkpoint', id }, opened, attempt.controller.signal); if (!attempt.current()) return; setPrepared(undefined); setStarter('none'); show(opened); if (shared) return; const url = new URL(location.href); url.searchParams.set('checkpoint', id); history.replaceState(null, '', url); }
     catch (e) { if (attempt.current()) fail(e); }
     finally { attempt.done(); }
   }
@@ -143,7 +147,8 @@ function Boot() {
       const design = settings?.design as { unit: string; type: string } | undefined;
       if (design && !collab() && !result.session.design?.confirmed) result.session.design = await confirmDesign(result.session.sessionId, design.unit, design.type).catch(() => result.session.design);
       if (!attempt.current()) return;
-      await project({ kind: 'dataset', id }, result.session, attempt.controller.signal, settings); if (!attempt.current()) return;
+      const created = await project({ kind: 'dataset', id }, result.session, attempt.controller.signal, settings); if (!attempt.current()) return;
+      setStarter(starterOpen({ kind: 'dataset', collaborating: created || !!collab(), created, reprepared: reprepared.current })); reprepared.current = false;
       const name = datasetTitle(result.session); if (name) document.title = name; setTitle(name); setPrepared(settings);
       setPreparedBy(by ?? adminDisplayName() ?? noticeStrings.theLab); setJoining(undefined); show(result.session);
       setBoard({ id, membersPrepare: false });
@@ -170,7 +175,7 @@ function Boot() {
   async function save(decision: BoardDecision) {
     const next = decideSettings(prepared!, decision, { by: adminUserId() ?? undefined, displayName: adminDisplayName() ?? undefined });
     if (removed(next) === removed(prepared!)) { setPrepared(next); return; }
-    setSession(null); await requestDataset(board!.id, next).catch(fail);
+    setSession(null); reprepared.current = true; await requestDataset(board!.id, next).catch(fail);
   }
   // A project link without its origin (?project=, or Start's Open): the sidecar names the origin and its settings, the link
   // then carries both, and the open joins the project.
@@ -209,7 +214,7 @@ function Boot() {
   }
   const retry = () => failed ? failed.kind === 'checkpoint' ? open(failed.id) : openDataset(failed.id) : picker();
   useEffect(() => { const params = new URLSearchParams(location.search), id = params.get('checkpoint'), dataset = params.get('dataset'), shared = params.get('project'); if (id) void open(id); else if (dataset) void openDataset(dataset); else if (shared) void openProject(shared); else void picker(); }, []);
-  if (session) return <App session={session} title={title} notice={prepared && <BoardNotice settings={prepared} preparedBy={preparedBy ?? noticeStrings.theLab}
+  if (session) return <App session={session} title={title} starter={starter} notice={prepared && <BoardNotice settings={prepared} preparedBy={preparedBy ?? noticeStrings.theLab}
     projectId={collab()?.project} canDecide={canDecide} save={collab() ? undefined : save}/>}/>;
   // The sign-in page is a whole page with its own bar (ENTRY-5).
   if (screen.name === 'signin') return <SignInScreen onSignedIn={() => void retry()} signedOutFrom={signedOutFrom()}/>;

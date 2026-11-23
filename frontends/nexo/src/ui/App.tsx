@@ -40,6 +40,7 @@ import { tabsCommand, moveNodesToTab, deleteTabPlan } from './tabsWiring';
 import { isReadOnly, readOnlyReason } from '../state/readonly';
 import { selectOnEnter, watchCanvasDom } from './canvasDom';
 import { strings as s, phrases as p } from './strings';
+import { openStarter, seedStarter, type StarterOpen } from './starterCanvas';
 function ReadOnlyBanner() {
   // Journey review 9.2: compact on phones (CSS) and, once dismissed, gone for the rest of this browser session.
   const key = 'nexo-view-only-dismissed', [open, setOpen] = useState(() => { try { return sessionStorage.getItem(key) !== '1'; } catch { return true; } });
@@ -76,8 +77,9 @@ function EmptyCanvas({ handle }: { handle: CanvasHandle | null }) {
 // Live (connected, synced, every edit acknowledged) is the saved state's green dot (FIX-JOINER-PHONE: 'collab' has no
 // colour, so it was the grey default); View only and an engine wait keep the grey dot.
 const collabDot=(engine:string,text:string)=>engine?'collab':/^(Connecting|Syncing|Reconnecting)/.test(text)?'saving':/^(Offline|Signed out)/.test(text)?'paused':text.startsWith('Engine busy')?'dirty':text.startsWith('Live')?'saved':'collab';
-/** `notice`: shown in the status band (a dataset board's BoardNotice, main.tsx). */
-export function App({ session, title, notice }: { session: Session; title?: string; notice?: ReactNode }) {
+/** `notice`: shown in the status band (a dataset board's BoardNotice, main.tsx). `starter`: how main.tsx opened the board;
+ *  a new project's empty canvas, once Data and Review are done, opens with its starter cards (starterCanvas.ts). */
+export function App({ session, title, notice, starter = 'none' }: { session: Session; title?: string; notice?: ReactNode; starter?: StarterOpen }) {
   const host = useRef<HTMLDivElement>(null), mounted = useRef(false), [ready, setReady] = useState(false);
   useSyncExternalStore(subscribeRole, currentRole, currentRole);
   const state = useShell(), readOnly = isReadOnly();
@@ -116,13 +118,16 @@ export function App({ session, title, notice }: { session: Session; title?: stri
   useEffect(() => {
     if (mounted.current) return;
     mounted.current = true;
+    const seeding = openStarter(session, starter, readOnly);
     store.set(v => ({ ...v, tabs: tabs.validate((session.canvas as Session['canvas'] & { tabs?: unknown }).tabs, session.canvas.nodes.map(n => n.id)) }));
     // Wave 1: the canvas opens with the plots in front, both panels closed; an empty canvas opens the library
     // (on a desktop that can edit), since adding a plot is the only thing to do there.
-    ui({ design: session.design, libraryOpen: !readOnly && !matchMedia('(max-width: 600px)').matches && !session.canvas.nodes.length });
+    ui({ design: session.design, libraryOpen: !readOnly && !matchMedia('(max-width: 600px)').matches && !session.canvas.nodes.length && !seeding });
     Object.assign(session.canvas, { tabs: tabs.serialize(store.get().tabs, session.canvas.nodes.map(n => n.id)) });
     const canvasHandle = checkpointHandle(mountCanvas(host.current!, session, { shellOwnsLibrary: true, shellOwnsInspector: true }));
     setHandle(canvasHandle);
+    // The starter cards go in through the same add as the library's (the API creates each one).
+    if (seeding) void seedStarter(canvasHandle, getCatalog).catch(error => notifyFailure(s.failAddPlot, error));
     canvasHandle.onChange(()=>setFigureMode(canvasHandle.figureMode));
     // The figure page arrives with the canvas (fromCanvasV1 keeps state.document); the store starts from it.
     const inspector = host.current!.querySelector<HTMLElement>('#inspector')!;
