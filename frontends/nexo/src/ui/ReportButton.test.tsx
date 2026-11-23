@@ -32,16 +32,20 @@ describe('canvas toolbar', () => {
   });
 });
 const exported = vi.hoisted(() => [] as unknown[][]);
+// The session palette at the API layer: three synthetic Group 1 levels.
+vi.mock('../api', async original => ({ ...await original<object>(), getPalette: async () => ({ contexts: [{ id: 'Group1', label: 'Sample groups (Group 1)', groups: [{ name: 'Alpha', color: '#111111' }, { name: 'Beta', color: '#222222' }, { name: 'Gamma', color: '#333333' }] }] }) }));
 vi.mock('../figure/exportPage', async original => ({ ...await original<object>(), exportReport: async (...args: unknown[]) => { exported.push(args); } }));
 describe('toolbar report export', () => {
   it('exports the canvas as a report titled with the board name and the dataset counts', async () => {
     const [{ exportCanvasReport }, { tabsBridges }] = await Promise.all([import('./reportExport'), import('../canvas/handle')]);
     const nodes = [{ id: 'a', kind: 'plot', label: 'A', x: 0, y: 0, width: 300, height: 300 }];
-    const handle = { getSession: () => ({ canvas: { nodes } }) } as never;
+    const cardSource = async () => ({ url: 'data:image/png;base64,QQ' }), handle = { getSession: () => ({ sessionId: 'synthetic', canvas: { nodes } }), cardSource } as never;
     tabsBridges.set(handle, { document: () => ({ document: null }) } as never);
     await exportCanvasReport(handle, { projectName: 'Synthetic board A', samples: 6, lipids: 120 });
     expect(exported).toHaveLength(1);
-    expect(exported[0][1]).toBe(nodes); expect(exported[0][2]).toEqual({ title: 'Synthetic board A', samples: 6, lipids: 120 });
+    expect(exported[0][1]).toBe(nodes); expect(exported[0][2]).toMatchObject({ title: 'Synthetic board A', samples: 6, lipids: 120, groups: 3 });
+    // Every card's figure comes through the canvas's own card fetch, whatever its zoom tier (staging, frozen board).
+    expect(await (exported[0][2] as { cardSource: (id: string) => Promise<unknown> }).cardSource('a')).toEqual({ url: 'data:image/png;base64,QQ' });
     await exportCanvasReport(handle, { projectName: s.project, datasetName: 'ORD000 · v1' });
     expect((exported[1][2] as { title: string }).title).toBe('ORD000 · v1');
     await exportCanvasReport(null, {}); expect(exported).toHaveLength(2);

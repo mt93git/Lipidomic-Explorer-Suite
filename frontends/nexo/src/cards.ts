@@ -445,6 +445,18 @@ export class Card {
       return {url,bytes:blob.size};
     })));
   }
+  /** The report's source for this card: its current figure as the card draws it (inputs, editor, Nexo style, statistics)
+   *  through the card's own fetch, whatever its zoom tier or finished state; an image card's PNG at 2x. A data URL, so a
+   *  page SVG can carry it. Undefined when the card has nothing to draw (an illustration, or a fetch that fails). */
+  async reportSource(): Promise<{ figure?: import('./editor/applyEditor').Figure; url?: string } | undefined> {
+    if (this.disposed || this.node.kind !== 'plot') return undefined;
+    if (this.renderer.kind === 'plotly') {
+      const figure = (await this.fetchFigure()).figure as unknown as import('./editor/applyEditor').Figure;
+      return { figure: structuredClone(this.edited(figure, true)) as unknown as import('./editor/applyEditor').Figure };
+    }
+    const url = String(await this.loadImage(undefined, 2)), blob = await (await fetch(url)).blob();
+    return { url: await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = () => reject(r.error); r.readAsDataURL(blob); }) };
+  }
   /** Steph review 4b: what the card shows now (palette/paletteRedraw.ts), undefined when it shows no plot drawing. */
   drawingSignature(): string | undefined {
     if (this.disposed || this.node.finished || this.node.kind !== 'plot') return undefined;
@@ -608,7 +620,7 @@ export class Card {
     try { const styled=applyNexoStyle(figure,this.nexoStyle);this.el.querySelector('.nexo-style-error')?.remove();return styled; }
     catch(error){let reason=this.el.querySelector<HTMLElement>('.nexo-style-error');if(!reason){reason=document.createElement('p');reason.className='nexo-style-error';reason.setAttribute('role','alert');this.el.append(reason);}reason.textContent=error instanceof Error?error.message:String(error);return figure;}
   }
-  private edited() { return applyStatisticsToFigure(this.styled(applyEditor(this.figure as import('./editor/applyEditor').Figure, (this.node.visual as Visual | undefined)?.editor)),this.node.statistics,this.described); }
+  private edited(figure: unknown = this.figure, includeNexo = !this.teamPreview) { return applyStatisticsToFigure(this.styled(applyEditor(figure as import('./editor/applyEditor').Figure, (this.node.visual as Visual | undefined)?.editor), includeNexo),this.node.statistics,this.described); }
   private async live(revision: number) {
     this.rendering++;
     this.showLoading();
