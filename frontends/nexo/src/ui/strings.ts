@@ -82,7 +82,7 @@ export const strings = {
   editFigure: 'Edit figure', finishedFigure: 'Finished figure.', finishPlot: 'Finish plot', figureDetails: 'Figure details', labelHeading: 'Label', tierHeading: 'Tier', upToDate: 'Up to date', updateFailed: 'Update failed', settingsUnavailable: 'Settings unavailable',
   failCsv: 'download the plot data', failDownload: 'download the file', failPng: 'download the PNG', failSvg: 'download the SVG', failPdf: 'download the PDF', failJson: 'copy the figure JSON', loadLiveFirst: 'Load a live plot first.',
   copyJson: 'Copy figure JSON', failSchema: 'load the plot settings', failUpdate: 'update the plot', failAction: 'run this action', moduleDialog: 'Details', failDuplicate: 'duplicate the selection',
-  failZip: 'download the ZIP', failCopy: 'copy to the tab', failDuplicateTab: 'duplicate the tab', failPage: 'export the figure page',
+  failZip: 'download the ZIP', failCopy: 'copy to the tab', failDuplicateTab: 'duplicate the tab', failPage: 'export the figure page', exportReport: 'Export report', buildingReport: 'Building report…', failReport: 'export the report', reportTitle: 'Report title', reportTitleHint: 'Board name',
   canvasEmpty: 'This canvas is empty. Add a plot from the library or drag an illustration here.', canvasEmptyViewOnly: 'This canvas is empty.', addPlot: 'Add plot', canvasArea: 'Canvas area', keyboardShortcuts: 'Keyboard shortcuts', shortcutsTitle: 'Keyboard shortcuts',
   sizeHeading: 'Size', sizeWidth: 'Width (px)', sizeHeight: 'Height (px)', sizeLock: 'Lock aspect ratio', sizePresets: 'Journal width',
   sizePositionHeading: 'Size & position', sizeUnits: 'Units', sizeWidthField: 'Width', sizeHeightField: 'Height', positionX: 'X', positionY: 'Y', sizeClamped: 'Team cards are 63–1058 mm wide (240–4000 px).',

@@ -1,6 +1,8 @@
 import { Icon } from './Icon';
 import { CanvasHandleContext, tabsBridges } from '../canvas/handle';
 import { exportPage } from '../figure/exportPage';
+import { ReportButton } from './ReportButton';
+import { exportCanvasReport, type ReportInfo } from './reportExport';
 import { initialDocument, syncDocument } from '../figure/model';
 import type { Document } from '../state/document';
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -16,7 +18,7 @@ const arrangeLabels = { left: s.alignLeft, right: s.alignRight, top: s.alignTop,
 import { canComment, isReadOnly } from '../state/readonly';
 import { collab } from '../collab/mode';
 import { clipboard, onClipboard } from '../clipboard';
-export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:()=>void;onSave:()=>void;onDownload:()=>void;onShortcuts:()=>void}) {
+export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis,report}:{onAnalysis:()=>void;onSave:()=>void;onDownload:()=>void;onShortcuts:()=>void;report?:ReportInfo}) {
   const ref = useRef<HTMLDivElement>(null), [width, setWidth] = useState(0), handle = useContext(CanvasHandleContext), [helpOpen, setHelpOpen] = useState(false), [removing, setRemoving] = useState(false), [exporting, setExporting] = useState<ExportScope | null>(null);
   useEffect(() => { const el = ref.current!.parentElement!; const observer = new ResizeObserver(() => setWidth(el.clientWidth)); observer.observe(el); return () => observer.disconnect(); }, []);
   // Opening or closing a side panel resizes the header in this same commit: measure before paint,
@@ -45,6 +47,8 @@ export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:(
     const nodes = handle.getSession().canvas.nodes, saved = (tabsBridges.get(handle)?.document() as {document?:Document|null}|undefined)?.document;
     try { await exportPage(kind, saved ?? syncDocument(initialDocument(), nodes), nodes); } catch (error) { notifyFailure(s.failPage, error); }
   };
+  // The report: title block + Figure 1 + the figure page, A4.
+  const reportButton = <ReportButton disabled={!handle} onExport={() => exportCanvasReport(handle, report)} onFail={notifyFailure}/>;
   // View only keeps viewing, exporting and help; every editing or saving item is left out.
   const add = !readOnly && <button onClick={() => openLibrary('plots')}>{s.add}</button>;
   // Phase 6: comment mode drops a pin at the next canvas click (canvas/pins.ts); shared projects only. Pressed while on.
@@ -62,9 +66,9 @@ export function Toolbar({onSave,onDownload,onShortcuts,onAnalysis}:{onAnalysis:(
   return <div ref={ref} className="toolbar" role="toolbar" aria-label={s.tools}>
     {!collapsed.includes('analysis') && analysis}
     {!collapsed.includes('add') && add}{comment}{!collapsed.includes('arrange') && tidy}{!collapsed.includes('history') && history}
-    {!collapsed.includes('add') && <span className="draft">{handle?.figureMode ? s.figurePage : pending ? p.draftPending(pending) : s.draft}</span>}{!collapsed.includes('figure') && figure}
+    {!collapsed.includes('add') && <span className="draft">{handle?.figureMode ? s.figurePage : pending ? p.draftPending(pending) : s.draft}</span>}{!collapsed.includes('figure') && <>{figure}{reportButton}</>}
     {!collapsed.includes('export') && <Menu label={s.export} caret>{exports}</Menu>}
-    <Menu label={s.more} name={s.tools}>{collapsed.includes('figure') && figure}{collapsed.includes('analysis') && analysis}{collapsed.includes('add') && add}{collapsed.includes('arrange') && tidy}{collapsed.includes('history') && history}{collapsed.includes('export') && exports}
+    <Menu label={s.more} name={s.tools}>{collapsed.includes('figure') && <>{figure}{reportButton}</>}{collapsed.includes('analysis') && analysis}{collapsed.includes('add') && add}{collapsed.includes('arrange') && tidy}{collapsed.includes('history') && history}{collapsed.includes('export') && exports}
       {!readOnly && <><button disabled={!handle || !clipboard()} title={clipboard() ? undefined : s.pasteEmpty} onClick={() => void handle?.paste().catch(error => notifyFailure(s.failPaste, error))}>{s.paste}</button><button onClick={() => setRemoving(true)}>{s.removeAll}</button>
         {/* Journey review 5.4: align and distribute the selected cards (Shift-click or drag a frame to select). */}
         <div role="group" aria-label={s.arrangeSelected} className="menu-group">{(['left','right','top','bottom','distributeX','distributeY'] as const).map(kind => { const need = kind.startsWith('distribute') ? 3 : 2, count = handle?.selection().length ?? 0;

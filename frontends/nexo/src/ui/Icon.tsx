@@ -4,6 +4,7 @@ const PATHS = {
   down: 'M4.5 6.5 8 10l3.5-3.5', right: 'M6.5 4.5 10 8l-3.5 3.5', left: 'M9.5 4.5 6 8l3.5 3.5',
   'arrow-right': 'M3 8h10M9 4l4 4-4 4', 'arrow-left': 'M13 8H3M7 4 3 8l4 4',
   undo: 'M5.5 3.5 2.5 6.5l3 3M2.5 6.5H10a3.5 3.5 0 0 1 0 7H7', redo: 'M10.5 3.5l3 3-3 3M13.5 6.5H6a3.5 3.5 0 0 0 0 7h3',
+  download: 'M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10',
 } as const;
 export type IconName = keyof typeof PATHS;
 export function Icon({ name }: { name: IconName }) {

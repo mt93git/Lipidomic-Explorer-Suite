@@ -2,7 +2,7 @@ import type {Node} from '../api';
 import type {Figure,PlotObject} from '../editor/applyEditor';
 import {conditionOf} from '../editor/conditionColors';
 import {A4} from './a4Pdf';
-import type {Caption,Page,Positioned} from './layout';
+import type {Caption,Page,Positioned,TitleBlock} from './layout';
 // Figure 1: page 1 of the figure page PDF, composed from the author's own dashboard cards as the lab's Figure 1 template
 // lays them out (A PCA scores, B PCA score analysis, C composition, D abundance heatmap, E up to four feature
 // distributions), with its legend under it. Presentation only: each panel is the card's live figure restyled for print
@@ -20,12 +20,12 @@ export function figure1Panels(nodes:Node[]):Panel[]{
 export interface Slot {role:Role;nodeId:string;letter?:string;x:number;y:number;width:number;height:number}
 export const MARGIN=34;const GUTTER=12;
 /** Panel boxes on A4 portrait (points); `reserve` is the height kept under the figure for its legend. */
-export function figure1Geometry(panels:Panel[],reserve=0):Slot[]{
- const W=A4[0]-2*MARGIN,H=Math.min(A4[1]-2*MARGIN-reserve,W*1.25),cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
+export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN):Slot[]{
+ const W=A4[0]-2*MARGIN,H=Math.min(A4[1]-top-MARGIN-reserve,W*1.25),cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
  const has=(r:Role)=>panels.find(p=>p.role===r),slots:Slot[]=[];
  const put=(p:Panel|undefined,x:number,y:number,width:number,height:number)=>{if(p)slots.push({role:p.role,nodeId:p.nodes[0].id,letter:p.letter,x,y,width,height});};
- const row1=!!(has('pca')||has('pcascore')),r1=.3*H,by=MARGIN+(row1?r1:0),bh=.7*H;
- put(has('pca'),left,MARGIN,cw,r1-GUTTER);put(has('pcascore'),right,MARGIN,cw,r1-GUTTER);
+ const row1=!!(has('pca')||has('pcascore')),r1=.3*H,by=top+(row1?r1:0),bh=.7*H;
+ put(has('pca'),left,top,cw,r1-GUTTER);put(has('pcascore'),right,top,cw,r1-GUTTER);
  const comp=has('comp'),violin=has('violin'),ch=violin?.4*bh-GUTTER/2:bh,ey=by+(comp?.4*bh+GUTTER/2:0),eh=comp?.6*bh-GUTTER/2:bh;
  put(comp,left,by,cw,ch);put(has('heat'),right,by,cw,bh);
  if(violin){const w=(cw-GUTTER)/2,h=(eh-GUTTER)/2;violin.nodes.forEach((n,i)=>slots.push({role:'violin',nodeId:n.id,letter:i?undefined:violin.letter,x:left+(i%2)*(w+GUTTER),y:ey+Math.floor(i/2)*(h+GUTTER),width:w,height:h}));}
@@ -114,17 +114,17 @@ export function figure1Caption(panels:Panel[],sources:Map<string,PanelSource>):O
 }
 /** Figure 1 as a page: null when the canvas has none of its cards. `source` gives a card's live figure (or its image);
  *  `render` turns a restyled figure into an image of the slot's size (points). */
-export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>}):Promise<Page|null>{
+export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title?:TitleBlock|((groups:string[])=>TitleBlock)}):Promise<Page|null>{
  const sources=new Map<string,PanelSource>();
  for(const n of nodes)if(roleOf(n)){const s=await options.source(n);if(s&&(s.figure||s.url))sources.set(n.id,s);}
  const panels=figure1Panels(nodes.filter(n=>sources.has(n.id)));if(!panels.length)return null;
  const fig=(role:Role)=>panels.find(p=>p.role===role)?.nodes.map(n=>sources.get(n.id)?.figure).filter((f):f is Figure=>!!f)??[];
  const colours=groupColours({pca:fig('pca')[0],violin:fig('violin'),pcascore:fig('pcascore')[0]}),order=[...colours.keys()];
- const caption=figure1Caption(panels,sources),gap=14,slots=figure1Geometry(panels,caption.lines.length*caption.lineHeight+gap);
+ const caption=figure1Caption(panels,sources),gap=14,title=typeof options.title==='function'?options.title(order):options.title,top=title?title.y+title.height+gap:MARGIN,slots=figure1Geometry(panels,caption.lines.length*caption.lineHeight+gap,top);
  const items:Positioned[]=[];
  for(const slot of slots){const s=sources.get(slot.nodeId)!,node=nodes.find(n=>n.id===slot.nodeId);
   const image=s.figure?await options.render(figure1Figure(slot.role,s.figure,colours,order,slot),slot.width,slot.height):s.url!;
   items.push({x:slot.x,y:slot.y,width:slot.width,height:slot.height,node,image,...(slot.letter?{letter:slot.letter}:{})});}
  const bottom=Math.max(...slots.map(s=>s.y+s.height));
- return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap}};
+ return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(title?{titleBlock:title}:{})};
 }

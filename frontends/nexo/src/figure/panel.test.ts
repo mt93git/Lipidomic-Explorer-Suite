@@ -17,3 +17,7 @@ it('offers Figure 1 on page 1 of the PDF, on by default, next to the page export
  const html=renderToStaticMarkup(createElement(FigurePage,{handle}));
  expect(html).toMatch(/<input type="checkbox" checked=""\/>Figure 1 on page 1 of the PDF \(A4\)/);
 });
+it('lets the author type the report title on the Page tab; empty uses the board name',()=>{
+ const html=renderToStaticMarkup(createElement(FigurePage,{handle}));
+ expect(html).toMatch(/<label>Report title<input type="text" aria-label="Report title" maxLength="200" placeholder="Board name" value=""\/><\/label>/);
+});
