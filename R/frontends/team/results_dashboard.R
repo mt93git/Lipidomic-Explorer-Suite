@@ -350,7 +350,11 @@ results_dashboard_ui <- function(id = "results_dashboard") {
       rd_card(ns, "comp", "Class signal composition", "Share of each sample's summed prepared signal by lipid class."),
       rd_card(ns, "dist", "Abundance distribution", "Per-sample distribution of log10 abundances."),
       rd_card(ns, "heat", "Lipid heatmap", "Explore individual lipids by class or search the full available catalog.", "560px"),
-      div(class = "rd-pcascore-slot", style = "display:none", plotly::plotlyOutput(ns("plot_pcascore"), height = "460px"))),
+      div(class = "rd-pcascore-slot", style = "display:none", plotly::plotlyOutput(ns("plot_pcascore"), height = "460px")),
+      # PCA loadings: a canvas card (like the PCA score card) drawn from the same PCA as "Principal component analysis".
+      div(class = "rd-loadings-slot", style = "display:none",
+        downloadButton(ns("dl_loadings"), "Plot data (CSV)", class = "btn-sm rd-dl"),
+        plotly::plotlyOutput(ns("plot_loadings"), height = "420px"))),
     div(class = "rd-methods",
       h3("How to read these views"),
       tags$ul(
@@ -712,6 +716,44 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
             nrow(cl$mat), cl$n_incomplete,
             if(identical(input$pca_transform,"linear") || identical(input$pca_transform,"log2")) " or nonfinite" else ", nonpositive or nonfinite",
             cl$n_constant)
+  })
+
+  # ---- PCA loadings (canvas card) ------------------------------------------------
+  # The loadings of the very PCA plot_pca draws (pca_data(): same abundance scale and scaling controls), read from
+  # its rotation; nothing is recomputed. One point per lipid the PCA kept, colored by lipid class (the dashboard's
+  # rd_class, colored as the composition view); the lipid name is in the hover only, never drawn on the plot.
+  pca_loadings <- reactive({
+    d <- pca_data(); rot <- d$pc$rotation
+    lipids <- rownames(rot)
+    data.frame(Lipid = lipids, Class = rd_class(lipids), PC1_loading = unname(rot[, 1]), PC2_loading = unname(rot[, 2]),
+               PC1_variance_pct = d$ve[1], PC2_variance_pct = d$ve[2], Lipids_used = nrow(rot),
+               Scaling = d$df$Scaling[1], Transformation = d$df$Transformation[1], stringsAsFactors = FALSE)
+  })
+  output$plot_loadings <- plotly::renderPlotly({
+    d <- pca_data(); df <- pca_loadings()
+    ttl <- if (identical(input$pca_transform, "linear")) "Linear" else if (identical(input$pca_transform, "log10")) "Log10" else "Log2"
+    lev <- sort(unique(df$Class), method = "radix")
+    # A dataset whose lipid names carry no class draws every lipid in one color.
+    single <- length(lev) <= 1L
+    cols <- if (single) stats::setNames(rd_palette[1], lev) else rd_class_colors(lev, rd_value(shared_data$class_color_map))
+    df$Hover <- sprintf("%s<br>Class %s", htmltools::htmlEscape(df$Lipid), htmltools::htmlEscape(df$Class))
+    p <- plotly::plot_ly(source = session$ns("rd_loadings"))
+    for (g in lev) {
+      i <- which(df$Class == g)
+      col <- cols[[g]]; if (is.null(col) || is.na(col)) col <- "#6b7280"
+      p <- plotly::add_trace(p, type = "scatter", mode = "markers", x = df$PC1_loading[i], y = df$PC2_loading[i],
+        name = sprintf("%s (n = %d)", if (single) "Lipids" else g, length(i)), legendgroup = g, customdata = df$Lipid[i],
+        marker = list(size = 6, color = col, opacity = 0.85, line = list(color = col, width = 0)),
+        text = df$Hover[i], hovertemplate = "%{text}<br>PC1 loading %{x:.3f}<br>PC2 loading %{y:.3f}<extra></extra>")
+    }
+    frame <- list(showline = TRUE, linecolor = "#000000", linewidth = 1, mirror = TRUE, ticks = "outside", ticklen = 4, tickcolor = "#000000",
+                  showgrid = FALSE, zeroline = TRUE, zerolinecolor = "#7f7f7f", zerolinewidth = 1)
+    p |> rd_layout(title = list(text = ttl, x = 0.5, xanchor = "center", font = list(family = "Arial, Helvetica, sans-serif", size = 10, color = "#000000")),
+                xaxis = c(list(title = sprintf("PC1 loading (%.1f%%)", d$ve[1])), frame),
+                yaxis = c(list(title = sprintf("PC2 loading (%.1f%%)", d$ve[2])), frame),
+                showlegend = !single,
+                legend = list(orientation = "v", x = 1.02, xanchor = "left", y = 1, yanchor = "top"),
+                margin = list(l = 60, r = if (single) 20 else 190, t = 35, b = 55))
   })
 
   # ---- PCA score analysis (Statistics tab) ---------------------------------------
@@ -1127,6 +1169,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     })
   output$dl_violin <- dl("lipid_violin", violin_data)
   output$dl_pca <- dl("pca_scores", function() pca_data()$df)
+  output$dl_loadings <- dl("pca_loadings", pca_loadings)
   output$dl_comp <- dl("class_signal_composition", function() if(isTRUE(shared_data$team_compact_distribution)) comp_team_data()$samples else comp_data())
   output$dl_dist <- dl("log10_distribution", dist_data)
   output$dl_heat <- dl("top_variable_heatmap", function() heat_data()$df)
