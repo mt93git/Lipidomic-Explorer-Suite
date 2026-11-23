@@ -1,8 +1,10 @@
 import type {Document,DocumentItem} from '../state/document';
 import type {Node} from '../api';
 export function size(d:Document):[number,number]{if(d.paper==='custom')return [d.paperWidth,d.paperHeight];const s:[number,number]=d.paper==='a4'?[595.28,841.89]:[612,792];return d.orientation==='landscape'?[s[1],s[0]]:s;}
-export type Positioned=Partial<DocumentItem>&{x:number;y:number;width:number;height:number;node?:Node;index?:number;note?:string;caption?:string};
-export interface Page {width:number;height:number;items:Positioned[];draft?:boolean;legend?:string}
+export type Positioned=Partial<DocumentItem>&{x:number;y:number;width:number;height:number;node?:Node;index?:number;note?:string;caption?:string;image?:string;letter?:string};
+/** Figure 1's legend block under the figure (points; y is the top of the block, wrapped lines in order). */
+export interface Caption {x:number;y:number;width:number;fontSize:number;lineHeight:number;lead:string;paragraphs:string[];lines:{text:string;lead?:boolean}[]}
+export interface Page {width:number;height:number;items:Positioned[];draft?:boolean;legend?:string;figure1?:boolean;caption?:Caption}
 export function model(document:Document,nodes:Node[]):Page[]{
  const [width,height]=size(document),margin=46,top=66,bottom=52;const page=(items:Positioned[]):Page=>({width,height,items});
  if(document.layout==='free')return [page(document.items.slice().sort((a,b)=>a.z-b.z).map(item=>({...item,node:item.type==='figure'?nodes.find(n=>n.id===item.nodeId):undefined})))];
