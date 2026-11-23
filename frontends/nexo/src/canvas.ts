@@ -948,6 +948,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     enterFigureMode(){draftCamera={...camera};figureMode=true;figureLayer.hidden=false;figureLayer.style.left=`${Math.max(0,...store.get().nodes.map(n=>n.x+n.width))+120}px`;draw();fit();},
     exitFigureMode(){figureMode=false;figureLayer.hidden=true;Object.assign(camera,draftCamera);draw();},
     figureOf: id => cards.find(c=>c.node.id===id)?.figure as import('./editor/applyEditor').Figure | undefined,
+    cardSource: async id => cards.find(c=>c.node.id===id)?.reportSource(),
     setStatistics: (id,statistics) => {history.dispatch(statisticsCommand(id,statistics));},
     setNexoStyle:(id,style)=>{if(isReadOnly())return;const card=cards.find(c=>c.node.id===id);if(card?.figure){try{applyNexoStyle(applyEditor(card.figure as import('./editor/applyEditor').Figure,(card.node.visual as Visual|undefined)?.editor),style);}catch(error){notify(String(error),true);return;}}history.dispatch(setNexoStyle(id,style));},
     nexoStyle:id=>store.get().nexo.nodes[id]?.style??{},
