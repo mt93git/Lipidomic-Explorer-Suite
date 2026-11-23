@@ -1,3 +1,5 @@
+if (!exists('team_violin_style', mode = 'function')) source('R/frontends/team/violin_style.R')
+
 # Read-only companion: 3D controls never mutate preparation or analysis settings.
 cell_profile <- function(d, sample) {
   if (is.null(d) || !nrow(d) || length(sample) != 1 || !sample %in% names(d)) return(data.frame())
