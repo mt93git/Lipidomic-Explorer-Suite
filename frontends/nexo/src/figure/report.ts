@@ -60,15 +60,15 @@ export const reportTitlePreference={
 export function paletteGroupCount(palette:SessionPalette|undefined):number|undefined{
  const n=palette?.contexts.find(c=>c.id==='Group1')?.groups.length;return n?n:undefined;
 }
-const CAPTION=16,GAP=14;
+const CAPTION=16,GAP=14,TALL=1.2;
 /** The report body: each card full width under its label, its shape kept (shrunk to the page when taller), two per
- *  page when both fit (a card a little over half a page is shrunk to fit beside another). Positions only; the images are filled in by buildReport. */
+ *  page (a card over half a page is shrunk to fit beside another unless it is very tall). Positions only; the images are filled in by buildReport. */
 export function reportBodyLayout(nodes:Node[]):Page[]{
  const W=A4[0]-2*MARGIN,bottom=A4[1]-MARGIN,most=A4[1]-2*MARGIN-CAPTION,half=(A4[1]-2*MARGIN-GAP)/2-CAPTION,pages:Page[]=[];let page:Page|undefined,y=MARGIN;
  for(const node of nodes){
   const aspect=node.height>0&&node.width>0?node.height/node.width:.75;// Up to half a page at full width; a little taller is shrunk to half a page so two still share it; much taller
   // goes on its own page, shrunk to the page height when needed. The shape is always kept.
-  let ih=W*aspect;if(ih>half)ih=ih<=half*1.25?half:Math.min(ih,most);const iw=ih/aspect;
+  let ih=W*aspect;if(ih>half)ih=aspect<=TALL?half:Math.min(ih,most);const iw=ih/aspect;
   if(!page||page.items.length>=2||y+CAPTION+ih>bottom+1e-9){page={width:A4[0],height:A4[1],items:[],report:true};pages.push(page);y=MARGIN;}
   page.items.push({node,caption:node.label,x:MARGIN+(W-iw)/2,y,width:iw,height:CAPTION+ih});y+=CAPTION+ih+GAP;
  }
