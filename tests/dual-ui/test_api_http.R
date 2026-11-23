@@ -32,11 +32,15 @@ local({
   # Read declarations without loading the application in this HTTP client process.
   definitions <- parse("R/frontends/team/plot_instances.R")
   counts <- new.env(parent = baseenv())
+  # Nexo is never served the QC PCA cards it shows as the dashboard cards (catalog.R api_nexo_pca_aliases).
+  definitions <- c(definitions, parse("frontends/nexo-api/catalog.R"))
   for (expr in definitions) if (is.call(expr) && identical(expr[[1L]], as.name("<-")) && is.symbol(expr[[2L]]) &&
-      as.character(expr[[2L]]) %in% c("team_plot_instance_families", "team_cell_instance_outputs")) eval(expr, counts)
+      as.character(expr[[2L]]) %in% c("team_plot_instance_families", "team_cell_instance_outputs", "api_nexo_pca_aliases")) eval(expr, counts)
   expected <- sum(vapply(counts$team_plot_instance_families, function(x) length(x$outputs), integer(1))) +
-    length(counts$team_cell_instance_outputs)
-  stopifnot(length(httr::content(catalog_response)$outputs) == expected)
+    length(counts$team_cell_instance_outputs) - length(counts$api_nexo_pca_aliases)
+  served <- vapply(httr::content(catalog_response)$outputs, `[[`, character(1), "id")
+  stopifnot(length(served) == expected, !any(names(counts$api_nexo_pca_aliases) %in% served),
+    "results_dashboard-plot_loadings" %in% served)
   cat(sprintf("PASS I1 catalog %d\n", expected))
   post <- function(path, body) httr::POST(paste0(base, path), body = body, encode = "json")
   opened <- post("/sessions", list(checkpointId = "synthetic"))
@@ -76,7 +80,10 @@ local({
   stopifnot(httr::status_code(stats_response) == 200L,
     identical(httr::content(stats_response)$status, "ok"))
   cat("PASS stats HTTP describe 200\n")
-  created <- post(paste0(session_path, "/cards"), list(source = "qc_pca_tab-pca2dPlot"))
+  # Nexo asking for a QC 2D PCA gets the dashboard card (cards.R api_card_create_requested).
+  ours <- post(paste0(session_path, "/cards"), list(source = "qc_pca_tab-pca2dPlot"))
+  stopifnot(httr::status_code(ours) == 200L, identical(httr::content(ours)$source, "results_dashboard-plot_pca"))
+  created <- post(paste0(session_path, "/cards"), list(source = "qc_pca_tab-boxplotAfterNorm"))
   stopifnot(httr::status_code(created) == 200L)
   card_path <- paste0(session_path, "/cards/", httr::content(created)$instanceId)
   schema_response <- httr::GET(paste0(base, card_path, "/schema"))

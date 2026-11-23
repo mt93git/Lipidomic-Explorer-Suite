@@ -9,6 +9,7 @@
       ['results_dashboard-plot_dist','Signal distribution','Inspect the distribution of measured signal.','Composition',null,'density'],
       ['results_dashboard-plot_comp','Composition overview','Compare signal shares across groups.','Composition',null,'bars'],
       ['results_dashboard-plot_heat','Abundance heatmap','Compare lipid patterns across groups.','Heatmap',null,'heat'],
+      ['results_dashboard-plot_loadings','PCA loadings','See which lipids drive the principal components.','Quality Check',null,'scatter'],
       ['results_dashboard-plot_pcascore','PCA score analysis','Compare the scores of one principal component between groups, with the tests and group medians.','Quality Check',null,'bars']
     ]},
     {category:'Quality check', icon:'pulse', entries:[

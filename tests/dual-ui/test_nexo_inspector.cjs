@@ -407,7 +407,7 @@ async function browserTests(pw, name, base) {
     console.log('PASS H8 ' + name + ' zoomed-out-plotly-card-retakes-its-snapshot-after-data-change');
     // Feature 1: a module's action buttons (Team's "Data & settings") are live in the Data tab; a dialog the
     // module opens shows in Nexo's dialog, sanitised (the mock QC action's body carries a script and a link).
-    const qcId = await page.evaluate(async () => { await window.__nexo.handle.addCard('qc_pca_tab-pca2dPlot'); return window.__nexo.store.get().nodes.find(n=>n.instance?.source==='qc_pca_tab-pca2dPlot').id; });
+    const qcId = await page.evaluate(async () => { await window.__nexo.handle.addCard('qc_pca_tab-boxplotAfterNorm'); return window.__nexo.store.get().nodes.find(n=>n.instance?.source==='qc_pca_tab-boxplotAfterNorm').id; });
     await card(page, qcId).locator('header').click();
     await inspector.getByRole('tab', {name:'Data',exact:true}).click();
     const action = inspector.getByRole('button', {name:'Show Statistic Detail',exact:true});
