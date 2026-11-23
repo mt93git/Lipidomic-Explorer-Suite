@@ -13,3 +13,7 @@ it('offers transient page guides separately from page furniture',()=>{
  const html=renderToStaticMarkup(createElement(FigurePage,{handle}));
  expect(html).toContain('Page guides');expect(html).toContain('Page furniture');
 });
+it('offers Figure 1 on page 1 of the PDF, on by default, next to the page exports',()=>{
+ const html=renderToStaticMarkup(createElement(FigurePage,{handle}));
+ expect(html).toMatch(/<input type="checkbox" checked=""\/>Figure 1 on page 1 of the PDF \(A4\)/);
+});
