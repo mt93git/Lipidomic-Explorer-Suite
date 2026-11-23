@@ -20,4 +20,7 @@ it('pilot F1: QC copies offer no per-group pickers and say their colours follow 
  expect(schemaFor('volcano_tab-volcanoPlot').sessionPalette).toBeUndefined();
  expect(mockComputedLabel('qc_pca_tab-pca2dPlot','PCA',{useCustomColors:true,customCol_Control:'#112233'})).toEqual({label:'PCA'});
  expect(mockComputedLabel('qc_pca_tab-pca2dPlot','PCA',{},undefined,'#AA3300')).toEqual({label:'PCA · #AA3300',fill:'#AA3300'});
+ // Nexo never adds the QC 2D PCA (pcaDesign.ts): the mock normalized boxplots draw the session colour, and keep Team's override box.
+ expect(mockComputedLabel('qc_pca_tab-boxplotAfterNorm','Boxplots',{},undefined,'#AA3300')).toEqual({label:'Boxplots · #AA3300',fill:'#AA3300'});
+ expect(schemaFor('qc_pca_tab-boxplotAfterNorm').controls.map(c=>c.id)).toEqual(['useCustomColors']);
 });

@@ -51,14 +51,16 @@ export function mockComputedLabel(source: string, label: string, inputs: Record<
   if (source === 'structural_tab-speciesPlotPlot') { const shown = instance ? mockModule[instance]?.species : undefined; return shown?.length ? {label:`${label} · ${shown.length} shifts: ${shown.join(', ')}`} : {label:"Click 'Initiate Structural Analysis' in the left sidebar", fill:'#d8e2e6'}; }
   if (source === 'qc_pca_tab-bqcPlot') { const n = Array.isArray(inputs.bqcSamples) ? inputs.bqcSamples.length : 0; return n >= 2 ? {label:`${label} · ${n} BQC samples`} : {label:'Select at least 2 BQC samples', fill:'#d8e2e6'}; }
   if (source === 'cellular_org_tab-polarPlot') { const fill = typeof inputs[`customCol_${mockGroups[0]}`] === 'string' ? inputs[`customCol_${mockGroups[0]}`] as string : undefined; return {label:`${label} · ${fill ?? groupPalette[0]} ${teamShapes.find(o => o.value === String(inputs[`customShape_${mockGroups[0]}`] ?? '16'))?.label ?? String(inputs[`customShape_${mockGroups[0]}`])}`, fill}; }
-  // Pilot F1: the 2D PCA's group colours follow the session palette (mock/palette.ts), never the card's own pickers.
-  if (source === 'qc_pca_tab-pca2dPlot') return session ? {label:`${label} · ${session}`, fill:session} : {label};
+  // Pilot F1: the QC images' group colours follow the session palette (mock/palette.ts), never the card's own pickers.
+  // Nexo shows the dashboard PCA instead of the QC 2D PCA (pcaDesign.ts), so the normalized boxplots carry it in Nexo.
+  if (mockQcGroupImage(source)) return session ? {label:`${label} · ${session}`, fill:session} : {label};
   if (source.startsWith('pathway_tab-')) { const moved = Object.keys(parsed(inputs.position_overrides_json, '{}') as object).length;
     return {label: moved ? `${label} · layout: ${moved} moved node${moved === 1 ? '' : 's'}` : label}; }
   return {label};
 }
 // Team's 2D PCA (R/frontends/team/qc-ui.R:39): "Override sample colors" stays (Team's static control), but a canvas copy's
 // per-group pickers never reach its PCA (pilot F1), so the real API no longer offers them (schema.R api_is_computed_id).
+const mockQcGroupImage = (source: string) => source === 'qc_pca_tab-pca2dPlot' || source === 'qc_pca_tab-boxplotAfterNorm';
 const pcaCustomColours = (_values: Record<string, unknown>): SchemaControl[] => [
   {id:'useCustomColors', type:'boolean', label:'Override sample colors in this QC tab?', default:false} as SchemaControl];
 /** Families whose group colours follow Team's session palette (palette.R api_palette_session_families). */
@@ -73,7 +75,7 @@ export function schemaFor(source: string, instance?: string, values: Record<stri
     {id:'violin_zoom_pct',type:'range',label:'Plot Height (px):',min:300,max:5000,step:50,default:2340}
   ] : source.includes('violin') ? [lipidControl('results_dashboard-plot_violin')] : source === 'logratio_tab-logratioPlot' ? [
     {id:'primary_grouping',type:'multiselect',label:'Primary Grouping (Order matters)',selectize:{plugins:['drag_drop']},options:['Condition','Time','Sex','Treatment_arm_by_dose_and_week','Sampling_batch_and_extraction_day'].map(v=>({value:v,label:v})),default:['Condition','Time']}
-  ] : source === 'results_dashboard-plot_pca' || source === 'results_dashboard-plot_pcascore' ? mockPcaScoreControls() : source === 'qc_pca_tab-pca2dPlot' ? pcaCustomColours(values) : source === 'volcano_tab-volcanoPlot' ? [
+  ] : source === 'results_dashboard-plot_pca' || source === 'results_dashboard-plot_pcascore' ? mockPcaScoreControls() : mockQcGroupImage(source) ? pcaCustomColours(values) : source === 'volcano_tab-volcanoPlot' ? [
     // Team sliderInputs as the real API serves them (schema.R: type range with min/max/step; label and help in one string).
     {id:'volcano_alpha',type:'range',label:'Alpha:',min:0,max:1,step:0.05,default:0.7},
     {id:'volcano_weight_logp',type:'range',label:'Weight -Log10PControls how heavily the significance term counts when ranking labelled points.',min:0,max:5,step:0.1,default:1}

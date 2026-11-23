@@ -31,7 +31,8 @@ local({
   Sys.setenv(LIPIDOMIC_STORAGE_DIR = root, LIPIDOMIC_API_WORKSPACE = "restore-cards")
   s <- api_session_for_checkpoint("tests/dual-ui/fixtures/classic-seed7-synthetic.zip")
   on.exit(api_session_close(s), add = TRUE)
-  source <- "qc_pca_tab-pca2dPlot"
+  # Not the 2D PCA cards: Nexo reopens those as the dashboard cards (test_api_pca_our_design.R).
+  source <- "qc_pca_tab-pca3dPlot"
   entry <- api_catalog_entry(source)
   # A saved, non-default choice: the first select control with a second option.
   pick <- Filter(function(c) identical(c$type, "select") && length(c$options) >= 2L &&
@@ -41,10 +42,10 @@ local({
   team_id <- "tcinstance_mw45phge_6gwfo69f"
   saved_inputs <- stats::setNames(list(chosen), pick$id)
   nodes <- list(
-    list(kind = "plot", id = paste0(team_id, "-pca2dPlot"), label = "PCA scores", x = 0, y = 0,
+    list(kind = "plot", id = paste0(team_id, "-pca3dPlot"), label = "PCA scores", x = 0, y = 0,
       width = 620, height = 720, visual = list(background = "#ffffff"),
       instance = list(id = team_id, source = source, inputs = saved_inputs)),
-    list(kind = "plot", id = "qc_pca_tab-load2dPlot", label = "PCA loadings", x = 650, y = 0,
+    list(kind = "plot", id = "qc_pca_tab-load3dPlot", label = "PCA loadings", x = 650, y = 0,
       width = 620, height = 720, visual = list(background = "#ffffff")))
   state <- list(version = "1", libraryHidden = FALSE, nodes = nodes)
   record <- api_checkpoint_save(s, "restore-cards", list(token = "restore-save", state = state))
@@ -59,9 +60,9 @@ local({
   stopifnot(identical(card$source, source), identical(as.character(card$inputs[[pick$id]]), chosen))
   cat("PASS restore a Team instance draws with its saved inputs\n")
 
-  fixed <- "tcinstance_fixed_qc_pca_tab_load2dplot"
+  fixed <- "tcinstance_fixed_qc_pca_tab_load3dplot"
   stopifnot(is_drawn(api_card_render(restored, fixed)),
-    identical(api_card_get(restored, fixed)$source, "qc_pca_tab-load2dPlot"))
+    identical(api_card_get(restored, fixed)$source, "qc_pca_tab-load3dPlot"))
   cat("PASS restore a fixed family node draws through its fixed instance\n")
   # A fixed node is the family's own view: Team shows it with every archived input of that
   # family, including the ones its module builds at run time (logratio's sel_<class group>).

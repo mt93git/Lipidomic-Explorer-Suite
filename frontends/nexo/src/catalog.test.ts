@@ -4,11 +4,12 @@ import { availability, catalogEntryFor, groupCatalog, renderKindFor, groupOrder,
 import type { CatalogEntry } from './api/types';
 const outputs = catalog.outputs as CatalogEntry[];
 describe('catalog', () => {
-  it('preserves Team group order and all 61 outputs (PCA score analysis, Team 8e2f5c07)', () => {
+  // Nexo shows our PCA design: PCA loadings joins Dashboard, the four QC 2D PCA cards are not offered (pcaDesign.ts).
+  it('preserves Team group order and the 58 outputs Nexo offers (PCA score analysis, Team 8e2f5c07; PCA loadings)', () => {
     const groups = groupCatalog(outputs);
     expect(groups.map(g => g.label)).toEqual(groupOrder);
-    expect(groups.map(g => g.count)).toEqual([6,14,4,4,5,9,1,3,5,2,3,4,1]);
-    expect(groups.reduce((sum, g) => sum + g.count, 0)).toBe(61);
+    expect(groups.map(g => g.count)).toEqual([7,10,4,4,5,9,1,3,5,2,3,4,1]);
+    expect(groups.reduce((sum, g) => sum + g.count, 0)).toBe(58);
   });
   // NEXO-P2: the analyst's new Structure card, as frontends/nexo-api/catalog.R lists it.
   it('lists Module-trait relationships with the API label, group and needs', () => {

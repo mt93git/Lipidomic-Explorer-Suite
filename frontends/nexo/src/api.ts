@@ -15,6 +15,7 @@ import { clearRunNeedIfPressed, markNewCardRunNeed, runNeedKey, UNAVAILABLE_INPU
 import mockCatalog from './mock/catalog.json';
 import { mockStructureFigure } from './mock/structure';
 import { withTimePoints } from './catalog';
+import { nexoSource } from './pcaDesign';
 import { cardInstanceId } from './api/instance';
 import { withSession, liveSession } from './api/session';
 import { collab } from './collab/mode';
@@ -257,6 +258,8 @@ const schemaDefaults = (source: string): Inputs => Object.fromEntries(schemaFor(
 const newInstanceId = () => `tcinstance_${Array.from(crypto.getRandomValues(new Uint8Array(6)), n => n.toString(16).padStart(2,'0')).join('')}`;
 const createCardRoute = sessionRoute('createCard', (id: string, source: string, inputs: Inputs, instanceId: string = newInstanceId(), signal?: AbortSignal): Promise<CardResult> => mock ? enqueue(async () => {
   signal?.throwIfAborted();
+  // As the API (cards.R api_card_create_requested): a QC PCA source creates the dashboard card, without QC inputs.
+  if (nexoSource(source) !== source) { source = nexoSource(source); inputs = {}; }
   mockSession(id); const entry = catalog.outputs.find(e => e.id === source); if (!entry) throw new Error('Unknown source');
   const card: CardResult = {instanceId, nodeId:`${instanceId}-${entry.output}`, source, family:entry.family, render:entry.render, allowedInputs:entry.allowedInputs, inputs:{...schemaDefaults(source),...entry.defaults,...inputs}, settled:true, error:null};
   if (entry.heightInput && typeof card.inputs[entry.heightInput] === 'number') card.plotHeight = card.inputs[entry.heightInput] as number;
