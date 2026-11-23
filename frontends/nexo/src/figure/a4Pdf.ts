@@ -12,7 +12,7 @@ export function fitA4(width:number,height:number){
 /** One PDF of A4 pages, each with the lab header and the page's raster image fitted under it. */
 export async function a4Pdf(pages:{width:number;height:number;png:string|Uint8Array}[],JsPDF:JsPdf,options:{type?:string;logo?:Logo|null;compress?:boolean}={}):Promise<unknown>{
  const pdf=new JsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:options.compress??true});
- pages.forEach((p,i)=>{if(i)pdf.addPage('a4','portrait');drawHeader(pdf,A4[0],options.logo);const f=fitA4(p.width,p.height);pdf.addImage(p.png,'PNG',f.x,f.y,f.width,f.height,undefined,'FAST');});
+ pages.forEach((p,i)=>{if(i)pdf.addPage('a4','portrait');drawHeader(pdf,A4[0],options.logo,i+1,pages.length);const f=fitA4(p.width,p.height);pdf.addImage(p.png,'PNG',f.x,f.y,f.width,f.height,undefined,'FAST');});
  return pdf.output(options.type??'blob');
 }
 /** The PDF's pages: Figure 1 first (when there is one), then the figure page's own pages, unchanged. */
