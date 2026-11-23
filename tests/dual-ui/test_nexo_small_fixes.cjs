@@ -69,7 +69,10 @@ async function journey(pw, name, base) {
     // 1 + 3. Inspector status follows the card; a fresh longitudinal card asks for nothing the API would refuse.
     {
       const { context, page, errors } = await open({ newContext: o => browser.newContext({ ...o, baseURL: base }) });
-      const failing = await addCard(page, 'qc_pca_tab-pca2dVectorPlot');
+      // A card Team's module refuses: Nexo shows the dashboard PCA instead of the QC editable vector views (pcaDesign.ts),
+      // so the mock refuses a served Plotly card with the module's message (mock/schema.ts mockRenderRefusal).
+      await page.evaluate(() => { window.__nexoMock.refuseRender = ['qc_pca_tab-load3dPlot']; });
+      const failing = await addCard(page, 'qc_pca_tab-load3dPlot');
       await card(page, failing).locator('.body.message').waitFor({ timeout: 15000 });
       await select(page, failing);
       await page.waitForFunction(() => /^Could not draw this plot\. Editable vector view unavailable/.test(document.querySelector('#inspector > p[role=status]')?.textContent || ''), null, { timeout: 10000 });

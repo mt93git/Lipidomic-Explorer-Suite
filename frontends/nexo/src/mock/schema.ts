@@ -95,7 +95,13 @@ export function schemaFor(source: string, instance?: string, values: Record<stri
 }
 // saveFault: a test sets it to make the next checkpoint saves fail with that message (journey review 8.1).
 // replays / replayFault: recorded module presses replayed on a card (chart audit b07 F3); a test sets replayFault to make replays fail.
-export const mockCounters: { refusals?: number; renders: number; cardPatches: {instance: string; body: {inputs: Record<string, unknown>; actions: unknown}}[]; saveFault?: string; labels: Record<string, string>; replays: {instance: string; actions: string[]}[]; replayFault?: boolean; uploads: {instance: string; input: string; name: string}[]; pngRenders?: {instance: string; width: number; height: number; dpr: number}[]; cardEvents?: {instance: string; body: unknown}[] } = { renders: 0, cardPatches: [], labels: {}, replays: [], uploads: [] };
+export const mockCounters: { refusals?: number; renders: number; cardPatches: {instance: string; body: {inputs: Record<string, unknown>; actions: unknown}}[]; saveFault?: string; labels: Record<string, string>; replays: {instance: string; actions: string[]}[]; replayFault?: boolean; uploads: {instance: string; input: string; name: string}[]; pngRenders?: {instance: string; width: number; height: number; dpr: number}[]; cardEvents?: {instance: string; body: unknown}[]; refuseRender?: string[] } = { renders: 0, cardPatches: [], labels: {}, replays: [], uploads: [] };
+/** Team's module refusal for its editable vector PCA views (legacy_vector_adapter.R). Nexo shows the dashboard PCA instead
+ *  of those views (pcaDesign.ts), so a browser suite that needs a card the module refuses names a served source in
+ *  mockCounters.refuseRender (window.__nexoMock.refuseRender): mock only, the real API is unchanged. */
+export const MOCK_MODULE_REFUSAL = 'Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view.';
+export const mockRenderRefusal = (source: string): string | undefined =>
+  /VectorPlot$/.test(source) || (mockCounters.refuseRender ?? []).includes(source) ? MOCK_MODULE_REFUSAL : undefined;
 export const MOCK_STRUCTURAL_PLACEHOLDER = "Click 'Initiate Structural Analysis' in the left sidebar";
 // b11 F3: the pathway module's layout as its download_config handler writes it from the five *_json inputs, and as its
 // upload_config observer writes an uploaded layout back to them (13_pathway_module.R:603-641).
