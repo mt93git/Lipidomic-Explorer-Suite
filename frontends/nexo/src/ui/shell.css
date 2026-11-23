@@ -691,3 +691,44 @@ a.sign-in:hover{background:var(--navy);border-color:var(--navy);color:var(--pape
 /* UX review 3, group E: on a phone the band wraps instead of cutting its text ("You can comment", the view-only sentence,
    the undecided-sample banner); the banner's Review stays a 32 px target. */
 @media(max-width:600px){.status-band{flex-wrap:wrap;height:auto;min-height:30px;padding-block:4px;row-gap:4px}.status-band span{white-space:normal;overflow:visible}.status-band .board-notice .notice-banner>span{white-space:normal}.status-band .notice-link{min-height:32px}}
+/* Approved inspector layout (2026-11-23): the name, status pill, actions and tabs stay in view while the body scrolls. */
+#inspector{font-size:13px}
+#inspector .inspector-sticky{position:sticky;top:0;z-index:6;background:var(--paper);border-bottom:1px solid var(--line);margin-bottom:var(--space-3)}
+#inspector .inspector-sticky>header{padding:var(--space-3) var(--space-2) var(--space-2) var(--space-4);gap:var(--space-2)}
+#inspector .inspector-sticky>header>.inspector-close{width:28px;height:28px;padding:0;margin:0;color:var(--muted);flex:none}
+#inspector .inspector-sticky [role=tablist]{margin-bottom:0;border-bottom:0}
+#inspector h2.inspector-name{margin:0;min-width:0;overflow:visible}
+#inspector .inspector-name-button{display:block;max-width:100%;height:auto;margin:0 0 0 -5px;padding:2px 4px;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;font:inherit;font-weight:600;color:var(--navy);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text}
+#inspector .inspector-name-button:hover:not(:disabled){border-color:var(--line-strong);background:transparent}
+#inspector .inspector-name-button:disabled{cursor:default;color:var(--navy)}
+#inspector .inspector-name-input{width:100%;box-sizing:border-box;font:inherit;font-weight:600;color:var(--navy)}
+#inspector .inspector-head-row{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-width:0}
+#inspector .inspector-head-row .inspector-actions{margin-left:auto}
+#inspector .status-pill{margin:0;padding:2px 8px;border-radius:var(--radius-pill);background:var(--canvas);color:var(--muted);font-size:var(--font-label);font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#inspector .status-pill[data-state=ok]{color:var(--green)}
+#inspector .status-pill[data-state=updating]{background:var(--blue-bg);color:var(--blue-fg)}
+#inspector .status-pill:is([data-state=pending],[data-state=waiting],[data-state=stale]){background:var(--amber-bg);color:var(--amber-fg)}
+#inspector .status-pill[data-state=error]{background:var(--red-bg);color:var(--red-fg)}
+#inspector .editing-banner{margin:0 var(--space-4) var(--space-2);padding:var(--space-2) 10px;border:1px solid var(--editor-colour,#7256b5);border-radius:var(--radius-md);background:var(--amber-bg);color:var(--ink);font-size:var(--font-small)}
+/* Data, Stats and Export: one heading per part. */
+#inspector .inspector-section{margin:0 0 var(--space-4)}
+#inspector .inspector-section>h3,#inspector h3.stats-heading{margin:var(--space-4) 0 var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--line)}
+#inspector .inspector-section:first-child>h3,#inspector .stats-tab>h3.stats-heading:first-child,#inspector .pca-score>h3.stats-heading:first-child{border-top:0;padding-top:0;margin-top:0}
+#inspector .inspector-advanced,#inspector .inspector-more{margin:0 0 var(--space-4);border-top:1px solid var(--line);padding-top:var(--space-2)}
+#inspector .inspector-advanced>summary,#inspector .inspector-more>summary{font-size:var(--font-label);letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer}
+#inspector .inspector-more>button{display:block;margin:var(--space-2) 0 0}
+#inspector .group-swatches{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-3);list-style:none;margin:0 0 var(--space-2);padding:0;font-size:var(--font-small)}
+#inspector .group-swatches li{display:inline-flex;align-items:center;gap:var(--space-1);min-width:0;overflow-wrap:anywhere}
+#inspector .group-swatch{display:block;flex:none;width:14px;height:14px;border:1px solid var(--line);border-radius:3px}
+#inspector .stats-field{display:grid;margin:var(--space-2) 0}
+#inspector .stats-check{display:flex}
+#inspector .gc-swatch{display:inline-flex;align-items:center;gap:var(--space-1);margin:0 var(--space-2) var(--space-1) 0}
+#inspector .gc-report{white-space:pre-wrap}
+#inspector .export-formats{display:flex;flex-wrap:wrap;gap:0;margin:0 0 var(--space-2)}
+#inspector .export-formats .tc-chip[aria-checked=true]{background:var(--tint);border-color:var(--accent);color:var(--accent);font-weight:600}
+#inspector .export-size{margin:0 0 var(--space-2)}
+#inspector .export-tab button.primary{border-color:var(--accent);background:var(--accent);color:var(--paper);font-weight:600}
+#inspector .export-tab button.primary:hover:not(:disabled){background:var(--navy);border-color:var(--navy)}
+#inspector .export-files{list-style:none;margin:0 0 var(--space-2);padding:0;display:grid;gap:var(--space-1)}
+#inspector .export-files .link{text-align:left;white-space:normal}
+#inspector [role=tabpanel]>fieldset>div.export-tab{display:block}

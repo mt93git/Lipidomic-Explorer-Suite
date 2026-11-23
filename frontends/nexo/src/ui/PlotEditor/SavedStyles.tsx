@@ -20,7 +20,7 @@ export default function SavedStyles(p: PlotEditorProps) {
   const download = () => { const url = URL.createObjectURL(new Blob([exportStyles(styles)], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = 'nexo-styles.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
   const upload = async (f: File | undefined) => { if (!f || f.size > 512 * 1024) { setStatus(s.stylePresetImportFailed); return; } const got = parseStyles(await f.text()); if (!got.length) { setStatus(s.stylePresetImportFailed); return; }
     commit([...styles.filter(x => !got.some(g => g.name === x.name)), ...got]); setStatus(s.stylePresetImported(got.length)); };
-  return <details className="pro-saved-styles"><summary>{s.stylePresets} <span className="pro-summary">{applied || s.stylePresetNone}</span></summary>
+  return <fieldset className="style-subgroup pro-saved-styles"><legend>{s.stylePresets} <span className="pro-summary">{applied || s.stylePresetNone}</span></legend>
     <p>{s.stylePresetNote}</p>
     {!styles.length && <p>{s.stylePresetEmpty}</p>}
     {styles.length > 0 && <ul className="pro-style-list" aria-label={s.stylePresets}>{styles.map(x => <li key={x.name} aria-current={x.name === applied || undefined}>
@@ -37,5 +37,5 @@ export default function SavedStyles(p: PlotEditorProps) {
       <button type="button" onClick={() => file.current?.click()}>{s.stylePresetImport}</button>
       <input ref={file} type="file" accept="application/json,.json" hidden aria-label={s.stylePresetImport} onChange={e => { void upload(e.target.files?.[0]); e.target.value = ''; }} /></div>
     {status && <p role="status">{status}</p>}
-  </details>;
+  </fieldset>;
 }
