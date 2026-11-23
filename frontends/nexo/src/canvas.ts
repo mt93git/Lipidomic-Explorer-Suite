@@ -9,6 +9,7 @@ import {dataUrl,list as illustrationAssets} from './illustrations/assets';
 import type {Visual} from './state/document';
 import {setAppearance} from './state/visualCommands';
 import { availability, availabilityReasons, groupCatalog, renderKindFor, newCardSize, pcaScoreCard } from './catalog';
+import { nexoSource } from './pcaDesign';
 import { clickSourceFor } from './plotlyClick';
 import { place } from './place';
 import { Card } from './cards';
@@ -1018,7 +1019,8 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     async addCard(source, signal, position) {
       const dropped = position && { x: Math.max(0, Math.min(1e6, position.x)), y: Math.max(0, Math.min(1e6, position.y)) };
       await catalogReady;
-      const entry = catalog.find(entry => entry.id === source);
+      // A QC PCA source adds the dashboard card: Nexo always shows our PCA design (pcaDesign.ts).
+      const entry = catalog.find(entry => entry.id === nexoSource(source));
       if (!entry) throw new Error('Unknown source');
       const state = availability(entry, session.design);
       if (state !== 'add') throw new Error(availabilityReasons[state]);

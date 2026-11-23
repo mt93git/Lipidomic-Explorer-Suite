@@ -12,7 +12,9 @@ export function model(document:Document,nodes:Node[]):Page[]{
  const art=nodes.map((n,i)=>({n,i})).filter(a=>a.n.kind==='illustration');if(!art.length)slot('A / Study workflow · illustration','Add and finish illustrations in Draft',0,0,1,.18,-1);else {const columns=Math.min(4,art.length),rows=Math.ceil(art.length/columns);art.forEach((a,j)=>slot((j===0?'A / ':'')+a.n.label+' · schematic','',(j%columns)/columns,Math.floor(j/columns)*.18/rows,.96/columns,.17/rows,a.i));}
  // Team's template knows the two fixed PCA cards; when neither is on the canvas, a library copy of the 2D PCA fills B
  // (Team leaves B pending for copies, which the pilot simulation found to be a trap).
- const fixedPca=nodes.findIndex(n=>['results_dashboard-plot_pca','qc_pca_tab-pca2dPlot'].includes(n.id)),pcaIndex=fixedPca>=0?fixedPca:nodes.findIndex(n=>n.instance?.source==='qc_pca_tab-pca2dPlot');
+ // Our dashboard PCA card comes first (fixed, then a copy); a QC 2D PCA only when no dashboard PCA is on the canvas.
+ const first=(...tests:((n:Node)=>boolean)[])=>{for(const test of tests){const i=nodes.findIndex(test);if(i>=0)return i;}return -1;};
+ const pcaIndex=first(n=>n.id==='results_dashboard-plot_pca',n=>n.instance?.source==='results_dashboard-plot_pca',n=>n.id==='qc_pca_tab-pca2dPlot',n=>n.instance?.source==='qc_pca_tab-pca2dPlot');
  slot('B / PCA'+(pcaIndex>=0?' · '+nodes[pcaIndex].label:''),'Finish a 2D PCA in Draft',0,.22,.4,.43,pcaIndex);
  ['LPA','LPC','LPI','CL'].forEach((n,i)=>slot('C / '+n,'Log2FC method pending',.44+(i%2)*.29,.22+Math.floor(i/2)*.225,.27,.205,-1));
  ['AA (Sn2) target','PE 18:0_20:4','PC 16:0_20:4','PC 18:0_20:4'].forEach((n,i)=>slot('D / '+n,i?'Selection and scale pending':'AA definition and sn position pending',i*.255,.7,.235,.3,-1));return [{...page(slots),draft:true,legend:'DRAFT · A: '+(art.length?'schematic, not to scale; review workflow.':'illustration pending.')+' C: class Log2FC and model pending. D: targets, scale and sn-position evidence pending.'}];}

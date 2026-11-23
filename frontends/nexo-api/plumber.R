@@ -92,8 +92,9 @@ function() list(ok = TRUE, commit = api_commit, root = getwd(), r = as.character
 #* Team output catalog
 #* @get /api/v1/catalog
 # The catalog is static and cached at startup (run.R): serve it outside the engine lock
-# so a page load does not wait behind a 10 s session open.
-function(res) list(version = "1", outputs = api_catalog())
+# so a page load does not wait behind a 10 s session open. Nexo is never offered the QC PCA cards
+# (catalog.R api_catalog_served): it shows the dashboard scores and loadings cards instead.
+function(res) list(version = "1", outputs = api_catalog_served())
 
 #* Companion answer from the analyst's knowledge base (companion.R); no engine work, so outside the engine lock
 #* @post /api/v1/companion/ask
@@ -284,7 +285,7 @@ function(id, req, res) {
     started <- Sys.time()
     s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
     api_timing_add("request", started)
-    api_mutation(s, req, res, api_card_create(s, body$source, body$inputs %||% list(), body$instanceId), handle = api_handle)
+    api_mutation(s, req, res, api_card_create_requested(s, body), handle = api_handle)
   })
   timing <- api_timing_snapshot()
   total <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
