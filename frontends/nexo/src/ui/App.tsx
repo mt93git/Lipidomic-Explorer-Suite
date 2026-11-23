@@ -213,7 +213,7 @@ export function App({ session, title, notice, starter = 'none' }: { session: Ses
       else {
         ui({inspectorOpen:true});
         const source = handle?.getSession().canvas.nodes.find(n => n.id === nodeId)?.instance?.source ?? nodeId;
-        window.dispatchEvent(new CustomEvent('nexo-inspector-tab', {detail:action === 'data' ? (source.includes('group_comparison') ? 'Statistics' : 'Data') : null}));
+        window.dispatchEvent(new CustomEvent('nexo-inspector-tab', {detail:action === 'data' ? (source.includes('group_comparison') ? 'Stats' : 'Data') : null}));
         requestAnimationFrame(() => document.querySelector<HTMLElement>('#inspector [role=tab][aria-selected=true]')?.focus());
       }
     };

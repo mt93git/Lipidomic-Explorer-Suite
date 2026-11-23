@@ -128,7 +128,7 @@ async function journeys(name) {
 
     // L5 Statistics on the added violin: describe, confirm, marker; a Data change marks them out of date; Undo restores.
     await select(page, added.violin);
-    await inspector.getByRole('tab', { name: 'Statistics', exact: true }).click();
+    await inspector.getByRole('tab', { name: 'Stats', exact: true }).click();
     await inspector.getByRole('button', { name: 'Review and confirm…', exact: true }).click({ timeout: T });
     await inspector.getByRole('button', { name: 'Confirm and compute', exact: true }).click({ timeout: T });
     const marker = cardFor(page, added.violin).locator('header .card-stats');
@@ -173,7 +173,7 @@ async function journeys(name) {
     // The violin was finished in L6: as in Team, a finished figure offers its snapshot only, not the analysis downloads.
     await select(page, added.violin);
     await inspector.getByRole('tab', { name: 'Export', exact: true }).click();
-    await inspector.getByRole('button', { name: 'Download PNG', exact: true }).waitFor({ timeout: T });
+    await inspector.getByRole('button', { name: 'Download figure', exact: true }).waitFor({ timeout: T });
     assert.equal(await inspector.getByRole('group', { name: 'More downloads from this analysis', exact: true }).count(), 0);
     await select(page, added.volcano);
     await inspector.getByRole('tab', { name: 'Export', exact: true }).click();

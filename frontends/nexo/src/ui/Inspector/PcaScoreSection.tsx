@@ -5,7 +5,7 @@ import { cardInstanceId } from '../../api/instance';
 import type { CanvasHandle } from '../../canvas/handle';
 import { SchemaForm } from '../forms/SchemaForm.jsx';
 import { notifyFailure } from '../model';
-import { strings as s } from '../strings';
+import { strings as s, inspectorStrings as is } from '../strings';
 import { schemaCache as cache, cacheInputs } from './schemaCache';
 // NEXO-P5/P8: Team's PCA score analysis (R/results_dashboard.R rd_pca_score_ui), shown under Statistics of a dashboard
 // PCA card and of its PCA score card, as Team's inspector does (www/team/js/canvas_inspector.js). Its controls are the
@@ -31,13 +31,16 @@ export function PcaScoreSection({node, source, handle}: {node: Node; source: str
     window.addEventListener('nexo-inputs-restored', restored); return () => window.removeEventListener('nexo-inputs-restored', restored); }, [key, node.id]);
   if (!schema) return <p>Loading controls…</p>;
   return <section aria-label={s.pcaScoreTitle} className="pca-score">
+    <h3 className="stats-heading">{is.statsTest}</h3>
     <p className="field-help">{s.pcaScoreHelp}</p>
     <SchemaForm key={version} schema={pcaScoreSchema(schema)} sessionId={sessionId} instanceId={instanceId} onStatus={setStatus}
       onUpdated={async inputs => { handle.updateCardInputs(node.id, inputs); cacheInputs(key, inputs); await load(); }}/>
+    <p role="status" className="field-help">{status === 'Updating…' ? status : ''}</p>
     {plotsOnCanvas(source) && <>
+      <h3 className="stats-heading">{is.statsShow}</h3>
       <button type="button" className="primary pca-score-plot" data-pcs-plot onClick={() => void handle.addPcaScore(node.id).catch(e => notifyFailure(s.failPcaScorePlot, e))}>{s.pcaScorePlotButton}</button>
       <p className="field-help">{s.pcaScorePlotNote}</p></>}
-    <p role="status" className="field-help">{status === 'Updating…' ? status : ''}</p>
+    <h3 className="stats-heading">{is.statsResults}</h3>
     {reply?.message && <p role="alert">{reply.message}</p>}
     {reply?.report.map((r, i) => <p key={i} className={r.note ? 'field-help' : 'pca-score-line'}>{r.text}</p>)}
   </section>;

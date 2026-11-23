@@ -1,7 +1,7 @@
 import {expect,it} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import NexoExtras from '../ui/PlotEditor/NexoExtras';
+import {LineDashes} from '../ui/PlotEditor/NexoExtras';
 import {validateNexo,validateNexoStyle,setNexoStyle} from '../state/nexo';
 import {sourceKey} from './applyEditor';
 import {applyNexoStyle} from './applyNexoStyle';
@@ -64,8 +64,8 @@ it('keeps existing data-anchored group labels in place when the scale changes',(
  expect(applyNexoStyle({data:[{y:[1,100]}],layout:{yaxis:{type:'log'},annotations:[{xref:'x',yref:'y',x:0,y:1,text:'Group label'}]}},{yaxis:{type:'linear'}}).layout.annotations[0].y).toBe(10);
 });
 
-it('Series style offers no second marker shape control beside Team\'s Marker shape (NEXO-P3)',()=>{
+it('Line dash offers no second marker shape control beside Team\'s Marker shape (NEXO-P3)',()=>{
  const figure={data:[{type:'scatter',name:'A',x:[1,2],y:[2,4],mode:'lines+markers'},{type:'box',name:'B',y:[1,2]}],layout:{}};
- const html=renderToStaticMarkup(createElement(NexoExtras,{figure,style:{},onChange:()=>{}}));
+ const html=renderToStaticMarkup(createElement(LineDashes,{figure,nexo:{style:{},change:()=>{}}}));
  expect(html).toContain('Line dash 1');expect(html).not.toContain('Marker symbol');
 });

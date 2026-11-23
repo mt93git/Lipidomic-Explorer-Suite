@@ -3,13 +3,15 @@ import {groupComparison,type Node} from '../../api';
 import type {CanvasHandle} from '../../canvas/handle';
 import type {GroupComparison,Visual} from '../../state/document';
 import {colorFor,csv,defaultVisual,report,resetColors,resultRows,selected,setColor,setFeatures,setStyle,stateFrom,toggleCondition,toggleFeature,togglePanel,type GcMessage} from '../../groupComparison/model';
+import {inspectorStrings as is} from '../strings';
 const chip=(label:string,pressed:boolean,onClick:()=>void,name=label)=><button key={name} type="button" className="tc-chip" aria-pressed={pressed} aria-label={name===label?undefined:name} onClick={onClick}>{label}</button>;
 /** A native `change` (not React's per-move `input`) so one colour pick is one undo step. */
 function Swatch({label,value,onPick}:{label:string;value:string;onPick:(v:string)=>void}){
  const ref=useRef<HTMLInputElement>(null),pick=useRef(onPick);pick.current=onPick;
  useEffect(()=>{const el=ref.current;if(!el)return;el.value=value;const on=()=>pick.current(el.value);el.addEventListener('change',on);return()=>el.removeEventListener('change',on);},[value]);
- return <label style={{display:'inline-flex',alignItems:'center',gap:4,marginRight:8}}><input ref={ref} type="color" aria-label={label} defaultValue={value}/>{label.replace(/^Colour of /,'')}</label>;
+ return <label className="gc-swatch"><input ref={ref} type="color" aria-label={label} defaultValue={value}/>{label.replace(/^Colour of /,'')}</label>;
 }
+const dataLink=()=><p><button type="button" className="link" onClick={()=>window.dispatchEvent(new CustomEvent('nexo-inspector-tab',{detail:'Data'}))}>Change analysis settings in Data</button></p>;
 /** Display controls, results and CSV of the Group comparison card; edits node.visual.groupComparison (undoable). */
 export function GroupComparisonSection({node,handle,instanceId}:{node:Node;handle:CanvasHandle;instanceId:string}){
  const sessionId=handle.getSession().sessionId;
@@ -17,17 +19,21 @@ export function GroupComparisonSection({node,handle,instanceId}:{node:Node;handl
  useEffect(()=>{let live=true;const load=()=>{groupComparison(sessionId,instanceId).then(m=>{if(live){setMessage(m as GcMessage);setError('');}},e=>{if(live)setError(String(e));});};
   load();const confirmed=(e:Event)=>{if((e as CustomEvent<string>).detail===node.id)load();};
   window.addEventListener('nexo-group-comparison-confirmed',confirmed);return()=>{live=false;window.removeEventListener('nexo-group-comparison-confirmed',confirmed);};},[sessionId,instanceId,node.id]);
- const data=<p><button type="button" className="link" onClick={()=>window.dispatchEvent(new CustomEvent('nexo-inspector-tab',{detail:'Data'}))}>Change analysis settings in Data</button></p>;
- if(error)return <section aria-label="Group comparison"><h4>Group comparison</h4><p role="alert">{error}</p>{data}</section>;
- if(!message)return <section aria-label="Group comparison"><h4>Group comparison</h4><p role="status">Loading the comparison…</p></section>;
- if(message.requiresConfirmation)return <section aria-label="Group comparison"><h4>Group comparison</h4><p>Confirm the reference group on the card to compute the comparison.</p>{data}</section>;
+ if(error)return <section aria-label="Group comparison" className="stats-tab"><h3 className="stats-heading">{is.statsTest}</h3><p role="alert">{error}</p>{dataLink()}</section>;
+ if(!message)return <section aria-label="Group comparison" className="stats-tab"><h3 className="stats-heading">{is.statsTest}</h3><p role="status">Loading the comparison…</p></section>;
+ if(message.requiresConfirmation)return <section aria-label="Group comparison" className="stats-tab"><h3 className="stats-heading">{is.statsTest}</h3><p>Confirm the reference group on the card to compute the comparison.</p>{dataLink()}</section>;
+ return <GroupComparisonView node={node} handle={handle} message={message}/>;
+}
+/** A confirmed comparison: Test (its settings live in Data), Show on plot (classes, conditions, colours, panels), Results. */
+export function GroupComparisonView({node,handle,message}:{node:Node;handle:CanvasHandle;message:GcMessage}){
  const saved=(node.visual as Visual|undefined)?.groupComparison??null, base=stateFrom(message), v:GroupComparison=saved??defaultVisual(base), s=stateFrom(message,v);
  const set=(next:GroupComparison)=>handle.setVisual(node.id,{groupComparison:next});
  const rows=resultRows(s);
  const download=()=>{const url=URL.createObjectURL(new Blob([csv(s)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='lipidomic-group-comparison.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);};
- return <section aria-label="Group comparison" style={{padding:8}}>
-  <h4>Group comparison</h4>
-  {data}
+ return <section aria-label="Group comparison" className="stats-tab">
+  <h3 className="stats-heading">{is.statsTest}</h3>
+  {dataLink()}
+  <h3 className="stats-heading">{is.statsShow}</h3>
   <fieldset><legend>Lipid classes</legend>
    {chip('All',false,()=>set(setFeatures(v,s.features)),'Show all lipid classes')}{chip('None',false,()=>set(setFeatures(v,[])),'Hide all lipid classes')}
    <div role="group" aria-label="Lipid classes shown">{s.features.map(c=>chip(c,s.enabled.has(c),()=>set(toggleFeature(v,c))))}</div>
@@ -41,11 +47,11 @@ export function GroupComparisonSection({node,handle,instanceId}:{node:Node;handl
    <strong>{c}</strong> {s.groups.map(g=>chip(g,selected(s,c,g),()=>set(togglePanel(v,c,g)),`${g} in ${c}`))}
    {chip('Points',st.points,()=>set(setStyle(v,c,{points:!st.points})),`Points in ${c}`)}{chip('Inner box',st.box,()=>set(setStyle(v,c,{box:!st.box})),`Inner box in ${c}`)}
   </div>;})}</fieldset>
-  <h4>Results</h4>
+  <h3 className="stats-heading">{is.statsResults}</h3>
   <table aria-label="Group comparison results"><thead><tr>{['Lipid class','Comparison','p-value','Significance'].map(t=><th key={t}>{t}</th>)}</tr></thead>
    <tbody>{rows.map(r=><tr key={r.feature+'|'+r.comparison} data-shown={r.shown}><th title={r.feature}>{r.feature}</th><td title={r.comparison}>{r.comparison}</td><td>{r.p==null?'n/a':r.p.toPrecision(3)}</td><td>{r.significance}</td></tr>)}</tbody></table>
   <p>Unadjusted local p-values. Hiding classes or conditions does not exclude observations or recompute tests.</p>
   <button type="button" onClick={download}>Comparison CSV</button>
-  <details><summary>Full statistical report</summary><pre className="gc-report" style={{whiteSpace:'pre-wrap'}}>{report(s)}</pre></details>
+  <details><summary>Full statistical report</summary><pre className="gc-report">{report(s)}</pre></details>
  </section>;
 }

@@ -12,7 +12,8 @@ import { mockStructureFigure } from '../mock/structure';
 // Mock dotplot: 0 bar "Up" (legend group Up), 1 "Points" with sizes [6,12,18,24], 2 text labels (teamNoEdit), 3 round proxy of "Up".
 const dotplot = () => mockStructureFigure('structural_grid_tab-dotplotPlot', 'Dotplot') as any;
 const noop = () => {};
-const seriesOf = (html: string) => html.slice(html.indexOf('<summary>Series</summary>'), html.indexOf('<summary>Text annotations</summary>'));
+// The series list sits in Style › Points and series (approved inspector layout 2026-11-23).
+const seriesOf = (html: string) => html.slice(html.indexOf('data-section="points"'), html.indexOf('data-section="annotations"'));
 const panel = (figure: any, editor: any = {}) => renderToStaticMarkup(createElement(PlotEditor, {figure, traces: figure.data, editor, legendGroups: [], onChange: noop, onUndo: noop, onRedo: noop, onReset: noop, onPreset: noop}));
 
 // Team sets it in its Plotly newPlot/react wrapper, before the editor: Nexo applies it to the figure a card fetches.
@@ -56,9 +57,9 @@ it('per-point sizes get a slider with its value shown next to it', () => {
   expect(points).toContain('<output>15</output>');
 });
 
-it('helper traces are not listed and teamHideSeries hides the Series section', () => {
+it('helper traces are not listed and teamHideSeries hides the series list', () => {
   const html = panel(dotplot());
   const listed = [...seriesOf(html).matchAll(/<fieldset><legend>([^<]*)<\/legend>/g)].map(m => m[1]);
   expect(listed).toEqual(['Up', 'Points']);
-  expect(panel(mockStructureFigure('structural_grid_tab-mergedPlot', 'All classes'))).not.toContain('<summary>Series</summary>');
+  expect(seriesOf(panel(mockStructureFigure('structural_grid_tab-mergedPlot', 'All classes')))).not.toContain('Show all series');
 });

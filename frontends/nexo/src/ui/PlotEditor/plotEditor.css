@@ -39,3 +39,33 @@
 /* Team presentation port: Group outlines beside Show all series; Reset beside a changed chart color. */
 .plot-editor-series-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); margin-block-end:var(--space-2); }
 .plot-editor .plot-editor-reset-color { display:block; margin-inline-start:auto; margin-block-end:var(--space-2); font-size:var(--font-small); }
+
+/* Approved inspector layout (2026-11-23): the Style top bar on one line, then collapsible sections with an icon,
+   a title and a one-line summary; sub-groups inside a section are light fieldsets. */
+.plot-editor { padding:0; }
+.style-topbar { display:grid; gap:var(--space-2); margin-block-end:var(--space-2); }
+.style-topbar-row { display:flex; align-items:center; gap:var(--space-2); min-width:0; }
+.plot-editor .style-topbar .plot-editor-presets { flex:1 1 auto; flex-basis:auto; margin:0; display:inline-flex; flex-wrap:nowrap; gap:0; min-width:0; }
+.plot-editor .style-topbar .plot-editor-presets button { flex:1 1 0; min-width:0; border-radius:0; margin-inline-start:-1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.plot-editor .style-topbar .plot-editor-presets button:first-child { border-radius:var(--radius-sm) 0 0 var(--radius-sm); margin-inline-start:0; }
+.plot-editor .style-topbar .plot-editor-presets button:last-child { border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+.style-topbar-actions { display:inline-flex; gap:2px; flex:none; }
+.plot-editor .icon-button { width:28px; height:28px; padding:0; display:inline-grid; place-items:center; }
+.plot-editor .icon-button .icon { margin:0; }
+.plot-editor .style-team-view { justify-content:flex-start; margin:0; font-size:var(--font-small); color:var(--muted); }
+.plot-editor .style-confirm { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); padding:var(--space-2); border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--canvas); }
+.plot-editor .style-confirm span { flex-basis:100%; }
+.plot-editor p.style-note { margin:0 0 var(--space-2); font-size:var(--font-small); }
+.plot-editor details.style-section { padding-block:0; }
+.plot-editor .style-section > summary { display:flex; align-items:center; gap:var(--space-2); min-width:0; padding-block:var(--space-2); color:var(--navy); font-weight:600; }
+.plot-editor .style-section > summary .icon { margin:0; flex:none; color:var(--muted); }
+.plot-editor .style-section > summary .style-section-title { flex:none; }
+.plot-editor .style-section > summary .pro-summary { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; font-weight:400; }
+.plot-editor .style-section-body { padding-block-end:var(--space-3); }
+.plot-editor fieldset.style-subgroup, .plot-editor fieldset.style-axis { border:0; border-block-start:1px solid var(--line); border-radius:0; padding:var(--space-2) 0 0; }
+.plot-editor fieldset.style-axis + fieldset.style-axis { margin-block-start:var(--space-3); }
+.plot-editor details.style-fine { border:0; padding:0; }
+.plot-editor .style-add { position:relative; display:inline-block; margin-block-end:var(--space-2); }
+.plot-editor .style-add > button { display:inline-flex; align-items:center; }
+.plot-editor .style-add-menu { left:0; right:auto; min-width:180px; }
+.plot-editor .style-add-menu button { border:0; text-align:left; }
