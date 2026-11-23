@@ -52,7 +52,7 @@ async function browserTests(pw, name, base) {
     // The audit's check 7.
     await select(page, id);
     await page.getByRole('tab', { name: 'Export', exact: true }).click();
-    const png = await download(page, () => insp.getByRole('button', { name: 'Download PNG', exact: true }).click());
+    const png = await download(page, () => insp.getByRole('radio', { name: 'PNG', exact: true }).click().then(() => insp.getByRole('button', { name: 'Download figure', exact: true }).click()));
     assert.equal(png.bytes.subarray(1, 4).toString(), 'PNG');
     const more = insp.getByRole('group', { name: 'More downloads from this analysis', exact: true });
     const names = (await more.count()) ? await more.getByRole('button').allTextContents() : [];
