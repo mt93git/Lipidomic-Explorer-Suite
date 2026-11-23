@@ -121,6 +121,7 @@ export const phrases = {
   movedToTab: (name: string, count: number) => count === 1 ? `Moved to ${name}` : `${count} cards moved to ${name}`,
   currentTab: (name: string) => `${name} (current)`,
   downloaded: (name: string) => `Downloaded ${name}`,
+  reportSkipped: (labels: string[]) => `Left out of the report (nothing to draw yet): ${labels.join(', ')}.`,
   savedAs: (name: string) => `Saved checkpoint ${name}. You are now working on it; the previous checkpoint stays as it was.`,
   finishedOf: (done: number, total: number) => `${done} of ${total} plots finished`,
   leftOutByLayout: (labels: string[]) => labels.length === 1 ? `1 finished plot is not on this layout: ${labels[0]}. Free shows it.` : `${labels.length} finished plots are not on this layout: ${labels.join(', ')}. Free shows them.`,
