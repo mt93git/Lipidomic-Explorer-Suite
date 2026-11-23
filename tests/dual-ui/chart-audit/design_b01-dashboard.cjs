@@ -101,7 +101,7 @@ async function applyPreset(page, name) {
     await hundred(page);
     await selectCard(page, id); await settled(page, id); await drawn(page, id, 'plot');
     if (mode === 'nexo') { await inspectorTab(page, 'Style'); await applyPreset(page, 'Nexo'); }
-    if (mode === 'team') { await inspectorTab(page, 'Style'); await applyPreset(page, 'Team original'); }
+    if (mode === 'team') { await inspectorTab(page, 'Style'); await applyPreset(page, 'Team'); }
     await page.waitForTimeout(600);
     // figure JSON for offline design
     const fig = await cardFor(page, id).evaluate(c => { const p = c.querySelector('.js-plotly-plot'); return p ? { data: p.data.map(t => { const o = {}; for (const k of Object.keys(t)) o[k] = Array.isArray(t[k]) && t[k].length > 8 ? { _len: t[k].length, head: t[k].slice(0, 4) } : t[k]; return o; }), layout: p.layout, size: [p._fullLayout.width, p._fullLayout.height] } : null; });

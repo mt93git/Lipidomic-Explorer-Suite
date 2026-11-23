@@ -388,9 +388,9 @@ async function auditPlot(browser, key) {
         await page.waitForTimeout(1500);
         const pubLook = JSON.stringify(await lay(p => [p.layout?.font?.family ?? null, p.layout?.font?.color ?? null, (p.data || []).map(t => t.marker?.color ?? t.fillcolor ?? null)]));
         (await pressed('Publication') && pubLook !== teamLook ? oks : fails).push('preset Publication');
-        await presets.getByRole('button', { name: 'Team original', exact: true }).click();
+        await presets.getByRole('button', { name: 'Team', exact: true }).click();
         await page.waitForFunction(([sel, b]) => { const p = document.querySelector(sel + ' .js-plotly-plot'); return p && JSON.stringify([p.layout?.font?.family ?? null, p.layout?.font?.color ?? null, (p.data || []).map(t => t.marker?.color ?? t.fillcolor ?? null)]) === b; }, [`#world .card[data-id="${id}"]`, teamLook], { timeout: 20000 }).then(() => oks.push('preset Team original restores Team look'), () => fails.push('preset Team original does not restore Team look'));
-        if (!(await pressed('Team original'))) fails.push('Team original not shown as pressed');
+        if (!(await pressed('Team'))) fails.push('Team original not shown as pressed');
       } else fails.push('no Presentation preset group');
       // set the appearance kept for checks 8-10
       await sec('Title and fonts'); await setField('Plot title', `Audit ${key}`); await waitLay(new Function('p', `return (p.layout?.title?.text ?? p.layout?.title) === 'Audit ${key}'`), 'title kept for 8-10');

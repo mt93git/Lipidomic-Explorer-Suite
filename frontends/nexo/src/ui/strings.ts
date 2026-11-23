@@ -213,7 +213,7 @@ export const inspectorStrings = {
   styleNote: 'Presentation changes only. Scientific coordinates and per-point colours are preserved.',
   imageNote: 'This card is an image: its size, background and the colour-blind preview can change here.',
   undo: 'Undo', redo: 'Redo', resetPresentation: 'Reset presentation', resetQuestion: 'Reset all presentation changes on this card?', resetAll: 'Reset all',
-  presetGroup: 'Presentation preset',
+  presetGroup: 'Presentation preset', presetShort: { team: 'Team', nexo: 'Nexo', publication: 'Publication' },
   colours: 'Colours', text: 'Text', axes: 'Axes and grid', legend: 'Legend', points: 'Points and series', annotations: 'Annotations', size: 'Size and layout',
   library: 'Style library', colourBlind: 'Colour-blind check',
   backgrounds: 'Backgrounds', cardBackground: 'Card background', accentColour: 'Accent colour', colourPalette: 'Colour palette',

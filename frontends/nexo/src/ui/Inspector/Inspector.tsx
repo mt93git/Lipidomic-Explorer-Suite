@@ -38,7 +38,7 @@ function InspectorActions({handle,node}:{handle:CanvasHandle;node:CardNode}) {
 function CardName({node,handle,editable}:{node:CardNode;handle:CanvasHandle;editable:boolean}) {
   const [draft,setDraft]=useState<string|null>(null), cancelled=useRef(false);
   useEffect(()=>{ setDraft(null); },[node.id]);
-  if(draft===null||!editable) return <h2 className="inspector-name"><button type="button" className="inspector-name-button" disabled={!editable} aria-label={is.renameCard(node.label)} data-tip={is.renameHint} onClick={()=>{ cancelled.current=false; setDraft(node.label); }}>{node.label}</button></h2>;
+  if(draft===null||!editable) return <h2 className="inspector-name"><button type="button" className="inspector-name-button" disabled={!editable} aria-label={is.renameCard(node.label)} data-tip={`${node.label} · ${is.renameHint}`} onClick={()=>{ cancelled.current=false; setDraft(node.label); }}>{node.label}</button></h2>;
   const commit=()=>{ const value=draft.trim(); setDraft(null); if(!cancelled.current&&value&&value!==node.label) handle.setAppearance(node.id, visualPatchFor(node.kind,'label',value)); };
   return <h2 className="inspector-name"><input className="inspector-name-input" aria-label={is.cardName} value={draft} maxLength={512} autoFocus
     onChange={e=>setDraft(e.target.value)} onBlur={commit} onFocus={e=>e.currentTarget.select()}

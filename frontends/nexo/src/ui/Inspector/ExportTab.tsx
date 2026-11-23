@@ -7,6 +7,7 @@ import { ExportDialog, cardInstanceId, plotImage, saveFile, svgReason } from '..
 import { downloadBlockedReason } from '../../export/honest';
 import type { BodyStatus } from '../../cardStatus';
 import { strings as s, inspectorStrings as is } from '../strings';
+import { Icon } from '../Icon';
 type Format = 'png' | 'svg' | 'pdf';
 const FORMATS: [Format, string][] = [['png', 'PNG'], ['svg', 'SVG'], ['pdf', 'PDF']];
 // Quick exports at the card's on-screen size (96 px per inch, 300 DPI PNG); the dialog sets the size.
@@ -48,7 +49,7 @@ export function ExportTab({node,onStatus}:{node:Node;onStatus:(s:string)=>void})
       <div className="export-formats" role="radiogroup" aria-label={is.exportFormat}>{FORMATS.map(([f, label]) =>
         <button key={f} type="button" role="radio" aria-checked={format === f} className="tc-chip" onClick={() => setFormat(f)}>{label}</button>)}</div>
       <p className="export-size">{is.exportSize(mm(node.width), mm(node.height))}</p>
-      <button type="button" className="primary" disabled={busy || svgBlocked} aria-describedby={svgBlocked ? svgReasonId : undefined} onClick={() => void image(format)}>{is.downloadFigure}</button>
+      <button type="button" className="primary export-download" disabled={busy || svgBlocked} aria-describedby={svgBlocked ? svgReasonId : undefined} onClick={() => void image(format)}><Icon name="download"/>{is.downloadFigure}</button>
       {noSvg && format === 'svg' && <p id={svgReasonId} className="export-reason">{noSvg}</p>}
     </section>
     {downloads && downloads.length > 0 && <DataFiles downloads={downloads} busy={busy} blocked={blocked} reasonId={reasonId}
