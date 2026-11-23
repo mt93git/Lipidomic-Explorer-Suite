@@ -454,29 +454,44 @@ plotly_build.team_compact_distribution <- function(p, ...) {
   p
 }
 
-# Team violin style (presentation only): condition fill, outline darkened 45%,
-# black points, inner box darkened 15% / 60%, black axis frame with outside ticks
-# and a dotted horizontal grid. Values, samples and hover data are untouched.
-rd_darker <- function(col, f) {
-  m <- grDevices::col2rgb(col)[, 1]
-  grDevices::rgb(floor(m[1] * (1 - f) + .5), floor(m[2] * (1 - f) + .5), floor(m[3] * (1 - f) + .5), maxColorValue = 255)
+# Team violin style (presentation only), the look of "Selected-feature distributions"
+# (R/utils_vis.R plot_logratio_violin): the group colour at 0.8 opacity with a thin
+# black outline, a narrow white box (median and quartiles) inside, every sample a
+# white dot with a black outline, a light grey dotted horizontal grid, group names at
+# 45 degrees, black axis lines left and bottom only and a bold centred title. Box
+# traces (too few samples for a violin) take the same colours. Values, samples and
+# hover data are untouched; the Nexo editor and presets still override it.
+team_violin_style <- function(p, colors, title = NULL) {
+  attr(p, 'team_violin_colors') <- colors
+  attr(p, 'team_violin_title') <- title
+  class(p) <- c('team_violin_style', setdiff(class(p), 'team_violin_style'))
+  p
 }
+rd_rgba <- function(col, a) { m <- grDevices::col2rgb(col)[, 1]; sprintf('rgba(%d,%d,%d,%s)', m[1], m[2], m[3], format(a)) }
 plotly_build.team_violin_style <- function(p, ...) {
-  colors <- attr(p, 'team_violin_colors')
+  colors <- attr(p, 'team_violin_colors'); title <- attr(p, 'team_violin_title')
   class(p) <- setdiff(class(p), 'team_violin_style')
   p <- plotly::plotly_build(p, ...)
   p$x$data <- lapply(p$x$data, function(trace) {
-    col <- if (identical(trace$type, 'violin')) unname(colors[as.character(trace$name)]) else NA
+    col <- if (trace$type %in% c('violin', 'box')) unname(colors[as.character(trace$name)]) else NA
     if (length(col) != 1L || is.na(col) || !grepl('^#[0-9A-Fa-f]{6}$', col)) return(trace)
-    trace$fillcolor <- col
-    trace$line <- list(color = rd_darker(col, .45), width = 1.2)
-    trace$marker <- list(color = '#000000', size = 5, opacity = 1, line = list(width = 0))
-    trace$box <- list(visible = TRUE, width = .22, fillcolor = rd_darker(col, .15), line = list(color = rd_darker(col, .60), width = 1))
+    trace$fillcolor <- rd_rgba(col, 0.8)
+    trace$line <- list(color = '#000000', width = 0.5)
+    trace$marker <- list(color = '#ffffff', size = 6, opacity = 1, line = list(color = '#000000', width = 1))
+    if (identical(trace$type, 'violin')) {
+      trace$box <- list(visible = TRUE, width = 0.2, fillcolor = '#ffffff', line = list(color = '#000000', width = 1))
+      trace$meanline <- list(visible = FALSE)
+    }
     trace
   })
-  frame <- list(showline = TRUE, mirror = TRUE, linecolor = '#000000', ticks = 'outside')
-  p$x$layout$xaxis <- utils::modifyList(if (is.list(p$x$layout$xaxis)) p$x$layout$xaxis else list(), frame)
-  p$x$layout$yaxis <- utils::modifyList(if (is.list(p$x$layout$yaxis)) p$x$layout$yaxis else list(), c(frame, list(gridcolor = '#dddddd', griddash = 'dot')))
+  axis <- list(showline = TRUE, mirror = FALSE, linecolor = '#000000', linewidth = 1, ticks = 'outside', zeroline = FALSE)
+  p$x$layout$xaxis <- utils::modifyList(if (is.list(p$x$layout$xaxis)) p$x$layout$xaxis else list(), c(axis, list(showgrid = FALSE, tickangle = -45)))
+  p$x$layout$yaxis <- utils::modifyList(if (is.list(p$x$layout$yaxis)) p$x$layout$yaxis else list(), c(axis, list(showgrid = TRUE, gridcolor = '#cccccc', griddash = 'dot')))
+  p$x$layout$paper_bgcolor <- '#ffffff'; p$x$layout$plot_bgcolor <- '#ffffff'
+  if (is.character(title) && length(title) == 1L && nzchar(title)) {
+    p$x$layout$title <- list(text = paste0('<b>', htmltools::htmlEscape(title), '</b>'), x = 0.5, xanchor = 'center', font = list(size = 14, color = '#000000'))
+    m <- p$x$layout$margin; if (is.list(m)) { m$t <- max(as.numeric(m$t %||% 0), 36); p$x$layout$margin <- m }
+  }
   p
 }
 
@@ -644,7 +659,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
           text = "Dots: prepared sample values. Tails: smoothed estimates.",
           showarrow = FALSE, xanchor = "left", yanchor = "top",
           font = list(size = 10, color = "#52514e")))) |>
-      (function(p) { if (!isTRUE(shared_data$team_compact_distribution)) return(p); attr(p, 'team_violin_colors') <- si$colors; class(p) <- c('team_violin_style', class(p)); p })() |>
+      (function(p) { if (!isTRUE(shared_data$team_compact_distribution)) return(p); team_violin_style(p, si$colors, input$violin_lipid) })() |>
       htmlwidgets::onRender("function(el) { if (window.TeamViolinDisplay) return window.TeamViolinDisplay.fit(el); }")
   })
   output$note_violin <- renderUI({
