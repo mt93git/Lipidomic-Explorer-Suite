@@ -45,14 +45,16 @@
 .plot-editor { padding:0; }
 .style-topbar { display:grid; gap:var(--space-2); margin-block-end:var(--space-2); }
 .style-topbar-row { display:flex; align-items:center; gap:var(--space-2); min-width:0; }
-.plot-editor .style-topbar .plot-editor-presets { flex:1 1 auto; flex-basis:auto; margin:0; display:inline-flex; flex-wrap:nowrap; gap:0; min-width:0; }
-.plot-editor .style-topbar .plot-editor-presets button { flex:1 1 0; min-width:0; border-radius:0; margin-inline-start:-1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* The preset is a full-width three-part control on its own row; at 320 px each label fits, and a long one wraps rather than being cut. */
+.plot-editor .style-topbar .plot-editor-presets { width:100%; box-sizing:border-box; margin:0; display:flex; flex-wrap:nowrap; gap:0; min-width:0; }
+.plot-editor .style-topbar .plot-editor-presets button { flex:1 1 0; min-width:0; height:auto; min-height:28px; padding-inline:var(--space-1); border-radius:0; margin-inline-start:-1px; white-space:normal; overflow-wrap:anywhere; line-height:1.2; }
 .plot-editor .style-topbar .plot-editor-presets button:first-child { border-radius:var(--radius-sm) 0 0 var(--radius-sm); margin-inline-start:0; }
 .plot-editor .style-topbar .plot-editor-presets button:last-child { border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
 .style-topbar-actions { display:inline-flex; gap:2px; flex:none; }
 .plot-editor .icon-button { width:28px; height:28px; padding:0; display:inline-grid; place-items:center; }
 .plot-editor .icon-button .icon { margin:0; }
-.plot-editor .style-team-view { justify-content:flex-start; margin:0; font-size:var(--font-small); color:var(--muted); }
+.style-topbar-row { flex-wrap:wrap; }
+.plot-editor .style-team-view { justify-content:flex-start; margin:0 0 0 auto; font-size:var(--font-small); color:var(--muted); }
 .plot-editor .style-confirm { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); padding:var(--space-2); border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--canvas); }
 .plot-editor .style-confirm span { flex-basis:100%; }
 .plot-editor p.style-note { margin:0 0 var(--space-2); font-size:var(--font-small); }

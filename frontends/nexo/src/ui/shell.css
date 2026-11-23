@@ -241,7 +241,7 @@ select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;backg
 #inspector [role=tab]{position:relative;height:34px;padding:0 var(--space-2);margin-bottom:-1px;border-radius:0;color:var(--muted);font-weight:500;background:transparent}
 #inspector [role=tab]:hover:not(:disabled){color:var(--navy);background:transparent}
 #inspector [role=tab][aria-selected=true]{color:var(--accent);font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
-#inspector>button,#inspector>p>button,#inspector [role=tabpanel]>fieldset>div>button,#inspector [role=tabpanel] button:not([role=tab]):not(.tc-chip):not(.link):not(.plot-editor button):not(.palette-option):not(dialog button){border:1px solid var(--line-strong);background:var(--paper);height:28px;padding:0 var(--space-3);font-size:var(--font-small);font-weight:500}
+#inspector>button,#inspector>p>button,#inspector [role=tabpanel]>fieldset>div>button,#inspector [role=tabpanel] button:not([role=tab]):not(.tc-chip):not(.link):not(.plot-editor button):not(.palette-option):not(dialog button):not(.export-download){border:1px solid var(--line-strong);background:var(--paper);height:28px;padding:0 var(--space-3);font-size:var(--font-small);font-weight:500}
 #inspector button:not([role=tab]):not(.link):hover:not(:disabled){background:var(--tint);border-color:var(--accent)}
 #inspector>button{margin:0 var(--space-4) var(--space-3)}
 #inspector>p>button{margin:0 var(--space-1) 0 0}
@@ -727,8 +727,11 @@ a.sign-in:hover{background:var(--navy);border-color:var(--navy);color:var(--pape
 #inspector .export-formats{display:flex;flex-wrap:wrap;gap:0;margin:0 0 var(--space-2)}
 #inspector .export-formats .tc-chip[aria-checked=true]{background:var(--tint);border-color:var(--accent);color:var(--accent);font-weight:600}
 #inspector .export-size{margin:0 0 var(--space-2)}
-#inspector .export-tab button.primary{border-color:var(--accent);background:var(--accent);color:var(--paper);font-weight:600}
-#inspector .export-tab button.primary:hover:not(:disabled){background:var(--navy);border-color:var(--navy)}
+/* Download figure: accent with paper text (the generic tabpanel button rule, paper on paper, is kept off it). */
+#inspector .export-tab button.export-download{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-1);height:32px;padding:0 var(--space-3);border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent);color:var(--paper);font-size:var(--font-small);font-weight:600}
+#inspector .export-tab button.export-download .icon{margin:0}
+#inspector .export-tab button.export-download:hover:not(:disabled){background:var(--navy);border-color:var(--navy);color:var(--paper)}
+#inspector .export-tab button.export-download:disabled{border-color:var(--line-strong);background:var(--canvas);color:var(--muted)}
 #inspector .export-files{list-style:none;margin:0 0 var(--space-2);padding:0;display:grid;gap:var(--space-1)}
 #inspector .export-files .link{text-align:left;white-space:normal}
 #inspector [role=tabpanel]>fieldset>div.export-tab{display:block}
