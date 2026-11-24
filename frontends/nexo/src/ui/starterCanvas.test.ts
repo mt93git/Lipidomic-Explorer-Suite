@@ -86,3 +86,41 @@ describe('the starter canvas when a card fails', () => {
     expect(handle.fit).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the starter canvas on a shared board (an uploaded workbook, a released dataset)', () => {
+  it('a shared board is seeded only once it is joined: no card is sent before the board is there', async () => {
+    let join!: (value: { cards: number }) => void;
+    const handle = { ...fakeHandle(), ready: vi.fn(() => new Promise<{ cards: number }>(resolve => { join = resolve; })) };
+    const seeding = seedStarter(handle, async () => ({ version: 1, outputs }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(handle.addCard).not.toHaveBeenCalled();
+    join({ cards: 0 }); await seeding;
+    expect(handle.addCard.mock.calls.map(c => c[0])).toEqual([...starterSources]);
+  });
+
+  it('a joined board that already has cards, or one that could not be joined, gets nothing', async () => {
+    for (const opened of [{ cards: 2 }, undefined]) {
+      const handle = { ...fakeHandle(), ready: async () => opened };
+      await seedStarter(handle, async () => ({ version: 1, outputs }));
+      expect(handle.addCard).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a shared board is seeded only once it is joined: no card is sent before the board is there', async () => {
+    let join!: (value: { cards: number }) => void;
+    const handle = { ...fakeHandle(), ready: vi.fn(() => new Promise<{ cards: number }>(resolve => { join = resolve; })) };
+    const seeding = seedStarter(handle, async () => ({ version: 1, outputs }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(handle.addCard).not.toHaveBeenCalled();
+    join({ cards: 0 }); await seeding;
+    expect(handle.addCard.mock.calls.map(c => c[0])).toEqual([...starterSources]);
+  });
+
+  it('a joined board that already has cards, or one that could not be joined, gets nothing', async () => {
+    for (const opened of [{ cards: 2 }, undefined]) {
+      const handle = { ...fakeHandle(), ready: async () => opened };
+      await seedStarter(handle, async () => ({ version: 1, outputs }));
+      expect(handle.addCard).not.toHaveBeenCalled();
+    }
+  });
+});

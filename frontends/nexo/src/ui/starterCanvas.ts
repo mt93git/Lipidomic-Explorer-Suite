@@ -20,7 +20,11 @@ export function openStarter(session: { canvas: { nodes: readonly unknown[] }; ne
 }
 /** The cards go in through the canvas's own add (the API creates each one as if the user added it), one at a time so
  *  they keep their order, in one row at their catalog default sizes. */
-export async function seedStarter(handle: Pick<CanvasHandle, 'addCard'> & Partial<Pick<CanvasHandle, 'fit'>>, catalog: () => Promise<Catalog>, origin = { x: 40, y: 40 }, gap = 40) {
+export async function seedStarter(handle: Pick<CanvasHandle, 'addCard'> & Partial<Pick<CanvasHandle, 'fit' | 'ready'>>, catalog: () => Promise<Catalog>, origin = { x: 40, y: 40 }, gap = 40) {
+  // A shared board (every dataset project with the sidecar: an uploaded workbook or a released dataset) takes cards only
+  // once this page has joined it; a card sent before is refused ("The shared board is not connected") and the board opens
+  // empty. Joined, the board must still be empty; a board that could not be joined gets nothing.
+  if (handle.ready) { const opened = await handle.ready(); if (!opened || opened.cards > 0) return; }
   const { outputs } = await catalog();
   let x = origin.x, failure: unknown;
   for (const source of starterSources) {

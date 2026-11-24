@@ -87,6 +87,9 @@ export interface CanvasHandle {
   updateCardInputs(nodeId: string, inputs: import('../api').Inputs): void;
   refreshCard(nodeId: string): void;
   fit(): void;
+  /** Once the board is open (a shared board joined, its catalog known): how many cards it has; undefined when the shared
+   *  board could not be joined. */
+  ready?(): Promise<{ cards: number } | undefined>;
   /** Select a card, switch to its tab, bring it into view and highlight it. */
   focusNode(nodeId: string): boolean;
   /** Focus the next card made from this catalog source (cycles on repeated calls). */
