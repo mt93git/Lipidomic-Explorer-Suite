@@ -45,3 +45,19 @@ describe('report body cards are drawn for the page',()=>{
   expect(drawn!.layout.yaxis?.showticklabels).not.toBe(false);expect(pages[1].items[0].caption).toBe('Heatmap 60');expect(pages[1].items[0].width).toBeGreaterThanOrEqual(.9*W);
  });
 });
+// The real "Selected-feature distributions" and "Filtered average heatmap" cards are server-drawn images (PNG), not
+// Plotly: the report asks the server to draw them again at the size they take on the page.
+describe('report body image cards are drawn again at the page size',()=>{
+ const png=(id:string,source:string,label:string,w:number,h:number):Node=>({id,kind:'plot',label,x:0,y:0,width:w,height:h,instance:{instanceId:id,source}});
+ const violins=png('fv','heatmap_barchart_tab-violin_plot_render','Selected-feature distributions',900,360);
+ const heatmap=png('fh','heatmap_barchart_tab-filteredHeatmapPlot','Filtered average heatmap',460,2400);
+ it('asks for the faceted violins at the content width and at least 60% of the page; the tall heatmap at the page shape',async()=>{
+  const asked=new Map<string,{width:number;height:number}>();
+  const pages=await buildReport(syncDocument(initialDocument(),[violins,heatmap]),[violins,heatmap],{title:()=>titleBlock({title:'S',date:'24 November 2026'}),render:async()=>'data:image/png;base64,AA',
+   source:async(n,size)=>{if(size)asked.set(n.id,size);return {url:`data:image/png;base64,${size?'QkI':'QQ'}`};}});
+  const items=pages.slice(1).flatMap(p=>p.items),v=items.find(i=>i.node!.id==='fv')!,h=items.find(i=>i.node!.id==='fh')!;
+  expect(v.width).toBeCloseTo(W);expect(v.height).toBeGreaterThanOrEqual(.6*A4[1]);expect(v.image).toBe('data:image/png;base64,QkI');
+  expect(asked.get('fv')!.width).toBeCloseTo(W*96/72,0);expect(asked.get('fv')!.height).toBeCloseTo((v.height-16)*96/72,0);
+  expect(h.width).toBeGreaterThanOrEqual(.9*W);expect(asked.get('fh')!.width).toBeCloseTo(W*96/72,0);expect(asked.get('fh')!.height).toBeCloseTo((h.height-16)*96/72,0);
+ });
+});

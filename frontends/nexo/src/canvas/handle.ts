@@ -10,7 +10,7 @@ export interface CanvasHandle {
   snapshotState?: () => import("../state/document").CanvasState;
   figureOf(id:string): import('../editor/applyEditor').Figure | undefined;
   /** A card's current figure (or image) for the report, fetched by the card itself whatever its zoom tier. */
-  cardSource?(id:string): Promise<{ figure?: import('../editor/applyEditor').Figure; url?: string } | undefined>;
+  cardSource?(id:string, size?:{width:number;height:number}): Promise<{ figure?: import('../editor/applyEditor').Figure; url?: string } | undefined>;
   setStatistics(id:string, statistics:import('../state/document').Statistics|null):void;
   setNexoStyle(id:string,style:import('../state/nexo').NexoStyle):void;
   nexoStyle(id:string):import('../state/nexo').NexoStyle;

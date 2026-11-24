@@ -91,14 +91,16 @@ export function reportBodyLayout(nodes:Node[],aspects:Map<string,number>=new Map
  *  of the figure page drawn from its current figure. Each card's figure comes from source (the card's own fetch,
  *  whatever its zoom tier or finished state); a card with neither figure nor image is left out and named, never drawn
  *  as a placeholder. */
-export async function buildReport(doc:Document,nodes:Node[],o:{source:(n:Node)=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title:(groups:string[])=>TitleBlock;skipped?:(label:string)=>void}):Promise<Page[]>{
+export async function buildReport(doc:Document,nodes:Node[],o:{source:(n:Node,size?:{width:number;height:number})=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title:(groups:string[])=>TitleBlock;skipped?:(label:string)=>void}):Promise<Page[]>{
  const memo=new Map<string,Promise<PanelSource|undefined>>(),source=(n:Node)=>{let s=memo.get(n.id);if(!s){s=o.source(n).catch(()=>undefined);memo.set(n.id,s);}return s;};
  const chosen=selectedNodes(doc,nodes),first=await figure1Page(chosen,{source,render:o.render,title:o.title});
  const inFigure1=new Set(first?.items.map(i=>i.node?.id)),images=new Map<string,string>(),notes=new Map<string,string>(),aspects=new Map<string,number>(),drawn:Node[]=[];
  for(const node of chosen.filter(n=>!inFigure1.has(n.id))){
-  const s=await source(node);if(s?.figure){const a=reportAspect(node,s.figure);if(a!==undefined)aspects.set(node.id,a);}
+  const s=await source(node),a=s?.figure?reportAspect(node,s.figure):s?.url?reportImageAspect(node):undefined;if(a!==undefined)aspects.set(node.id,a);
   const box=reportBodyLayout([node],aspects)[0].items[0],body=s?.figure?reportBodyFigure(s.figure,{width:box.width,height:box.height-CAPTION}):undefined;
-  const image=body?await o.render(body.figure,box.width,box.height-CAPTION):s?.url;
+  // A server-drawn image card is drawn again at the size it takes on the page (CSS px), so its text keeps its size.
+  const again=!s?.figure&&s?.url?await o.source(node,{width:box.width/PT_PER_PX,height:(box.height-CAPTION)/PT_PER_PX}).catch(()=>undefined):undefined;
+  const image=body?await o.render(body.figure,box.width,box.height-CAPTION):again?.url??s?.url;
   if(image){images.set(node.id,image);if(body?.note)notes.set(node.id,body.note);drawn.push(node);}else o.skipped?.(node.label);
  }
  const body=reportBodyLayout(drawn,aspects).map(p=>({...p,items:p.items.map(i=>({...i,image:images.get(i.node!.id),...(notes.has(i.node!.id)?{caption:`${i.caption} · ${notes.get(i.node!.id)}`}:{})}))}));
@@ -132,4 +134,14 @@ export function reportBodyFigure(f:Figure,box:{width:number;height:number}):{fig
  const rows=heatmapRows(f);if(!rows||box.height*.85/rows>=MAX_LABELLED_ROWS_PT)return {figure:f};
  const t=f.data.find(t=>t.type==='heatmap')!,axis=String(t.yaxis??'y').replace(/^y/,'yaxis');
  return {figure:{data:f.data,layout:{...f.layout,[axis]:{...(f.layout[axis]??{}),showticklabels:false}}},note:`${rows} rows; labels omitted`};
+}
+
+const PT_PER_PX=72/96;
+/** The shape a server-drawn image card takes in the report body: Team's faceted "Selected-feature distributions" at
+ *  least 65% of the page, a heatmap taller than the page at the page's shape; others their own shape. */
+export function reportImageAspect(node:Node):number|undefined{
+ const W=A4[0]-2*MARGIN,room=A4[1]-2*MARGIN-CAPTION,own=node.height>0&&node.width>0?node.height/node.width:.75,source=node.instance?.source??node.id;
+ if(/violin_plot_render$/.test(source))return Math.min(room,Math.max(own*W,.65*room))/W;
+ if(/heatmap/i.test(source)&&own*W>room)return room/W;
+ return undefined;
 }
