@@ -66,9 +66,9 @@ const CAPTION=16,GAP=14,ROW_GUTTER=12,MIN_WIDTH=.7;
  *  (so a page is never left a third empty for it); else it starts the next page. A card taller than the page is
  *  shrunk to the page height; two such narrow cards (each at most half the width) share a row side by side.
  *  Positions only; the images are filled in by buildReport. */
-export function reportBodyLayout(nodes:Node[]):Page[]{
+export function reportBodyLayout(nodes:Node[],aspects:Map<string,number>=new Map()):Page[]{
  const W=A4[0]-2*MARGIN,avail=A4[1]-2*MARGIN,bottom=A4[1]-MARGIN,col=(W-ROW_GUTTER)/2,pages:Page[]=[];let page:Page|undefined,y=MARGIN;
- const aspect=(n:Node)=>n.height>0&&n.width>0?n.height/n.width:.75;
+ const aspect=(n:Node)=>aspects.get(n.id)??(n.height>0&&n.width>0?n.height/n.width:.75);
  const fit=(n:Node,width:number)=>{const a=aspect(n);let ih=width*a;if(CAPTION+ih>avail)ih=avail-CAPTION;return {iw:ih/a,ih};};
  const narrow=(n:Node|undefined)=>!!n&&fit(n,W).iw<=col+1e-9;
  const newPage=()=>{page={width:A4[0],height:A4[1],items:[],report:true};pages.push(page);y=MARGIN;return page;};
@@ -94,16 +94,42 @@ export function reportBodyLayout(nodes:Node[]):Page[]{
 export async function buildReport(doc:Document,nodes:Node[],o:{source:(n:Node)=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title:(groups:string[])=>TitleBlock;skipped?:(label:string)=>void}):Promise<Page[]>{
  const memo=new Map<string,Promise<PanelSource|undefined>>(),source=(n:Node)=>{let s=memo.get(n.id);if(!s){s=o.source(n).catch(()=>undefined);memo.set(n.id,s);}return s;};
  const chosen=selectedNodes(doc,nodes),first=await figure1Page(chosen,{source,render:o.render,title:o.title});
- const inFigure1=new Set(first?.items.map(i=>i.node?.id)),images=new Map<string,string>(),drawn:Node[]=[];
+ const inFigure1=new Set(first?.items.map(i=>i.node?.id)),images=new Map<string,string>(),notes=new Map<string,string>(),aspects=new Map<string,number>(),drawn:Node[]=[];
  for(const node of chosen.filter(n=>!inFigure1.has(n.id))){
-  const s=await source(node),box=reportBodyLayout([node])[0].items[0],image=s?.figure?await o.render(s.figure,box.width,box.height-CAPTION):s?.url;
-  if(image){images.set(node.id,image);drawn.push(node);}else o.skipped?.(node.label);
+  const s=await source(node);if(s?.figure){const a=reportAspect(node,s.figure);if(a!==undefined)aspects.set(node.id,a);}
+  const box=reportBodyLayout([node],aspects)[0].items[0],body=s?.figure?reportBodyFigure(s.figure,{width:box.width,height:box.height-CAPTION}):undefined;
+  const image=body?await o.render(body.figure,box.width,box.height-CAPTION):s?.url;
+  if(image){images.set(node.id,image);if(body?.note)notes.set(node.id,body.note);drawn.push(node);}else o.skipped?.(node.label);
  }
- const body=reportBodyLayout(drawn).map(p=>({...p,items:p.items.map(i=>({...i,image:images.get(i.node!.id)}))}));
+ const body=reportBodyLayout(drawn,aspects).map(p=>({...p,items:p.items.map(i=>({...i,image:images.get(i.node!.id),...(notes.has(i.node!.id)?{caption:`${i.caption} · ${notes.get(i.node!.id)}`}:{})}))}));
  return [first??titlePage(o.title([])),...body];
 }
 /** The first source that gives a figure or an image: tried in order (live drawing, card fetch, the image shown). */
 export async function firstSource(sources:(()=>PanelSource|undefined|Promise<PanelSource|undefined>)[]):Promise<PanelSource|undefined>{
  for(const source of sources){const s=await Promise.resolve().then(source).catch(()=>undefined);if(s?.figure||s?.url)return s;}
  return undefined;
+}
+
+const INCH=72,FACET_ROW=2.8*INCH,MAX_LABELLED_ROWS_PT=5;
+/** The subplot rows of a faceted card (distinct y-axis domains its traces use); 1 for a single plot. */
+function facetRows(f:Figure):number{
+ const used=new Set(f.data.map(t=>String(t.yaxis??'y')));if(used.size<2)return 1;
+ return new Set([...used].map(y=>JSON.stringify(f.layout[y.replace(/^y/,'yaxis')]?.domain??[0,1]))).size;
+}
+const heatmapRows=(f:Figure)=>{const t=f.data.find(t=>t.type==='heatmap');return Array.isArray(t?.y)?t!.y.length:0;};
+/** The shape a card is drawn at in the report body (height ÷ width), from its content rather than its on-screen card:
+ *  a faceted card (several subplots) gets about 2.8 in per row of panels and at least 65% of the page; a heatmap
+ *  taller than the page, or of more than 40 rows, gets the page's own shape. Undefined: the card's own shape. */
+export function reportAspect(node:Node,f:Figure):number|undefined{
+ const W=A4[0]-2*MARGIN,room=A4[1]-2*MARGIN-CAPTION,own=node.height>0&&node.width>0?node.height/node.width:.75;
+ const rows=facetRows(f);if(rows>1||f.data.filter(t=>t.xaxis&&t.xaxis!=='x').length)return Math.min(room,Math.max(rows*FACET_ROW,.65*room))/W;
+ if(f.data.some(t=>t.type==='heatmap')&&(heatmapRows(f)>40||W*own>room))return room/W;
+ return undefined;
+}
+/** The card's figure as drawn in the report body (presentation only; values untouched): a heatmap whose row labels
+ *  would be under 5 pt at this size shows no row labels, and the caption says how many rows there are. */
+export function reportBodyFigure(f:Figure,box:{width:number;height:number}):{figure:Figure;note?:string}{
+ const rows=heatmapRows(f);if(!rows||box.height*.85/rows>=MAX_LABELLED_ROWS_PT)return {figure:f};
+ const t=f.data.find(t=>t.type==='heatmap')!,axis=String(t.yaxis??'y').replace(/^y/,'yaxis');
+ return {figure:{data:f.data,layout:{...f.layout,[axis]:{...(f.layout[axis]??{}),showticklabels:false}}},note:`${rows} rows; labels omitted`};
 }
