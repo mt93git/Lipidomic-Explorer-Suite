@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import type {Node} from '../api';
 import type {Figure} from '../editor/applyEditor';
 import {A4} from './a4Pdf';
-import {figure1Figure,figure1Geometry,figure1Page,figure1Panels,legendColumns,roundNumbers} from './figure1';
+import {figure1Figure,figure1Geometry,figure1Page,figure1Panels,legendPlan,roundNumbers} from './figure1';
 import {reportBodyLayout} from './report';
 // Staging review of a real report (10 groups, 21 lipid classes, 4 violins, a PCA score card with 45 brackets incl. ns).
 // Synthetic stand-ins: 10 groups, 21 classes.
@@ -12,20 +12,21 @@ const classes=Array.from({length:21},(_,i)=>`Class${i+1}`);
 const legendEntries=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.name);
 const capacity=(heightPt:number)=>Math.floor((heightPt*96/72-60)/19);
 describe('Figure 1 legends show every entry',()=>{
- it('A lists all 10 groups, in as many legend columns as the panel height needs',()=>{
+ it('A lists all 10 groups, in columns that fit the panel height, or under the plot',()=>{
   const pca:Figure={data:groups.map((g,i)=>({type:'scatter',mode:'markers',name:g,x:[i],y:[i],marker:{color:colours.get(g)}})),layout:{xaxis:{title:'PC1 (30.0%)'},yaxis:{title:'PC2 (10.0%)'}}};
   const size={width:260,height:150},a=figure1Figure('pca',pca,colours,groups,size);
   expect(legendEntries(a).map(t=>t.name)).toEqual(groups);
-  const columns=legendColumns(10,size.height);expect(Math.ceil(10/columns)).toBeLessThanOrEqual(capacity(size.height));
-  const perLegend=new Map<string,number>();for(const t of a.data)perLegend.set(t.legend??'legend',(perLegend.get(t.legend??'legend')??0)+1);
-  expect([...perLegend.values()].every(n=>n<=capacity(size.height))).toBe(true);
+  const plan=legendPlan(groups,size),perLegend=new Map<string,number>();for(const t of a.data)perLegend.set(t.legend??'legend',(perLegend.get(t.legend??'legend')??0)+1);
   for(const key of perLegend.keys())expect(a.layout[key]).toBeDefined();
+  if(plan.mode==='right')expect([...perLegend.values()].every(n=>n<=capacity(size.height))).toBe(true);
+  else expect(a.layout.legend.orientation).toBe('h');
  });
- it('C lists all 21 classes, in two or more columns when one does not fit',()=>{
+ it('C lists all 21 classes, in side-by-side columns when they fit the panel, else under the plot',()=>{
   const comp:Figure={data:classes.map((c,i)=>({type:'bar',name:c,x:groups,y:groups.map(()=>i+1)})),layout:{barmode:'stack'}};
   const size={width:260,height:180},c=figure1Figure('comp',comp,colours,groups,size);
   expect(legendEntries(c)).toHaveLength(21);
-  const used=new Set(c.data.map(t=>t.legend??'legend'));expect(used.size).toBeGreaterThanOrEqual(2);
+  const used=new Set(c.data.map(t=>t.legend??'legend'));
+  if(legendPlan(classes,size).mode==='below'){expect(used).toEqual(new Set(['legend']));expect(c.layout.legend.orientation).toBe('h');return;}
   for(const key of used){const n=c.data.filter(t=>(t.legend??'legend')===key).length;expect(n).toBeLessThanOrEqual(capacity(size.height));expect(c.layout[key].x).toBeGreaterThan(1);}
   // The columns sit side by side to the right of the plot, left to right in stack order.
   const xs=[...used].sort().map(k=>c.layout[k].x);expect([...xs].sort((a,b)=>a-b)).toEqual(xs);
@@ -84,10 +85,11 @@ describe('legend numbers',()=>{
 });
 describe('report body packing',()=>{
  const card=(id:string,w:number,h:number):Node=>({id,kind:'plot',label:id,x:0,y:0,width:w,height:h});
- it('puts two cards per page, scaled down to half a page each (at least 45% of the page), a very tall card alone',()=>{
+ // Staging review 2 (2026-11-23): cards at half the page width wasted the page; each card now takes the content width.
+ it('keeps every card at 70% of the content width or more, a very tall card alone at the page height',()=>{
   const pages=reportBodyLayout([card('a',640,560),card('b',640,560),card('c',520,420),card('heat',460,1100),card('d',640,560)]);
-  expect(pages.map(p=>p.items.map(i=>i.node!.id))).toEqual([['a','b'],['c'],['heat'],['d']]);
-  for(const p of pages)for(const i of p.items){expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);if(p.items.length===2)expect(i.height).toBeGreaterThanOrEqual(.45*(A4[1]-68)-1e-9);}
+  expect(pages.find(p=>p.items.some(i=>i.node!.id==='heat'))!.items).toHaveLength(1);
+  for(const p of pages)for(const i of p.items){expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);if(i.node!.id!=='heat')expect(i.width).toBeGreaterThanOrEqual(.7*(A4[0]-68)-1e-9);}
  });
 });
 it('keeps the p thresholds the legend states as written',()=>{

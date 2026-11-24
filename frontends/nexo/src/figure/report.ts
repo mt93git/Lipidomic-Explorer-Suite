@@ -60,17 +60,30 @@ export const reportTitlePreference={
 export function paletteGroupCount(palette:SessionPalette|undefined):number|undefined{
  const n=palette?.contexts.find(c=>c.id==='Group1')?.groups.length;return n?n:undefined;
 }
-const CAPTION=16,GAP=14,TALL=1.2;
-/** The report body: each card full width under its label, its shape kept (shrunk to the page when taller), two per
- *  page (a card over half a page is shrunk to fit beside another unless it is very tall). Positions only; the images are filled in by buildReport. */
+const CAPTION=16,GAP=14,ROW_GUTTER=12,MIN_WIDTH=.7;
+/** The report body: each card under its label at the full content width, its shape kept, stacked down the page as
+ *  many as fit. A card that does not fit the rest of a page is shrunk to fit when it keeps at least 70% of the width
+ *  (so a page is never left a third empty for it); else it starts the next page. A card taller than the page is
+ *  shrunk to the page height; two such narrow cards (each at most half the width) share a row side by side.
+ *  Positions only; the images are filled in by buildReport. */
 export function reportBodyLayout(nodes:Node[]):Page[]{
- const W=A4[0]-2*MARGIN,bottom=A4[1]-MARGIN,most=A4[1]-2*MARGIN-CAPTION,half=(A4[1]-2*MARGIN-GAP)/2-CAPTION,pages:Page[]=[];let page:Page|undefined,y=MARGIN;
- for(const node of nodes){
-  const aspect=node.height>0&&node.width>0?node.height/node.width:.75;// Up to half a page at full width; a little taller is shrunk to half a page so two still share it; much taller
-  // goes on its own page, shrunk to the page height when needed. The shape is always kept.
-  let ih=W*aspect;if(ih>half)ih=aspect<=TALL?half:Math.min(ih,most);const iw=ih/aspect;
-  if(!page||page.items.length>=2||y+CAPTION+ih>bottom+1e-9){page={width:A4[0],height:A4[1],items:[],report:true};pages.push(page);y=MARGIN;}
-  page.items.push({node,caption:node.label,x:MARGIN+(W-iw)/2,y,width:iw,height:CAPTION+ih});y+=CAPTION+ih+GAP;
+ const W=A4[0]-2*MARGIN,avail=A4[1]-2*MARGIN,bottom=A4[1]-MARGIN,col=(W-ROW_GUTTER)/2,pages:Page[]=[];let page:Page|undefined,y=MARGIN;
+ const aspect=(n:Node)=>n.height>0&&n.width>0?n.height/n.width:.75;
+ const fit=(n:Node,width:number)=>{const a=aspect(n);let ih=width*a;if(CAPTION+ih>avail)ih=avail-CAPTION;return {iw:ih/a,ih};};
+ const narrow=(n:Node|undefined)=>!!n&&fit(n,W).iw<=col+1e-9;
+ const newPage=()=>{page={width:A4[0],height:A4[1],items:[],report:true};pages.push(page);y=MARGIN;return page;};
+ for(let i=0;i<nodes.length;i++){
+  const node=nodes[i];
+  if(narrow(node)&&narrow(nodes[i+1])){
+   const pair=[node,nodes[i+1]].map(n=>({n,...fit(n,col)})),h=CAPTION+Math.max(...pair.map(p=>p.ih));
+   if(!page||y+h>bottom+1e-9)newPage();
+   pair.forEach((p,k)=>page!.items.push({node:p.n,caption:p.n.label,x:MARGIN+k*(col+ROW_GUTTER)+(col-p.iw)/2,y,width:p.iw,height:CAPTION+p.ih}));
+   y+=h+GAP;i++;continue;
+  }
+  let {iw,ih}=fit(node,W);
+  if(!page)newPage();
+  else if(y+CAPTION+ih>bottom+1e-9){const scale=(bottom-y-CAPTION)/ih;if(page.items.length&&scale>=MIN_WIDTH){iw*=scale;ih*=scale;}else newPage();}
+  page!.items.push({node,caption:node.label,x:MARGIN+(W-iw)/2,y,width:iw,height:CAPTION+ih});y+=CAPTION+ih+GAP;
  }
  return pages;
 }
