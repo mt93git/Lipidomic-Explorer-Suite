@@ -59,7 +59,7 @@ companion_kb_has_content <- function(dir = companion_kb_dir(), seed_dir = compan
                                      include_seed = companion_kb_search_seed(), force = FALSE) {
   ttl <- suppressWarnings(as.numeric(Sys.getenv("LIPIDOMIC_KB_RECHECK_SECONDS", unset = "30")))
   if (length(ttl) != 1L || !is.finite(ttl) || ttl < 0) ttl <- 30
-  key <- paste(path.expand(dir), path.expand(seed_dir), audience, include_seed, sep = "|")
+  key <- paste(path.expand(dir), path.expand(seed_dir), audience, include_seed, companion_kb_allow_restricted(), sep = "|")
   hit <- .kb_cache$has; now <- Sys.time()
   if (!force && is.list(hit) && identical(hit$key, key) && as.numeric(difftime(now, hit$at, units = "secs")) < ttl) return(TRUE)
   tryCatch({
@@ -134,10 +134,16 @@ companion_kb_failed <- function() !is.null(.kb_cache$error)
 kb_log_once <- function(text) { if (!identical(.kb_cache$logged, text)) { .kb_cache$logged <- text; message(text) }; invisible(NULL) }
 kb_has_content_now <- function(dir, seed_dir, audience, include_seed) {
   kb <- companion_kb_load(dir, seed_dir)   # fails when the library is damaged (kb_check_library)
-  eligible <- kb$chunks$audience %in% c("all", audience) & nzchar(trimws(kb$chunks$text))
+  eligible <- kb$chunks$audience %in% c("all", audience) & kb_unrestricted(kb$chunks$tags) & nzchar(trimws(kb$chunks$text))
   any(eligible & kb$chunks$origin == "library") || (include_seed && any(eligible & kb$chunks$origin == "seed"))
 }
 companion_kb_search_seed <- function() identical(Sys.getenv("LIPIDOMIC_KB_SEARCH_SEED", unset = "0"), "1")
+companion_kb_allow_restricted <- function() identical(Sys.getenv("LIPIDOMIC_KB_RESTRICTED_SOURCES", unset = "0"), "1")
+kb_unrestricted <- function(tags) {
+  if (!length(tags)) return(logical())
+  if (companion_kb_allow_restricted()) return(rep(TRUE, length(tags)))
+  !grepl("(^|;)restricted(;|$)", tolower(as.character(tags)))
+}
 companion_kb_audience <- function() if (identical(Sys.getenv("LIPIDOMIC_TEAM_WORKSPACE", unset = "0"), "1")) "team" else "classic"
 companion_kb_dir <- function() {
   d <- Sys.getenv("LIPIDOMIC_KB_DIR", unset = "")
@@ -218,9 +224,9 @@ kb_app_vocabulary <- function(kb) {
 companion_kb_terms <- function(dir = companion_kb_dir(), seed_dir = companion_kb_seed_dir(), audience = companion_kb_audience()) {
   kb <- companion_kb_load(dir, seed_dir)
   max_terms <- suppressWarnings(as.integer(Sys.getenv("LIPIDOMIC_KB_TERMS_MAX", unset = "0"))); if (is.na(max_terms) || max_terms < 1L) max_terms <- .Machine$integer.max
-  key <- paste(.kb_cache$key, .kb_cache$sig, audience, max_terms, Sys.getenv("LIPIDOMIC_KB_TERMS_APP_DF"))
+  key <- paste(.kb_cache$key, .kb_cache$sig, audience, max_terms, Sys.getenv("LIPIDOMIC_KB_TERMS_APP_DF"), companion_kb_allow_restricted())
   if (identical(.kb_cache$terms_key, key)) return(.kb_cache$terms)
-  lib <- kb$chunks$origin == "library" & kb$chunks$audience %in% c("all", audience) & nzchar(trimws(kb$chunks$text))
+  lib <- kb$chunks$origin == "library" & kb$chunks$audience %in% c("all", audience) & kb_unrestricted(kb$chunks$tags) & nzchar(trimws(kb$chunks$text))
   out <- character()
   if (any(lib)) {
     per_passage <- lapply(kb$chunks$text[lib], function(t) unique(kb_surface_words(t)))
@@ -650,9 +656,10 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
   q <- unique(kb_tokens(question))
   # By default only the fed library answers questions; the reviewed app guidance (seed) is searched only
   # when LIPIDOMIC_KB_SEARCH_SEED=1. Fixed lookups by tag (the "Explain this step" button) still use the seed.
-  allowed <- which(kb$chunks$audience %in% c("all", audience) & (include_seed | kb$chunks$origin != "seed"))
+  allowed <- which(kb$chunks$audience %in% c("all", audience) & kb_unrestricted(kb$chunks$tags) & (include_seed | kb$chunks$origin != "seed"))
   if (!length(q) || !length(allowed)) return(c(none, list(terms = q)))
   Na <- length(allowed); N <- kb$N
+  avglen_use <- if (companion_kb_allow_restricted()) kb$avglen else { u <- kb_unrestricted(kb$chunks$tags); if (any(u)) mean(kb$len[u]) else 0 }
   mask <- logical(N); mask[allowed] <- TRUE
   score <- numeric(N); matched <- integer(N); specific <- logical(N); unknown <- character()
   idf_hit <- numeric(N); idf_all <- 0
@@ -665,7 +672,7 @@ companion_kb_search <- function(question, kb = companion_kb_load(), audience = c
     idf_all <- idf_all + idf
     tf <- tabulate(ids, nbins = N)
     hit <- tf > 0L
-    score <- score + ifelse(hit, idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * kb$len / max(kb$avglen, 1))), 0)
+    score <- score + ifelse(hit, idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * kb$len / max(avglen_use, 1))), 0)
     matched <- matched + as.integer(hit)
     idf_hit <- idf_hit + ifelse(hit, idf, 0)
     if (Na < 10L || df / Na <= 0.6) specific <- specific | hit
@@ -724,7 +731,8 @@ kb_citation_section <- function(section, audience = companion_kb_audience()) {
 }
 kb_citation <- function(row, audience = companion_kb_audience()) {
   section <- kb_citation_section(row$section, audience)
-  paste0("— Source: ", kb_display_name(row),
+  src <- kb_apa_label(as.list(row)) %kb_or% kb_display_name(row)
+  paste0("— Source: ", src,
          if (nzchar(section) && !identical(section, row$title)) paste0(" · ", section) else "",
          if (!is.na(row$page)) paste0(" · p. ", row$page) else "")
 }
@@ -769,7 +777,21 @@ kb_is_topic <- function(q) {
   length(strsplit(q, " +")[[1L]]) <= 3L && !grepl("^(what|who|why|how|when|where|which|does|do|is|are|can)\\b", q)
 }
 
-kb_shorten <- function(x, max_chars = 340L) {
+kb_is_table_row <- function(x) grepl("^[^:;]{1,40}: [^;]*; [^:;]{1,40}: ", x)
+
+kb_shorten <- function(x, max_chars = 340L, q = character()) {
+  if (kb_is_table_row(x)) {
+    row_max <- max(max_chars, 700L)
+    if (nchar(x) <= row_max) return(x)
+    s <- unlist(strsplit(x, "(?<=[.!?;])\\s+", perl = TRUE)); i0 <- 1L
+    if (length(q)) {
+      m <- which(vapply(s, function(z) any(q %in% kb_tokens(z)), logical(1)))
+      if (length(m)) while (i0 < tail(m, 1L) && sum(nchar(s[i0:tail(m, 1L)])) + tail(m, 1L) - i0 > row_max) i0 <- i0 + 1L
+    }
+    out <- ""
+    for (z in s[seq.int(i0, length(s))]) { if (nzchar(out) && nchar(out) + 1L + nchar(z) > row_max) break; out <- if (nzchar(out)) paste(out, z) else z }
+    return(if (nchar(out) > row_max + 120L) NA_character_ else out)
+  }
   if (nchar(x) <= max_chars) return(x)
   s <- unlist(strsplit(x, "(?<=[.!?])\\s+", perl = TRUE)); out <- ""
   for (z in s) { if (nzchar(out) && nchar(out) + 1L + nchar(z) > max_chars) break; out <- if (nzchar(out)) paste(out, z) else z }
@@ -777,30 +799,33 @@ kb_shorten <- function(x, max_chars = 340L) {
 }
 
 # Lab transcriptions are cited as <file>/<origin>, where <file> is the display alias a transcription names
-# (`<!-- source: slide.png -->`, the image it came from) or else the ingested file. Published literature is cited in
-# APA format from knowledge_base/references.csv (columns file, apa), looked up by the VERIFIED source identity in the
-# manifest: the ingested file must be a .pdf, its id the prefix of its sha256, and the lookup key is its ingested file
-# name. A note can therefore never acquire a publication's citation through its alias: an alias that names a .pdf on a
-# source that is not an ingested PDF is ignored and the actual ingested file is cited. A PDF without an entry is cited
-# by its ingested file name.
+# (`<!-- source: slide.png -->`, the image it came from) or else the ingested file. External publications and
+# reference datasets listed in knowledge_base/references.csv (columns file, apa) are cited in APA format from the
+# VERIFIED source identity in the manifest (sha256 prefix and extension match), never from a display alias.
 kb_apa <- function() {
-  p <- file.path("knowledge_base", "references.csv")
+  p <- Sys.getenv("LIPIDOMIC_KB_REFERENCES", unset = "")
+  if (!nzchar(p)) p <- file.path("knowledge_base", "references.csv")
   if (!file.exists(p)) return(character())
   r <- tryCatch(utils::read.csv(p, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
   if (is.null(r) || !all(c("file", "apa") %in% names(r))) return(character())
   stats::setNames(r$apa, r$file)
 }
+kb_apa_label <- function(row) {
+  if (is.character(row)) return(NULL)
+  a <- kb_apa(); f <- row$src_file
+  if (isTRUE(row$src_verified) && !is.null(f) && !is.na(f) && f %in% names(a)) unname(a[[f]]) else NULL
+}
 kb_display_name <- function(row) {
   alias <- sub("^.*/", "", row$source); file <- if (is.null(row$src_file) || is.na(row$src_file)) alias else row$src_file
   type <- if (is.null(row$src_type) || is.na(row$src_type)) "" else row$src_type
-  if (!identical(type, "pdf") && grepl("\\.pdf$", alias, ignore.case = TRUE)) file else row$source
+  if ((!identical(type, "pdf") && grepl("\\.pdf$", alias, ignore.case = TRUE)) ||
+      (!identical(alias, file) && alias %in% names(kb_apa()))) file else row$source
 }
 kb_source_label <- function(row) {
   if (is.character(row)) row <- list(source = row, src_file = NA_character_, src_type = NA_character_, src_verified = FALSE)
-  if (identical(row$src_type, "pdf")) {
-    a <- kb_apa(); f <- row$src_file
-    return(if (isTRUE(row$src_verified) && !is.na(f) && f %in% names(a)) unname(a[[f]]) else if (!is.na(f)) f else kb_display_name(row))
-  }
+  apa <- kb_apa_label(row)
+  if (!is.null(apa)) return(apa)
+  if (identical(row$src_type, "pdf")) return(if (!is.na(row$src_file)) row$src_file else kb_display_name(row))
   paste0(sub("^.*/", "", kb_display_name(row)), "/", Sys.getenv("LIPIDOMIC_KB_ORIGIN", unset = COMPANION_KB_ORIGIN))
 }
 
@@ -811,10 +836,11 @@ kb_digest <- function(rows, question) {
     ls <- unlist(strsplit(rows$text[i], "\n+"))
     ls <- trimws(sub("^\\s*([-*+]|[0-9]+[.)])\\s+", "", ls))
     ls <- ls[nzchar(ls) & !grepl("^Diagram labels:", ls)]
+    is_row <- kb_is_table_row(ls)
     # book text: drop figure/table captions and bibliography entries (DOI, "Nat Biotechnol 36, 316-320 (2018)")
-    ls <- ls[!grepl("^(Figure|Fig\\.|Table)\\s*[0-9]", ls) & !grepl("doi\\.org|doi:|\\([12][0-9]{3}\\)\\.?\\s*(https?:|$)", ls)]
+    ls <- ls[!grepl("^(Figure|Fig\\.|Table)\\s*[0-9]", ls) & (is_row | !grepl("doi\\.org|doi:|\\([12][0-9]{3}\\)\\.?\\s*(https?:|$)", ls, ignore.case = TRUE))]
     kept_after_filter <- kept_after_filter + sum(nchar(ls) >= 25L)   # short running headers and scale labels do not count
-    ls <- vapply(ls, kb_shorten, character(1), USE.NAMES = FALSE); ls <- ls[!is.na(ls) & nchar(ls) >= 25L]
+    ls <- vapply(ls, kb_shorten, character(1), q = q, USE.NAMES = FALSE); ls <- ls[!is.na(ls) & nchar(ls) >= 25L]
     if (!length(ls)) next
     sec <- tolower(rows$section[i])
     cat_score <- vapply(names(kb_rules), function(nm) 2 * grepl(kb_rules[[nm]]$head, sec, perl = TRUE) + pmin(3, kb_n_match(kb_rules[[nm]]$pat, ls)), numeric(length(ls)))
@@ -823,7 +849,7 @@ kb_digest <- function(rows, question) {
     fm <- 3 * any(q %in% kb_tokens(sub("\\.[A-Za-z]+$", "", sub("^.*/", "", rows$source[i]))))   # the file is named after the subject
     hit <- vapply(ls, function(l) sum(q %in% kb_tokens(l)), numeric(1))
     rel <- 2 * hit + sum(q %in% ctx) + fm * (hit > 0)
-    row_like <- grepl("^[^:;]{1,40}: [^;]*; [^:;]{1,40}: ", ls)   # a table row: fine as evidence, poor as a sentence
+    row_like <- kb_is_table_row(ls)   # a table row: fine as evidence, poor as a sentence
     cat_score[row_like, ] <- cat_score[row_like, , drop = FALSE] - 5
     best <- max.col(cat_score, ties.method = "first")
     cand[[length(cand) + 1L]] <- data.frame(line = ls, cat = names(kb_rules)[best], cs = cat_score[cbind(seq_along(ls), best)],
@@ -886,7 +912,7 @@ companion_kb_by_tag <- function(tag, kb = companion_kb_load(), audience = compan
   if (missing(kb) && companion_kb_failed()) stop("the knowledge base is unavailable: ", .kb_cache$error, call. = FALSE)
   tag <- tolower(tag)
   has <- vapply(strsplit(kb$chunks$tags, ";", fixed = TRUE), function(x) tag %in% x, logical(1))
-  rows <- kb$chunks[has & kb$chunks$audience %in% c("all", audience), , drop = FALSE]
+  rows <- kb$chunks[has & kb$chunks$audience %in% c("all", audience) & kb_unrestricted(kb$chunks$tags), , drop = FALSE]
   if (!nrow(rows)) return(kb_no_info())
   # A fixed-context answer cites the file only: the heading path ("Workflow steps › Step 3 of 7" in an
   # older or fed file) would name a navigation the interface may not have.

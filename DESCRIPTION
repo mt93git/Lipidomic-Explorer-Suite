@@ -1,9 +1,24 @@
 Package: MTGlobalLipidomicExplorer
-Version: 12.1.0
+Version: 13.0.0
 Title: MT_Global_Lipidomic_Explorer: High-Throughput Lipidomic Data Interface
-Date: 2026-09-30
+Date: 2026-11-22
 Authors@R: c(
-    person("Maxence", "Tricaud", email = "mtricaud.cetri@gmail.com", role = c("aut", "cre"))
+    person("Maxence", "Tricaud", email = "mtricaud.cetri@gmail.com",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0000-0737-5110",
+                       Contribution = "Lead Architect, Statistical Core, Analytical Modules & Classic Interface")),
+    person("Gerardo", "Barcia",
+           role = "aut",
+           comment = c(Contribution = "Nexo Canvas, Admin Portal, Guided Team Interface & Infrastructure")),
+    person("Ana Paula", "Salcedo",
+           role = "aut",
+           comment = c(Contribution = "Guided Service Workflow, Help Manual, QC Standardization & Companion Knowledge Curation")),
+    person("Usman", "Babar",
+           role = "aut",
+           comment = c(Contribution = "LC-MS/MS Analytical Methodology & Lipid Standards Ontology")),
+    person("Stephania", "Libreros",
+           role = c("aut", "ths"),
+           comment = c(Contribution = "Principal Investigator & Scientific Supervision"))
   )
 Description: Interactive web-based software application designed for the processing, quality control, analysis, and visualization of global lipidomic datasets.
 License: MIT + file LICENSE
@@ -28,7 +43,7 @@ Imports:
     stringr,
     stringi,
     purrr,
-    zip,
+    zip (>= 3.0.0),
     jsonlite,
     xml2,
     nipals,

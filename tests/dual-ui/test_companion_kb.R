@@ -643,5 +643,73 @@ local({
   check("digest: a caption/bibliography-only match abstains", !isTRUE(b$found) && startsWith(b$text, NO) && !grepl("Figure 1", b$text, fixed = TRUE))
   Sys.unsetenv(c("LIPIDOMIC_KB_STYLE", "LIPIDOMIC_KB_FRIENDLY", "LIPIDOMIC_KB_SEARCH_SEED", "LIPIDOMIC_TEAM_WORKSPACE"))
 })
+# ---- External reference tables (references.csv APA citation, wide-row digest, restricted flag) ----
+local({
+  ext_dir <- file.path(root, "external-ref-lib"); dir.create(ext_dir, recursive = TRUE)
+  pub_md <- file.path(root, "public_note.md")
+  writeLines(c("# Public note", "", "Baseline sphingomyelin abundance remains stable across control replicates."), pub_md)
+  ref_csv <- file.path(root, "reference_table.csv")
+  wide_hdr <- "Lipid,Matrix,Method,Concentration_uM,Notes"
+  wide_desc <- paste(
+    "Quantified in fasting EDTA human plasma by reversed-phase LC-MS/MS in positive electrospray mode",
+    "against a deuterated splash internal standard mix across three analytical batches, with inter-day",
+    "coefficient of variation below eight percent, linear calibration response across four orders of",
+    "magnitude, carryover below 0.1 percent in blank solvent injections, and method validation details",
+    "reported in the primary study protocol (doi:10.1000/example.01) for pooled reference plasma samples."
+  )
+  wide_row <- paste("PC 34:1", "Plasma", "LC-MS/MS", "184.5", paste0('"', wide_desc, '"'), sep = ",")
+  writeLines(c(wide_hdr, wide_row), ref_csv)
+  refs_map <- file.path(root, "references_ext.csv")
+  apa_cite <- "Example Lab. (2026). Reference lipid dataset (v1.0). https://doi.org/10.1000/example.01"
+  writeLines(c("file,apa", sprintf('"reference_table.csv","%s"', apa_cite)), refs_map)
+
+  companion_kb_add(pub_md, dir = ext_dir, quiet = TRUE)
+  companion_kb_add(ref_csv, dir = ext_dir, tags = "restricted", quiet = TRUE)
+
+  Sys.setenv(LIPIDOMIC_KB_DIR = ext_dir, LIPIDOMIC_KB_REFERENCES = refs_map, LIPIDOMIC_KB_FRIENDLY = "0",
+             LIPIDOMIC_KB_SEARCH_SEED = "0", LIPIDOMIC_TEAM_WORKSPACE = "1", LIPIDOMIC_KB_RESTRICTED_SOURCES = "0")
+  on.exit(Sys.unsetenv(c("LIPIDOMIC_KB_DIR", "LIPIDOMIC_KB_REFERENCES", "LIPIDOMIC_KB_FRIENDLY",
+                         "LIPIDOMIC_KB_SEARCH_SEED", "LIPIDOMIC_TEAM_WORKSPACE", "LIPIDOMIC_KB_RESTRICTED_SOURCES",
+                         "LIPIDOMIC_KB_STYLE")), add = TRUE)
+
+  kb_ext <- companion_kb_load(ext_dir, force = TRUE)
+  check("wide CSV row exceeds 500 chars and carries doi:", any(nchar(kb_ext$chunks$text) > 500L & grepl("doi:10.1000/example.01", kb_ext$chunks$text, fixed = TRUE)))
+  check("restricted=0: search hides restricted table", !isTRUE(companion_kb_answer("what is the concentration of PC 34:1 in plasma", kb = kb_ext)$found))
+  check("restricted=0: by_tag hides restricted table", !isTRUE(companion_kb_by_tag("restricted", kb = kb_ext)$found))
+  terms_off <- companion_kb_terms(ext_dir, audience = "team")
+  check("restricted=0: kb_terms excludes restricted vocabulary", !("deuterated" %in% terms_off) && ("sphingomyelin" %in% terms_off))
+  check("restricted=0: public note still answers", isTRUE(companion_kb_answer("what happens to baseline sphingomyelin abundance", kb = kb_ext)$found))
+
+  # Spoof check on non-PDF registered reference file: an alias naming reference_table.csv cannot claim its APA citation.
+  spoof_md <- file.path(root, "spoof_csv_alias.md")
+  writeLines(c("<!-- source: reference_table.csv -->", "# Draft", "", "Fictional ketolipid entry in a local scratch note."), spoof_md)
+  companion_kb_add(spoof_md, dir = ext_dir, quiet = TRUE)
+  kb_ext <- companion_kb_load(ext_dir, force = TRUE)
+  sp <- companion_kb_answer("what is fictional ketolipid", kb = kb_ext)
+  check("spoof CSV alias: cites actual markdown file, never references.csv APA", isTRUE(sp$found) && grepl("spoof_csv_alias.md", sp$text, fixed = TRUE) && !grepl("example.01", sp$text, fixed = TRUE))
+
+  # Enable restricted sources (staging mode)
+  Sys.setenv(LIPIDOMIC_KB_RESTRICTED_SOURCES = "1", LIPIDOMIC_KB_STYLE = "digest")
+  terms_on <- companion_kb_terms(ext_dir, audience = "team")
+  check("restricted=1: kb_terms refreshes cache and includes restricted vocabulary", "deuterated" %in% terms_on)
+  ans_dig <- companion_kb_answer("what is the concentration of PC 34:1 in plasma", kb = kb_ext)
+  check("restricted=1 digest: wide CSV row with DOI answers without NA abstention", isTRUE(ans_dig$found) && grepl("184.5", ans_dig$text, fixed = TRUE))
+  check("restricted=1 digest: cites APA from references.csv without Libreros_lab", grepl(apa_cite, ans_dig$text, fixed = TRUE) && !grepl("Libreros_lab", ans_dig$text, fixed = TRUE))
+
+  Sys.setenv(LIPIDOMIC_KB_STYLE = "passages")
+  ans_pas <- companion_kb_answer("what is the concentration of PC 34:1 in plasma", kb = kb_ext)
+  check("restricted=1 passages: cites APA from references.csv without Libreros_lab", isTRUE(ans_pas$found) && grepl(apa_cite, ans_pas$text, fixed = TRUE) && !grepl("Libreros_lab", ans_pas$text, fixed = TRUE))
+  check("restricted=1 by_tag: restricted tag lookup works when enabled", isTRUE(companion_kb_by_tag("restricted", kb = kb_ext)$found))
+
+  # Library holding ONLY restricted passages reports unavailable when flag=0 and available when flag=1
+  only_restr <- file.path(root, "only-restricted-lib"); dir.create(only_restr, recursive = TRUE)
+  companion_kb_add(ref_csv, dir = only_restr, tags = "restricted", quiet = TRUE)
+  Sys.setenv(LIPIDOMIC_KB_RESTRICTED_SOURCES = "0")
+  suppressMessages(companion_kb_has_content(only_restr, force = TRUE))
+  check("restricted-only library: fails closed when flag=0", companion_kb_failed())
+  Sys.setenv(LIPIDOMIC_KB_RESTRICTED_SOURCES = "1")
+  suppressMessages(companion_kb_has_content(only_restr, force = TRUE))
+  check("restricted-only library: clears error when flag=1", !companion_kb_failed())
+})
 cat("PASS grounded knowledge base: feeding all file types, verbatim sourced answers, exact refusals, audience, injection safety, companion integration\n")
 cat("PASS Team port gate: fail closed by structure (missing, .gitkeep, empty dir, empty index, chunks without manifest, restart, cache window: grounded error state, AI mock 0 calls); KB=0 = today's companion and uses the AI; fed library = grounded answers with source; Team workspace companion starts\n")

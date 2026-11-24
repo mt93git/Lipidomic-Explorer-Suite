@@ -127,4 +127,7 @@ Biological function, Interactions** (only when the sources have it), **Relevance
 sources do not cover says `The sources do not cover this part.` A specific question gets its best two or three lines.
 Every line is copied unchanged from a file (nothing is reworded), and the answer ends with
 `Source: <file name>/Libreros_lab` for each file used (`LIPIDOMIC_KB_ORIGIN` changes the second part).
+External publications and reference datasets listed in `knowledge_base/references.csv` (`file,apa`) are cited
+with their full APA citation instead of `<file name>/Libreros_lab`. Sources fed with `--tags=restricted` stay
+hidden by default (`LIPIDOMIC_KB_RESTRICTED_SOURCES=0`) and become searchable when `LIPIDOMIC_KB_RESTRICTED_SOURCES=1`.
 `LIPIDOMIC_KB_STYLE=passages` restores the longer answer made of whole passages.
