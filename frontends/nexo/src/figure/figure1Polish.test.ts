@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import type {Node} from '../api';
 import type {Figure} from '../editor/applyEditor';
 import {A4} from './a4Pdf';
-import {figure1Figure,figure1Geometry,figure1Page,figure1Panels,legendPlan,pcaLegend,roundNumbers} from './figure1';
+import {figure1Figure,figure1Geometry,figure1Page,figure1Panels,pcaLegend,roundNumbers,sideLegend} from './figure1';
 import {reportBodyLayout} from './report';
 // Staging review of a real report (10 groups, 21 lipid classes, 4 violins, a PCA score card with 45 brackets incl. ns).
 // Synthetic stand-ins: 10 groups, 21 classes.
@@ -20,16 +20,15 @@ describe('Figure 1 legends show every entry',()=>{
   expect(legend.entries.map(e=>e.label)).toEqual(groups);expect(legend.y+legend.height).toBeCloseTo(250);
   expect(legend.entries.every(e=>e.x>=34&&e.x+legend.dot+4+e.label.length*legend.fontSize*.55<=34+260)).toBe(true);
  });
- it('C lists all 21 classes, in side-by-side columns when they fit the panel, else under the plot',()=>{
+ // Review 2026-11-24: C's classes are listed by the page on the right of its bars, in columns that never overlap.
+ it('C lists all 21 classes in the legend the page draws on its right, columns apart',()=>{
   const comp:Figure={data:classes.map((c,i)=>({type:'bar',name:c,x:groups,y:groups.map(()=>i+1)})),layout:{barmode:'stack'}};
-  const size={width:260,height:180},c=figure1Figure('comp',comp,colours,groups,size);
-  expect(legendEntries(c)).toHaveLength(21);
-  const used=new Set(c.data.map(t=>t.legend??'legend'));
-  if(legendPlan(classes,size).mode==='below'){expect(used).toEqual(new Set(['legend']));expect(c.layout.legend.orientation).toBe('h');return;}
-  for(const key of used){const n=c.data.filter(t=>(t.legend??'legend')===key).length;expect(n).toBeLessThanOrEqual(capacity(size.height));expect(c.layout[key].x).toBeGreaterThan(1);}
-  // The columns sit side by side to the right of the plot, left to right in stack order.
-  const xs=[...used].sort().map(k=>c.layout[k].x);expect([...xs].sort((a,b)=>a-b)).toEqual(xs);
+  expect(figure1Figure('comp',comp,colours,groups,{width:260,height:180}).layout.showlegend).toBe(false);
+  const l=sideLegend('c',294,100,classes.map(c=>({label:c,color:'#111111'})),117);
+  expect(l.entries.map(e=>e.label)).toEqual(classes);expect(l.x+l.width).toBeCloseTo(294);expect(l.width).toBeLessThanOrEqual(117);
+  const xs=[...new Set(l.entries.map(e=>e.x))].sort((p,q)=>p-q);for(const e of l.entries){const next=xs.find(x=>x>e.x);if(next!==undefined)expect(e.x+l.dot+4+e.label.length*l.fontSize*.55).toBeLessThanOrEqual(next);}
  });
+
 });
 describe('Figure 1 panel B keeps only significant brackets',()=>{
  const pairs=[['Group A','Group B','*'],['Group A','Group C','ns'],['Group B','Group C','***'],['Group A','Group D','ns']];

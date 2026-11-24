@@ -16,5 +16,5 @@ export async function exportCanvasReport(handle: CanvasHandle | null | undefined
   const title = reportTitle({ custom: reportTitlePreference.get(), projectName: report?.projectName, placeholder: s.project, datasetName: report?.datasetName });
   // The summary's group count is the session's Group 1 levels, so it shows even when Figure 1 reads no group colours.
   const groups = paletteGroupCount(await getPalette(handle.getSession().sessionId).catch(() => undefined));
-  await exportReport(saved ?? syncDocument(initialDocument(), nodes), nodes, { title, samples: report?.samples, lipids: report?.lipids, groups, cardSource: id => handle.cardSource?.(id) ?? Promise.resolve(undefined) });
+  await exportReport(saved ?? syncDocument(initialDocument(), nodes), nodes, { title, samples: report?.samples, lipids: report?.lipids, groups, cardSource: (id, size) => handle.cardSource?.(id, size) ?? Promise.resolve(undefined) });
 }
