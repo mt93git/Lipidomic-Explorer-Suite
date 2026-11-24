@@ -6,7 +6,9 @@ export type Positioned=Partial<DocumentItem>&{x:number;y:number;width:number;hei
 export interface Caption {x:number;y:number;width:number;fontSize:number;lineHeight:number;lead:string;paragraphs:string[];lines:{text:string;lead?:boolean}[]}
 /** The report's title block at the top of page 1 (points; y is the top of the block). */
 export interface TitleBlock {x:number;y:number;width:number;height:number;lines:string[];titleSize:number;lineHeight:number;date:string;dateSize:number;summary?:string;summarySize?:number}
-export interface Page {width:number;height:number;items:Positioned[];draft?:boolean;legend?:string;figure1?:boolean;/** A report body page: cards under their labels, no page furniture. */report?:boolean;caption?:Caption;titleBlock?:TitleBlock}
+/** A legend the page draws itself (points): Figure 1 panel A's groups, a coloured dot and the label, in columns. */
+export interface PanelLegend {nodeId:string;x:number;y:number;width:number;height:number;fontSize:number;rowHeight:number;dot:number;entries:{label:string;color:string;x:number;y:number}[]}
+export interface Page {width:number;height:number;items:Positioned[];legends?:PanelLegend[];draft?:boolean;legend?:string;figure1?:boolean;/** A report body page: cards under their labels, no page furniture. */report?:boolean;caption?:Caption;titleBlock?:TitleBlock}
 export function model(document:Document,nodes:Node[]):Page[]{
  const [width,height]=size(document),margin=46,top=66,bottom=52;const page=(items:Positioned[]):Page=>({width,height,items});
  if(document.layout==='free')return [page(document.items.slice().sort((a,b)=>a.z-b.z).map(item=>({...item,node:item.type==='figure'?nodes.find(n=>n.id===item.nodeId):undefined})))];

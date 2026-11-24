@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import type {Node} from '../api';
 import type {Figure} from '../editor/applyEditor';
 import {A4} from './a4Pdf';
-import {figure1Figure,figure1Geometry,figure1Page,figure1Panels,legendPlan,roundNumbers} from './figure1';
+import {figure1Figure,figure1Geometry,figure1Page,figure1Panels,legendPlan,pcaLegend,roundNumbers} from './figure1';
 import {reportBodyLayout} from './report';
 // Staging review of a real report (10 groups, 21 lipid classes, 4 violins, a PCA score card with 45 brackets incl. ns).
 // Synthetic stand-ins: 10 groups, 21 classes.
@@ -12,14 +12,13 @@ const classes=Array.from({length:21},(_,i)=>`Class${i+1}`);
 const legendEntries=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.name);
 const capacity=(heightPt:number)=>Math.floor((heightPt*96/72-60)/19);
 describe('Figure 1 legends show every entry',()=>{
- it('A lists all 10 groups, in columns that fit the panel height, or under the plot',()=>{
+ it('A lists all 10 groups in the legend the page draws under the plot, within the panel',()=>{
   const pca:Figure={data:groups.map((g,i)=>({type:'scatter',mode:'markers',name:g,x:[i],y:[i],marker:{color:colours.get(g)}})),layout:{xaxis:{title:'PC1 (30.0%)'},yaxis:{title:'PC2 (10.0%)'}}};
   const size={width:260,height:150},a=figure1Figure('pca',pca,colours,groups,size);
-  expect(legendEntries(a).map(t=>t.name)).toEqual(groups);
-  const plan=legendPlan(groups,size),perLegend=new Map<string,number>();for(const t of a.data)perLegend.set(t.legend??'legend',(perLegend.get(t.legend??'legend')??0)+1);
-  for(const key of perLegend.keys())expect(a.layout[key]).toBeDefined();
-  if(plan.mode==='right')expect([...perLegend.values()].every(n=>n<=capacity(size.height))).toBe(true);
-  else expect(a.layout.legend.orientation).toBe('h');
+  expect(a.layout.showlegend).toBe(false);
+  const legend=pcaLegend({nodeId:'p',x:34,y:100,...size},groups.map(g=>({label:g,color:colours.get(g)!})));
+  expect(legend.entries.map(e=>e.label)).toEqual(groups);expect(legend.y+legend.height).toBeCloseTo(250);
+  expect(legend.entries.every(e=>e.x>=34&&e.x+legend.dot+4+e.label.length*legend.fontSize*.55<=34+260)).toBe(true);
  });
  it('C lists all 21 classes, in side-by-side columns when they fit the panel, else under the plot',()=>{
   const comp:Figure={data:classes.map((c,i)=>({type:'bar',name:c,x:groups,y:groups.map(()=>i+1)})),layout:{barmode:'stack'}};
