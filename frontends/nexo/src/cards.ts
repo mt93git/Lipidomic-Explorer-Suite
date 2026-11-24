@@ -36,6 +36,7 @@ import { hasGl3d, purgePlot } from './gl';
 import { fitViolins } from './violinSpan';
 import type { VisWidget } from './network/visData';
 import { bindCompositionLegend } from './editor/compositionLegend';
+import { startHref } from './ui/startHref';
 interface Plotly {
   newPlot(el: HTMLElement, data: unknown[], layout: Record<string, unknown>, config: Record<string, unknown>): Promise<unknown>;
   react: Plotly["newPlot"];
@@ -292,7 +293,7 @@ export class Card {
       if (view.action) {
         const { label: text, action } = view.action;
         const b = document.createElement('button'); b.type = 'button'; b.textContent = text;
-        b.onclick = () => { if (action === 'review') location.href = '/team/'; else this.action(action); };
+        b.onclick = () => { if (action === 'review') location.href = startHref(); else this.action(action); };
         this.status.append(b);
       }
     };

@@ -1094,6 +1094,8 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     // A module action ran on the server (Data tab button): redraw the card, no undo step.
     refreshCard(nodeId) { cards.find(c => c.node.id === nodeId)?.reload(); },
     fit, zoomTo: scale => { if (Number.isFinite(scale)) zoom(scale); },
+    // A shared board is this page's once joined (the store then holds the document); alone, once the catalog is known.
+    ready: () => catalogReady.catch(() => {}).then(() => joined).then(shared => joined && !shared ? undefined : { cards: store.get().nodes.length }),
     focusNode(id) {
       const c = cards.find(c => c.node.id === id); if (!c) return false;
       // An explicit "show me": zoom out (never in) when the card does not fit, then bring it into view.
