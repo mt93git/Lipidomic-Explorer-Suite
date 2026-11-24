@@ -58,7 +58,8 @@ describe('Figure 1 presentation',()=>{
   }
  });
  it('draws the PCA legend on the right and the PCA score box plot without its table',()=>{
-  const a=figure1Figure('pca',figures.pca,colours,order,{width:300,height:200});expect(a.layout.showlegend).toBe(true);expect(a.layout.legend.x).toBeGreaterThan(1);
+  // Staging, after PR #94: panel A's legend is drawn by the page under the plot (pcaPanel.test.ts), not by Plotly.
+  const a=figure1Figure('pca',figures.pca,colours,order,{width:300,height:200});expect(a.layout.showlegend).toBe(false);
   const b=figure1Figure('pcascore',figures.score,colours,order,{width:300,height:200});
   expect(b.data.some(t=>t.xaxis==='x2'||t.meta?.teamLegendProxy)).toBe(false);expect(b.layout.xaxis2).toBeUndefined();expect(b.layout.yaxis.domain).toEqual([0,1]);
   expect(b.layout.annotations.map((a:{text:string})=>a.text)).toEqual(['*']);expect(b.layout.shapes).toHaveLength(1);

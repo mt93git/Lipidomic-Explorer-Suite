@@ -26,15 +26,18 @@ describe('Figure 1 legend columns',()=>{
    }
   }
  });
- it('draws panel A with that plan: legend x positions apart by at least each column width',()=>{
+ // Panel A's legend is drawn by the page since the staging review after PR #94 (pcaPanel.test.ts); panel C keeps
+ // its Plotly legend columns.
+ it('draws panel C with that plan: legend x positions apart by at least each column width',()=>{
   const colours=new Map(labels.map((l,i)=>[l,`#${String(i).repeat(6).slice(0,6)}`]));
-  const pca:Figure={data:labels.map((g,i)=>({type:'scatter',mode:'markers',name:g,x:[i],y:[i],marker:{color:colours.get(g)}})),layout:{}};
+  const comp:Figure={data:labels.map((g,i)=>({type:'bar',name:g,x:['A'],y:[i+1]})),layout:{}};
   for(const size of sizes){
-   const a=figure1Figure('pca',pca,colours,labels,size),plan=legendPlan(labels,size);
+   // C lists its classes top of the stack first (the traces reversed), at least 30% of the panel for the plot.
+   const a=figure1Figure('comp',comp,colours,['A'],size),plan=legendPlan([...labels].reverse(),size,.3);
    expect(a.data.filter(t=>t.showlegend!==false).map(t=>t.name)).toEqual(labels);
    if(plan.mode==='right'){
     expect(a.layout.margin.r).toBeGreaterThanOrEqual(plan.marginRightPx);
-    plan.columns.forEach((c,k)=>{const key=k?`legend${k+1}`:'legend';expect(a.layout[key].x).toBeCloseTo(1+c.offsetPx/plan.plotWidthPx);expect(a.data.filter(t=>(t.legend??'legend')===key).map(t=>t.name)).toEqual(c.labels);});
+    plan.columns.forEach((c,k)=>{const key=k?`legend${k+1}`:'legend';expect(a.layout[key].x).toBeCloseTo(1+c.offsetPx/plan.plotWidthPx);expect(a.data.filter(t=>(t.legend??'legend')===key).map(t=>t.name).sort()).toEqual([...c.labels].sort());});
    } else {
     expect(a.layout.legend).toMatchObject({orientation:'h',yanchor:'top',entrywidthmode:'pixels'});expect(a.layout.legend.y).toBeLessThan(0);
     expect(a.data.every(t=>(t.legend??'legend')==='legend')).toBe(true);

@@ -31,6 +31,8 @@ export function pageSVG(page:Page,doc:Document):SVGSVGElement {
  else el('image',{x:0,y:18,width:item.width,height:item.height-18,href:url},group);
  });if(page.legend)text(page.legend,46,page.height-68,7);
  if(page.caption){const c=page.caption;c.lines.forEach((line,i)=>{const t=el('text',{x:c.x,y:c.y+c.fontSize+i*c.lineHeight,'font-family':'Arial, sans-serif','font-size':c.fontSize,fill:'#000000'});if(line.lead&&line.text.startsWith(c.lead)){const b=document.createElementNS(ns,'tspan');b.setAttribute('font-weight','bold');b.textContent=c.lead;t.append(b,line.text.slice(c.lead.length));}else t.textContent=line.text;});}
+ // Legends the page draws (Figure 1 panel A): a dot and the label per group.
+ for(const l of page.legends??[])for(const e of l.entries){el('circle',{cx:e.x+l.dot/2,cy:e.y,r:l.dot/2,fill:e.color,stroke:'#3a3a3a','stroke-width':.4});const t=el('text',{x:e.x+l.dot+4,y:e.y+l.fontSize*.35,'font-family':'Arial, sans-serif','font-size':l.fontSize,fill:'#000000'});t.textContent=e.label;}
  // The report's title block: the title in bold, the export date, and the dataset summary in a muted grey.
  if(page.titleBlock){const b=page.titleBlock;let y=b.y;const line=(value:string,size:number,colour:string,bold=false)=>{y+=size*1.25;const t=el('text',{x:b.x,y,'font-family':'Arial, sans-serif','font-size':size,fill:colour,...(bold?{'font-weight':'bold'}:{})});t.textContent=value;};
   b.lines.forEach(l=>{line(l,b.titleSize,'#1b2330',true);y+=b.lineHeight-b.titleSize*1.25;});line(b.date,b.dateSize,'#333333');if(b.summary)line(b.summary,b.summarySize??8,'#6b7280');}
