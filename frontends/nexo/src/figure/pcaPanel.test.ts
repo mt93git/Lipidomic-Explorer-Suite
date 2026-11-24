@@ -15,16 +15,17 @@ const other:Figure={data:[{type:'scatter',mode:'markers',name:labels[0],x:[1],y:
 const build=()=>figure1Page(cards,{source:async n=>({figure:n.id==='pca'?pca:other}),render:async()=>'data:image/png;base64,AA',
  title:()=>titleBlock({title:'Synthetic board',date:reportDate(new Date(2026,10,23)),summary:reportSummary({samples:72,lipids:1622,groups:10})})});
 describe('Figure 1 panel A',()=>{
- it('gives the PCA plot at least 60% of the panel height, with every group in a compact legend under it',async()=>{
+ // Review 2026-11-24: the legend moved to the right of the plot (figure1Legibility.test.ts), so the PCA takes the
+ // whole panel height and gives the height it saves to panel C.
+ it('gives the PCA plot the whole panel height, with every group in a compact legend on its right',async()=>{
   const page=(await build())!,plot=page.items.find(i=>i.node?.id==='pca')!,legend=page.legends!.find(l=>l.nodeId==='pca')!;
-  const panel=legend.y+legend.height-plot.y;
-  expect(plot.height/panel).toBeGreaterThanOrEqual(.6);
-  expect(legend.y).toBeGreaterThanOrEqual(plot.y+plot.height-1e-9);
+  expect(legend.x).toBeGreaterThanOrEqual(plot.x+plot.width-1e-9);
+  expect(legend.y).toBeGreaterThanOrEqual(plot.y-1e-9);expect(legend.y+legend.height).toBeLessThanOrEqual(plot.y+plot.height+1e-9);
   expect(legend.entries.map(e=>e.label)).toEqual(labels);expect(legend.entries.map(e=>e.color)).toEqual(labels.map((_,i)=>colour(i).toUpperCase()));
-  // Columns sized by their longest label: no entry runs into the next column; all inside the panel width.
-  const columns=[...new Set(legend.entries.map(e=>e.x))].sort((a,b)=>a-b);
+  // Columns sized by their longest label: no entry runs into the next column; all inside the left column of the page.
+  const columns=[...new Set(legend.entries.map(e=>e.x))].sort((a,b)=>a-b),cw=(A4[0]-68-12)/2;
   for(const e of legend.entries){const next=columns.find(x=>x>e.x);const right=e.x+legend.dot+4+e.label.length*legend.fontSize*.55;
-   if(next!==undefined)expect(right).toBeLessThanOrEqual(next);expect(right).toBeLessThanOrEqual(plot.x+plot.width+1e-9);}
+   if(next!==undefined)expect(right).toBeLessThanOrEqual(next);expect(right).toBeLessThanOrEqual(34+cw+1e-9);}
   expect(legend.rowHeight).toBeLessThanOrEqual(10);expect(legend.y+legend.height).toBeLessThanOrEqual(A4[1]-34);
   // The legend stays above row 2 (panels C and D).
   const below=page.items.filter(i=>i.node&&['comp','heat'].includes(i.node.id));expect(Math.min(...below.map(i=>i.y))).toBeGreaterThan(legend.y+legend.height);

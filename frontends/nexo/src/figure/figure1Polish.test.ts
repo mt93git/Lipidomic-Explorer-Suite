@@ -36,17 +36,17 @@ describe('Figure 1 panel B keeps only significant brackets',()=>{
  const score=(stars:string[][]):Figure=>({data:lev.map((g,i)=>({type:'box',name:g,x:[g,g],y:[i,i+1],marker:{color:'#111111'}})),layout:{yaxis:{range:[-1,20]},
   shapes:stars.map(([a,b],i)=>{const x1=lev.indexOf(a),x2=lev.indexOf(b),y0=4+.6*i,y1=y0+.1;return {type:'path',path:`M ${x1},${y0} L ${x1},${y1} L ${x2},${y1} L ${x2},${y0}`,line:{color:'#000000'}};}),
   annotations:stars.map(([a,b,s],i)=>({x:(lev.indexOf(a)+lev.indexOf(b))/2,y:4+.6*i+.1,text:s,showarrow:false}))}});
- it('drops ns brackets and labels, keeps the starred ones, and tightens the y range to them',()=>{
+ // Review 2026-11-24: the starred pairs are read as compact letters (figure1Legibility.test.ts); no bracket is drawn.
+ it('reads the starred pairs (not ns) as compact letters, and tightens the y range to them',()=>{
   const b=figure1Figure('pcascore',score(pairs),colours,groups,{width:260,height:150});
-  expect(b.layout.annotations.map((a:{text:string})=>a.text)).toEqual(['*','***']);expect(b.layout.shapes).toHaveLength(2);
-  const tops=b.layout.annotations.map((a:{y:number})=>a.y),top=Math.max(...tops);
+  expect(b.layout.shapes).toEqual([]);
+  expect(Object.fromEntries(b.layout.annotations.map((a:{x:string;text:string})=>[a.x,a.text]))).toEqual({'Group A':'a','Group B':'b','Group C':'a','Group D':'ab'});
+  const top=Math.max(...b.layout.annotations.map((a:{y:number})=>a.y));
   expect(b.layout.yaxis.range[1]).toBeGreaterThan(top);expect(b.layout.yaxis.range[1]).toBeLessThan(20);
-  // Each remaining bracket keeps its label right on it.
-  b.layout.shapes.forEach((s:{path:string},i:number)=>{const y1=Number(s.path.split(' L ')[1].split(',')[1]);expect(b.layout.annotations[i].y).toBeCloseTo(y1);});
  });
- it('draws no bracket when none is significant',()=>{
+ it('gives every group the same letter when no pair is significant',()=>{
   const b=figure1Figure('pcascore',score(pairs.filter(p=>p[2]==='ns')),colours,groups,{width:260,height:150});
-  expect(b.layout.annotations).toEqual([]);expect(b.layout.shapes).toEqual([]);expect(b.layout.yaxis.range[1]).toBeLessThan(5);
+  expect(b.layout.annotations.map((a:{text:string})=>a.text)).toEqual(['a','a','a','a']);expect(b.layout.shapes).toEqual([]);expect(b.layout.yaxis.range[1]).toBeLessThan(5);
  });
 });
 describe('Figure 1 panel E violins',()=>{
@@ -83,11 +83,12 @@ describe('legend numbers',()=>{
 });
 describe('report body packing',()=>{
  const card=(id:string,w:number,h:number):Node=>({id,kind:'plot',label:id,x:0,y:0,width:w,height:h});
- // Staging review 2 (2026-11-23): cards at half the page width wasted the page; each card now takes the content width.
- it('keeps every card at 70% of the content width or more, a very tall card alone at the page height',()=>{
+ // Staging review 2 (2026-11-23): cards at half the page width wasted the page; each card takes the content width.
+ // Review 2026-11-24: two cards per page, a tall one included (it is drawn again at its half-page size).
+ it('keeps every card at the content width, two per page, inside the page',()=>{
   const pages=reportBodyLayout([card('a',640,560),card('b',640,560),card('c',520,420),card('heat',460,1100),card('d',640,560)]);
-  expect(pages.find(p=>p.items.some(i=>i.node!.id==='heat'))!.items).toHaveLength(1);
-  for(const p of pages)for(const i of p.items){expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);if(i.node!.id!=='heat')expect(i.width).toBeGreaterThanOrEqual(.7*(A4[0]-68)-1e-9);}
+  expect(pages.map(p=>p.items.length)).toEqual([2,2,1]);
+  for(const p of pages)for(const i of p.items){expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);expect(i.width).toBeCloseTo(A4[0]-68);}
  });
 });
 it('keeps the p thresholds the legend states as written',()=>{

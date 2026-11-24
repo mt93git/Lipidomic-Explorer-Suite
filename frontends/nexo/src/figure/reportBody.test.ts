@@ -42,14 +42,13 @@ describe('report from a board whose cards are frozen and not finished',()=>{
 });
 describe('report body layout',()=>{
  const fits=(p:Page)=>p.items.every(i=>i.x>=34&&i.y>=34&&i.x+i.width<=A4[0]-34+1e-9&&i.y+i.height<=A4[1]-34+1e-9);
- it('puts each card full width under its label, two per page when they fit, keeping the card shape',()=>{
+ // Review 2026-11-24: two cards per page, each in half the page at the full width, whatever its on-screen shape.
+ it('puts each card full width under its label, two per page, in half the page each',()=>{
   const wide=[1,2,3].map(i=>node(`w${i}`,'x-w','Wide '+i,800,400));
   const pages=reportBodyLayout(wide);expect(pages.map(p=>p.items.length)).toEqual([2,1]);
-  for(const p of pages){expect(fits(p)).toBe(true);for(const i of p.items){expect(i.width).toBeCloseTo(A4[0]-68);expect(i.height-16).toBeCloseTo((A4[0]-68)/2);}}
-  const tall=[node('t','x-t','Tall',300,900),node('w','x-w','Wide',800,400)];
-  const t=reportBodyLayout(tall);expect(t.map(p=>p.items.length)).toEqual([1,1]);expect(t.every(fits)).toBe(true);
-  // A tall card is shrunk to the page height, its shape kept.
-  const i=t[0].items[0];expect((i.height-16)/i.width).toBeCloseTo(3);
+  const half=(A4[1]-68-14)/2;
+  for(const p of pages){expect(fits(p)).toBe(true);for(const i of p.items){expect(i.width).toBeCloseTo(A4[0]-68);expect(i.height).toBeCloseTo(half);expect(i.caption).toBe(i.node!.label);}}
+  const t=reportBodyLayout([node('t','x-t','Tall',300,900),node('w','x-w','Wide',800,400)]);expect(t.map(p=>p.items.length)).toEqual([2]);expect(t.every(fits)).toBe(true);
   expect(reportBodyLayout([])).toEqual([]);
  });
 });
@@ -78,9 +77,10 @@ describe('where a report card comes from',()=>{
  });
 });
 describe('report body pairs',()=>{
- it('shrinks a card a little over half a page so two share a page, centred, shape kept',()=>{
+ it('puts two cards a little over half a page on one page, the first on top, centred',()=>{
   const cards=[node('a','x-a','A',400,300),node('b','x-b','B',460,360)],pages=reportBodyLayout(cards);
-  expect(pages.map(p=>p.items.length)).toEqual([2]);
-  for(const i of pages[0].items){expect((i.height-16)/i.width).toBeCloseTo(cards.find(c=>c.id===i.node!.id)!.height/cards.find(c=>c.id===i.node!.id)!.width);expect(i.x+i.width/2).toBeCloseTo(A4[0]/2);expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);}
+  expect(pages.map(p=>p.items.map(i=>i.node!.id))).toEqual([['a','b']]);
+  for(const i of pages[0].items){expect(i.x+i.width/2).toBeCloseTo(A4[0]/2);expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);}
+  expect(pages[0].items[1].y).toBeGreaterThan(pages[0].items[0].y+pages[0].items[0].height);
  });
 });

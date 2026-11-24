@@ -23,9 +23,10 @@ async function report(){
  return {items:pages.slice(1).flatMap(p=>p.items),sizes,drawn};
 }
 describe('report body cards are drawn for the page',()=>{
- it('renders a faceted violin card at the content width, covering at least 60% of the page height',async()=>{
+ // Review 2026-11-24: two cards per page, so each is drawn in half the page.
+ it('renders a faceted violin card at the content width, in half the page',async()=>{
   const {items,sizes}=await report(),item=items.find(i=>i.node!.id==='facets')!;
-  expect(item.width).toBeCloseTo(W);expect(item.height).toBeGreaterThanOrEqual(.6*A4[1]);
+  expect(item.width).toBeCloseTo(W);expect(item.height).toBeCloseTo((A4[1]-68-14)/2);
   // Rendered at that size (not the on-screen 900 × 360 card scaled), so its text keeps its size on the page.
   const [w,h]=sizes.get('facets')!;expect(w).toBeCloseTo(W);expect(h).toBeCloseTo(item.height-16);
  });
@@ -51,12 +52,12 @@ describe('report body image cards are drawn again at the page size',()=>{
  const png=(id:string,source:string,label:string,w:number,h:number):Node=>({id,kind:'plot',label,x:0,y:0,width:w,height:h,instance:{instanceId:id,source}});
  const violins=png('fv','heatmap_barchart_tab-violin_plot_render','Selected-feature distributions',900,360);
  const heatmap=png('fh','heatmap_barchart_tab-filteredHeatmapPlot','Filtered average heatmap',460,2400);
- it('asks for the faceted violins at the content width and at least 60% of the page; the tall heatmap at the page shape',async()=>{
+ it('asks for the faceted violins and the tall heatmap at the content width and half the page',async()=>{
   const asked=new Map<string,{width:number;height:number}>();
   const pages=await buildReport(syncDocument(initialDocument(),[violins,heatmap]),[violins,heatmap],{title:()=>titleBlock({title:'S',date:'24 November 2026'}),render:async()=>'data:image/png;base64,AA',
    source:async(n,size)=>{if(size)asked.set(n.id,size);return {url:`data:image/png;base64,${size?'QkI':'QQ'}`};}});
   const items=pages.slice(1).flatMap(p=>p.items),v=items.find(i=>i.node!.id==='fv')!,h=items.find(i=>i.node!.id==='fh')!;
-  expect(v.width).toBeCloseTo(W);expect(v.height).toBeGreaterThanOrEqual(.6*A4[1]);expect(v.image).toBe('data:image/png;base64,QkI');
+  expect(v.width).toBeCloseTo(W);expect(v.height).toBeCloseTo((A4[1]-68-14)/2);expect(v.image).toBe('data:image/png;base64,QkI');
   expect(asked.get('fv')!.width).toBeCloseTo(W*96/72,0);expect(asked.get('fv')!.height).toBeCloseTo((v.height-16)*96/72,0);
   expect(h.width).toBeGreaterThanOrEqual(.9*W);expect(asked.get('fh')!.width).toBeCloseTo(W*96/72,0);expect(asked.get('fh')!.height).toBeCloseTo((h.height-16)*96/72,0);
  });
