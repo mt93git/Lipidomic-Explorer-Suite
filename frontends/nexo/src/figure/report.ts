@@ -91,11 +91,15 @@ export function reportBodyLayout(nodes:Node[],aspects:Map<string,number>=new Map
  *  of the figure page drawn from its current figure. Each card's figure comes from source (the card's own fetch,
  *  whatever its zoom tier or finished state); a card with neither figure nor image is left out and named, never drawn
  *  as a placeholder. */
-export async function buildReport(doc:Document,nodes:Node[],o:{source:(n:Node,size?:{width:number;height:number})=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title:(groups:string[])=>TitleBlock;skipped?:(label:string)=>void}):Promise<Page[]>{
+export async function buildReport(doc:Document,nodes:Node[],o:{source:(n:Node,size?:{width:number;height:number})=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title:(groups:string[])=>TitleBlock;skipped?:(label:string)=>void;topHeatmap?:(n:Node)=>Promise<TopHeatmap|undefined>}):Promise<Page[]>{
  const memo=new Map<string,Promise<PanelSource|undefined>>(),source=(n:Node)=>{let s=memo.get(n.id);if(!s){s=o.source(n).catch(()=>undefined);memo.set(n.id,s);}return s;};
  const chosen=selectedNodes(doc,nodes),first=await figure1Page(chosen,{source,render:o.render,title:o.title});
  const inFigure1=new Set(first?.items.map(i=>i.node?.id)),images=new Map<string,string>(),notes=new Map<string,string>(),aspects=new Map<string,number>(),drawn:Node[]=[];
  for(const node of chosen.filter(n=>!inFigure1.has(n.id))){
+  // The filtered average heatmap: its 40 most significant rows, read from the session, drawn at full width.
+  const top=/filteredHeatmapPlot$/.test(node.instance?.source??node.id)?await o.topHeatmap?.(node).catch(()=>undefined):undefined;
+  if(top?.available){const W=A4[0]-2*MARGIN,room=A4[1]-2*MARGIN-CAPTION;aspects.set(node.id,Math.min(room,top.rows.length*TOP_ROW_PT+TOP_EXTRA_PT)/W);
+   const box=reportBodyLayout([node],aspects)[0].items[0];images.set(node.id,await o.render(topHeatmapFigure(top,{width:box.width,height:box.height-CAPTION}),box.width,box.height-CAPTION));drawn.push(node);continue;}
   const s=await source(node),a=s?.figure?reportAspect(node,s.figure):s?.url?reportImageAspect(node):undefined;if(a!==undefined)aspects.set(node.id,a);
   const box=reportBodyLayout([node],aspects)[0].items[0],body=s?.figure?reportBodyFigure(s.figure,{width:box.width,height:box.height-CAPTION}):undefined;
   // A server-drawn image card is drawn again at the size it takes on the page (CSS px), so its text keeps its size.
@@ -144,4 +148,35 @@ export function reportImageAspect(node:Node):number|undefined{
  if(/violin_plot_render$/.test(source))return Math.min(room,Math.max(own*W,.65*room))/W;
  if(/heatmap/i.test(source)&&own*W>room)return room/W;
  return undefined;
+}
+/** The report's top rows of a filtered average heatmap, as the API reads them from the session
+ *  (frontends/nexo-api/report.R): the card's rows with the smallest p values, grouped by class, coloured as the card. */
+export type TopHeatmap = {available:true;total:number;shown:number;groups:string[];scaleMode:'global_zscore'|'pattern_zscore'|'relative';limits:[number,number];
+ pType:'adjusted'|'raw';pThreshold:number;fcThreshold:number;comparison:string;classColors:Record<string,string>;
+ rows:{lipid:string;class:string;p:number;log2FC:number;values:number[]}[]}|{available:false;reason:string};
+const SCALE_TITLES={global_zscore:'Global scaling (z-score)',pattern_zscore:'Row pattern scaling (0-100)',relative:'Relative scaling (0-100)'} as const;
+const TOP_ROW_PT=16,TOP_EXTRA_PT=90;
+/** The report's top-rows heatmap (Plotly): every row labelled with its lipid, a class strip on the left of the rows, a
+ *  legend of the classes, Team's colour scale and limits, and the subtitle (how many of how many, criteria, comparison). */
+export function topHeatmapFigure(t:Extract<TopHeatmap,{available:true}>,box:{width:number;height:number}):Figure{
+ const px=(pt:number)=>pt*96/72,lipids=t.rows.map(r=>r.lipid),classes=[...new Set(t.rows.map(r=>r.class))],K=Math.max(1,classes.length);
+ const longest=Math.max(0,...lipids.map(l=>l.length)),legendW=Math.max(0,...classes.map(c=>c.length))*8*.6+50;
+ // Rows first (their label size sets the left margin), then the margins: lipid names left of the class strip, group
+ // names turned under the columns.
+ const groupLen=Math.max(0,...t.groups.map(g=>g.length)),b=Math.min(160,groupLen*8*.5+30),rowPx=(px(box.height)-34-b)/Math.max(1,lipids.length),font=Math.max(8,Math.min(10,Math.floor(rowPx*.8)));
+ const margin={l:Math.max(60,longest*font*.62+14),r:legendW+80,t:34,b,autoexpand:false};
+ const diverging=t.scaleMode==='global_zscore',colorscale=diverging?[[0,'#2166AC'],[.5,'#F7F7F7'],[1,'#B2182B']]:[[0,'#FFFFCC'],[.5,'#FD8D3C'],[1,'#800026']];
+ const steps=classes.flatMap((c,k)=>[[k/K,t.classColors[c]??'#9CA3AF'],[(k+1)/K,t.classColors[c]??'#9CA3AF']]);
+ const fixed=(v:number)=>String(Number(v.toPrecision(3)));
+ return {data:[
+  {type:'heatmap',x:t.groups,y:lipids,z:t.rows.map(r=>r.values),zmin:t.limits[0],zmax:t.limits[1],colorscale,
+   colorbar:{title:{text:SCALE_TITLES[t.scaleMode],side:'right',font:{size:8}},x:1.02,xanchor:'left',y:0,yanchor:'bottom',len:.45,thickness:10,tickfont:{size:8}}},
+  {type:'heatmap',x:['Class'],y:lipids,z:t.rows.map(r=>[classes.indexOf(r.class)+.5]),zmin:0,zmax:K,colorscale:steps,showscale:false,xaxis:'x2',hoverinfo:'skip'},
+  ...classes.map(c=>({type:'scatter',mode:'markers',name:c,x:[null],y:[null],marker:{symbol:'square',size:10,color:t.classColors[c]??'#9CA3AF'},showlegend:true}))],
+  layout:{paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{family:'Arial, Helvetica, sans-serif',size:9,color:'#000000'},margin,
+   title:{text:`Top ${t.shown} of ${t.total} significant lipids (|log2FC| ≥ ${fixed(t.fcThreshold)}, ${t.pType==='adjusted'?'adjusted ':''}P < ${fixed(t.pThreshold)})${t.comparison?`, ${t.comparison}`:''}`,x:0,xanchor:'left',xref:'paper',y:1,yanchor:'top',yref:'container',pad:{t:6},font:{size:10}},
+   xaxis:{domain:[.06,1],type:'category',tickfont:{size:8},tickangle:-35,ticks:'',showline:true,linecolor:'#000000',mirror:true},
+   xaxis2:{domain:[0,.04],type:'category',showticklabels:false,ticks:'',anchor:'y'},
+   yaxis:{type:'category',autorange:'reversed',tickmode:'array',tickvals:lipids,ticktext:lipids,tickfont:{size:font},ticks:'',showline:true,linecolor:'#000000',mirror:true,anchor:'x2'},
+   legend:{x:1.02,xanchor:'left',y:1,yanchor:'top',font:{size:8},bgcolor:'rgba(0,0,0,0)',tracegroupgap:0},showlegend:true}};
 }
