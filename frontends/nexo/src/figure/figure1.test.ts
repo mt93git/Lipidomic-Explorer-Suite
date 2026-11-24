@@ -62,7 +62,8 @@ describe('Figure 1 presentation',()=>{
   const a=figure1Figure('pca',figures.pca,colours,order,{width:300,height:200});expect(a.layout.showlegend).toBe(false);
   const b=figure1Figure('pcascore',figures.score,colours,order,{width:300,height:200});
   expect(b.data.some(t=>t.xaxis==='x2'||t.meta?.teamLegendProxy)).toBe(false);expect(b.layout.xaxis2).toBeUndefined();expect(b.layout.yaxis.domain).toEqual([0,1]);
-  expect(b.layout.annotations.map((a:{text:string})=>a.text)).toEqual(['*']);expect(b.layout.shapes).toHaveLength(1);
+  // Review 2026-11-24 (figure1Legibility.test.ts): the one significant pair is read as compact letters, no bracket.
+  expect(b.layout.annotations.map((a:{text:string})=>a.text).sort()).toEqual(['a','b']);expect(b.layout.shapes).toHaveLength(0);
  });
  // Review 2026-11-24: C's class legend is drawn by the page on the right of the bars (squarePanels.test.ts).
  it('shows composition groups as coloured dots, its class legend left to the page',()=>{

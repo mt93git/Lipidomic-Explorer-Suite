@@ -12,21 +12,17 @@ import {reportBodyLayout} from './report';
 describe('report body cards fill the content width',()=>{
  const W=A4[0]-68,avail=A4[1]-68;
  const card=(id:string,w:number,h:number):Node=>({id,kind:'plot',label:id,x:0,y:0,width:w,height:h});
- it('scales each card to the content width (at least 70% when shrunk to fit), stacking as many as fit',()=>{
+ // Review 2026-11-24: two cards per page (pages 2 onward), each at the content width in half the page.
+ it('gives every card the content width and fills each page with two of them',()=>{
   const cards=[card('a',640,560),card('b',640,560),card('c',520,420),card('d',800,400),card('e',600,300),card('f',640,480)];
-  const pages=reportBodyLayout(cards);
-  for(const p of pages)for(const i of p.items){expect(i.width).toBeGreaterThanOrEqual(.7*W-1e-9);expect(i.x).toBeGreaterThanOrEqual(34-1e-9);expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);
-   const n=cards.find(c=>c.id===i.node!.id)!;expect((i.height-16)/i.width).toBeCloseTo(n.height/n.width);}
-  expect(pages.flatMap(p=>p.items).filter(i=>Math.abs(i.width-W)<1e-6).length).toBeGreaterThanOrEqual(4);
-  // No page ends with more than a third empty when the next card would have fitted at 70% of the width.
-  pages.slice(0,-1).forEach((p,k)=>{const used=Math.max(...p.items.map(i=>i.y+i.height))-34,free=avail-used-14,next=pages[k+1].items[0].node!;
-   const at70=16+.7*W*next.height/next.width;expect(free>avail/3&&at70<=free).toBe(false);});
+  const pages=reportBodyLayout(cards);expect(pages.map(p=>p.items.length)).toEqual([2,2,2]);
+  for(const p of pages){for(const i of p.items){expect(i.width).toBeCloseTo(W);expect(i.x).toBeCloseTo(34);expect(i.y+i.height).toBeLessThanOrEqual(A4[1]-34+1e-9);}
+   const used=Math.max(...p.items.map(i=>i.y+i.height))-34;expect(used).toBeCloseTo(avail);}
  });
- it('puts two narrow (tall) cards side by side, and a tall but wide card alone at full height',()=>{
+ it('puts tall cards two to a page too, one above the other',()=>{
   const pages=reportBodyLayout([card('t1',300,900),card('t2',300,900),card('heat',460,1100)]);
   expect(pages.map(p=>p.items.map(i=>i.node!.id))).toEqual([['t1','t2'],['heat']]);
-  const [l,r]=pages[0].items;expect(l.y).toBe(r.y);expect(r.x).toBeGreaterThanOrEqual(l.x+l.width);expect(l.width).toBeLessThanOrEqual((W-12)/2+1e-9);
-  const h=pages[1].items[0];expect(h.height).toBeCloseTo(avail);expect(h.x+h.width/2).toBeCloseTo(A4[0]/2);
+  const [a,b]=pages[0].items;expect(b.y).toBeGreaterThanOrEqual(a.y+a.height);expect(a.width).toBeCloseTo(W);
  });
 });
 it('shortens the composition y title so it fits a short panel',()=>{

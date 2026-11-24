@@ -60,31 +60,14 @@ export const reportTitlePreference={
 export function paletteGroupCount(palette:SessionPalette|undefined):number|undefined{
  const n=palette?.contexts.find(c=>c.id==='Group1')?.groups.length;return n?n:undefined;
 }
-const CAPTION=16,GAP=14,ROW_GUTTER=12,MIN_WIDTH=.7;
-/** The report body: each card under its label at the full content width, its shape kept, stacked down the page as
- *  many as fit. A card that does not fit the rest of a page is shrunk to fit when it keeps at least 70% of the width
- *  (so a page is never left a third empty for it); else it starts the next page. A card taller than the page is
- *  shrunk to the page height; two such narrow cards (each at most half the width) share a row side by side.
+const CAPTION=16,GAP=14;
+/** The report body: two cards per page, each under its label in half the page at the full content width. Every card
+ *  is drawn again at that size (buildReport), so it fills its half whatever its shape on the canvas.
  *  Positions only; the images are filled in by buildReport. */
-export function reportBodyLayout(nodes:Node[],aspects:Map<string,number>=new Map()):Page[]{
- const W=A4[0]-2*MARGIN,avail=A4[1]-2*MARGIN,bottom=A4[1]-MARGIN,col=(W-ROW_GUTTER)/2,pages:Page[]=[];let page:Page|undefined,y=MARGIN;
- const aspect=(n:Node)=>aspects.get(n.id)??(n.height>0&&n.width>0?n.height/n.width:.75);
- const fit=(n:Node,width:number)=>{const a=aspect(n);let ih=width*a;if(CAPTION+ih>avail)ih=avail-CAPTION;return {iw:ih/a,ih};};
- const narrow=(n:Node|undefined)=>!!n&&fit(n,W).iw<=col+1e-9;
- const newPage=()=>{page={width:A4[0],height:A4[1],items:[],report:true};pages.push(page);y=MARGIN;return page;};
- for(let i=0;i<nodes.length;i++){
-  const node=nodes[i];
-  if(narrow(node)&&narrow(nodes[i+1])){
-   const pair=[node,nodes[i+1]].map(n=>({n,...fit(n,col)})),h=CAPTION+Math.max(...pair.map(p=>p.ih));
-   if(!page||y+h>bottom+1e-9)newPage();
-   pair.forEach((p,k)=>page!.items.push({node:p.n,caption:p.n.label,x:MARGIN+k*(col+ROW_GUTTER)+(col-p.iw)/2,y,width:p.iw,height:CAPTION+p.ih}));
-   y+=h+GAP;i++;continue;
-  }
-  let {iw,ih}=fit(node,W);
-  if(!page)newPage();
-  else if(y+CAPTION+ih>bottom+1e-9){const scale=(bottom-y-CAPTION)/ih;if(page.items.length&&scale>=MIN_WIDTH){iw*=scale;ih*=scale;}else newPage();}
-  page!.items.push({node,caption:node.label,x:MARGIN+(W-iw)/2,y,width:iw,height:CAPTION+ih});y+=CAPTION+ih+GAP;
- }
+export function reportBodyLayout(nodes:Node[]):Page[]{
+ const W=A4[0]-2*MARGIN,half=(A4[1]-2*MARGIN-GAP)/2,pages:Page[]=[];
+ nodes.forEach((node,i)=>{if(i%2===0)pages.push({width:A4[0],height:A4[1],items:[],report:true});
+  pages[pages.length-1].items.push({node,caption:node.label,x:MARGIN,y:MARGIN+(i%2)*(half+GAP),width:W,height:half});});
  return pages;
 }
 /** The whole report: page 1 (title block + Figure 1 and its legend, or the title block alone), then every other card
@@ -94,20 +77,19 @@ export function reportBodyLayout(nodes:Node[],aspects:Map<string,number>=new Map
 export async function buildReport(doc:Document,nodes:Node[],o:{source:(n:Node,size?:{width:number;height:number})=>Promise<PanelSource|undefined>;render:(figure:Figure,width:number,height:number)=>Promise<string>;title:(groups:string[])=>TitleBlock;skipped?:(label:string)=>void;topHeatmap?:(n:Node)=>Promise<TopHeatmap|undefined>}):Promise<Page[]>{
  const memo=new Map<string,Promise<PanelSource|undefined>>(),source=(n:Node)=>{let s=memo.get(n.id);if(!s){s=o.source(n).catch(()=>undefined);memo.set(n.id,s);}return s;};
  const chosen=selectedNodes(doc,nodes),first=await figure1Page(chosen,{source,render:o.render,title:o.title});
- const inFigure1=new Set(first?.items.map(i=>i.node?.id)),images=new Map<string,string>(),notes=new Map<string,string>(),aspects=new Map<string,number>(),drawn:Node[]=[];
+ const inFigure1=new Set(first?.items.map(i=>i.node?.id)),images=new Map<string,string>(),notes=new Map<string,string>(),drawn:Node[]=[];
  for(const node of chosen.filter(n=>!inFigure1.has(n.id))){
-  // The filtered average heatmap: its 40 most significant rows, read from the session, drawn at full width.
+  // Every card is drawn at the size of its half page. The filtered average heatmap: its 40 most significant rows, read from the session.
+  const box=reportBodyLayout([node])[0].items[0];
   const top=/filteredHeatmapPlot$/.test(node.instance?.source??node.id)?await o.topHeatmap?.(node).catch(()=>undefined):undefined;
-  if(top?.available){const W=A4[0]-2*MARGIN,room=A4[1]-2*MARGIN-CAPTION;aspects.set(node.id,Math.min(room,top.rows.length*TOP_ROW_PT+TOP_EXTRA_PT)/W);
-   const box=reportBodyLayout([node],aspects)[0].items[0];images.set(node.id,await o.render(topHeatmapFigure(top,{width:box.width,height:box.height-CAPTION}),box.width,box.height-CAPTION));drawn.push(node);continue;}
-  const s=await source(node),a=s?.figure?reportAspect(node,s.figure):s?.url?reportImageAspect(node):undefined;if(a!==undefined)aspects.set(node.id,a);
-  const box=reportBodyLayout([node],aspects)[0].items[0],body=s?.figure?reportBodyFigure(s.figure,{width:box.width,height:box.height-CAPTION}):undefined;
+  if(top?.available){images.set(node.id,await o.render(topHeatmapFigure(top,{width:box.width,height:box.height-CAPTION}),box.width,box.height-CAPTION));drawn.push(node);continue;}
+  const s=await source(node),body=s?.figure?reportBodyFigure(s.figure,{width:box.width,height:box.height-CAPTION}):undefined;
   // A server-drawn image card is drawn again at the size it takes on the page (CSS px), so its text keeps its size.
   const again=!s?.figure&&s?.url?await o.source(node,{width:box.width/PT_PER_PX,height:(box.height-CAPTION)/PT_PER_PX}).catch(()=>undefined):undefined;
   const image=body?await o.render(body.figure,box.width,box.height-CAPTION):again?.url??s?.url;
   if(image){images.set(node.id,image);if(body?.note)notes.set(node.id,body.note);drawn.push(node);}else o.skipped?.(node.label);
  }
- const body=reportBodyLayout(drawn,aspects).map(p=>({...p,items:p.items.map(i=>({...i,image:images.get(i.node!.id),...(notes.has(i.node!.id)?{caption:`${i.caption} · ${notes.get(i.node!.id)}`}:{})}))}));
+ const body=reportBodyLayout(drawn).map(p=>({...p,items:p.items.map(i=>({...i,image:images.get(i.node!.id),...(notes.has(i.node!.id)?{caption:`${i.caption} · ${notes.get(i.node!.id)}`}:{})}))}));
  return [first??titlePage(o.title([])),...body];
 }
 /** The first source that gives a figure or an image: tried in order (live drawing, card fetch, the image shown). */
@@ -116,22 +98,8 @@ export async function firstSource(sources:(()=>PanelSource|undefined|Promise<Pan
  return undefined;
 }
 
-const INCH=72,FACET_ROW=2.8*INCH,MAX_LABELLED_ROWS_PT=5;
-/** The subplot rows of a faceted card (distinct y-axis domains its traces use); 1 for a single plot. */
-function facetRows(f:Figure):number{
- const used=new Set(f.data.map(t=>String(t.yaxis??'y')));if(used.size<2)return 1;
- return new Set([...used].map(y=>JSON.stringify(f.layout[y.replace(/^y/,'yaxis')]?.domain??[0,1]))).size;
-}
+const MAX_LABELLED_ROWS_PT=5;
 const heatmapRows=(f:Figure)=>{const t=f.data.find(t=>t.type==='heatmap');return Array.isArray(t?.y)?t!.y.length:0;};
-/** The shape a card is drawn at in the report body (height ÷ width), from its content rather than its on-screen card:
- *  a faceted card (several subplots) gets about 2.8 in per row of panels and at least 65% of the page; a heatmap
- *  taller than the page, or of more than 40 rows, gets the page's own shape. Undefined: the card's own shape. */
-export function reportAspect(node:Node,f:Figure):number|undefined{
- const W=A4[0]-2*MARGIN,room=A4[1]-2*MARGIN-CAPTION,own=node.height>0&&node.width>0?node.height/node.width:.75;
- const rows=facetRows(f);if(rows>1||f.data.filter(t=>t.xaxis&&t.xaxis!=='x').length)return Math.min(room,Math.max(rows*FACET_ROW,.65*room))/W;
- if(f.data.some(t=>t.type==='heatmap')&&(heatmapRows(f)>40||W*own>room))return room/W;
- return undefined;
-}
 /** The card's figure as drawn in the report body (presentation only; values untouched): a heatmap whose row labels
  *  would be under 5 pt at this size shows no row labels, and the caption says how many rows there are. */
 export function reportBodyFigure(f:Figure,box:{width:number;height:number}):{figure:Figure;note?:string}{
@@ -141,21 +109,12 @@ export function reportBodyFigure(f:Figure,box:{width:number;height:number}):{fig
 }
 
 const PT_PER_PX=72/96;
-/** The shape a server-drawn image card takes in the report body: Team's faceted "Selected-feature distributions" at
- *  least 65% of the page, a heatmap taller than the page at the page's shape; others their own shape. */
-export function reportImageAspect(node:Node):number|undefined{
- const W=A4[0]-2*MARGIN,room=A4[1]-2*MARGIN-CAPTION,own=node.height>0&&node.width>0?node.height/node.width:.75,source=node.instance?.source??node.id;
- if(/violin_plot_render$/.test(source))return Math.min(room,Math.max(own*W,.65*room))/W;
- if(/heatmap/i.test(source)&&own*W>room)return room/W;
- return undefined;
-}
 /** The report's top rows of a filtered average heatmap, as the API reads them from the session
  *  (frontends/nexo-api/report.R): the card's rows with the smallest p values, grouped by class, coloured as the card. */
 export type TopHeatmap = {available:true;total:number;shown:number;groups:string[];scaleMode:'global_zscore'|'pattern_zscore'|'relative';limits:[number,number];
  pType:'adjusted'|'raw';pThreshold:number;fcThreshold:number;comparison:string;classColors:Record<string,string>;
  rows:{lipid:string;class:string;p:number;log2FC:number;values:number[]}[]}|{available:false;reason:string};
 const SCALE_TITLES={global_zscore:'Global scaling (z-score)',pattern_zscore:'Row pattern scaling (0-100)',relative:'Relative scaling (0-100)'} as const;
-const TOP_ROW_PT=16,TOP_EXTRA_PT=90;
 /** The report's top-rows heatmap (Plotly): every row labelled with its lipid, a class strip on the left of the rows, a
  *  legend of the classes, Team's colour scale and limits, and the subtitle (how many of how many, criteria, comparison). */
 export function topHeatmapFigure(t:Extract<TopHeatmap,{available:true}>,box:{width:number;height:number}):Figure{

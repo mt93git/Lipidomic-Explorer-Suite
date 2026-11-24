@@ -23,26 +23,26 @@ export const MARGIN=34;const GUTTER=12;
 export const PANEL_MARGINS={pca:{l:40,r:6,t:6,b:34},pcascore:{l:44,r:6,t:6,b:22},violin:{l:34,r:4,t:16,b:22},comp:{l:40,r:4,t:6,b:22}} as const;
 /** Every Figure 1 image sits right of a strip for its panel letter (pageSVG). */
 export const LETTER_PAD=12;
-const PT=72/96,MIN_SIDE=70,MIN_E_SIDE=40;
+const PT=72/96,MIN_SIDE=70,MIN_E_SIDE=40,C_RATIO=1;
 const marginsPt=(r:keyof typeof PANEL_MARGINS)=>{const m=PANEL_MARGINS[r];return {w:(m.l+m.r)*PT,h:(m.t+m.b)*PT};};
 /** Panel boxes on A4 portrait (points). The panels' plot areas are about square: E's violins as wide as their half of the
- *  left column allows, C's bars at least 0.6 high per wide (its legend, drawn by the page, on its right), A the height
- *  left in the left column (its legend under it), B the same row height, D the rest of the right column. `reserve` is
- *  the height kept under the figure for its legend; `aLegend` the height of A's legend; `cLegend` the size of C's. */
-export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN,legends:{a?:number;c?:{width:number;height:number}}={}):Slot[]{
+ *  left column allows, C's bars at least as high as wide (its legend, drawn by the page, on its right), A the height
+ *  left in the left column (its legend, drawn by the page, on its right), B the same row height, D the rest of the
+ *  right column. `reserve` is the height kept under the figure for its legend; `a` and `c` the sizes of A's and C's legends. */
+export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN,legends:{a?:{width:number;height:number};c?:{width:number;height:number}}={}):Slot[]{
  const W=A4[0]-2*MARGIN,H=A4[1]-top-MARGIN-reserve,cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
  const has=(r:Role)=>panels.find(p=>p.role===r),slots:Slot[]=[];
  const put=(p:Panel|undefined,x:number,y:number,width:number,height:number)=>{if(p)slots.push({role:p.role,nodeId:p.nodes[0].id,letter:p.letter,x,y,width,height});};
  const pca=has('pca'),score=has('pcascore'),comp=has('comp'),heat=has('heat'),violin=has('violin'),row1=!!(pca||score);
- const aLegend=pca?legends.a??0:0,cLegend=comp?legends.c??{width:0,height:0}:{width:0,height:0};
+ const none={width:0,height:0},aLegend=pca?legends.a??none:none,cLegend=comp?legends.c??none:none;
  const eRows=violin?(violin.nodes.length>2?2:1):0,cellW=(cw-GUTTER)/2;let sE=cellW-LETTER_PAD-marginsPt('violin').w;
  const eH=()=>eRows?eRows*(sE+marginsPt('violin').h)+(eRows-1)*GUTTER:0;
- const bw=cw-LETTER_PAD-cLegend.width-marginsPt('comp').w;let cH=comp?Math.max(.62*bw+marginsPt('comp').h,cLegend.height):0;
+ const bw=cw-LETTER_PAD-cLegend.width-marginsPt('comp').w;let cH=comp?Math.max(C_RATIO*bw+marginsPt('comp').h,cLegend.height):0;
  const below=()=>(comp?cH+GUTTER:0)+(violin?eH()+GUTTER:0);
- const aMax=pca?cw-LETTER_PAD-marginsPt('pca').w+marginsPt('pca').h+aLegend:cw-LETTER_PAD-marginsPt('pcascore').w+marginsPt('pcascore').h;
+ const aMax=pca?Math.max(cw-LETTER_PAD-aLegend.width-marginsPt('pca').w+marginsPt('pca').h,aLegend.height):cw-LETTER_PAD-marginsPt('pcascore').w+marginsPt('pcascore').h;
  let r1=row1?(comp||violin?H-below():aMax):0;
  // A at least MIN_SIDE square: E gives up height first (its violins stay square, smaller).
- const aSide=()=>r1-aLegend-marginsPt(pca?'pca':'pcascore').h;
+ const aSide=()=>r1-marginsPt(pca?'pca':'pcascore').h;
  if(row1&&violin&&aSide()<MIN_SIDE){sE=Math.max(MIN_E_SIDE,sE-(MIN_SIDE-aSide())/eRows);r1=H-below();}
  // More room than a square A needs: C's bars (else E's row) take it.
  if(row1&&r1>aMax){if(comp)cH+=r1-aMax;r1=aMax;}
@@ -75,7 +75,7 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
   layout.yaxis={...layout.yaxis,domain:[0,1]};layout.xaxis={...layout.xaxis,showticklabels:true};
   layout.annotations=(layout.annotations??[]).filter((a:PlotObject)=>!(a.xref==='paper'&&a.yref==='paper'&&Number(a.y)<domain0)&&a.xref!=='x2'&&a.yref!=='y2');
   layout.shapes=(layout.shapes??[]).filter((s:PlotObject)=>s.xref!=='x2'&&s.yref!=='y2');
-  significantBrackets(data,layout);
+  significanceLetters(data,layout);
  }
  if(role==='heat'&&layout.meta?.teamHeatmap?.geometry==='square-horizontal')data=data.map(t=>t.type!=='heatmap'?t:{...t,x:t.y,y:t.x,z:transpose(t.z),text:transpose(t.text)});
  // Group colours from panel A, the same in every panel.
@@ -103,7 +103,7 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=ordered(categories({data,layout})),{w}=fix('pcascore');layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};}
  if(role==='comp'){delete layout.title;// The card's long y title (Mean share of selected signal (%)) does not fit a short panel.
   if(/share/i.test(textOf(layout.yaxis?.title)))layout.yaxis={...layout.yaxis,title:{text:'Mean share (%)',font:{size:8}}};// C's class legend is drawn by the page on its right (figure1Page).
-  layout.showlegend=false;fix('comp',.6);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
+  layout.showlegend=false;fix('comp',C_RATIO);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
  if(role==='heat'){
   delete layout.title;const t=data.find(t=>t.type==='heatmap'),rows=(Array.isArray(t?.y)?t!.y:[]).map(String),groups=(Array.isArray(t?.x)?t!.x:[]).map(String);
   const px=size.height*96/72,font=Math.max(3,Math.min(8,px*.75/Math.max(1,rows.length)));
@@ -118,6 +118,9 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
   const before=(layout.annotations??[]).length;layout.annotations=(layout.annotations??[]).filter((a:PlotObject)=>!/^tcstat-n-/.test(String(a.name??''))&&!/^n = /.test(plain(String(a.text??''))));
   if(layout.annotations.length<before&&!layout.annotations.some((a:PlotObject)=>/^tcstat-label-/.test(String(a.name??'')))){delete layout.yaxis.range;layout.yaxis.autorange=true;}
   if(/log10/i.test(textOf(layout.yaxis.title)))layout.yaxis.title={text:'log10 abundance',font:{size:8}};
+  // Wide violins with small dots, so the shapes are not lost behind the samples.
+  layout.violingap=.05;layout.violingroupgap=0;
+  data=data.map(t=>t.type!=='violin'?t:{...t,width:.9,scalemode:'width',jitter:.3,marker:{...(t.marker??{}),size:2.5,line:{...(t.marker?.line??{}),width:.4}},...(t.box?{box:{...t.box,width:.12}}:{})});
   const g=ordered(categories({data,layout})),{w}=fix('violin');
   layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};
  }
@@ -137,8 +140,8 @@ function sentence(panel:Panel,sources:Map<string,PanelSource>):string{
  const lead=`(${panel.letter}) `;
  if(panel.role==='pca'){const t=plain(textOf(f?.layout?.title)),x=title('xaxis'),y=title('yaxis');return lead+`Principal component analysis scores${t?` (${t})`:''}${x&&y?`, ${x} versus ${y}`:''}; each point is one sample, coloured by group.`;}
  if(panel.role==='pcascore'){const pc=String(inputs.pcs_pc??(/PC\d+/.exec(title('yaxis'))?.[0]??'PC')),[omni,pair]=TESTS[String(inputs.pcs_test??'rank')]??TESTS.rank,corr=CORRECTIONS[String(inputs.pcs_corr??'BH')]??String(inputs.pcs_corr);
-  return lead+`${pc} scores by group (box plots with every sample); ${omni} across groups and ${pair} on each pair with ${corr} correction; brackets mark the significant pairs (adjusted * p < 0.05, ** p < 0.01, *** p < 0.001).`;}
- if(panel.role==='comp'){const classes=f?.data.filter(t=>t.type==='bar').length;return lead+`Lipid composition: mean share of signal by lipid class in each group (stacked bars${classes?`, ${classes} classes`:''}); dots mark the groups, coloured as in A.`;}
+  return lead+`${pc} scores by group (box plots with every sample); ${omni} across groups and ${pair} on each pair with ${corr} correction; groups that share a letter do not differ (adjusted p ≥ 0.05), groups with no letter in common do (adjusted p < 0.05).`;}
+ if(panel.role==='comp'){const classes=f?.data.filter(t=>t.type==='bar'&&t.visible!==false).length;return lead+`Lipid composition: mean share of signal by lipid class in each group (stacked bars${classes?`, ${classes} classes`:''}); dots mark the groups, coloured as in A.`;}
  if(panel.role==='heat'){const t=f?.data.find(t=>t.type==='heatmap'),square=f?.layout?.meta?.teamHeatmap?.geometry==='square-horizontal',rows=((square?t?.x:t?.y)??[]).length,def=String(f?.layout?.meta?.teamHeatmap?.valueDefinition??'mean lipid z-score').toLowerCase(),hi=typeof t?.zmax==='number'?t.zmax:undefined,lo=typeof t?.zmin==='number'?t.zmin:hi===undefined?undefined:-Math.abs(hi),lim=hi===undefined?'':` from ${fixed(lo!,1)} to ${fixed(hi,1)}`;
   return lead+`Abundance heatmap of the ${rows} most variable lipids: ${def} per group (colour bar, Mean z-score${lim}); every row is labelled with its lipid and dots mark the groups.`;}
  const lipids=panel.nodes.map(n=>plain(textOf(sources.get(n.id)?.figure?.layout?.title))||n.label);
@@ -167,45 +170,63 @@ export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise
  const fig=(role:Role)=>panels.find(p=>p.role===role)?.nodes.map(n=>sources.get(n.id)?.figure).filter((f):f is Figure=>!!f)??[];
  const colours=groupColours({pca:fig('pca')[0],violin:fig('violin'),pcascore:fig('pcascore')[0]}),order=[...colours.keys()];
  const caption=figure1Caption(panels,sources),gap=14,title=typeof options.title==='function'?options.title(order):options.title,top=title?title.y+title.height+gap:MARGIN,reserve=caption.lines.length*caption.lineHeight+gap;
- // Legends the page draws: A's groups under its plot, C's classes (top of the stack first) on the right of its bars.
+ // Legends the page draws: A's groups on the right of its plot, C's classes (top of the stack first) on the right of
+ // its bars. A class the author turned off in the card (an invisible trace) is not in C's legend.
  const cw=(A4[0]-2*MARGIN-GUTTER)/2,figureOf=(r:Role)=>{const p=panels.find(p=>p.role===r);return p&&sources.get(p.nodes[0].id)?.figure;};
  const groupsOf=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.name&&(t.type??'scatter')==='scatter').map(t=>({label:plain(String(t.name)),color:colours.get(conditionOf(t))??hex(t.marker?.color)??'#7F7F7F'}));
- const classesOf=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.name&&t.type==='bar').reverse().map(t=>({label:plain(String(t.name)),color:hex(t.marker?.color)??String(t.marker?.color??'#7F7F7F')}));
+ const classesOf=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.visible!==false&&t.name&&t.type==='bar').reverse().map(t=>({label:plain(String(t.name)),color:hex(t.marker?.color)??String(t.marker?.color??'#7F7F7F')}));
  const pcaGroups=figureOf('pca')?groupsOf(figureOf('pca')!):undefined,compClasses=figureOf('comp')?classesOf(figureOf('comp')!):undefined;
- const aLegend=pcaGroups&&pcaLegend({nodeId:'',x:0,y:0,width:cw,height:Infinity},pcaGroups),cLegend=compClasses&&sideLegend('',0,0,compClasses,cw*.45);
- const slots=figure1Geometry(panels,reserve,top,{a:aLegend?.height,c:cLegend&&{width:cLegend.width,height:cLegend.height}});
+ const aLegend=pcaGroups&&sideLegend('',0,0,pcaGroups,cw*.5),cLegend=compClasses&&sideLegend('',0,0,compClasses,cw*.45);
+ const slots=figure1Geometry(panels,reserve,top,{a:aLegend&&{width:aLegend.width,height:aLegend.height},c:cLegend&&{width:cLegend.width,height:cLegend.height}});
  const pcaSlot=slots.find(s=>s.role==='pca'),compSlot=slots.find(s=>s.role==='comp');
- const legend=pcaSlot&&pcaGroups?pcaLegend(pcaSlot,pcaGroups):undefined;
+ const legend=pcaSlot&&pcaGroups&&aLegend?sideLegend(pcaSlot.nodeId,pcaSlot.x+pcaSlot.width,pcaSlot.y+Math.max(0,(pcaSlot.height-aLegend.height)/2),pcaGroups,cw*.5):undefined;
  const compLegend=compSlot&&compClasses?sideLegend(compSlot.nodeId,compSlot.x+compSlot.width,compSlot.y,compClasses,cw*.45):undefined;
  const legends=[legend,compLegend].filter((l):l is PanelLegend=>!!l);
  const items:Positioned[]=[];
  for(const slot of slots){const s=sources.get(slot.nodeId)!,node=nodes.find(n=>n.id===slot.nodeId);
-  const height=slot.role==='pca'&&legend?slot.height-legend.height:slot.height,width=slot.role==='comp'&&compLegend?slot.width-compLegend.width:slot.width,box={...slot,width:width-LETTER_PAD,height};
+  const side=slot.role==='pca'?legend:slot.role==='comp'?compLegend:undefined,height=slot.height,width=side?slot.width-side.width:slot.width,box={...slot,width:width-LETTER_PAD,height};
   const image=s.figure?await options.render(figure1Figure(slot.role,s.figure,colours,order,box),box.width,box.height):s.url!;
   items.push({x:slot.x,y:slot.y,width,height,node,image,...(slot.letter?{letter:slot.letter}:{})});}
  const bottom=Math.max(...slots.map(s=>s.y+s.height));
  return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(legends.length?{legends}:{}),...(title?{titleBlock:title}:{})};
 }
 
-/** Panel B: only the significant brackets (stars), stacked again from the data top, and the y range tightened to them.
- *  The card is unchanged; this is the Figure 1 drawing only. */
-function significantBrackets(data:PlotObject[],layout:PlotObject){
+/** Compact letter display (insert-absorb): each group gets letters so that two groups share a letter exactly when
+ *  their pair is not in `significant`. Letters run a, b, c… in the order of `groups`. */
+export function compactLetters(groups:string[],significant:string[][]):Map<string,string>{
+ let columns:Set<string>[]=[new Set(groups)];
+ for(const [a,b] of significant){
+  const next:Set<string>[]=[];
+  for(const c of columns){if(c.has(a)&&c.has(b)){const x=new Set(c),y=new Set(c);x.delete(a);y.delete(b);next.push(x,y);}else next.push(c);}
+  // Absorb: drop a column that is empty or inside another one.
+  columns=next.filter((c,i)=>c.size&&!next.some((d,j)=>j!==i&&[...c].every(g=>d.has(g))&&(d.size>c.size||j<i)));
+ }
+ const first=(c:Set<string>)=>Math.min(...[...c].map(g=>groups.indexOf(g)));
+ columns.sort((x,y)=>first(x)-first(y));
+ const letter=(i:number)=>i<26?String.fromCharCode(97+i):String.fromCharCode(65+i-26);
+ return new Map(groups.map(g=>[g,columns.map((c,i)=>c.has(g)?letter(i):'').join('')]));
+}
+/** Panel B: the card's pair brackets read as significant or not (ns), drawn as one row of compact letters above the
+ *  boxes instead; the y range tightened to them. The card is unchanged; this is the Figure 1 drawing only. */
+function significanceLetters(data:PlotObject[],layout:PlotObject){
  const nums=(path:string)=>(path.match(/-?\d*\.?\d+(?:e-?\d+)?/gi)??[]).map(Number);
  const isBracket=(s:PlotObject)=>s.type==='path'&&typeof s.path==='string'&&nums(s.path).length===8;
  const labels=(layout.annotations??[]).filter((a:PlotObject)=>a.xref!=='paper'&&a.yref!=='paper'),others=(layout.annotations??[]).filter((a:PlotObject)=>!labels.includes(a));
  const brackets=(layout.shapes??[]).filter(isBracket),rest=(layout.shapes??[]).filter((s:PlotObject)=>!isBracket(s));
+ // The card's brackets use the positions of its own group order.
+ const lev=categories({data,layout});
  // Each label sits on its bracket (same middle x, the label just above the bracket top): the nearest such bracket.
- const used=new Set<PlotObject>(),pairs=labels.map((a:PlotObject)=>{const near=brackets.filter((s:PlotObject)=>!used.has(s)&&Math.abs((nums(s.path)[0]+nums(s.path)[4])/2-Number(a.x))<1e-6).sort((x:PlotObject,y:PlotObject)=>Math.abs(nums(x.path)[3]-Number(a.y))-Math.abs(nums(y.path)[3]-Number(a.y)))[0];if(near)used.add(near);return {a,s:near};});
- const kept=pairs.filter((p:{a:PlotObject})=>!/^ns$/i.test(plain(String(p.a.text??''))));
+ const used=new Set<PlotObject>(),significant:string[][]=[];
+ for(const a of labels){const near=brackets.filter((s:PlotObject)=>!used.has(s)&&Math.abs((nums(s.path)[0]+nums(s.path)[4])/2-Number(a.x))<1e-6).sort((x:PlotObject,y:PlotObject)=>Math.abs(nums(x.path)[3]-Number(a.y))-Math.abs(nums(y.path)[3]-Number(a.y)))[0];
+  if(!near)continue;used.add(near);const v=nums(near.path),g=[lev[Math.round(v[0])],lev[Math.round(v[4])]];
+  if(g[0]!==undefined&&g[1]!==undefined&&!/^ns$/i.test(plain(String(a.text??''))))significant.push(g);}
+ const letters=compactLetters(lev,significant);
  const ys=data.flatMap(t=>Array.isArray(t.y)?t.y.filter((v:unknown)=>typeof v==='number'&&Number.isFinite(v)):[]) as number[];
- if(!ys.length){layout.annotations=[...others,...kept.map((p:{a:PlotObject})=>p.a)];layout.shapes=[...rest,...kept.flatMap((p:{s?:PlotObject})=>p.s?[p.s]:[])];return;}
- const lo=Math.min(...ys),hi=Math.max(...ys),span=Math.max(hi-lo,1e-9);let top=hi+span*.05;
- const shapes:PlotObject[]=[],annotations:PlotObject[]=[];
- // Many brackets share about 1.4 data spans above the boxes, so the boxes keep most of the panel height.
- const step=Math.min(.17,1.4/Math.max(1,kept.length));
- kept.forEach((p:{a:PlotObject;s?:PlotObject},j:number)=>{const y0=hi+span*(.06+step*j),y1=y0+span*.03;top=y1+span*.12;annotations.push({...p.a,y:y1,...(step<.12?{font:{...p.a.font,size:10}}:{})});
-  if(p.s){const v=nums(p.s.path);shapes.push({...p.s,path:`M ${v[0]},${y0} L ${v[0]},${y1} L ${v[4]},${y1} L ${v[4]},${y0}`});}});
- layout.annotations=[...others,...annotations];layout.shapes=[...rest,...shapes];layout.yaxis={...layout.yaxis,range:[lo-span*.05,top],autorange:false};
+ layout.shapes=rest;
+ if(!ys.length){layout.annotations=others;return;}
+ const lo=Math.min(...ys),hi=Math.max(...ys),span=Math.max(hi-lo,1e-9),y=hi+span*.04;
+ layout.annotations=[...others,...lev.map((g:string)=>({x:g,y,xref:'x',yref:'y',text:letters.get(g),showarrow:false,xanchor:'center',yanchor:'bottom',font:{family:'Arial, Helvetica, sans-serif',size:8,color:'#000000'}}))];
+ layout.yaxis={...layout.yaxis,range:[lo-span*.05,hi+span*.16],autorange:false};
 }
 
 
