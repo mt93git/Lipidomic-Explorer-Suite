@@ -67,16 +67,22 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  Object.assign(layout,{paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{family:'Arial, Helvetica, sans-serif',size:9,color:'#000000'},margin:{l:8,r:8,t:role==='violin'?22:8,b:8,autoexpand:true},width:undefined,height:undefined,autosize:false});
  delete layout.width;delete layout.height;
  const legendRight={x:1.02,xanchor:'left',y:1,yanchor:'top',bgcolor:'rgba(0,0,0,0)',borderwidth:0,font:{size:8,color:'#000000'}};
- // Every legend entry shows: as many columns (Plotly legends) side by side as the panel height needs.
- const columns=(entries:PlotObject[],reversed:boolean)=>{const n=legendColumns(entries.length,size.height),per=Math.ceil(entries.length/n),plotW=Math.max(60,size.width*96/72*.4);let x=1.02;
-  for(let k=0;k<n;k++){const chunk=entries.slice(k*per,(k+1)*per),key=k?`legend${k+1}`:'legend';if(!chunk.length)break;chunk.forEach(t=>{t.legend=key;});
-   const font=Math.max(6,Math.min(8,Math.floor((size.height*96/72-60)/per/1.6)));layout[key]={...legendRight,x,font:{size:font,color:'#000000'},tracegroupgap:0,itemwidth:30,...(reversed?{traceorder:'reversed'}:{})};
-   x+=(Math.max(...chunk.map(t=>String(t.name).length))*font*.62+44)/plotW;}};
+ // Every legend entry shows (legendPlan): columns to the right, each as wide as its longest label, while the plot keeps
+ // at least 55% of the panel; else one horizontal legend under the plot.
+ const columns=(entries:PlotObject[],reversed:boolean,minPlot=.55,axisPx=46)=>{const plan=legendPlan(entries.map(t=>String(t.name)),size,minPlot),font={size:plan.font,color:'#000000'};
+  // Under the plot: fixed margins so the legend sits below the x axis (its ticks and title) across the panel width.
+  if(plan.mode==='below'){entries.forEach(t=>{delete t.legend;});const panelH=size.height*96/72,b=axisPx+plan.legendHeightPx,plotH=Math.max(20,panelH-b-8),plotW=size.width*96/72-LEGEND_AXIS_PX-LEGEND_GAP_PX;
+   layout.margin={l:LEGEND_AXIS_PX,r:LEGEND_GAP_PX,t:8,b,autoexpand:false};
+   layout.legend={...legendRight,orientation:'h',x:-(LEGEND_AXIS_PX-LEGEND_GAP_PX)/plotW,xanchor:'left',y:-axisPx/plotH,yanchor:'top',font,tracegroupgap:0,itemwidth:30,entrywidth:plan.entryWidthPx-LEGEND_MARKER_PX,entrywidthmode:'pixels',...(reversed?{traceorder:'reversed'}:{})};return;}
+  layout.margin={...layout.margin,l:LEGEND_AXIS_PX,r:plan.marginRightPx,b:Math.max(layout.margin?.b??0,40),autoexpand:false};
+  plan.columns.forEach((c,k)=>{const key=k?`legend${k+1}`:'legend';entries.filter(t=>c.labels.includes(String(t.name))).forEach(t=>{t.legend=key;});
+   layout[key]={...legendRight,x:1+c.offsetPx/plan.plotWidthPx,font,tracegroupgap:0,itemwidth:30,...(reversed?{traceorder:'reversed'}:{})};});};
  const groupDots=(groups:string[])=>({tickmode:'array',tickvals:groups,ticktext:groups.map(g=>colours.has(g)?dot(colours.get(g)!):g),tickangle:0,tickfont:{size:14,color:'#000000'},title:{text:''}});
  const ordered=(groups:string[])=>[...order.filter(g=>groups.includes(g)),...groups.filter(g=>!order.includes(g))];
  if(role==='pca'){delete layout.title;layout.showlegend=true;columns(data.filter(t=>t.showlegend!==false&&t.name),false);}
  if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=categories({data,layout});layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:ordered(g)};}
- if(role==='comp'){delete layout.title;layout.showlegend=true;columns(data.filter(t=>t.showlegend!==false&&t.name).reverse(),true);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
+ if(role==='comp'){delete layout.title;// The card's long y title (Mean share of selected signal (%)) does not fit a short panel.
+  if(/share/i.test(textOf(layout.yaxis?.title)))layout.yaxis={...layout.yaxis,title:{text:'Mean share (%)',font:{size:8}}};layout.showlegend=true;columns(data.filter(t=>t.showlegend!==false&&t.name).reverse(),true,.3,30);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
  if(role==='heat'){
   delete layout.title;const t=data.find(t=>t.type==='heatmap'),rows=(Array.isArray(t?.y)?t!.y:[]).map(String),groups=(Array.isArray(t?.x)?t!.x:[]).map(String);
   const px=size.height*96/72,font=Math.max(3,Math.min(8,px*.75/Math.max(1,rows.length)));
@@ -148,11 +154,6 @@ export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise
  return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(title?{titleBlock:title}:{})};
 }
 
-/** Legend columns for n entries in a panel this tall (points): a Plotly legend item is at least 19 px and a vertical
- *  legend may use the plot area's height (the panel less about 60 px of margins and axis). */
-export function legendColumns(n:number,heightPt:number):number{
- const per=Math.max(1,Math.floor((heightPt*96/72-60)/19));return Math.min(4,Math.max(1,Math.ceil(n/per)));
-}
 /** Panel B: only the significant brackets (stars), stacked again from the data top, and the y range tightened to them.
  *  The card is unchanged; this is the Figure 1 drawing only. */
 function significantBrackets(data:PlotObject[],layout:PlotObject){
@@ -172,4 +173,26 @@ function significantBrackets(data:PlotObject[],layout:PlotObject){
  kept.forEach((p:{a:PlotObject;s?:PlotObject},j:number)=>{const y0=hi+span*(.06+step*j),y1=y0+span*.03;top=y1+span*.12;annotations.push({...p.a,y:y1,...(step<.12?{font:{...p.a.font,size:10}}:{})});
   if(p.s){const v=nums(p.s.path);shapes.push({...p.s,path:`M ${v[0]},${y0} L ${v[0]},${y1} L ${v[4]},${y1} L ${v[4]},${y0}`});}});
  layout.annotations=[...others,...annotations];layout.shapes=[...rest,...shapes];layout.yaxis={...layout.yaxis,range:[lo-span*.05,top],autorange:false};
+}
+
+const LEGEND_AXIS_PX=52,LEGEND_MARKER_PX=40,LEGEND_GAP_PX=8;
+export interface LegendPlan {mode:'right'|'below';font:number;columns:{labels:string[];offsetPx:number;widthPx:number}[];marginRightPx:number;plotWidthPx:number;entryWidthPx:number;legendHeightPx:number}
+/** Where a panel's legend goes (CSS px of the rendered panel). To the right: the fewest columns whose entries fit the
+ *  plot height (19 px per entry), each column as wide as its longest label (0.58 em per character) plus the marker,
+ *  while the plot keeps at least `minPlot` of the panel width (8, then 7, then 6 px text). Otherwise one horizontal
+ *  legend under the plot and its x axis, entries as wide as the longest label, in rows across the panel width that
+ *  fit half the panel height (Plotly's limit for a horizontal legend). */
+export function legendPlan(labels:string[],size:{width:number;height:number},minPlot=.55):LegendPlan{
+ const panel=size.width*96/72,height=size.height*96/72,per=Math.max(1,Math.floor((height-60)/19));
+ const width=(ls:string[],font:number)=>Math.max(0,...ls.map(l=>l.length))*font*.58+LEGEND_MARKER_PX;
+ for(const font of [8,7,6])for(let n=Math.ceil(labels.length/per);n<=4;n++){
+  const each=Math.ceil(labels.length/n),columns:LegendPlan['columns']=[];let offset=LEGEND_GAP_PX;
+  for(let k=0;k<n;k++){const chunk=labels.slice(k*each,(k+1)*each);if(!chunk.length)break;const w=width(chunk,font);columns.push({labels:chunk,offsetPx:offset,widthPx:w});offset+=w+LEGEND_GAP_PX;}
+  const plot=panel-LEGEND_AXIS_PX-offset;
+  if(plot>=minPlot*panel)return {mode:'right',font,columns,marginRightPx:offset,plotWidthPx:plot,entryWidthPx:0,legendHeightPx:0};
+ }
+ // Below: rows across the whole panel width; Plotly lets a horizontal legend use at most half the panel height.
+ const plotWidthPx=panel-LEGEND_AXIS_PX-LEGEND_GAP_PX,across=panel-2*LEGEND_GAP_PX,rows=(font:number)=>Math.ceil(labels.length/Math.max(1,Math.floor(across/width(labels,font))));let font=8;
+ for(font of [8,7,6])if(rows(font)*19+6<=height/2)break;
+ return {mode:'below',font,columns:[{labels,offsetPx:0,widthPx:across}],marginRightPx:0,plotWidthPx,entryWidthPx:width(labels,font),legendHeightPx:rows(font)*19+6};
 }
