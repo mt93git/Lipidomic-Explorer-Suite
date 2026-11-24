@@ -1,6 +1,7 @@
 # Load the statistics adapter here so both run.R and direct router users get it.
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "statistics.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "export.R"), local = TRUE)
+source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "report.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "companion.R"), local = TRUE)
 if (!exists("dx_landscape", mode = "function"))
   source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "diagnostics.R"), local = globalenv())
@@ -467,6 +468,10 @@ function(id, req, res) api_exclusive(res, id = id, api_violin_policy(api_session
 #* Team's PCA score analysis of a dashboard PCA card (statistics.R api_pca_score), as its module rendered it
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/pca-score
 function(id, instanceId, req, res) api_exclusive(res, id = id, api_pca_score(api_session_get(id, api_session_caller(req)), instanceId))
+
+#* Report export: the 40 most significant rows of a filtered average heatmap card, read from the session (report.R)
+#* @get /api/v1/sessions/<id>/cards/<instanceId>/report-heatmap
+function(id, instanceId, req, res) api_exclusive(res, id = id, api_report_top_heatmap(api_session_get(id, api_session_caller(req)), instanceId))
 
 #* Confirm the reference group for this card
 #* @parser json list(simplifyVector = FALSE)
