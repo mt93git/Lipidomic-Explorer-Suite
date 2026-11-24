@@ -9,7 +9,7 @@ import {loadJsPdf} from '../export/pngPdf';
 import {a4Pdf,figure1Preference,pdfPages} from './a4Pdf';
 import {loadLogo,type JsPdf} from '../export/pdfHeader';
 import {figure1Page,type PanelSource} from './figure1';
-import {buildReport,firstSource,reportDate,reportFileName,reportSummary,titleBlock} from './report';
+import {type TopHeatmap,buildReport,firstSource,reportDate,reportFileName,reportSummary,titleBlock} from './report';
 import {plotlyReady} from '../cards';
 const ns='http://www.w3.org/2000/svg';
 export function pageSVG(page:Page,doc:Document):SVGSVGElement {
@@ -51,13 +51,13 @@ export async function exportPage(kind:'svg'|'pdf'|'print',doc:Document,nodes:Nod
  *  other card of the figure page under its label; every page A4 with the header band. Each card is drawn from its
  *  current figure: the live drawing when the card is live, else the card's own fetch (cardSource), whatever its zoom
  *  tier or finished state, else the image it shows. A card with nothing to draw is left out and named, never PENDING. */
-export async function exportReport(doc:Document,nodes:Node[],info:{title:string;samples?:unknown;lipids?:unknown;groups?:number;now?:Date;cardSource?:(id:string,size?:{width:number;height:number})=>Promise<PanelSource|undefined>}){
+export async function exportReport(doc:Document,nodes:Node[],info:{title:string;samples?:unknown;lipids?:unknown;groups?:number;now?:Date;cardSource?:(id:string,size?:{width:number;height:number})=>Promise<PanelSource|undefined>;topHeatmap?:(n:Node)=>Promise<TopHeatmap|undefined>}){
  const now=info.now??new Date(),date=reportDate(now),skipped:string[]=[];
  const block=(groups:string[])=>titleBlock({title:info.title,date,summary:reportSummary({samples:info.samples,lipids:info.lipids,groups:info.groups??(groups.length||undefined)})});
  await plotlyReady();
  // With a size, the report wants a server-drawn card drawn again at its page size: only the card's own fetch can.
  const source=(node:Node,size?:{width:number;height:number})=>size?info.cardSource?.(node.id,size)??Promise.resolve(undefined):firstSource([()=>domFigure(node),async()=>{const s=await info.cardSource?.(node.id);return s&&{...s,inputs:node.instance?.inputs};},()=>shownImage(node)]);
- const pages=await buildReport(doc,nodes,{source,render:plotlyPng,title:block,skipped:label=>skipped.push(label)});
+ const pages=await buildReport(doc,nodes,{source,render:plotlyPng,title:block,skipped:label=>skipped.push(label),topHeatmap:info.topHeatmap});
  download(await pdfOf(pages,doc),reportFileName(info.title,now));
  if(skipped.length)notify(phrases.reportSkipped(skipped));
 }
