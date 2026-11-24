@@ -2,49 +2,13 @@ import {describe,expect,it} from 'vitest';
 import type {Node} from '../api';
 import type {Figure} from '../editor/applyEditor';
 import {A4} from './a4Pdf';
-import {figure1Figure,legendPlan} from './figure1';
+import {figure1Figure} from './figure1';
 import {reportBodyLayout} from './report';
 // Staging review, report export: panel A's two legend columns overlapped (long group labels such as
 // "Ecoli_Live (n = 7)" ran under the second column's markers) and squeezed the PCA; body cards came out about half the
 // page wide. Synthetic labels and cards.
-const labels=['Ecoli_Live (n = 7)','Ecoli_Heat (n = 7)','Saureus_Live (n = 6)','Saureus_Heat (n = 6)','Zymosan_Opsonized (n = 8)','Zymosan_Plain (n = 8)','Beads_IgG (n = 7)','Beads_Plain (n = 7)','Medium_Control (n = 9)','LPS_Primed (n = 7)'];
-const text=(label:string,font:number)=>label.length*font*.55;
-describe('Figure 1 legend columns',()=>{
- const sizes=[{width:257,height:190},{width:257,height:120},{width:200,height:300},{width:400,height:150}];
- it('sizes every column from its longest label so columns never overlap, and keeps the plot at least 55% of the panel',()=>{
-  for(const size of sizes){
-   const plan=legendPlan(labels,size),panel=size.width*96/72;
-   expect(plan.plotWidthPx).toBeGreaterThanOrEqual(.55*panel);
-   expect(plan.columns.flatMap(c=>c.labels).sort()).toEqual([...labels].sort());
-   if(plan.mode==='right'){
-    plan.columns.forEach((c,k)=>{expect(c.widthPx).toBeGreaterThanOrEqual(Math.max(...c.labels.map(l=>text(l,plan.font)))+30);
-     if(k)expect(c.offsetPx).toBeGreaterThanOrEqual(plan.columns[k-1].offsetPx+plan.columns[k-1].widthPx);});
-    expect(plan.marginRightPx).toBeGreaterThanOrEqual(plan.columns.reduce((s,c)=>s+c.widthPx,0));
-   } else {
-    // Below the plot: one horizontal legend whose entries are as wide as the longest label.
-    expect(plan.entryWidthPx).toBeGreaterThanOrEqual(Math.max(...labels.map(l=>text(l,plan.font)))+30);
-   }
-  }
- });
- // Panel A's legend is drawn by the page since the staging review after PR #94 (pcaPanel.test.ts); panel C keeps
- // its Plotly legend columns.
- it('draws panel C with that plan: legend x positions apart by at least each column width',()=>{
-  const colours=new Map(labels.map((l,i)=>[l,`#${String(i).repeat(6).slice(0,6)}`]));
-  const comp:Figure={data:labels.map((g,i)=>({type:'bar',name:g,x:['A'],y:[i+1]})),layout:{}};
-  for(const size of sizes){
-   // C lists its classes top of the stack first (the traces reversed), at least 30% of the panel for the plot.
-   const a=figure1Figure('comp',comp,colours,['A'],size),plan=legendPlan([...labels].reverse(),size,.3);
-   expect(a.data.filter(t=>t.showlegend!==false).map(t=>t.name)).toEqual(labels);
-   if(plan.mode==='right'){
-    expect(a.layout.margin.r).toBeGreaterThanOrEqual(plan.marginRightPx);
-    plan.columns.forEach((c,k)=>{const key=k?`legend${k+1}`:'legend';expect(a.layout[key].x).toBeCloseTo(1+c.offsetPx/plan.plotWidthPx);expect(a.data.filter(t=>(t.legend??'legend')===key).map(t=>t.name).sort()).toEqual([...c.labels].sort());});
-   } else {
-    expect(a.layout.legend).toMatchObject({orientation:'h',yanchor:'top',entrywidthmode:'pixels'});expect(a.layout.legend.y).toBeLessThan(0);
-    expect(a.data.every(t=>(t.legend??'legend')==='legend')).toBe(true);
-   }
-  }
- });
-});
+// The Plotly legend-column plan these tests covered was replaced on 2026-11-24 by legends the page draws itself
+// (pcaPanel.test.ts, squarePanels.test.ts check their columns never overlap).
 describe('report body cards fill the content width',()=>{
  const W=A4[0]-68,avail=A4[1]-68;
  const card=(id:string,w:number,h:number):Node=>({id,kind:'plot',label:id,x:0,y:0,width:w,height:h});

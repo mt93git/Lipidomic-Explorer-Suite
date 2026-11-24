@@ -64,9 +64,10 @@ describe('Figure 1 presentation',()=>{
   expect(b.data.some(t=>t.xaxis==='x2'||t.meta?.teamLegendProxy)).toBe(false);expect(b.layout.xaxis2).toBeUndefined();expect(b.layout.yaxis.domain).toEqual([0,1]);
   expect(b.layout.annotations.map((a:{text:string})=>a.text)).toEqual(['*']);expect(b.layout.shapes).toHaveLength(1);
  });
- it('shows composition groups as coloured dots and a class legend on the right',()=>{
+ // Review 2026-11-24: C's class legend is drawn by the page on the right of the bars (squarePanels.test.ts).
+ it('shows composition groups as coloured dots, its class legend left to the page',()=>{
   const c=figure1Figure('comp',figures.comp,colours,order,{width:300,height:200});
-  expect(c.layout.showlegend).toBe(true);expect(c.layout.legend.x).toBeGreaterThan(1);
+  expect(c.layout.showlegend).toBe(false);
   expect(c.layout.xaxis.tickvals).toEqual(['Alpha','Beta']);expect(c.layout.xaxis.ticktext.map((t:string)=>t.match(/#[0-9A-F]{6}/i)?.[0])).toEqual(['#1F77B4','#D62728']);
   expect(c.layout.xaxis.ticktext.join('')).not.toContain('Alpha');
  });

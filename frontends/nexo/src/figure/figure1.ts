@@ -19,16 +19,37 @@ export function figure1Panels(nodes:Node[]):Panel[]{
 }
 export interface Slot {role:Role;nodeId:string;letter?:string;x:number;y:number;width:number;height:number}
 export const MARGIN=34;const GUTTER=12;
-/** Panel boxes on A4 portrait (points), filling the page height left above the legend (`reserve`). */
-export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN,row1Share=.3):Slot[]{
+/** Plot margins (CSS px) of the square panels and of C's bars: axis ticks and titles; the plot area is the rest. */
+export const PANEL_MARGINS={pca:{l:40,r:6,t:6,b:34},pcascore:{l:44,r:6,t:6,b:22},violin:{l:34,r:4,t:16,b:22},comp:{l:40,r:4,t:6,b:22}} as const;
+/** Every Figure 1 image sits right of a strip for its panel letter (pageSVG). */
+export const LETTER_PAD=12;
+const PT=72/96,MIN_SIDE=70,MIN_E_SIDE=40;
+const marginsPt=(r:keyof typeof PANEL_MARGINS)=>{const m=PANEL_MARGINS[r];return {w:(m.l+m.r)*PT,h:(m.t+m.b)*PT};};
+/** Panel boxes on A4 portrait (points). The panels' plot areas are about square: E's violins as wide as their half of the
+ *  left column allows, C's bars at least 0.6 high per wide (its legend, drawn by the page, on its right), A the height
+ *  left in the left column (its legend under it), B the same row height, D the rest of the right column. `reserve` is
+ *  the height kept under the figure for its legend; `aLegend` the height of A's legend; `cLegend` the size of C's. */
+export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN,legends:{a?:number;c?:{width:number;height:number}}={}):Slot[]{
  const W=A4[0]-2*MARGIN,H=A4[1]-top-MARGIN-reserve,cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
  const has=(r:Role)=>panels.find(p=>p.role===r),slots:Slot[]=[];
  const put=(p:Panel|undefined,x:number,y:number,width:number,height:number)=>{if(p)slots.push({role:p.role,nodeId:p.nodes[0].id,letter:p.letter,x,y,width,height});};
- const row1=!!(has('pca')||has('pcascore')),r1=row1Share*H,by=top+(row1?r1:0),bh=(1-row1Share)*H;
- put(has('pca'),left,top,cw,r1-GUTTER);put(has('pcascore'),right,top,cw,r1-GUTTER);
- const comp=has('comp'),violin=has('violin'),ch=violin?.4*bh-GUTTER/2:bh,ey=by+(comp?.4*bh+GUTTER/2:0),eh=comp?.6*bh-GUTTER/2:bh;
- put(comp,left,by,cw,ch);put(has('heat'),right,by,cw,bh);
- if(violin){const w=(cw-GUTTER)/2,h=(eh-GUTTER)/2;violin.nodes.forEach((n,i)=>slots.push({role:'violin',nodeId:n.id,letter:i?undefined:violin.letter,x:left+(i%2)*(w+GUTTER),y:ey+Math.floor(i/2)*(h+GUTTER),width:w,height:h}));}
+ const pca=has('pca'),score=has('pcascore'),comp=has('comp'),heat=has('heat'),violin=has('violin'),row1=!!(pca||score);
+ const aLegend=pca?legends.a??0:0,cLegend=comp?legends.c??{width:0,height:0}:{width:0,height:0};
+ const eRows=violin?(violin.nodes.length>2?2:1):0,cellW=(cw-GUTTER)/2;let sE=cellW-LETTER_PAD-marginsPt('violin').w;
+ const eH=()=>eRows?eRows*(sE+marginsPt('violin').h)+(eRows-1)*GUTTER:0;
+ const bw=cw-LETTER_PAD-cLegend.width-marginsPt('comp').w;let cH=comp?Math.max(.62*bw+marginsPt('comp').h,cLegend.height):0;
+ const below=()=>(comp?cH+GUTTER:0)+(violin?eH()+GUTTER:0);
+ const aMax=pca?cw-LETTER_PAD-marginsPt('pca').w+marginsPt('pca').h+aLegend:cw-LETTER_PAD-marginsPt('pcascore').w+marginsPt('pcascore').h;
+ let r1=row1?(comp||violin?H-below():aMax):0;
+ // A at least MIN_SIDE square: E gives up height first (its violins stay square, smaller).
+ const aSide=()=>r1-aLegend-marginsPt(pca?'pca':'pcascore').h;
+ if(row1&&violin&&aSide()<MIN_SIDE){sE=Math.max(MIN_E_SIDE,sE-(MIN_SIDE-aSide())/eRows);r1=H-below();}
+ // More room than a square A needs: C's bars (else E's row) take it.
+ if(row1&&r1>aMax){if(comp)cH+=r1-aMax;r1=aMax;}
+ if(!row1&&comp)cH=Math.max(cH,H-(violin?eH()+GUTTER:0));
+ put(pca,left,top,cw,r1);put(score,right,top,cw,r1);
+ const by=top+(row1?r1+GUTTER:0);put(comp,left,by,cw,cH);put(heat,right,by,cw,top+H-by);
+ if(violin){const ey=by+(comp?cH+GUTTER:0),h=sE+marginsPt('violin').h;violin.nodes.forEach((n,i)=>slots.push({role:'violin',nodeId:n.id,letter:i?undefined:violin.letter,x:left+(i%2)*(cellW+GUTTER),y:ey+Math.floor(i/2)*(h+GUTTER),width:cellW,height:h}));}
  return slots;
 }
 const clone=<T>(v:T):T=>{try{return structuredClone(v);}catch{return JSON.parse(JSON.stringify(v));}};
@@ -67,23 +88,22 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  Object.assign(layout,{paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{family:'Arial, Helvetica, sans-serif',size:9,color:'#000000'},margin:{l:8,r:8,t:role==='violin'?22:8,b:8,autoexpand:true},width:undefined,height:undefined,autosize:false});
  delete layout.width;delete layout.height;
  const legendRight={x:1.02,xanchor:'left',y:1,yanchor:'top',bgcolor:'rgba(0,0,0,0)',borderwidth:0,font:{size:8,color:'#000000'}};
- // Every legend entry shows (legendPlan): columns to the right, each as wide as its longest label, while the plot keeps
- // at least 55% of the panel; else one horizontal legend under the plot.
- const columns=(entries:PlotObject[],reversed:boolean,minPlot=.55,axisPx=46)=>{const plan=legendPlan(entries.map(t=>String(t.name)),size,minPlot),font={size:plan.font,color:'#000000'};
-  // Under the plot: fixed margins so the legend sits below the x axis (its ticks and title) across the panel width.
-  if(plan.mode==='below'){entries.forEach(t=>{delete t.legend;});const panelH=size.height*96/72,b=axisPx+plan.legendHeightPx,plotH=Math.max(20,panelH-b-8),plotW=size.width*96/72-LEGEND_AXIS_PX-LEGEND_GAP_PX;
-   layout.margin={l:LEGEND_AXIS_PX,r:LEGEND_GAP_PX,t:8,b,autoexpand:false};
-   layout.legend={...legendRight,orientation:'h',x:-(LEGEND_AXIS_PX-LEGEND_GAP_PX)/plotW,xanchor:'left',y:-axisPx/plotH,yanchor:'top',font,tracegroupgap:0,itemwidth:30,entrywidth:plan.entryWidthPx-LEGEND_MARKER_PX,entrywidthmode:'pixels',...(reversed?{traceorder:'reversed'}:{})};return;}
-  layout.margin={...layout.margin,l:LEGEND_AXIS_PX,r:plan.marginRightPx,b:Math.max(layout.margin?.b??0,40),autoexpand:false};
-  plan.columns.forEach((c,k)=>{const key=k?`legend${k+1}`:'legend';entries.filter(t=>c.labels.includes(String(t.name))).forEach(t=>{t.legend=key;});
-   layout[key]={...legendRight,x:1+c.offsetPx/plan.plotWidthPx,font,tracegroupgap:0,itemwidth:30,...(reversed?{traceorder:'reversed'}:{})};});};
+ // Fixed margins (Plotly does not move them) so the plot area has the shape it should: square for A, B and E, the
+ // extra space split on both sides; C's bars at least 0.6 high per wide.
+ const fix=(r:keyof typeof PANEL_MARGINS,minRatio?:number)=>{const m={...PANEL_MARGINS[r]},w=size.width/PT,h=size.height/PT,pw=w-m.l-m.r,ph=h-m.t-m.b;
+  if(minRatio===undefined){const side=Math.max(20,Math.min(pw,ph));m.l+=(pw-side)/2;m.r+=(pw-side)/2;m.t+=(ph-side)/2;m.b+=(ph-side)/2;}
+  else if(ph/pw<minRatio){const nw=ph/(minRatio+1e-6);m.l+=(pw-nw)/2;m.r+=(pw-nw)/2;}
+  layout.margin={...m,autoexpand:false};return {w:w-m.l-m.r};};
+ // Group names under B and E: as written when they fit, else as coloured dots (as in C and D), never under 6 pt.
+ const names=(g:string[],plotW:number)=>g.join('').length*5+g.length*6<=plotW?{tickangle:0,tickfont:{size:8,color:'#000000'}}:groupDots(g);
  const groupDots=(groups:string[])=>({tickmode:'array',tickvals:groups,ticktext:groups.map(g=>colours.has(g)?dot(colours.get(g)!):g),tickangle:0,tickfont:{size:14,color:'#000000'},title:{text:''}});
  const ordered=(groups:string[])=>[...order.filter(g=>groups.includes(g)),...groups.filter(g=>!order.includes(g))];
  // Panel A: the page draws the group legend under the plot (pcaLegend); markers about 6 pt across on the A4 page.
- if(role==='pca'){delete layout.title;layout.showlegend=false;for(const t of data)if(t.marker&&(t.type??'scatter')==='scatter')t.marker={...t.marker,size:PCA_MARKER_PX,line:{...(t.marker.line??{}),width:.5}};}
- if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=categories({data,layout});layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:ordered(g)};}
+ if(role==='pca'){delete layout.title;layout.showlegend=false;for(const t of data)if(t.marker&&(t.type??'scatter')==='scatter')t.marker={...t.marker,size:PCA_MARKER_PX,line:{...(t.marker.line??{}),width:.5}};fix('pca');}
+ if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=ordered(categories({data,layout})),{w}=fix('pcascore');layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};}
  if(role==='comp'){delete layout.title;// The card's long y title (Mean share of selected signal (%)) does not fit a short panel.
-  if(/share/i.test(textOf(layout.yaxis?.title)))layout.yaxis={...layout.yaxis,title:{text:'Mean share (%)',font:{size:8}}};layout.showlegend=true;columns(data.filter(t=>t.showlegend!==false&&t.name).reverse(),true,.3,30);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
+  if(/share/i.test(textOf(layout.yaxis?.title)))layout.yaxis={...layout.yaxis,title:{text:'Mean share (%)',font:{size:8}}};// C's class legend is drawn by the page on its right (figure1Page).
+  layout.showlegend=false;fix('comp',.6);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
  if(role==='heat'){
   delete layout.title;const t=data.find(t=>t.type==='heatmap'),rows=(Array.isArray(t?.y)?t!.y:[]).map(String),groups=(Array.isArray(t?.x)?t!.x:[]).map(String);
   const px=size.height*96/72,font=Math.max(3,Math.min(8,px*.75/Math.max(1,rows.length)));
@@ -93,13 +113,13 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
   data=data.map(d=>d.type!=='heatmap'?d:{...d,showscale:true,colorbar:{title:{text:'Mean z-score',side:'right',font:{size:8}},orientation:'v',x:1.02,xanchor:'left',y:.5,yanchor:'middle',len:.5,lenmode:'fraction',thickness:8,tickfont:{size:7},outlinecolor:'#000000',outlinewidth:1}});
  }
  if(role==='violin'){
-  layout.title={text:textOf(source.layout?.title),x:.5,xanchor:'center',y:.99,yanchor:'top',font:{size:9,color:'#000000'}};layout.showlegend=false;layout.margin={...layout.margin,t:16,l:4,r:4,b:4};
+  layout.title={text:textOf(source.layout?.title),x:.5,xanchor:'center',y:.99,yanchor:'top',font:{size:9,color:'#000000'}};layout.showlegend=false;
   // The n labels (n = 18 samples) crowd into one line in a small panel; n is in panel A's legend.
   const before=(layout.annotations??[]).length;layout.annotations=(layout.annotations??[]).filter((a:PlotObject)=>!/^tcstat-n-/.test(String(a.name??''))&&!/^n = /.test(plain(String(a.text??''))));
   if(layout.annotations.length<before&&!layout.annotations.some((a:PlotObject)=>/^tcstat-label-/.test(String(a.name??'')))){delete layout.yaxis.range;layout.yaxis.autorange=true;}
   if(/log10/i.test(textOf(layout.yaxis.title)))layout.yaxis.title={text:'log10 abundance',font:{size:8}};
-  const g=ordered(categories({data,layout})),avail=size.width*96/72-50,fits=g.join('').length*5<=avail;
-  layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...(fits?{tickangle:0}:g.length*11<=avail?{tickangle:-45,tickfont:{size:7,color:'#000000'}}:groupDots(g))};
+  const g=ordered(categories({data,layout})),{w}=fix('violin');
+  layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};
  }
  return {data,layout};
 }
@@ -147,20 +167,24 @@ export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise
  const fig=(role:Role)=>panels.find(p=>p.role===role)?.nodes.map(n=>sources.get(n.id)?.figure).filter((f):f is Figure=>!!f)??[];
  const colours=groupColours({pca:fig('pca')[0],violin:fig('violin'),pcascore:fig('pcascore')[0]}),order=[...colours.keys()];
  const caption=figure1Caption(panels,sources),gap=14,title=typeof options.title==='function'?options.title(order):options.title,top=title?title.y+title.height+gap:MARGIN,reserve=caption.lines.length*caption.lineHeight+gap;
- let slots=figure1Geometry(panels,reserve,top);
- // Panel A keeps at least 60% of its height for the plot: its legend (drawn by the page) takes at most 40%; when it
- // needs more, row 1 borrows height from the rows below (up to 45% of the figure).
- const pcaSlot=slots.find(s=>s.role==='pca'),pcaFigure=pcaSlot&&sources.get(pcaSlot.nodeId)?.figure;
+ // Legends the page draws: A's groups under its plot, C's classes (top of the stack first) on the right of its bars.
+ const cw=(A4[0]-2*MARGIN-GUTTER)/2,figureOf=(r:Role)=>{const p=panels.find(p=>p.role===r);return p&&sources.get(p.nodes[0].id)?.figure;};
  const groupsOf=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.name&&(t.type??'scatter')==='scatter').map(t=>({label:plain(String(t.name)),color:colours.get(conditionOf(t))??hex(t.marker?.color)??'#7F7F7F'}));
- let legend=pcaSlot&&pcaFigure?pcaLegend(pcaSlot,groupsOf(pcaFigure)):undefined;
- if(pcaSlot&&legend&&legend.height>.4*pcaSlot.height){const H=A4[1]-top-MARGIN-reserve;slots=figure1Geometry(panels,reserve,top,Math.min(.45,(legend.height/.4+GUTTER)/H));const s=slots.find(s=>s.role==='pca')!;legend=pcaLegend(s,groupsOf(pcaFigure!));}
+ const classesOf=(f:Figure)=>f.data.filter(t=>t.showlegend!==false&&t.name&&t.type==='bar').reverse().map(t=>({label:plain(String(t.name)),color:hex(t.marker?.color)??String(t.marker?.color??'#7F7F7F')}));
+ const pcaGroups=figureOf('pca')?groupsOf(figureOf('pca')!):undefined,compClasses=figureOf('comp')?classesOf(figureOf('comp')!):undefined;
+ const aLegend=pcaGroups&&pcaLegend({nodeId:'',x:0,y:0,width:cw,height:Infinity},pcaGroups),cLegend=compClasses&&sideLegend('',0,0,compClasses,cw*.45);
+ const slots=figure1Geometry(panels,reserve,top,{a:aLegend?.height,c:cLegend&&{width:cLegend.width,height:cLegend.height}});
+ const pcaSlot=slots.find(s=>s.role==='pca'),compSlot=slots.find(s=>s.role==='comp');
+ const legend=pcaSlot&&pcaGroups?pcaLegend(pcaSlot,pcaGroups):undefined;
+ const compLegend=compSlot&&compClasses?sideLegend(compSlot.nodeId,compSlot.x+compSlot.width,compSlot.y,compClasses,cw*.45):undefined;
+ const legends=[legend,compLegend].filter((l):l is PanelLegend=>!!l);
  const items:Positioned[]=[];
  for(const slot of slots){const s=sources.get(slot.nodeId)!,node=nodes.find(n=>n.id===slot.nodeId);
-  const height=slot.role==='pca'&&legend?slot.height-legend.height:slot.height,box={...slot,height};
+  const height=slot.role==='pca'&&legend?slot.height-legend.height:slot.height,width=slot.role==='comp'&&compLegend?slot.width-compLegend.width:slot.width,box={...slot,width:width-LETTER_PAD,height};
   const image=s.figure?await options.render(figure1Figure(slot.role,s.figure,colours,order,box),box.width,box.height):s.url!;
-  items.push({x:slot.x,y:slot.y,width:slot.width,height,node,image,...(slot.letter?{letter:slot.letter}:{})});}
+  items.push({x:slot.x,y:slot.y,width,height,node,image,...(slot.letter?{letter:slot.letter}:{})});}
  const bottom=Math.max(...slots.map(s=>s.y+s.height));
- return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(legend?{legends:[legend]}:{}),...(title?{titleBlock:title}:{})};
+ return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(legends.length?{legends}:{}),...(title?{titleBlock:title}:{})};
 }
 
 /** Panel B: only the significant brackets (stars), stacked again from the data top, and the y range tightened to them.
@@ -184,27 +208,6 @@ function significantBrackets(data:PlotObject[],layout:PlotObject){
  layout.annotations=[...others,...annotations];layout.shapes=[...rest,...shapes];layout.yaxis={...layout.yaxis,range:[lo-span*.05,top],autorange:false};
 }
 
-const LEGEND_AXIS_PX=52,LEGEND_MARKER_PX=40,LEGEND_GAP_PX=8;
-export interface LegendPlan {mode:'right'|'below';font:number;columns:{labels:string[];offsetPx:number;widthPx:number}[];marginRightPx:number;plotWidthPx:number;entryWidthPx:number;legendHeightPx:number}
-/** Where a panel's legend goes (CSS px of the rendered panel). To the right: the fewest columns whose entries fit the
- *  plot height (19 px per entry), each column as wide as its longest label (0.58 em per character) plus the marker,
- *  while the plot keeps at least `minPlot` of the panel width (8, then 7, then 6 px text). Otherwise one horizontal
- *  legend under the plot and its x axis, entries as wide as the longest label, in rows across the panel width that
- *  fit half the panel height (Plotly's limit for a horizontal legend). */
-export function legendPlan(labels:string[],size:{width:number;height:number},minPlot=.55):LegendPlan{
- const panel=size.width*96/72,height=size.height*96/72,per=Math.max(1,Math.floor((height-60)/19));
- const width=(ls:string[],font:number)=>Math.max(0,...ls.map(l=>l.length))*font*.58+LEGEND_MARKER_PX;
- for(const font of [8,7,6])for(let n=Math.ceil(labels.length/per);n<=4;n++){
-  const each=Math.ceil(labels.length/n),columns:LegendPlan['columns']=[];let offset=LEGEND_GAP_PX;
-  for(let k=0;k<n;k++){const chunk=labels.slice(k*each,(k+1)*each);if(!chunk.length)break;const w=width(chunk,font);columns.push({labels:chunk,offsetPx:offset,widthPx:w});offset+=w+LEGEND_GAP_PX;}
-  const plot=panel-LEGEND_AXIS_PX-offset;
-  if(plot>=minPlot*panel)return {mode:'right',font,columns,marginRightPx:offset,plotWidthPx:plot,entryWidthPx:0,legendHeightPx:0};
- }
- // Below: rows across the whole panel width; Plotly lets a horizontal legend use at most half the panel height.
- const plotWidthPx=panel-LEGEND_AXIS_PX-LEGEND_GAP_PX,across=panel-2*LEGEND_GAP_PX,rows=(font:number)=>Math.ceil(labels.length/Math.max(1,Math.floor(across/width(labels,font))));let font=8;
- for(font of [8,7,6])if(rows(font)*19+6<=height/2)break;
- return {mode:'below',font,columns:[{labels,offsetPx:0,widthPx:across}],marginRightPx:0,plotWidthPx,entryWidthPx:width(labels,font),legendHeightPx:rows(font)*19+6};
-}
 
 const PCA_MARKER_PX=8,LEGEND_PAD=12;
 /** Panel A's group legend, drawn by the page under the plot: dots and labels in as many columns as fit the panel width,
@@ -219,8 +222,19 @@ export function pcaLegend(slot:{nodeId:string;x:number;y:number;width:number;hei
   const rows=Math.ceil(groups.length/k),height=rows*rowHeight+4,entries:PanelLegend['entries']=[];let x=x0;
   for(let c=0;c<k;c++){const col=groups.slice(c*rows,(c+1)*rows);if(!col.length)break;col.forEach((g,r)=>entries.push({label:g.label,color:g.color,x,y:0+2+r*rowHeight+rowHeight/2}));x+=colWidth(col);}
   best={nodeId:slot.nodeId,x:x0,y:0,width,height,fontSize,rowHeight,dot,entries};
-  if(height<=.4*slot.height)break;
+  if(height<=.4*slot.height||!Number.isFinite(slot.height))break;
  }
  const y=slot.y+slot.height-best!.height;
  return {...best!,y,entries:best!.entries.map(e=>({...e,y:y+e.y}))};
+}
+
+/** A legend the page draws on the right of a panel (C's classes): columns top to bottom, as many as needed to stay
+ *  within the panel's height share, at most `maxWidth` wide; 6 pt text on 8.5 pt rows. `x` is the panel's right edge. */
+export function sideLegend(nodeId:string,x:number,y:number,entries:{label:string;color:string}[],maxWidth:number):PanelLegend{
+ const fontSize=6,dot=fontSize*.8,rowHeight=fontSize+2.5,colWidth=(ls:{label:string}[])=>dot+4+Math.max(0,...ls.map(l=>l.label.length))*fontSize*.55+8;
+ let k=1;for(;k<4;k++){const rows=Math.ceil(entries.length/k),cols=Array.from({length:k+1},(_,c)=>entries.slice(c*Math.ceil(entries.length/(k+1)),(c+1)*Math.ceil(entries.length/(k+1)))).filter(c=>c.length);
+  if(rows<=12||cols.reduce((s,c)=>s+colWidth(c),0)>maxWidth)break;}
+ const rows=Math.ceil(entries.length/k),cols=Array.from({length:k},(_,c)=>entries.slice(c*rows,(c+1)*rows)).filter(c=>c.length),width=cols.reduce((s,c)=>s+colWidth(c),0);
+ const placed:PanelLegend['entries']=[];let cx=x-width;cols.forEach(col=>{col.forEach((e,r)=>placed.push({...e,x:cx,y:y+2+r*rowHeight+rowHeight/2}));cx+=colWidth(col);});
+ return {nodeId,x:x-width,y,width,height:rows*rowHeight+4,fontSize,rowHeight,dot,entries:placed};
 }
