@@ -44,3 +44,14 @@ describe('report: top 40 of the filtered average heatmap',()=>{
   expect(f.data[0].zmin).toBe(0);expect(f.data[0].zmax).toBe(100);expect(f.data[0].colorbar.title.text).toBe('Relative scaling (0-100)');
  });
 });
+// Staging export 2026-11-24: at half a page, 14 class entries ran down into the colour bar drawn under them.
+describe('report: top heatmap colour bar',()=>{
+ it('draws the colour bar in its own column right of the class legend, inside the page',()=>{
+  const many=Array.from({length:14},(_,i)=>`GP_CLASS_${i}`),r=rows.map((x,i)=>({...x,class:many[i%14]}));
+  const box={width:W,height:(A4[1]-68-14)/2-16},f=topHeatmapFigure({...top,rows:r,classColors:Object.fromEntries(many.map(c=>[c,'#1B9E77']))},box);
+  const m=f.layout.margin,plotW=box.width*96/72-m.l-m.r,bar=f.data[0].colorbar;
+  const legendRight=1.02*plotW+Math.max(...many.map(c=>c.length))*8*.6+30;
+  expect(bar.x*plotW).toBeGreaterThanOrEqual(legendRight);
+  expect(bar.x*plotW+bar.thickness+40).toBeLessThanOrEqual(plotW+m.r);
+ });
+});

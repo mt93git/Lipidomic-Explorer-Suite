@@ -123,13 +123,15 @@ export function topHeatmapFigure(t:Extract<TopHeatmap,{available:true}>,box:{wid
  // Rows first (their label size sets the left margin), then the margins: lipid names left of the class strip, group
  // names turned under the columns.
  const groupLen=Math.max(0,...t.groups.map(g=>g.length)),b=Math.min(160,groupLen*8*.5+30),rowPx=(px(box.height)-34-b)/Math.max(1,lipids.length),font=Math.max(8,Math.min(10,Math.floor(rowPx*.8)));
- const margin={l:Math.max(60,longest*font*.62+14),r:legendW+80,t:34,b,autoexpand:false};
+ const margin={l:Math.max(60,longest*font*.62+14),r:legendW+90,t:34,b,autoexpand:false},plotW=Math.max(1,px(box.width)-margin.l-margin.r);
+ // The colour bar in its own column right of the class legend, so a long legend never runs into it.
+ const barX=1.02+legendW/plotW;
  const diverging=t.scaleMode==='global_zscore',colorscale=diverging?[[0,'#2166AC'],[.5,'#F7F7F7'],[1,'#B2182B']]:[[0,'#FFFFCC'],[.5,'#FD8D3C'],[1,'#800026']];
  const steps=classes.flatMap((c,k)=>[[k/K,t.classColors[c]??'#9CA3AF'],[(k+1)/K,t.classColors[c]??'#9CA3AF']]);
  const fixed=(v:number)=>String(Number(v.toPrecision(3)));
  return {data:[
   {type:'heatmap',x:t.groups,y:lipids,z:t.rows.map(r=>r.values),zmin:t.limits[0],zmax:t.limits[1],colorscale,
-   colorbar:{title:{text:SCALE_TITLES[t.scaleMode],side:'right',font:{size:8}},x:1.02,xanchor:'left',y:0,yanchor:'bottom',len:.45,thickness:10,tickfont:{size:8}}},
+   colorbar:{title:{text:SCALE_TITLES[t.scaleMode],side:'right',font:{size:8}},x:barX,xanchor:'left',y:.5,yanchor:'middle',len:.6,thickness:10,tickfont:{size:8}}},
   {type:'heatmap',x:['Class'],y:lipids,z:t.rows.map(r=>[classes.indexOf(r.class)+.5]),zmin:0,zmax:K,colorscale:steps,showscale:false,xaxis:'x2',hoverinfo:'skip'},
   ...classes.map(c=>({type:'scatter',mode:'markers',name:c,x:[null],y:[null],marker:{symbol:'square',size:10,color:t.classColors[c]??'#9CA3AF'},showlegend:true}))],
   layout:{paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{family:'Arial, Helvetica, sans-serif',size:9,color:'#000000'},margin,
