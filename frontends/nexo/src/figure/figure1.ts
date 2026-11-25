@@ -107,9 +107,11 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  const names=(g:string[],plotW:number)=>g.join('').length*5+g.length*6<=plotW?{tickangle:0,tickfont:{size:8,color:'#000000'}}:groupDots(g);
  const groupDots=(groups:string[])=>({tickmode:'array',tickvals:groups,ticktext:groups.map(g=>colours.has(g)?dot(colours.get(g)!):g),tickangle:0,tickfont:{size:14,color:'#000000'},title:{text:''}});
  const ordered=(groups:string[])=>[...order.filter(g=>groups.includes(g)),...groups.filter(g=>!order.includes(g))];
- // Panel A: the page draws the group legend under the plot (pcaLegend); markers about 6 pt across on the A4 page.
+ // Panel A: the page draws the group legend on the right of the plot; markers at size 9.
  if(role==='pca'){delete layout.title;layout.showlegend=false;for(const t of data)if(t.marker&&(t.type??'scatter')==='scatter')t.marker={...t.marker,size:PCA_MARKER_PX,line:{...(t.marker.line??{}),width:.5}};fix('pca');}
- if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=ordered(categories({data,layout})),{w}=fix('pcascore',opts.title?0:undefined);layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};}
+ if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=ordered(categories({data,layout})),{w}=fix('pcascore',opts.title?0:undefined);
+  // Several B plots side by side are narrow: the y title keeps only the component (its variance is on A's axis).
+  if(opts.title){const pc=/PC\d+/.exec(textOf(layout.yaxis?.title))?.[0];if(pc)layout.yaxis={...layout.yaxis,title:{text:`${pc} score`,font:{size:8}}};}layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};}
  if(role==='comp'){delete layout.title;// The card's long y title (Mean share of selected signal (%)) does not fit a short panel.
   if(/share/i.test(textOf(layout.yaxis?.title)))layout.yaxis={...layout.yaxis,title:{text:'Mean share (%)',font:{size:8}}};// C's class legend is drawn by the page on its right (figure1Page).
   layout.showlegend=false;fix('comp',opts.title?0:C_RATIO);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
@@ -246,7 +248,7 @@ function significanceLetters(data:PlotObject[],layout:PlotObject){
 }
 
 
-const PCA_MARKER_PX=18,LEGEND_PAD=12;
+const PCA_MARKER_PX=9,LEGEND_PAD=12;
 /** Panel A's group legend, drawn by the page under the plot: dots and labels in as many columns as fit the panel width,
  *  each column as wide as its longest label (0.55 em per character), filled top to bottom; 6.5 pt text on 9 pt rows,
  *  smaller (down to 5.5 pt) only when the rows would take more than 40% of the panel. */
