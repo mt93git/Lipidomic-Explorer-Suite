@@ -14,16 +14,21 @@ export interface Panel {letter:string;role:Role;nodes:Node[]}
 /** The cards that fill Figure 1, in canvas order; a missing card leaves its panel out and the rest are re-lettered. */
 export function figure1Panels(nodes:Node[]):Panel[]{
  const panels:Panel[]=[];
- for(const role of ROLES){const found=nodes.filter(n=>roleOf(n)===role).slice(0,role==='violin'?4:1);if(found.length)panels.push({letter:String.fromCharCode(65+panels.length),role,nodes:found});}
+ for(const role of ROLES){const found=nodes.filter(n=>roleOf(n)===role).slice(0,MAX_CARDS[role]??1);if(found.length)panels.push({letter:String.fromCharCode(65+panels.length),role,nodes:found});}
  return panels;
 }
+/** Cards per panel: E's violins in a 2 × 2 block, B one PCA score card per PCA cluster side by side, C two composition
+ *  cards (for example major and minor classes) one above the other. */
+const MAX_CARDS:Partial<Record<Role,number>>={violin:4,pcascore:3,comp:2};
+/** The height (CSS px) a card's name takes above its plot when a panel has several cards. */
+export const SUBTITLE_PX=14;
 export interface Slot {role:Role;nodeId:string;letter?:string;x:number;y:number;width:number;height:number}
 export const MARGIN=34;const GUTTER=12;
 /** Plot margins (CSS px) of the square panels and of C's bars: axis ticks and titles; the plot area is the rest. */
 export const PANEL_MARGINS={pca:{l:40,r:6,t:6,b:34},pcascore:{l:44,r:6,t:6,b:22},violin:{l:34,r:4,t:16,b:22},comp:{l:40,r:4,t:6,b:22}} as const;
 /** Every Figure 1 image sits right of a strip for its panel letter (pageSVG). */
 export const LETTER_PAD=12;
-const PT=72/96,MIN_SIDE=70,MIN_E_SIDE=40,C_RATIO=1;
+const PT=72/96,MIN_SIDE=70,MIN_E_SIDE=40,C_RATIO=1,C_RATIO_EACH=.5,SUB_GAP=6;
 const marginsPt=(r:keyof typeof PANEL_MARGINS)=>{const m=PANEL_MARGINS[r];return {w:(m.l+m.r)*PT,h:(m.t+m.b)*PT};};
 /** Panel boxes on A4 portrait (points). The panels' plot areas are about square: E's violins as wide as their half of the
  *  left column allows, C's bars at least as high as wide (its legend, drawn by the page, on its right), A the height
@@ -32,12 +37,15 @@ const marginsPt=(r:keyof typeof PANEL_MARGINS)=>{const m=PANEL_MARGINS[r];return
 export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN,legends:{a?:{width:number;height:number};c?:{width:number;height:number}}={}):Slot[]{
  const W=A4[0]-2*MARGIN,H=A4[1]-top-MARGIN-reserve,cw=(W-GUTTER)/2,left=MARGIN,right=MARGIN+cw+GUTTER;
  const has=(r:Role)=>panels.find(p=>p.role===r),slots:Slot[]=[];
- const put=(p:Panel|undefined,x:number,y:number,width:number,height:number)=>{if(p)slots.push({role:p.role,nodeId:p.nodes[0].id,letter:p.letter,x,y,width,height});};
+ // A panel's cards share its box: side by side (B) or one above the other (C), the letter on the first.
+ const put=(p:Panel|undefined,x:number,y:number,width:number,height:number,stack=false)=>{if(!p)return;const k=p.nodes.length,w=stack?width:(width-(k-1)*SUB_GAP)/k,h=stack?(height-(k-1)*SUB_GAP)/k:height;
+  p.nodes.forEach((n,i)=>slots.push({role:p.role,nodeId:n.id,letter:i?undefined:p.letter,x:stack?x:x+i*(w+SUB_GAP),y:stack?y+i*(h+SUB_GAP):y,width:w,height:h}));};
  const pca=has('pca'),score=has('pcascore'),comp=has('comp'),heat=has('heat'),violin=has('violin'),row1=!!(pca||score);
  const none={width:0,height:0},aLegend=pca?legends.a??none:none,cLegend=comp?legends.c??none:none;
  const eRows=violin?(violin.nodes.length>2?2:1):0,cellW=(cw-GUTTER)/2;let sE=cellW-LETTER_PAD-marginsPt('violin').w;
  const eH=()=>eRows?eRows*(sE+marginsPt('violin').h)+(eRows-1)*GUTTER:0;
- const bw=cw-LETTER_PAD-cLegend.width-marginsPt('comp').w;let cH=comp?Math.max(C_RATIO*bw+marginsPt('comp').h,cLegend.height):0;
+ const cK=comp?.nodes.length??1,bw=cw-LETTER_PAD-cLegend.width-marginsPt('comp').w,cEach=cK>1?C_RATIO_EACH*bw+marginsPt('comp').h+SUBTITLE_PX*PT:C_RATIO*bw+marginsPt('comp').h;
+ let cH=comp?cK*Math.max(cEach,cLegend.height)+(cK-1)*SUB_GAP:0;
  const below=()=>(comp?cH+GUTTER:0)+(violin?eH()+GUTTER:0);
  const aMax=pca?Math.max(cw-LETTER_PAD-aLegend.width-marginsPt('pca').w+marginsPt('pca').h,aLegend.height):cw-LETTER_PAD-marginsPt('pcascore').w+marginsPt('pcascore').h;
  let r1=row1?(comp||violin?H-below():aMax):0;
@@ -48,7 +56,7 @@ export function figure1Geometry(panels:Panel[],reserve=0,top=MARGIN,legends:{a?:
  if(row1&&r1>aMax){if(comp)cH+=r1-aMax;r1=aMax;}
  if(!row1&&comp)cH=Math.max(cH,H-(violin?eH()+GUTTER:0));
  put(pca,left,top,cw,r1);put(score,right,top,cw,r1);
- const by=top+(row1?r1+GUTTER:0);put(comp,left,by,cw,cH);put(heat,right,by,cw,top+H-by);
+ const by=top+(row1?r1+GUTTER:0);put(comp,left,by,cw,cH,true);put(heat,right,by,cw,top+H-by);
  if(violin){const ey=by+(comp?cH+GUTTER:0),h=sE+marginsPt('violin').h;violin.nodes.forEach((n,i)=>slots.push({role:'violin',nodeId:n.id,letter:i?undefined:violin.letter,x:left+(i%2)*(cellW+GUTTER),y:ey+Math.floor(i/2)*(h+GUTTER),width:cellW,height:h}));}
  return slots;
 }
@@ -67,8 +75,9 @@ const dot=(c:string)=>`<span style="color:${c};font-size:13px">●</span>`;
 const withAlpha=(old:unknown,c:string)=>{if(typeof old==='string'){const a=/^#[0-9a-f]{6}([0-9a-f]{2})$/i.exec(old)?.[1];if(a)return c+a;const r=/^rgba\([^)]*,\s*([.\d]+)\s*\)$/.exec(old)?.[1];if(r)return `rgba(${[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)).join(',')},${r})`;}return c;};
 const categories=(f:Figure,axis='x')=>{const a=f.layout[axis+'axis'];if(Array.isArray(a?.categoryarray)&&a.categoryorder==='array')return a.categoryarray.map(String);const out:string[]=[];for(const t of f.data)for(const v of (Array.isArray(t[axis])?t[axis]:[]))if(!out.includes(String(v)))out.push(String(v));return out;};
 const transpose=(m:unknown)=>Array.isArray(m)&&m.length&&m.every(r=>Array.isArray(r))?(m[0] as unknown[]).map((_,i)=>(m as unknown[][]).map(r=>r[i])):m;
-/** One card's figure as its Figure 1 panel. */
-export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>,order:string[],size:{width:number;height:number}):Figure{
+/** One card's figure as its Figure 1 panel. `title`: the card's name above its plot, when the panel has several cards
+ *  (their plots then fill their boxes instead of being squared). */
+export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>,order:string[],size:{width:number;height:number},opts:{title?:string}={}):Figure{
  const f=clone(source),layout:PlotObject={...f.layout};let data=f.data.map(t=>({...t}));
  if(role==='pcascore'){
   const domain0=layout.yaxis?.domain?.[0]??0;data=data.filter(t=>!t.meta?.teamLegendProxy&&t.xaxis!=='x2'&&t.yaxis!=='y2');delete layout.xaxis2;delete layout.yaxis2;
@@ -90,7 +99,7 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  const legendRight={x:1.02,xanchor:'left',y:1,yanchor:'top',bgcolor:'rgba(0,0,0,0)',borderwidth:0,font:{size:8,color:'#000000'}};
  // Fixed margins (Plotly does not move them) so the plot area has the shape it should: square for A, B and E, the
  // extra space split on both sides; C's bars at least 0.6 high per wide.
- const fix=(r:keyof typeof PANEL_MARGINS,minRatio?:number)=>{const m={...PANEL_MARGINS[r]},w=size.width/PT,h=size.height/PT,pw=w-m.l-m.r,ph=h-m.t-m.b;
+ const fix=(r:keyof typeof PANEL_MARGINS,minRatio?:number)=>{const m={...PANEL_MARGINS[r]};if(opts.title)m.t+=SUBTITLE_PX;const w=size.width/PT,h=size.height/PT,pw=w-m.l-m.r,ph=h-m.t-m.b;
   if(minRatio===undefined){const side=Math.max(20,Math.min(pw,ph));m.l+=(pw-side)/2;m.r+=(pw-side)/2;m.t+=(ph-side)/2;m.b+=(ph-side)/2;}
   else if(ph/pw<minRatio){const nw=ph/(minRatio+1e-6);m.l+=(pw-nw)/2;m.r+=(pw-nw)/2;}
   layout.margin={...m,autoexpand:false};return {w:w-m.l-m.r};};
@@ -100,10 +109,10 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
  const ordered=(groups:string[])=>[...order.filter(g=>groups.includes(g)),...groups.filter(g=>!order.includes(g))];
  // Panel A: the page draws the group legend under the plot (pcaLegend); markers about 6 pt across on the A4 page.
  if(role==='pca'){delete layout.title;layout.showlegend=false;for(const t of data)if(t.marker&&(t.type??'scatter')==='scatter')t.marker={...t.marker,size:PCA_MARKER_PX,line:{...(t.marker.line??{}),width:.5}};fix('pca');}
- if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=ordered(categories({data,layout})),{w}=fix('pcascore');layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};}
+ if(role==='pcascore'){delete layout.title;layout.showlegend=false;const g=ordered(categories({data,layout})),{w}=fix('pcascore',opts.title?0:undefined);layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};}
  if(role==='comp'){delete layout.title;// The card's long y title (Mean share of selected signal (%)) does not fit a short panel.
   if(/share/i.test(textOf(layout.yaxis?.title)))layout.yaxis={...layout.yaxis,title:{text:'Mean share (%)',font:{size:8}}};// C's class legend is drawn by the page on its right (figure1Page).
-  layout.showlegend=false;fix('comp',C_RATIO);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
+  layout.showlegend=false;fix('comp',opts.title?0:C_RATIO);const g=ordered(categories({data,layout}));layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...groupDots(g)};}
  if(role==='heat'){
   delete layout.title;const t=data.find(t=>t.type==='heatmap'),rows=(Array.isArray(t?.y)?t!.y:[]).map(String),groups=(Array.isArray(t?.x)?t!.x:[]).map(String);
   const px=size.height*96/72,font=Math.max(3,Math.min(8,px*.75/Math.max(1,rows.length)));
@@ -124,6 +133,7 @@ export function figure1Figure(role:Role,source:Figure,colours:Map<string,string>
   const g=ordered(categories({data,layout})),{w}=fix('violin');
   layout.xaxis={...layout.xaxis,type:'category',categoryorder:'array',categoryarray:g,...names(g,w)};
  }
+ if(opts.title)layout.title={text:opts.title,x:.5,xanchor:'center',y:1,yanchor:'top',pad:{t:2},font:{size:8,color:'#000000'}};
  return {data,layout};
 }
 // The legend under Figure 1: one paragraph per panel, written from each card's figure and settings.
@@ -140,8 +150,12 @@ function sentence(panel:Panel,sources:Map<string,PanelSource>):string{
  const lead=`(${panel.letter}) `;
  if(panel.role==='pca'){const t=plain(textOf(f?.layout?.title)),x=title('xaxis'),y=title('yaxis');return lead+`Principal component analysis scores${t?` (${t})`:''}${x&&y?`, ${x} versus ${y}`:''}; each point is one sample, coloured by group.`;}
  if(panel.role==='pcascore'){const pc=String(inputs.pcs_pc??(/PC\d+/.exec(title('yaxis'))?.[0]??'PC')),[omni,pair]=TESTS[String(inputs.pcs_test??'rank')]??TESTS.rank,corr=CORRECTIONS[String(inputs.pcs_corr??'BH')]??String(inputs.pcs_corr);
-  return lead+`${pc} scores by group (box plots with every sample); ${omni} across groups and ${pair} on each pair with ${corr} correction; groups that share a letter do not differ (adjusted p ≥ 0.05), groups with no letter in common do (adjusted p < 0.05).`;}
- if(panel.role==='comp'){const classes=f?.data.filter(t=>t.type==='bar'&&t.visible!==false).length;return lead+`Lipid composition: mean share of signal by lipid class in each group (stacked bars${classes?`, ${classes} classes`:''}); dots mark the groups, coloured as in A.`;}
+  // One card per PCA cluster: each card's name and the groups it compares.
+  const each=panel.nodes.length>1?panel.nodes.map(n=>{const g=sources.get(n.id)?.figure;return `${n.label} (${g?categories({data:g.data.filter(t=>t.xaxis!=='x2'&&!t.meta?.teamLegendProxy),layout:g.layout}).join(', '):''})`;}).join('; '):'';
+  return lead+`${pc} scores by group (box plots with every sample)${each?`, one plot per PCA cluster, each comparing only its own groups: ${each}`:''}; ${omni} across groups and ${pair} on each pair with ${corr} correction; groups that share a letter do not differ (adjusted p ≥ 0.05), groups with no letter in common do (adjusted p < 0.05).`;}
+ const shown=(g?:Figure)=>g?.data.filter(t=>t.type==='bar'&&t.visible!==false).length;
+ if(panel.role==='comp'&&panel.nodes.length>1)return lead+`Lipid composition: mean share of signal by lipid class in each group, in ${panel.nodes.length} stacked-bar plots, each normalised to 100% of its own classes: ${panel.nodes.map(n=>`${n.label} (${shown(sources.get(n.id)?.figure)??0} classes)`).join('; ')}; dots mark the groups, coloured as in A.`;
+ if(panel.role==='comp'){const classes=shown(f);return lead+`Lipid composition: mean share of signal by lipid class in each group (stacked bars${classes?`, ${classes} classes`:''}); dots mark the groups, coloured as in A.`;}
  if(panel.role==='heat'){const t=f?.data.find(t=>t.type==='heatmap'),square=f?.layout?.meta?.teamHeatmap?.geometry==='square-horizontal',rows=((square?t?.x:t?.y)??[]).length,def=String(f?.layout?.meta?.teamHeatmap?.valueDefinition??'mean lipid z-score').toLowerCase(),hi=typeof t?.zmax==='number'?t.zmax:undefined,lo=typeof t?.zmin==='number'?t.zmin:hi===undefined?undefined:-Math.abs(hi),lim=hi===undefined?'':` from ${fixed(lo!,1)} to ${fixed(hi,1)}`;
   return lead+`Abundance heatmap of the ${rows} most variable lipids: ${def} per group (colour bar, Mean z-score${lim}); every row is labelled with its lipid and dots mark the groups.`;}
  const lipids=panel.nodes.map(n=>plain(textOf(sources.get(n.id)?.figure?.layout?.title))||n.label);
@@ -178,14 +192,16 @@ export async function figure1Page(nodes:Node[],options:{source:(n:Node)=>Promise
  const pcaGroups=figureOf('pca')?groupsOf(figureOf('pca')!):undefined,compClasses=figureOf('comp')?classesOf(figureOf('comp')!):undefined;
  const aLegend=pcaGroups&&sideLegend('',0,0,pcaGroups,cw*.5),cLegend=compClasses&&sideLegend('',0,0,compClasses,cw*.45);
  const slots=figure1Geometry(panels,reserve,top,{a:aLegend&&{width:aLegend.width,height:aLegend.height},c:cLegend&&{width:cLegend.width,height:cLegend.height}});
- const pcaSlot=slots.find(s=>s.role==='pca'),compSlot=slots.find(s=>s.role==='comp');
+ const pcaSlot=slots.find(s=>s.role==='pca'),compSlots=slots.filter(s=>s.role==='comp');
  const legend=pcaSlot&&pcaGroups&&aLegend?sideLegend(pcaSlot.nodeId,pcaSlot.x+pcaSlot.width,pcaSlot.y+Math.max(0,(pcaSlot.height-aLegend.height)/2),pcaGroups,cw*.5):undefined;
- const compLegend=compSlot&&compClasses?sideLegend(compSlot.nodeId,compSlot.x+compSlot.width,compSlot.y,compClasses,cw*.45):undefined;
- const legends=[legend,compLegend].filter((l):l is PanelLegend=>!!l);
+ // One class legend per C card, on the right of its own bars.
+ const compLegends=new Map(compSlots.flatMap(c=>{const f=sources.get(c.nodeId)?.figure;return f?[[c.nodeId,sideLegend(c.nodeId,c.x+c.width,c.y,classesOf(f),cw*.45)] as const]:[];}));
+ const legends=[legend,...compLegends.values()].filter((l):l is PanelLegend=>!!l);
+ const multi=(r:Role)=>(panels.find(p=>p.role===r)?.nodes.length??0)>1;
  const items:Positioned[]=[];
  for(const slot of slots){const s=sources.get(slot.nodeId)!,node=nodes.find(n=>n.id===slot.nodeId);
-  const side=slot.role==='pca'?legend:slot.role==='comp'?compLegend:undefined,height=slot.height,width=side?slot.width-side.width:slot.width,box={...slot,width:width-LETTER_PAD,height};
-  const image=s.figure?await options.render(figure1Figure(slot.role,s.figure,colours,order,box),box.width,box.height):s.url!;
+  const side=slot.role==='pca'?legend:slot.role==='comp'?compLegends.get(slot.nodeId):undefined,height=slot.height,width=side?slot.width-side.width:slot.width,box={...slot,width:width-LETTER_PAD,height};
+  const image=s.figure?await options.render(figure1Figure(slot.role,s.figure,colours,order,box,(slot.role==='pcascore'||slot.role==='comp')&&multi(slot.role)&&node?{title:node.label}:{}),box.width,box.height):s.url!;
   items.push({x:slot.x,y:slot.y,width,height,node,image,...(slot.letter?{letter:slot.letter}:{})});}
  const bottom=Math.max(...slots.map(s=>s.y+s.height));
  return {width:A4[0],height:A4[1],items,figure1:true,caption:{...caption,y:bottom+gap},...(legends.length?{legends}:{}),...(title?{titleBlock:title}:{})};
@@ -230,7 +246,7 @@ function significanceLetters(data:PlotObject[],layout:PlotObject){
 }
 
 
-const PCA_MARKER_PX=8,LEGEND_PAD=12;
+const PCA_MARKER_PX=18,LEGEND_PAD=12;
 /** Panel A's group legend, drawn by the page under the plot: dots and labels in as many columns as fit the panel width,
  *  each column as wide as its longest label (0.55 em per character), filled top to bottom; 6.5 pt text on 9 pt rows,
  *  smaller (down to 5.5 pt) only when the rows would take more than 40% of the panel. */
