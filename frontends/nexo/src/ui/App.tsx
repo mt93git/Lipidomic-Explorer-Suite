@@ -13,7 +13,7 @@ import { checkpointHandle } from '../canvas/handle';
 import { validateCanvas, saveCheckpoint, checkpointDownload, listCheckpoints, setSessionRecovery, reopenLostSession } from '../api';
 import { reopenSession } from './sessionRecovery';
 import { checkpointLabel } from './topBarLabel';
-import { datasetSummary } from './datasetPrepare';
+import { datasetSummary, datasetTitle } from './datasetPrepare';
 import { Inspector } from './Inspector/Inspector';
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createCard, getCatalog, type Session } from '../api';
@@ -22,7 +22,12 @@ import { CanvasHandleContext, tabsBridges, type Camera, type CanvasHandle } from
 import { Library } from './Library/Library';
 import * as tabs from '../state/tabs';
 import { store, ui, useShell, proxy, notify, notifyFailure, openLibrary } from './model';
-import { TopBar } from './TopBar';
+import { withTimePoints } from '../catalog';
+import { TopBar, type BoardView } from './TopBar';
+import { retryLazy } from './retryLazy';
+import { Suspense } from 'react';
+// Diagnostics (the step after Canvas) loads on first use: the canvas never pays for it.
+const DiagnosticsPage = retryLazy(() => import('./Diagnostics/DiagnosticsPage').then(m => ({ default: m.DiagnosticsPage })));
 import { Rail } from './Rail';
 import { TabsBar } from './TabsBar';
 import { Toolbar } from './Toolbar';
@@ -36,6 +41,7 @@ import { tabsCommand, moveNodesToTab, deleteTabPlan } from './tabsWiring';
 import { isReadOnly, readOnlyReason } from '../state/readonly';
 import { selectOnEnter, watchCanvasDom } from './canvasDom';
 import { strings as s, phrases as p } from './strings';
+import { openStarter, seedStarter, type StarterOpen } from './starterCanvas';
 function ReadOnlyBanner() {
   // Journey review 9.2: compact on phones (CSS) and, once dismissed, gone for the rest of this browser session.
   const key = 'nexo-view-only-dismissed', [open, setOpen] = useState(() => { try { return sessionStorage.getItem(key) !== '1'; } catch { return true; } });
@@ -72,8 +78,9 @@ function EmptyCanvas({ handle }: { handle: CanvasHandle | null }) {
 // Live (connected, synced, every edit acknowledged) is the saved state's green dot (FIX-JOINER-PHONE: 'collab' has no
 // colour, so it was the grey default); View only and an engine wait keep the grey dot.
 const collabDot=(engine:string,text:string)=>engine?'collab':/^(Connecting|Syncing|Reconnecting)/.test(text)?'saving':/^(Offline|Signed out)/.test(text)?'paused':text.startsWith('Engine busy')?'dirty':text.startsWith('Live')?'saved':'collab';
-/** `notice`: shown in the status band (a dataset board's BoardNotice, main.tsx). */
-export function App({ session, title, notice }: { session: Session; title?: string; notice?: ReactNode }) {
+/** `notice`: shown in the status band (a dataset board's BoardNotice, main.tsx). `starter`: how main.tsx opened the board;
+ *  a new project's empty canvas, once Data and Review are done, opens with its starter cards (starterCanvas.ts). */
+export function App({ session, title, notice, starter = 'none' }: { session: Session; title?: string; notice?: ReactNode; starter?: StarterOpen }) {
   const host = useRef<HTMLDivElement>(null), mounted = useRef(false), [ready, setReady] = useState(false);
   useSyncExternalStore(subscribeRole, currentRole, currentRole);
   const state = useShell(), readOnly = isReadOnly();
@@ -105,17 +112,23 @@ export function App({ session, title, notice }: { session: Session; title?: stri
     const url=new URL(location.href);url.searchParams.set('checkpoint',record.id);history.replaceState(null,'',url);if(label!=='autosave')setProjectName(checkpointLabel([record],record.id,s.project));return record;
   };
   const [figureMode,setFigureMode]=useState(false);
+  // Canvas or Diagnostics (?view=diagnostics); the canvas stays mounted under Diagnostics, so its work and state are kept.
+  const [view,setViewState]=useState<BoardView>(()=>new URLSearchParams(location.search).get('view')==='diagnostics'?'diagnostics':'canvas');
+  const setView=(next:BoardView)=>{setViewState(next);const url=new URL(location.href);if(next==='canvas')url.searchParams.delete('view');else url.searchParams.set('view',next);history.replaceState(history.state,'',url);};
   const [handle, setHandle] = useState<CanvasHandle | null>(null);
   useEffect(() => {
     if (mounted.current) return;
     mounted.current = true;
+    const seeding = openStarter(session, starter, readOnly);
     store.set(v => ({ ...v, tabs: tabs.validate((session.canvas as Session['canvas'] & { tabs?: unknown }).tabs, session.canvas.nodes.map(n => n.id)) }));
     // Wave 1: the canvas opens with the plots in front, both panels closed; an empty canvas opens the library
     // (on a desktop that can edit), since adding a plot is the only thing to do there.
-    ui({ design: session.design, libraryOpen: !readOnly && !matchMedia('(max-width: 600px)').matches && !session.canvas.nodes.length });
+    ui({ design: session.design, libraryOpen: !readOnly && !matchMedia('(max-width: 600px)').matches && !session.canvas.nodes.length && !seeding });
     Object.assign(session.canvas, { tabs: tabs.serialize(store.get().tabs, session.canvas.nodes.map(n => n.id)) });
     const canvasHandle = checkpointHandle(mountCanvas(host.current!, session, { shellOwnsLibrary: true, shellOwnsInspector: true }));
     setHandle(canvasHandle);
+    // The starter cards go in through the same add as the library's (the API creates each one).
+    if (seeding) void seedStarter(canvasHandle, getCatalog).catch(error => notifyFailure(s.failAddPlot, error));
     canvasHandle.onChange(()=>setFigureMode(canvasHandle.figureMode));
     // The figure page arrives with the canvas (fromCanvasV1 keeps state.document); the store starts from it.
     const inspector = host.current!.querySelector<HTMLElement>('#inspector')!;
@@ -201,7 +214,7 @@ export function App({ session, title, notice }: { session: Session; title?: stri
       else {
         ui({inspectorOpen:true});
         const source = handle?.getSession().canvas.nodes.find(n => n.id === nodeId)?.instance?.source ?? nodeId;
-        window.dispatchEvent(new CustomEvent('nexo-inspector-tab', {detail:action === 'data' ? (source.includes('group_comparison') ? 'Statistics' : 'Data') : null}));
+        window.dispatchEvent(new CustomEvent('nexo-inspector-tab', {detail:action === 'data' ? (source.includes('group_comparison') ? 'Stats' : 'Data') : null}));
         requestAnimationFrame(() => document.querySelector<HTMLElement>('#inspector [role=tab][aria-selected=true]')?.focus());
       }
     };
@@ -255,7 +268,12 @@ export function App({ session, title, notice }: { session: Session; title?: stri
     void Promise.all([import('../collab/session'),import('../collab/refused')]).then(([{followSharedSession,waitingText},refused])=>{
       if(!live)return;
       resyncing.current=refused.resyncing;const refusal=refused.takeRefusal();if(refusal)notify(refusal,true);
-      off=followSharedSession(session,{waiting:waiting=>setEngineText(waiting?waitingText:''),refresh:()=>tabsBridges.get(handle)!.document().nodes.forEach(n=>{handle.refreshCard(n.id);window.dispatchEvent(new CustomEvent('nexo-inputs-restored',{detail:n.id}));})});
+      off=followSharedSession(session,{waiting:waiting=>setEngineText(waiting?waitingText:''),refresh:()=>{
+        // The shared session's design (confirmed on the board or on Prepare) is the one the library and cards gate on.
+        ui({design:withTimePoints(session.design,session.deState)});
+        if(session.design?.confirmed){setDesignOpen(false);window.dispatchEvent(new CustomEvent('nexo-design-confirmed'));}
+        tabsBridges.get(handle)!.document().nodes.forEach(n=>{handle.refreshCard(n.id);window.dispatchEvent(new CustomEvent('nexo-inputs-restored',{detail:n.id}));});
+      }});
     });
     return()=>{live=false;off?.();};
   },[handle]);
@@ -326,7 +344,7 @@ export function App({ session, title, notice }: { session: Session; title?: stri
     setPicker(null);
   };
 
-  return <CanvasHandleContext.Provider value={handle}><TopBar nearLimit={nearLimit} projectName={projectName} onCheckpoints={()=>setCheckpointsOpen(true)} saveText={collaborating?(engineText||collabText):saveText} saveStatus={collaborating?collabDot(engineText,collabText):saveStatus} saveFailure={saveFailure} onRetrySave={()=>void saver.current?.flush()} onReopen={saveLost?()=>void reopenNow():undefined}/><div className={`shell ${state.ui.libraryOpen && !readOnly ? '' : 'library-closed'} ${state.ui.inspectorOpen || figureMode ? 'inspector-open' : ''}`}>
+  return <CanvasHandleContext.Provider value={handle}><TopBar nearLimit={nearLimit} projectName={projectName} onCheckpoints={()=>setCheckpointsOpen(true)} saveText={collaborating?(engineText||collabText):saveText} saveStatus={collaborating?collabDot(engineText,collabText):saveStatus} saveFailure={saveFailure} onRetrySave={()=>void saver.current?.flush()} onReopen={saveLost?()=>void reopenNow():undefined} view={view} onView={setView}/><div className={`shell ${state.ui.libraryOpen && !readOnly ? '' : 'library-closed'} ${state.ui.inspectorOpen || figureMode ? 'inspector-open' : ''}`}>
     <Rail/>{!readOnly && <Library/>}<main className="canvas-column" aria-label={s.canvasArea}><div className="canvas-header"><TabsBar editTabs={edit} activate={id => {
         if (!handle) return;
         const next = tabs.clone(store.get().tabs); if (!tabs.setActive(next, id)) return;
@@ -339,7 +357,8 @@ export function App({ session, title, notice }: { session: Session; title?: stri
         const result = tabs.deleteTab(next, id, target);
         if (result.ok) tabsBridges.get(handle)!.dispatch(tabsCommand(next, plan.removals.length ? [removeNodes(plan.removals)] : []));
       }}/>
-      {picker && <div role="dialog" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setPicker(null); } }} aria-label={picker === 'move' ? s.moveToTab : s.copyToTab}><button onClick={() => setPicker(picker === 'move' ? 'copy' : 'move')}>{picker === 'move' ? s.copyToTabMenu : s.moveToTabMenu}</button><p className="picker-heading">{picker === 'move' ? s.moveToTab : s.copyToTab}</p>{state.tabs.tabs.filter(t => picker === 'copy' || t.id !== state.tabs.active).map(t => <button key={t.id} onClick={() => move(t.id)}>{t.id === state.tabs.active ? p.currentTab(t.name) : t.name}</button>)}<button onClick={() => setPicker(null)}>{s.cancel}</button></div>}<CohortEntry sessionId={session.sessionId} onChanged={()=>saver.current?.markDirty()}/><Toolbar onAnalysis={()=>setAnalysisOpen(true)} onSave={()=>setCheckpointsOpen(true)} onDownload={()=>void download()} onShortcuts={()=>setShortcutsOpen(true)}/></div><StatusBand figureMode={figureMode} summary={datasetSummary(session)} notice={notice}/>{sessionLost && <div className="session-lost" role="alert">{s.sessionLost}<button type="button" onClick={()=>void reopenNow()}>{s.reopenSession}</button><button type="button" onClick={()=>location.reload()}>{s.reloadPage}</button></div>}{readOnly && <ReadOnlyBanner/>}<div className="canvas-body"><div id="canvas-host" role="tabpanel" aria-labelledby={state.tabs.active} ref={host}/>{ready && <ZoomPill/>}{ready && !figureMode && !(state.tabs.tabs.find(t => t.id === state.tabs.active)?.nodes.length) && <EmptyCanvas handle={handle}/>}</div>{!analysisOpen && <Toast/>}</main>
+      {picker && <div role="dialog" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setPicker(null); } }} aria-label={picker === 'move' ? s.moveToTab : s.copyToTab}><button onClick={() => setPicker(picker === 'move' ? 'copy' : 'move')}>{picker === 'move' ? s.copyToTabMenu : s.moveToTabMenu}</button><p className="picker-heading">{picker === 'move' ? s.moveToTab : s.copyToTab}</p>{state.tabs.tabs.filter(t => picker === 'copy' || t.id !== state.tabs.active).map(t => <button key={t.id} onClick={() => move(t.id)}>{t.id === state.tabs.active ? p.currentTab(t.name) : t.name}</button>)}<button onClick={() => setPicker(null)}>{s.cancel}</button></div>}<CohortEntry sessionId={session.sessionId} onChanged={()=>saver.current?.markDirty()}/><Toolbar onAnalysis={()=>setAnalysisOpen(true)} onSave={()=>setCheckpointsOpen(true)} onDownload={()=>void download()} onShortcuts={()=>setShortcutsOpen(true)} report={{projectName,datasetName:datasetTitle(session),samples:session.samples,lipids:session.lipids}}/></div><StatusBand figureMode={figureMode} summary={datasetSummary(session)} notice={notice}/>{sessionLost && <div className="session-lost" role="alert">{s.sessionLost}<button type="button" onClick={()=>void reopenNow()}>{s.reopenSession}</button><button type="button" onClick={()=>location.reload()}>{s.reloadPage}</button></div>}{readOnly && <ReadOnlyBanner/>}<div className="canvas-body"><div id="canvas-host" role="tabpanel" aria-labelledby={state.tabs.active} ref={host}/>{ready && <ZoomPill/>}{ready && !figureMode && !(state.tabs.tabs.find(t => t.id === state.tabs.active)?.nodes.length) && <EmptyCanvas handle={handle}/>}</div>{!analysisOpen && <Toast/>}</main>
     <aside className="inspector-column"><PanelBoundary resetKey={figureMode}>{handle && (figureMode ? <FigurePage handle={handle}/> : <Inspector handle={handle}/>)}</PanelBoundary></aside>
+    {view==='diagnostics' && <PanelBoundary resetKey={view}><Suspense fallback={null}><DiagnosticsPage sessionId={session.sessionId}/></Suspense></PanelBoundary>}
   </div>{analysisOpen && <AnalysisSettings session={session} onClose={()=>setAnalysisOpen(false)} onApplied={()=>saver.current?.markDirty()}/>}{designOpen && <DesignDialog sessionId={session.sessionId} saved={handle?.savedDesign?.()} onClose={() => setDesignOpen(false)} onConfirmed={design => { session.design = design; tabsBridges.get(handle!)?.refresh(); }}/>}{shortcutsOpen && <ShortcutsDialog onClose={()=>setShortcutsOpen(false)}/>}{state.ui.paletteOpen && !readOnly && <SessionPalettePanel session={session} onClose={()=>ui({paletteOpen:false})} onApplied={()=>saver.current?.markDirty()}/>}{checkpointsOpen && <CheckpointsDialog onClose={()=>setCheckpointsOpen(false)} save={label=>saveNamed(label)}/>}</CanvasHandleContext.Provider>;
 }

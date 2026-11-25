@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-export function Menu({ label, name = label, children }: { label: string; name?: string; children: ReactNode }) {
+import { Icon } from './Icon';
+export function Menu({ label, name = label, caret = false, children }: { label: string; name?: string; caret?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false), ref = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -12,7 +13,7 @@ export function Menu({ label, name = label, children }: { label: string; name?: 
     return () => document.removeEventListener('pointerdown', outside);
   }, [open]);
   return <div className="menu-wrap" ref={ref} onBlur={e => { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setOpen(false); }} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); trigger.current?.focus(); } }}>
-    <button ref={trigger} aria-label={name} data-tip={label === name ? undefined : name} aria-expanded={open} onClick={() => setOpen(!open)}>{label}</button>
+    <button ref={trigger} aria-label={name} data-tip={label === name ? undefined : name} aria-expanded={open} onClick={() => setOpen(!open)}>{label}{caret && <Icon name="down"/>}</button>
     {open && <div className="menu" role="group" aria-label={name} onClick={e => { if ((e.target as HTMLElement).closest('button')) { setOpen(false); trigger.current?.focus(); } }}>{children}</div>}
   </div>;
 }

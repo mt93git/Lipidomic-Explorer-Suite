@@ -9,12 +9,17 @@ const Avatars = retryLazy(() => import('./Presence/Avatars').then(m => ({ defaul
 const CommentsPanel = retryLazy(() => import('./Comments/CommentsPanel').then(m => ({ default: m.CommentsPanel })));
 import { signOut } from '../api/adminSignIn';
 import { strings as s } from './strings';
+import { Icon } from './Icon';
+import { startHref } from './startHref';
 import './topBar.css';
-export function TopBar({projectName,onCheckpoints,saveText,saveStatus,saveFailure='',onRetrySave,onReopen,nearLimit=false}:{projectName:string;onCheckpoints:()=>void;saveText:string;saveStatus:string;saveFailure?:string;onRetrySave?:()=>void;onReopen?:()=>void;nearLimit?:boolean}) {
+export type BoardView = 'canvas' | 'diagnostics';
+export function TopBar({projectName,onCheckpoints,saveText,saveStatus,saveFailure='',onRetrySave,onReopen,nearLimit=false,view='canvas',onView}:{projectName:string;onCheckpoints:()=>void;saveText:string;saveStatus:string;saveFailure?:string;onRetrySave?:()=>void;onReopen?:()=>void;nearLimit?:boolean;view?:BoardView;onView?:(view:BoardView)=>void}) {
   const [accountOpen, setAccountOpen] = useState(false), [sharing, setSharing] = useState(false), role = useSyncExternalStore(subscribeRole, currentRole, currentRole), board = collab();
   return <header className="topbar"><img className="logo" src={`${import.meta.env.BASE_URL}entry/libreros-lab-logo.webp`} alt={s.logo} width="63" height="30"/><h1 className="app-name">{s.app}</h1>
-    <button className="project" title={s.checkpointsTitle} onClick={onCheckpoints}>{projectName} ▾</button>{new URLSearchParams(globalThis.location?.search).has('dataset') && <span className="from-admin">{s.fromAdmin}</span>}
-    <nav aria-label={s.steps}><a href="/team/">{s.data}</a><a href="/team/">{s.review}</a><span aria-current="step">{s.canvas}</span></nav>
+    <button className="project" title={s.checkpointsTitle} onClick={onCheckpoints}>{projectName}<Icon name="down"/></button>{new URLSearchParams(globalThis.location?.search).has('dataset') && <span className="from-admin">{s.fromAdmin}</span>}
+    <nav aria-label={s.steps}><a href={startHref()}>{s.data}</a><a href={startHref()}>{s.review}</a>{onView
+      ? <>{([['canvas', s.canvas], ['diagnostics', s.diagnostics]] as const).map(([key, name]) => <button key={key} type="button" className="step" aria-current={view === key ? 'step' : undefined} onClick={() => onView(key)}>{name}</button>)}</>
+      : <span aria-current="step">{s.canvas}</span>}</nav>
     {/* Small fixes item 4: a lost session is not retried; the pill says so and offers Reopen (edits kept). */}
     {saveStatus === 'error' && onReopen ? <><span className="save-pill" data-state={saveStatus} role="status" title={saveFailure || undefined}>{saveText}</span><button type="button" className="save-reopen" aria-label={s.reopenSessionLabel} data-tip={s.reopenSessionLabel} onClick={onReopen}>{s.reopenSession}</button></>
       : saveStatus === 'error' && onRetrySave ? <button type="button" className="save-pill" data-state={saveStatus} title={saveFailure || undefined} aria-label={`${saveText}. ${s.retrySave}`} onClick={onRetrySave}>{saveText}</button>

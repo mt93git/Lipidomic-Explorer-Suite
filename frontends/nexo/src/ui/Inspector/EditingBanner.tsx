@@ -6,7 +6,7 @@ import { others, type Person } from '../../collab/awareness';
 export const editorOf = (people: Person[], nodeId: string) => people.find(p => p.editing?.nodeId === nodeId);
 export function Banner({ person }: { person: Person }) {
   const kind = person.kind === 'staff' ? 'Lab' : person.kind === 'client' ? 'Client' : null;
-  return <div className="editing-banner" role="status" style={{ margin: '10px 16px', padding: '8px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${person.colour || '#7256b5'}`, background: '#fff8f5' }}>
+  return <div className="editing-banner" role="status" style={person.colour ? { '--editor-colour': person.colour } as React.CSSProperties : undefined}>
     <b>{person.displayName || 'Collaborator'} is editing this card</b>{kind && <span className="editing-kind"> · {kind}</span>}
     <div>You can still change it; changes are applied in one order, the later one wins and both of you see the result.</div>
   </div>;

@@ -1,4 +1,4 @@
-import { strings as s } from '../strings';
+import { strings as s, inspectorStrings as is } from '../strings';
 import {useEffect,useRef,useState} from 'react';
 import {violinStatistics,type Node,type ViolinPolicy,type ViolinReply} from '../../api';
 import {cardInstanceId} from '../../api/instance';
@@ -59,14 +59,15 @@ export function StatisticsTab({node,handle}:{node:Node;handle:CanvasHandle}){
    if(r.status==='ok'&&r.result){const confirmed=sanitizeSettings(r.settings??settings);handle.setStatistics(node.id,saved(presentation,confirmed,r.result));setStaged(confirmed);}
   }catch(e){if(mounted.current)setMessage(String(e));}finally{if(mounted.current)setBusy(false);}
  }
- const select=(label:string,value:string,options:Record<string,string>,onChange:(v:string)=>void)=><label style={{display:'block',margin:'8px 0'}}>{label}<select aria-label={label} style={{display:'block',width:'100%'}} value={value} onChange={e=>onChange(e.target.value)}>{Object.entries(options).map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
+ const select=(label:string,value:string,options:Record<string,string>,onChange:(v:string)=>void)=><label className="stats-field">{label}<select aria-label={label} value={value} onChange={e=>onChange(e.target.value)}>{Object.entries(options).map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
  const pairs:Pair[]=(description?.groups??[]).flatMap((g,i,groups)=>groups.slice(i+1).map(h=>({a:g.group,b:h.group})));
  const baseline = applied??sanitizeSettings({...DEFAULT_SETTINGS,comparisons:pairs,effect:'hedges_g'});
  if(hasPcaScore(source))return <PcaScoreSection node={current} source={source} handle={handle}/>;
  if(source?.includes('group_comparison'))return <GroupComparisonSection node={current} handle={handle} instanceId={node.instance?.instanceId??instanceId}/>;
  if(!eligible)return <><p>Statistics are available for independent violin copies.</p>{message&&<p role="alert">{message}</p>}</>;
  const status=result&&(reply?.status==='unchanged'||reply?.status==='invalidated')?statusFor({...reply,matchesCurrent:(reply.dataFingerprint??reply.result?.dataFingerprint)===result.dataFingerprint},changedBy):result?statusFor(reply??{status:'ok'}):reply?.status==='ok'?statusFor(null):statusFor(reply,changedBy);
- return <section aria-label="Violin statistics" style={{padding:8}}>
+ return <section aria-label="Violin statistics" className="stats-tab">
+  <h3 className="stats-heading">{is.statsTest}</h3>
   <p role="status" data-statistics-status={reply?.status??'none'}>{busy?'Checking or computing statistics…':message||status}</p>
   {(message||reply?.status==='error'||reply?.status==='invalidated'||reply?.status==='blocked')&&<button disabled={busy} onClick={()=>void inspect('verify')}>Retry check</button>}
   {policy&&!policy.allowed&&<p>{policy.reason}</p>}
@@ -74,7 +75,7 @@ export function StatisticsTab({node,handle}:{node:Node;handle:CanvasHandle}){
    {select('Test',staged.test,TESTS,v=>stage({test:v as Settings['test']}))}
    {select('Multiple-testing correction',staged.correction,CORRECTIONS,v=>stage({correction:v as Settings['correction']}))}
    {select('Correction family',staged.scope,SCOPES,v=>stage({scope:v as Settings['scope']}))}
-   <fieldset><legend>Comparisons (B vs A)</legend>{pairs.map(p=><label key={pairKey(p)} style={{display:'block'}}><input type="checkbox" checked={staged.comparisons.some(c=>pairKey(c)===pairKey(p))} onChange={e=>stage({comparisons:e.target.checked?[...staged.comparisons,p]:staged.comparisons.filter(c=>pairKey(c)!==pairKey(p))})}/>{p.b} vs {p.a}</label>)}</fieldset>
+   <fieldset><legend>Comparisons (B vs A)</legend>{pairs.map(p=><label key={pairKey(p)} className="stats-check"><input type="checkbox" checked={staged.comparisons.some(c=>pairKey(c)===pairKey(p))} onChange={e=>stage({comparisons:e.target.checked?[...staged.comparisons,p]:staged.comparisons.filter(c=>pairKey(c)!==pairKey(p))})}/>{p.b} vs {p.a}</label>)}</fieldset>
    {select('Effect size',staged.effect,{none:EFFECTS.none,[effectAllowedFor(staged.test)]:EFFECTS[effectAllowedFor(staged.test)]},v=>stage({effect:v as Settings['effect']}))}
    <button className="primary" disabled={!canConfirm(staged,result?applied:null,policy)} onClick={()=>setReview(true)}>Review and confirm…</button>
    <button disabled={!canDiscard(staged,baseline)} onClick={()=>{setStaged(baseline);setReview(false);}}>{s.discardChanges}</button>
@@ -88,15 +89,16 @@ export function StatisticsTab({node,handle}:{node:Node;handle:CanvasHandle}){
     <button disabled={!canConfirm(staged,result?applied:null,policy)} onClick={()=>void apply()}>Confirm and compute</button><button onClick={()=>setReview(false)}>Cancel</button>
    </div>}
   </fieldset>
+  <h3 className="stats-heading">{is.statsShow}</h3>
   <fieldset><legend>Display <small>updates immediately</small></legend>
    <label><input type="checkbox" checked={presentation.show} onChange={e=>present({show:e.target.checked})}/>Show significance annotations</label>
    {select('P value shown',presentation.pValue,{adjusted:'Adjusted',raw:'Unadjusted'},v=>present({pValue:v as Presentation['pValue']}))}
    {select('Label',presentation.label,{both:'Stars and exact value',exact:'Exact value',stars:'Stars'},v=>present({label:v as Presentation['label']}))}
    {select('Group size labels',presentation.nDisplay,{samples:'Samples',participants:'Participants',both:'Both',hidden:'Hidden'},v=>present({nDisplay:v as Presentation['nDisplay']}))}
-   {([['Annotation font size','fontSize',8,28,1],['Bracket spacing','spacing',.03,.3,.01],['Bracket tip length','tip',0,.1,.005]] as const).map(([label,key,min,max,step])=><label key={key} style={{display:'block'}}>{label}<input type="number" value={presentation[key]} min={min} max={max} step={step} onChange={e=>{if(e.target.value!==''&&e.target.validity.valid)present({[key]:Number(e.target.value)});}}/></label>)}
+   {([['Annotation font size','fontSize',8,28,1],['Bracket spacing','spacing',.03,.3,.01],['Bracket tip length','tip',0,.1,.005]] as const).map(([label,key,min,max,step])=><label key={key} className="stats-field">{label}<input type="number" value={presentation[key]} min={min} max={max} step={step} onChange={e=>{if(e.target.value!==''&&e.target.validity.valid)present({[key]:Number(e.target.value)});}}/></label>)}
    <fieldset><legend>Comparisons shown on the plot</legend>{(result?.rows??[]).map(p=><label key={pairKey(p)}><input type="checkbox" checked={!presentation.hidden.some(c=>pairKey(c)===pairKey(p))} onChange={e=>present({hidden:e.target.checked?presentation.hidden.filter(c=>pairKey(c)!==pairKey(p)):[...presentation.hidden,{a:p.a,b:p.b}]})}/>{p.b} vs {p.a}</label>)}</fieldset>
   </fieldset>
-  <h4>Results for the displayed lipid</h4>
+  <h3 className="stats-heading">{is.statsResults}</h3>
   <table aria-label="Results for the displayed lipid"><thead><tr>{['Comparison','Group sizes','p','Adjusted p','Significance','Effect','Note'].map(t=><th key={t}>{t}</th>)}</tr></thead><tbody>{result&&rowsForDisplay(result,{...presentation,hidden:[]},applied??DEFAULT_SETTINGS).map(r=><tr key={pairKey(r)}><th>{r.b} vs {r.a}</th><td>{nLabel(result.groups.find(g=>g.group===r.a),presentation.nDisplay).replaceAll('<br>','; ')}; {nLabel(result.groups.find(g=>g.group===r.b),presentation.nDisplay).replaceAll('<br>','; ')}</td><td>{formatP(r.p)}</td><td>{formatP(r.pAdj)}</td><td>{stars(r.value)}</td><td>{r.effect??'n/a'}</td><td>{r.note}</td></tr>)}</tbody></table>
   <p>{methodsNote(result,applied??DEFAULT_SETTINGS,presentation)}</p>
   <button disabled={!result||!applied} onClick={()=>{if(!result||!applied)return;const url=URL.createObjectURL(new Blob([statisticsCsv(result,applied,presentation)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='statistics.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Statistics CSV</button>

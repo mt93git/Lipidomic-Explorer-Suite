@@ -15,12 +15,12 @@ export default function HeatScalePresets(p: PlotEditorProps) {
     {HEAT_PRESETS.filter(x => x.kind === kind).map(x => <button key={x.id} type="button" aria-pressed={state?.id === x.id} onClick={() => pick(x.id, state?.reverse ?? false, symmetric || kind === 'diverging')}>
       <span className="palette-swatches" aria-hidden="true">{x.stops.map(c => <i key={c} style={{ background: c }} />)}</span>{x.name}</button>)}
   </div>;
-  return <details className="pro-heat-presets"><summary>{s.heatPresets} <span className="pro-summary">{heatSummary(state, symmetric)}</span></summary>
+  return <fieldset className="style-subgroup pro-heat-presets"><legend>{s.heatPresets} <span className="pro-summary">{heatSummary(state, symmetric)}</span></legend>
     <p>{s.heatNote}</p>
     <p>{s.heatSequential}</p>{group('sequential', s.heatSequential)}
     <p>{s.heatDiverging}</p>{group('diverging', s.heatDiverging)}
     <label>{s.heatReverse}<input type="checkbox" disabled={!preset} checked={!!state?.reverse} onChange={e => preset && pick(preset.id, e.target.checked, symmetric)} /></label>
     <label title={diverging ? undefined : s.heatSymmetricOff}>{s.heatSymmetric}<input type="checkbox" disabled={!diverging || !p.onNexoStyle} checked={diverging && symmetric} onChange={e => preset && pick(preset.id, state!.reverse, e.target.checked)} /></label>
     {!diverging && <p>{s.heatSymmetricOff}</p>}
-  </details>;
+  </fieldset>;
 }

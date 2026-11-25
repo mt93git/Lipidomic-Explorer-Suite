@@ -154,7 +154,7 @@ async function browserTests(pw, name, base) {
     // Inspector tab (within the form's 250 ms debounce) must still reach the server; leaving the tab dropped it silently.
     const quickStart = await page.evaluate(() => window.__nexoMock.cardPatches.length);
     await inspector.getByRole('listbox', {name:'Lipid',exact:true}).getByRole('option', {name:'PC(16:0/18:1)',exact:true}).click();
-    await inspector.getByRole('tab', {name:'Appearance',exact:true}).click();
+    await inspector.getByRole('tab', {name:'Style',exact:true}).click();
     await page.waitForTimeout(1500);
     const quickSent = await page.evaluate(n => window.__nexoMock.cardPatches.slice(n).filter(p => 'violin_lipid' in (p.body.inputs || {})).map(p => p.body.inputs.violin_lipid), quickStart);
     assert.deepEqual(quickSent, ['PC(16:0/18:1)'], `PATCHes after a Data change and an immediate tab switch: ${JSON.stringify(quickSent)}`);
@@ -201,9 +201,9 @@ async function browserTests(pw, name, base) {
     await page.waitForFunction(() => document.querySelector('#inspector [role=status]')?.textContent === 'Up to date');
     console.log('PASS P3 ' + name + ' listbox-picker-activedescendant-arrows-enter-patch');
     console.log('PASS H3 ' + name + ' schema-edit-render-status');
-    await inspector.getByRole('tab', {name:'Appearance',exact:true}).click();
-    // Nexo-only presentation lives beside Team's canvas and survives save/open.
-    await inspector.locator('.nexo-style details').first().locator('summary').click();
+    await inspector.getByRole('tab', {name:'Style',exact:true}).click();
+    // Nexo-only presentation lives beside Team's canvas and survives save/open (Style › Axes and grid).
+    { const d = inspector.locator('details.style-section[data-section="axes"]'); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); }
     await inspector.getByLabel('y Scale',{exact:true}).selectOption('log');
     const minimum=inspector.getByLabel('y Minimum',{exact:true});await minimum.fill('1');await minimum.press('Enter');
     const maximum=inspector.getByLabel('y Maximum',{exact:true});await maximum.fill('100');await maximum.press('Enter');
@@ -223,24 +223,26 @@ async function browserTests(pw, name, base) {
     await checkpoints.waitFor({state:'detached'});
     await page.reload();await page.waitForSelector('.card');
     await page.evaluate(()=>window.__nexo.handle.focusNode('results_dashboard-plot_violin'));
-    await violin.locator('header').click();await inspector.getByRole('tab',{name:'Appearance',exact:true}).click();
+    await violin.locator('header').click();await inspector.getByRole('tab',{name:'Style',exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('.card[data-id="results_dashboard-plot_violin"] .js-plotly-plot')?.layout?.yaxis?.type==='log');
     assert.equal(await violin.locator('.nexo-style-badge').isVisible(),true);
     assert.deepEqual(await violin.locator('.js-plotly-plot').evaluate(el=>el.layout.yaxis.range),[0,2]);
-    // Clear the style before the existing independent inspector journeys.
-    await inspector.getByRole('button',{name:'Reset Nexo style',exact:true}).click();
+    // Clear the style before the existing independent inspector journeys (the card's one Reset clears Nexo style too).
+    await inspector.getByRole('button',{name:'Reset presentation',exact:true}).click();
+    await inspector.getByRole('button',{name:'Reset all',exact:true}).click();
     console.log('PASS F13 '+name+' nexo-log-range-badge-team-view-save-reopen');
-    await inspector.getByText('Color palette',{exact:true}).first().click();
+    // Colours starts open; open it only when it is folded.
+    { const palette=inspector.locator('details.style-section[data-section="colours"]').first(); if(!(await palette.evaluate(d=>d.open))) await palette.locator('summary').click(); }
     const renderCount = await page.evaluate(()=>window.__nexoMock.renders);
     // A palette recolours the violin's fill; its sample points stay black, as Team draws them (R/results_dashboard.R:420)
     // and as Team's palette leaves them (www/team/js/plot_editor.js:181).
     const oldColor = await violin.locator('.js-plotly-plot').evaluate(el=>el.data[0].fillcolor);
-    await inspector.getByRole('group',{name:'Color palette',exact:true}).getByRole('button',{name:'Okabe–Ito',exact:true}).click();
+    await inspector.getByRole('group',{name: 'Colour palette',exact:true}).getByRole('button',{name:'Okabe–Ito',exact:true}).click();
     // Pilot simulation step 5: choosing a palette applies it; there is no separate Apply button.
     assert.equal(await inspector.getByRole('button',{name:'Apply palette',exact:true}).count(),0);
     await page.waitForFunction(old=>document.querySelector('.card[data-id="results_dashboard-plot_violin"] .js-plotly-plot')?.data[0].fillcolor!==old,oldColor);
     assert.equal(await page.evaluate(()=>window.__nexoMock.renders),renderCount);
-    await inspector.getByLabel('Background',{exact:true}).fill('#123456');
+    await inspector.getByLabel('Card background',{exact:true}).fill('#123456');
     assert.equal(await violin.evaluate(el=>el.style.background),'rgb(18, 52, 86)');
     await undo(page);
     assert.notEqual(await violin.evaluate(el=>el.style.background),'rgb(18, 52, 86)');
@@ -257,7 +259,7 @@ async function browserTests(pw, name, base) {
     await undo(page); assert.deepEqual(await nodes(page), beforePaste);
     console.log('PASS H3 ' + name + ' copy-style-violin-paste-single-undo');
     // F5: Ctrl+Alt+Shift+V opens the confirmation naming the counts; Apply is one undo step.
-    await violin.locator('header').click(); await inspector.getByRole('tab', {name:'Appearance',exact:true}).click(); await focus(page);
+    await violin.locator('header').click(); await inspector.getByRole('tab', {name:'Style',exact:true}).click(); await focus(page);
     const plan = await page.evaluate(id => window.__nexo.handle.applyStyleToTab(id, false), violinId);
     await page.keyboard.press('Control+Alt+Shift+KeyV');
     const dialog = inspector.getByRole('dialog', {name:'Apply to tab…', exact:true});
@@ -271,30 +273,29 @@ async function browserTests(pw, name, base) {
     console.log('PASS H3 ' + name + ' apply-style-to-tab-confirm-counts-single-undo');
     // Wave 2A F12: a legend chip writes Team's legend keys in one step; one Undo restores.
     {
-      await violin.locator('header').click(); await inspector.getByRole('tab', {name:'Appearance',exact:true}).click();
+      await violin.locator('header').click(); await inspector.getByRole('tab', {name:'Style',exact:true}).click();
       const before = await nodes(page);
-      await inspector.locator('summary').filter({hasText:/^Legend/}).click();
+      { const d = inspector.locator('details.style-section[data-section="legend"]'); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); }
       await inspector.getByRole('group',{name:'Legend presets',exact:true}).getByRole('button',{name:'Right outside',exact:true}).click();
       await page.waitForFunction(id => window.__nexo.store.get().nodes.find(n => n.id === id).visual?.editor?.layout?.['legend.x'] === 1.02, violinId);
-      assert.match(await inspector.locator('summary').filter({hasText:/^Legend/}).textContent(), /Right outside/);
+      assert.match(await inspector.locator('details.style-section[data-section="legend"] > summary').textContent(), /Right outside/);
       await undo(page); assert.deepEqual(await nodes(page), before);
       console.log('PASS F12 ' + name + ' legend-chip-right-outside-single-undo');
       // F6: save the violin's style as "Lab style" and apply it to another Plotly card: one Undo restores.
-      await inspector.locator('summary').filter({hasText:/^Saved styles/}).click();
+      { const d = inspector.locator('details.style-section[data-section="library"]'); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); }
       await inspector.getByLabel('Style name',{exact:true}).fill('Lab style');
       await inspector.getByRole('button',{name:'Save current style',exact:true}).click();
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('nexo.savedStyles.v1'))[0].name), 'Lab style');
       assert.equal(await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('nexo.savedStyles.v1'))).includes('inputs')), false);
-      await card(page, targetId).locator('header').click(); await inspector.getByRole('tab', {name:'Appearance',exact:true}).click();
-      const summary = inspector.locator('summary').filter({hasText:/^Saved styles/});
-      if (!(await summary.evaluate(el => el.parentElement.open))) await summary.click();
+      await card(page, targetId).locator('header').click(); await inspector.getByRole('tab', {name:'Style',exact:true}).click();
+      { const d = inspector.locator('details.style-section[data-section="library"]'); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); }
       await inspector.getByRole('button',{name:'Apply Lab style',exact:true}).click();
       await page.waitForFunction(([s, t]) => { const ns = window.__nexo.store.get().nodes, a = ns.find(n => n.id === s), b = ns.find(n => n.id === t); return JSON.stringify(b.visual?.editor?.layout ?? {}) === JSON.stringify(a.visual?.editor?.layout ?? {}) && b.visual?.editor?.palette === a.visual?.editor?.palette; }, [violinId, targetId]);
       await undo(page); assert.deepEqual(await nodes(page), before);
       console.log('PASS F6 ' + name + ' saved-style-apply-to-another-card-single-undo');
       // F7: a colour-blind preview filters the card only; nothing is saved.
       const doc = await page.evaluate(() => JSON.stringify(window.__nexo.store.get()));
-      await inspector.locator('summary').filter({hasText:/^Colour-blind check/}).click();
+      { const d = inspector.locator('details.style-section[data-section="colourblind"]'); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); }
       await inspector.getByRole('group',{name:'Colour-blind check',exact:true}).getByRole('button',{name:'Deuteranopia',exact:true}).click();
       assert.match(await card(page, targetId).evaluate(el => el.style.filter), /nexo-cvd-deuteranopia/);
       assert.equal(await page.evaluate(() => JSON.stringify(window.__nexo.store.get())), doc);
@@ -304,7 +305,7 @@ async function browserTests(pw, name, base) {
     }
     await card(page,'instrument').locator('header').click();
     // P3: an illustration also has Export (PNG/SVG of the artwork, as Team's illustration downloads).
-    assert.deepEqual(await inspector.getByRole('tab').allTextContents(),['Appearance','Export']);
+    assert.deepEqual(await inspector.getByRole('tab').allTextContents(),['Style','Export']);
     await focus(page); await page.keyboard.press('i');
     // H6-0: the inspector column is reserved; closing it shows the empty-state text instead of hiding the panel.
     assert.equal(await inspector.getAttribute('data-open'),'false');
@@ -355,9 +356,9 @@ async function browserTests(pw, name, base) {
     {
       await page.evaluate(id => window.__nexo.handle.focusNode(id), heatId);
       await page.waitForFunction(id => !!window.__nexo.handle.figureOf(id), heatId);
-      await inspector.getByRole('tab', {name:'Appearance',exact:true}).click();
+      await inspector.getByRole('tab', {name:'Style',exact:true}).click();
       const before = await nodes(page);
-      await inspector.locator('summary').filter({hasText:/^Heat scale presets/}).click();
+      { const d = inspector.locator('details.style-section[data-section="colours"]'); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); }
       await inspector.getByRole('group',{name:'Sequential',exact:true}).getByRole('button',{name:'Viridis (3-stop)',exact:true}).click();
       await page.waitForFunction(id => window.__nexo.store.get().nodes.find(n => n.id === id).visual?.editor?.traces?.some(t => t.scaleLow === '#440154'), heatId);
       await page.waitForFunction(id => document.querySelector(`.card[data-id="${id}"] .js-plotly-plot`)?.data.some(t => JSON.stringify(t.colorscale ?? '').includes('#440154')), heatId);
@@ -406,7 +407,7 @@ async function browserTests(pw, name, base) {
     console.log('PASS H8 ' + name + ' zoomed-out-plotly-card-retakes-its-snapshot-after-data-change');
     // Feature 1: a module's action buttons (Team's "Data & settings") are live in the Data tab; a dialog the
     // module opens shows in Nexo's dialog, sanitised (the mock QC action's body carries a script and a link).
-    const qcId = await page.evaluate(async () => { await window.__nexo.handle.addCard('qc_pca_tab-pca2dPlot'); return window.__nexo.store.get().nodes.find(n=>n.instance?.source==='qc_pca_tab-pca2dPlot').id; });
+    const qcId = await page.evaluate(async () => { await window.__nexo.handle.addCard('qc_pca_tab-boxplotAfterNorm'); return window.__nexo.store.get().nodes.find(n=>n.instance?.source==='qc_pca_tab-boxplotAfterNorm').id; });
     await card(page, qcId).locator('header').click();
     await inspector.getByRole('tab', {name:'Data',exact:true}).click();
     const action = inspector.getByRole('button', {name:'Show Statistic Detail',exact:true});
@@ -424,15 +425,16 @@ async function browserTests(pw, name, base) {
     assert.equal(await action.isEnabled(), true);
     console.log('PASS F1 ' + name + ' module-action-button-redraws-the-card-and-shows-its-dialog');
     // Pilot F1 (replaces round 2's per-card colours): a QC copy's per-group pickers never reach its PCA, so the Data tab
-    // offers none even with "Override sample colors" ticked; it says the group colours follow the session palette and
-    // opens it, and a group colour set there redraws the 2D PCA.
+    // offers none even with "Override sample colors" ticked; its Groups section links to the session palette, which
+    // opens, and a group colour set there redraws the 2D PCA.
     const qcInstance = await page.evaluate(id => { const n = window.__nexo.store.get().nodes.find(n => n.id === id); return n.instance.instanceId ?? n.instance.id; }, qcId);
     await inspector.getByLabel('Override sample colors in this QC tab?', {exact:true}).check();
     await page.waitForTimeout(500);
     assert.equal(await inspector.locator('input[type=color][aria-label^="Colour for "]').count(), 0, 'a QC copy offers no per-group colour');
-    const note = inspector.locator('.session-palette-note');
-    assert.equal((await note.textContent()).startsWith('Group colours and shapes follow the session palette.'), true);
-    await note.getByRole('button', {name:'Session palette…', exact:true}).click();
+    // Data › Groups: the session palette's group colours and one link to edit them (approved inspector layout 2026-11-23).
+    const groupsPart = inspector.locator('section[data-section="groups"]');
+    assert.equal(await groupsPart.getByRole('heading', {name:'Groups', exact:true}).count(), 1);
+    await groupsPart.getByRole('button', {name:'Edit session colours', exact:true}).click();
     const panel = page.getByRole('dialog', {name:'Colors & palettes', exact:true});
     const groupColour = panel.getByRole('group', {name:'Sample groups (Group 1)', exact:true}).getByLabel('Colour for Control', {exact:true});
     await groupColour.fill('#aa3300');

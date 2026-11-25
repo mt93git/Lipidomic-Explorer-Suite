@@ -58,8 +58,8 @@ async function journey(pw, name, base) {
     const shot = async (id, file) => { await page.evaluate(id => window.__nexo.handle.focusNode(id), id); await page.waitForTimeout(400); await card(page, id).screenshot({ path: path.join(shots, `${name}-${file}.png`) }); };
     const inspector = page.locator('#inspector');
     const appearance = async id => { await page.evaluate(id => window.__nexo.handle.focusNode(id), id); await card(page, id).locator('header').click();
-      await inspector.getByRole('tab', { name: 'Appearance', exact: true }).click();
-      const series = inspector.locator('details', { has: page.locator('summary', { hasText: /^Series$/ }) });
+      await inspector.getByRole('tab', { name: 'Style', exact: true }).click();
+      const series = inspector.locator('details.style-section[data-section="points"]');
       if (!(await series.evaluate(d => d.open))) await series.locator('summary').click();
       return series; };
     // A Series field by its own label (a select's accessible name also carries its chosen option).
@@ -218,11 +218,11 @@ async function journey(pw, name, base) {
     const ALL = await addCopy('structural_grid_tab-mergedPlot');
     await page.waitForSelector(`.card[data-id="${ALL}"] .js-plotly-plot`);
     await card(page, ALL).locator('header').click();
-    await inspector.getByRole('tab', { name: 'Appearance', exact: true }).click();
-    await inspector.locator('summary', { hasText: /^Typography$/ }).waitFor();
-    assert.equal(await inspector.locator('summary', { hasText: /^Series$/ }).count(), 0, 'Series section shown for the all-classes grid');
-    // The section list where Series would be (between Conditions and Text annotations), as the inspector shows it.
-    await inspector.locator('summary', { hasText: /^Text annotations$/ }).evaluate(el => el.scrollIntoView({ block: 'center' }));
+    await inspector.getByRole('tab', { name: 'Style', exact: true }).click();
+    await inspector.locator('details.style-section[data-section="text"]').waitFor();
+    assert.equal(await inspector.getByRole('button', { name: 'Show all series', exact: true }).count(), 0, 'Series list shown for the all-classes grid');
+    // Points and series, where the series list would be, as the inspector shows it.
+    await inspector.locator('details.style-section[data-section="points"] > summary').evaluate(el => el.scrollIntoView({ block: 'center' }));
     await page.screenshot({ path: path.join(shots, `${name}-14-structure-all-classes-no-series.png`), clip: await inspector.boundingBox().then(b => ({ x: b.x, y: 0, width: b.width, height: 1000 })) });
     console.log(`PASS P7 ${name} structure-all-classes-grid-hides-series`);
     const SHIFTS = await addCopy('structural_tab-summaryPlot');

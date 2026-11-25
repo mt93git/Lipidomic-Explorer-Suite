@@ -53,7 +53,12 @@ async function setup(t, origin = settings) {
     return { status: response.status, value: await response.json() };
   };
   const current = () => doc.getMap('meta').get('origin').settings;
-  return { r, doc, roles, origins, decide, current };
+  const fill = async (body, token = ana) => {
+    const response = await fetch(`http://127.0.0.1:${http.address().port}/collab/projects/project/settings`, { method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Nexo-Admin-Token': token }, body: JSON.stringify(body) });
+    return { status: response.status, value: await response.json() };
+  };
+  return { r, doc, roles, origins, decide, current, fill };
 }
 
 test('lab staff excludes a sample: R re-opens once with it removed', async t => {
@@ -204,4 +209,40 @@ test('another decision on an old project keeps its excluded sample out as Team\'
   assert.equal((await decide({ sample: 'Treated_3', choice: 'keep' })).status, 200);
   assert.deepEqual(current().samples, ['Control_1', 'Treated_1', 'Treated_3', 'Control_2']);
   assert.deepEqual(current().outlierTreatments, { Control_2: 'remove' });
+});
+
+// After a restore (meta.origin.checkpointId, versions.mjs) an exclusion prepares the dataset again with the new settings,
+// and recovery follows it; a decision that needs no re-preparation keeps the restored checkpoint.
+test('after a restore an exclusion re-prepares the dataset and drops the checkpoint; keep leaves it', async t => {
+  const { r, doc, decide } = await setup(t);
+  const meta = doc.getMap('meta');
+  meta.set('origin', { ...meta.get('origin'), checkpointId: 'restored-checkpoint' });
+  await decide({ sample: 'Treated_3', choice: 'keep' });
+  assert.equal(meta.get('origin').checkpointId, 'restored-checkpoint');
+  const before = opens(r).length;
+  await decide({ sample: 'Treated_3', choice: 'exclude' });
+  assert.equal(opens(r).length, before + 1);
+  assert.deepEqual(opens(r).at(-1).body.settings.outlierTreatments, { Treated_3: 'remove' });
+  assert.equal(meta.get('origin').checkpointId, undefined);
+  assert.equal(meta.get('origin').adminDatasetId, 'synthetic-dataset');
+});
+
+// A project whose settings a restore lost (before PR #76) takes the ones Prepare chose on its link; existing ones stay.
+test('PUT settings fills a dataset project that has none and never replaces existing settings', async t => {
+  const { doc, fill, current } = await setup(t, undefined);
+  const meta = doc.getMap('meta');
+  meta.set('origin', { checkpointId: 'restored-checkpoint' });
+  assert.equal((await fill({ settings }, editor)).status, 200);
+  assert.deepEqual(meta.get('origin'), { checkpointId: 'restored-checkpoint', adminDatasetId: 'synthetic-dataset', settings });
+  const other = { ...settings, normalizationMethod: 'sum' };
+  assert.deepEqual(await fill({ settings: other }), { status: 200, value: { settings, filled: false } });
+  assert.deepEqual(current(), settings);
+  assert.equal((await fill({ settings: { samples: 'x' } })).status, 400);
+});
+
+test('PUT settings is refused to a client member whose client does not prepare', async t => {
+  const { doc, fill } = await setup(t, undefined);
+  doc.getMap('meta').set('origin', { checkpointId: 'restored-checkpoint' });
+  assert.equal((await fill({ settings }, 'disabled')).status, 403);
+  assert.deepEqual(doc.getMap('meta').get('origin'), { checkpointId: 'restored-checkpoint' });
 });

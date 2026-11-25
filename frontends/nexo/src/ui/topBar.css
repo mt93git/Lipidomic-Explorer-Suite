@@ -18,3 +18,6 @@
 .topbar .account-chat{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-height:36px;padding:0 var(--space-3);white-space:nowrap;color:var(--ink,#1c2733);background:var(--paper,#fff);border:1px solid var(--line,#d5dbe1);border-radius:var(--radius-sm);box-shadow:var(--shadow-card)}
 .topbar .account-chat:hover{background:var(--paper-2,#f2f4f6)}
 .topbar .account-chat~.account-signout{top:calc(100% + 46px)}
+/* Board steps after Review: Canvas and Diagnostics switch the board's view (ui/App.tsx). */
+.topbar nav>button.step{border:0;background:none;font:inherit;cursor:pointer}
+.topbar nav>button.step[aria-current]{background:var(--accent)}

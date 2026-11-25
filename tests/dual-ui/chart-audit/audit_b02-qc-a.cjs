@@ -466,13 +466,13 @@ async function audit(browser, plot) {
 
     // 5 Appearance tab.
     await check(plot, 5, 'appearance', async () => {
-      await select(page, id); await tab(page, 'Appearance');
+      await select(page, id); await tab(page, 'Style');
       const notes = [];
-      const lbl = insp().getByLabel('Label', { exact: true });
+      await insp().locator('.inspector-name-button').click(); const lbl = insp().getByLabel('Card name', { exact: true });
       await lbl.fill(label); await lbl.blur();
       await page.waitForFunction(([sel, t]) => document.querySelector(sel + ' .card-title')?.textContent === t, [`.card[data-id="${id}"]`, label], { timeout: 10000 });
       notes.push('Label renames the card');
-      const bg = insp().getByLabel('Background', { exact: true });
+      const bg = insp().getByLabel('Card background', { exact: true });
       await bg.fill('#fff4e0'); await page.waitForTimeout(500);
       const bgc = await card(page, id).evaluate(c => [getComputedStyle(c).backgroundColor, getComputedStyle(c.querySelector('.body')).backgroundColor].join('/'));
       ok(/255, 244, 224/.test(bgc), `background not applied: ${bgc}`);
@@ -487,7 +487,7 @@ async function audit(browser, plot) {
         await t.fill('Audit title'); await t.blur();
         await page.waitForFunction(sel => document.querySelector(sel + ' .js-plotly-plot')?._fullLayout?.title?.text === 'Audit title', `.card[data-id="${id}"]`, { timeout: 10000 });
         // F3 (8c1569b): the chart font size is "Base size" in the Typography section (layout font.size via applyEditor)
-        for (const [f, v] of [['Base size', '16'], ['Chart text color', '#aa0000'], ['Plot background', '#f0f0ff']]) { const c = ed.getByLabel(f, { exact: true }); ok(await c.count(), `NO ${f}`); await c.fill(v); await c.blur(); }
+        for (const [f, v] of [['Base size', '16'], ['Chart text colour', '#aa0000'], ['Plot background', '#f0f0ff']]) { const c = ed.getByLabel(f, { exact: true }); ok(await c.count(), `NO ${f}`); await c.fill(v); await c.blur(); }
         await page.waitForTimeout(1000);
         let l = await L();
         ok(l.size === 16, `font size not on the plot (${l.size})`);
@@ -496,7 +496,7 @@ async function audit(browser, plot) {
         if (is3d) ok(/f0f0ff|240, 240, 255/i.test(l.scene || ''), `3D scene background not applied (scene.bgcolor ${l.scene})`);
         else ok(/f0f0ff|240, 240, 255/i.test(l.plot || ''), `plot background not applied (${l.plot})`);
         notes.push(`title, font 16 ${l.color}, plot background → ${is3d ? 'scene.bgcolor ' + l.scene : 'plot_bgcolor ' + l.plot}`);
-        const pal = ed.getByRole('group', { name: 'Color palette', exact: true }).getByRole('button');
+        const pal = ed.getByRole('group', { name: 'Colour palette', exact: true }).getByRole('button');
         const nPal = await pal.count(); ok(nPal === 6, `${nPal} palettes, expected 6`);
         const colors = [];
         for (let i = 0; i < nPal; i++) { await pal.nth(i).click(); await page.waitForTimeout(400); colors.push((await L()).colors); }
@@ -541,14 +541,14 @@ async function audit(browser, plot) {
       await page.getByRole('button', { name: /^↷ Redo$/ }).click(); await page.waitForTimeout(500);
       const redone = await card(page, id).locator('.card-title').textContent();
       notes.push(`canvas Undo → "${undone}", Redo → "${redone}"`);
-      if (redone !== label) { await insp().getByLabel('Label', { exact: true }).fill(label); await insp().getByLabel('Label', { exact: true }).blur(); }
+      if (redone !== label) { await insp().locator('.inspector-name-button').click(); await insp().getByLabel('Card name', { exact: true }).fill(label); await insp().getByLabel('Card name', { exact: true }).blur(); }
       before = await signature(page, id);
       return notes.join('; ');
     });
 
     // 6 Statistics: the violin workflow is not Team's for QC plots.
     await check(plot, 6, 'statistics', async () => {
-      await select(page, id); await tab(page, 'Statistics');
+      await select(page, id); await tab(page, 'Stats');
       const t = (await insp().locator('[role=tabpanel]').innerText()).replace(/\s+/g, ' ').trim();
       ok(!(await insp().getByRole('button', { name: /Review and confirm/ }).count()), 'statistics offered for a QC plot');
       return { na: `no violin statistics for this plot; tab says "${t.slice(-80)}"` };
@@ -558,7 +558,7 @@ async function audit(browser, plot) {
     await check(plot, 7, 'export', async () => {
       await select(page, id); await tab(page, 'Export');
       const notes = [];
-      const png = await download(page, () => insp().getByRole('button', { name: 'Download PNG', exact: true }).click());
+      const png = await download(page, () => insp().getByRole('radio', { name: 'PNG', exact: true }).click().then(() => insp().getByRole('button', { name: 'Download figure', exact: true }).click()));
       ok(png.bytes.subarray(1, 4).toString() === 'PNG', 'PNG is not a PNG'); notes.push(`PNG ${png.bytes.length} B`);
       await page.waitForFunction(() => document.querySelector('#inspector [aria-busy]')?.getAttribute('aria-busy') !== 'true', null, { timeout: T });
       const svgB = insp().getByRole('button', { name: 'Download SVG', exact: true });

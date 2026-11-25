@@ -41,7 +41,7 @@ async function browserTests(pw, name, base) {
     await page.goto(`${base}/nexo/?checkpoint=${encodeURIComponent(checkpoint)}`);
     await page.waitForSelector('.card');
     await page.waitForFunction(() => ![...document.querySelectorAll('.card .body')].some(b => /Restoring/.test(b.textContent)));
-    const qc = await page.evaluate(async () => { await window.__nexo.handle.addCard('qc_pca_tab-pca2dPlot'); const n = window.__nexo.store.get().nodes.find(n => n.instance?.source === 'qc_pca_tab-pca2dPlot'); return n.instance.instanceId ?? n.instance.id; });
+    const qc = await page.evaluate(async () => { await window.__nexo.handle.addCard('qc_pca_tab-boxplotAfterNorm'); const n = window.__nexo.store.get().nodes.find(n => n.instance?.source === 'qc_pca_tab-boxplotAfterNorm'); return n.instance.instanceId ?? n.instance.id; });
     await page.evaluate(() => window.__nexo.handle.focusNode('results_dashboard-plot_pca'));
     await page.waitForFunction(() => (document.querySelector('#world .card[data-id="results_dashboard-plot_pca"] .js-plotly-plot')?.data || []).length > 0, null, { timeout: 15000 });
     const control0 = await traceColour(page, 'Control');

@@ -52,7 +52,9 @@ export function colorFor(s: GcState, g: string): string {
   if (/^healthy(?:$|[_ -])/i.test(g)) return '#7A7A7A';
   return GELATO[Math.max(0, s.groups.slice().sort().indexOf(g)) % GELATO.length];
 }
-const lineFor = (s: GcState, g: string) => sharedColor(s,g,'lines') || darker(colorFor(s,g),.45);
+// The default violin look of Selected-feature distributions (R/utils_vis.R plot_logratio_violin): a thin black outline;
+// an outline colour the user picks still wins.
+const lineFor = (s: GcState, g: string) => sharedColor(s,g,'lines') || '#000000';
 // Display-state commands: each returns a new saved GroupComparison (the shape validate.ts accepts).
 const copy = (v: GroupComparison): GroupComparison => structuredClone(v);
 const blankStyle = (): Style => ({colors:{},lines:{},points:true,box:true});
@@ -81,24 +83,25 @@ export function figure(s: GcState, width = 720): Figure {
   const legendHeight = Math.max(26, legendRows.reduce((h,r) => h+26+(r.lines-1)*15, 0)+(legendRows.length > 1 ? 10 : 0));
   const annotations: Record<string,unknown>[] = [], shapes: Record<string,unknown>[] = [];
   const layout: Record<string,unknown> = {height:(active.length > 1 ? Math.max(420,nrow*420) : 380)+legendHeight-26, margin:{l:70,r:20,t:34+legendHeight,b:55}, showlegend:true,
-    legend:{orientation:'h',groupclick:'togglegroup',x:0,xanchor:'left',y:1,yanchor:'bottom',bgcolor:'#F6F7F9',bordercolor:'#D8DCE2',borderwidth:1}, annotations, shapes, meta:{teamConditions:s.groups,teamGroupComparison:true}};
+    legend:{orientation:'h',groupclick:'togglegroup',x:0,xanchor:'left',y:1,yanchor:'bottom',bgcolor:'#F6F7F9',bordercolor:'#D8DCE2',borderwidth:1}, annotations, shapes, paper_bgcolor:'#ffffff', plot_bgcolor:'#ffffff', meta:{teamConditions:s.groups,teamGroupComparison:true}};
   // The shared legend is the only colour key unless two shown groups share a colour: then tick labels come back.
   const shownGroups = s.groups.filter(g => active.some(c => selected(s,c,g))), shownColors = shownGroups.map(g => colorHex(colorFor(s,g)) || colorFor(s,g).toLowerCase());
   const repeatedColors = new Set(shownColors).size < shownColors.length;
   active.forEach((c,i) => {
     const axis = i ? String(i+1) : '', x = 'x'+axis, y = 'y'+axis, column = i%2, row = Math.floor(i/2), visible = s.groups.filter(g => selected(s,c,g));
     const domain = active.length === 1 ? [0,.98] : [column*.58, column*.58+.42];
-    layout['xaxis'+axis] = repeatedColors ? {domain,anchor:y,type:'category',categoryorder:'array',categoryarray:visible,tickangle:active.length > 1 ? -45 : 0,automargin:true,title:{text:column === 0 ? 'Condition' : ''},showline:true,mirror:true,linecolor:'#000',ticks:'outside'}
-      : {domain,anchor:y,type:'category',categoryorder:'array',categoryarray:visible,showticklabels:false,automargin:true,title:{text:''},showline:true,mirror:true,linecolor:'#000',ticks:''};
-    const yaxis: Record<string,unknown> = {domain:[1-(row+1)/nrow+.06/nrow, 1-row/nrow-.10/nrow],anchor:x,title:{text:column === 0 ? (SCALE[s.settings.scale ?? ''] || 'Value') : ''},automargin:true,showline:true,mirror:true,linecolor:'#000',ticks:'outside',gridcolor:'#ddd',griddash:'dot',zeroline:false};
+    // Group names at 45 degrees when they are the key; black axis lines left and bottom only.
+    layout['xaxis'+axis] = repeatedColors ? {domain,anchor:y,type:'category',categoryorder:'array',categoryarray:visible,tickangle:-45,automargin:true,title:{text:column === 0 ? 'Condition' : ''},showline:true,mirror:false,linecolor:'#000000',ticks:'outside',showgrid:false}
+      : {domain,anchor:y,type:'category',categoryorder:'array',categoryarray:visible,showticklabels:false,automargin:true,title:{text:''},showline:true,mirror:false,linecolor:'#000000',ticks:'',showgrid:false};
+    const yaxis: Record<string,unknown> = {domain:[1-(row+1)/nrow+.06/nrow, 1-row/nrow-.10/nrow],anchor:x,title:{text:column === 0 ? (SCALE[s.settings.scale ?? ''] || 'Value') : ''},automargin:true,showline:true,mirror:false,linecolor:'#000000',ticks:'outside',showgrid:true,gridcolor:'#cccccc',griddash:'dot',zeroline:false};
     layout['yaxis'+axis] = yaxis;
-    annotations.push({name:'team-panel-title:'+c,xref:'paper',yref:'paper',x:active.length === 1 ? .49 : column*.58+.21,y:1-row/nrow-.02/nrow,text:c,showarrow:false});
+    annotations.push({name:'team-panel-title:'+c,xref:'paper',yref:'paper',x:active.length === 1 ? .49 : column*.58+.21,y:1-row/nrow-.02/nrow,text:'<b>'+c+'</b>',showarrow:false});
     const vals = s.rows.filter(r => r.Feature === c && finite(r.Plot_Value)).map(r => Number(r.Plot_Value));
     const lo = vals.length ? Math.min(...vals) : 0, hi = vals.length ? Math.max(...vals) : 1, span = Math.max(hi-lo, Math.abs(hi)*.05, .01); let level = 0;
     for (const g of visible) {
       const rr = s.rows.filter(r => r.Feature === c && r.GroupingVal === g && finite(r.Plot_Value)), fill = colorFor(s,g), style = s.styles[c] ?? blankStyle();
       data.push({type:'violin',name:g+' · '+c,legendgroup:g,showlegend:false,x:rr.map(() => g),y:rr.map(r => Number(r.Plot_Value)),xaxis:x,yaxis:y,points:style.points ? 'all' : false,jitter:.3,pointpos:0,
-        marker:{color:'#000000',size:5,opacity:1},fillcolor:fill,line:{color:lineFor(s,g),width:1.2},box:{visible:style.box,width:.22,fillcolor:darker(fill,.15),line:{color:darker(fill,.6)}},meanline:{visible:false},spanmode:'hard',
+        marker:{color:'#ffffff',size:6,opacity:1,line:{color:'#000000',width:1}},fillcolor:fill,line:{color:lineFor(s,g),width:.5},box:{visible:style.box,width:.2,fillcolor:'#ffffff',line:{color:'#000000',width:1}},meanline:{visible:false},spanmode:'hard',
         hovertemplate:'%{y}<extra>'+g+'</extra>',meta:{teamSourceKey:'group-comparison:'+JSON.stringify([c,g,'violin']),teamPanel:c,teamCondition:g,teamDrawFill:fill}});
     }
     if (s.baseline.length === 1) visible.forEach(g => {

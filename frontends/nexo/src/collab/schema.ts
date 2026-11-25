@@ -51,6 +51,7 @@ export function toDoc(state: State, tabs: TabState, nexo: Nexo, doc = new Y.Doc(
   sharedNexo.set('version', nexo.version);
   sharedNexo.set('nodes', new Y.Map(Object.entries(nexo.nodes).map(([id, node]) => [id, nexoMap(node)])));
   if (nexo.design !== undefined) sharedNexo.set('design', structuredClone(nexo.design));
+  if (nexo.starter === true) sharedNexo.set('starter', true);
   for (const name of ['comments', 'renderState', 'meta']) doc.getMap(name);
  }, origin);
  return doc;

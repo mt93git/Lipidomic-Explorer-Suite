@@ -4450,6 +4450,18 @@ shared_data_server <- function(id, external_settings = reactive(NULL), welcome_l
             return(NULL)
           }
         }
+        # A reference or comparison saved under another grouping (Group by Group2 on or off)
+        # names the same samples as one current level: use it, or refuse with a clear message.
+        resolve <- function(selected, role) {
+          mapped <- remap_de_groups(selected, meta, "Dynamic_DE_Group")
+          if (length(mapped$unresolved)) stop(sprintf(
+            '%s group "%s" is not a group of the current grouping. Choose the %s again in Analysis settings > Differential Expression (current groups: %s).',
+            role, paste(mapped$unresolved, collapse = '", "'), tolower(role),
+            paste(sort(unique(meta$Dynamic_DE_Group)), collapse = ", ")), call. = FALSE)
+          mapped$groups
+        }
+        ref_groups <- resolve(ref_groups, "Reference")
+        comp_groups <- resolve(comp_groups, "Comparison")
       } else {
         req(input$int_ref_t1, input$int_ref_t2, input$int_comp_t1, input$int_comp_t2)
         if (any(c(input$int_ref_t1, input$int_ref_t2, input$int_comp_t1, input$int_comp_t2) == "")) return(NULL)

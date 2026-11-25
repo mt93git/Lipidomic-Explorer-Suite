@@ -300,14 +300,17 @@ async function browserTests(pw, name, base) {
 
     // H8 live stress: a Plotly card the module refuses (Team's validate() message, 422), added while the
     // canvas is below 50 % (frozen, off-screen snapshot), shows the message instead of staying "Updating…".
-    await page.evaluate(() => window.__nexo.handle.zoomTo(0.3));
-    const refused = await page.evaluate(() => window.__nexo.handle.addCard('qc_pca_tab-pca2dVectorPlot').then(() => true, () => false));
-    assert(refused, 'adding the vector PCA card failed');
+    // Nexo shows the dashboard PCA instead of the QC editable vector views (pcaDesign.ts), so the mock refuses a served
+    // Plotly card with the module's message (mock/schema.ts mockRenderRefusal, pinned by mock/renderRefusal.test.ts).
+    await page.evaluate(() => { window.__nexoMock.refuseRender = ['qc_pca_tab-load3dPlot']; window.__nexo.handle.zoomTo(0.3); });
+    const refused = await page.evaluate(() => window.__nexo.handle.addCard('qc_pca_tab-load3dPlot').then(() => true, () => false));
+    assert(refused, 'adding the refused card failed');
     await page.evaluate(() => window.__nexo.handle.fit());
-    await page.waitForFunction(() => { const c = [...document.querySelectorAll('.card')].find(c => /pca2dVectorPlot$/.test(c.dataset.id ?? ''));
+    await page.waitForFunction(() => { const c = [...document.querySelectorAll('.card')].find(c => /-load3dPlot$/.test(c.dataset.id ?? ''));
       return c && c.dataset.tier === 'frozen' && c.querySelector('.card-status')?.dataset.state === 'error' && /Editable vector view unavailable/.test(c.querySelector('.body')?.textContent ?? ''); }, null, { timeout: 20000 })
-      .catch(async e => { console.log('STATE', await page.evaluate(() => [...document.querySelectorAll('.card')].filter(c => /VectorPlot$/.test(c.dataset.id ?? '')).map(c => `${c.dataset.id} tier=${c.dataset.tier} hidden=${c.hidden} state=${c.querySelector('.card-status')?.dataset.state} body=${(c.querySelector('.body')?.textContent ?? '').slice(0, 90)}`))); throw e; });
+      .catch(async e => { console.log('STATE', await page.evaluate(() => [...document.querySelectorAll('.card')].filter(c => /-load3dPlot$/.test(c.dataset.id ?? '')).map(c => `${c.dataset.id} tier=${c.dataset.tier} hidden=${c.hidden} state=${c.querySelector('.card-status')?.dataset.state} body=${(c.querySelector('.body')?.textContent ?? '').slice(0, 90)}`))); throw e; });
     console.log(`PASS H8 ${name} refused-frozen-card-shows-module-message`);
+    await page.evaluate(() => { delete window.__nexoMock.refuseRender; });
     errors.splice(0, errors.length, ...errors.filter(e => !/Editable vector view unavailable/.test(e)));
 
     fs.mkdirSync(out, { recursive: true });

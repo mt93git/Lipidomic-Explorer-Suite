@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
 # Contributor guardrails (opt in once per clone: git config core.hooksPath .githooks).
-# Refuses pushes to main and integration/*, and force pushes. Runs the Nexo client checks
-# when the pushed commits touch frontends/nexo. Overrides, for the maintainer only:
-# LAB_ALLOW_PROTECTED=1, LAB_ALLOW_FORCE=1, LAB_SKIP_CHECKS=1.
+# Refuses pushes to main, integration/*, lab/main and lab/production, force pushes, a branch that does not
+# contain the current lab/main, a science change mixed with other work, and Classic changes. Runs the Nexo,
+# Admin and R syntax checks when the pushed commits touch them. Overrides, for the maintainer only:
+# LAB_ALLOW_PROTECTED=1, LAB_ALLOW_FORCE=1, LAB_SKIP_CHECKS=1, LAB_ALLOW_MIXED=1, LAB_ALLOW_CLASSIC=1.
+# The publicar skill moves lab/production with LAB_PUBLISH=1.
 set -u
 zero=0000000000000000000000000000000000000000
 stop() { echo "pre-push: $1" >&2; exit 1; }
-nexo=0
+nexo=0; admin=0; rcode=0
+have_base=0; git rev-parse -q --verify origin/lab/main >/dev/null 2>&1 && have_base=1
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_ref:-}" ] || continue
   [ "$local_sha" = "$zero" ] && continue   # deleting a remote branch
   case "$remote_ref" in
     refs/heads/main|refs/heads/integration/*)
       [ "${LAB_ALLOW_PROTECTED:-}" = 1 ] || stop "do not push to ${remote_ref#refs/heads/}. Push your topic branch and open a pull request." ;;
+    refs/heads/lab/production)
+      [ "${LAB_PUBLISH:-}" = 1 ] || [ "${LAB_ALLOW_PROTECTED:-}" = 1 ] || stop "lab/production is moved only by the publicar skill. Push your topic branch and open a pull request into lab/main." ;;
+    refs/heads/lab/main)
+      [ "${LAB_ALLOW_PROTECTED:-}" = 1 ] || stop "do not push to lab/main. Push your topic branch and open a pull request into lab/main." ;;
   esac
   if [ "$remote_sha" != "$zero" ]; then
     if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
@@ -22,13 +29,44 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   else
     range=$(git merge-base "$local_sha" origin/integration/libreros-guided-workflow 2>/dev/null)..$local_sha
   fi
-  git diff --name-only "$range" 2>/dev/null | grep -q '^frontends/nexo/' && nexo=1
+  changed=$(git diff --name-only "$range" 2>/dev/null)
+  printf '%s\n' "$changed" | grep -q '^frontends/nexo/' && nexo=1
+  printf '%s\n' "$changed" | grep -q '^frontends/admin/' && admin=1
+  printf '%s\n' "$changed" | grep -qiE '\.R$' && rcode=1
+
+  # Topic branches: bring in the base, keep science apart, leave Classic alone.
+  case "$remote_ref" in refs/heads/lab/production|refs/heads/lab/main) continue ;; esac
+  if [ "$have_base" = 1 ] && [ "${LAB_SKIP_CHECKS:-}" != 1 ]; then
+    git merge-base --is-ancestor origin/lab/main "$local_sha" 2>/dev/null \
+      || stop "your branch does not contain the current lab/main. Run: git fetch origin && git merge origin/lab/main (merge, not rebase), run the tests again, then push."
+    names=$(git diff --name-only "$(git merge-base origin/lab/main "$local_sha")" "$local_sha" 2>/dev/null)
+    if [ "${LAB_ALLOW_MIXED:-}" != 1 ] && printf '%s\n' "$names" | grep -q '^R/modules/' \
+       && printf '%s\n' "$names" | grep -qE '^(frontends|R/frontends|www)/'; then
+      stop "this branch changes the science (R/modules) and also the interface. A science change goes in its own pull request, with a sentence for the maintainer on what result changes and why."
+    fi
+    if [ "${LAB_ALLOW_CLASSIC:-}" != 1 ]; then
+      classic=$(printf '%s\n' "$names" | grep -E '^(R/frontends/classic/|app\.R$|DESCRIPTION$)|^www/' | grep -vE '^www/team/' || true)
+      [ -z "$classic" ] || stop "Classic must not change:
+$classic"
+    fi
+  fi
 done
 
-if [ "$nexo" = 1 ] && [ "${LAB_SKIP_CHECKS:-}" != 1 ]; then
+if [ "${LAB_SKIP_CHECKS:-}" != 1 ]; then
   root=$(git rev-parse --show-toplevel)
-  [ -d "$root/frontends/nexo/node_modules" ] || stop "frontends/nexo changed but its node_modules is missing: run npm ci in frontends/nexo, then push again."
-  echo "pre-push: frontends/nexo changed, running tsc and vitest…" >&2
-  (cd "$root/frontends/nexo" && npx tsc --noEmit && npx vitest run --reporter=dot) || stop "the Nexo checks failed. Fix them before pushing."
+  if [ "$nexo" = 1 ]; then
+    [ -d "$root/frontends/nexo/node_modules" ] || stop "frontends/nexo changed but its node_modules is missing: run npm ci in frontends/nexo, then push again."
+    echo "pre-push: frontends/nexo changed, running tsc and vitest…" >&2
+    (cd "$root/frontends/nexo" && npx tsc --noEmit && npx vitest run --reporter=dot) || stop "the Nexo checks failed. Fix them before pushing."
+  fi
+  if [ "$admin" = 1 ]; then
+    [ -d "$root/frontends/admin/node_modules" ] || stop "frontends/admin changed but its node_modules is missing: run npm ci in packages/admin-ingest (and npm run build) and in frontends/admin, then push again."
+    echo "pre-push: frontends/admin changed, running tsc and vitest…" >&2
+    (cd "$root/frontends/admin" && npx tsc --noEmit && npx vitest run --reporter=dot) || stop "the Admin checks failed. Fix them before pushing."
+  fi
+  if [ "$rcode" = 1 ] && command -v Rscript >/dev/null 2>&1 && [ -f "$root/tests/test_recursive_syntax.R" ]; then
+    echo "pre-push: R files changed, running tests/test_recursive_syntax.R…" >&2
+    (cd "$root" && Rscript --vanilla tests/test_recursive_syntax.R >/dev/null 2>&1) || stop "tests/test_recursive_syntax.R failed. Run it and fix the R files before pushing."
+  fi
 fi
 exit 0

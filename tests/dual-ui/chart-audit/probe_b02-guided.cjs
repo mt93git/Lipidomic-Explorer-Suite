@@ -37,7 +37,7 @@ let PAGE = null;
     out.schemaGuided = (schema.controls || schema.inputs || []).filter?.(c => /guided/.test(c.id)).map(c => ({ id: c.id, type: c.type, label: c.label, options: (c.options || []).length, group: c.group }));
     // 2 every Inspector tab: is a "Choose a sample" control shown?
     out.tabs = {};
-    for (const t of ['Data', 'Appearance', 'Statistics', 'Export']) {
+    for (const t of ['Data', 'Style', 'Stats', 'Export']) {
       const tab = page.locator('#inspector').getByRole('tab', { name: t, exact: true });
       if (!(await tab.count())) continue;
       await tab.click(); await page.waitForTimeout(600);

@@ -246,6 +246,7 @@
   var csvByPlot = {
     'results_dashboard-plot_violin':'results_dashboard-dl_violin',
     'results_dashboard-plot_pca':'results_dashboard-dl_pca',
+    'results_dashboard-plot_loadings':'results_dashboard-dl_loadings',
     'results_dashboard-plot_comp':'results_dashboard-dl_comp',
     'results_dashboard-plot_dist':'results_dashboard-dl_dist',
     'results_dashboard-plot_heat':'results_dashboard-dl_heat',
@@ -406,10 +407,11 @@
     var source=r.instance.source, isDashboard=source.indexOf('results_dashboard-')===0, isCell=/^cell_(lipid|profile|class|comparison)_plot$/.test(source);
     if(!isDashboard&&!isCell)return;
     restoreDashboardControls(host);
-    var kind=source.slice('results_dashboard-plot_'.length),keys=['color_by'];
+    var kind=source.slice('results_dashboard-plot_'.length),keys=kind==='loadings'?[]:['color_by'];
     if(isDashboard){
       if(kind==='violin')keys.push('violin_lipid');
-      if(kind==='pca')keys.push('pca_transform','pca_scale');
+      // PCA loadings read the same PCA controls as the scores card (no sample colors).
+      if(kind==='pca'||kind==='loadings')keys.push('pca_transform','pca_scale');
       if(kind==='heat')keys.push('top_n');
     }else {
       keys=source==='cell_profile_plot'?['cell_sample','cell_profile_view']:

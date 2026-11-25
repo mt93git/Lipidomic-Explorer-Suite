@@ -10,6 +10,8 @@ const read: Record<string, string[]> = {
   heat: ['color_by', 'top_n', 'heat_group_selection', 'heat_lipid_selection', 'heat_significance'],
   // NEXO-P8: the PCA score card (Team 8e2f5c07): the drawer's default; its analysis controls are under Statistics.
   pcascore: ['color_by'],
+  // The PCA loadings card reads the PCA controls of the scores card; it colors lipids, not samples (Team canvas.js).
+  loadings: ['pca_transform', 'pca_scale'],
 };
 export function dashboardSchema(source: string, schema: CardSchema): CardSchema {
   const keys = read[/^results_dashboard-plot_(\w+)$/.exec(source)?.[1] ?? ''];

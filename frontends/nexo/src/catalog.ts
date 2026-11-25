@@ -1,7 +1,9 @@
 import type { Catalog, CatalogEntry, Design, Node, RenderKind } from './api/types';
+import { hiddenFromNexo, nexoSource } from './pcaDesign';
 export const groupOrder = ['Dashboard', 'Quality check', 'Composition', 'Differential', 'Heatmaps', 'Structure', 'Group comparison', 'Distributions & ratios', 'Longitudinal', 'Pathways', 'Cellular organization', 'Cell comparisons', 'Export studio'];
+// The Library never offers the QC PCA cards: Nexo shows the dashboard scores and loadings cards (pcaDesign.ts).
 export function groupCatalog(outputs: CatalogEntry[]) {
-  return groupOrder.map(label => { const entries = outputs.filter(e => e.group === label || label === 'Differential' && e.group === 'Differential analysis'); return {label, entries, count:entries.length}; });
+  return groupOrder.map(label => { const entries = outputs.filter(e => !hiddenFromNexo(e.id)).filter(e => e.group === label || label === 'Differential' && e.group === 'Differential analysis'); return {label, entries, count:entries.length}; });
 }
 export const availabilityReasons = {
   'needs-design': 'Needs a confirmed study design',
@@ -24,7 +26,8 @@ export function availability(entry: CatalogEntry, design?: Design): keyof typeof
 /** A card's catalog entry: the exact id of its Team instance source (or of the node), else the output suffix of an
  * older node when only one entry has that output (two Team cards end in -heatmapPlot, two in -logratioPlot). */
 export function catalogEntryFor(node: Pick<Node, 'id' | 'instance'>, outputs: CatalogEntry[]): CatalogEntry | undefined {
-  const exact = outputs.find(e => e.id === (node.instance?.source ?? node.id)) ?? outputs.find(e => e.id === node.id);
+  // A saved QC PCA card is the dashboard card in Nexo (pcaDesign.ts).
+  const exact = outputs.find(e => e.id === nexoSource(node.instance?.source ?? node.id)) ?? outputs.find(e => e.id === nexoSource(node.id));
   if (exact) return exact;
   const bySuffix = outputs.filter(e => node.id.endsWith(`-${e.output}`));
   return bySuffix.length === 1 ? bySuffix[0] : undefined;

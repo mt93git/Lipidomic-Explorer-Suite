@@ -13,7 +13,8 @@ it('offers illustration exports in the inspector',()=>{
  const html=renderToStaticMarkup(createElement(Inspector,{handle}));
  const exports=renderToStaticMarkup(createElement(ExportTab,{node:{...node,kind:'illustration' as const},onStatus:()=>{}}));
  vi.unstubAllGlobals();
- expect(exports).toContain('Download PNG');expect(exports).toContain('Download SVG');expect(exports).not.toContain('Plot data (CSV)');
+ // Approved inspector layout (2026-11-23): format chips and one Download figure button.
+ expect(exports).toMatch(/role="radio"[^>]*>PNG<\/button>/);expect(exports).toMatch(/role="radio"[^>]*>SVG<\/button>/);expect(exports).toContain('>Download figure</button>');expect(exports).not.toContain('Plot data (CSV)');
  expect(html).toContain('>Export</button>');
 });
 it('exports current illustration artwork as SVG even without a mounted card',async()=>{

@@ -1,8 +1,14 @@
 import type {Document,DocumentItem} from '../state/document';
 import type {Node} from '../api';
 export function size(d:Document):[number,number]{if(d.paper==='custom')return [d.paperWidth,d.paperHeight];const s:[number,number]=d.paper==='a4'?[595.28,841.89]:[612,792];return d.orientation==='landscape'?[s[1],s[0]]:s;}
-export type Positioned=Partial<DocumentItem>&{x:number;y:number;width:number;height:number;node?:Node;index?:number;note?:string;caption?:string};
-export interface Page {width:number;height:number;items:Positioned[];draft?:boolean;legend?:string}
+export type Positioned=Partial<DocumentItem>&{x:number;y:number;width:number;height:number;node?:Node;index?:number;note?:string;caption?:string;image?:string;letter?:string};
+/** Figure 1's legend block under the figure (points; y is the top of the block, wrapped lines in order). */
+export interface Caption {x:number;y:number;width:number;fontSize:number;lineHeight:number;lead:string;paragraphs:string[];lines:{text:string;lead?:boolean}[]}
+/** The report's title block at the top of page 1 (points; y is the top of the block). */
+export interface TitleBlock {x:number;y:number;width:number;height:number;lines:string[];titleSize:number;lineHeight:number;date:string;dateSize:number;summary?:string;summarySize?:number}
+/** A legend the page draws itself (points): Figure 1 panel A's groups, a coloured dot and the label, in columns. */
+export interface PanelLegend {nodeId:string;x:number;y:number;width:number;height:number;fontSize:number;rowHeight:number;dot:number;entries:{label:string;color:string;x:number;y:number}[]}
+export interface Page {width:number;height:number;items:Positioned[];legends?:PanelLegend[];draft?:boolean;legend?:string;figure1?:boolean;/** A report body page: cards under their labels, no page furniture. */report?:boolean;caption?:Caption;titleBlock?:TitleBlock}
 export function model(document:Document,nodes:Node[]):Page[]{
  const [width,height]=size(document),margin=46,top=66,bottom=52;const page=(items:Positioned[]):Page=>({width,height,items});
  if(document.layout==='free')return [page(document.items.slice().sort((a,b)=>a.z-b.z).map(item=>({...item,node:item.type==='figure'?nodes.find(n=>n.id===item.nodeId):undefined})))];
@@ -12,7 +18,9 @@ export function model(document:Document,nodes:Node[]):Page[]{
  const art=nodes.map((n,i)=>({n,i})).filter(a=>a.n.kind==='illustration');if(!art.length)slot('A / Study workflow · illustration','Add and finish illustrations in Draft',0,0,1,.18,-1);else {const columns=Math.min(4,art.length),rows=Math.ceil(art.length/columns);art.forEach((a,j)=>slot((j===0?'A / ':'')+a.n.label+' · schematic','',(j%columns)/columns,Math.floor(j/columns)*.18/rows,.96/columns,.17/rows,a.i));}
  // Team's template knows the two fixed PCA cards; when neither is on the canvas, a library copy of the 2D PCA fills B
  // (Team leaves B pending for copies, which the pilot simulation found to be a trap).
- const fixedPca=nodes.findIndex(n=>['results_dashboard-plot_pca','qc_pca_tab-pca2dPlot'].includes(n.id)),pcaIndex=fixedPca>=0?fixedPca:nodes.findIndex(n=>n.instance?.source==='qc_pca_tab-pca2dPlot');
+ // Our dashboard PCA card comes first (fixed, then a copy); a QC 2D PCA only when no dashboard PCA is on the canvas.
+ const first=(...tests:((n:Node)=>boolean)[])=>{for(const test of tests){const i=nodes.findIndex(test);if(i>=0)return i;}return -1;};
+ const pcaIndex=first(n=>n.id==='results_dashboard-plot_pca',n=>n.instance?.source==='results_dashboard-plot_pca',n=>n.id==='qc_pca_tab-pca2dPlot',n=>n.instance?.source==='qc_pca_tab-pca2dPlot');
  slot('B / PCA'+(pcaIndex>=0?' · '+nodes[pcaIndex].label:''),'Finish a 2D PCA in Draft',0,.22,.4,.43,pcaIndex);
  ['LPA','LPC','LPI','CL'].forEach((n,i)=>slot('C / '+n,'Log2FC method pending',.44+(i%2)*.29,.22+Math.floor(i/2)*.225,.27,.205,-1));
  ['AA (Sn2) target','PE 18:0_20:4','PC 16:0_20:4','PC 18:0_20:4'].forEach((n,i)=>slot('D / '+n,i?'Selection and scale pending':'AA definition and sn position pending',i*.255,.7,.235,.3,-1));return [{...page(slots),draft:true,legend:'DRAFT · A: '+(art.length?'schematic, not to scale; review workflow.':'illustration pending.')+' C: class Log2FC and model pending. D: targets, scale and sn-position evidence pending.'}];}
