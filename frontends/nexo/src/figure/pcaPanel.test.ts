@@ -30,9 +30,10 @@ describe('Figure 1 panel A',()=>{
   // The legend stays above row 2 (panels C and D).
   const below=page.items.filter(i=>i.node&&['comp','heat'].includes(i.node.id));expect(Math.min(...below.map(i=>i.y))).toBeGreaterThan(legend.y+legend.height);
  });
- it('draws sample markers about 6–7 pt across on the A4 page, the legend drawn by the page',()=>{
+ // Review 2026-11-24: the dots at marker size 18 (the card's Marker size unit), see figure1Multi.test.ts.
+ it('draws sample markers at size 18, the legend drawn by the page',()=>{
   const a=figure1Figure('pca',pca,new Map(labels.map((l,i)=>[l,colour(i)])),labels,{width:257,height:140});
-  for(const t of a.data){expect(t.marker.size).toBeLessThanOrEqual(8);expect(t.marker.size).toBeGreaterThanOrEqual(7);}
+  for(const t of a.data)expect(t.marker.size).toBe(18);
   expect(a.layout.showlegend).toBe(false);
  });
 });
