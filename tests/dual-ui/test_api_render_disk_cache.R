@@ -16,7 +16,8 @@ Sys.setenv(LIPIDOMIC_STORAGE_DIR = root, LIPIDOMIC_API_WORKSPACE = "disk-cache",
 on.exit(unlink(root, recursive = TRUE), add = TRUE)
 if (is.na(api_commit)) { cat("SKIP test_api_render_disk_cache: no git commit for the cache key\n"); quit(status = 0) }
 files <- function() list.files(cache_dir, pattern = "\\.rds$", recursive = TRUE)
-source <- "qc_pca_tab-pca2dPlot"
+# A PNG card Nexo creates as asked (the 2D PCA cards reopen as the dashboard cards: test_api_pca_our_design.R).
+source <- "qc_pca_tab-boxplotAfterNorm"
 
 s <- api_session_for_checkpoint("tests/dual-ui/fixtures/nexo-complete-synthetic.zip")
 card <- api_card_create(s, source)
@@ -24,7 +25,7 @@ first <- api_card_render(s, card$instanceId, 620, 600)
 if (isTRUE(first$cached)) stop("first render cannot be cached")
 if (length(files()) != 1L) stop("a render must be written to the disk cache, found ", length(files()))
 if (!startsWith(files()[[1L]], substr(api_commit, 1L, 12L))) stop("cache entries live under the code commit")
-nodes <- list(list(kind = "plot", id = paste0(card$instanceId, "-pca2dPlot"), label = "PCA scores", x = 0, y = 0,
+nodes <- list(list(kind = "plot", id = paste0(card$instanceId, "-boxplotAfterNorm"), label = "Normalized boxplots", x = 0, y = 0,
   width = 620, height = 720, visual = list(background = "#ffffff"),
   instance = list(id = card$instanceId, source = source, inputs = card$inputs)))
 record <- api_checkpoint_save(s, "disk-cache", list(token = "disk-cache", state = list(version = "1", libraryHidden = FALSE, nodes = nodes)))

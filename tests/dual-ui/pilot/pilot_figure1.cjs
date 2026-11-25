@@ -558,17 +558,17 @@ async function paula(browser, engine, base) {
     return `${target.group}: ticked ${target.label}; the card redrew${label ? ` ("${label.slice(0, 120)}")` : ''}; first drawn ${s} s after the click`;
   });
 
-  await step(ctx, 5, 'Restyle the violin (Appearance: title, Okabe–Ito palette, font size)', 'The violin shows the new title, Okabe–Ito colours and the larger font', async () => {
+  await step(ctx, 5, 'Restyle the violin (Style: title, Okabe–Ito palette, font size)', 'The violin shows the new title, Okabe–Ito colours and the larger font', async () => {
     if (!a.violin) throw new Error('no violin card (step 3b failed)');
-    await selectCard(page, a.violin); await inspectorTab(page, 'Appearance');
+    await selectCard(page, a.violin); await inspectorTab(page, 'Style');
     const panel = inspector(page).getByRole('tabpanel');
-    // H9 F3: "Typography" (open by default) replaced "Title and fonts"; its base size is the chart font size (font.size).
-    const typography = panel.locator('details.typography');
+    // Style › Text holds the plot title and the base size (the chart font size, font.size).
+    const typography = panel.locator('details.style-section[data-section="text"]');
     if (!(await typography.evaluate(d => d.open, { timeout: T }))) await click(typography.locator('summary').first());
     await type(panel.getByLabel('Plot title', { exact: true }), TITLE);
     await type(typography.getByLabel('Base size', { exact: true }), '14');
-    await click(panel.locator('summary', { hasText: /^Color palette$/ }));
-    const okabe = panel.getByRole('group', { name: 'Color palette' }).getByRole('button', { name: 'Okabe–Ito', exact: true });
+    { const colours = panel.locator('details.style-section[data-section="colours"]'); if (!(await colours.evaluate(d => d.open))) await click(colours.locator('summary').first()); }
+    const okabe = panel.getByRole('group', { name: 'Colour palette' }).getByRole('button', { name: 'Okabe–Ito', exact: true });
     await click(okabe);
     if (await okabe.getAttribute('aria-pressed') !== 'true') throw new Error('Okabe–Ito is not marked as chosen');
     // Choosing a palette only marks it; the plot changes on "Apply palette".
@@ -595,7 +595,7 @@ async function paula(browser, engine, base) {
 
   await step(ctx, 6, 'Violin statistics: Wilcoxon + BH, review, confirm; results table; download CSV', 'Results table has rows; a CSV with a header downloads', async () => {
     if (!a.violin) throw new Error('no violin card (step 3b failed)');
-    await selectCard(page, a.violin); await inspectorTab(page, 'Statistics');
+    await selectCard(page, a.violin); await inspectorTab(page, 'Stats');
     const panel = inspector(page).getByRole('region', { name: 'Violin statistics' });
     await choose(panel.getByLabel('Test', { exact: true }), 'Wilcoxon rank-sum (Mann-Whitney)');
     await choose(panel.getByLabel('Multiple-testing correction', { exact: true }), 'Benjamini-Hochberg (FDR, q)');

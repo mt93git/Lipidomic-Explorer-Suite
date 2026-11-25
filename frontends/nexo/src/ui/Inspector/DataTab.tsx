@@ -1,7 +1,8 @@
 import { notifyFailure, ui } from '../model';
-import { strings as s } from '../strings';
+import { strings as s, inspectorStrings as is } from '../strings';
 import { useEffect, useState } from 'react';
-import { getCardSchema, type CardSchema, type Node } from '../../api';
+import { getCardSchema, getPalette, type CardSchema, type Node } from '../../api';
+import type { PaletteGroup } from '../../palette/sessionPalette';
 import { cardInstanceId } from '../../api/instance';
 import type { CanvasHandle } from '../../canvas/handle';
 import { SchemaForm } from '../forms/SchemaForm.jsx';
@@ -12,7 +13,6 @@ import { UploadControls } from './UploadControls';
 import { isBucketControl } from '../../timecourse/designer';
 import { schemaCache as cache, cacheInputs } from './schemaCache';
 import { paletteNoteKind } from './paletteNote';
-import { openAppearanceSection } from './appearanceFocus';
 import { followsSessionPalette, PALETTE_FOLLOWERS_EVENT } from '../../palette/paletteRedraw';
 // Team's status notes (schema.R api_control_status) follow the session's design and analysis settings: after a design
 // confirmation or an analysis change every cached schema is stale, and the open Data tab reloads its own.
@@ -50,34 +50,48 @@ export function DataTab({node,handle,onStatus}:{node:Node;handle:CanvasHandle;on
   useEffect(() => { setFailed(replayFailures(node.id)); return onReplayFailures(id => { if (id === node.id) setFailed(replayFailures(node.id)); }); },[node.id]);
   const replayNote = failed.length ? <p className="replay-failed field-help" role="alert">{replayFailedMessage(failed.map(id => schema?.actionControls?.find(a => a.id === id)?.label ?? id))}</p> : null;
   if (!schema) return <p>Loading controls…</p>;
-  // Pilot F1: this card's group colours come from Team's session palette (its own per-group pickers, when the module
-  // has any that reach the plot, stay below): say so once and open the palette from here. Steph review 4b: a card
-  // that does not follow it (the schema says so, or the last palette change left it as it was) says it has its own.
+  // Pilot F1 / Steph review 4b: a card that follows Team's session palette shows its group colours here and one link to
+  // the session palette; a card with its own colours says so. None when the module's own per-group pickers are in the form.
   const noteKind = paletteNoteKind(schema, followsSessionPalette(node.id, schema.sessionPalette));
-  const paletteNote = noteKind === 'follows' ? <p className="session-palette-note field-help">{s.paletteFollowsSession} <button type="button" onClick={() => ui({paletteOpen: true})}>{s.paletteOpen}</button></p>
-    : noteKind === 'own' ? <p className="session-palette-note field-help">{s.paletteOwnColours}</p> : null;
-  // Gerardo 2026-11-19: a plot's own colours, point borders and shapes are in Appearance › Series; say so where a click lands.
-  const appearanceLink = node.kind === 'plot' ? <p className="appearance-link field-help"><button type="button" className="link" onClick={() => openAppearanceSection('Series')}>{s.appearanceLink}</button></p> : null;
+  const groups = noteKind ? <GroupColours sessionId={sessionId} follows={noteKind === 'follows'}/> : null;
   // A fixed dashboard card draws with the inputs kept in Nexo's member; the server's form only knows the
   // session's dashboard values, so show the card's own (after a reopen they differ).
   const own = node.instance?.instanceId || node.instance?.id ? undefined : handle.nexoInputs(node.id);
   const read = dashboardSchema(node.instance?.source ?? node.id, schema);
   const shown = own ? {...read, controls: read.controls.map(c => c.id in own ? {...c, value: own[c.id]} : c)} as CardSchema : read;
-  // b11 F3: the module's configuration file inputs (pathway "Upload Layout JSON (.json):"), above the controls.
+  // b11 F3: the module's configuration file inputs (pathway "Upload Layout JSON (.json):"), under Advanced.
   const files = schema.uploads?.length ? <UploadControls uploads={schema.uploads} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus}
     onUploaded={(id, file, result) => handle.recordUpload?.(node.id, id, file, result.inputs)}/> : null;
-  if (!shown.controls.length && !shown.actionControls?.length) return files || noteKind === 'follows' ? <>{paletteNote}{appearanceLink}{files}</> : <>{paletteNote}{appearanceLink}<p>This figure has no data controls.</p></>;
+  const advanced = files ? <details className="inspector-advanced"><summary>{is.advanced}</summary>{files}</details> : null;
+  const plotted = (body: React.ReactNode) => <section className="inspector-section" data-section="plotted"><h3>{is.plottedData}</h3>{body}</section>;
+  if (!shown.controls.length && !shown.actionControls?.length) return <>{replayNote}{plotted(<p>{is.noDataControls}</p>)}{groups}{advanced}</>;
   // Computed controls (Team's run-time renderUI) are Nexo's own: mounted beside the schema form, kept in Nexo's member.
   const computed = shown.controls.filter(isComputedControl), member = handle.nexoInputs(node.id);
   const plain = computed.length ? {...shown, controls: shown.controls.filter(c => !isComputedControl(c))} as CardSchema : shown;
   const extra = computed.length ? <ComputedControls key={`computed-${version}-${computed.map(c => c.id).join('|')}`} controls={computed} own={member} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onCommit={(patch, baseline) => handle.setComputedInputs?.(node.id, patch, baseline)}/> : null;
-  if (!plain.controls.length && !plain.actionControls?.length) return <>{replayNote}{paletteNote}{appearanceLink}{files}{extra}</>;
-  return <>{replayNote}{paletteNote}{appearanceLink}{files}{extra}<SchemaForm key={version} schema={plain} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onUpdated={async (inputs,refresh) => {
+  if (!plain.controls.length && !plain.actionControls?.length) return <>{replayNote}{plotted(extra)}{groups}{advanced}</>;
+  return <>{replayNote}{plotted(<>{extra}<SchemaForm key={version} schema={plain} sessionId={sessionId} instanceId={instanceId} onStatus={onStatus} onUpdated={async (inputs,refresh) => {
     handle.updateCardInputs(node.id,inputs); cacheInputs(key,inputs);
     if(refresh) { const next = await getCardSchema(sessionId,instanceId); cache.set(key,next); setSchema(next); }
   }} onActed={async (_inputs, action) => {
     handle.recordAction?.(node.id, action);
     // Team's renderUI may build controls only after a module button (b07 F4): re-read the schema with the redraw.
     await Promise.all([handle.refreshCard(node.id), getCardSchema(sessionId,instanceId).then(next => { cache.set(key,next); setSchema(next); if (computed.some(isBucketControl)) setVersion(v => v + 1); }, e => notifyFailure(s.failSchema, e))]);
-  }}/></>;
+  }}/></>)}{groups}{advanced}</>;
+}
+/** The Groups section: the session palette's group colours (as a row of swatches) and one link to edit them. */
+function GroupColours({sessionId, follows}: {sessionId: string; follows: boolean}) {
+  const [groups, setGroups] = useState<PaletteGroup[]>([]);
+  useEffect(() => {
+    if (!follows || !sessionId) return;
+    let live = true;
+    const load = () => { void getPalette(sessionId).then(p => { if (live) setGroups(p.contexts[0]?.groups ?? []); }, () => {}); };
+    load(); window.addEventListener('nexo-palette-restored', load); window.addEventListener(PALETTE_FOLLOWERS_EVENT, load);
+    return () => { live = false; window.removeEventListener('nexo-palette-restored', load); window.removeEventListener(PALETTE_FOLLOWERS_EVENT, load); };
+  }, [sessionId, follows]);
+  return <section className="inspector-section" data-section="groups"><h3>{is.groups}</h3>
+    {follows ? groups.length > 0 && <ul className="group-swatches" aria-label={is.groups}>{groups.map(g => <li key={g.name}><i className="group-swatch" style={{background: g.color}}/>{g.name}</li>)}</ul>
+      : <p className="field-help">{s.paletteOwnColours}</p>}
+    <p><button type="button" className="link" onClick={() => ui({paletteOpen: true})}>{is.editSessionColours}</button></p>
+  </section>;
 }

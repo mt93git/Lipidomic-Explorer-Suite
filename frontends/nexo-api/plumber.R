@@ -1,6 +1,7 @@
 # Load the statistics adapter here so both run.R and direct router users get it.
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "statistics.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "export.R"), local = TRUE)
+source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "report.R"), local = TRUE)
 source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "companion.R"), local = TRUE)
 if (!exists("dx_landscape", mode = "function"))
   source(file.path(if (exists("api_run_dir")) api_run_dir else "frontends/nexo-api", "diagnostics.R"), local = globalenv())
@@ -92,8 +93,9 @@ function() list(ok = TRUE, commit = api_commit, root = getwd(), r = as.character
 #* Team output catalog
 #* @get /api/v1/catalog
 # The catalog is static and cached at startup (run.R): serve it outside the engine lock
-# so a page load does not wait behind a 10 s session open.
-function(res) list(version = "1", outputs = api_catalog())
+# so a page load does not wait behind a 10 s session open. Nexo is never offered the QC PCA cards
+# (catalog.R api_catalog_served): it shows the dashboard scores and loadings cards instead.
+function(res) list(version = "1", outputs = api_catalog_served())
 
 #* Companion answer from the analyst's knowledge base (companion.R); no engine work, so outside the engine lock
 #* @post /api/v1/companion/ask
@@ -284,7 +286,7 @@ function(id, req, res) {
     started <- Sys.time()
     s <- api_session_get(id, api_session_caller(req)); body <- api_body(req)
     api_timing_add("request", started)
-    api_mutation(s, req, res, api_card_create(s, body$source, body$inputs %||% list(), body$instanceId), handle = api_handle)
+    api_mutation(s, req, res, api_card_create_requested(s, body), handle = api_handle)
   })
   timing <- api_timing_snapshot()
   total <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
@@ -466,6 +468,10 @@ function(id, req, res) api_exclusive(res, id = id, api_violin_policy(api_session
 #* Team's PCA score analysis of a dashboard PCA card (statistics.R api_pca_score), as its module rendered it
 #* @get /api/v1/sessions/<id>/cards/<instanceId>/pca-score
 function(id, instanceId, req, res) api_exclusive(res, id = id, api_pca_score(api_session_get(id, api_session_caller(req)), instanceId))
+
+#* Report export: the 40 most significant rows of a filtered average heatmap card, read from the session (report.R)
+#* @get /api/v1/sessions/<id>/cards/<instanceId>/report-heatmap
+function(id, instanceId, req, res) api_exclusive(res, id = id, api_report_top_heatmap(api_session_get(id, api_session_caller(req)), instanceId))
 
 #* Confirm the reference group for this card
 #* @parser json list(simplifyVector = FALSE)

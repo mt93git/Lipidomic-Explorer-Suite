@@ -255,13 +255,13 @@ async function audit(browser, plot) {
 
     // 5 Appearance tab.
     await check(plot, 5, 'appearance', async () => {
-      await select(page, id); await tab(page, 'Appearance');
+      await select(page, id); await tab(page, 'Style');
       const notes = [];
-      const lbl = insp.getByLabel('Label', { exact: true });
+      await insp.locator('.inspector-name-button').click(); const lbl = insp.getByLabel('Card name', { exact: true });
       await lbl.fill(label); await lbl.blur();
       await page.waitForFunction(([sel, t]) => document.querySelector(sel + ' .card-title')?.textContent === t, [`.card[data-id="${id}"]`, label], { timeout: 10000 });
       notes.push('Label renames the card');
-      const bg = insp.getByLabel('Background', { exact: true });
+      const bg = insp.getByLabel('Card background', { exact: true });
       await bg.fill('#fff4e0');
       await page.waitForTimeout(500);
       const bgc = await card(page, id).evaluate(c => [getComputedStyle(c).backgroundColor, getComputedStyle(c.querySelector('.body')).backgroundColor].join('/'));
@@ -277,7 +277,7 @@ async function audit(browser, plot) {
         if (await t.count()) { await t.fill('Audit title'); await t.blur(); await page.waitForFunction(sel => document.querySelector(sel + ' .js-plotly-plot')?._fullLayout?.title?.text === 'Audit title', `.card[data-id="${id}"]`, { timeout: 10000 }); notes.push('Plot title on the plot'); }
         else notes.push('NO Plot title field');
         // the chart font size is "Base size" in the Typography section (as audit_b02-qc-a.cjs:489)
-        for (const [f, v] of [['Base size', '16'], ['Chart text color', '#aa0000'], ['Plot background', '#f0f0ff']]) {
+        for (const [f, v] of [['Base size', '16'], ['Chart text colour', '#aa0000'], ['Plot background', '#f0f0ff']]) {
           const c = ed.getByLabel(f, { exact: true }); if (!(await c.count())) { notes.push(`NO ${f}`); continue; }
           await c.fill(v); await c.blur();
           notes.push(f);
@@ -286,7 +286,7 @@ async function audit(browser, plot) {
         const lay = await card(page, id).evaluate(c => { const l = c.querySelector('.js-plotly-plot')._fullLayout; return { size: l.font.size, color: l.font.color, plot: l.plot_bgcolor, legend: [l.legend?.x, l.legend?.y], showlegend: l.showlegend }; });
         notes.push(`font ${lay.size} ${lay.color}, plot bg ${lay.plot}`);
         ok(lay.size === 16, `font size not on the plot (${lay.size})`);
-        const pal = ed.getByRole('group', { name: 'Color palette', exact: true }).getByRole('button');
+        const pal = ed.getByRole('group', { name: 'Colour palette', exact: true }).getByRole('button');
         const nPal = await pal.count();
         if (nPal) {
           const colors = [];
@@ -296,7 +296,7 @@ async function audit(browser, plot) {
           ok(new Set(colors).size > 1, 'palettes do not change the plot');
           const grey = ed.getByLabel('Healthy in grey', { exact: true });
           if (await grey.count()) { await grey.check(); notes.push('Healthy in grey present'); }
-        } else notes.push(`palette: "${(await ed.locator('details', { hasText: 'Color palette' }).innerText()).replace(/\s+/g, ' ').slice(0, 120)}"`);
+        } else notes.push(`palette: "${(await ed.locator('details.style-section[data-section="colours"]').innerText()).replace(/\s+/g, ' ').slice(0, 120)}"`);
         const leg = ed.getByRole('group', { name: 'Legend position', exact: true }).getByRole('button', { name: 'Top Left', exact: true });
         if (await leg.count()) { await leg.click(); await page.waitForTimeout(400); const l = await card(page, id).evaluate(c => c.querySelector('.js-plotly-plot')._fullLayout.legend); notes.push(`legend Top Left → x=${l?.x}`); ok(l && l.x === 0, 'legend position not applied'); }
         const grid = ed.getByLabel('Horizontal grid lines', { exact: true });
@@ -325,14 +325,14 @@ async function audit(browser, plot) {
       await page.waitForTimeout(500);
       const redone = await card(page, id).locator('.card-title').textContent();
       notes.push(`canvas Undo → "${undone}", Redo → "${redone}"`);
-      if (redone !== label) { await insp.getByLabel('Label', { exact: true }).fill(label); await insp.getByLabel('Label', { exact: true }).blur(); }
+      if (redone !== label) { await insp.locator('.inspector-name-button').click(); await insp.getByLabel('Card name', { exact: true }).fill(label); await insp.getByLabel('Card name', { exact: true }).blur(); }
       before = await signature(page, id);
       return notes.join('; ');
     });
 
     // 6 Statistics: Team has none for QC plots; the tab says so.
     await check(plot, 6, 'statistics', async () => {
-      await select(page, id); await tab(page, 'Statistics');
+      await select(page, id); await tab(page, 'Stats');
       const t = (await insp.locator('[role=tabpanel]').innerText()).replace(/\s+/g, ' ').trim();
       ok(!(await insp.getByRole('button', { name: /Review and confirm/ }).count()), 'statistics offered for a cell plot (Team: "No significance test is calculated", R/cell_show.R:105)');
       return { na: `Team has no statistics for this plot; tab says "${t.slice(-80)}"` };
@@ -342,7 +342,7 @@ async function audit(browser, plot) {
     await check(plot, 7, 'export', async () => {
       await select(page, id); await tab(page, 'Export');
       const notes = [];
-      const png = await download(page, () => insp.getByRole('button', { name: 'Download PNG', exact: true }).click());
+      const png = await download(page, () => insp.getByRole('radio', { name: 'PNG', exact: true }).click().then(() => insp.getByRole('button', { name: 'Download figure', exact: true }).click()));
       ok(png.bytes.subarray(1, 4).toString() === 'PNG', 'PNG is not a PNG'); notes.push(`PNG ${png.bytes.length} B`);
       const svgB = insp.getByRole('button', { name: 'Download SVG', exact: true });
       if (await svgB.isDisabled()) notes.push(`SVG disabled ("${(await svgB.getAttribute('title')) || (await insp.locator('[role=tabpanel]').innerText()).replace(/\s+/g, ' ').match(/[^.]*SVG[^.]*\./)?.[0] || 'no reason shown'}")`);

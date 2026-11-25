@@ -105,6 +105,17 @@ it('collaboration takes a lost session\'s replacement from the document', async 
   doc.getMap('meta').set('session', { id: 'r-1', generation: 'g1' });
   expect(await answer).toBe('r-1'); expect(reopenSession).not.toHaveBeenCalled();
 });
+// Staging, uploaded dataset: the design confirmed on the board lives in the sidecar's session. When the page switches
+// to it, the library (ui.design) must leave "Requires configuration" without a reload, and the reopen prompt closes.
+it('switching to the shared session brings its confirmed design to the library', async () => {
+  const design = { allowed: true, unit: 'Animal', type: 'independent', confirmed: true };
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ sessionId: 'r-1', design, preparation: { revision: 1, check: 'synthetic' }, samples: 6, lipids: 40, cards: [] }))));
+  const doc = meta({}); await mount(true);
+  expect(store.get().ui.design?.confirmed).not.toBe(true);
+  doc.getMap('meta').set('session', { id: 'r-1', generation: 'g1' });
+  await vi.waitFor(() => expect(store.get().ui.design).toEqual(design));
+  expect(test.setters.some(set => set.mock.calls.some(([value]) => value === false))).toBe(true);
+});
 it('engine waiting shows in the status pill', async () => {
   meta({ engineStatus: 'waiting' }); await mount(true); test.status({ text: 'Live', unsynced: false });
   test.cursor = 0;

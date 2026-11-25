@@ -30,20 +30,30 @@ export function mockPcaScore(source: string, inputs: Record<string, unknown>): P
       ...test.pairs.map(([a, b, p, stars]) => ({text:`${a} vs ${b}: ${adjusted}p = ${p} (significant) ${stars}`, note:false})),
       {text:'Stars: * adjusted p < 0.05, ** < 0.01, *** < 0.001, ns = not significant. Scores are descriptive coordinates of an unsupervised PCA; p-values are exploratory.', note:true}]};
 }
+/** Team rd_pca_score_table_layout: the group table header row, row step and domain [0, domain] (paper units). Up to four
+ *  groups keep header 0.215, step 0.052, domain 0.28; more grow the table up to half the figure, then shrink the step
+ *  (never below 0.03), so the last row stays at y = 0.007. */
+export function pcaScoreTableLayout(groups: number) {
+  const rows = Math.max(4, groups), bottom = 0.007, gap = 0.065, cap = 0.5;
+  let step = 0.052;
+  if (bottom + rows * step + gap > cap) step = Math.max(0.03, (cap - bottom - gap) / rows);
+  const head = bottom + rows * step;
+  return {head, step, domain: head + gap};
+}
 /** The PCA score card as Team draws it: boxes with their samples, black frame, brackets and stars, and the group
  *  table below the plot (a round legend proxy per group for its colour dot, then group (n), median, n). */
 export function mockPcaScoreFigure(inputs: Record<string, unknown>) {
-  const test = testOf(inputs), pc = String(inputs.pcs_pc ?? 'PC1'), fam = 'Arial, Helvetica, sans-serif', medians = ['-2.75', '+0.25', '+2.65'];
+  const test = testOf(inputs), tab = pcaScoreTableLayout(mockPcaGroups.length), pc = String(inputs.pcs_pc ?? 'PC1'), fam = 'Arial, Helvetica, sans-serif', medians = ['-2.75', '+0.25', '+2.65'];
   const cell = (x: number, y: number, text: string, xanchor: string) => ({x, y, xref:'paper', yref:'paper', text, showarrow:false, xanchor, yanchor:'middle', align:xanchor, font:{family:fam, size:10, color:'#000000'}});
   const frame = {showline:true, linecolor:'#000000', linewidth:1, mirror:true, showgrid:false, zeroline:false};
   return {data:[...mockPcaGroups.map((g, i) => ({type:'box', x:scores[i].map(() => g), y:scores[i], name:g, legendgroup:g, boxpoints:'all', jitter:0.45, pointpos:0, fillcolor:`${colours[i]}A6`, line:{color:'#000000', width:1.5}, marker:{color:colours[i], size:6, line:{color:'#3a3a3a', width:0.8}}, hoverinfo:'y+text', showlegend:false})),
-      ...mockPcaGroups.map((g, i) => ({type:'scatter', mode:'markers', x:[0.045], y:[0.215 - 0.052 * (i + 1)], xaxis:'x2', yaxis:'y2', name:g, legendgroup:g, showlegend:false, meta:{teamLegendProxy:true}, hoverinfo:'skip', marker:{symbol:'circle', size:8, color:colours[i], line:{color:'#3a3a3a', width:0.8}}}))],
+      ...mockPcaGroups.map((g, i) => ({type:'scatter', mode:'markers', x:[0.045], y:[tab.head - tab.step * (i + 1)], xaxis:'x2', yaxis:'y2', name:g, legendgroup:g, showlegend:false, meta:{teamLegendProxy:true}, hoverinfo:'skip', marker:{symbol:'circle', size:8, color:colours[i], line:{color:'#3a3a3a', width:0.8}}}))],
     layout:{showlegend:false, margin:{l:65, r:15, t:15, b:10},
       xaxis:{title:'', type:'category', domain:[0, 1], categoryorder:'array', categoryarray:mockPcaGroups, showticklabels:false, ticks:'', ...frame},
-      yaxis:{title:`${pc} score (41.2% of variance)`, domain:[0.28, 1], ticks:'outside', range:[-3.42, 6.66], ...frame, tickcolor:'#000000', ticklen:4},
-      xaxis2:{domain:[0, 1], range:[0, 1], visible:false, fixedrange:true, anchor:'y2'}, yaxis2:{domain:[0, 0.28], range:[0, 0.28], visible:false, fixedrange:true, anchor:'x2'},
+      yaxis:{title:`${pc} score (41.2% of variance)`, domain:[tab.domain, 1], ticks:'outside', range:[-3.42, 6.66], ...frame, tickcolor:'#000000', ticklen:4},
+      xaxis2:{domain:[0, 1], range:[0, 1], visible:false, fixedrange:true, anchor:'y2'}, yaxis2:{domain:[0, tab.domain], range:[0, tab.domain], visible:false, fixedrange:true, anchor:'x2'},
       shapes:test.pairs.map(([a, b], i) => { const x1 = mockPcaGroups.indexOf(a), x2 = mockPcaGroups.indexOf(b), y0 = 3.7 + 1.0 * i, y1 = y0 + 0.19; return {type:'path', path:`M ${x1},${y0} L ${x1},${y1} L ${x2},${y1} L ${x2},${y0}`, line:{color:'#000000', width:1.5}}; }),
       annotations:[...test.pairs.map(([a, b, , stars], i) => ({x:(mockPcaGroups.indexOf(a) + mockPcaGroups.indexOf(b)) / 2, y:3.89 + 1.0 * i, text:stars, showarrow:false, yanchor:'bottom', xanchor:'center', font:{family:fam, size:stars === 'ns' ? 12 : 16, color:'#000000'}})),
-        cell(0.27, 0.215, '<b>Group</b>', 'center'), cell(0.60, 0.215, `<b>Median ${pc}</b>`, 'center'), cell(0.86, 0.215, '<b>n</b>', 'center'),
-        ...mockPcaGroups.flatMap((g, i) => { const y = 0.215 - 0.052 * (i + 1); return [cell(0.075, y, `${g} (n = 4)`, 'left'), cell(0.60, y, medians[i], 'center'), cell(0.86, y, '4', 'center')]; })]}};
+        cell(0.27, tab.head, '<b>Group</b>', 'center'), cell(0.60, tab.head, `<b>Median ${pc}</b>`, 'center'), cell(0.86, tab.head, '<b>n</b>', 'center'),
+        ...mockPcaGroups.flatMap((g, i) => { const y = tab.head - tab.step * (i + 1); return [cell(0.075, y, `${g} (n = 4)`, 'left'), cell(0.60, y, medians[i], 'center'), cell(0.86, y, '4', 'center')]; })]}};
 }

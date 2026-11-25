@@ -499,3 +499,32 @@ test('the entry bar names the signed-in person', async () => {
   await vi.waitFor(() => expect(shown(screens.StartScreen)).toBeDefined());
   expect(view().find(e => (e.type as { name?: string }).name === 'EntryBar')!.props.account).toBe('Synthetic Person');
 });
+
+// A new project's first Canvas after Data and Review gets its starter cards (ui/starterCanvas.ts): App learns how the
+// board was opened. Only the page that created a shared project seeds it; a joiner and a checkpoint never do.
+for (const [name, search, collabUrl, expected] of [
+  ['a dataset alone', '?dataset=synthetic-origin', '', 'alone'],
+  ['a dataset that creates its shared project', '?dataset=synthetic-origin', 'wss://synthetic.invalid/collab', 'created'],
+  ['a dataset joining a shared project', '?dataset=synthetic-origin&project=0a000000-0000-4000-8000-000000000003', 'wss://synthetic.invalid/collab', 'joined'],
+  ['a checkpoint', '?checkpoint=synthetic-origin', '', 'none'],
+] as const) {
+  test(`starter cards: ${name} opens the board as ${expected}`, async () => {
+    vi.stubEnv('VITE_COLLAB_URL', collabUrl);
+    vi.stubGlobal('location', new URL(`https://synthetic.invalid/nexo/${search}`));
+    vi.stubGlobal('history', { replaceState: edge.replace });
+    vi.stubGlobal('document', { getElementById: () => ({}), documentElement: { classList: { toggle: vi.fn() } } });
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    vi.stubGlobal('fetch', edge.fetch);
+    const session = { sessionId: 'synthetic-session', workspace: 'nexo-client-synthetic', canvas: { version: '2', nodes: [] } };
+    edge.openSession.mockResolvedValue(session);
+    edge.openDatasetSession.mockResolvedValue({ status: 'opened', session });
+    edge.fetch.mockImplementation(async (url: string, init?: RequestInit) => init?.method === 'POST'
+      ? new Response(JSON.stringify({ projectId: '0a000000-0000-4000-8000-000000000001' }), { status: 201 })
+      : String(url).includes('/projects/') ? new Response(JSON.stringify({ settings: { design: null } }), { status: 200 })
+      : new Response(JSON.stringify({ error: 'unknown_project' }), { status: 404 }));
+    // @ts-expect-error Vitest resolves the explicit TSX entry.
+    await import('./main.tsx');
+    await vi.waitFor(() => expect(shown(screens.App)).toBeDefined());
+    expect(shown(screens.App)!.props.starter).toBe(expected);
+  });
+}

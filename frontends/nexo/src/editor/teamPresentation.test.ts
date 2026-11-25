@@ -76,30 +76,31 @@ const panelFigure: any = {data: [
 ], layout: {xaxis: {}, yaxis: {}}};
 const panel = (figure: any, editor: any = {}) => renderToStaticMarkup(createElement(PlotEditor, {figure, traces: figure.data, editor, legendGroups: [], onChange: noop, onUndo: noop, onRedo: noop, onReset: noop, onPreset: noop}));
 const noop = () => {};
-const series = (html: string) => html.slice(html.indexOf('<summary>Series</summary>'), html.indexOf('<summary>Text annotations</summary>')).split('<fieldset');
+// The series list sits in Style › Points and series (approved inspector layout 2026-11-23).
+const series = (html: string) => html.slice(html.indexOf('data-section="points"'), html.indexOf('data-section="annotations"')).split('<fieldset');
 
-it('Series offers marker shape, outline color and width, with Team labels', () => {
+it('Series offers marker shape, outline colour and width, with Team labels', () => {
   const [, a, b, bar] = series(panel(panelFigure));
   for (const [value, label] of [['circle', 'Circle'], ['square', 'Square'], ['triangle-up', 'Triangle'], ['star', 'Star'], ['diamond', 'Diamond']]) expect(a).toContain(`<option value="${value}"${value === 'circle' ? ' selected=""' : ''}>${label}</option>`);
-  for (const label of ['Marker shape', 'Marker outline color', 'Marker outline width']) { expect(a).toContain(label); expect(b).toContain(label); expect(bar).not.toContain(label); }
+  for (const label of ['Marker shape', 'Marker outline colour', 'Marker outline width']) { expect(a).toContain(label); expect(b).toContain(label); expect(bar).not.toContain(label); }
   // Points that carry their own shapes show "As plotted" until a shape is chosen.
   expect(b).toContain('<option value="" selected="">As plotted</option>'); expect(a).not.toContain('As plotted');
 });
 
 it('Group outlines toggle sits left of Show all series, off by default, unavailable without a scatter of 3 points', () => {
   const html = panel(panelFigure);
-  expect(html).toMatch(/<button type="button" aria-pressed="false" data-group-outlines="true" title="Draw a dotted 95% ellipse around the points of each group, in the color of its markers. Presentation only: no values or statistics change.">Group outlines: Off<\/button><button type="button">Show all series<\/button>/);
+  expect(html).toMatch(/<button type="button" aria-pressed="false" data-group-outlines="true" title="Draw a dotted 95% ellipse around the points of each group, in the colour of its markers. Presentation only: no values or statistics change.">Group outlines: Off<\/button><button type="button">Show all series<\/button>/);
   expect(panel(panelFigure, {groupEllipses: true})).toContain('aria-pressed="true" data-group-outlines="true"');
   expect(panel({data: [panelFigure.data[2]], layout: {}})).toMatch(/disabled="" title="Group outlines need a scatter plot with at least 3 points per group.">Group outlines: Off</);
 });
 
-it('a changed chart color has Reset back to the original; color fields fall back to dark gray', () => {
+it('a changed chart colour has Reset back to the original; colour fields fall back to dark gray', () => {
   const html = panel(panelFigure, {layout: {plot_bgcolor: '#eeeeee'}});
-  expect(html).toContain('aria-label="Reset Plot background to the original color"');
-  expect(html).not.toContain('aria-label="Reset Page background to the original color"');
+  expect(html).toContain('aria-label="Reset Plot background to the original colour"');
+  expect(html).not.toContain('aria-label="Reset Page background to the original colour"');
   expect(colorHex(undefined)).toBe('#52514e');
   // B has no single marker color: its field shows the gray fallback.
-  expect(series(html)[2]).toMatch(/Marker color<\/span><input type="color"[^>]* value="#52514e"/);
+  expect(series(html)[2]).toMatch(/Marker colour<\/span><input type="color"[^>]* value="#52514e"/);
 });
 
 it('Publication style: frame with mirrored axis lines, black zero lines, Arial 10, no grid, 0.4 outline on point series', () => {

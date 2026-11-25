@@ -8,13 +8,14 @@ import { checkpointZip, readCheckpointZip } from './mock/archive';
 import { mockCohortGet, mockCohortPut, mockCohortSaved, mockCohortOpened, mockCohortCounters } from './mock/cohort';
 import { mockPaletteGet, mockPalettePut, mockPaletteExport, mockPaletteSaved, mockPaletteOpened, mockPaletteCounters, mockPaletteOverride, mockPaletteTeamState, mockPaletteGroups } from './mock/palette';
 import type { PaletteChange, PaletteRecord, PaletteState, SessionPalette } from './palette/sessionPalette';
-import { schemaFor, sessionPaletteFamily, mockCounters, mockActionModals, mockComputedLabel, mockHeatStatus, MOCK_HEAT_RENDER_UNAVAILABLE, MOCK_STRUCTURAL_PLACEHOLDER, mockLayoutApply, mockLayoutDownload, mockAct } from './mock/schema';
+import { schemaFor, sessionPaletteFamily, mockCounters, mockRenderRefusal, mockActionModals, mockComputedLabel, mockHeatStatus, MOCK_HEAT_RENDER_UNAVAILABLE, MOCK_STRUCTURAL_PLACEHOLDER, mockLayoutApply, mockLayoutDownload, mockAct } from './mock/schema';
 import { checkUploadFile, parseLayoutJson, refusal } from './state/layoutUpload';
 import { mockTimecourseUpdate, mockTimecourseGenerated, isLongitudinal } from './mock/timecourse';
 import { clearRunNeedIfPressed, markNewCardRunNeed, runNeedKey, UNAVAILABLE_INPUTS } from './runNeeds';
 import mockCatalog from './mock/catalog.json';
 import { mockStructureFigure } from './mock/structure';
 import { withTimePoints } from './catalog';
+import { nexoSource } from './pcaDesign';
 import { cardInstanceId } from './api/instance';
 import { withSession, liveSession } from './api/session';
 import { collab } from './collab/mode';
@@ -257,6 +258,8 @@ const schemaDefaults = (source: string): Inputs => Object.fromEntries(schemaFor(
 const newInstanceId = () => `tcinstance_${Array.from(crypto.getRandomValues(new Uint8Array(6)), n => n.toString(16).padStart(2,'0')).join('')}`;
 const createCardRoute = sessionRoute('createCard', (id: string, source: string, inputs: Inputs, instanceId: string = newInstanceId(), signal?: AbortSignal): Promise<CardResult> => mock ? enqueue(async () => {
   signal?.throwIfAborted();
+  // As the API (cards.R api_card_create_requested): a QC PCA source creates the dashboard card, without QC inputs.
+  if (nexoSource(source) !== source) { source = nexoSource(source); inputs = {}; }
   mockSession(id); const entry = catalog.outputs.find(e => e.id === source); if (!entry) throw new Error('Unknown source');
   const card: CardResult = {instanceId, nodeId:`${instanceId}-${entry.output}`, source, family:entry.family, render:entry.render, allowedInputs:entry.allowedInputs, inputs:{...schemaDefaults(source),...entry.defaults,...inputs}, settled:true, error:null};
   if (entry.heightInput && typeof card.inputs[entry.heightInput] === 'number') card.plotHeight = card.inputs[entry.heightInput] as number;
@@ -355,7 +358,7 @@ const renderCardRoute = sessionRoute('renderCard', (id: string, instance: string
   // Team's heatmap with Significant only while the inference guard says no answers 422 with Team's message.
   if (card.source === 'results_dashboard-plot_heat' && card.inputs.heat_significance === 'significant' && !mockHeatAllowed(id)) throw new Error(MOCK_HEAT_RENDER_UNAVAILABLE);
   if (isLongitudinal(card.source) && !mockTimecourseGenerated(instance)) { mockCounters.refusals = (mockCounters.refusals ?? 0) + 1; throw new Error(UNAVAILABLE_INPUTS); }
-  if (/VectorPlot$/.test(card.source)) throw new Error('Editable vector view unavailable: smart repelled labels are preserved only in the original view; disable smart labels to edit this view.');
+  const refused = mockRenderRefusal(card.source); if (refused) throw new Error(refused);
   // NEXO-P2: Team draws the Structure figures as Plotly charts; Remodeling shifts shows Team's hint until its analysis runs.
   if (/^structural_(grid_)?tab-/.test(card.source)) { const shown = card.source === 'structural_tab-summaryPlot' && !mockPressed.get(`${id}/${instance}`)?.has('runAnalysis') ? {label:MOCK_STRUCTURAL_PLACEHOLDER} : mockComputedLabel(card.source, entry.label, card.inputs, instance); mockCounters.labels[instance] = shown.label; return {render:card.render, figure:mockStructureFigure(card.source, shown.label), provenance:{mock:true}}; }
   if (card.render === 'png') { const shown = mockComputedLabel(card.source, entry.label, card.inputs, instance, sessionPaletteFamily(card.source) ? mockPaletteOverride(id, 'Control') : undefined); mockCounters.labels[instance] = shown.label; (mockCounters.pngRenders ??= []).push({instance,width,height,dpr}); return {blob:await mockPng(shown.label,width,height,shown.fill,dpr), revision:'1'}; }
@@ -439,6 +442,9 @@ const violinRoute = sessionRoute('violinStatistics', (id:string, instance:string
 export const violinPolicy = sessionRoute('violinPolicy', (id:string):Promise<import('./api/types').ViolinPolicy> => mock ? enqueue(async()=>({...mockViolinPolicy})) : request(`${path(id)}/statistics/violin/policy`));
 /** NEXO-P5: Team's PCA score analysis of a dashboard PCA card (GET .../pca-score). */
 export const pcaScore = sessionRoute('pcaScore', (id:string,instance:string):Promise<import('./api/types').PcaScoreReply> => mock ? enqueue(async()=>{const card=cards.get(`${id}/${instance}`),node=card?undefined:mockSession(id).canvas.nodes.find(n=>cardInstanceId(n)===instance);if(!card&&!node)throw new Error('Unknown card');return mockPcaScore(card?.source??node!.instance?.source??node!.id,card?.inputs??node?.instance?.inputs??mockSession(id).inputs);}) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/pca-score`));
+/** Report export: the 40 most significant rows of a filtered average heatmap card, read from the session (nexo-api report.R).
+ *  The mock has no differential result: the report keeps the card image. */
+export const reportHeatmap = sessionRoute('reportHeatmap', (id:string,instance:string):Promise<import('./figure/report').TopHeatmap> => mock ? enqueue(async()=>({available:false as const,reason:'The mock has no differential result.'})) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/report-heatmap`));
 export const groupComparison = sessionRoute('groupComparison', (id:string,instance:string):Promise<import('./api/types').GroupComparisonReply> => mock ? enqueue(async()=>(mockCard(id,instance),mockComparison(id,instance))) : request(`${path(id)}/cards/${encodeURIComponent(instance)}/group-comparison`));
 export const confirmGroupComparison = (id:string, instance:string, token:string):Promise<import('./api/types').GroupComparisonReply> => collab()
   ? viaIntent('confirmBaseline', {instance}, {instanceId: instance, confirmationToken: token}, () => groupComparison(id, instance))

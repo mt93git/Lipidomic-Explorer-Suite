@@ -64,9 +64,9 @@ async function browserTests(pw, name, base) {
     console.log(`PASS H8c ${name} confirm-then-live-plot`);
     const inspector = page.locator('#inspector');
     // H8 journeys 2.4: a group comparison opens the inspector on Statistics, where its settings live.
-    assert.equal(await inspector.getByRole('tab', { selected: true }).textContent(), 'Statistics');
+    assert.equal(await inspector.getByRole('tab', { selected: true }).textContent(), 'Stats');
     console.log(`PASS H8 ${name} group-comparison-opens-on-statistics`);
-    await inspector.getByRole('tab', { name: 'Statistics', exact: true }).click();
+    await inspector.getByRole('tab', { name: 'Stats', exact: true }).click();
     const conditions = inspector.getByRole('group', { name: 'Conditions shown', exact: true });
     await conditions.waitFor();
     await conditions.getByRole('button', { name: 'Case B', exact: true }).click();
@@ -77,7 +77,7 @@ async function browserTests(pw, name, base) {
     assert.equal(await violins(), initial);
     console.log(`PASS H8c ${name} hide-condition-undo`);
     await gc.locator('header').click();
-    await inspector.getByRole('tab', { name: 'Statistics', exact: true }).click();
+    await inspector.getByRole('tab', { name: 'Stats', exact: true }).click();
     const rows = inspector.getByRole('table', { name: 'Group comparison results', exact: true }).locator('tbody tr');
     await rows.first().waitFor();
     assert.equal(await rows.count(), 4);

@@ -162,7 +162,7 @@ async function phoneReadOnly(pw, name, findings) {
     await layout(page, `${name} 390 inspector`, { phone: true });
     const enabled = () => page.$$eval('#inspector [role=tabpanel] :is(input,select,textarea,button)', els => [els.length, els.filter(e => !e.disabled && !e.matches(':disabled')).map(e => e.getAttribute('aria-label') || e.textContent.trim() || e.id)]);
     let controls = 0;
-    for (const tab of ['Data', 'Appearance', 'Statistics']) {
+    for (const tab of ['Data', 'Style', 'Stats']) {
       await page.locator('#inspector').getByRole('tab', { name: tab, exact: true }).tap();
       await page.waitForTimeout(300);
       const [count, active] = await enabled();

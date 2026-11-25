@@ -29,12 +29,17 @@ api_card_saved <- function(s, instanceId) {
   for (node in s$canvas$nodes %||% list()) {
     if (!is.list(node) || !identical(node$kind %||% "plot", "plot")) next
     instance <- node$instance
+    # A saved QC PCA card reopens as the dashboard card (catalog.R api_nexo_source); its QC-only inputs are
+    # dropped on restore (api_saved_inputs_accepted).
     if (is.list(instance) && identical(instance$id %||% instance$instanceId, instanceId) && is.character(instance$source))
-      return(list(source = instance$source, inputs = instance$inputs %||% list()))
+      return(list(source = api_nexo_source(instance$source), inputs = instance$inputs %||% list()))
     if (is.null(instance) && is.character(node$id) && length(node$id) == 1L &&
         identical(api_card_fixed_id(node$id), instanceId) &&
-        !is.null(tryCatch(api_catalog_entry(node$id), api_bad_request = function(e) NULL)))
+        !is.null(tryCatch(api_catalog_entry(node$id), api_bad_request = function(e) NULL))) {
+      # A fixed QC PCA view is no longer the QC family's own view: it reopens as a plain dashboard card.
+      if (!identical(api_nexo_source(node$id), node$id)) return(list(source = api_nexo_source(node$id), inputs = list()))
       return(list(source = node$id, inputs = list(), fixed = TRUE))
+    }
   }
   NULL
 }
@@ -117,6 +122,15 @@ api_card_warm <- function(s, instanceId, descriptor = NULL) {
 # Create phases (goal 3 diagnosis): recorded only while the create route measures (api_timing$scope "create"), so a
 # create nested in a render's "open" or in a worker never adds phases to that render's timing.
 api_create_phase <- function(phase, since) if (identical(api_timing$scope, "create")) api_timing_add(phase, since)
+# POST /api/v1/sessions/<id>/cards: a QC PCA source asked by Nexo creates the dashboard card instead (catalog.R
+# api_nexo_source), keeping only the inputs that card accepts. Any other source is created exactly as asked.
+api_card_create_requested <- function(s, body) {
+  if (!is.list(body)) api_abort("api_bad_request", "Send a JSON object.")
+  source <- body$source; inputs <- body$inputs %||% list()
+  ours <- api_nexo_source(source)
+  if (!identical(ours, source)) { source <- ours; inputs <- api_saved_inputs_accepted(source, inputs) }
+  api_card_create(s, source, inputs, body$instanceId)
+}
 api_card_create <- function(s, source, inputs = list(), instanceId = NULL, warm = TRUE) {
   api_mutation(s, NULL, NULL, (function() {
   started <- Sys.time()

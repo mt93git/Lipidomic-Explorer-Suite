@@ -382,20 +382,20 @@ async function audit(browser, plot) {
 
     // 5 Appearance tab (image plots: Label, Background, Size; nothing Plotly-only that would silently do nothing).
     await check(plot, 5, 'appearance', async () => {
-      await select(page, id); await tab(page, 'Appearance');
+      await select(page, id); await tab(page, 'Style');
       const notes = [];
-      const lbl = insp.getByLabel('Label', { exact: true });
+      await insp.locator('.inspector-name-button').click(); const lbl = insp.getByLabel('Card name', { exact: true });
       await lbl.fill(label); await lbl.blur();
       await page.waitForFunction(([sel, t]) => document.querySelector(sel + ' .card-title')?.textContent === t, [`.card[data-id="${id}"]`, label], { timeout: 10000 });
       notes.push('Label renames the card');
-      const bg = insp.getByLabel('Background', { exact: true });
+      const bg = insp.getByLabel('Card background', { exact: true });
       await bg.fill('#fff4e0');
       await page.waitForTimeout(500);
       const bgc = await card(page, id).evaluate(c => [getComputedStyle(c).backgroundColor, getComputedStyle(c.querySelector('.body')).backgroundColor].join('/'));
       ok(/255, 244, 224/.test(bgc), `background not applied: ${bgc}`);
       notes.push(`Background → ${bgc}`);
       // Plotly-only controls (the colour-blind preview also uses .plot-editor and is valid for images).
-      ok(!(await insp.getByLabel('Plot title', { exact: true }).count()) && !(await insp.getByRole('group', { name: 'Color palette', exact: true }).count()), 'Plotly-only controls (Plot title / Color palette) offered for an image plot');
+      ok(!(await insp.getByLabel('Plot title', { exact: true }).count()) && !(await insp.getByRole('group', { name: 'Colour palette', exact: true }).count()), 'Plotly-only controls (Plot title / Color palette) offered for an image plot');
       const extra = await insp.locator('[role=tabpanel] :is(input,select,button)').count();
       notes.push(`image plot: ${extra} controls (Label, Background, Size) — no plot-level controls that would silently do nothing`);
       notes.push(await shot(page, plot, '5-appearance'));
@@ -406,7 +406,7 @@ async function audit(browser, plot) {
       await page.waitForTimeout(500);
       const redone = await card(page, id).locator('.card-title').textContent();
       notes.push(`canvas Undo → "${undone}", Redo → "${redone}"`);
-      if (redone !== label) { await insp.getByLabel('Label', { exact: true }).fill(label); await insp.getByLabel('Label', { exact: true }).blur(); }
+      if (redone !== label) { await insp.locator('.inspector-name-button').click(); await insp.getByLabel('Card name', { exact: true }).fill(label); await insp.getByLabel('Card name', { exact: true }).blur(); }
       before = await signature(page, id);
       return notes.join('; ');
     });
@@ -414,7 +414,7 @@ async function audit(browser, plot) {
     // 6 Statistics: the structural plots have no Nexo statistics workflow (Team's "Show Statistic Detail" is a
     // module action in the Data tab, checked in #4); the tab must say so and offer no review.
     await check(plot, 6, 'statistics', async () => {
-      await select(page, id); await tab(page, 'Statistics');
+      await select(page, id); await tab(page, 'Stats');
       const t = (await insp.locator('[role=tabpanel]').innerText()).replace(/\s+/g, ' ').trim();
       ok(!(await insp.getByRole('button', { name: /Review and confirm/ }).count()), 'statistics review offered for a structural plot');
       return { na: `no Nexo statistics workflow for this plot; tab says "${t.slice(-80)}"` };
@@ -424,7 +424,7 @@ async function audit(browser, plot) {
     await check(plot, 7, 'export', async () => {
       await select(page, id); await tab(page, 'Export');
       const notes = [];
-      const png = await download(page, () => insp.getByRole('button', { name: 'Download PNG', exact: true }).click());
+      const png = await download(page, () => insp.getByRole('radio', { name: 'PNG', exact: true }).click().then(() => insp.getByRole('button', { name: 'Download figure', exact: true }).click()));
       ok(png.bytes.subarray(1, 4).toString() === 'PNG', 'PNG is not a PNG'); notes.push(`PNG ${png.bytes.length} B`);
       const svgB = insp.getByRole('button', { name: 'Download SVG', exact: true });
       if (await svgB.isDisabled()) notes.push(`SVG disabled ("${(await svgB.getAttribute('title')) || (await insp.locator('[role=tabpanel]').innerText()).replace(/\s+/g, ' ').match(/[^.]*SVG[^.]*\./)?.[0] || 'no reason shown'}")`);

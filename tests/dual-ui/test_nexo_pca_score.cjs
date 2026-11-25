@@ -29,7 +29,7 @@ const report = inspector => inspector.locator('.pca-score .pca-score-line');
 async function openStatistics(page, id) {
   await page.locator(`.card[data-id="${id}"] header`).click();
   const inspector = page.locator('#inspector');
-  await inspector.getByRole('tab', { name: 'Statistics', exact: true }).click();
+  await inspector.getByRole('tab', { name: 'Stats', exact: true }).click();
   await inspector.getByRole('region', { name: 'PCA score analysis', exact: true }).waitFor();
   return inspector;
 }

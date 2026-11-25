@@ -46,7 +46,7 @@ async function browserTests(pw, name, base) {
   await violin.locator('.js-plotly-plot').waitFor();
   await violin.locator('header').click();
   const inspector=page.locator('#inspector');
-  await inspector.getByRole('tab',{name:'Statistics',exact:true}).click();
+  await inspector.getByRole('tab',{name:'Stats',exact:true}).click();
   const test=inspector.getByLabel('Test',{exact:true});
   await page.waitForFunction(()=>!document.querySelector('[aria-label="Violin statistics"] fieldset').disabled);
   assert.equal(await test.inputValue(),'welch');
@@ -111,7 +111,7 @@ async function browserTests(pw, name, base) {
   await page.waitForFunction(n=>window.__nexo.store.get().nodes.length>n&&document.querySelector('.card.selected'),before);
   const added=(await nodes(page)).at(-1);assert.ok(added.instance?.instanceId&&added.instance.source==='results_dashboard-plot_violin');
   const addedCard=card(page,added.id);
-  await inspector.getByRole('tab',{name:'Statistics',exact:true}).click();
+  await inspector.getByRole('tab',{name:'Stats',exact:true}).click();
   await inspector.getByRole('button',{name:'Review and confirm…',exact:true}).click({timeout:10000});
   await inspector.getByRole('button',{name:'Confirm and compute',exact:true}).click({timeout:10000});
   await addedCard.locator('header .card-stats',{hasText:/^Statistics$/}).waitFor({timeout:10000});
