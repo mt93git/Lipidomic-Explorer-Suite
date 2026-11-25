@@ -3,6 +3,7 @@
 api_catalog_copy <- list(
   "results_dashboard-plot_pca" = list(label = "Principal components", description = "Compare sample structure across the prepared data.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_violin" = list(label = "Feature distributions", description = "Review the distribution of selected features.", group = "Dashboard", needs = NULL),
+  "results_dashboard-plot_loadings" = list(label = "PCA loadings", description = "See which lipids drive the principal components.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_pcascore" = list(label = "PCA score analysis", description = "Compare the scores of one principal component between groups, with the tests and group medians.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_dist" = list(label = "Signal distribution", description = "Inspect the distribution of measured signal.", group = "Dashboard", needs = NULL),
   "results_dashboard-plot_comp" = list(label = "Composition overview", description = "Compare signal shares across groups.", group = "Dashboard", needs = NULL),
@@ -143,6 +144,20 @@ api_catalog <- local({
     cached
   }
 })
+# Nexo always shows the frontend's PCA design (the dashboard cards). The Quality-check PCA scores and loadings
+# keep running in Team's backend, but Nexo never offers them, never creates them, and reopens a saved card of
+# theirs as the dashboard card. api_catalog() keeps every Team output: create and restore look entries up there.
+api_nexo_pca_aliases <- c(
+  "qc_pca_tab-pca2dPlot" = "results_dashboard-plot_pca",
+  "qc_pca_tab-pca2dVectorPlot" = "results_dashboard-plot_pca",
+  "qc_pca_tab-load2dPlot" = "results_dashboard-plot_loadings",
+  "qc_pca_tab-load2dVectorPlot" = "results_dashboard-plot_loadings")
+api_nexo_source <- function(source) {
+  if (is.character(source) && length(source) == 1L && !is.na(source) && source %in% names(api_nexo_pca_aliases))
+    unname(api_nexo_pca_aliases[[source]]) else source
+}
+# The catalog GET /api/v1/catalog serves: every Team output except those Nexo shows as the dashboard cards.
+api_catalog_served <- function() Filter(function(x) !x$id %in% names(api_nexo_pca_aliases), api_catalog())
 api_catalog_entry <- function(id) {
   entries <- Filter(function(x) identical(x$id, id), api_catalog())
   if (!length(entries)) api_abort("api_bad_request", paste("Unknown plot source:", id))

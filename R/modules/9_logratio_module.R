@@ -193,6 +193,19 @@ logratio_ui <- function(id) {
   )
 }
 
+#' The violin baseline to select: the current choice while it is still a level, else the
+#' analysis reference group (re-mapped to the violin grouping through the samples it names,
+#' remap_de_groups), else the first level.
+logratio_default_baseline <- function(choices, current, reference = NULL, meta = NULL, group_col = NULL) {
+  valid <- intersect(current, choices)
+  if (length(valid)) return(valid)
+  if (length(reference) && !is.null(meta) && !is.null(group_col)) {
+    mapped <- intersect(remap_de_groups(reference, meta, group_col)$groups, choices)
+    if (length(mapped)) return(mapped)
+  }
+  if (length(choices)) choices[1] else NULL
+}
+
 logratio_server <- function(id, shared_data, global_color_map) {
   shared_data <- lipidomic_hook("logratio_shared_data")(shared_data)
   moduleServer(id, function(input, output, session) {
@@ -372,7 +385,8 @@ logratio_server <- function(id, shared_data, global_color_map) {
                      width = "220px")
     })
     outputOptions(output, "baselineSelectorUI", suspendWhenHidden = FALSE)
-    
+    auto_baseline <- reactiveVal(NULL)
+
     observe({
         meta <- shared_data$all_metadata()
         val <- input$groupingMetadata
@@ -380,22 +394,28 @@ logratio_server <- function(id, shared_data, global_color_map) {
         
         if (input$comparisonStrategy == "Global (Combined Reference)" || length(val) == 1) {
            if (length(val) == 1) {
-              choices <- unique(meta[[val]])
+              sample_lvls <- as.character(meta[[val]])
            } else {
-              choices <- apply(meta[, val, drop=FALSE], 1, paste, collapse="_")
-              choices <- unique(choices)
+              sample_lvls <- apply(meta[, val, drop=FALSE], 1, paste, collapse="_")
            }
         } else {
            x_col <- val[length(val)]
-           choices <- unique(meta[[x_col]])
+           sample_lvls <- as.character(meta[[x_col]])
         }
-        
+        choices <- unique(sample_lvls)
+
         choices <- sort(choices[!is.na(choices) & choices != ""])
-        
+
         curr_sel <- input$selectedBaseline
-        valid_sel <- intersect(curr_sel, choices)
-        sel <- if (length(valid_sel) > 0) valid_sel else (if (length(choices) > 0) choices[1] else NULL)
-        
+        # Team and Nexo: a baseline this observer picked itself (not the user) follows the
+        # analysis reference group once it is known; Classic keeps the first group.
+        reference <- if (identical(lipidomic_interface(), "team"))
+          tryCatch(shared_data$de_ref_selected(), error = function(e) NULL) else NULL
+        if (length(curr_sel) && identical(sort(curr_sel), sort(isolate(auto_baseline())))) curr_sel <- NULL
+        meta$Violin_Baseline_Group <- sample_lvls
+        sel <- logratio_default_baseline(choices, curr_sel, reference, meta, "Violin_Baseline_Group")
+        if (!length(intersect(input$selectedBaseline, choices)) || is.null(curr_sel)) auto_baseline(sel)
+
         updateSelectizeInput(session, "selectedBaseline", choices = choices, selected = sel)
     })
     

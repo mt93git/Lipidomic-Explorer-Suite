@@ -59,10 +59,10 @@ export function createDocumentHistory<S extends CanvasState>(store: Store<S>, do
         });
         const shared = structuredClone(nexo.toJSON()) as Nexo;
         const nexoNodes = shared.nodes ?? {};
-        const design = shared.design ?? state.nexo?.design;
+        const design = shared.design ?? state.nexo?.design, starter = shared.starter ?? state.nexo?.starter;
         const board = { ...state, libraryHidden: canvas.get('libraryHidden') as boolean, nodes: next,
           document: figure.size ? structuredClone(figure.toJSON()) : null,
-          nexo: { version: 1 as const, nodes: nexoNodes, ...(design !== undefined ? { design } : {}) } };
+          nexo: { version: 1 as const, nodes: nexoNodes, ...(design !== undefined ? { design } : {}), ...(starter === true ? { starter } : {}) } };
         return { ...board, tabs: tabsOf({ ...board, tabs: structuredClone(tabs.toJSON()) }, (state.tabs as TabState | null | undefined)?.active) } as unknown as S;
       });
     } finally { origin = local; }

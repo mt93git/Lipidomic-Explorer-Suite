@@ -12,6 +12,11 @@ function ensureFilters() {
     f.id = `nexo-cvd-${kind}`; f.setAttribute('color-interpolation-filters', 'linearRGB'); m.setAttribute('type', 'matrix'); m.setAttribute('values', filterValues(kind)); f.append(m); svg.append(f); }
   document.body.append(svg);
 }
+/** The Colour-blind check section's summary: the report's verdict, or the simulation for an image. */
+export function colourBlindSummary(figure?: Figure): string {
+  const report = figure ? colourReport(seriesColours(figure)) : null;
+  return !report ? LABELS.normal : report.ok ? s.colourBlindOk : 'few' in report ? LABELS.normal : `deltaE ${report.deltaE.toFixed(0)} · check`;
+}
 const cardOf = (id: string) => document.querySelector<HTMLElement>(`.card[data-id="${CSS.escape(id)}"]`);
 /** F7: preview the card through a colour-vision simulation (never saved or exported) and report series colour clashes. */
 export default function ColourBlindCheck({ id, figure }: { id: string; figure?: Figure }) {
@@ -20,10 +25,9 @@ export default function ColourBlindCheck({ id, figure }: { id: string; figure?: 
     return () => { el.style.filter = ''; delete el.dataset.cvdPreview; }; }, [id, sim]);
   const report = figure ? colourReport(seriesColours(figure)) : null;
   const line = !report ? s.colourBlindImage : report.ok ? s.colourBlindAllOk : 'few' in report ? s.colourBlindFew : s.colourBlindClose(report.a, report.b, LABELS[report.simulation], report.deltaE);
-  const summary = !report ? LABELS[sim] : report.ok ? s.colourBlindOk : 'few' in report ? LABELS[sim] : `deltaE ${report.deltaE.toFixed(0)} · check`;
-  return <details className="plot-editor pro-colour-blind"><summary>{s.colourBlind} <span className="pro-summary">{summary}</span></summary>
+  return <div className="pro-colour-blind">
     <p>{s.colourBlindNote}</p>
     <div className="plot-editor-chips" role="group" aria-label={s.colourBlind}>{(['normal', ...SIMULATIONS] as const).map(k => <button key={k} type="button" aria-pressed={sim === k} onClick={() => setSim(k)}>{LABELS[k]}</button>)}</div>
     <p role="status" className={report?.ok ? 'pro-ok' : report && !('few' in report) ? 'pro-warn' : undefined}>{line}</p>
-  </details>;
+  </div>;
 }

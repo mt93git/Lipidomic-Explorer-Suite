@@ -1,5 +1,6 @@
 import { requestQueue, prefetchEnabled } from './prefetch';
 import { needsStudyDesign, enlargedHeatmap } from './canvas/cardActions';
+import { iconMarkup } from './ui/Icon';
 import { strings as s, phrases as p } from './ui/strings';
 import { completeQueuedAdd } from './canvas/queuedAdd';
 import { sanitizeSettings } from './statistics/settings';
@@ -8,6 +9,7 @@ import {dataUrl,list as illustrationAssets} from './illustrations/assets';
 import type {Visual} from './state/document';
 import {setAppearance} from './state/visualCommands';
 import { availability, availabilityReasons, groupCatalog, renderKindFor, newCardSize, pcaScoreCard } from './catalog';
+import { nexoSource } from './pcaDesign';
 import { clickSourceFor } from './plotlyClick';
 import { place } from './place';
 import { Card } from './cards';
@@ -667,7 +669,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
   // The overview is kept as its world centre and scale, so it comes back right even if a panel opened meanwhile.
   let overview: { x: number; y: number; scale: number } | undefined;
   const overviewPill = document.createElement('button'); overviewPill.type = 'button'; overviewPill.className = 'overview-pill'; overviewPill.hidden = true;
-  overviewPill.innerHTML = '<span aria-hidden="true">←</span>'; overviewPill.append(s.backToOverview);
+  overviewPill.innerHTML = iconMarkup('arrow-left'); overviewPill.append(s.backToOverview);
   overviewPill.onpointerdown = e => e.stopPropagation();
   overviewPill.onclick = () => backToOverview();
   vp.parentElement!.append(overviewPill);
@@ -946,6 +948,7 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     enterFigureMode(){draftCamera={...camera};figureMode=true;figureLayer.hidden=false;figureLayer.style.left=`${Math.max(0,...store.get().nodes.map(n=>n.x+n.width))+120}px`;draw();fit();},
     exitFigureMode(){figureMode=false;figureLayer.hidden=true;Object.assign(camera,draftCamera);draw();},
     figureOf: id => cards.find(c=>c.node.id===id)?.figure as import('./editor/applyEditor').Figure | undefined,
+    cardSource: async (id,size) => cards.find(c=>c.node.id===id)?.reportSource(size),
     setStatistics: (id,statistics) => {history.dispatch(statisticsCommand(id,statistics));},
     setNexoStyle:(id,style)=>{if(isReadOnly())return;const card=cards.find(c=>c.node.id===id);if(card?.figure){try{applyNexoStyle(applyEditor(card.figure as import('./editor/applyEditor').Figure,(card.node.visual as Visual|undefined)?.editor),style);}catch(error){notify(String(error),true);return;}}history.dispatch(setNexoStyle(id,style));},
     nexoStyle:id=>store.get().nexo.nodes[id]?.style??{},
@@ -1017,7 +1020,8 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     async addCard(source, signal, position) {
       const dropped = position && { x: Math.max(0, Math.min(1e6, position.x)), y: Math.max(0, Math.min(1e6, position.y)) };
       await catalogReady;
-      const entry = catalog.find(entry => entry.id === source);
+      // A QC PCA source adds the dashboard card: Nexo always shows our PCA design (pcaDesign.ts).
+      const entry = catalog.find(entry => entry.id === nexoSource(source));
       if (!entry) throw new Error('Unknown source');
       const state = availability(entry, session.design);
       if (state !== 'add') throw new Error(availabilityReasons[state]);
@@ -1090,6 +1094,8 @@ export function mountCanvas(root: HTMLElement, session: Session, host: { shellOw
     // A module action ran on the server (Data tab button): redraw the card, no undo step.
     refreshCard(nodeId) { cards.find(c => c.node.id === nodeId)?.reload(); },
     fit, zoomTo: scale => { if (Number.isFinite(scale)) zoom(scale); },
+    // A shared board is this page's once joined (the store then holds the document); alone, once the catalog is known.
+    ready: () => catalogReady.catch(() => {}).then(() => joined).then(shared => joined && !shared ? undefined : { cards: store.get().nodes.length }),
     focusNode(id) {
       const c = cards.find(c => c.node.id === id); if (!c) return false;
       // An explicit "show me": zoom out (never in) when the card does not fit, then bring it into view.

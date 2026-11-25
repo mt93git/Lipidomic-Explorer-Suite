@@ -4,18 +4,41 @@
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push --force-with-lease:*)",
+      "Bash(git push --no-verify:*)",
       "Bash(git push origin main:*)",
       "Bash(git push origin integration/libreros-guided-workflow:*)",
+      "Bash(git push origin lab/main:*)",
+      "Bash(git push origin lab/production:*)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(git commit -n:*)",
+      "Bash(git commit -a:*)",
+      "Bash(git commit -am:*)",
+      "Bash(git rebase:*)",
       "Bash(git reset --hard:*)",
       "Bash(git clean -fd:*)",
       "Bash(git add .:*)",
-      "Bash(git add -A:*)"
+      "Bash(git add -A:*)",
+      "Bash(git add --all:*)",
+      "Bash(gh pr merge --admin:*)"
     ],
     "ask": [
       "Bash(git push:*)",
+      "Bash(LAB_PUBLISH=1 git push:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr edit:*)",
       "Bash(gh pr merge:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" 2>/dev/null || exit 0; [ \"$(git config core.hooksPath)\" = \".githooks\" ] || echo \"GUARDRAILS OFF: git config core.hooksPath is not .githooks. Tell the user and offer: git config core.hooksPath .githooks (then bash tests/test_git_guardrails.sh).\"; b=$(git branch --show-current); case \"$b\" in main|integration/*|lab/*) echo \"ON PROTECTED BRANCH $b: do not commit here. Start a topic branch: git switch -c <name>/<topic> origin/lab/main.\";; esac; [ -n \"$LAB_SITE\" ] || echo \"LAB_SITE is not set: the deploy skills need it (see the lab-setup skill).\"; exit 0'"
+          }
+        ]
+      }
     ]
   }
 }

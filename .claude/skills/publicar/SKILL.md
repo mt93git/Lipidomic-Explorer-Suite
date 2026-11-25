@@ -16,7 +16,7 @@ How production works: the server deploys `lab/production` by itself within about
 - Ask the user whether they tried these changes on staging ($LAB_SITE/nexo-staging/ and $LAB_SITE/admin-staging/). If not, stop here.
 
 ## 2. Publish (only after the user's explicit yes)
-- `git push origin C:refs/heads/lab/production`.
+- `LAB_PUBLISH=1 git push origin C:refs/heads/lab/production` (the push hook refuses `lab/production` unless `LAB_PUBLISH=1`, which only this skill sets).
 - If git refuses because it is not a fast-forward, stop and tell the user. Never force push.
 
 ## 3. Follow it

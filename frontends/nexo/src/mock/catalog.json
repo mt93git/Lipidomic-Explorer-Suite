@@ -94,6 +94,24 @@
       "description": "Compare lipid patterns across groups."
     },
     {
+      "id": "results_dashboard-plot_loadings",
+      "family": "results_dashboard",
+      "output": "plot_loadings",
+      "render": "plotly",
+      "needs": null,
+      "allowedInputs": [],
+      "defaults": {},
+      "tabs": {},
+      "shownBy": {},
+      "defaultSize": {
+        "width": 440,
+        "height": 330
+      },
+      "label": "PCA loadings",
+      "group": "Dashboard",
+      "description": "See which lipids drive the principal components."
+    },
+    {
       "id": "results_dashboard-plot_pcascore",
       "family": "results_dashboard",
       "output": "plot_pcascore",
@@ -148,44 +166,6 @@
       "description": "Review samples flagged by outlier checks."
     },
     {
-      "id": "qc_pca_tab-pca2dPlot",
-      "family": "qc_pca_tab",
-      "output": "pca2dPlot",
-      "render": "png",
-      "needs": null,
-      "allowedInputs": [],
-      "defaults": {},
-      "tabs": {},
-      "shownBy": {},
-      "defaultSize": {
-        "width": 440,
-        "height": 330
-      },
-      "label": "PCA scores · 2D",
-      "group": "Quality check",
-      "description": "Explore sample separation in two dimensions."
-    },
-    {
-      "id": "qc_pca_tab-pca2dVectorPlot",
-      "family": "qc_pca_tab",
-      "output": "pca2dVectorPlot",
-      "render": "plotly",
-      "needs": null,
-      "allowedInputs": [],
-      "defaults": {},
-      "tabs": {},
-      "shownBy": {
-        "team_pca2dPlot_vector": true
-      },
-      "defaultSize": {
-        "width": 440,
-        "height": 330
-      },
-      "label": "PCA scores · editable 2D",
-      "group": "Quality check",
-      "description": "Enable Editable vector view in Quality Check; original plot and downloads remain available."
-    },
-    {
       "id": "qc_pca_tab-pca3dPlot",
       "family": "qc_pca_tab",
       "output": "pca3dPlot",
@@ -202,44 +182,6 @@
       "label": "PCA scores · 3D",
       "group": "Quality check",
       "description": "Rotate sample scores in three dimensions."
-    },
-    {
-      "id": "qc_pca_tab-load2dPlot",
-      "family": "qc_pca_tab",
-      "output": "load2dPlot",
-      "render": "png",
-      "needs": null,
-      "allowedInputs": [],
-      "defaults": {},
-      "tabs": {},
-      "shownBy": {},
-      "defaultSize": {
-        "width": 440,
-        "height": 330
-      },
-      "label": "PCA loadings · 2D",
-      "group": "Quality check",
-      "description": "Inspect feature contributions to the PCA axes."
-    },
-    {
-      "id": "qc_pca_tab-load2dVectorPlot",
-      "family": "qc_pca_tab",
-      "output": "load2dVectorPlot",
-      "render": "plotly",
-      "needs": null,
-      "allowedInputs": [],
-      "defaults": {},
-      "tabs": {},
-      "shownBy": {
-        "team_load2dPlot_vector": true
-      },
-      "defaultSize": {
-        "width": 440,
-        "height": 330
-      },
-      "label": "PCA loadings · editable 2D",
-      "group": "Quality check",
-      "description": "Enable Editable vector view in Quality Check; unsupported label layouts retain the original view."
     },
     {
       "id": "qc_pca_tab-load3dPlot",

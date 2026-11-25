@@ -85,7 +85,7 @@ async function browserTests(pw, name, base) {
     // A card never seen at 100 %, so its 2x image is not cached.
     await page.evaluate(() => window.__nexo.handle.zoomTo(0.4));
     const fresh = await page.evaluate(async () => { const before = new Set(window.__nexo.store.get().nodes.map(n => n.id));
-      await window.__nexo.handle.addCard('qc_pca_tab-pca2dPlot'); return window.__nexo.store.get().nodes.find(n => !before.has(n.id)).id; });
+      await window.__nexo.handle.addCard('qc_pca_tab-boxplotAfterNorm'); return window.__nexo.store.get().nodes.find(n => !before.has(n.id)).id; });
     await page.evaluate(() => window.__nexo.handle.zoomTo(0.4));
     await page.waitForFunction(id => { const c = document.querySelector(`.card[data-id="${id}"]`), i = c?.querySelector('.body img'); return !!i && i.complete && i.naturalWidth > 0 && i.naturalWidth < 1.5 * c.offsetWidth; }, fresh, { timeout: 10000 })
       .catch(async () => { throw new Error(`fresh card at 40 %: ${JSON.stringify(await page.evaluate(id => { const c = document.querySelector(`.card[data-id="${id}"]`), i = c?.querySelector('.body img'); return { tier: c?.dataset.tier, img: i && [i.naturalWidth, c.offsetWidth], zoom: document.querySelector('.zoom-pill span')?.textContent }; }, fresh))}`); });

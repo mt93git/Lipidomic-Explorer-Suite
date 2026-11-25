@@ -219,10 +219,12 @@ async function auditPlot(browser, key) {
       if (over1 || over2) throw new Error(`plot overflows the card (smaller ${over1}, larger ${over2})`);
       // the Size section of Appearance: typed px, then a journal width; the plot redraws at that card size
       await hundred(page); await selectCard(page, id);
-      if (!(await inspectorTab(page, 'Appearance'))) throw new Error('no Appearance tab for the Size section');
+      if (!(await inspectorTab(page, 'Style'))) throw new Error('no Style tab for the Size section');
       // F1/F2: the section is "Size & position" (details) with mm|px units; fields are labelled "Width (px)" in px
-      const sizeBox = inspector(page).locator('details.size-section');
+      const sizeBox = inspector(page).locator('details.style-section[data-section="size"]');
       await sizeBox.waitFor({ timeout: T });
+      // Style › Size and layout may be folded: open it before typing.
+      if (!(await sizeBox.evaluate(d => d.open))) await sizeBox.locator('summary').click();
       await sizeBox.getByRole('group', { name: 'Units', exact: true }).getByRole('button', { name: 'px', exact: true }).click();
       const typed = async (label, v) => { const f = sizeBox.getByLabel(label, { exact: true }); await f.fill(String(v)); await f.press('Enter'); };
       await typed('Width (px)', 560); await typed('Height (px)', 480);
@@ -311,9 +313,11 @@ async function auditPlot(browser, key) {
     });
     await run('5-appearance', async () => {
       await selectCard(page, id);
-      if (!(await inspectorTab(page, 'Appearance'))) throw new Error('no Appearance tab');
+      if (!(await inspectorTab(page, 'Style'))) throw new Error('no Style tab');
       const panel = inspector(page).getByRole('tabpanel');
-      const sec = async name => { const s = panel.locator('summary', { hasText: new RegExp(`^${name}$`) }); if (!(await s.count())) return false; const open = await s.evaluate(e => e.parentElement.open); if (!open) await s.click(); return true; };
+      // The approved inspector layout (2026-11-23) groups the old sections into Style sections (data-section ids).
+      const SECTION = { 'Title and fonts': 'text', Typography: 'text', 'Horizontal axis': 'axes', 'Vertical axis': 'axes', 'Chart background': 'colours', 'Color palette': 'colours', Legend: 'legend' };
+      const sec = async name => { const d = panel.locator(`details.style-section[data-section="${SECTION[name] ?? name}"]`); if (!(await d.count())) return false; const open = await d.evaluate(e => e.open); if (!open) await d.locator('summary').first().click(); return true; };
       const lay = fn => gd(page, id, fn);
       const waitLay = async (fn, what) => { const ok = await page.waitForFunction(([sel, src]) => { const p = document.querySelector(sel + ' .js-plotly-plot'); return p && (0, eval)(src)(p); }, [`#world .card[data-id="${id}"]`, `(${fn})`], { timeout: 20000 }).then(() => true, () => false); if (!ok) fails.push(what); else oks.push(what); };
       const oks = [], fails = [], na = [];
@@ -321,10 +325,10 @@ async function auditPlot(browser, key) {
       await sec('Title and fonts');
       if (await setField('Plot title', 'Audit title b01')) await waitLay(p => (p.layout?.title?.text ?? p.layout?.title) === 'Audit title b01', 'title'); else na.push('title field');
       if (await setField('Chart font size', '16')) await waitLay(p => p.layout?.font?.size === 16, 'font size'); else na.push('font size');
-      if (await setField('Chart text color', '#aa0000')) await waitLay(p => String(p.layout?.font?.color).toLowerCase() === '#aa0000', 'font colour'); else na.push('font colour field');
+      if (await setField('Chart text colour', '#aa0000')) await waitLay(p => String(p.layout?.font?.color).toLowerCase() === '#aa0000', 'font colour'); else na.push('font colour field');
       if (await sec('Horizontal axis')) {
         if (await setField('Title text', 'Audit X')) await waitLay(p => (p.layout?.xaxis?.title?.text ?? p.layout?.xaxis?.title) === 'Audit X', 'x axis title'); else na.push('x axis title field');
-        const grid = panel.locator('details', { has: page.locator('summary', { hasText: /^Horizontal axis$/ }) }).getByLabel('Showgrid', { exact: true });
+        const grid = panel.locator('details.style-section[data-section="axes"] fieldset.style-axis').first().getByLabel('Vertical grid lines', { exact: true });
         if (await grid.count()) { const was = await lay(p => p._fullLayout?.xaxis?.showgrid); await grid.first().setChecked(!was); await waitLay(new Function('p', `return p._fullLayout?.xaxis?.showgrid === ${!was}`), 'x grid'); } else na.push('x grid toggle');
       } else na.push('Horizontal axis section');
       if (await sec('Vertical axis')) {
@@ -335,7 +339,7 @@ async function auditPlot(browser, key) {
       else na.push('background section');
       // palettes: all six
       if (await sec('Color palette')) {
-        const group = panel.getByRole('group', { name: 'Color palette' });
+        const group = panel.getByRole('group', { name: 'Colour palette' });
         if (await group.count()) {
           for (const name of ['Lab', 'Okabe–Ito', 'Nature (NPG)', 'Viridis', 'Pastel', 'Gelato Days']) {
             const before = JSON.stringify(await lay(p => (p.data || []).map(t => [t.marker?.color ?? null, t.fillcolor ?? null, t.line?.color ?? null])));
@@ -349,7 +353,7 @@ async function auditPlot(browser, key) {
           if (await grey.count()) { const before = JSON.stringify(await lay(p => (p.data || []).map(t => t.marker?.color ?? t.fillcolor))); await grey.click(); await page.waitForTimeout(1500); const after = JSON.stringify(await lay(p => (p.data || []).map(t => t.marker?.color ?? t.fillcolor)));
             const hasHealthy = /(^|"|,)healthy/i.test(JSON.stringify(await lay(p => (p.data || []).map(t => t.name))));
             if (after !== before) oks.push('Healthy in grey'); else if (!hasHealthy) na.push('Healthy in grey (no Healthy/Control group on this plot)'); else fails.push('Healthy in grey'); await grey.click(); await page.waitForTimeout(800); }
-        } else na.push(`palette: "${(await panel.locator('details', { has: page.locator('summary', { hasText: /^Color palette$/ }) }).innerText()).replace(/\s+/g, ' ').slice(0, 140)}"`);
+        } else na.push(`palette: "${(await panel.locator('details.style-section[data-section="colours"]').innerText()).replace(/\s+/g, ' ').slice(0, 140)}"`);
       } else na.push('palette section');
       memo.appearanceShot = await shot(page, `${key}-5-appearance`);
       if (await sec('Legend')) {
@@ -384,9 +388,9 @@ async function auditPlot(browser, key) {
         await page.waitForTimeout(1500);
         const pubLook = JSON.stringify(await lay(p => [p.layout?.font?.family ?? null, p.layout?.font?.color ?? null, (p.data || []).map(t => t.marker?.color ?? t.fillcolor ?? null)]));
         (await pressed('Publication') && pubLook !== teamLook ? oks : fails).push('preset Publication');
-        await presets.getByRole('button', { name: 'Team original', exact: true }).click();
+        await presets.getByRole('button', { name: 'Team', exact: true }).click();
         await page.waitForFunction(([sel, b]) => { const p = document.querySelector(sel + ' .js-plotly-plot'); return p && JSON.stringify([p.layout?.font?.family ?? null, p.layout?.font?.color ?? null, (p.data || []).map(t => t.marker?.color ?? t.fillcolor ?? null)]) === b; }, [`#world .card[data-id="${id}"]`, teamLook], { timeout: 20000 }).then(() => oks.push('preset Team original restores Team look'), () => fails.push('preset Team original does not restore Team look'));
-        if (!(await pressed('Team original'))) fails.push('Team original not shown as pressed');
+        if (!(await pressed('Team'))) fails.push('Team original not shown as pressed');
       } else fails.push('no Presentation preset group');
       // set the appearance kept for checks 8-10
       await sec('Title and fonts'); await setField('Plot title', `Audit ${key}`); await waitLay(new Function('p', `return (p.layout?.title?.text ?? p.layout?.title) === 'Audit ${key}'`), 'title kept for 8-10');
@@ -397,7 +401,7 @@ async function auditPlot(browser, key) {
     });
     await run('6-statistics', async () => {
       await selectCard(page, id);
-      const has = await inspectorTab(page, 'Statistics');
+      const has = await inspectorTab(page, 'Stats');
       if (key !== 'violin') {
         const text = has ? (await inspector(page).getByRole('tabpanel').innerText()).replace(/\s+/g, ' ').slice(0, 160) : 'no Statistics tab';
         return { status: 'N/A', detail: `Team has no statistics for this plot; Inspector: "${text}"` };

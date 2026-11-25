@@ -256,6 +256,36 @@ construct_contrast_string <- function(ref_groups, comp_groups) {
     paste(comp_part, "-", ref_part)
 }
 
+#' Re-map saved DE group labels to the current grouping
+#'
+#' A reference or comparison saved under one grouping (for example "Control" with Group1
+#' only) names the same samples as one level of another grouping ("Control_Unstimulated"
+#' once Group2 is added). Each label is kept when it is a current level; otherwise it is
+#' replaced by the one current level of the samples it names (any ordered combination of
+#' Group1, Group2 and TimePoint). A label that names no samples, or samples split over
+#' several current levels, is returned as unresolved and never pooled.
+#'
+#' @param selected Character vector of saved labels
+#' @param meta Sample metadata with the current grouping column
+#' @param group_col Name of the current grouping column
+#' @return list(groups = current levels, unresolved = labels that could not be mapped)
+remap_de_groups <- function(selected, meta, group_col) {
+  selected <- as.character(if (is.null(selected)) character() else selected)
+  current <- as.character(meta[[group_col]])
+  levels <- unique(current)
+  cols <- intersect(c("Group1", "Group2", "TimePoint"), names(meta))
+  combos <- unlist(lapply(seq_along(cols), function(k) utils::combn(cols, k, simplify = FALSE)), recursive = FALSE)
+  labels <- lapply(combos, function(cc) do.call(paste, c(lapply(cc, function(col) as.character(meta[[col]])), list(sep = "_"))))
+  groups <- character(); unresolved <- character()
+  for (label in selected) {
+    if (label %in% levels) { groups <- c(groups, label); next }
+    hit <- Reduce(`|`, lapply(labels, function(l) !is.na(l) & l == label), rep(FALSE, length(current)))
+    found <- unique(current[hit])
+    if (length(found) == 1L) groups <- c(groups, found) else unresolved <- c(unresolved, label)
+  }
+  list(groups = unique(groups), unresolved = unresolved)
+}
+
 #' Perform Longitudinal Spline Trajectory dream analysis
 #'
 #' @param data_matrix Numeric matrix (log2 transformed)

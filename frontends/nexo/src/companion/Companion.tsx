@@ -35,11 +35,11 @@ const boxOf = (el: Element | null): Box => { const r = el?.getBoundingClientRect
 function bigBox(dock: Box): Box {
   const s = 150; return { s, ...clamp(dock.x + dock.s - s, dock.y + dock.s + 16, s, innerWidth, innerHeight, 64) };
 }
-/** The screen the tip and the question are about: the canvas's Inspector on its Statistics tab counts as its own screen. */
+/** The screen the tip and the question are about: the canvas's Inspector on its Stats tab counts as its own screen. */
 function context(screen: Screen): { screen: Screen; card: string | null } {
   const inspector = document.querySelector('#inspector[data-open="true"]');
   const tab = inspector?.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
-  return { screen: screen === 'canvas' && tab === 'Statistics' ? 'inspector' : screen, card: inspector?.querySelector('.inspector-head h2')?.textContent ?? null };
+  return { screen: screen === 'canvas' && (tab === 'Stats' || tab === 'Statistics') ? 'inspector' : screen, card: inspector?.querySelector('.inspector-head h2')?.textContent ?? null };
 }
 // The prototype's keyframes: the arc between two boxes, the entrance's appearance and the docking flight.
 const flyFrames = (from: Box, to: Box): Keyframe[] => { const dx = from.x - to.x, dy = from.y - to.y, k = from.s / to.s; return [

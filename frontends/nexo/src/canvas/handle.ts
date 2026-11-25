@@ -9,6 +9,8 @@ export interface CanvasHandle {
   figureLayer():HTMLElement;
   snapshotState?: () => import("../state/document").CanvasState;
   figureOf(id:string): import('../editor/applyEditor').Figure | undefined;
+  /** A card's current figure (or image) for the report, fetched by the card itself whatever its zoom tier. */
+  cardSource?(id:string, size?:{width:number;height:number}): Promise<{ figure?: import('../editor/applyEditor').Figure; url?: string } | undefined>;
   setStatistics(id:string, statistics:import('../state/document').Statistics|null):void;
   setNexoStyle(id:string,style:import('../state/nexo').NexoStyle):void;
   nexoStyle(id:string):import('../state/nexo').NexoStyle;
@@ -85,6 +87,9 @@ export interface CanvasHandle {
   updateCardInputs(nodeId: string, inputs: import('../api').Inputs): void;
   refreshCard(nodeId: string): void;
   fit(): void;
+  /** Once the board is open (a shared board joined, its catalog known): how many cards it has; undefined when the shared
+   *  board could not be joined. */
+  ready?(): Promise<{ cards: number } | undefined>;
   /** Select a card, switch to its tab, bring it into view and highlight it. */
   focusNode(nodeId: string): boolean;
   /** Focus the next card made from this catalog source (cycles on repeated calls). */

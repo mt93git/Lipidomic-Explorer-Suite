@@ -232,6 +232,21 @@ test('after a restore a lost session reopens the restored checkpoint without the
     [['/api/v1/sessions/generation.3/design', { unit: 'unit-a', type: 'independent', confirm: true }]]);
 });
 
+// Staging 2026-11-19: a restore replaced the dataset origin with the checkpoint alone, so the project's preparation
+// settings were gone and the dataset link opened on Prepare. The dataset and its settings stay; recovery uses the checkpoint.
+test('a restore in a dataset project keeps the dataset and its preparation settings', async t => {
+  const { r, doc, engine, send, rows } = await setup(t);
+  const meta = doc.getMap('meta'), settings = { samples: ['Control_1', 'Treated_1'], normalizationMethod: 'median' };
+  meta.set('origin', { adminDatasetId: 'synthetic-dataset', settings });
+  await send('save', { name: 'Board A' });
+  await send('restore', { versionId: rows()[0].id });
+  assert.deepEqual(meta.get('origin'), { adminDatasetId: 'synthetic-dataset', settings, checkpointId: 'checkpoint.1' });
+  r.replies.push({ status: 409, body: { error: 'session_lost' } });
+  const from = r.calls.length;
+  await engine.renew('project');
+  assert.deepEqual(r.calls.slice(from + 1)[0].body, { checkpointId: 'checkpoint.1', collab: { workspace: 'lab', project: 'project' } });
+});
+
 // Astra review #12: the checkpoint answer advances R's revision; rows and meta.engineRevision follow it.
 test('named save writes its row with the revision R answers the checkpoint with', async t => {
   const { r, send, rows } = await setup(t);

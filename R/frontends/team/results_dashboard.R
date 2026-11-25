@@ -31,14 +31,12 @@ rd_team_heatmap_view <- function(z, group_n) {
     dense <- nrow(z)>60L
     margin <- if(dense)list(l=125,r=20,t=110,b=45) else list(l=125,r=20,t=10,b=145)
     colorbar <- if(dense)list(title='Mean z-score',thickness=12,lenmode='pixels',len=160,y=1,yanchor='top',x=1,xanchor='left') else list(title='Mean z-score',thickness=12)
-    tick_budget <- min(80L,max(2L,floor((height-155)/16)))
-    ticks <- rd_ticks(rownames(z),tick_budget)
+    # Every row keeps its own full lipid name (rows are at least 12 px for the 10 px label).
     list(squares=FALSE,z=z,text=text,x=colnames(z),y=rownames(z),
       width=800,height=height,colorbar=colorbar,
       xaxis=list(title=list(text='Sample group',standoff=20),type='category',tickangle=0,side=if(dense)'top' else 'bottom',
         tickmode='array',tickvals=colnames(z),ticktext=groups,automargin=TRUE),
-      yaxis=list(title='',type='category',tickmode='array',tickvals=ticks,
-        ticktext=vapply(ticks,function(x)if(nchar(x)>19)paste0(substr(x,1,18),'…')else x,character(1)),
+      yaxis=list(title='',type='category',tickmode='array',tickvals=rownames(z),ticktext=rownames(z),
         tickfont=list(size=10),automargin=TRUE),margin=margin)
   }
 }
@@ -316,6 +314,63 @@ rd_pca_score_stats <- function(score, group, test = c("rank", "param"), correcti
   pairs$stars <- rd_pca_score_stars(pairs$p_adj)
   list(n = n, median = med, tested = tested, skipped = skipped, omnibus = omni, pairs = pairs, test = test, correction = correction)
 }
+# Where the PCA score card's group table goes (paper units): the header row, the row step and the table's domain
+# c(0, domain), with the plot above it. Up to four groups keep the original layout (header 0.215, step 0.052,
+# domain 0.28). More groups grow the table up to half the figure, then shrink the step (never below 0.03), so
+# the last row always stays at y = 0.007, inside the figure.
+rd_pca_score_table_layout <- function(n_groups) {
+  rows <- max(4L, as.integer(n_groups)); bottom <- 0.007; gap <- 0.065; step <- 0.052; cap <- 0.5
+  if (bottom + rows * step + gap > cap) step <- max(0.03, (cap - bottom - gap) / rows)
+  head <- bottom + rows * step
+  list(head = head, step = step, domain = head + gap)
+}
+# The PCA score card's figure (output$plot_pcascore): one box per group with its samples, significance brackets,
+# and the group table (colour, median, n) below the plot. `r` is pcs_result(); it only draws what r holds.
+rd_pca_score_figure <- function(r, meta = NULL) {
+  res <- r$res; lev <- intersect(r$levels, res$tested)
+  fam <- "Arial, Helvetica, sans-serif"
+  colof <- function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) "#6b7280" else col }
+  p <- plotly::plot_ly()
+  for (g in lev) {
+    i <- r$group == g; col <- colof(g)
+    p <- plotly::add_trace(p, type = "box", x = rep(g, sum(i)), y = r$score[i], name = g, text = r$sample[i],
+      boxpoints = "all", jitter = 0.45, pointpos = 0, fillcolor = grDevices::adjustcolor(col, 0.65),
+      line = list(color = "#000000", width = 1.5), marker = list(color = col, size = 6, line = list(color = "#3a3a3a", width = 0.8)),
+      hoverinfo = "y+text", legendgroup = g, showlegend = FALSE)
+  }
+  yr <- range(r$score[r$group %in% lev], na.rm = TRUE); span <- max(diff(yr), 1e-9); pr <- res$pairs
+  shapes <- list(); ann <- list(); top <- yr[2]
+  for (i in seq_len(nrow(pr))) {
+    x1 <- match(pr$A[i], lev) - 1; x2 <- match(pr$B[i], lev) - 1
+    y0 <- yr[2] + span * (0.06 + 0.17 * (i - 1)); y1 <- y0 + span * 0.03; top <- max(top, y1 + span * 0.09)
+    shapes[[length(shapes) + 1L]] <- list(type = "path", path = sprintf("M %s,%s L %s,%s L %s,%s L %s,%s", x1, y0, x1, y1, x2, y1, x2, y0), line = list(color = "#000000", width = 1.5))
+    big <- !identical(pr$stars[i], "ns")
+    ann[[length(ann) + 1L]] <- list(x = (x1 + x2) / 2, y = y1, text = pr$stars[i], showarrow = FALSE, yanchor = "bottom", xanchor = "center", font = list(family = fam, size = if (big) 16 else 12, color = "#000000"))
+  }
+  cell <- function(x, y, text, xanchor, bold = FALSE) list(x = x, y = y, xref = "paper", yref = "paper", text = if (bold) paste0("<b>", text, "</b>") else text,
+    showarrow = FALSE, xanchor = xanchor, yanchor = "middle", align = xanchor, font = list(family = fam, size = 10, color = "#000000"))
+  # Group table below the plot (as in the publication figure): colour dot + group (n), median, n.
+  tab <- rd_pca_score_table_layout(length(lev)); step <- tab$step; y_head <- tab$head
+  ann[[length(ann) + 1L]] <- cell(0.27, y_head, "Group", "center", TRUE)
+  ann[[length(ann) + 1L]] <- cell(0.60, y_head, sprintf("Median PC%d", r$k), "center", TRUE)
+  ann[[length(ann) + 1L]] <- cell(0.86, y_head, "n", "center", TRUE)
+  for (j in seq_along(lev)) {
+    g <- lev[j]; y <- y_head - step * j; nm <- if (nchar(g) > 26L) paste0(substr(g, 1L, 25L), "…") else g
+    ann[[length(ann) + 1L]] <- cell(0.075, y, sprintf("%s (n = %d)", htmltools::htmlEscape(nm), res$n[[g]]), "left")
+    ann[[length(ann) + 1L]] <- cell(0.60, y, sprintf("%+.2f", res$median[[g]]), "center")
+    ann[[length(ann) + 1L]] <- cell(0.86, y, as.character(res$n[[g]]), "center")
+    p <- plotly::add_trace(p, type = "scatter", mode = "markers", x = 0.045, y = y, xaxis = "x2", yaxis = "y2", name = g, legendgroup = g, showlegend = FALSE,
+      meta = list(teamLegendProxy = TRUE), hoverinfo = "skip", marker = list(symbol = "circle", size = 8, color = colof(g), line = list(color = "#3a3a3a", width = 0.8)))
+  }
+  frame <- list(showline = TRUE, linecolor = "#000000", linewidth = 1, mirror = TRUE, showgrid = FALSE, zeroline = FALSE, tickcolor = "#000000", ticklen = 4)
+  p |> rd_layout(meta = meta, shapes = shapes, annotations = ann,
+    xaxis = c(list(title = "", type = "category", domain = c(0, 1), categoryorder = "array", categoryarray = lev, showticklabels = FALSE, ticks = ""), frame[c("showline", "linecolor", "linewidth", "mirror", "showgrid", "zeroline")]),
+    yaxis = c(list(title = sprintf("PC%d score (%.1f%% of variance)", r$k, r$ve), domain = c(tab$domain, 1), ticks = "outside",
+                   range = c(yr[1] - span * 0.05, top + span * 0.03)), frame),
+    xaxis2 = list(domain = c(0, 1), range = c(0, 1), visible = FALSE, fixedrange = TRUE, anchor = "y2"),
+    yaxis2 = list(domain = c(0, tab$domain), range = c(0, tab$domain), visible = FALSE, fixedrange = TRUE, anchor = "x2"),
+    showlegend = FALSE, margin = list(l = 65, r = 15, t = 15, b = 10))
+}
 
 results_dashboard_ui <- function(id = "results_dashboard") {
   ns <- if (is.null(id)) identity else NS(id)
@@ -352,7 +407,11 @@ results_dashboard_ui <- function(id = "results_dashboard") {
       rd_card(ns, "comp", "Class signal composition", "Share of each sample's summed prepared signal by lipid class."),
       rd_card(ns, "dist", "Abundance distribution", "Per-sample distribution of log10 abundances."),
       rd_card(ns, "heat", "Lipid heatmap", "Explore individual lipids by class or search the full available catalog.", "560px"),
-      div(class = "rd-pcascore-slot", style = "display:none", plotly::plotlyOutput(ns("plot_pcascore"), height = "460px"))),
+      div(class = "rd-pcascore-slot", style = "display:none", plotly::plotlyOutput(ns("plot_pcascore"), height = "460px")),
+      # PCA loadings: a canvas card (like the PCA score card) drawn from the same PCA as "Principal component analysis".
+      div(class = "rd-loadings-slot", style = "display:none",
+        downloadButton(ns("dl_loadings"), "Plot data (CSV)", class = "btn-sm rd-dl"),
+        plotly::plotlyOutput(ns("plot_loadings"), height = "420px"))),
     div(class = "rd-methods",
       h3("How to read these views"),
       tags$ul(
@@ -456,31 +515,7 @@ plotly_build.team_compact_distribution <- function(p, ...) {
   p
 }
 
-# Team violin style (presentation only): condition fill, outline darkened 45%,
-# black points, inner box darkened 15% / 60%, black axis frame with outside ticks
-# and a dotted horizontal grid. Values, samples and hover data are untouched.
-rd_darker <- function(col, f) {
-  m <- grDevices::col2rgb(col)[, 1]
-  grDevices::rgb(floor(m[1] * (1 - f) + .5), floor(m[2] * (1 - f) + .5), floor(m[3] * (1 - f) + .5), maxColorValue = 255)
-}
-plotly_build.team_violin_style <- function(p, ...) {
-  colors <- attr(p, 'team_violin_colors')
-  class(p) <- setdiff(class(p), 'team_violin_style')
-  p <- plotly::plotly_build(p, ...)
-  p$x$data <- lapply(p$x$data, function(trace) {
-    col <- if (identical(trace$type, 'violin')) unname(colors[as.character(trace$name)]) else NA
-    if (length(col) != 1L || is.na(col) || !grepl('^#[0-9A-Fa-f]{6}$', col)) return(trace)
-    trace$fillcolor <- col
-    trace$line <- list(color = rd_darker(col, .45), width = 1.2)
-    trace$marker <- list(color = '#000000', size = 5, opacity = 1, line = list(width = 0))
-    trace$box <- list(visible = TRUE, width = .22, fillcolor = rd_darker(col, .15), line = list(color = rd_darker(col, .60), width = 1))
-    trace
-  })
-  frame <- list(showline = TRUE, mirror = TRUE, linecolor = '#000000', ticks = 'outside')
-  p$x$layout$xaxis <- utils::modifyList(if (is.list(p$x$layout$xaxis)) p$x$layout$xaxis else list(), frame)
-  p$x$layout$yaxis <- utils::modifyList(if (is.list(p$x$layout$yaxis)) p$x$layout$yaxis else list(), c(frame, list(gridcolor = '#dddddd', griddash = 'dot')))
-  p
-}
+if (!exists('team_violin_style', mode = 'function')) source('R/frontends/team/violin_style.R')
 
 # Team Canvas labels use multiple lines without changing group keys or hover data.
 rd_team_heat_tick <- function(group, n) {
@@ -646,7 +681,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
           text = "Dots: prepared sample values. Tails: smoothed estimates.",
           showarrow = FALSE, xanchor = "left", yanchor = "top",
           font = list(size = 10, color = "#52514e")))) |>
-      (function(p) { if (!isTRUE(shared_data$team_compact_distribution)) return(p); attr(p, 'team_violin_colors') <- si$colors; class(p) <- c('team_violin_style', class(p)); p })() |>
+      (function(p) { if (!isTRUE(shared_data$team_compact_distribution)) return(p); team_violin_style(p, si$colors, input$violin_lipid) })() |>
       htmlwidgets::onRender("function(el) { if (window.TeamViolinDisplay) return window.TeamViolinDisplay.fit(el); }")
   })
   output$note_violin <- renderUI({
@@ -716,6 +751,44 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
             cl$n_constant)
   })
 
+  # ---- PCA loadings (canvas card) ------------------------------------------------
+  # The loadings of the very PCA plot_pca draws (pca_data(): same abundance scale and scaling controls), read from
+  # its rotation; nothing is recomputed. One point per lipid the PCA kept, colored by lipid class (the dashboard's
+  # rd_class, colored as the composition view); the lipid name is in the hover only, never drawn on the plot.
+  pca_loadings <- reactive({
+    d <- pca_data(); rot <- d$pc$rotation
+    lipids <- rownames(rot)
+    data.frame(Lipid = lipids, Class = rd_class(lipids), PC1_loading = unname(rot[, 1]), PC2_loading = unname(rot[, 2]),
+               PC1_variance_pct = d$ve[1], PC2_variance_pct = d$ve[2], Lipids_used = nrow(rot),
+               Scaling = d$df$Scaling[1], Transformation = d$df$Transformation[1], stringsAsFactors = FALSE)
+  })
+  output$plot_loadings <- plotly::renderPlotly({
+    d <- pca_data(); df <- pca_loadings()
+    ttl <- if (identical(input$pca_transform, "linear")) "Linear" else if (identical(input$pca_transform, "log10")) "Log10" else "Log2"
+    lev <- sort(unique(df$Class), method = "radix")
+    # A dataset whose lipid names carry no class draws every lipid in one color.
+    single <- length(lev) <= 1L
+    cols <- if (single) stats::setNames(rd_palette[1], lev) else rd_class_colors(lev, rd_value(shared_data$class_color_map))
+    df$Hover <- sprintf("%s<br>Class %s", htmltools::htmlEscape(df$Lipid), htmltools::htmlEscape(df$Class))
+    p <- plotly::plot_ly(source = session$ns("rd_loadings"))
+    for (g in lev) {
+      i <- which(df$Class == g)
+      col <- cols[[g]]; if (is.null(col) || is.na(col)) col <- "#6b7280"
+      p <- plotly::add_trace(p, type = "scatter", mode = "markers", x = df$PC1_loading[i], y = df$PC2_loading[i],
+        name = sprintf("%s (n = %d)", if (single) "Lipids" else g, length(i)), legendgroup = g, customdata = df$Lipid[i],
+        marker = list(size = 6, color = col, opacity = 0.85, line = list(color = col, width = 0)),
+        text = df$Hover[i], hovertemplate = "%{text}<br>PC1 loading %{x:.3f}<br>PC2 loading %{y:.3f}<extra></extra>")
+    }
+    frame <- list(showline = TRUE, linecolor = "#000000", linewidth = 1, mirror = TRUE, ticks = "outside", ticklen = 4, tickcolor = "#000000",
+                  showgrid = FALSE, zeroline = TRUE, zerolinecolor = "#7f7f7f", zerolinewidth = 1)
+    p |> rd_layout(title = list(text = ttl, x = 0.5, xanchor = "center", font = list(family = "Arial, Helvetica, sans-serif", size = 10, color = "#000000")),
+                xaxis = c(list(title = sprintf("PC1 loading (%.1f%%)", d$ve[1])), frame),
+                yaxis = c(list(title = sprintf("PC2 loading (%.1f%%)", d$ve[2])), frame),
+                showlegend = !single,
+                legend = list(orientation = "v", x = 1.02, xanchor = "left", y = 1, yanchor = "top"),
+                margin = list(l = 60, r = if (single) 20 else 190, t = 35, b = 55))
+  })
+
   # ---- PCA score analysis (Statistics tab) ---------------------------------------
   observe({
     si <- sample_info()
@@ -735,52 +808,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
   })
   # The canvas figure: one box per group with its samples, significance brackets, and the group table
   # (colour, median, n) drawn inside the figure on the right.
-  output$plot_pcascore <- plotly::renderPlotly({
-    r <- pcs_result(); res <- r$res; lev <- intersect(r$levels, res$tested)
-    fam <- "Arial, Helvetica, sans-serif"
-    colof <- function(g) { col <- r$colors[[g]]; if (is.null(col) || is.na(col)) "#6b7280" else col }
-    p <- plotly::plot_ly()
-    for (g in lev) {
-      i <- r$group == g; col <- colof(g)
-      p <- plotly::add_trace(p, type = "box", x = rep(g, sum(i)), y = r$score[i], name = g, text = r$sample[i],
-        boxpoints = "all", jitter = 0.45, pointpos = 0, fillcolor = grDevices::adjustcolor(col, 0.65),
-        line = list(color = "#000000", width = 1.5), marker = list(color = col, size = 6, line = list(color = "#3a3a3a", width = 0.8)),
-        hoverinfo = "y+text", legendgroup = g, showlegend = FALSE)
-    }
-    yr <- range(r$score[r$group %in% lev], na.rm = TRUE); span <- max(diff(yr), 1e-9); pr <- res$pairs
-    shapes <- list(); ann <- list(); top <- yr[2]
-    for (i in seq_len(nrow(pr))) {
-      x1 <- match(pr$A[i], lev) - 1; x2 <- match(pr$B[i], lev) - 1
-      y0 <- yr[2] + span * (0.06 + 0.17 * (i - 1)); y1 <- y0 + span * 0.03; top <- max(top, y1 + span * 0.09)
-      shapes[[length(shapes) + 1L]] <- list(type = "path", path = sprintf("M %s,%s L %s,%s L %s,%s L %s,%s", x1, y0, x1, y1, x2, y1, x2, y0), line = list(color = "#000000", width = 1.5))
-      big <- !identical(pr$stars[i], "ns")
-      ann[[length(ann) + 1L]] <- list(x = (x1 + x2) / 2, y = y1, text = pr$stars[i], showarrow = FALSE, yanchor = "bottom", xanchor = "center", font = list(family = fam, size = if (big) 16 else 12, color = "#000000"))
-    }
-    ttl <- if (!is.null(res$omnibus)) sprintf("%s p = %s", res$omnibus$name, rd_pca_score_fmt(res$omnibus$p)) else NULL
-    cell <- function(x, y, text, xanchor, bold = FALSE) list(x = x, y = y, xref = "paper", yref = "paper", text = if (bold) paste0("<b>", text, "</b>") else text,
-      showarrow = FALSE, xanchor = xanchor, yanchor = "middle", align = xanchor, font = list(family = fam, size = 10, color = "#000000"))
-    # Group table below the plot (as in the publication figure): colour dot + group (n), median, n.
-    tab_top <- 0.215; step <- 0.052; y_head <- tab_top
-    ann[[length(ann) + 1L]] <- cell(0.27, y_head, "Group", "center", TRUE)
-    ann[[length(ann) + 1L]] <- cell(0.60, y_head, sprintf("Median PC%d", r$k), "center", TRUE)
-    ann[[length(ann) + 1L]] <- cell(0.86, y_head, "n", "center", TRUE)
-    for (j in seq_along(lev)) {
-      g <- lev[j]; y <- y_head - step * j; nm <- if (nchar(g) > 26L) paste0(substr(g, 1L, 25L), "…") else g
-      ann[[length(ann) + 1L]] <- cell(0.075, y, sprintf("%s (n = %d)", htmltools::htmlEscape(nm), res$n[[g]]), "left")
-      ann[[length(ann) + 1L]] <- cell(0.60, y, sprintf("%+.2f", res$median[[g]]), "center")
-      ann[[length(ann) + 1L]] <- cell(0.86, y, as.character(res$n[[g]]), "center")
-      p <- plotly::add_trace(p, type = "scatter", mode = "markers", x = 0.045, y = y, xaxis = "x2", yaxis = "y2", name = g, legendgroup = g, showlegend = FALSE,
-        meta = list(teamLegendProxy = TRUE), hoverinfo = "skip", marker = list(symbol = "circle", size = 8, color = colof(g), line = list(color = "#3a3a3a", width = 0.8)))
-    }
-    frame <- list(showline = TRUE, linecolor = "#000000", linewidth = 1, mirror = TRUE, showgrid = FALSE, zeroline = FALSE, tickcolor = "#000000", ticklen = 4)
-    p |> rd_layout(meta = team_condition_meta(), shapes = shapes, annotations = ann,
-      xaxis = c(list(title = "", type = "category", domain = c(0, 1), categoryorder = "array", categoryarray = lev, showticklabels = FALSE, ticks = ""), frame[c("showline", "linecolor", "linewidth", "mirror", "showgrid", "zeroline")]),
-      yaxis = c(list(title = sprintf("PC%d score (%.1f%% of variance)", r$k, r$ve), domain = c(0.28, 1), ticks = "outside",
-                     range = c(yr[1] - span * 0.05, top + span * 0.03)), frame),
-      xaxis2 = list(domain = c(0, 1), range = c(0, 1), visible = FALSE, fixedrange = TRUE, anchor = "y2"),
-      yaxis2 = list(domain = c(0, 0.28), range = c(0, 0.28), visible = FALSE, fixedrange = TRUE, anchor = "x2"),
-      showlegend = FALSE, margin = list(l = 65, r = 15, t = 15, b = 10))
-  })
+  output$plot_pcascore <- plotly::renderPlotly(rd_pca_score_figure(pcs_result(), team_condition_meta()))
   output$pcs_report <- renderUI({
     r <- pcs_result(); res <- r$res; pr <- res$pairs
     rank <- identical(res$test, "rank")
@@ -1112,11 +1140,11 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
       return(paste(sprintf('Significant only: %d lipid%s pass%s the Differential analysis criterion (%s).',length(h$lipids_visible),if(length(h$lipids_visible)==1L)'' else 's',if(length(h$lipids_visible)==1L)'es' else '',s$criterion),
         if(missing) sprintf('%d further significant lipid%s cannot be drawn here (missing/nonpositive values or zero variance).',missing,if(missing==1L)'' else 's') else '',
         'The lipid picker applies to All lipids; group selection still applies. Full-cohort z-scores and color scale stay fixed; no test is run here.',
-        if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else ''))
+        if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Every row is labeled with its lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else ''))
     }
     paste(sprintf('Showing %d of %d available lipids. Classes select individual lipids; rows are never combined. Full-cohort z-scores and color scale stay fixed.',length(h$lipids_visible),h$n),
       sprintf('%d excluded for missing/nonpositive values; %d for zero variance.',h$n_incomplete,h$n_constant),
-      if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Labels may be thinned; hover or download CSV for every lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else '')
+      if(isTRUE(shared_data$team_compact_distribution) && (nrow(h$z)>15L || ncol(h$z)>15L))'The taller heatmap scrolls within its card. Every row is labeled with its lipid name. Cell values are unchanged.' else if(length(h$lipids_visible)>60)'Some row labels are hidden for readability. Hover over each row or download the CSV to read every lipid name.' else '')
   })
 
   # ---- Downloads: exactly the data frames drawn ------------------------------
@@ -1129,6 +1157,7 @@ results_dashboard_module_server <- function(input, output, session, shared_data)
     })
   output$dl_violin <- dl("lipid_violin", violin_data)
   output$dl_pca <- dl("pca_scores", function() pca_data()$df)
+  output$dl_loadings <- dl("pca_loadings", pca_loadings)
   output$dl_comp <- dl("class_signal_composition", function() if(isTRUE(shared_data$team_compact_distribution)) comp_team_data()$samples else comp_data())
   output$dl_dist <- dl("log10_distribution", dist_data)
   output$dl_heat <- dl("top_variable_heatmap", function() heat_data()$df)

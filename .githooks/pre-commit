@@ -1,20 +1,45 @@
 #!/usr/bin/env bash
 # Contributor guardrails (opt in once per clone: git config core.hooksPath .githooks).
-# Overrides, for the maintainer only: LAB_ALLOW_PROTECTED=1, LAB_ALLOW_DATA=1.
+# Rules come from CLAUDE.md and the lab's contributor guide. Overrides, for the maintainer only:
+# LAB_ALLOW_PROTECTED=1, LAB_ALLOW_DATA=1, LAB_ALLOW_BRANCH=1, LAB_ALLOW_PRIVATE=1,
+# LAB_ALLOW_CLASSIC=1, LAB_ALLOW_MIGRATION=1, LAB_ALLOW_CAPTURES=1.
 set -u
 stop() { echo "pre-commit: $1" >&2; exit 1; }
+note() { echo "pre-commit: note: $1" >&2; }
 
 branch=$(git symbolic-ref --short -q HEAD || true)
 case "$branch" in
-  main|integration/*)
-    [ "${LAB_ALLOW_PROTECTED:-}" = 1 ] || stop "do not commit on '$branch'. Start a topic branch from the base: git switch -c <your-name>/<topic> origin/<base>" ;;
+  main|integration/*|lab/*)
+    [ "${LAB_ALLOW_PROTECTED:-}" = 1 ] || stop "do not commit on '$branch'. Start a topic branch from the base: git switch -c <your-name>/<topic> origin/lab/main" ;;
+  "") ;;
+  *)
+    # A topic branch is <name>/<short-topic>; with git config lab.name <name> the prefix must be yours.
+    if [ "${LAB_ALLOW_BRANCH:-}" != 1 ]; then
+      printf '%s' "$branch" | grep -qE '^[a-z0-9-]+/[a-z0-9][a-z0-9._-]*$' || stop "branch '$branch' should look like <your-name>/<short-topic> in English, for example anapau/pca-legend."
+      name=$(git config --get lab.name || true)
+      [ -z "$name" ] || case "$branch" in "$name"/*) ;; *) stop "branch '$branch' should start with '$name/' (git config lab.name). One branch per topic: git switch -c $name/<topic> origin/lab/main" ;; esac
+    fi ;;
 esac
 
-# New data files belong only in test fixtures, and only synthetic ones.
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+status=$(git diff --cached --name-status)
+
+# New data files belong only in test fixtures, and only synthetic ones. Checkpoint ZIPs, Excel, CSV and
+# office documents of the lab never go in git. The PR text file (pr.md) lives outside the repository.
 if [ "${LAB_ALLOW_DATA:-}" != 1 ]; then
-  data=$(git diff --cached --name-only --diff-filter=A | grep -iE '\.(zip|xlsx|xls|csv|tsv|rds|rdata|sqlite|db)$' | grep -vE '(^|/)tests/(.*/)?fixtures/' || true)
-  [ -z "$data" ] || stop "data files outside tests/**/fixtures (real data never goes in git):
+  data=$(git diff --cached --name-only --diff-filter=A | grep -iE '\.(zip|xlsx|xls|xlsm|csv|tsv|rds|rdata|sqlite|db|parquet|feather|h5|sav|docx|pptx)$' | grep -vE '(^|/)tests/(.*/)?fixtures/' || true)
+  [ -z "$data" ] || stop "data or office files outside tests/**/fixtures (real data never goes in git):
 $data"
+fi
+prfile=$(printf '%s\n' "$staged" | grep -iE '(^|/)pr([._-]?body)?\.md$' || true)
+[ -z "$prfile" ] || stop "write the pull request text outside the repository (for example in your temp folder), not in git:
+$prfile"
+
+# Browser suites leave screenshots in docs/integration: they are not part of a change unless it is about them.
+if [ "${LAB_ALLOW_CAPTURES:-}" != 1 ]; then
+  caps=$(git diff --cached --name-only --diff-filter=A | grep -iE '^docs/integration/.*\.(png|jpe?g|gif|webp|svg|pdf)$' || true)
+  [ -z "$caps" ] || stop "test screenshots under docs/integration are not committed (unset them: git reset -q <file>):
+$caps"
 fi
 
 # Large files.
@@ -24,9 +49,45 @@ git diff --cached --name-only --diff-filter=AM | while IFS= read -r f; do
   [ "$size" -le 5000000 ] || { echo "pre-commit: $f is larger than 5 MB" >&2; exit 1; }
 done || exit 1
 
+# Classic, the default interface, does not change by a single byte (R/frontends/classic, app.R, DESCRIPTION,
+# and www/ outside www/team/).
+if [ "${LAB_ALLOW_CLASSIC:-}" != 1 ]; then
+  classic=$(git diff --cached --name-only | grep -E '^(R/frontends/classic/|app\.R$|DESCRIPTION$)|^www/' | grep -vE '^www/team/' || true)
+  [ -z "$classic" ] || stop "Classic must not change (it goes to the maintainer as an issue):
+$classic"
+fi
+
+# Admin database migrations: only new files, numbered in sequence, never edited.
+if [ "${LAB_ALLOW_MIGRATION:-}" != 1 ]; then
+  mig=$(printf '%s\n' "$status" | awk -F'\t' '$2 ~ /^db\/admin\/migrations\// || $3 ~ /^db\/admin\/migrations\//' || true)
+  if [ -n "$mig" ]; then
+    printf '%s\n' "$mig" | grep -vE "^A$(printf '\t')" >/dev/null 2>&1 && stop "existing Admin migrations are never edited, renamed or deleted. Add a new db/admin/migrations/00NN_<name>.sql instead."
+    # The next free number counts both the current lab/main and this branch.
+    last=$( { git ls-tree --name-only HEAD db/admin/migrations/ 2>/dev/null; git ls-tree --name-only origin/lab/main db/admin/migrations/ 2>/dev/null; } | sed 's#.*/##' | grep -E '^[0-9]{4}_' | sort | tail -1 | cut -c1-4)
+    want=$((10#${last:-0} + 1))
+    for f in $(printf '%s\n' "$mig" | awk -F'\t' '{print $2}' | sort); do
+      printf '%s' "${f##*/}" | grep -qE '^[0-9]{4}_[a-z0-9_]+\.sql$' || stop "migration '$f' must be named 00NN_<name>.sql (lowercase, underscores)."
+      n=${f##*/}; n=$((10#${n:0:4}))
+      [ "$n" -eq "$want" ] || stop "migration '$f' has number $n but the next free number is $(printf '%04d' "$want"). Fetch origin and use the next number."
+      want=$((want + 1))
+    done
+  fi
+fi
+
 # Secrets in added lines.
 if git diff --cached -U0 --no-color | grep '^+' | grep -qE 'BEGIN [A-Z ]*PRIVATE KEY|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{30,}'; then
   stop "the staged changes contain what looks like a private key or token. Remove it."
+fi
+
+# Privacy: no server address or host names, personal emails, user folders, machine names or literal passwords.
+# The server address is read from LAB_SITE by the skills; it is never written into the repository.
+if [ "${LAB_ALLOW_PRIVATE:-}" != 1 ]; then
+  hits=$(git diff --cached -U0 --no-color -- . ':(exclude).githooks' ':(exclude)tests/test_git_guardrails.sh' ':(exclude).claude' ':(exclude)CLAUDE.md' \
+    | grep -E '^\+[^+]' \
+    | grep -iE 'experimentalhidalgolab|[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.(com|edu|org|net)\b|[A-Za-z]:\\Users\\|/Users/[A-Za-z]|/home/[a-z][a-z0-9._-]+|desktop-[a-z0-9]{6,}|(password|passwd|secret|api[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}["'"'"']' \
+    | grep -viE '@example\.(com|org|net|invalid)|noreply@|@users\.noreply|/home/runner|password.*(example|test|fake|dummy|changeme|placeholder|xxxx|\*\*\*)|Users\\Public' | head -5 || true)
+  [ -z "$hits" ] || stop "the staged lines may contain private information (real values must not be committed; fake ones in tests are fine, then set LAB_ALLOW_PRIVATE=1 once):
+$hits"
 fi
 
 # R files must parse (the PR template's AST check).
@@ -35,5 +96,11 @@ if command -v Rscript >/dev/null 2>&1; then
     [ -f "$f" ] || continue
     Rscript --vanilla -e 'invisible(parse(commandArgs(TRUE)[1]))' "$f" >/dev/null 2>&1 || { echo "pre-commit: $f does not parse" >&2; exit 1; }
   done || exit 1
+fi
+
+# Reminders (they do not stop the commit).
+printf '%s\n' "$staged" | grep -q '^R/modules/' && note "R/modules is the science: it goes in its own pull request, with a sentence for the maintainer on what result changes and why."
+if printf '%s\n' "$staged" | grep -qE '^(R/frontends/team/|www/team/)' && ! printf '%s\n' "$staged" | grep -q '^frontends/nexo/'; then
+  note "Team changed without Nexo: carry the same behaviour to frontends/nexo with a vitest (team-to-nexo-port skill)."
 fi
 exit 0
