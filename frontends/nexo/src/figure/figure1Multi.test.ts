@@ -5,7 +5,7 @@ import {A4} from './a4Pdf';
 import {figure1Figure,figure1Page,figure1Panels} from './figure1';
 import {reportDate,titleBlock} from './report';
 // Review 2026-11-24: panel B as one PCA score card per PCA cluster (up to three, side by side), panel C as two
-// composition cards (major and minor classes, stacked), and A's dots at least 18. Synthetic board.
+// composition cards (major and minor classes, stacked), and A's dots at size 9. Synthetic board.
 const groups=['Alpha','Beta','Gamma','Delta','Epsilon','Zeta'];
 const colour=(i:number)=>`#${['4E79A7','F28E2B','E15759','76B7B2','59A14F','EDC948'][i]}`;
 const node=(id:string,source:string,label:string):Node=>({id,kind:'plot',label,x:0,y:0,width:420,height:320,instance:{instanceId:id,source}});
@@ -61,12 +61,18 @@ describe('Figure 1 with several B and C cards',()=>{
   expect(text).toMatch(/Top-left cluster \(Alpha, Beta\)/);expect(text).toMatch(/Top-right cluster \(Gamma, Delta, Epsilon, Zeta\)/);expect(text).toMatch(/Bottom cluster \(Alpha, Zeta\)/);
   expect(text).toMatch(/Major lipid classes \(3 classes\)/);expect(text).toMatch(/Minor lipid classes \(10 classes\)/);
  });
+ // Staging export: "PC1 score (6.9% of variance)" was cut at the left edge of each narrow B plot.
+ it('shortens the B y title to the component when B has several cards',async()=>{
+  const {drawn}=await build();
+  for(const d of drawn.filter(d=>d.figure.data[0]?.type==='box'))expect(d.figure.layout.yaxis.title.text).toBe('PC1 score');
+ });
  it('one B card and one C card keep their single-panel look (no title)',()=>{
   const b=figure1Figure('pcascore',figures.b4,new Map(),groups,{width:250,height:200});expect(b.layout.title).toBeUndefined();
   const c=figure1Figure('comp',figures.c3,new Map(),groups,{width:250,height:200});expect(c.layout.title).toBeUndefined();
  });
- it('draws A\'s dots at size 18 or more',()=>{
+ // Review 2026-11-24: size 18 overlapped into blobs; the author asked for 9.
+ it('draws A\'s dots at size 9',()=>{
   const a=figure1Figure('pca',figures.pca,new Map(),groups,{width:200,height:200});
-  for(const t of a.data)expect(t.marker.size).toBeGreaterThanOrEqual(18);
+  for(const t of a.data)expect(t.marker.size).toBe(9);
  });
 });
